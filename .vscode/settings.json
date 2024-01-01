@@ -1,0 +1,34 @@
+{
+    "files.associations": {
+        "test.h": "cpp",
+        "vulkan.h": "cpp",
+        "vulkan_core.h": "cpp",
+        "vk_platform.h": "cpp",
+        "type_traits": "cpp",
+        "typeinfo": "cpp",
+        "windowsx.h": "cpp",
+        "vulkan_platform.h": "cpp",
+        "renderer_frontend.h": "cpp",
+        "iosfwd": "cpp",
+        "algorithm": "cpp",
+        "xutility": "cpp",
+        "optional": "cpp",
+        "system_error": "cpp",
+        "xlocmon": "cpp",
+        "xtr1common": "cpp",
+        "iterator": "cpp",
+        "vector": "cpp",
+        "initializer_list": "cpp",
+        "list": "cpp",
+        "xhash": "cpp",
+        "xstring": "cpp",
+        "xtree": "cpp"
+    },
+
+    "files.encoding": "utf8",
+    "workbench.settings.applyToAllProfiles": [
+        "files.encoding"
+    ],
+    "cmake.configureOnOpen": true,
+    "C_Cpp.errorSquiggles": "enabled"
+}

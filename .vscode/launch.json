@@ -1,0 +1,30 @@
+{
+     // Используйте IntelliSense, чтобы узнать о возможных атрибутах.
+     // Наведите курсор, чтобы просмотреть описания существующих атрибутов.
+     // Для получения дополнительной информации посетите: https://go.microsoft.com/fwlink/?linkid=830387.
+    "version": "0.2.0",
+    "configurations": [
+        
+        {
+            "name": "(Windows) Launch",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/bin/testbed.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/bin",
+            "environment": [],
+            "console":"newExternalWindow",
+        },
+        {
+            "name": "(Linux) Launch",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/bin/testbed",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/bin",
+            "environment": [],
+        }
+    ]
+}
