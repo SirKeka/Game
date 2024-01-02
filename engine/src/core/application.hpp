@@ -2,7 +2,7 @@
 
 #include "defines.hpp"
 
-struct Game;
+class Game;
 
 // Конфигурация приложения.
 struct ApplicationConfig {
@@ -22,6 +22,6 @@ struct ApplicationConfig {
     const char* name;
 };
 
-MAPI bool ApplicationCreate(ApplicationConfig* Config);
+MAPI bool ApplicationCreate(Game* GameInst);
 
 MAPI bool ApplicationRun();

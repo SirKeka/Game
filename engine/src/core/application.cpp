@@ -1,13 +1,13 @@
 #include "application.hpp"
-//#include "GameTypes.hpp"
+#include "game_types.hpp"
 
 #include "logger.hpp"
 
 #include "platform/platform.hpp"
-//#include "core/mmemory.hpp"
+#include "core/memory.hpp"
 
 struct ApplicationState {
-    //Game* GameInst;
+    Game* GameInst;
     bool IsRunning;
     bool IsSuspended;
     MWindow* Window;
@@ -20,13 +20,13 @@ static bool initialized = FALSE;
 // TODO: Возможно убрать статик для запуска двух окон на разных экранах или придумать другую реализацию
 static ApplicationState AppState;
 
-bool ApplicationCreate(ApplicationConfig* Config) {
+bool ApplicationCreate(Game* GameInst) {
     if (initialized) {
         MERROR("ApplicationCreate вызывался более одного раза.");
         return FALSE;
     }
 
-    //AppState.GameInst = GameInst;
+    AppState.GameInst = GameInst;
 
     // Инициализируйте подсистемы.
     InitializeLogging();
@@ -41,11 +41,12 @@ bool ApplicationCreate(ApplicationConfig* Config) {
 
     AppState.IsRunning = true;
     AppState.IsSuspended = false;
-    AppState.Window = new MWindow(Config->name,
-                                  Config->StartPosX, 
-                                  Config->StartPosY, 
-                                  Config->StartHeight, 
-                                  Config->StartWidth);
+    
+    AppState.Window = new MWindow(GameInst->AppConfig.name,
+                                  GameInst->AppConfig.StartPosX, 
+                                  GameInst->AppConfig.StartPosY, 
+                                  GameInst->AppConfig.StartHeight, 
+                                  GameInst->AppConfig.StartWidth);
 
     if (!AppState.Window)
     {
@@ -54,10 +55,10 @@ bool ApplicationCreate(ApplicationConfig* Config) {
     else AppState.Window->Create();
 
     // Инициализируйте игру.
-    /*if (!AppState.GameInst->initialize(AppState.GameInst)) {
+    if (!AppState.GameInst->Initialize()) {
         MFATAL("Не удалось инициализировать игру.");
         return FALSE;
-    }*/
+    }
 
     //AppState.GameInst->OnResize(AppState.GameInst, AppState.width, AppState.height);
 
@@ -67,27 +68,27 @@ bool ApplicationCreate(ApplicationConfig* Config) {
 }
 
 bool ApplicationRun() {
-    //MINFO(GetMemoryUsageStr());
+    MINFO(AppState.GameInst->mem.GetMemoryUsageStr());
 
     while (AppState.IsRunning) {
         if(!AppState.Window->Messages()) {
             AppState.IsRunning = false;
         }
 
-        /*if(!AppState.IsSuspended) {
-            if (!AppState.GameInst->update(AppState.GameInst, (f32)0)) {
+        if(!AppState.IsSuspended) {
+            if (!AppState.GameInst->Update(0.0f)) {
                 MFATAL("Ошибка обновления игры, выключение.");
                 AppState.IsRunning = false;
                 break;
             }
 
             // Вызовите процедуру рендеринга игры.
-            if (!AppState.GameInst->render(AppState.GameInst, (f32)0)) {
+            if (!AppState.GameInst->Render(0.0f)) {
                 MFATAL("Ошибка рендеринга игры, выключение.");
                 AppState.IsRunning = false;
                 break;
             }
-        }*/
+        }
     }
 
     AppState.IsRunning = false;
