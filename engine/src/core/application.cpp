@@ -4,9 +4,11 @@
 #include "logger.hpp"
 
 #include "platform/platform.hpp"
-#include "core/memory.hpp"
+#include "core/mmemory.hpp"
+#include <new>
 
 struct ApplicationState {
+    MMemory mem;
     Game* GameInst;
     bool IsRunning;
     bool IsSuspended;
@@ -25,7 +27,7 @@ bool ApplicationCreate(Game* GameInst) {
         MERROR("ApplicationCreate вызывался более одного раза.");
         return FALSE;
     }
-
+    
     AppState.GameInst = GameInst;
 
     // Инициализируйте подсистемы.
@@ -60,7 +62,7 @@ bool ApplicationCreate(Game* GameInst) {
         return FALSE;
     }
 
-    //AppState.GameInst->OnResize(AppState.GameInst, AppState.width, AppState.height);
+    AppState.GameInst->OnResize(AppState.width, AppState.height);
 
     initialized = true;
 
@@ -68,6 +70,7 @@ bool ApplicationCreate(Game* GameInst) {
 }
 
 bool ApplicationRun() {
+    
     MINFO(AppState.GameInst->mem.GetMemoryUsageStr());
 
     while (AppState.IsRunning) {

@@ -2,7 +2,7 @@
 
 #include "core/application.hpp"
 #include "core/logger.hpp"
-#include "core/memory.hpp"
+#include "core/mmemory.hpp"
 #include "game_types.hpp"
 
 #include <new>
@@ -40,7 +40,7 @@ int main(void) {
         return 2;
     }
 
-    GameInst->mem.ShutDown();
+    // GameInst->mem->ShutDown();
 
     return 0;
 }

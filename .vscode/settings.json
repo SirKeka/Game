@@ -10,6 +10,8 @@
         "vulkan_platform.h": "cpp",
         "renderer_frontend.h": "cpp",
         "iosfwd": "cpp",
+        "tuple": "cpp",
+        "utility": "cpp",
         "algorithm": "cpp",
         "xutility": "cpp",
         "optional": "cpp",
@@ -22,7 +24,9 @@
         "list": "cpp",
         "xhash": "cpp",
         "xstring": "cpp",
-        "xtree": "cpp"
+        "xtree": "cpp",
+        "xiosbase": "cpp",
+        "xlocale": "cpp"
     },
 
     "files.encoding": "utf8",

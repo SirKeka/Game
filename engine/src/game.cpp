@@ -1,11 +1,14 @@
 #include "game_types.hpp"
 
 #include <core/logger.hpp>
+#include <new>
 
-Game::Game()
+MMemory Game::mem = MMemory();
+
+/*Game::Game() : mem(mem)
 {
-    mem = Memory();
-}
+
+}*/
 
 bool Game::Initialize()
 {
@@ -32,3 +35,14 @@ Game::~Game()
 {
 }
 
+void *Game::operator new(u64 size)
+{
+    MINFO("Выделено: %d", size, "байт");
+    
+    return mem.Allocate(size, MEMORY_TAG_GAME);
+}
+
+void Game::operator delete(void *ptr)
+{
+    mem.Free(ptr,sizeof(Game), MEMORY_TAG_GAME);
+}
