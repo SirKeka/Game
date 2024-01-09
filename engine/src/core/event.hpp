@@ -29,6 +29,7 @@ typedef bool (*PFN_OnEvent)(u16 code, void* sender, void* listener_inst, EventCo
 class Event
 {
 private:
+static bool IsInitialized;
     
 public:
     Event();

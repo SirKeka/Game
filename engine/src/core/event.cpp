@@ -9,7 +9,8 @@ struct RegisteredEvent {
 };
 
 struct EventCodeEntry {
-    RegisteredEvent* events;
+    DArray<RegisteredEvent> events;
+    // RegisteredEvent* events;
 };
 
 // Кодов должно быть более чем достаточно...
@@ -22,10 +23,34 @@ struct EventSystemState {
 };
 
 // Внутреннее состояние системы событий.
-static bool IsInitialized = false;
+bool Event::IsInitialized = false;
 static EventSystemState state;
 
-bool EventRegister(u16 code, void *listener, PFN_OnEvent OnEvent)
+bool Event::Initialize()
+{
+    if (IsInitialized == true) {
+        return false;
+    }
+    IsInitialized = false;
+    MZeroMemory(&state, sizeof(state));
+
+    IsInitialized = true;
+
+    return true;
+}
+
+void Event::Shutdown()
+{
+    // Освободите массивы событий. А объекты, на которые указывают, должны уничтожаться самостоятельно.
+    for(u16 i = 0; i < MAX_MESSAGE_CODES; ++i){
+        if(state.registered[i].events.ptrValue != nullptr) {
+            MArrayDestroy(state.registered[i].events);
+            state.registered[i].events = 0;
+        }
+    }
+}
+
+bool Event::Register(u16 code, void *listener, PFN_OnEvent OnEvent)
 {
     if(IsInitialized == false) {
         return false;
@@ -53,36 +78,34 @@ bool EventRegister(u16 code, void *listener, PFN_OnEvent OnEvent)
     return true;
 }
 
-bool EventUnregister(u16 code, void *listener, PFN_OnEvent OnEvent)
+bool Event::Unregister(u16 code, void *listener, PFN_OnEvent OnEvent)
 {
-    return MAPI b8();
-}
-
-bool EventFire(u16 code, void *sender, EventContext context)
-{
-    return MAPI b8();
-}
-
-bool Event::Initialize()
-{
-    if (IsInitialized == true) {
+    if(IsInitialized == false) {
         return false;
     }
-    IsInitialized = false;
-    MZeroMemory(&state, sizeof(state));
 
-    IsInitialized = true;
+    // По коду ничего не прописано, загружаемся.
+    if(state.registered[code].events == 0) {
+        // TODO: warn
+        return false;
+    }
 
-    return true;
-}
-
-void Event::Shutdown()
-{
-    // Освободите массивы событий. А объекты, на которые указывают, должны уничтожаться самостоятельно.
-    for(u16 i = 0; i < MAX_MESSAGE_CODES; ++i){
-        if(state.registered[i].events != 0) {
-            MArrayDestroy(state.registered[i].events);
-            state.registered[i].events = 0;
+    u64 RegisteredCount = darray_length(state.registered[code].events);
+    for(u64 i = 0; i < RegisteredCount; ++i) {
+        RegisteredEvent e = state.registered[code].events[i];
+        if(e.listener == listener && e.callback == OnEvent) {
+            // Нашёл, удали
+            RegisteredEvent popped_event;
+            darray_pop_at(state.registered[code].events, i, &popped_event);
+            return true;
         }
     }
+
+    // Not found.
+    return false;
+}
+
+bool Event::Fire(u16 code, void *sender, EventContext context)
+{
+    return MAPI bool();
 }

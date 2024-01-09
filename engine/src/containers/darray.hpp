@@ -12,7 +12,7 @@ private:
 
 public:
     DArray();
-    DArray(u64 lenght);
+    DArray(u64 lenght, const T& value = T());
     ~DArray();
     // Конструктор копирования
     DArray(const DArray& arr);
@@ -22,6 +22,7 @@ public:
     // Доступ к элементу
 
     T& operator [] (u64 index);
+    const T& operator [] (u64 index) const;
 
     // Емкость
 
