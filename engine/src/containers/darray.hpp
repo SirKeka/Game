@@ -6,11 +6,13 @@ class DArray
 {
 private:
     MMemory* mem;
-    u64 size;
-    u64 capacity;
     T* ptrValue;
-
 public:
+    // Переменные
+    
+    u64 size;
+    u64 capacity{0};
+
     DArray();
     DArray(u64 lenght, const T& value = T());
     ~DArray();

@@ -32,7 +32,7 @@ bool Event::Initialize()
         return false;
     }
     IsInitialized = false;
-    MZeroMemory(&state, sizeof(state));
+    // MZeroMemory(&state, sizeof(state));
 
     IsInitialized = true;
 
@@ -43,9 +43,9 @@ void Event::Shutdown()
 {
     // Освободите массивы событий. А объекты, на которые указывают, должны уничтожаться самостоятельно.
     for(u16 i = 0; i < MAX_MESSAGE_CODES; ++i){
-        if(state.registered[i].events.ptrValue != nullptr) {
-            MArrayDestroy(state.registered[i].events);
-            state.registered[i].events = 0;
+        if(state.registered[i].events.capacity > 0) {
+            state.registered[i].events.~DArray();
+            // state.registered[i].events = 0;
         }
     }
 }
@@ -56,12 +56,12 @@ bool Event::Register(u16 code, void *listener, PFN_OnEvent OnEvent)
         return false;
     }
 
-    if(state.registered[code].events == 0) {
-        state.registered[code].events = MArrayCreate(RegisteredEvent);
-    }
+    /*if(state.registered[code].events.capacity == 0) {
+        state.registered[code].events = DArray<RegisteredEvent>();
+    }*/
 
     DArray<u64> RegisteredCount;
-    u64 registered_count = MArrayLength(state.registered[code].events);
+    u64 registered_count = state.registered[code].events.lenght;
     for(u64 i = 0; i < registered_count; ++i) {
         if(state.registered[code].events[i].listener == listener) {
             // TODO: warn

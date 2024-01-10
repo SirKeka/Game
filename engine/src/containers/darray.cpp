@@ -24,6 +24,12 @@ ptrValue(reinterpret_cast<T*>(mem->Allocate(sizeof(T) * capacity, MEMORY_TAG_DAR
 }
 
 template <typename T>
+DArray<T>::~DArray()
+{
+    mem->Free(reinterpret_cast<void*>(ptrValue), sizeof(T) * capacity, MEMORY_TAG_DARRAY);
+}
+
+template <typename T>
 DArray<T>::DArray(const DArray &arr) 
 : 
 mem(arr.mem),
