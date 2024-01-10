@@ -61,7 +61,7 @@ bool Event::Register(u16 code, void *listener, PFN_OnEvent OnEvent)
     }*/
 
     DArray<u64> RegisteredCount;
-    u64 registered_count = state.registered[code].events.lenght;
+    u64 registered_count = state.registered[code].events.size;
     for(u64 i = 0; i < registered_count; ++i) {
         if(state.registered[code].events[i].listener == listener) {
             // TODO: warn
@@ -73,7 +73,7 @@ bool Event::Register(u16 code, void *listener, PFN_OnEvent OnEvent)
     RegisteredEvent event;
     event.listener = listener;
     event.callback = OnEvent;
-    MArrayPush(state.registered[code].events, event);
+    state.registered[code].events.PushBack(event);
 
     return true;
 }
@@ -85,27 +85,46 @@ bool Event::Unregister(u16 code, void *listener, PFN_OnEvent OnEvent)
     }
 
     // По коду ничего не прописано, загружаемся.
-    if(state.registered[code].events == 0) {
+    if(state.registered[code].events.capacity == 0) {
         // TODO: warn
         return false;
     }
 
-    u64 RegisteredCount = darray_length(state.registered[code].events);
+    u64 RegisteredCount = state.registered[code].events.size;
     for(u64 i = 0; i < RegisteredCount; ++i) {
         RegisteredEvent e = state.registered[code].events[i];
         if(e.listener == listener && e.callback == OnEvent) {
             // Нашёл, удали
-            RegisteredEvent popped_event;
-            darray_pop_at(state.registered[code].events, i, &popped_event);
+            // RegisteredEvent PoppedEvent;
+            state.registered[code].events.PopAt(i);
+            return true;
+        }
+    }
+
+    // Не найдено.
+    return false;
+}
+
+bool Event::Fire(u16 code, void *sender, EventContext context)
+{
+    if(IsInitialized == false) {
+        return false;
+    }
+
+    // Если для кода ничего не зарегистрировано, выйдите из системы.
+    if(state.registered[code].events.capacity == 0) {
+        return false;
+    }
+
+    u64 registered_count = state.registered[code].events.size;
+    for(u64 i = 0; i < registered_count; ++i) {
+        RegisteredEvent e = state.registered[code].events[i];
+        if(e.callback(code, sender, e.listener, context)) {
+            // Сообщение обработано, не отправляйте его другим слушателям.
             return true;
         }
     }
 
     // Not found.
     return false;
-}
-
-bool Event::Fire(u16 code, void *sender, EventContext context)
-{
-    return MAPI bool();
 }

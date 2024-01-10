@@ -1,4 +1,3 @@
-#include "containers/darray.hpp"
 #include "darray.hpp"
 #include "core/logger.hpp"
 
@@ -11,7 +10,7 @@ capacity(2),
 ptrValue(reinterpret_cast<T*>(mem->Allocate(sizeof(T) * capacity, MEMORY_TAG_DARRAY))) {}
 
 template <typename T>
-DArray<T>::DArray(u64 lenght, const T& value = T())
+DArray<T>::DArray(u64 lenght, const T &value)
 :
 mem(new MMemory()),
 size(lenght),
@@ -126,7 +125,7 @@ void DArray<T>::PopAt(u64 index)
 }
 
 template <typename T>
-void DArray<T>::Resize(u64 NewSize, const T& value = T())
+void DArray<T>::Resize(u64 NewSize, const T& value)
 {
     if(NewSize > capacity) {
         Reserve(NewSize);

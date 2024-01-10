@@ -5,6 +5,7 @@
 
 #include "platform/platform.hpp"
 #include "core/mmemory.hpp"
+#include "core/event.hpp"
 #include <new>
 
 struct ApplicationState {
@@ -13,6 +14,7 @@ struct ApplicationState {
     bool IsRunning;
     bool IsSuspended;
     MWindow* Window;
+    Event* Events;
     i16 width;
     i16 height;
     f64 LastTime;
@@ -43,6 +45,13 @@ bool ApplicationCreate(Game* GameInst) {
 
     AppState.IsRunning = true;
     AppState.IsSuspended = false;
+
+    AppState.Events = new Event();
+    if (!AppState.Events->Initialize()) {
+        MERROR("Система событий не смогла инициализироваться. Приложение не может быть продолжено.");
+        return false;
+    }
+    
     
     AppState.Window = new MWindow(GameInst->AppConfig.name,
                                   GameInst->AppConfig.StartPosX, 
@@ -95,6 +104,8 @@ bool ApplicationRun() {
     }
 
     AppState.IsRunning = false;
+
+    AppState.Events->Shutdown();
 
     AppState.Window->Close();
 
