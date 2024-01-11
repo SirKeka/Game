@@ -32,7 +32,7 @@ private:
 static bool IsInitialized;
     
 public:
-    Event();
+    Event() = default;
     ~Event();
 
     bool Initialize();
