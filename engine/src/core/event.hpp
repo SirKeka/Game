@@ -1,10 +1,11 @@
 #pragma once
 
 #include "defines.hpp"
+#include "containers/darray.hpp"
 
 struct EventContext {
     // 128 байт
-    union data {
+    union Data {
         i64 i64[2];
         u64 u64[2];
         f64 f64[2];
@@ -20,16 +21,36 @@ struct EventContext {
         u8 u8[16];
 
         char c[16];
-    };
+    } data;
 };
 
 // Должен возвращать true, если обработано.
-typedef bool (*PFN_OnEvent)(u16 code, void* sender, void* listener_inst, EventContext data);
+typedef bool (*PFN_OnEvent)(u16 code, void* sender, void* ListenerInst, EventContext data);
+
+struct RegisteredEvent {
+    void* listener;
+    PFN_OnEvent callback;
+};
+
+struct EventCodeEntry {
+    DArray<RegisteredEvent> events;
+    // RegisteredEvent* events;
+};
+
+// Кодов должно быть более чем достаточно...
+#define MAX_MESSAGE_CODES 16384
+
+// Структура состояния.
+struct EventSystemState {
+    // Таблица поиска кодов событий.
+    EventCodeEntry registered[MAX_MESSAGE_CODES];
+};
 
 class Event
 {
 private:
-static bool IsInitialized;
+    static bool IsInitialized;
+    static EventSystemState state;
     
 public:
     Event() = default;
@@ -61,7 +82,7 @@ public:
     /// @param sender Указатель на отправителя. Может быть 0/NULL.
     /// @param data Данные о событии.
     /// @return TRUE, если обработано, иначе FALSE.
-    MAPI bool Fire(u16 code, void* sender, EventContext context);
+    MAPI static bool Fire(u16 code, void* sender, EventContext context);
 };
 
 

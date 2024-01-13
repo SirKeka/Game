@@ -1,30 +1,10 @@
 #include "event.hpp"
 
 // #include "mmemory.hpp"
-#include "containers/darray.hpp"
-
-struct RegisteredEvent {
-    void* listener;
-    PFN_OnEvent callback;
-};
-
-struct EventCodeEntry {
-    DArray<RegisteredEvent> events;
-    // RegisteredEvent* events;
-};
-
-// Кодов должно быть более чем достаточно...
-#define MAX_MESSAGE_CODES 16384
-
-// Структура состояния.
-struct EventSystemState {
-    // Таблица поиска кодов событий.
-    EventCodeEntry registered[MAX_MESSAGE_CODES];
-};
 
 // Внутреннее состояние системы событий.
 bool Event::IsInitialized = false;
-static EventSystemState state;
+EventSystemState Event::state;
 
 bool Event::Initialize()
 {
@@ -116,8 +96,8 @@ bool Event::Fire(u16 code, void *sender, EventContext context)
         return false;
     }
 
-    u64 registered_count = state.registered[code].events.size;
-    for(u64 i = 0; i < registered_count; ++i) {
+    u64 RegisteredCount = state.registered[code].events.size;
+    for(u64 i = 0; i < RegisteredCount; ++i) {
         RegisteredEvent e = state.registered[code].events[i];
         if(e.callback(code, sender, e.listener, context)) {
             // Сообщение обработано, не отправляйте его другим слушателям.

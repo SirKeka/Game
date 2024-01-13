@@ -85,6 +85,8 @@ template <typename T>
 DArray<T>::~DArray()
 {
     mem->Free(reinterpret_cast<void*>(ptrValue), sizeof(T) * capacity, MEMORY_TAG_DARRAY);
+    ptrValue = nullptr;
+    delete mem;
 }
 
 template <typename T>

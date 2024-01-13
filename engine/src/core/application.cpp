@@ -6,15 +6,18 @@
 #include "platform/platform.hpp"
 #include "core/mmemory.hpp"
 #include "core/event.hpp"
+#include "input.hpp"
 #include <new>
 
 struct ApplicationState {
-    MMemory mem;
-    Game* GameInst;
+    // MMemory* mem;
+    Input* Inputs;
+    Event* Events;
     bool IsRunning;
     bool IsSuspended;
     MWindow* Window;
-    Event* Events;
+    Game* GameInst;
+    
     i16 width;
     i16 height;
     f64 LastTime;
@@ -34,6 +37,7 @@ bool ApplicationCreate(Game* GameInst) {
 
     // Инициализируйте подсистемы.
     InitializeLogging();
+    AppState.Inputs = new Input();
 
     // TODO: Удали это
     MFATAL("Тестовое сообщение: %f", 3.14f);
@@ -101,11 +105,18 @@ bool ApplicationRun() {
                 break;
             }
         }
+
+        // ПРИМЕЧАНИЕ. Обновление/копирование состояния ввода всегда
+        // должно выполняться после записи любого ввода; т.е. перед этой
+        // строкой. В целях безопасности входные данные обновляются в
+        // последнюю очередь перед завершением этого кадра.
+        AppState.Inputs->InputUpdate(0);
     }
 
     AppState.IsRunning = false;
 
     AppState.Events->Shutdown();
+    AppState.Inputs->~Input(); // ShutDown
 
     AppState.Window->Close();
 
