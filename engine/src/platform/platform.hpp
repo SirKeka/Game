@@ -34,9 +34,9 @@ public:
 
 // Функция выровненного выделения памяти. ВАЖНО:
 // выравнивание должно быть степенью 2 (обычно 4, 8 или 16).
-MAPI void* PlatformAllocate(u64 size, b8 aligned);
+MAPI void* PlatformAllocate(u64 size, bool aligned);
 // Освобождение памяти
-MAPI void PlatformFree(void* block, b8 aligned);
+MAPI void PlatformFree(void* block, bool aligned);
 // Обнуление памяти
 void* PlatformZeroMemory(void* block, u64 size);
 // Копирование блока памяти

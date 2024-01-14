@@ -4,6 +4,8 @@
 #if MPLATFORM_WINDOWS
 
 #include "core/logger.hpp"
+#include "core/application.hpp"
+#include "core/input.hpp"
 
 #include <windowsx.h>  // извлечение входных параметров
 #include <stdlib.h>
@@ -128,11 +130,11 @@ f64 MWindow::PlatformGetAbsoluteTime()
     return (f64)NowTime.QuadPart * ClockFrequency;
 }
 
-void *PlatformAllocate(u64 size, b8 aligned) {
+void *PlatformAllocate(u64 size, bool aligned) {
     return malloc(size);
 }
 
-void PlatformFree(void *block, b8 aligned) {
+void PlatformFree(void *block, bool aligned) {
     free(block);
 }
 
@@ -199,16 +201,17 @@ LRESULT CALLBACK Win32MessageProcessor(HWND hwnd, u32 msg, WPARAM w_param, LPARA
         case WM_SYSKEYDOWN:
         case WM_KEYUP:
         case WM_SYSKEYUP: {
-            // Key pressed/released
-            //b8 pressed = (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN);
-            // TODO: обработка ввода
+            // Клавиша нажата/отпущена
+            bool pressed = (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN);
+            Keys key = (u16)w_param;
 
         } break;
         case WM_MOUSEMOVE: {
             // Mouse move
-            //i32 xPos = GET_X_LPARAM(l_param);
-            //i32 yPos = GET_Y_LPARAM(l_param);
-            // TODO: обработка ввода.
+            i32 xPos = GET_X_LPARAM(l_param);
+            i32 yPos = GET_Y_LPARAM(l_param);
+            ApplicationState::Inputs
+            Input Inputs->InputProcessMouseMove(xPos, yPos);
         } break;
         case WM_MOUSEWHEEL: {
             // i32 zDelta = GET_WHEEL_DELTA_WPARAM(w_param);

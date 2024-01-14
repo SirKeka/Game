@@ -9,6 +9,15 @@
 #include "input.hpp"
 #include <new>
 
+Application::Application(/* args */)
+{
+}
+
+Application::~Application()
+{
+}
+
+
 struct ApplicationState {
     // MMemory* mem;
     Input* Inputs;
@@ -22,6 +31,8 @@ struct ApplicationState {
     i16 height;
     f64 LastTime;
 };
+
+static Application App;
 
 static bool initialized = FALSE;
 // TODO: Возможно убрать статик для запуска двух окон на разных экранах или придумать другую реализацию

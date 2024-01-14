@@ -22,6 +22,25 @@ struct ApplicationConfig {
     const char* name;
 };
 
+class Application
+{
+public:
+    // MMemory* mem;
+    Input* Inputs;
+    Event* Events;
+    bool IsRunning;
+    bool IsSuspended;
+    MWindow* Window;
+    Game* GameInst;
+    
+    i16 width;
+    i16 height;
+    f64 LastTime;
+public:
+    Application(/* args */);
+    ~Application();
+};
+
 MAPI bool ApplicationCreate(Game* GameInst);
 
 MAPI bool ApplicationRun();
