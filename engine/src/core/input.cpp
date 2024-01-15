@@ -29,7 +29,7 @@ void Input::InputUpdate(f64 DeltaTime)
     }
 }
 
-bool Input::InputIsKeyDown(const Keys& key)
+bool Input::InputIsKeyDown(Keys key)
 {
     if (!initialized) {
         return false;
@@ -37,7 +37,7 @@ bool Input::InputIsKeyDown(const Keys& key)
     return InState.KeyboardCurrent.keys[key] == true;
 }
 
-bool Input::InputIsKeyUp(const Keys& key)
+bool Input::InputIsKeyUp(Keys key)
 {
     if (!initialized) {
         return true;
@@ -45,7 +45,7 @@ bool Input::InputIsKeyUp(const Keys& key)
     return InState.KeyboardCurrent.keys[key] == false;
 }
 
-bool Input::InputWasKeyDown(const Keys& key)
+bool Input::InputWasKeyDown(Keys key)
 {
     if (!initialized) {
         return false;
@@ -53,7 +53,7 @@ bool Input::InputWasKeyDown(const Keys& key)
     return InState.KeyboardPrevious.keys[key] == true;
 }
 
-bool Input::InputWasKeyUp(const Keys& key)
+bool Input::InputWasKeyUp(Keys key)
 {
     if (!initialized) {
         return true;
@@ -61,7 +61,7 @@ bool Input::InputWasKeyUp(const Keys& key)
     return InState.KeyboardPrevious.keys[key] == false;
 }
 
-void Input::InputProcessKey(const Keys& key, bool pressed)
+void Input::InputProcessKey(Keys key, bool pressed)
 {
     // Обрабатывайте это только в том случае, если состояние действительно изменилось.
     if (InState.KeyboardCurrent.keys[key] != pressed) {
@@ -75,7 +75,7 @@ void Input::InputProcessKey(const Keys& key, bool pressed)
     }
 }
 
-bool Input::InputIsButtonDown(const Buttons& button)
+bool Input::InputIsButtonDown(Buttons button)
 {
     if (!initialized) {
         return false;
@@ -83,7 +83,7 @@ bool Input::InputIsButtonDown(const Buttons& button)
     return InState.MouseCurrent.Buttons[button] == true;
 }
 
-bool Input::InputIsButtonUp(const Buttons& button)
+bool Input::InputIsButtonUp(Buttons button)
 {
     if (!initialized) {
         return true;
@@ -91,7 +91,7 @@ bool Input::InputIsButtonUp(const Buttons& button)
     return InState.MouseCurrent.Buttons[button] == false;
 }
 
-bool Input::InputWasButtonDown(const Buttons& button)
+bool Input::InputWasButtonDown(Buttons button)
 {
     if (!initialized) {
         return false;
@@ -99,7 +99,7 @@ bool Input::InputWasButtonDown(const Buttons& button)
     return InState.MousePrevious.Buttons[button] == TRUE;
 }
 
-bool Input::InputWasButtonUp(const Buttons& button)
+bool Input::InputWasButtonUp(Buttons button)
 {
     if (!initialized) {
         return true;
@@ -142,7 +142,7 @@ void Input::InputProcessButton(Buttons button, bool pressed)
     }
 }
 
-void Input::InputProcessMouseMove(const i16& x, const i16& y)
+void Input::InputProcessMouseMove(i16 x, i16 y)
 {
     // Обрабатывайте только в том случае, если на самом деле они разные
     if (InState.MouseCurrent.PosX != x || InState.MouseCurrent.PosY != y) {
@@ -161,7 +161,7 @@ void Input::InputProcessMouseMove(const i16& x, const i16& y)
     }
 }
 
-void Input::InputProcessMouseWheel(const i8& z_delta)
+void Input::InputProcessMouseWheel(i8 z_delta)
 {
     // ПРИМЕЧАНИЕ. Внутреннее состояние для обновления отсутствует.
 

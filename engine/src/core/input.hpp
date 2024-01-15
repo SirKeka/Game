@@ -179,22 +179,22 @@ void InputUpdate(f64 DeltaTime);
 
 // ввод с клавиатуры
 
-MAPI bool InputIsKeyDown(const Keys& key);
-MAPI bool InputIsKeyUp(const Keys& key);
-MAPI bool InputWasKeyDown(const Keys& key);
-MAPI bool InputWasKeyUp(const Keys& key);
+MAPI bool InputIsKeyDown(Keys key);
+MAPI bool InputIsKeyUp(Keys key);
+MAPI bool InputWasKeyDown(Keys key);
+MAPI bool InputWasKeyUp(Keys key);
 
-static void InputProcessKey(const Keys& key, bool pressed);
+static void InputProcessKey(Keys key, bool pressed);
 
 // ввод с помощью мыши
-MAPI bool InputIsButtonDown(const Buttons& button);
-MAPI bool InputIsButtonUp(const Buttons& button);
-MAPI bool InputWasButtonDown(const Buttons& button);
-MAPI bool InputWasButtonUp(const Buttons& button);
+MAPI bool InputIsButtonDown(Buttons button);
+MAPI bool InputIsButtonUp(Buttons button);
+MAPI bool InputWasButtonDown(Buttons button);
+MAPI bool InputWasButtonUp(Buttons button);
 MAPI void InputGetMousePosition(i16& x, i16& y);
 MAPI void InputGetPreviousMousePosition(i16& x, i16& y);
 
 static void InputProcessButton(Buttons button, bool pressed);
-static void InputProcessMouseMove(const i16& x, const i16& y);
-static void InputProcessMouseWheel(const i8& z_delta);
+static void InputProcessMouseMove(i16 x, i16 y);
+static void InputProcessMouseWheel(i8 z_delta);
 };
