@@ -66,7 +66,7 @@ public:
     /// @param listener Указатель на экземпляр прослушивателя. Может быть 0/NULL.
     /// @param OnEvent Указатель функции обратного вызова, который будет вызываться при запуске кода события.
     /// @return TRUE, если событие успешно зарегистрировано; в противном случае FALSE.
-    MAPI bool Register(u16 code, void* listener, PFN_OnEvent OnEvent);
+    MAPI static bool Register(u16 code, void* listener, PFN_OnEvent OnEvent);
 
     /// @brief Отмените регистрацию от прослушивания событий, отправляемых с помощью предоставленного кода.
     /// Если соответствующая регистрация не найдена, эта функция возвращает FALSE.
@@ -74,7 +74,7 @@ public:
     /// @param listener Указатель на экземпляр прослушивателя. Может быть 0/NULL.
     /// @param OnEvent Указатель функции обратного вызова, регистрацию которого необходимо отменить.
     /// @return TRUE, если событие успешно отменено; в противном случае FALSE.
-    MAPI bool Unregister(u16 code, void* listener, PFN_OnEvent OnEvent);
+    MAPI static bool Unregister(u16 code, void* listener, PFN_OnEvent OnEvent);
 
     /// @brief Вызывает событие для слушателей данного кода. Если обработчик событий возвращает TRUE, 
     /// событие считается обработанным и больше не передается прослушивателям.

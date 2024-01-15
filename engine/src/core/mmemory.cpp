@@ -25,6 +25,8 @@ static const char* MemoryTagStrings[MEMORY_TAG_MAX_TAGS] = {
     "ENTITY_NODE",
     "SCENE      "};
 
+u64 MMemory::TotalAllocated{0};
+u64 MMemory::TaggedAllocations[MEMORY_TAG_MAX_TAGS]{};
 
 MMemory::~MMemory()
 {
@@ -37,7 +39,7 @@ void MMemory::ShutDown()
 void *MMemory::Allocate(u64 bytes, MemoryTag tag)
 {
     if (tag == MEMORY_TAG_UNKNOWN) {
-        MWARN("kallocate called using MEMORY_TAG_UNKNOWN. Re-class this allocation.");
+        MWARN("allocate вызывается с использованием MEMORY_TAG_UNKNOWN. Переклассифицировать это распределение.");
     }
 
     TotalAllocated += bytes;
@@ -45,21 +47,20 @@ void *MMemory::Allocate(u64 bytes, MemoryTag tag)
 
     u8* ptrRawMem = new u8[bytes]();
     
-    this->Start = ptrRawMem;
+    // this->Start = ptrRawMem;
     return ptrRawMem;
 }
 
 void MMemory::Free(void *block, u64 bytes, MemoryTag tag)
 {
     if (tag == MEMORY_TAG_UNKNOWN) {
-        MWARN("kfree called using MEMORY_TAG_UNKNOWN. Re-class this allocation.");
+        MWARN("free вызывается с использованием MEMORY_TAG_UNKNOWN. Переклассифицировать это распределение.");
     }
 
     TotalAllocated -= bytes;
     TaggedAllocations[tag] -= bytes;
 
-if (block)
-{
+if (block) {
     u8* ptrRawMem = reinterpret_cast<u8*>(block);
     delete[] ptrRawMem;
 }
@@ -83,7 +84,7 @@ const char *MMemory::GetMemoryUsageStr()
     const u64 mib = 1024 * 1024;
     const u64 kib = 1024;
 
-    char buffer[8000] = "System memory use (tagged):\n";
+    char buffer[8000] = "Использование системной памяти (с тегами):\n";
     u64 offset = strlen(buffer);
     for (u32 i = 0; i < MEMORY_TAG_MAX_TAGS; ++i) {
         char unit[4] = "XiB";

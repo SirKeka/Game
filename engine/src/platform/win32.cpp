@@ -203,23 +203,26 @@ LRESULT CALLBACK Win32MessageProcessor(HWND hwnd, u32 msg, WPARAM w_param, LPARA
         case WM_SYSKEYUP: {
             // Клавиша нажата/отпущена
             bool pressed = (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN);
-            Keys key = (u16)w_param;
+            Keys key = static_cast<Keys> (w_param);
 
+            // Перейдите к подсистеме ввода для обработки.
+            Input::InputProcessKey(key, pressed);
         } break;
         case WM_MOUSEMOVE: {
             // Mouse move
-            i32 xPos = GET_X_LPARAM(l_param);
-            i32 yPos = GET_Y_LPARAM(l_param);
-            ApplicationState::Inputs
-            Input Inputs->InputProcessMouseMove(xPos, yPos);
+            i16 xPos = GET_X_LPARAM(l_param);
+            i16 yPos = GET_Y_LPARAM(l_param);
+
+            // Переходим к подсистеме ввода.
+            Input::InputProcessMouseMove(xPos, yPos);
         } break;
         case WM_MOUSEWHEEL: {
-            // i32 zDelta = GET_WHEEL_DELTA_WPARAM(w_param);
-            // if (zDelta != 0) {
-            //     // Свести входные данные в независимый от ОС (-1, 1)
-            //     zDelta = (zDelta < 0) ? -1 : 1;
-            //     // TODO: обработка ввода.
-            // }
+            i32 zDelta = GET_WHEEL_DELTA_WPARAM(w_param);
+            if (zDelta != 0) {
+                // Свести входные данные в независимый от ОС (-1, 1)
+                zDelta = (zDelta < 0) ? -1 : 1;
+                Input::InputProcessMouseWheel(zDelta);
+            }
         } break;
         case WM_LBUTTONDOWN:
         case WM_MBUTTONDOWN:
@@ -227,8 +230,27 @@ LRESULT CALLBACK Win32MessageProcessor(HWND hwnd, u32 msg, WPARAM w_param, LPARA
         case WM_LBUTTONUP:
         case WM_MBUTTONUP:
         case WM_RBUTTONUP: {
-            //b8 pressed = msg == WM_LBUTTONDOWN || msg == WM_RBUTTONDOWN || msg == WM_MBUTTONDOWN;
-            // TODO: input processing.
+            bool pressed = msg == WM_LBUTTONDOWN || msg == WM_RBUTTONDOWN || msg == WM_MBUTTONDOWN;
+            Buttons MouseButtons = BUTTON_MAX_BUTTONS;
+            switch (msg)
+            {
+            case WM_LBUTTONDOWN:
+                case WM_LBUTTONUP:
+                    MouseButtons = BUTTON_LEFT;
+                    break;
+                case WM_MBUTTONDOWN:
+                case WM_MBUTTONUP:
+                    MouseButtons = BUTTON_MIDDLE;
+                    break;
+                case WM_RBUTTONDOWN:
+                case WM_RBUTTONUP:
+                    MouseButtons = BUTTON_RIGHT;
+                    break;
+            }
+            // Переходим к подсистеме ввода.
+            if (MouseButtons != BUTTON_MAX_BUTTONS) {
+                Input::InputProcessButton(MouseButtons, pressed);
+            }
         } break;
     }
 

@@ -161,7 +161,7 @@ void Input::InputProcessMouseMove(const i16& x, const i16& y)
     }
 }
 
-void Input::InputProcessMouseWheel(i8 z_delta)
+void Input::InputProcessMouseWheel(const i8& z_delta)
 {
     // ПРИМЕЧАНИЕ. Внутреннее состояние для обновления отсутствует.
 

@@ -8,10 +8,10 @@ class MAPI DArray
 // Переменные
 public:
     u64 size;
-    u64 capacity{0};
+    u64 capacity;
 
 private:
-    MMemory* mem;
+    // MMemory* mem;
     T* ptrValue;
 
 // Функции
@@ -65,16 +65,16 @@ inline DArray<T>::DArray()
 :
 size(0),
 capacity(2),
-mem(new MMemory()),
-ptrValue(reinterpret_cast<T*>(mem->Allocate(sizeof(T) * capacity, MEMORY_TAG_DARRAY))) {}
+//mem(new MMemory()),
+ptrValue(reinterpret_cast<T*>(MMemory::Allocate(sizeof(T) * capacity, MEMORY_TAG_DARRAY))) {}
 
 template <typename T>
 DArray<T>::DArray(u64 lenght, const T &value)
 :
 size(lenght),
 capacity(lenght),
-mem(new MMemory()),
-ptrValue(reinterpret_cast<T*>(mem->Allocate(sizeof(T) * capacity, MEMORY_TAG_DARRAY)))
+//mem(new MMemory()),
+ptrValue(reinterpret_cast<T*>(MMemory::Allocate(sizeof(T) * capacity, MEMORY_TAG_DARRAY)))
 {
     for (u64 i = 0; i < lenght; i++) {
         ptrValue[i] = value;
@@ -84,9 +84,9 @@ ptrValue(reinterpret_cast<T*>(mem->Allocate(sizeof(T) * capacity, MEMORY_TAG_DAR
 template <typename T>
 DArray<T>::~DArray()
 {
-    mem->Free(reinterpret_cast<void*>(ptrValue), sizeof(T) * capacity, MEMORY_TAG_DARRAY);
+    MMemory::Free(reinterpret_cast<void*>(ptrValue), sizeof(T) * capacity, MEMORY_TAG_DARRAY);
     ptrValue = nullptr;
-    delete mem;
+    //delete mem;
 }
 
 template <typename T>
@@ -94,15 +94,15 @@ DArray<T>::DArray(const DArray &arr)
 : 
 size(arr.size),
 capacity(arr.capacity),
-mem(arr.mem),
+//mem(arr.mem),
 ptrValue(arr.ptrValue) {}
 
 template <typename T>
-DArray<T>::DArray(DArray &&arr) :  size(arr.size), capacity(arr.capacity), mem(arr.mem), ptrValue(arr.ptrValue)
+DArray<T>::DArray(DArray &&arr) :  size(arr.size), capacity(arr.capacity), /*mem(arr.mem),*/ ptrValue(arr.ptrValue)
 {
     arr.size = 0;
     arr.capacity = 0;
-    arr.mem = nullptr;
+    //arr.mem = nullptr;
     arr.ptrValue = nullptr;
 }
 
@@ -125,9 +125,9 @@ void DArray<T>::Reserve(const u64 &NewCap)
 {
     // TODO: добавить std::move()
     if (NewCap > capacity) {
-        void* ptrNew = (mem->Allocate(sizeof(T) * NewCap, MEMORY_TAG_DARRAY));
-        ptrNew = mem->CopyMemory(ptrNew, reinterpret_cast<void*>(ptrValue), /*sizeof(T) * */capacity);
-        mem->Free(ptrValue, sizeof(T) * capacity, MEMORY_TAG_DARRAY);
+        void* ptrNew = (MMemory::Allocate(sizeof(T) * NewCap, MEMORY_TAG_DARRAY));
+        ptrNew = MMemory::CopyMemory(ptrNew, reinterpret_cast<void*>(ptrValue), /*sizeof(T) * */capacity);
+        MMemory::Free(ptrValue, sizeof(T) * capacity, MEMORY_TAG_DARRAY);
         ptrValue = reinterpret_cast<T*> (ptrNew);
         capacity = NewCap;
     }
@@ -161,7 +161,7 @@ void DArray<T>::Insert(const T &value, u64 index)
 
     // Если не последний элемент, скопируйте остальное наружу.
     if (index != size - 1) {
-        ptrValue = reinterpret_cast<T*>(mem->CopyMemory(
+        ptrValue = reinterpret_cast<T*>(MMemory::CopyMemory(
             reinterpret_cast<void*>(ptrValue + (index/* * sizeof(T)*/)),
             reinterpret_cast<void*>(ptrValue + (index + 1/* * sizeof(T)*/)),
             size - 1));
@@ -176,7 +176,7 @@ void DArray<T>::PopAt(u64 index)
 
     // Если не последний элемент, вырезаем запись и копируем остальное внутрь. TODO: оптимизироваать
     if (index != size - 1) {
-        ptrValue = reinterpret_cast<T*>(mem->CopyMemory(
+        ptrValue = reinterpret_cast<T*>(MMemory::CopyMemory(
             reinterpret_cast<void*>(ptrValue + (index/* * sizeof(T)*/)),
             reinterpret_cast<void*>(ptrValue + (index + 1/* * sizeof(T)*/)),
             size - 1));

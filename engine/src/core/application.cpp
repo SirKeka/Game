@@ -9,17 +9,17 @@
 #include "input.hpp"
 #include <new>
 
-Application::Application(/* args */)
+/*Application::Application()
 {
 }
 
 Application::~Application()
 {
-}
+}*/
 
 
 struct ApplicationState {
-    // MMemory* mem;
+    //MMemory* mem;
     Input* Inputs;
     Event* Events;
     bool IsRunning;
@@ -32,18 +32,22 @@ struct ApplicationState {
     f64 LastTime;
 };
 
-static Application App;
+// static Application App;
 
 static bool initialized = FALSE;
 // TODO: Возможно убрать статик для запуска двух окон на разных экранах или придумать другую реализацию
 static ApplicationState AppState;
+
+// Обработчики событий
+bool ApplicationOnEvent(u16 code, void* sender, void* ListenerInst, EventContext context);
+bool ApplicationOnKey(u16 code, void* sender, void* ListenerInst, EventContext context);
 
 bool ApplicationCreate(Game* GameInst) {
     if (initialized) {
         MERROR("ApplicationCreate вызывался более одного раза.");
         return FALSE;
     }
-    
+
     AppState.GameInst = GameInst;
 
     // Инициализируйте подсистемы.
@@ -66,7 +70,10 @@ bool ApplicationCreate(Game* GameInst) {
         MERROR("Система событий не смогла инициализироваться. Приложение не может быть продолжено.");
         return false;
     }
-    
+
+    Event::Register(EVENT_CODE_APPLICATION_QUIT, 0, ApplicationOnEvent);
+    Event::Register(EVENT_CODE_KEY_PRESSED, 0, ApplicationOnKey);
+    Event::Register(EVENT_CODE_KEY_RELEASED, 0, ApplicationOnKey);
     
     AppState.Window = new MWindow(GameInst->AppConfig.name,
                                   GameInst->AppConfig.StartPosX, 
@@ -83,7 +90,7 @@ bool ApplicationCreate(Game* GameInst) {
     // Инициализируйте игру.
     if (!AppState.GameInst->Initialize()) {
         MFATAL("Не удалось инициализировать игру.");
-        return FALSE;
+        return false;
     }
 
     AppState.GameInst->OnResize(AppState.width, AppState.height);
@@ -95,7 +102,7 @@ bool ApplicationCreate(Game* GameInst) {
 
 bool ApplicationRun() {
     
-    MINFO(AppState.GameInst->mem.GetMemoryUsageStr());
+    MINFO(MMemory::GetMemoryUsageStr());
 
     while (AppState.IsRunning) {
         if(!AppState.Window->Messages()) {
@@ -126,10 +133,57 @@ bool ApplicationRun() {
 
     AppState.IsRunning = false;
 
+    // Отключение системы событий.
+    Event::Unregister(EVENT_CODE_APPLICATION_QUIT, 0, ApplicationOnEvent);
+    Event::Unregister(EVENT_CODE_KEY_PRESSED, 0, ApplicationOnKey);
+    Event::Unregister(EVENT_CODE_KEY_RELEASED, 0, ApplicationOnKey);
     AppState.Events->Shutdown();
     AppState.Inputs->~Input(); // ShutDown
 
     AppState.Window->Close();
 
     return true;
+}
+
+bool ApplicationOnEvent(u16 code, void *sender, void *ListenerInst, EventContext context)
+{
+    switch (code) {
+        case EVENT_CODE_APPLICATION_QUIT: {
+            MINFO("Получено событие EVENT_CODE_APPLICATION_QUIT, завершение работы.\n");
+            AppState.IsRunning = false;
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool ApplicationOnKey(u16 code, void *sender, void *ListenerInst, EventContext context)
+{
+    if (code == EVENT_CODE_KEY_PRESSED) {
+        u16 KeyCode = context.data.u16[0];
+        if (KeyCode == KEY_ESCAPE) {
+            // ПРИМЕЧАНИЕ. Технически событие генерируется само по себе, но могут быть и другие прослушиватели.
+            EventContext data = {};
+            Event::Fire(EVENT_CODE_APPLICATION_QUIT, 0, data);
+
+            // Заблокируйте что-либо еще от обработки этого.
+            return true;
+        } else if (KeyCode == KEY_A) {
+            // Пример проверки ключа
+            MDEBUG("Явно — клавиша A нажата!");
+        } else {
+            MDEBUG("'%c' нажатие клавиши в окне.", KeyCode);
+        }
+    } else if (code == EVENT_CODE_KEY_RELEASED) {
+        u16 KeyCode = context.data.u16[0];
+        if (KeyCode == KEY_B) {
+            // Пример проверки ключа
+            MDEBUG("Явное — клавиша B отущена!");
+        } else {
+            MDEBUG("'%c' клавиша отпущен в окне.", KeyCode);
+        }
+    }
+
+    return false;
 }

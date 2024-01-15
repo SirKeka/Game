@@ -4,7 +4,7 @@
 
 // Внутреннее состояние системы событий.
 bool Event::IsInitialized = false;
-EventSystemState Event::state;
+EventSystemState Event::state {};
 
 bool Event::Initialize()
 {

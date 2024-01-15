@@ -12,17 +12,32 @@ private:
     
 public:
     // Конфигурация приложения.
-    ApplicationConfig AppConfig;
-    static MMemory mem;
-    // MAPI Game();
+    struct ApplicationConfig {
+        // Начальное положение окна по оси X, если применимо.
+        i16 StartPosX;
+
+        // Начальное положение окна по оси Y, если применимо.
+        i16 StartPosY;
+
+        // Начальная ширина окна, если применимо.
+        i16 StartWidth;
+
+        // Начальная высота окна, если применимо.
+        i16 StartHeight;
+
+        // Имя приложения, используемое в оконном режиме, если применимо.
+        const char* name;
+    } AppConfig;
+    
+    MAPI Game(i16 StartPosX, i16 StartPosY, i16 StartWidth, i16 StartHeight, const char* name);
     // Функция инициализации
-    bool Initialize(/*Game* GameInst*/);                                                                                      
+    bool Initialize();                                                                                      
     // Функция обновления игры
-    bool Update(/*Game* GameInst,*/ f32 DeltaTime);
+    bool Update(f32 DeltaTime);
     // Функция рендеринга игры
-    bool Render(/*Game* GameInst,*/ f32 DeltaTime);
+    bool Render(f32 DeltaTime);
     // Функция изменения размера окна игры
-    void OnResize(/*Game* GameInst,*/ u32 Width, u32 Height);
+    void OnResize( u32 Width, u32 Height);
     ~Game();
     MAPI void* operator new(u64 size);
     MAPI void operator delete(void* ptr);

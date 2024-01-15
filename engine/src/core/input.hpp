@@ -11,7 +11,7 @@ enum Buttons {
 
 #define DEFINE_KEY(name, code) KEY_##name = code
 
-enum Keys {
+enum Keys : u16 {
     DEFINE_KEY(BACKSPACE, 0x08),
     DEFINE_KEY(ENTER, 0x0D),
     DEFINE_KEY(TAB, 0x09),
@@ -92,7 +92,7 @@ enum Keys {
     DEFINE_KEY(ADD, 0x6B),
     DEFINE_KEY(SEPARATOR, 0x6C),
     DEFINE_KEY(SUBTRACT, 0x6D),
-    DEFINE_KEY(DECIMAL, 0x6E),
+    DEFINE_KEY(_DECIMAL, 0x6E),
     DEFINE_KEY(DIVIDE, 0x6F),
     DEFINE_KEY(F1, 0x70),
     DEFINE_KEY(F2, 0x71),
@@ -170,7 +170,7 @@ private:
     static InputState InState;
 
 public:
-    Input(/* args */);
+    Input();
     ~Input();
 
 //void input_initialize();
@@ -184,7 +184,7 @@ MAPI bool InputIsKeyUp(const Keys& key);
 MAPI bool InputWasKeyDown(const Keys& key);
 MAPI bool InputWasKeyUp(const Keys& key);
 
-void InputProcessKey(const Keys& key, bool pressed);
+static void InputProcessKey(const Keys& key, bool pressed);
 
 // ввод с помощью мыши
 MAPI bool InputIsButtonDown(const Buttons& button);
@@ -194,7 +194,7 @@ MAPI bool InputWasButtonUp(const Buttons& button);
 MAPI void InputGetMousePosition(i16& x, i16& y);
 MAPI void InputGetPreviousMousePosition(i16& x, i16& y);
 
-void InputProcessButton(Buttons button, bool pressed);
-void InputProcessMouseMove(const i16& x, const i16& y);
-void InputProcessMouseWheel(i8 z_delta);
+static void InputProcessButton(Buttons button, bool pressed);
+static void InputProcessMouseMove(const i16& x, const i16& y);
+static void InputProcessMouseWheel(const i8& z_delta);
 };

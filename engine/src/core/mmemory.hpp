@@ -30,10 +30,10 @@ class MMemory
 {
 private:
     // u64 Bytes{0};
-    u64 TotalAllocated{0};
-    u64 TaggedAllocations[MEMORY_TAG_MAX_TAGS]{};
+    static u64 TotalAllocated;
+    static u64 TaggedAllocations[MEMORY_TAG_MAX_TAGS];
 
-    void* Start = nullptr;
+    [[maybe_unused]] void* Start = nullptr;
     
 public:
     MAPI MMemory() = default;
@@ -45,13 +45,13 @@ public:
     /// @param bytes размер выделяемой памяти в байтах
     /// @param tag название(тег) для каких нужд используется память
     /// @return указатель на выделенный блок памяти
-    MAPI void* Allocate(u64 bytes, MemoryTag tag);
+    static MAPI void* Allocate(u64 bytes, MemoryTag tag);
 
     /// @brief Функция освобождает память
     /// @param block указатель на блок памяти, который нужно освободить
     /// @param bytes размер блока памяти в байтах
     /// @param tag название(тег) для чего использовалась память
-    MAPI void Free(void* block, u64 bytes, MemoryTag tag);
+    static MAPI void Free(void* block, u64 bytes, MemoryTag tag);
 
     /// @brief Функция зануляет выделенный блок памяти
     /// @param block указатель на блок памяти, который нужно обнулить
@@ -64,13 +64,13 @@ public:
     /// @param source указатель из которого копируется массив байтов
     /// @param bytes количество байт памяти которое копируется
     /// @return указатель
-    MAPI void* CopyMemory(void* dest, const void* source, u64 bytes);
+    static MAPI void* CopyMemory(void* dest, const void* source, u64 bytes);
 
     //MAPI void* SetMemory(void* dest, i32 value, u64 bytes);
 
     template<class U, class... Args>
     void Construct (U* ptr, Args && ...args);
 
-    MAPI const char* GetMemoryUsageStr();
+    static MAPI const char* GetMemoryUsageStr();
     
 };

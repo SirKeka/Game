@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "core/application.hpp"
 #include "core/logger.hpp"
@@ -8,12 +8,13 @@
 #include <new>
 
 // Внешне определенная функция для создания игры.
-extern bool CreateGame(Game* OutGame);
+extern bool CreateGame(Game*& OutGame);
 
 // Основная точка входа в приложение.Основная точка входа в приложение.
 int main(void) {
-    
-    //mem.Allocate(sizeof(Game), MEMORY_TAG_GAME);
+    system("chcp 65001 > nul"); // для отображения русских символов в консоли
+
+    MMemory* mem = new MMemory(); //Allocate(sizeof(Game), MEMORY_TAG_GAME);
     // Запросите экземпляр игры из приложения.
     Game* GameInst;
     
@@ -40,7 +41,7 @@ int main(void) {
         return 2;
     }
 
-    // GameInst->mem->ShutDown();
+    mem->ShutDown();
 
     return 0;
 }
