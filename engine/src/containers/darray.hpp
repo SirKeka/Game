@@ -64,20 +64,25 @@ template<typename T>
 inline DArray<T>::DArray()
 :
 size(0),
-capacity(2),
+capacity(0),
 //mem(new MMemory()),
-ptrValue(reinterpret_cast<T*>(MMemory::Allocate(sizeof(T) * capacity, MEMORY_TAG_DARRAY))) {}
+ptrValue(nullptr/*reinterpret_cast<T*>(MMemory::Allocate(sizeof(T) * capacity, MEMORY_TAG_DARRAY))*/) {}
 
 template <typename T>
 DArray<T>::DArray(u64 lenght, const T &value)
-:
+/*:
 size(lenght),
 capacity(lenght),
 //mem(new MMemory()),
-ptrValue(reinterpret_cast<T*>(MMemory::Allocate(sizeof(T) * capacity, MEMORY_TAG_DARRAY)))
+ptrValue(reinterpret_cast<T*>(MMemory::Allocate(sizeof(T) * capacity, MEMORY_TAG_DARRAY)))*/
 {
-    for (u64 i = 0; i < lenght; i++) {
-        ptrValue[i] = value;
+    if(lenght > 0) {
+        this->size = lenght;
+        this->capacity = lenght;
+        ptrValue = reinterpret_cast<T*>(MMemory::Allocate(sizeof(T) * capacity, MEMORY_TAG_DARRAY));
+        for (u64 i = 0; i < lenght; i++) {
+            ptrValue[i] = value;
+        }
     }
 }
 
@@ -142,6 +147,7 @@ u64 DArray<T>::Lenght()
 template <typename T>
 void DArray<T>::PushBack(const T &value)
 {
+    if(size == 0) Reserve(1);
     if(size > capacity) Reserve(capacity * 2);
     ptrValue[size] = value;
     size++;

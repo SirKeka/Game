@@ -179,9 +179,9 @@ bool ApplicationOnKey(u16 code, void *sender, void *ListenerInst, EventContext c
         u16 KeyCode = context.data.u16[0];
         if (KeyCode == KEY_B) {
             // Пример проверки ключа
-            MDEBUG("Явное — клавиша B отущена!");
+            MDEBUG("Явно — клавиша B отущена!");
         } else {
-            MDEBUG("'%c' клавиша отпущен в окне.", KeyCode);
+            MDEBUG("'%c' клавиша отпущена в окне.", KeyCode);
         }
     }
 

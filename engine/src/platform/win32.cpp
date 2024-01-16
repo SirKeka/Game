@@ -13,6 +13,9 @@
 // Прототип функции обратного вызова для обработки сообщений
 LRESULT CALLBACK Win32MessageProcessor(HWND, u32, WPARAM, LPARAM);
 
+f64 MWindow::ClockFrequency = 0;
+LARGE_INTEGER MWindow::StartTime;
+
 MWindow::MWindow(const char * name, i32 x, i32 y, i32 width, i32 height)
 {
     this->name = name;
@@ -100,7 +103,7 @@ bool MWindow::Create()
     ClockFrequency = 1.0 / (f64)Frequency.QuadPart;
     QueryPerformanceCounter(&StartTime);
 
-    return TRUE;
+    return true;
 
 }
 

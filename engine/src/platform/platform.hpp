@@ -10,8 +10,8 @@ private:
     HWND hwnd;              // Дескриптор окна
     
     // Часы
-    /*static*/ f64 ClockFrequency;
-    /*static*/ LARGE_INTEGER StartTime;
+    static f64 ClockFrequency;
+    static LARGE_INTEGER StartTime;
 
     const char* name; 
     i32 x; 
@@ -27,7 +27,7 @@ public:
     void Close();
     bool Messages();
     // Получение времени
-    f64 PlatformGetAbsoluteTime();
+    static f64 PlatformGetAbsoluteTime();
 };
 
 // Функции управления памятью--------------------------------------------------------------------------------------------------
