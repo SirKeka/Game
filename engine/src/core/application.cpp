@@ -7,16 +7,7 @@
 #include "core/mmemory.hpp"
 #include "core/event.hpp"
 #include "input.hpp"
-#include <new>
-
-/*Application::Application()
-{
-}
-
-Application::~Application()
-{
-}*/
-
+#include "clock.hpp"
 
 struct ApplicationState {
     //MMemory* mem;
@@ -29,6 +20,7 @@ struct ApplicationState {
     
     i16 width;
     i16 height;
+    Clock clock;
     f64 LastTime;
 };
 
@@ -101,7 +93,13 @@ bool ApplicationCreate(Game* GameInst) {
 }
 
 bool ApplicationRun() {
-    
+    AppState.clock.Start();
+    AppState.clock.Update();
+    AppState.clock.StartTime = AppState.clock.elapsed;
+    [[maybe_unused]] f64 RunningTime = 0;
+    [[maybe_unused]] u8 FrameCount = 0;
+    f64 TargetFrameSeconds = 1.0f / 60;
+
     MINFO(MMemory::GetMemoryUsageStr());
 
     while (AppState.IsRunning) {
@@ -110,25 +108,50 @@ bool ApplicationRun() {
         }
 
         if(!AppState.IsSuspended) {
-            if (!AppState.GameInst->Update(0.0f)) {
+            // Обновите часы и получите разницу во времени.
+                AppState.clock.Update();
+                f64 CurrentTime = AppState.clock.elapsed;
+                f64 delta = (CurrentTime - AppState.LastTime);
+                f64 FrameStartTime = MWindow::PlatformGetAbsoluteTime();
+
+            if (!AppState.GameInst->Update(delta)) {
                 MFATAL("Ошибка обновления игры, выключение.");
                 AppState.IsRunning = false;
                 break;
             }
 
             // Вызовите процедуру рендеринга игры.
-            if (!AppState.GameInst->Render(0.0f)) {
+            if (!AppState.GameInst->Render(delta)) {
                 MFATAL("Ошибка рендеринга игры, выключение.");
                 AppState.IsRunning = false;
                 break;
             }
-        }
+            // Выясните, сколько времени занял кадр и, если ниже
+            f64 FrameEndTime = MWindow::PlatformGetAbsoluteTime();
+            f64 FrameElapsedTime = FrameEndTime - FrameStartTime;
+            RunningTime += FrameElapsedTime;
+            f64 RemainingSeconds = TargetFrameSeconds - FrameElapsedTime;
 
-        // ПРИМЕЧАНИЕ. Обновление/копирование состояния ввода всегда
-        // должно выполняться после записи любого ввода; т.е. перед этой
-        // строкой. В целях безопасности входные данные обновляются в
-        // последнюю очередь перед завершением этого кадра.
-        AppState.Inputs->InputUpdate(0);
+            if (RemainingSeconds > 0) {
+                u64 Remaining_ms = (RemainingSeconds * 1000);
+
+                // If there is time left, give it back to the OS.
+                bool LimitFrames = false;
+                if (Remaining_ms > 0 && LimitFrames) {
+                    PlatformSleep(Remaining_ms - 1);
+                }
+
+                FrameCount++;
+            }
+            // ПРИМЕЧАНИЕ. Обновление/копирование состояния ввода всегда
+            // должно выполняться после записи любого ввода; т.е. перед этой
+            // строкой. В целях безопасности входные данные обновляются в
+            // последнюю очередь перед завершением этого кадра.
+            AppState.Inputs->InputUpdate(delta);
+
+            // Update last time
+            AppState.LastTime = CurrentTime;
+        }
     }
 
     AppState.IsRunning = false;
