@@ -45,7 +45,7 @@ void *MMemory::Allocate(u64 bytes, MemoryTag tag)
     TotalAllocated += bytes;
     TaggedAllocations[tag] += bytes;
 
-    u8* ptrRawMem = new u8[bytes]();
+    u8* ptrRawMem = new u8[bytes];
     
     // this->Start = ptrRawMem;
     return ptrRawMem;
