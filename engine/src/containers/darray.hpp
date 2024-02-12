@@ -147,7 +147,7 @@ u64 DArray<T>::Lenght()
 template <typename T>
 void DArray<T>::PushBack(const T &value)
 {
-    if(size == 0) Reserve(1);
+    if(size == 0) Reserve(2);
     if(size > capacity) Reserve(capacity * 2);
     ptrValue[size] = value;
     size++;

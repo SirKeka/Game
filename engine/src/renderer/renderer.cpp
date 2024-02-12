@@ -1,12 +1,9 @@
 #include "renderer.hpp"
 
 #include "core/logger.hpp"
+#include "core/mmemory.hpp"
 
 RendererType *Renderer::ptrRenderer;
-
-Renderer::Renderer()
-{ 
-}
 
 Renderer::~Renderer()
 {
@@ -72,4 +69,14 @@ bool Renderer::DrawFrame(RenderPacket *packet)
     }
 
     return false;
+}
+
+void *Renderer::operator new(u64 size)
+{
+    return MMemory::Allocate(size, MEMORY_TAG_RENDERER);
+}
+
+void Renderer::operator delete(void *ptr)
+{
+    MMemory::Free(ptr,sizeof(VulcanAPI), MEMORY_TAG_RENDERER);
 }

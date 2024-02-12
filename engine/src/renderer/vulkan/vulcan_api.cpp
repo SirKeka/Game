@@ -12,9 +12,9 @@ VulcanAPI::VulcanAPI(const char* ApplicationName)
     VkApplicationInfo AppInfo = {VK_STRUCTURE_TYPE_APPLICATION_INFO};
     AppInfo.apiVersion = VK_API_VERSION_1_2;
     AppInfo.pApplicationName = ApplicationName;
-    AppInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
+    AppInfo.applicationVersion = VK_MAKE_API_VERSION(0, 1, 3, 0);
     AppInfo.pEngineName = "Moon Engine";
-    AppInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
+    AppInfo.engineVersion = VK_MAKE_API_VERSION(0, 1, 3, 0); 
 
     VkInstanceCreateInfo CreateInfo = {VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO};
     CreateInfo.pApplicationInfo = &AppInfo;

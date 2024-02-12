@@ -11,10 +11,9 @@ struct PlatformState;
 class Renderer
 {
 private:
-static RendererType* ptrRenderer;
-    
+    static RendererType* ptrRenderer;
 public:
-    Renderer();
+    Renderer() = default;
     ~Renderer();
 
     static bool Initialize(ERendererType type, const char* ApplicationName);
@@ -27,5 +26,8 @@ public:
     void OnResized(u16 width, u16 height);
 
     bool DrawFrame(RenderPacket* packet);
+
+    void* operator new(u64 size);
+    void operator delete(void* ptr);
 };
 

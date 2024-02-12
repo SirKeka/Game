@@ -9,6 +9,8 @@
 #include "input.hpp"
 #include "clock.hpp"
 
+#include "renderer/renderer.hpp"
+
 struct ApplicationState {
     //MMemory* mem;
     Input* Inputs;
@@ -16,6 +18,7 @@ struct ApplicationState {
     bool IsRunning;
     bool IsSuspended;
     MWindow* Window;
+    Renderer Render;
     Game* GameInst;
     
     i16 width;
@@ -79,6 +82,13 @@ bool ApplicationCreate(Game* GameInst) {
     }
     else AppState.Window->Create();
 
+    AppState.Render = Renderer();
+    // Запуск рендерера
+    if (!AppState.Render.Initialize(RENDERER_TYPE_VULKAN, AppState.GameInst->AppConfig.name)) {
+        MFATAL("Не удалось инициализировать средство визуализации. Прерывание приложения.");
+        return FALSE;
+    }
+
     // Инициализируйте игру.
     if (!AppState.GameInst->Initialize()) {
         MFATAL("Не удалось инициализировать игру.");
@@ -126,6 +136,12 @@ bool ApplicationRun() {
                 AppState.IsRunning = false;
                 break;
             }
+
+            // TODO: refactor packet creation
+            RenderPacket packet;
+            packet.DeltaTime = delta;
+            AppState.Render.DrawFrame(&packet);
+
             // Выясните, сколько времени занял кадр и, если ниже
             f64 FrameEndTime = MWindow::PlatformGetAbsoluteTime();
             f64 FrameElapsedTime = FrameEndTime - FrameStartTime;
@@ -135,7 +151,7 @@ bool ApplicationRun() {
             if (RemainingSeconds > 0) {
                 u64 Remaining_ms = (RemainingSeconds * 1000);
 
-                // If there is time left, give it back to the OS.
+                // Если осталось время, верните его ОС.
                 bool LimitFrames = false;
                 if (Remaining_ms > 0 && LimitFrames) {
                     PlatformSleep(Remaining_ms - 1);
@@ -162,6 +178,7 @@ bool ApplicationRun() {
     Event::Unregister(EVENT_CODE_KEY_RELEASED, 0, ApplicationOnKey);
     AppState.Events->Shutdown();
     AppState.Inputs->~Input(); // ShutDown
+    AppState.Render.Shutdown();
 
     AppState.Window->Close();
 
