@@ -90,8 +90,6 @@ template <typename T>
 DArray<T>::~DArray()
 {
     MMemory::Free(reinterpret_cast<void*>(ptrValue), sizeof(T) * capacity, MEMORY_TAG_DARRAY);
-    ptrValue = nullptr;
-    //delete mem;
 }
 
 template <typename T>
@@ -131,7 +129,7 @@ void DArray<T>::Reserve(const u64 &NewCap)
     // TODO: добавить std::move()
     if (NewCap > capacity) {
         void* ptrNew = (MMemory::Allocate(sizeof(T) * NewCap, MEMORY_TAG_DARRAY));
-        ptrNew = MMemory::CopyMemory(ptrNew, reinterpret_cast<void*>(ptrValue), /*sizeof(T) * */capacity);
+        MMemory::CopyMemory(ptrNew, reinterpret_cast<void*>(ptrValue), sizeof(T) * capacity);
         MMemory::Free(ptrValue, sizeof(T) * capacity, MEMORY_TAG_DARRAY);
         ptrValue = reinterpret_cast<T*> (ptrNew);
         capacity = NewCap;
@@ -167,10 +165,10 @@ void DArray<T>::Insert(const T &value, u64 index)
 
     // Если не последний элемент, скопируйте остальное наружу.
     if (index != size - 1) {
-        ptrValue = reinterpret_cast<T*>(MMemory::CopyMemory(
-            reinterpret_cast<void*>(ptrValue + (index/* * sizeof(T)*/)),
-            reinterpret_cast<void*>(ptrValue + (index + 1/* * sizeof(T)*/)),
-            size - 1));
+        MMemory::CopyMemory(
+            reinterpret_cast<void*>(ptrValue + (index* sizeof(T))),
+            reinterpret_cast<void*>(ptrValue + (index + 1 * sizeof(T))),
+            size - 1);
     }
     size++;
 }
@@ -182,10 +180,10 @@ void DArray<T>::PopAt(u64 index)
 
     // Если не последний элемент, вырезаем запись и копируем остальное внутрь. TODO: оптимизироваать
     if (index != size - 1) {
-        ptrValue = reinterpret_cast<T*>(MMemory::CopyMemory(
-            reinterpret_cast<void*>(ptrValue + (index/* * sizeof(T)*/)),
-            reinterpret_cast<void*>(ptrValue + (index + 1/* * sizeof(T)*/)),
-            size - 1));
+        MMemory::CopyMemory(
+            reinterpret_cast<void*>(ptrValue + (index * sizeof(T))),
+            reinterpret_cast<void*>(ptrValue + (index + 1 * sizeof(T))),
+            size - 1);
     }
     size--;
     

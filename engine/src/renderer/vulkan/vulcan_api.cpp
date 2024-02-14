@@ -2,6 +2,7 @@
 
 #include "core/logger.hpp"
 #include "core/mmemory.hpp"
+//#include "core/mstring.h"
 
 VulcanAPI::VulcanAPI(const char* ApplicationName)
 {

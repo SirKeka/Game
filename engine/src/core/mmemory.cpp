@@ -67,9 +67,9 @@ if (block) {
 
 }
 
-void *MMemory::CopyMemory(void *dest, const void *source, u64 bytes)
+void MMemory::CopyMemory(void *dest, const void *source, u64 bytes)
 {
-    return std::memmove(dest, source, bytes);
+    std::memmove(dest, source, bytes);
 }
 
 template<class U, class ...Args>
@@ -78,7 +78,7 @@ inline void MMemory::Construct(U * ptr, Args && ...args)
     new(start) U(std::forward<Args>(args)...);
 }
 
-const char *MMemory::GetMemoryUsageStr()
+MString MMemory::GetMemoryUsageStr()
 {
     const u64 gib = 1024 * 1024 * 1024;
     const u64 mib = 1024 * 1024;
@@ -107,6 +107,6 @@ const char *MMemory::GetMemoryUsageStr()
         i32 length = snprintf(buffer + offset, 8000, "  %s: %.2f%s\n", MemoryTagStrings[i], amount, unit);
         offset += length;
     }
-    const char* OutString = _strdup(buffer);
-    return OutString;
+    MString Out = buffer;
+    return Out;
 }

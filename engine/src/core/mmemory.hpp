@@ -1,6 +1,7 @@
 #pragma once
 
 #include "defines.hpp"
+#include "core/mstring.hpp"
 
 enum MemoryTag 
 {
@@ -64,13 +65,13 @@ public:
     /// @param source указатель из которого копируется массив байтов
     /// @param bytes количество байт памяти которое копируется
     /// @return указатель
-    static MAPI void* CopyMemory(void* dest, const void* source, u64 bytes);
+    static MAPI void CopyMemory(void* dest, const void* source, u64 bytes);
 
     //MAPI void* SetMemory(void* dest, i32 value, u64 bytes);
 
     template<class U, class... Args>
     void Construct (U* ptr, Args && ...args);
 
-    static MAPI const char* GetMemoryUsageStr();
+    static MAPI MString GetMemoryUsageStr();
     
 };
