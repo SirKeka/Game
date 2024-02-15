@@ -1,6 +1,7 @@
 #pragma once
 
 #include "defines.hpp"
+#include "containers/mstring.hpp"
 
 #define LOG_WARN_ENABLED 1
 #define LOG_INFO_ENABLED 1
@@ -13,7 +14,7 @@
 #define LOG_TRACE_ENABLED 0
 #endif
 
-enum log_level {
+enum LogLevel {
     LOG_LEVEL_FATAL = 0,
     LOG_LEVEL_ERROR = 1,
     LOG_LEVEL_WARN = 2,
@@ -25,7 +26,8 @@ enum log_level {
 bool InitializeLogging();
 void ShutdownLogging();
 
-MAPI void LogOutput(log_level level, const char* message, ...);
+MAPI void LogOutput(LogLevel level, const char* message, ...);
+MAPI void LogOutput(LogLevel level, MString message, ...);
 
 // Регистрирует сообщение критического уровня.
 #define MFATAL(message, ...) LogOutput(LOG_LEVEL_FATAL, message, ##__VA_ARGS__);

@@ -26,7 +26,8 @@
         "xstring": "cpp",
         "xtree": "cpp",
         "xiosbase": "cpp",
-        "xlocale": "cpp"
+        "xlocale": "cpp",
+        "string": "cpp"
     },
 
     "files.encoding": "utf8",

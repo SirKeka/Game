@@ -1,7 +1,7 @@
 #pragma once
 
 #include "defines.hpp"
-#include "core/mstring.hpp"
+#include "containers/mstring.hpp"
 
 enum MemoryTag 
 {

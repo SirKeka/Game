@@ -6,13 +6,13 @@ template<typename T>
 class MAPI DArray
 {
 // Переменные
-public:
+private:
     u64 size;
     u64 capacity;
-
-private:
     // MMemory* mem;
     T* ptrValue;
+
+    
 
 // Функции
 public:
@@ -36,15 +36,18 @@ public:
     /// большего или равного NewCap. Если значение NewCap больше текущей capacity(емкости), 
     /// выделяется новое хранилище, в противном случае функция ничего не делает.
     void Reserve(const u64& NewCap);
-    /// @brief 
     /// @return количество элементов контейнера
     u64 Lenght();
+
+    /// @return количество зарезервированных ячеек памяти типа Т
+    u64 Capacity();
 
     // Модифицирующие методы
 
     /// @brief Добавляет заданное значение элемента в конец контейнера.
     /// @param value элемент который нужно поместить в конец контейнера.
     void PushBack(const T& value);
+    //void PushBack(T&& value);
     /// @brief Удаляет последний элемент контейнера.
     void PopBack();
 
@@ -137,9 +140,15 @@ void DArray<T>::Reserve(const u64 &NewCap)
 }
 
 template <typename T>
-u64 DArray<T>::Lenght()
+inline u64 DArray<T>::Lenght()
 {
     return  this->size;
+}
+
+template <typename T>
+inline u64 DArray<T>::Capacity()
+{
+    return this->capacity;
 }
 
 template <typename T>
@@ -150,6 +159,7 @@ void DArray<T>::PushBack(const T &value)
     ptrValue[size] = value;
     size++;
 }
+
 template <typename T>
 void DArray<T>::PopBack()
 {
