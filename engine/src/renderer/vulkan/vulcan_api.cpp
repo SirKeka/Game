@@ -7,6 +7,7 @@
 #include "containers/darray.hpp"
 
 #include "platform/platform.hpp"
+#include "vulcan_platform.hpp"
 
 VulcanAPI::VulcanAPI(const char* ApplicationName)
 {
@@ -26,9 +27,9 @@ VulcanAPI::VulcanAPI(const char* ApplicationName)
 
     // Получите список необходимых расширений
     
-    DArray<const char*>RequiredExtensions;                              // Создаем массив указателей
-    RequiredExtensions.PushBack(VK_KHR_SURFACE_EXTENSION_NAME);         // Общее расширение поверхности
-    //platform_get_required_extension_names(&required_extensions);      // Расширения для конкретной платформы
+    DArray<const char*>RequiredExtensions;                                       // Создаем массив указателей
+    RequiredExtensions.PushBack(VK_KHR_SURFACE_EXTENSION_NAME);                  // Общее расширение поверхности
+    PlatformGetRequiredExtensionNames(RequiredExtensions);                       // Расширения для конкретной платформы
 #if defined(_DEBUG)
     RequiredExtensions.PushBack(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);     // утилиты отладки
 
@@ -39,8 +40,8 @@ VulcanAPI::VulcanAPI(const char* ApplicationName)
     }
 #endif
 
-    CreateInfo.enabledExtensionCount = 0;
-    CreateInfo.ppEnabledExtensionNames = 0;
+    CreateInfo.enabledExtensionCount = RequiredExtensions.Lenght();
+    CreateInfo.ppEnabledExtensionNames = RequiredExtensions.Data();
     CreateInfo.enabledLayerCount = 0;
     CreateInfo.ppEnabledLayerNames = 0;
 

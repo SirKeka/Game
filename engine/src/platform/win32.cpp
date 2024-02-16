@@ -6,6 +6,7 @@
 #include "core/logger.hpp"
 #include "core/application.hpp"
 #include "core/input.hpp"
+#include "containers/darray.hpp"
 
 #include <windowsx.h>  // извлечение входных параметров
 #include <stdlib.h>
@@ -177,6 +178,11 @@ void PlatformConsoleWriteError(const char *message, u8 colour) {
 
 void PlatformSleep(u64 ms) {
     Sleep(ms);
+}
+
+void PlatformGetRequiredExtensionNames(DArray<const char*>& NameDarray)
+{
+    NameDarray.PushBack("VK_KHR_win32_surface");
 }
 
 LRESULT CALLBACK Win32MessageProcessor(HWND hwnd, u32 msg, WPARAM w_param, LPARAM l_param) {

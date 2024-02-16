@@ -28,6 +28,9 @@ public:
 
     T& operator [] (u64 index);
     const T& operator [] (u64 index) const;
+    /// @return Возвращает указатель на базовый массив, служащий хранилищем элементов.
+    T* Data();
+    const T* Data() const;
 
     // Емкость
 
@@ -124,6 +127,17 @@ const T &DArray<T>::operator[](u64 index) const
 {
     if(index < 0 || index >= size) MERROR("Индекс за пределами этого массива! Длина: %i, индекс: %index", size, index);
     return ptrValue[index];
+}
+
+template <typename T>
+const T *DArray<T>::Data() const
+{
+    if (ptrValue == nullptr)
+    {
+        return nullptr;
+    }
+    
+    return ptrValue;
 }
 
 template <typename T>
