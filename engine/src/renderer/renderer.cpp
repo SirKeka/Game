@@ -15,8 +15,8 @@ bool Renderer::Initialize(ERendererType type, const char *ApplicationName)
     /*switch (type)
     {
     case RENDERER_TYPE_VULKAN:
-        //ptrRenderer = dynamic_cast<VulcanAPI> (ptrRenderer);
-        ptrRenderer = new VulcanAPI(ApplicationName);
+        //ptrRenderer = dynamic_cast<VulkanAPI> (ptrRenderer);
+        ptrRenderer = new VulkanAPI(ApplicationName);
         break;
     case RENDERER_TYPE_DIRECTX:
 
@@ -26,8 +26,8 @@ bool Renderer::Initialize(ERendererType type, const char *ApplicationName)
         break;
     }*/
     if(type == RENDERER_TYPE_VULKAN) {
-        //ptrRenderer = dynamic_cast<VulcanAPI*> (ptrRenderer);
-        ptrRenderer = new VulcanAPI(ApplicationName);
+        //ptrRenderer = dynamic_cast<VulkanAPI*> (ptrRenderer);
+        ptrRenderer = new VulkanAPI(ApplicationName);
         return true;
     }
     return false;
@@ -78,5 +78,5 @@ void *Renderer::operator new(u64 size)
 
 void Renderer::operator delete(void *ptr)
 {
-    MMemory::Free(ptr,sizeof(VulcanAPI), MEMORY_TAG_RENDERER);
+    MMemory::Free(ptr,sizeof(Renderer), MEMORY_TAG_RENDERER);
 }

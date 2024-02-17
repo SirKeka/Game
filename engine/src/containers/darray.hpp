@@ -1,6 +1,9 @@
 #include "defines.hpp"
+
 #include "core/mmemory.hpp"
 #include "core/logger.hpp"
+
+#include "containers/mstring.hpp"
 
 template<typename T>
 class MAPI DArray
@@ -12,12 +15,11 @@ private:
     // MMemory* mem;
     T* ptrValue;
 
-    
-
 // Функции
 public:
     DArray();
-    DArray(u64 lenght, const T& value = T());
+    constexpr DArray(u64 lenght, const T& value);
+    explicit DArray(u64 lenght);
     ~DArray();
     // Конструктор копирования
     DArray(const DArray& arr);
@@ -75,27 +77,32 @@ capacity(0),
 ptrValue(nullptr/*reinterpret_cast<T*>(MMemory::Allocate(sizeof(T) * capacity, MEMORY_TAG_DARRAY))*/) {}
 
 template <typename T>
-DArray<T>::DArray(u64 lenght, const T &value)
+constexpr DArray<T>::DArray(u64 lenght, const T &value)
 /*:
 size(lenght),
 capacity(lenght),
 //mem(new MMemory()),
 ptrValue(reinterpret_cast<T*>(MMemory::Allocate(sizeof(T) * capacity, MEMORY_TAG_DARRAY)))*/
 {
-    if(lenght > 0) {
-        this->size = lenght;
-        this->capacity = lenght;
-        ptrValue = reinterpret_cast<T*>(MMemory::Allocate(sizeof(T) * capacity, MEMORY_TAG_DARRAY));
-        for (u64 i = 0; i < lenght; i++) {
-            ptrValue[i] = value;
-        }
+    this->size = lenght;
+    this->capacity = lenght;
+    ptrValue = MMemory::TAllocate<T>(sizeof(T) * capacity, MEMORY_TAG_DARRAY);
+    for (u64 i = 0; i < lenght; i++) {
+        ptrValue[i] = value;
     }
+}
+
+template <typename T>
+inline DArray<T>::DArray(u64 lenght)
+{
+    Reserve(lenght);
 }
 
 template <typename T>
 DArray<T>::~DArray()
 {
-    MMemory::Free(reinterpret_cast<void*>(ptrValue), sizeof(T) * capacity, MEMORY_TAG_DARRAY);
+    if(capacity != 0) MMemory::Free(reinterpret_cast<void*>(ptrValue), sizeof(T) * capacity, MEMORY_TAG_DARRAY);
+    //delete ptrValue;
 }
 
 template <typename T>
@@ -130,13 +137,14 @@ const T &DArray<T>::operator[](u64 index) const
 }
 
 template <typename T>
-const T *DArray<T>::Data() const
+inline T *DArray<T>::Data()
 {
-    if (ptrValue == nullptr)
-    {
-        return nullptr;
-    }
-    
+    return ptrValue;
+}
+
+template <typename T>
+const T *DArray<T>::Data() const
+{   
     return ptrValue;
 }
 
@@ -145,9 +153,9 @@ void DArray<T>::Reserve(const u64 &NewCap)
 {
     // TODO: добавить std::move()
     if (NewCap > capacity) {
-        void* ptrNew = (MMemory::Allocate(sizeof(T) * NewCap, MEMORY_TAG_DARRAY));
-        MMemory::CopyMemory(ptrNew, reinterpret_cast<void*>(ptrValue), sizeof(T) * capacity);
-        MMemory::Free(ptrValue, sizeof(T) * capacity, MEMORY_TAG_DARRAY);
+        void* ptrNew = MMemory::Allocate(sizeof(T) * NewCap, MEMORY_TAG_DARRAY);
+        MMemory::CopyMem(ptrNew, reinterpret_cast<void*>(ptrValue), sizeof(T) * capacity);
+        if(capacity != 0) MMemory::Free(ptrValue, sizeof(T) * capacity, MEMORY_TAG_DARRAY);
         ptrValue = reinterpret_cast<T*> (ptrNew);
         capacity = NewCap;
     }
@@ -156,7 +164,7 @@ void DArray<T>::Reserve(const u64 &NewCap)
 template <typename T>
 inline u64 DArray<T>::Lenght()
 {
-    return  this->size;
+    return this->size;
 }
 
 template <typename T>
@@ -169,7 +177,7 @@ template <typename T>
 void DArray<T>::PushBack(const T &value)
 {
     if(size == 0) Reserve(2);
-    if(size > capacity) Reserve(capacity * 2);
+    if(size == capacity) Reserve(capacity * 2);
     ptrValue[size] = value;
     size++;
 }
@@ -189,7 +197,7 @@ void DArray<T>::Insert(const T &value, u64 index)
 
     // Если не последний элемент, скопируйте остальное наружу.
     if (index != size - 1) {
-        MMemory::CopyMemory(
+        MMemory::CopyMem(
             reinterpret_cast<void*>(ptrValue + (index* sizeof(T))),
             reinterpret_cast<void*>(ptrValue + (index + 1 * sizeof(T))),
             size - 1);
@@ -204,7 +212,7 @@ void DArray<T>::PopAt(u64 index)
 
     // Если не последний элемент, вырезаем запись и копируем остальное внутрь. TODO: оптимизироваать
     if (index != size - 1) {
-        MMemory::CopyMemory(
+        MMemory::CopyMem(
             reinterpret_cast<void*>(ptrValue + (index * sizeof(T))),
             reinterpret_cast<void*>(ptrValue + (index + 1 * sizeof(T))),
             size - 1);

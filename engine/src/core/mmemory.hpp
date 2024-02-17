@@ -1,7 +1,9 @@
 #pragma once
 
 #include "defines.hpp"
+#include "core/logger.hpp"
 #include "containers/mstring.hpp"
+
 
 enum MemoryTag 
 {
@@ -38,21 +40,23 @@ private:
     
 public:
     MAPI MMemory() = default;
-    //MMemory(const MMemory&) = delete;
-    //MMemory& operator=(MMemory&) = delete;
+    MMemory(const MMemory&) = delete;
+    MMemory& operator=(MMemory&) = delete;
     ~MMemory(); /*noexcept*/ //= default;
     MAPI void ShutDown();
     /// @brief Функция выделяет память
     /// @param bytes размер выделяемой памяти в байтах
     /// @param tag название(тег) для каких нужд используется память
     /// @return указатель на выделенный блок памяти
-    static MAPI void* Allocate(u64 bytes, MemoryTag tag);
+    MAPI static void* Allocate(u64 bytes, MemoryTag tag);
+    template<typename T>
+    MAPI static T* TAllocate(u64 bytes, MemoryTag tag);
 
     /// @brief Функция освобождает память
     /// @param block указатель на блок памяти, который нужно освободить
     /// @param bytes размер блока памяти в байтах
     /// @param tag название(тег) для чего использовалась память
-    static MAPI void Free(void* block, u64 bytes, MemoryTag tag);
+    MAPI static void Free(void* block, u64 bytes, MemoryTag tag);
 
     /// @brief Функция зануляет выделенный блок памяти
     /// @param block указатель на блок памяти, который нужно обнулить
@@ -65,13 +69,28 @@ public:
     /// @param source указатель из которого копируется массив байтов
     /// @param bytes количество байт памяти которое копируется
     /// @return указатель
-    static MAPI void CopyMemory(void* dest, const void* source, u64 bytes);
+    MAPI static void* CopyMem(void* dest, const void* source, u64 bytes);
 
     //MAPI void* SetMemory(void* dest, i32 value, u64 bytes);
 
     template<class U, class... Args>
     void Construct (U* ptr, Args && ...args);
 
-    static MAPI MString GetMemoryUsageStr();
+    MAPI static MString GetMemoryUsageStr();
     
 };
+
+template <typename T>
+MAPI T *MMemory::TAllocate(u64 bytes, MemoryTag tag)
+{
+    if (tag == MEMORY_TAG_UNKNOWN) {
+        MWARN("allocate вызывается с использованием MEMORY_TAG_UNKNOWN. Переклассифицировать это распределение.");
+    }
+
+    TotalAllocated += bytes;
+    TaggedAllocations[tag] += bytes;
+
+    u8* ptrRawMem = new u8[bytes];
+    
+    return reinterpret_cast<T*> (ptrRawMem);
+}

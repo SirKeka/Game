@@ -11,6 +11,9 @@
 #include <windowsx.h>  // извлечение входных параметров
 #include <stdlib.h>
 
+
+//#include "renderer/vulkan/vulkan_api.hpp"
+
 // Прототип функции обратного вызова для обработки сообщений
 LRESULT CALLBACK Win32MessageProcessor(HWND, u32, WPARAM, LPARAM);
 
@@ -183,6 +186,25 @@ void PlatformSleep(u64 ms) {
 void PlatformGetRequiredExtensionNames(DArray<const char*>& NameDarray)
 {
     NameDarray.PushBack("VK_KHR_win32_surface");
+}
+
+// Создание поверхности для Vulkan
+bool PlatformCreateVulkanSurface(MWindow *PlatState, VulkanContext *context) {
+    // Простое холодное приведение по известному типу.
+    MWindow *state = (MWindow *)PlatState->internal_state;
+
+    VkWin32SurfaceCreateInfoKHR CreateInfo = {VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR};
+    CreateInfo.hinstance = state->h_instance;
+    CreateInfo.hwnd = state->hwnd;
+
+    VkResult result = vkCreateWin32SurfaceKHR(context->instance, &create_info, context->allocator, &state->surface);
+    if (result != VK_SUCCESS) {
+        MFATAL("Vulkan surface creation failed.");
+        return false;
+    }
+
+    context->surface = state->surface;
+    return true;
 }
 
 LRESULT CALLBACK Win32MessageProcessor(HWND hwnd, u32 msg, WPARAM w_param, LPARAM l_param) {

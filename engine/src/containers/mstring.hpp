@@ -21,12 +21,12 @@ public:
     //MAPI MString& operator= (MString&& s) noexcept;
 
     MAPI bool operator== (const MString& rhs);
-    //MAPI bool operator== (const char*   lhs, const string& rhs);
+    MAPI bool operator== (const char* rhs);
     //MAPI bool operator== (const string& lhs, const char*   rhs);
 
     /// @param str константная строка
     /// @return длину(количество символов в строке)
-    MAPI u64 Length(const char* s);
+    MAPI u64 Length();
     //MAPI char* Copy(const char* s);
 
     /// @return строку типа си
@@ -36,3 +36,8 @@ private:
     void Destroy();
 
 };
+
+// Сравнение строк с учетом регистра. True, если совпадает, в противном случае false.
+MAPI bool StringsEqual(const char* str0, const char* str1);
+// Определение длины строк
+MAPI u64 StringLenght(const char* str);

@@ -3,12 +3,17 @@
 #include "defines.hpp"
 #include <windows.h>
 
+// Для создания поверхности
+#include <vulkan/vulkan.h>
+#include <vulkan/vulkan_win32.h>
+
 class MWindow
 {
 private:
+
     HINSTANCE HInstance;   // Дескриптор экземпляра приложения
     HWND hwnd;              // Дескриптор окна
-    
+    VkSurfaceKHR surface;
     // Часы
     static f64 ClockFrequency;
     static LARGE_INTEGER StartTime;
