@@ -84,7 +84,7 @@ bool ApplicationCreate(Game* GameInst) {
 
     AppState.Render = Renderer();
     // Запуск рендерера
-    if (!AppState.Render.Initialize(RENDERER_TYPE_VULKAN, AppState.GameInst->AppConfig.name)) {
+    if (!AppState.Render.Initialize(AppState.Window, AppState.GameInst->AppConfig.name, RENDERER_TYPE_VULKAN)) {
         MFATAL("Не удалось инициализировать средство визуализации. Прерывание приложения.");
         return FALSE;
     }

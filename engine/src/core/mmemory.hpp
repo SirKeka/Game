@@ -34,7 +34,12 @@ private:
     static u64 TotalAllocated;
     static u64 TaggedAllocations[MEMORY_TAG_MAX_TAGS];
 
-    [[maybe_unused]] void* Start = nullptr;
+    struct SharPtr
+    {
+        void* ptr;
+        u16 count;
+    };
+
     
 public:
     MAPI MMemory() = default;

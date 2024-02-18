@@ -10,7 +10,7 @@ Renderer::~Renderer()
     delete ptrRenderer;
 }
 
-bool Renderer::Initialize(ERendererType type, const char *ApplicationName)
+bool Renderer::Initialize(MWindow* window, const char *ApplicationName, ERendererType type)
 {
     /*switch (type)
     {
@@ -26,9 +26,15 @@ bool Renderer::Initialize(ERendererType type, const char *ApplicationName)
         break;
     }*/
     if(type == RENDERER_TYPE_VULKAN) {
+<<<<<<< Updated upstream
         //ptrRenderer = dynamic_cast<VulcanAPI*> (ptrRenderer);
         ptrRenderer = new VulcanAPI(ApplicationName);
         return true;
+=======
+        //ptrRenderer = dynamic_cast<VulkanAPI*> (ptrRenderer);
+        ptrRenderer = new VulkanAPI();
+        ptrRenderer->Initialize(window, ApplicationName);
+>>>>>>> Stashed changes
     }
     return false;
 }

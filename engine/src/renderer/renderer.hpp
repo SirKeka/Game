@@ -16,7 +16,7 @@ public:
     Renderer() = default;
     ~Renderer();
 
-    static bool Initialize(ERendererType type, const char* ApplicationName);
+    static bool Initialize(MWindow* window, const char *ApplicationName, ERendererType type);
     void Shutdown();
 
     bool BeginFrame(f32 DeltaTime);

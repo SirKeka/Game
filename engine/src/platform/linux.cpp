@@ -26,19 +26,19 @@
 #include <stdio.h>
 #include <string.h>
 
-typedef struct InternalState {
+struct InternalState {
     Display* display;
     xcb_connection_t* connection;
     xcb_window_t window;
     xcb_screen_t* screen;
     xcb_atom_t wmProtocols;
     xcb_atom_t wmDeleteWin;
-} InternalState;
+};
 
 // Перевод ключа
 Keys TranslateKeycode(u32 x_keycode);
 
-b8 PlatformStartup(
+bool Create(
     PlatformState* PlatState,
     const char* ApplicationName,
     i32 x,
@@ -166,7 +166,7 @@ b8 PlatformStartup(
     return TRUE;
 }
 
-void PlatformShutdown(PlatformState* PlatState) {
+void Close() {
     // Simply cold-cast to the known type.
     InternalState* state = (InternalState*)PlatState->InternalState;
 
@@ -176,7 +176,7 @@ void PlatformShutdown(PlatformState* PlatState) {
     xcb_destroy_window(state->connection, state->window);
 }
 
-b8 PlatformPumpMessages(PlatformState* PlatState) {
+bool Messages() {
     // Простое легкое приведение к известному типу.
     InternalState* state = (InternalState*)PlatState->InternalState;
 

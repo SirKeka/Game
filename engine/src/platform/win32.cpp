@@ -9,13 +9,32 @@
 #include "containers/darray.hpp"
 
 #include <windowsx.h>  // извлечение входных параметров
+#include <windows.h>
 #include <stdlib.h>
 
+<<<<<<< Updated upstream
+=======
+// Для создания поверхности
+#include <vulkan/vulkan.h>
+#include <vulkan/vulkan_win32.h>
+#include <renderer/vulkan/vulkan_api.hpp>
+
+struct PlatformState
+{
+    HINSTANCE HInstance;   // Дескриптор экземпляра приложения
+    HWND hwnd;             // Дескриптор окна
+    VkSurfaceKHR surface;
+
+    PlatformState() : HInstance(0), hwnd(0), surface(0) { };
+};
+
+>>>>>>> Stashed changes
 // Прототип функции обратного вызова для обработки сообщений
 LRESULT CALLBACK Win32MessageProcessor(HWND, u32, WPARAM, LPARAM);
 
-f64 MWindow::ClockFrequency = 0;
-LARGE_INTEGER MWindow::StartTime;
+// Часы
+static f64 ClockFrequency;
+static LARGE_INTEGER StartTime;
 
 MWindow::MWindow(const char * name, i32 x, i32 y, i32 width, i32 height)
 {
@@ -26,17 +45,27 @@ MWindow::MWindow(const char * name, i32 x, i32 y, i32 width, i32 height)
     this->height = height;
 }
 
+MWindow::~MWindow()
+{
+    PlatformState *state = reinterpret_cast<PlatformState*>(InternalState);
+    delete state;
+}
+
 bool MWindow::Create()
 {
+    InternalState = new PlatformState();
+    PlatformState *state = reinterpret_cast<PlatformState*>(InternalState);
+    state->HInstance = GetModuleHandleA(0);
+
 // Настройка и регистрация класса окна.
-    HICON icon = LoadIcon(HInstance, IDI_APPLICATION);
+    HICON icon = LoadIcon(state->HInstance, IDI_APPLICATION);
     WNDCLASSA wc;
     memset(&wc, 0, sizeof(wc));
     wc.style = CS_DBLCLKS;                     // Получайте двойные клики
     wc.lpfnWndProc = Win32MessageProcessor;
     wc.cbClsExtra = 0;
     wc.cbWndExtra = 0;
-    wc.hInstance = HInstance;
+    wc.hInstance = state->HInstance;
     wc.hIcon = icon;
     wc.hCursor = LoadCursor(NULL, IDC_ARROW);  // NULL; // Управление курсором вручную
     wc.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH);           // Прозрачный
@@ -78,7 +107,7 @@ bool MWindow::Create()
         height,              // Инициализация высоты окна
         NULL,                // Дескриптор родительского окна
         NULL,                // Дескриптор меню окна
-        HInstance,           // Дескриптор экземпляра программы
+        state->HInstance,    // Дескриптор экземпляра программы
         NULL);
 
         if (handle == 0) {
@@ -87,7 +116,7 @@ bool MWindow::Create()
         MFATAL("Не удалось создать окно!");
         return FALSE;
     } else {
-        hwnd = handle;
+        state->hwnd = handle;
     }
 
     // Показывает окно
@@ -95,7 +124,7 @@ bool MWindow::Create()
     i32 ShowWindowCommandFlags = ShouldActivate ? SW_SHOW : SW_SHOWNOACTIVATE;
     // Если изначально свернуто, используйте SW_MINIMIZE : SW_SHOWMINNOACTIVE;
     // Если изначально развернуто, используйте SW_SHOWMAXIMIZED : SW_MAXIMIZE
-    ShowWindow(hwnd, ShowWindowCommandFlags);
+    ShowWindow(state->hwnd, ShowWindowCommandFlags);
     //UpdateWindow(state->hwnd);
 
     // Настройка часов
@@ -110,10 +139,12 @@ bool MWindow::Create()
 
 void MWindow::Close()
 {
-    if (hwnd) {
-        DestroyWindow(hwnd);
-        hwnd = 0;
+    PlatformState *state = reinterpret_cast<PlatformState*>(InternalState);
+    if (state->hwnd) {
+        DestroyWindow(state->hwnd);
+        state->hwnd = 0;
     }
+    this->~MWindow();
 }
 
 bool MWindow::Messages()
@@ -185,6 +216,28 @@ void PlatformGetRequiredExtensionNames(DArray<const char*>& NameDarray)
     NameDarray.PushBack("VK_KHR_win32_surface");
 }
 
+<<<<<<< Updated upstream
+=======
+// Создание поверхности для Vulkan
+bool PlatformCreateVulkanSurface(MWindow *window, VulkanAPI *VkAPI) {
+    // Простое холодное приведение по известному типу.
+    PlatformState *state = reinterpret_cast<PlatformState*>(window->InternalState);
+
+    VkWin32SurfaceCreateInfoKHR CreateInfo = {VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR};
+    CreateInfo.hinstance = state->HInstance;
+    CreateInfo.hwnd = state->hwnd;
+
+    VkResult result = vkCreateWin32SurfaceKHR(VkAPI->instance, &CreateInfo, VkAPI->allocator, &state->surface);
+    if (result != VK_SUCCESS) {
+        MFATAL("Не удалось создать поверхность Вулкана.");
+        return false;
+    }
+
+    VkAPI->surface = state->surface;
+    return true;
+}
+
+>>>>>>> Stashed changes
 LRESULT CALLBACK Win32MessageProcessor(HWND hwnd, u32 msg, WPARAM w_param, LPARAM l_param) {
     switch (msg) {
         /*case WM_ERASEBKGND:
