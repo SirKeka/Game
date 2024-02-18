@@ -5,10 +5,7 @@
 #include "core/logger.hpp"
 #include "core/mmemory.hpp"
 
-//#include "containers/mstring.hpp"
-//#include "containers/darray.hpp"
-
-//#include "platform/platform.hpp"
+#include "platform/platform.hpp"
 
 VkInstance VulkanAPI::instance;
 VkAllocationCallbacks* VulkanAPI::allocator;

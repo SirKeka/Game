@@ -12,8 +12,6 @@
 #include <windows.h>
 #include <stdlib.h>
 
-<<<<<<< Updated upstream
-=======
 // Для создания поверхности
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_win32.h>
@@ -28,7 +26,6 @@ struct PlatformState
     PlatformState() : HInstance(0), hwnd(0), surface(0) { };
 };
 
->>>>>>> Stashed changes
 // Прототип функции обратного вызова для обработки сообщений
 LRESULT CALLBACK Win32MessageProcessor(HWND, u32, WPARAM, LPARAM);
 
@@ -216,8 +213,6 @@ void PlatformGetRequiredExtensionNames(DArray<const char*>& NameDarray)
     NameDarray.PushBack("VK_KHR_win32_surface");
 }
 
-<<<<<<< Updated upstream
-=======
 // Создание поверхности для Vulkan
 bool PlatformCreateVulkanSurface(MWindow *window, VulkanAPI *VkAPI) {
     // Простое холодное приведение по известному типу.
@@ -237,7 +232,6 @@ bool PlatformCreateVulkanSurface(MWindow *window, VulkanAPI *VkAPI) {
     return true;
 }
 
->>>>>>> Stashed changes
 LRESULT CALLBACK Win32MessageProcessor(HWND hwnd, u32 msg, WPARAM w_param, LPARAM l_param) {
     switch (msg) {
         /*case WM_ERASEBKGND:

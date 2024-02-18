@@ -38,7 +38,7 @@ public:
 #if defined(_DEBUG)
     VkDebugUtilsMessengerEXT DebugMessenger;
 #endif
-    //bool IsInitialise;
+
 public:
     VulkanAPI();
     ~VulkanAPI();

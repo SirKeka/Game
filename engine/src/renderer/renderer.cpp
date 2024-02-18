@@ -26,15 +26,9 @@ bool Renderer::Initialize(MWindow* window, const char *ApplicationName, ERendere
         break;
     }*/
     if(type == RENDERER_TYPE_VULKAN) {
-<<<<<<< Updated upstream
-        //ptrRenderer = dynamic_cast<VulcanAPI*> (ptrRenderer);
-        ptrRenderer = new VulcanAPI(ApplicationName);
-        return true;
-=======
         //ptrRenderer = dynamic_cast<VulkanAPI*> (ptrRenderer);
         ptrRenderer = new VulkanAPI();
-        ptrRenderer->Initialize(window, ApplicationName);
->>>>>>> Stashed changes
+        return ptrRenderer->Initialize(window, ApplicationName);
     }
     return false;
 }
@@ -84,5 +78,5 @@ void *Renderer::operator new(u64 size)
 
 void Renderer::operator delete(void *ptr)
 {
-    MMemory::Free(ptr,sizeof(VulcanAPI), MEMORY_TAG_RENDERER);
+    MMemory::Free(ptr,sizeof(Renderer), MEMORY_TAG_RENDERER);
 }

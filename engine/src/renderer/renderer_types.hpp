@@ -24,11 +24,7 @@ public:
     //RendererType();
     virtual ~RendererType() = default;
 
-<<<<<<< Updated upstream
-    //virtual bool Initialize();
-=======
     virtual bool Initialize(MWindow* window, const char* ApplicationName) = 0;
->>>>>>> Stashed changes
     virtual void ShutDown() = 0;
     virtual void Resized(u16 width, u16 height) = 0;
     virtual bool BeginFrame(f32 Deltatime) = 0;

@@ -8,8 +8,8 @@ MString::MString() : str(nullptr), lenght(0){   }
 MString::MString(const char *s)
 {
     lenght = strlen(s) + 1;
-    this->str = reinterpret_cast<char*>(MMemory::Allocate(lenght, MEMORY_TAG_STRING));
-    MMemory::CopyMemory(this->str, s, lenght);
+    this->str = MMemory::TAllocate<char>(lenght, MEMORY_TAG_STRING);
+    MMemory::CopyMem(this->str, s, lenght);
 }
 
 MString::~MString()
@@ -22,8 +22,8 @@ MString &MString::operator=(const MString &s)
     if (this->str != nullptr) Destroy();
 
     lenght = strlen(s.str) + 1;
-    this->str = reinterpret_cast<char*>(MMemory::Allocate(lenght, MEMORY_TAG_STRING));
-    MMemory::CopyMemory(this->str, s.str, lenght);
+    this->str = MMemory::TAllocate<char>(lenght, MEMORY_TAG_STRING);
+    MMemory::CopyMem(this->str, s.str, lenght);
     
     return *this;
 }
@@ -33,8 +33,8 @@ MString &MString::operator=(const char *s)
     if (this->str != nullptr) Destroy();
 
     lenght = strlen(s) + 1;
-    this->str = reinterpret_cast<char*>(MMemory::Allocate(lenght, MEMORY_TAG_STRING));
-    MMemory::CopyMemory(this->str, s, lenght);
+    this->str = MMemory::TAllocate<char>(lenght, MEMORY_TAG_STRING);
+    MMemory::CopyMem(this->str, s, lenght);
     
     return *this;
 }
@@ -73,4 +73,9 @@ void MString::Destroy()
 bool operator==(const MString &lhs, const MString &rhs)
 {
     return false;
+}
+
+bool StringsEqual(const char *strL, const char *strR)
+{
+    return strcmp(strL, strR);
 }

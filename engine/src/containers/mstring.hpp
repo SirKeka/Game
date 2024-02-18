@@ -36,3 +36,5 @@ private:
     void Destroy();
 
 };
+
+bool StringsEqual(const char* strL, const char* strR);

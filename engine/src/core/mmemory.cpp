@@ -1,7 +1,5 @@
 #include "mmemory.hpp"
 
-#include "core/logger.hpp"
-
 // TODO: Custom string lib
 #include <cstring>
 #include <stdio.h>
@@ -47,7 +45,6 @@ void *MMemory::Allocate(u64 bytes, MemoryTag tag)
 
     u8* ptrRawMem = new u8[bytes];
     
-    // this->Start = ptrRawMem;
     return ptrRawMem;
 }
 
@@ -67,13 +64,13 @@ if (block) {
 
 }
 
-void MMemory::CopyMemory(void *dest, const void *source, u64 bytes)
+void MMemory::CopyMem(void *dest, const void *source, u64 bytes)
 {
     std::memmove(dest, source, bytes);
 }
 
-template<class U, class ...Args>
-inline void MMemory::Construct(U * ptr, Args && ...args)
+template <class U, class... Args>
+inline void MMemory::Construct(U *ptr, Args &&...args)
 {
     new(start) U(std::forward<Args>(args)...);
 }

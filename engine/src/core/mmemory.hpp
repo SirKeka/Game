@@ -1,6 +1,7 @@
 #pragma once
 
 #include "defines.hpp"
+#include "core/logger.hpp"
 #include "containers/mstring.hpp"
 
 enum MemoryTag 
@@ -53,6 +54,9 @@ public:
     /// @return указатель на выделенный блок памяти
     static MAPI void* Allocate(u64 bytes, MemoryTag tag);
 
+    template<typename T>
+    static MAPI T* TAllocate(u64 bytes, MemoryTag tag);
+
     /// @brief Функция освобождает память
     /// @param block указатель на блок памяти, который нужно освободить
     /// @param bytes размер блока памяти в байтах
@@ -70,7 +74,7 @@ public:
     /// @param source указатель из которого копируется массив байтов
     /// @param bytes количество байт памяти которое копируется
     /// @return указатель
-    static MAPI void CopyMemory(void* dest, const void* source, u64 bytes);
+    static MAPI void CopyMem(void* dest, const void* source, u64 bytes);
 
     //MAPI void* SetMemory(void* dest, i32 value, u64 bytes);
 
@@ -80,3 +84,18 @@ public:
     static MAPI MString GetMemoryUsageStr();
     
 };
+
+template <typename T>
+T *MMemory::TAllocate(u64 bytes, MemoryTag tag)
+{
+    if (tag == MEMORY_TAG_UNKNOWN) {
+        MWARN("allocate вызывается с использованием MEMORY_TAG_UNKNOWN. Переклассифицировать это распределение.");
+    }
+
+    TotalAllocated += bytes;
+    TaggedAllocations[tag] += bytes;
+
+    u8* ptrRawMem = new u8[bytes];
+    
+    return reinterpret_cast<T*> (ptrRawMem);
+}

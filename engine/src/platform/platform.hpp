@@ -1,26 +1,12 @@
 #pragma once
 
 #include "defines.hpp"
-<<<<<<< Updated upstream
-#include <windows.h>
-=======
->>>>>>> Stashed changes
 
 class MWindow
 {
 public:
     void* InternalState;
 private:
-<<<<<<< Updated upstream
-    HINSTANCE HInstance;   // Дескриптор экземпляра приложения
-    HWND hwnd;              // Дескриптор окна
-    
-    // Часы
-    static f64 ClockFrequency;
-    static LARGE_INTEGER StartTime;
-
-=======
->>>>>>> Stashed changes
     const char* name; 
     i32 x; 
     i32 y; 
