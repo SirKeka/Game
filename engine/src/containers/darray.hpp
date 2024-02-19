@@ -95,7 +95,7 @@ ptrValue(reinterpret_cast<T*>(MMemory::Allocate(sizeof(T) * capacity, MEMORY_TAG
 template <typename T>
 DArray<T>::~DArray()
 {
-    MMemory::Free(reinterpret_cast<void*>(ptrValue), sizeof(T) * capacity, MEMORY_TAG_DARRAY);
+    if(this->capacity != 0) MMemory::Free(reinterpret_cast<void*>(ptrValue), sizeof(T) * capacity, MEMORY_TAG_DARRAY);
 }
 
 template <typename T>
@@ -130,13 +130,14 @@ const T &DArray<T>::operator[](u64 index) const
 }
 
 template <typename T>
-const T *DArray<T>::Data() const
+inline T *DArray<T>::Data()
 {
-    if (ptrValue == nullptr)
-    {
-        return nullptr;
-    }
-    
+    return ptrValue;
+}
+
+template <typename T>
+inline const T *DArray<T>::Data() const
+{   
     return ptrValue;
 }
 

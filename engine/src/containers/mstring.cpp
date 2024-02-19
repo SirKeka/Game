@@ -70,11 +70,6 @@ void MString::Destroy()
     MMemory::Free(reinterpret_cast<void*>(str), lenght, MEMORY_TAG_STRING);
 }
 
-bool operator==(const MString &lhs, const MString &rhs)
-{
-    return false;
-}
-
 bool StringsEqual(const char *strL, const char *strR)
 {
     return strcmp(strL, strR);

@@ -215,7 +215,6 @@ void PlatformGetRequiredExtensionNames(DArray<const char*>& NameDarray)
 
 // Создание поверхности для Vulkan
 bool PlatformCreateVulkanSurface(MWindow *window, VulkanAPI *VkAPI) {
-    // Простое холодное приведение по известному типу.
     PlatformState *state = reinterpret_cast<PlatformState*>(window->InternalState);
 
     VkWin32SurfaceCreateInfoKHR CreateInfo = {VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR};

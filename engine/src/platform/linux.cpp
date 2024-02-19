@@ -26,13 +26,20 @@
 #include <stdio.h>
 #include <string.h>
 
-struct InternalState {
+// Для создания поверхности
+#define VK_USE_PLATFORM_XCB_KHR
+#include <vulkan/vulkan.h>
+#include "renderer/vulkan/vulkan_types.inl"
+
+
+struct PlatformState {
     Display* display;
     xcb_connection_t* connection;
     xcb_window_t window;
     xcb_screen_t* screen;
     xcb_atom_t wmProtocols;
     xcb_atom_t wmDeleteWin;
+    VkSurfaceKHR surface;
 };
 
 // Перевод ключа
@@ -46,8 +53,8 @@ bool Create(
     i32 width,
     i32 height) {
     // Создание внутреннего состояния.
-    PlatState->InternalState = malloc(sizeof(InternalState));
-    InternalState* state = (InternalState*)PlatState->InternalState;
+    PlatState->InternalState = malloc(sizeof(PlatformState));
+    PlatformState* state = (PlatformState*)PlatState->InternalState;
 
     // Подключиться к X
     state->display = XOpenDisplay(NULL);
@@ -168,7 +175,7 @@ bool Create(
 
 void Close() {
     // Simply cold-cast to the known type.
-    InternalState* state = (InternalState*)PlatState->InternalState;
+    PlatformState* state = (PlatformState*)PlatState->InternalState;
 
     // Повторное включение клавиши, поскольку это глобально для ОС... просто... вау.
     XAutoRepeatOn(state->display);
@@ -178,7 +185,7 @@ void Close() {
 
 bool Messages() {
     // Простое легкое приведение к известному типу.
-    InternalState* state = (InternalState*)PlatState->InternalState;
+    PlatformState* state = (PlatformState*)PlatState->InternalState;
 
     xcb_generic_event_t* event;
     xcb_client_message_event_t* cm;
@@ -313,6 +320,29 @@ void PlatformSleep(u64 ms) {
 
 void PlatformGetRequiredExtensionNames(DArray<const char*>& NameDarray) {
     NameDarray.PushBack("VK_KHR_xcb_surface"); // VK_KHR_xlib_surface?
+}
+
+// Создание поверхности для Vulkan
+b8 PlatformCreateVulkanSurface(MWindow *window, VulkanAPI *VkAPI) {
+    // Simply cold-cast to the known type.
+    PlatformState *state = (PlatformState *)plat_state->internal_state;
+
+    VkXcbSurfaceCreateInfoKHR create_info = {VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR};
+    create_info.connection = state->connection;
+    create_info.window = state->window;
+
+    VkResult result = vkCreateXcbSurfaceKHR(
+        context->instance,
+        &create_info,
+        context->allocator,
+        &state->surface);
+    if (result != VK_SUCCESS) {
+        KFATAL("Vulkan surface creation failed.");
+        return FALSE;
+    }
+
+    context->surface = state->surface;
+    return TRUE;
 }
 
 // Key translation

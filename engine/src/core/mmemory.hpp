@@ -3,7 +3,7 @@
 #include "defines.hpp"
 #include "core/logger.hpp"
 #include "containers/mstring.hpp"
-
+//#include "containers/darray.hpp"
 enum MemoryTag 
 {
      // Для временного использования. Должно быть присвоено одно из следующих значений или создан новый тег.
@@ -31,16 +31,16 @@ enum MemoryTag
 class MMemory
 {
 private:
-    // u64 Bytes{0};
-    static u64 TotalAllocated;
-    static u64 TaggedAllocations[MEMORY_TAG_MAX_TAGS];
-
     struct SharPtr
     {
         void* ptr;
         u16 count;
     };
 
+    //static DArray<SharPtr> ptr;
+    // u64 Bytes{0};
+    static u64 TotalAllocated;
+    static u64 TaggedAllocations[MEMORY_TAG_MAX_TAGS];
     
 public:
     MAPI MMemory() = default;
@@ -52,16 +52,16 @@ public:
     /// @param bytes размер выделяемой памяти в байтах
     /// @param tag название(тег) для каких нужд используется память
     /// @return указатель на выделенный блок памяти
-    static MAPI void* Allocate(u64 bytes, MemoryTag tag);
+    MAPI static void* Allocate(u64 bytes, MemoryTag tag);
 
     template<typename T>
-    static MAPI T* TAllocate(u64 bytes, MemoryTag tag);
+    MAPI static T* TAllocate(u64 bytes, MemoryTag tag);
 
     /// @brief Функция освобождает память
     /// @param block указатель на блок памяти, который нужно освободить
     /// @param bytes размер блока памяти в байтах
     /// @param tag название(тег) для чего использовалась память
-    static MAPI void Free(void* block, u64 bytes, MemoryTag tag);
+    MAPI static void Free(void* block, u64 bytes, MemoryTag tag);
 
     /// @brief Функция зануляет выделенный блок памяти
     /// @param block указатель на блок памяти, который нужно обнулить
@@ -74,7 +74,12 @@ public:
     /// @param source указатель из которого копируется массив байтов
     /// @param bytes количество байт памяти которое копируется
     /// @return указатель
-    static MAPI void CopyMem(void* dest, const void* source, u64 bytes);
+    MAPI static void CopyMem(void* dest, const void* source, u64 bytes);
+
+    /// @brief 
+    /// @param ptr значение указателя которое присваевается новому указателю
+    /// @return 
+    //MAPI static void* ptrMove(void* ptr);
 
     //MAPI void* SetMemory(void* dest, i32 value, u64 bytes);
 
@@ -86,7 +91,7 @@ public:
 };
 
 template <typename T>
-T *MMemory::TAllocate(u64 bytes, MemoryTag tag)
+MAPI T *MMemory::TAllocate(u64 bytes, MemoryTag tag)
 {
     if (tag == MEMORY_TAG_UNKNOWN) {
         MWARN("allocate вызывается с использованием MEMORY_TAG_UNKNOWN. Переклассифицировать это распределение.");

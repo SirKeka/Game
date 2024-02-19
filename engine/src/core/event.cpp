@@ -1,7 +1,5 @@
 #include "event.hpp"
 
-// #include "mmemory.hpp"
-
 // Внутреннее состояние системы событий.
 bool Event::IsInitialized = false;
 EventSystemState Event::state;
