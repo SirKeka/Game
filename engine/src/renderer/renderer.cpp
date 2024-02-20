@@ -7,7 +7,7 @@ RendererType *Renderer::ptrRenderer;
 
 Renderer::~Renderer()
 {
-    delete ptrRenderer;
+    delete ptrRenderer; //TODO: Unhandled exception at 0x00007FFEADC9B93C (engine.dll) in testbed.exe: 0xC0000005: Access violation reading location 0x0000000000000000.
 }
 
 bool Renderer::Initialize(MWindow* window, const char *ApplicationName, ERendererType type)

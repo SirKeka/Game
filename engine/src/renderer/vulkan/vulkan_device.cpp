@@ -37,12 +37,133 @@ bool VulkanDeviceCreate(VulkanAPI* VkAPI)
         return false;
     }
 
+    MINFO("Создание логического устройства...");
+    // ПРИМЕЧАНИЕ. Не создавайте дополнительные очереди для общих индексов.
+    bool PresentSharesGraphicsQueue = VkAPI->Device.GraphicsQueueIndex == VkAPI->Device.PresentQueueIndex;
+    bool TransferSharesGraphicsQueue = VkAPI->Device.GraphicsQueueIndex == VkAPI->Device.TransferQueueIndex;
+    u32 IndexCount = 1;
+    if (!PresentSharesGraphicsQueue) {
+        IndexCount++;
+    }
+    if (!TransferSharesGraphicsQueue) {
+        IndexCount++;
+    }
+    u32 indices[IndexCount];
+    u8 index = 0;
+    indices[index++] = VkAPI->Device.GraphicsQueueIndex;
+    if (!PresentSharesGraphicsQueue) {
+        indices[index++] = VkAPI->Device.PresentQueueIndex;
+    }
+    if (!TransferSharesGraphicsQueue) {
+        indices[index++] = VkAPI->Device.TransferQueueIndex;
+    }
+
+    VkDeviceQueueCreateInfo QueueCreateInfos[IndexCount];
+    for (u32 i = 0; i < IndexCount; ++i) {
+        QueueCreateInfos[i].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+        QueueCreateInfos[i].queueFamilyIndex = indices[i];
+        QueueCreateInfos[i].queueCount = 1;
+        if (indices[i] == VkAPI->Device.GraphicsQueueIndex) {
+            QueueCreateInfos[i].queueCount = 2;
+        }
+        QueueCreateInfos[i].flags = 0;
+        QueueCreateInfos[i].pNext = 0;
+        f32 queue_priority = 1.0f;
+        QueueCreateInfos[i].pQueuePriorities = &queue_priority;
+    }
+
+    // Запросите характеристики устройства.
+    // TODO: должно управляться конфигурацией
+    VkPhysicalDeviceFeatures DeviceFeatures = {};
+    DeviceFeatures.samplerAnisotropy = VK_TRUE;  // Запросить анизотропию
+
+    VkDeviceCreateInfo DeviceCreateInfo = {VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO};
+    DeviceCreateInfo.queueCreateInfoCount = IndexCount;
+    DeviceCreateInfo.pQueueCreateInfos = QueueCreateInfos;
+    DeviceCreateInfo.pEnabledFeatures = &DeviceFeatures;
+    DeviceCreateInfo.enabledExtensionCount = 1;
+    const char* ExtensionNames = VK_KHR_SWAPCHAIN_EXTENSION_NAME;
+    DeviceCreateInfo.ppEnabledExtensionNames = &ExtensionNames;
+
+    // Устарел и игнорируется, так что ничего не передавайте.
+    DeviceCreateInfo.enabledLayerCount = 0;
+    DeviceCreateInfo.ppEnabledLayerNames = 0;
+
+    // Создайте устройство.
+    VK_CHECK(vkCreateDevice(
+        VkAPI->Device.PhysicalDevice,
+        &DeviceCreateInfo,
+        VkAPI->allocator,
+        &VkAPI->Device.LogicalDevice));
+
+    MINFO("Логическое устройство создано.");
+
+    // Получите очереди.
+    vkGetDeviceQueue(
+        VkAPI->Device.LogicalDevice,
+        VkAPI->Device.GraphicsQueueIndex,
+        0,
+        &VkAPI->Device.GraphicsQueue);
+
+    vkGetDeviceQueue(
+        VkAPI->Device.LogicalDevice,
+        VkAPI->Device.PresentQueueIndex,
+        0,
+        &VkAPI->Device.PresentQueue);
+
+    vkGetDeviceQueue(
+        VkAPI->Device.LogicalDevice,
+        VkAPI->Device.TransferQueueIndex,
+        0,
+        &VkAPI->Device.TransferQueue);
+    MINFO("Получены очереди.");
+
     return true;
 }
 
-void VulkanDeviceDestroy()
+void VulkanDeviceDestroy(VulkanAPI* VkAPI)
 {
+    // Неустановленные очереди
+    VkAPI->Device.GraphicsQueue = 0;
+    VkAPI->Device.PresentQueue = 0;
+    VkAPI->Device.TransferQueue = 0;
 
+    // Уничтожить логическое устройство
+    MINFO("Уничтожение логического устройства...");
+    if (VkAPI->Device.LogicalDevice) {
+        vkDestroyDevice(VkAPI->Device.LogicalDevice, VkAPI->allocator);
+        VkAPI->Device.LogicalDevice = 0;
+    }
+
+    // Физические устройства не уничтожаются.
+    MINFO("Высвобождение ресурсов физического устройства...");
+    VkAPI->Device.PhysicalDevice = 0;
+
+    if (VkAPI->Device.SwapchainSupport.formats) {
+        MMemory::TFree<VkSurfaceFormatKHR>(
+            VkAPI->Device.SwapchainSupport.formats,
+            VkAPI->Device.SwapchainSupport.FormatCount,
+            MEMORY_TAG_RENDERER);
+        VkAPI->Device.SwapchainSupport.formats = 0;
+        VkAPI->Device.SwapchainSupport.FormatCount = 0;
+    }
+
+    if (VkAPI->Device.SwapchainSupport.PresentModes) {
+        MMemory::TFree<VkPresentModeKHR>(
+            VkAPI->Device.SwapchainSupport.PresentModes,
+            VkAPI->Device.SwapchainSupport.PresentModeCount,
+            MEMORY_TAG_RENDERER);
+        VkAPI->Device.SwapchainSupport.PresentModes = 0;
+        VkAPI->Device.SwapchainSupport.PresentModeCount = 0;
+    }
+
+    MMemory::ZeroMemory(
+        &VkAPI->Device.SwapchainSupport.capabilities,
+        sizeof(VkAPI->Device.SwapchainSupport.capabilities));
+
+    VkAPI->Device.GraphicsQueueIndex = -1;
+    VkAPI->Device.PresentQueueIndex = -1;
+    VkAPI->Device.TransferQueueIndex = -1;
 }
 
 void VulkanDeviceQuerySwapchainSupport(
@@ -112,9 +233,8 @@ bool SelectPhysicalDevice(VulkanAPI *VkAPI)
 
         VkPhysicalDeviceMemoryProperties memory;
         vkGetPhysicalDeviceMemoryProperties(device, &memory);
-    }
     
-    // TODO: Эти требования, вероятно, должны определяться движком
+        // TODO: Эти требования, вероятно, должны определяться движком
         // конфигурация.
         VulkanPhysicalDeviceRequirements requirements = {};
         requirements.graphics = true;
@@ -127,6 +247,82 @@ bool SelectPhysicalDevice(VulkanAPI *VkAPI)
         requirements.DeviceExtensionNames.PushBack(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
         VulkanPhysicalDeviceQueueFamilyInfo QueueInfo = {};
+        bool result = PhysicalDeviceMeetsRequirements(
+            device,
+            VkAPI->surface,
+            &properties,
+            &features,
+            &requirements,
+            &QueueInfo,
+            &VkAPI->Device.SwapchainSupport);
+
+        if (result) {
+            MINFO("Выбранное устройство: '%s'.", properties.deviceName);
+            // Тип графического процессора и т.д.
+            switch (properties.deviceType) {
+                default:
+                case VK_PHYSICAL_DEVICE_TYPE_OTHER:
+                    MINFO("Тип графического процессора неизвестен.");
+                    break;
+                case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU:
+                    MINFO("Тип графического процессора - интегрированный.");
+                    break;
+                case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:
+                    MINFO("Тип графического процессора - дескретный.");
+                    break;
+                case VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU:
+                    MINFO("Тип графического процессора - виртуальный.");
+                    break;
+                case VK_PHYSICAL_DEVICE_TYPE_CPU:
+                    MINFO("Тип графического процессора - CPU.");
+                    break;
+            }
+
+            MINFO(
+                "Версия драйвера графического процессора: %d.%d.%d",
+                VK_VERSION_MAJOR(properties.driverVersion),
+                VK_VERSION_MINOR(properties.driverVersion),
+                VK_VERSION_PATCH(properties.driverVersion));
+
+            // Версия API Vulkan.
+            MINFO(
+                "Версия API Vulkan: %d.%d.%d",
+                VK_VERSION_MAJOR(properties.apiVersion),
+                VK_VERSION_MINOR(properties.apiVersion),
+                VK_VERSION_PATCH(properties.apiVersion));
+
+            // Информация о памяти
+            for (u32 j = 0; j < memory.memoryHeapCount; ++j) {
+                f32 MemorySizeGiB = (((f32)memory.memoryHeaps[j].size) / 1024.0f / 1024.0f / 1024.0f);
+                if (memory.memoryHeaps[j].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT) {
+                    MINFO("Локальная память графического процессора: %.2f GiB", MemorySizeGiB);
+                } else {
+                    MINFO("Общая системная память: %.2f GiB", MemorySizeGiB);
+                }
+            }
+
+            VkAPI->Device.PhysicalDevice = device;
+            VkAPI->Device.GraphicsQueueIndex = QueueInfo.GraphicsFamilyIndex;
+            VkAPI->Device.PresentQueueIndex = QueueInfo.PresentFamilyIndex;
+            VkAPI->Device.TransferQueueIndex = QueueInfo.TransferFamilyIndex;
+            // ПРИМЕЧАНИЕ: при необходимости установите здесь вычислительный индекс.
+
+            // Сохраните копию свойств, функций и информации о памяти для последующего использования.
+            VkAPI->Device.properties = properties;
+            VkAPI->Device.features = features;
+            VkAPI->Device.memory = memory;
+            break;
+        }
+    }
+
+    // Убедитесь, что было выбрано устройство
+    if (!VkAPI->Device.PhysicalDevice) {
+        MERROR("Не было найдено никаких физических устройств, отвечающих этим требованиям.");
+        return false;
+    }
+
+    MINFO("Физическое устройство выбрано.");
+    return true;
 }
 
 bool PhysicalDeviceMeetsRequirements(
@@ -194,7 +390,7 @@ bool PhysicalDeviceMeetsRequirements(
     }
 
     // Распечатайте некоторую информацию об устройстве
-    MINFO("       %d |       %d |       %d |        %d | %s",
+    MINFO("      %d |         %d |          %d |        %d | %s",
           OutQueueFamilyInfo->GraphicsFamilyIndex != -1,
           OutQueueFamilyInfo->PresentFamilyIndex != -1,
           OutQueueFamilyInfo->ComputeFamilyIndex != -1,
@@ -220,17 +416,17 @@ bool PhysicalDeviceMeetsRequirements(
         
         if (OutSwapchainSupport->FormatCount < 1 || OutSwapchainSupport->PresentModeCount < 1) {
             if (OutSwapchainSupport->formats) {
-                MMemory::TFree<VkSurfaceFormatKHR>(OutSwapchainSupport->formats, sizeof(VkSurfaceFormatKHR) * OutSwapchainSupport->FormatCount, MEMORY_TAG_RENDERER);
+                MMemory::TFree<VkSurfaceFormatKHR>(OutSwapchainSupport->formats, OutSwapchainSupport->FormatCount, MEMORY_TAG_RENDERER);
             }
             if (OutSwapchainSupport->PresentModes) {
-                MMemory::TFree<VkPresentModeKHR>(OutSwapchainSupport->PresentModes, sizeof(VkPresentModeKHR) * OutSwapchainSupport->PresentModeCount, MEMORY_TAG_RENDERER);
+                MMemory::TFree<VkPresentModeKHR>(OutSwapchainSupport->PresentModes, OutSwapchainSupport->PresentModeCount, MEMORY_TAG_RENDERER);
             }
             MINFO("Требуемая поддержка swapchain отсутствует, устройство пропускается.");
             return false;
         }
         
         // Device extensions.
-        if (requirements->DeviceExtensionNames) {
+        if (requirements->DeviceExtensionNames.Data()) {
             u32 AvailableExtensionCount = 0;
             VkExtensionProperties* AvailableExtensions = 0;
             VK_CHECK(vkEnumerateDeviceExtensionProperties(
@@ -246,7 +442,7 @@ bool PhysicalDeviceMeetsRequirements(
                     &AvailableExtensionCount,
                     AvailableExtensions));
 
-                u32 RequiredExtensionCount = darray_length(requirements->DeviceExtensionNames);
+                u32 RequiredExtensionCount = requirements->DeviceExtensionNames.Lenght();
                 for (u32 i = 0; i < RequiredExtensionCount; ++i) {
                     b8 found = FALSE;
                     for (u32 j = 0; j < AvailableExtensionCount; ++j) {
@@ -258,12 +454,23 @@ bool PhysicalDeviceMeetsRequirements(
 
                     if (!found) {
                         MINFO("Требуемое расширение не найдено: '%s', устройство пропускается.", requirements->DeviceExtensionNames[i]);
-                        MMemory::TFree<VkExtensionProperties>(AvailableExtensions, sizeof(VkExtensionProperties) * AvailableExtensionCount, MEMORY_TAG_RENDERER);
+                        MMemory::TFree<VkExtensionProperties>(AvailableExtensions, AvailableExtensionCount, MEMORY_TAG_RENDERER);
                         return false;
                     }
                 }
             }
-            MMemory::TFree<VkExtensionProperties>(AvailableExtensions, sizeof(VkExtensionProperties) * AvailableExtensionCount, MEMORY_TAG_RENDERER);
+            MMemory::TFree<VkExtensionProperties>(AvailableExtensions, AvailableExtensionCount, MEMORY_TAG_RENDERER);
         }
+
+        // Sampler anisotropy
+        if (requirements->SamplerAnisotropy && !features->samplerAnisotropy) {
+            MINFO("Device does not support samplerAnisotropy, skipping.");
+            return false;
+        }
+
+        // Устройство отвечает всем требованиям.
+        return true;
     }
+
+    return false;
 }

@@ -67,13 +67,17 @@ public:
     MAPI static void Free(void* block, u64 bytes, MemoryTag tag);
 
     template<typename T>
-    MAPI static void TFree(T* block, u64 bytes, MemoryTag tag);
+    /// @brief Функция освобождает память
+    /// @param block указатель на блок памяти, который нужно освободить
+    /// @param factor количество элементов Т в массиве блока памяти
+    /// @param tag название(тег) для чего использовалась память
+    MAPI static void TFree(T* block, u64 factor, MemoryTag tag);
 
     /// @brief Функция зануляет выделенный блок памяти
     /// @param block указатель на блок памяти, который нужно обнулить
     /// @param bytes размер блока памяти в байтах
     /// @return указатель на нулевой блок памяти
-    //MAPI void* ZeroMemory(void* block, u64 bytes);
+    MAPI static void* ZeroMemory(void* block, u64 bytes);
 
     /// @brief Функция копирует массив байтов из source указателя в dest
     /// @param dest указатель куда комируется массив байтов
@@ -112,16 +116,22 @@ MAPI T *MMemory::TAllocate(u64 bytes, MemoryTag tag)
 }
 
 template <typename T>
-MAPI void MMemory::TFree(T * block, u64 bytes, MemoryTag tag)
+MAPI void MMemory::TFree(T * block, u64 factor, MemoryTag tag)
 {
     if (block) {
         if (tag == MEMORY_TAG_UNKNOWN) {
             MWARN("free вызывается с использованием MEMORY_TAG_UNKNOWN. Переклассифицировать это распределение.");
         }
 
-        TotalAllocated -= bytes;
-        TaggedAllocations[tag] -= bytes;
+        TotalAllocated -= sizeof(T) * factor;
+        TaggedAllocations[tag] -= sizeof(T) * factor;
 
         delete[] block;
     }
 }
+
+/*template<typename T>
+MAPI T * MMemory::TZeroMemory(T * block, u64 bytes)
+{
+return memset(block, 0, bytes);
+}*/

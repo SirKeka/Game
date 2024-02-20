@@ -64,6 +64,11 @@ void MMemory::Free(void *block, u64 bytes, MemoryTag tag)
 
 }
 
+void* MMemory::ZeroMemory(void* block, u64 bytes)
+{
+    return memset(block, 0, bytes);
+}
+
 void MMemory::CopyMem(void *dest, const void *source, u64 bytes)
 {
     std::memmove(dest, source, bytes);

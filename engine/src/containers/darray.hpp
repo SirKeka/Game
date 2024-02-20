@@ -40,7 +40,7 @@ public:
     /// выделяется новое хранилище, в противном случае функция ничего не делает.
     void Reserve(const u64& NewCap);
     /// @return количество элементов контейнера
-    u64 Lenght();
+    constexpr u64 Lenght() const noexcept;
 
     /// @return количество зарезервированных ячеек памяти типа Т
     u64 Capacity();
@@ -155,7 +155,7 @@ void DArray<T>::Reserve(const u64 &NewCap)
 }
 
 template <typename T>
-inline u64 DArray<T>::Lenght()
+inline constexpr u64 DArray<T>::Lenght() const noexcept
 {
     return  this->size;
 }

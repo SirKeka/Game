@@ -2,9 +2,11 @@
 
 #include "renderer/vulkan/vulkan_api.hpp"
 
+// TODO: возможно сделать в стиле ООП
+
 bool VulkanDeviceCreate(VulkanAPI* VkAPI);
 
-void VulkanDeviceDestroy();
+void VulkanDeviceDestroy(VulkanAPI* VkAPI);
 
 void VulkanDeviceQuerySwapchainSupport(
     VkPhysicalDevice PhysicalDevice,

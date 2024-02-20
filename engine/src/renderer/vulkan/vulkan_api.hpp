@@ -20,6 +20,18 @@ struct VulkanDevice
 {
     VkPhysicalDevice PhysicalDevice;
     VkDevice LogicalDevice;
+    VulkanSwapchainSupportInfo SwapchainSupport;
+    i32 GraphicsQueueIndex;
+    i32 PresentQueueIndex;
+    i32 TransferQueueIndex;
+
+    VkQueue GraphicsQueue;
+    VkQueue PresentQueue;
+    VkQueue TransferQueue;
+
+    VkPhysicalDeviceProperties properties;
+    VkPhysicalDeviceFeatures features;
+    VkPhysicalDeviceMemoryProperties memory;
 };
 
 // Проверяет возвращаемое значение данного выражения на соответствие VK_SUCCESS.
@@ -38,6 +50,8 @@ public:
 #if defined(_DEBUG)
     VkDebugUtilsMessengerEXT DebugMessenger;
 #endif
+
+VulkanDevice Device;
 
 public:
     VulkanAPI();
