@@ -4,6 +4,8 @@
 #include "core/logger.hpp"
 #include "containers/mstring.hpp"
 //#include "containers/darray.hpp"
+
+
 enum MemoryTag 
 {
      // Для временного использования. Должно быть присвоено одно из следующих значений или создан новый тег.
@@ -35,10 +37,11 @@ private:
     {
         void* ptr;
         u16 count;
+        // u64 Bytes;
     };
 
     //static DArray<SharPtr> ptr;
-    // u64 Bytes{0};
+    
     static u64 TotalAllocated;
     static u64 TaggedAllocations[MEMORY_TAG_MAX_TAGS];
     
@@ -62,6 +65,9 @@ public:
     /// @param bytes размер блока памяти в байтах
     /// @param tag название(тег) для чего использовалась память
     MAPI static void Free(void* block, u64 bytes, MemoryTag tag);
+
+    template<typename T>
+    MAPI static void TFree(T* block, u64 bytes, MemoryTag tag);
 
     /// @brief Функция зануляет выделенный блок памяти
     /// @param block указатель на блок памяти, который нужно обнулить
@@ -103,4 +109,19 @@ MAPI T *MMemory::TAllocate(u64 bytes, MemoryTag tag)
     u8* ptrRawMem = new u8[bytes];
     
     return reinterpret_cast<T*> (ptrRawMem);
+}
+
+template <typename T>
+MAPI void MMemory::TFree(T * block, u64 bytes, MemoryTag tag)
+{
+    if (block) {
+        if (tag == MEMORY_TAG_UNKNOWN) {
+            MWARN("free вызывается с использованием MEMORY_TAG_UNKNOWN. Переклассифицировать это распределение.");
+        }
+
+        TotalAllocated -= bytes;
+        TaggedAllocations[tag] -= bytes;
+
+        delete[] block;
+    }
 }

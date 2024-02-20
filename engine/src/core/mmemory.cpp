@@ -50,17 +50,17 @@ void *MMemory::Allocate(u64 bytes, MemoryTag tag)
 
 void MMemory::Free(void *block, u64 bytes, MemoryTag tag)
 {
-    if (tag == MEMORY_TAG_UNKNOWN) {
-        MWARN("free вызывается с использованием MEMORY_TAG_UNKNOWN. Переклассифицировать это распределение.");
+    if (block) {
+        if (tag == MEMORY_TAG_UNKNOWN) {
+            MWARN("free вызывается с использованием MEMORY_TAG_UNKNOWN. Переклассифицировать это распределение.");
+        }
+
+        TotalAllocated -= bytes;
+        TaggedAllocations[tag] -= bytes;
+
+        u8* ptrRawMem = reinterpret_cast<u8*>(block);
+        delete[] ptrRawMem;
     }
-
-    TotalAllocated -= bytes;
-    TaggedAllocations[tag] -= bytes;
-
-if (block) {
-    u8* ptrRawMem = reinterpret_cast<u8*>(block);
-    delete[] ptrRawMem;
-}
 
 }
 
