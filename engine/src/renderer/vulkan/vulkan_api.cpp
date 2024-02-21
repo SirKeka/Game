@@ -1,6 +1,7 @@
 #include "vulkan_api.hpp"
 #include "vulkan_platform.hpp"
 #include "vulkan_device.hpp"
+//#include "vulkan_swapchain.h"
 
 #include "core/logger.hpp"
 #include "core/mmemory.hpp"
@@ -22,6 +23,19 @@ VulkanAPI::VulkanAPI()
 
 VulkanAPI::~VulkanAPI()
 {
+    // Уничтожать в порядке, обратном порядку создания.
+
+    // Swapchain
+    //VulkanSwapchainDestroy(&context, this->swapchain);
+
+    MDEBUG("Уничтожение устройства Vulkan...");
+    VulkanDeviceDestroy(this);
+
+    MDEBUG("Уничтожение поверхности Vulkan...");
+    if (this->surface) {
+        vkDestroySurfaceKHR(this->instance, this->surface, this->allocator);
+        this->surface = 0;
+
     MDEBUG("Уничтожение отладчика Vulkan...");
     if (DebugMessenger) {
         PFN_vkDestroyDebugUtilsMessengerEXT func =
@@ -30,6 +44,7 @@ VulkanAPI::~VulkanAPI()
     }
     MDEBUG("Уничтожение экземпляра Vulkan...");
     vkDestroyInstance(instance, allocator);
+    }
 }
 
 bool VulkanAPI::Initialize(MWindow* window, const char* ApplicationName)

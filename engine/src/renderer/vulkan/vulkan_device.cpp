@@ -63,9 +63,10 @@ bool VulkanDeviceCreate(VulkanAPI* VkAPI)
         QueueCreateInfos[i].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
         QueueCreateInfos[i].queueFamilyIndex = indices[i];
         QueueCreateInfos[i].queueCount = 1;
-        if (indices[i] == VkAPI->Device.GraphicsQueueIndex) {
-            QueueCreateInfos[i].queueCount = 2;
-        }
+        // TODO: Включите это для дальнейшего улучшения.
+        // if (indices[i] == VkAPI->Device.GraphicsQueueIndex) {
+        //    QueueCreateInfos[i].queueCount = 2;
+        // }
         QueueCreateInfos[i].flags = 0;
         QueueCreateInfos[i].pNext = 0;
         f32 queue_priority = 1.0f;
@@ -185,7 +186,7 @@ void VulkanDeviceQuerySwapchainSupport(
         0));
 
     if (OutSupportInfo->FormatCount != 0) {
-        if (!OutSupportInfo->formats) {
+        if (/*!*/OutSupportInfo->formats) { // раскоментировать если будет ошибка
             OutSupportInfo->formats = MMemory::TAllocate<VkSurfaceFormatKHR>(sizeof(VkSurfaceFormatKHR) * OutSupportInfo->FormatCount, MEMORY_TAG_RENDERER);
         }
         VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(
@@ -202,7 +203,7 @@ void VulkanDeviceQuerySwapchainSupport(
         &OutSupportInfo->PresentModeCount,
         0));
     if (OutSupportInfo->PresentModeCount != 0) {
-        if (!OutSupportInfo->PresentModes) {
+        if (/*!*/OutSupportInfo->PresentModes) { // раскоментировать если будет ошибка
             OutSupportInfo->PresentModes = MMemory::TAllocate<VkPresentModeKHR>(sizeof(VkPresentModeKHR) * OutSupportInfo->PresentModeCount, MEMORY_TAG_RENDERER);
         }
         VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(

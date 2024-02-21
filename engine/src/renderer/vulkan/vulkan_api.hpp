@@ -34,6 +34,25 @@ struct VulkanDevice
     VkPhysicalDeviceMemoryProperties memory;
 };
 
+struct VulkanImage {
+    VkImage handle;
+    VkDeviceMemory memory;
+    VkImageView view;
+    u32 width;
+    u32 height;
+};
+
+struct VulkanSwapchain {
+    VkSurfaceFormatKHR ImageFormat;
+    u8 MaxFramesInFlight;
+    VkSwapchainKHR handle;
+    u32 ImageCount;
+    VkImage* images;
+    VkImageView* views;
+
+    VulkanImage DepthAttachment;
+};
+
 // Проверяет возвращаемое значение данного выражения на соответствие VK_SUCCESS.
 #define VK_CHECK(expr)           \
 {                                \
@@ -43,6 +62,12 @@ struct VulkanDevice
 class VulkanAPI : public RendererType
 {
 public:
+    // Текущая ширина фреймбуфера.
+    u32 FramebufferWidth;
+
+    // Текущая высота фреймбуфера.
+    u32 FramebufferHeight;
+
     static VkInstance instance;
     static VkAllocationCallbacks* allocator;
     VkSurfaceKHR surface;
@@ -52,6 +77,12 @@ public:
 #endif
 
 VulkanDevice Device;
+
+VulkanSwapchain swapchain;
+    u32 ImageIndex;
+    u32 CurrentFrame;
+
+    bool RecreatingSwapchain;
 
 public:
     VulkanAPI();

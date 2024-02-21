@@ -97,3 +97,6 @@ STATIC_ASSERT(sizeof(f64) == 8, "Ожидается, что f64 будет им�
 #define MAPI
 #endif
 #endif
+
+#define MCLAMP(value, min, max) (value <= min) ? min : (value >= max) ? max \
+                                                                      : value;
