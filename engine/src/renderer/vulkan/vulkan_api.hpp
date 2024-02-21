@@ -32,6 +32,8 @@ struct VulkanDevice
     VkPhysicalDeviceProperties properties;
     VkPhysicalDeviceFeatures features;
     VkPhysicalDeviceMemoryProperties memory;
+
+    VkFormat DepthFormat;
 };
 
 struct VulkanImage {
@@ -63,29 +65,29 @@ class VulkanAPI : public RendererType
 {
 public:
     // Текущая ширина фреймбуфера.
-    u32 FramebufferWidth;
+    u32 FramebufferWidth{0};
 
     // Текущая высота фреймбуфера.
-    u32 FramebufferHeight;
+    u32 FramebufferHeight{0};
 
     static VkInstance instance;
     static VkAllocationCallbacks* allocator;
-    VkSurfaceKHR surface;
+    VkSurfaceKHR surface{};
 
 #if defined(_DEBUG)
     VkDebugUtilsMessengerEXT DebugMessenger;
 #endif
 
-VulkanDevice Device;
+    VulkanDevice Device{};
 
-VulkanSwapchain swapchain;
-    u32 ImageIndex;
-    u32 CurrentFrame;
+    VulkanSwapchain swapchain{};
+    u32 ImageIndex{0};
+    u32 CurrentFrame{0};
 
     bool RecreatingSwapchain;
 
 public:
-    VulkanAPI();
+    VulkanAPI() {};
     ~VulkanAPI();
     
     bool Initialize(MWindow* window, const char* ApplicationName) override;
@@ -96,4 +98,6 @@ public:
 
     void* operator new(u64 size);
     void operator delete(void* ptr);
+
+    i32 FindMemoryIndex(u32 TypeFilter, VkMemoryPropertyFlags PropertyFlags);
 };

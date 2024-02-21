@@ -186,7 +186,7 @@ void VulkanDeviceQuerySwapchainSupport(
         0));
 
     if (OutSupportInfo->FormatCount != 0) {
-        if (/*!*/OutSupportInfo->formats) { // раскоментировать если будет ошибка
+        if (!OutSupportInfo->formats) { // раскоментировать или закоментировать знак ! если будет ошибка
             OutSupportInfo->formats = MMemory::TAllocate<VkSurfaceFormatKHR>(sizeof(VkSurfaceFormatKHR) * OutSupportInfo->FormatCount, MEMORY_TAG_RENDERER);
         }
         VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(
@@ -203,7 +203,7 @@ void VulkanDeviceQuerySwapchainSupport(
         &OutSupportInfo->PresentModeCount,
         0));
     if (OutSupportInfo->PresentModeCount != 0) {
-        if (/*!*/OutSupportInfo->PresentModes) { // раскоментировать если будет ошибка
+        if (!OutSupportInfo->PresentModes) { // раскоментировать или закоментировать знак ! если будет ошибка
             OutSupportInfo->PresentModes = MMemory::TAllocate<VkPresentModeKHR>(sizeof(VkPresentModeKHR) * OutSupportInfo->PresentModeCount, MEMORY_TAG_RENDERER);
         }
         VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(
@@ -212,6 +212,32 @@ void VulkanDeviceQuerySwapchainSupport(
             &OutSupportInfo->PresentModeCount,
             OutSupportInfo->PresentModes));
     }
+}
+
+bool VulkanDeviceDetectDepthFormat(VulkanDevice* Device)
+{
+    // Формат кандидатов
+    const u64 CandidateCount = 3;
+    VkFormat candidates[3] = {
+        VK_FORMAT_D32_SFLOAT,
+        VK_FORMAT_D32_SFLOAT_S8_UINT,
+        VK_FORMAT_D24_UNORM_S8_UINT};
+
+    u32 flags = VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
+    for (u64 i = 0; i < CandidateCount; ++i) {
+        VkFormatProperties properties;
+        vkGetPhysicalDeviceFormatProperties(Device->PhysicalDevice, candidates[i], &properties);
+
+        if ((properties.linearTilingFeatures & flags) == flags) {
+            Device->DepthFormat = candidates[i];
+            return true;
+        } else if ((properties.optimalTilingFeatures & flags) == flags) {
+            Device->DepthFormat = candidates[i];
+            return true;
+        }
+    }
+
+    return false;
 }
 
 bool SelectPhysicalDevice(VulkanAPI *VkAPI)

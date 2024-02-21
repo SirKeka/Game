@@ -3,7 +3,7 @@
 #include "core/logger.hpp"
 #include "core/mmemory.hpp"
 #include "vulkan_device.hpp"
-//#include "vulkan_image.hpp"
+#include "vulkan_image.hpp"
 
 void create(VulkanAPI* VkAPI, u32 width, u32 height, VulkanSwapchain* swapchain);
 void destroy(VulkanAPI* VkAPI, VulkanSwapchain* swapchain);
@@ -83,13 +83,13 @@ void VulkanSwapchainPresent(
 void create(VulkanAPI *VkAPI, u32 width, u32 height, VulkanSwapchain *swapchain)
 {
     VkExtent2D SwapchainExtent = {width, height};
-    swapchain->MaxFramesInFlight = 2;
+    swapchain->MaxFramesInFlight = 2;  // Тройная буферизация
 
-    // Choose a swap surface format.
-    b8 found = false;
+    // Выберите формат поверхности подкачки.
+    bool found = false;
     for (u32 i = 0; i < VkAPI->Device.SwapchainSupport.FormatCount; ++i) {
         VkSurfaceFormatKHR format = VkAPI->Device.SwapchainSupport.formats[i];
-        // Preferred formats
+        // Предпочтительные форматы
         if (format.format == VK_FORMAT_B8G8R8A8_UNORM &&
             format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
             swapchain->ImageFormat = format;
@@ -102,7 +102,7 @@ void create(VulkanAPI *VkAPI, u32 width, u32 height, VulkanSwapchain *swapchain)
         swapchain->ImageFormat = VkAPI->Device.SwapchainSupport.formats[0];
     }
 
-
+    // При высокой скорости рендера кадров выбирается самый последний
     VkPresentModeKHR PresentMode = VK_PRESENT_MODE_FIFO_KHR;
     for (u32 i = 0; i < VkAPI->Device.SwapchainSupport.PresentModeCount; ++i) {
         VkPresentModeKHR mode = VkAPI->Device.SwapchainSupport.PresentModes[i];
@@ -129,22 +129,22 @@ void create(VulkanAPI *VkAPI, u32 width, u32 height, VulkanSwapchain *swapchain)
     SwapchainExtent.width = MCLAMP(SwapchainExtent.width, min.width, max.width);
     SwapchainExtent.height = MCLAMP(SwapchainExtent.height, min.height, max.height);
 
-    u32 image_count = VkAPI->Device.SwapchainSupport.capabilities.minImageCount + 1;
-    if (VkAPI->Device.SwapchainSupport.capabilities.maxImageCount > 0 && image_count > VkAPI->Device.SwapchainSupport.capabilities.maxImageCount) {
-        image_count = VkAPI->Device.SwapchainSupport.capabilities.maxImageCount;
+    u32 ImageCount = VkAPI->Device.SwapchainSupport.capabilities.minImageCount + 1;
+    if (VkAPI->Device.SwapchainSupport.capabilities.maxImageCount > 0 && ImageCount > VkAPI->Device.SwapchainSupport.capabilities.maxImageCount) {
+        ImageCount = VkAPI->Device.SwapchainSupport.capabilities.maxImageCount;
     }
 
     // Информация о создании Swapchain
     VkSwapchainCreateInfoKHR SwapchainCreateInfo = {VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR};
     SwapchainCreateInfo.surface = VkAPI->surface;
-    SwapchainCreateInfo.minImageCount = image_count;
+    SwapchainCreateInfo.minImageCount = ImageCount;
     SwapchainCreateInfo.imageFormat = swapchain->ImageFormat.format;
     SwapchainCreateInfo.imageColorSpace = swapchain->ImageFormat.colorSpace;
     SwapchainCreateInfo.imageExtent = SwapchainExtent;
     SwapchainCreateInfo.imageArrayLayers = 1;
     SwapchainCreateInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-    // Setup the queue family indices
+    // Настройте индексы семейства очередей.
     if (VkAPI->Device.GraphicsQueueIndex != VkAPI->Device.PresentQueueIndex) {
         u32 queueFamilyIndices[] = {
             (u32)VkAPI->Device.GraphicsQueueIndex,
@@ -164,60 +164,68 @@ void create(VulkanAPI *VkAPI, u32 width, u32 height, VulkanSwapchain *swapchain)
     SwapchainCreateInfo.clipped = VK_TRUE;
     SwapchainCreateInfo.oldSwapchain = 0;
 
-    VK_CHECK(vkCreateSwapchainKHR(VkAPI->Device.logical_device, &SwapchainCreateInfo, VkAPI->allocator, &swapchain->handle));
+    VK_CHECK(vkCreateSwapchainKHR(VkAPI->Device.LogicalDevice, &SwapchainCreateInfo, VkAPI->allocator, &swapchain->handle));
 
-    // Start with a zero frame index.
+    // Начните с нулевого индекса кадра.
     VkAPI->CurrentFrame = 0;
 
-    // Images
+    // Изображения
     swapchain->ImageCount = 0;
-    VK_CHECK(vkGetSwapchainImagesKHR(VkAPI->Device.logical_device, swapchain->handle, &swapchain->image_count, 0));
+    VK_CHECK(vkGetSwapchainImagesKHR(VkAPI->Device.LogicalDevice, swapchain->handle, &swapchain->ImageCount, 0));
     if (!swapchain->images) {
         swapchain->images = MMemory::TAllocate<VkImage>(sizeof(VkImage) * swapchain->ImageCount, MEMORY_TAG_RENDERER);
     }
     if (!swapchain->views) {
-        swapchain->views = (VkImageView*)kallocate(sizeof(VkImageView) * swapchain->image_count, MEMORY_TAG_RENDERER);
+        swapchain->views = MMemory::TAllocate<VkImageView>(sizeof(VkImageView) * swapchain->ImageCount, MEMORY_TAG_RENDERER);
     }
-    VK_CHECK(vkGetSwapchainImagesKHR(VkAPI->Device.logical_device, swapchain->handle, &swapchain->image_count, swapchain->images));
+    VK_CHECK(vkGetSwapchainImagesKHR(VkAPI->Device.LogicalDevice, swapchain->handle, &swapchain->ImageCount, swapchain->images));
 
     // Views
-    for (u32 i = 0; i < swapchain->image_count; ++i) {
-        VkImageViewCreateInfo view_info = {VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
-        view_info.image = swapchain->images[i];
-        view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
-        view_info.format = swapchain->ImageFormat.format;
-        view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        view_info.subresourceRange.baseMipLevel = 0;
-        view_info.subresourceRange.levelCount = 1;
-        view_info.subresourceRange.baseArrayLayer = 0;
-        view_info.subresourceRange.layerCount = 1;
+    for (u32 i = 0; i < swapchain->ImageCount; ++i) {
+        VkImageViewCreateInfo ViewInfo = {VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
+        ViewInfo.image = swapchain->images[i];
+        ViewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        ViewInfo.format = swapchain->ImageFormat.format;
+        ViewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        ViewInfo.subresourceRange.baseMipLevel = 0;
+        ViewInfo.subresourceRange.levelCount = 1;
+        ViewInfo.subresourceRange.baseArrayLayer = 0;
+        ViewInfo.subresourceRange.layerCount = 1;
 
-        VK_CHECK(vkCreateImageView(VkAPI->Device.logical_device, &view_info, VkAPI->allocator, &swapchain->views[i]));
+        VK_CHECK(vkCreateImageView(VkAPI->Device.LogicalDevice, &ViewInfo, VkAPI->allocator, &swapchain->views[i]));
     }
 
-    // Depth resources
-    if (!vulkan_device_detect_depth_format(&VkAPI->Device)) {
-        VkAPI->Device.depth_format = VK_FORMAT_UNDEFINED;
-        KFATAL("Failed to find a supported format!");
+    // Ресурсы глубины
+    if (!VulkanDeviceDetectDepthFormat(&VkAPI->Device)) {
+        VkAPI->Device.DepthFormat = VK_FORMAT_UNDEFINED;
+        MFATAL("Не удалось найти поддерживаемый формат!");
     }
 
-    // Create depth image and its view.
-    vulkan_image_create(
+    // Создайте изображение глубины и его вид.
+    VulkanImageCreate(
         VkAPI,
         VK_IMAGE_TYPE_2D,
         SwapchainExtent.width,
         SwapchainExtent.height,
-        VkAPI->Device.depth_format,
+        VkAPI->Device.DepthFormat,
         VK_IMAGE_TILING_OPTIMAL,
         VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
         true,
         VK_IMAGE_ASPECT_DEPTH_BIT,
-        &swapchain->depth_attachment);
+        &swapchain->DepthAttachment);
 
-    KINFO("Swapchain created successfully.");
+    MINFO("Swapchain успешно создан.");
 }
 
 void destroy(VulkanAPI *VkAPI, VulkanSwapchain *swapchain)
 {
+    VulkanImageDestroy(VkAPI, &swapchain->DepthAttachment);
+
+    // Уничтожайте только представления, а не изображения, поскольку они принадлежат цепочке обмена и, следовательно, уничтожаются, когда это происходит.
+    for (u32 i = 0; i < swapchain->ImageCount; ++i) {
+        vkDestroyImageView(VkAPI->Device.LogicalDevice, swapchain->views[i], VkAPI->allocator);
+    }
+
+    vkDestroySwapchainKHR(VkAPI->Device.LogicalDevice, swapchain->handle, VkAPI->allocator);
 }

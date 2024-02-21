@@ -1,7 +1,7 @@
 #include "vulkan_api.hpp"
 #include "vulkan_platform.hpp"
 #include "vulkan_device.hpp"
-//#include "vulkan_swapchain.h"
+#include "vulkan_swapchain.hpp"
 
 #include "core/logger.hpp"
 #include "core/mmemory.hpp"
@@ -17,24 +17,26 @@ VKAPI_ATTR VkBool32 VKAPI_CALL VkDebugCallback(
     const VkDebugUtilsMessengerCallbackDataEXT* CallbackData,
     void* UserData);
 
-VulkanAPI::VulkanAPI()
+
+/*VulkanAPI::VulkanAPI() 
 {
-}
+}*/
 
 VulkanAPI::~VulkanAPI()
 {
-    // Уничтожать в порядке, обратном порядку создания.
+     // Destroy in the opposite order of creation.
 
     // Swapchain
-    //VulkanSwapchainDestroy(&context, this->swapchain);
+    VulkanSwapchainDestroy(this, &swapchain);
 
-    MDEBUG("Уничтожение устройства Vulkan...");
+    MDEBUG("Уничтожение устройства Вулкан...");
     VulkanDeviceDestroy(this);
 
-    MDEBUG("Уничтожение поверхности Vulkan...");
-    if (this->surface) {
-        vkDestroySurfaceKHR(this->instance, this->surface, this->allocator);
-        this->surface = 0;
+    MDEBUG("Уничтожение поверхности Вулкана...");
+    if (surface) {
+        vkDestroySurfaceKHR(instance, surface, allocator);
+        surface = 0;
+    }
 
     MDEBUG("Уничтожение отладчика Vulkan...");
     if (DebugMessenger) {
@@ -44,7 +46,6 @@ VulkanAPI::~VulkanAPI()
     }
     MDEBUG("Уничтожение экземпляра Vulkan...");
     vkDestroyInstance(instance, allocator);
-    }
 }
 
 bool VulkanAPI::Initialize(MWindow* window, const char* ApplicationName)
@@ -82,11 +83,9 @@ bool VulkanAPI::Initialize(MWindow* window, const char* ApplicationName)
     CreateInfo.ppEnabledExtensionNames = RequiredExtensions.Data(); //TODO: указателю ppEnabledExtensionNames присваевается адрес указателя массива после выхода из функции данные стираются
 
     // Уровни проверки.
-    //DArray<const char*> RequiredValidationLayerNames;
     DArray<const char*> RequiredValidationLayerNames; // указатель на массив символов TODO: придумать как использовать строки или другой способ отображать занятую память
     u32 RequiredValidationLayerCount = 0;
 
-//std::cout << sizeof(VkLayerProperties);
 // Если необходимо выполнить проверку, получите список имен необходимых слоев проверки 
 // и убедитесь, что они существуют. Слои проверки следует включать только в нерелизных сборках.
 #if defined(_DEBUG)
@@ -163,6 +162,13 @@ bool VulkanAPI::Initialize(MWindow* window, const char* ApplicationName)
         return false;
     }
 
+    // Swapchain
+    VulkanSwapchainCreate(
+        this,
+        FramebufferWidth,
+        FramebufferHeight,
+        &swapchain);
+
     MINFO("Средство визуализации Vulkan успешно инициализировано.");
     return true;
 }
@@ -201,7 +207,8 @@ VKAPI_ATTR VkBool32 VKAPI_CALL VkDebugCallback(
     VkDebugUtilsMessageSeverityFlagBitsEXT MessageSeverity,
     VkDebugUtilsMessageTypeFlagsEXT MessageTypes,
     const VkDebugUtilsMessengerCallbackDataEXT* CallbackData,
-    void* UserData) {
+    void* UserData) 
+{
     switch (MessageSeverity) {
         default:
         case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
@@ -218,4 +225,20 @@ VKAPI_ATTR VkBool32 VKAPI_CALL VkDebugCallback(
             break;
     }
     return VK_FALSE;
+}
+
+i32 VulkanAPI::FindMemoryIndex(u32 TypeFilter, VkMemoryPropertyFlags PropertyFlags)
+{
+    VkPhysicalDeviceMemoryProperties MemoryProperties;
+    vkGetPhysicalDeviceMemoryProperties(Device.PhysicalDevice, &MemoryProperties);
+
+    for (u32 i = 0; i < MemoryProperties.memoryTypeCount; ++i) {
+        // Проверьте каждый тип памяти, чтобы увидеть, установлен ли его бит в 1.
+        if (TypeFilter & (1 << i) && (MemoryProperties.memoryTypes[i].propertyFlags & PropertyFlags) == PropertyFlags) {
+            return i;
+        }
     }
+
+    MWARN("Не удалось найти подходящий тип памяти!");
+    return -1;
+}

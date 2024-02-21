@@ -12,3 +12,5 @@ void VulkanDeviceQuerySwapchainSupport(
     VkPhysicalDevice PhysicalDevice,
     VkSurfaceKHR Surface,
     VulkanSwapchainSupportInfo* OutSupportInfo);
+
+bool VulkanDeviceDetectDepthFormat(VulkanDevice* Device);
