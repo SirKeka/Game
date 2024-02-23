@@ -222,7 +222,7 @@ void destroy(VulkanAPI *VkAPI, VulkanSwapchain *swapchain)
 {
     VulkanImageDestroy(VkAPI, &swapchain->DepthAttachment);
 
-    // TODO: после
+    // TODO: после выхода из функции main() попадаем в фаил exe_comon.inl который перенаправляет снова в этот цикл
     // Уничтожайте только представления, а не изображения, поскольку они принадлежат цепочке обмена и, следовательно, уничтожаются, когда это происходит.
     for (u32 i = 0; i < swapchain->ImageCount; ++i) {
         vkDestroyImageView(VkAPI->Device.LogicalDevice, swapchain->views[i], VkAPI->allocator);

@@ -119,6 +119,17 @@ bool VulkanDeviceCreate(VulkanAPI* VkAPI)
         &VkAPI->Device.TransferQueue);
     MINFO("Получены очереди.");
 
+    // Создайте пул команд для графической очереди.
+    VkCommandPoolCreateInfo PoolCreateInfo = {VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO};
+    PoolCreateInfo.queueFamilyIndex = VkAPI->Device.GraphicsQueueIndex;
+    PoolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+    VK_CHECK(vkCreateCommandPool(
+        VkAPI->Device.LogicalDevice,
+        &PoolCreateInfo,
+        VkAPI->allocator,
+        &VkAPI->Device.GraphicsCommandPool));
+    MINFO("Пул графических команд создан.");
+
     return true;
 }
 
@@ -128,6 +139,12 @@ void VulkanDeviceDestroy(VulkanAPI* VkAPI)
     VkAPI->Device.GraphicsQueue = 0;
     VkAPI->Device.PresentQueue = 0;
     VkAPI->Device.TransferQueue = 0;
+
+    MINFO("Уничтожение командных пулов...");
+    vkDestroyCommandPool(
+        VkAPI->Device.LogicalDevice,
+        VkAPI->Device.GraphicsCommandPool,
+        VkAPI->allocator);
 
     // Уничтожить логическое устройство
     MINFO("Уничтожение логического устройства...");

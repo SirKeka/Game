@@ -3,9 +3,12 @@
 #include "vulkan_device.hpp"
 #include "vulkan_swapchain.hpp"
 #include "vulkan_renderpass.hpp"
+#include "vulkan_command_buffer.hpp"
 
 #include "core/logger.hpp"
 #include "core/mmemory.hpp"
+
+//#include "containers\darray.hpp"
 
 #include "platform/platform.hpp"
 
@@ -26,6 +29,19 @@ VKAPI_ATTR VkBool32 VKAPI_CALL VkDebugCallback(
 VulkanAPI::~VulkanAPI()
 {
     // Destroy in the opposite order of creation.
+
+    // Command buffers
+    for (u32 i = 0; i < swapchain.ImageCount; ++i) {
+        if (GraphicsCommandBuffers[i].handle) {
+            VulkanCommandBufferFree(
+                this,
+                Device.GraphicsCommandPool,
+                &GraphicsCommandBuffers[i]);
+                GraphicsCommandBuffers[i].handle = 0;
+        }
+    }
+    GraphicsCommandBuffers.~DArray();
+    // GraphicsCommandBuffers = 0;
 
     // Проход рендеринга (Renderpass)
     VulkanRenderpassDestroy(this, &this->MainRenderpass);
@@ -183,6 +199,9 @@ bool VulkanAPI::Initialize(MWindow* window, const char* ApplicationName)
         0
     );
 
+    // Создайте буферы команд.
+    CreateCommandBuffers();
+
     MINFO("Средство визуализации Vulkan успешно инициализировано.");
     return true;
 }
@@ -255,4 +274,28 @@ i32 VulkanAPI::FindMemoryIndex(u32 TypeFilter, VkMemoryPropertyFlags PropertyFla
 
     MWARN("Не удалось найти подходящий тип памяти!");
     return -1;
+}
+
+void VulkanAPI::CreateCommandBuffers()
+{
+    if (GraphicsCommandBuffers.Capacity() == 0) {
+        GraphicsCommandBuffers.Reserve(swapchain.ImageCount);
+    }
+
+    for (u32 i = 0; i < swapchain.ImageCount; ++i) {
+        if (GraphicsCommandBuffers[i].handle) {
+            VulkanCommandBufferFree(
+                this,
+                Device.GraphicsCommandPool,
+                &GraphicsCommandBuffers[i]);
+        } 
+        //MMemory::ZeroMemory(&GraphicsCommandBuffers[i], sizeof(VulkanCommandBuffer));
+        VulkanCommandBufferAllocate(
+            this,
+            Device.GraphicsCommandPool,
+            true,
+            &this->GraphicsCommandBuffers[i]);
+    }
+
+    MDEBUG("Созданы командные буферы Vulkan.");
 }

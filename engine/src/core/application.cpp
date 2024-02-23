@@ -29,7 +29,7 @@ struct ApplicationState {
 
 // static Application App;
 
-static bool initialized = FALSE;
+static bool initialized = false;
 // TODO: Возможно убрать статик для запуска двух окон на разных экранах или придумать другую реализацию
 static ApplicationState AppState;
 

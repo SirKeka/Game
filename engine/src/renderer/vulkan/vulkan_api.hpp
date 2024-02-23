@@ -1,7 +1,9 @@
 #pragma once
 
 #include "renderer/renderer_types.hpp"
+
 #include "core/asserts.hpp"
+//#include "containers\darray.hpp"
 
 #include <vulkan/vulkan.h>
 
@@ -28,6 +30,8 @@ struct VulkanDevice
     VkQueue GraphicsQueue;
     VkQueue PresentQueue;
     VkQueue TransferQueue;
+    
+    VkCommandPool GraphicsCommandPool;
 
     VkPhysicalDeviceProperties properties;
     VkPhysicalDeviceFeatures features;
@@ -91,6 +95,8 @@ struct VulkanCommandBuffer {
     VulkanCommandBufferState state;
 };
 
+template<typename T> class DArray;
+
 // Проверяет возвращаемое значение данного выражения на соответствие VK_SUCCESS.
 #define VK_CHECK(expr)           \
 {                                \
@@ -119,6 +125,8 @@ public:
     VulkanSwapchain swapchain{};
     VulkanRenderpass MainRenderpass{};
 
+    DArray<VulkanCommandBuffer> GraphicsCommandBuffers;
+
     u32 ImageIndex{0};
     u32 CurrentFrame{0};
 
@@ -138,4 +146,7 @@ public:
     void operator delete(void* ptr);
 
     i32 FindMemoryIndex(u32 TypeFilter, VkMemoryPropertyFlags PropertyFlags);
+
+private:
+    void CreateCommandBuffers();
 };
