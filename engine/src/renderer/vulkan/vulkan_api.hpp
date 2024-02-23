@@ -44,6 +44,26 @@ struct VulkanImage {
     u32 height;
 };
 
+enum VulkanRenderPassState {
+    READY,
+    RECORDING,
+    IN_RENDER_PASS,
+    RECORDING_ENDED,
+    SUBMITTED,
+    NOT_ALLOCATED
+};
+
+struct VulkanRenderpass {
+    VkRenderPass handle;
+    f32 x, y, w, h;
+    f32 r, g, b, a;
+
+    f32 depth;
+    u32 stencil;
+
+    VulkanRenderPassState state;
+};
+
 struct VulkanSwapchain {
     VkSurfaceFormatKHR ImageFormat;
     u8 MaxFramesInFlight;
@@ -53,6 +73,22 @@ struct VulkanSwapchain {
     VkImageView* views;
 
     VulkanImage DepthAttachment;
+};
+
+enum VulkanCommandBufferState {
+    COMMAND_BUFFER_STATE_READY,
+    COMMAND_BUFFER_STATE_RECORDING,
+    COMMAND_BUFFER_STATE_IN_RENDER_PASS,
+    COMMAND_BUFFER_STATE_RECORDING_ENDED,
+    COMMAND_BUFFER_STATE_SUBMITTED,
+    COMMAND_BUFFER_STATE_NOT_ALLOCATED
+};
+
+struct VulkanCommandBuffer {
+    VkCommandBuffer handle;
+
+    // Состояние буфера команд.
+    VulkanCommandBufferState state;
 };
 
 // Проверяет возвращаемое значение данного выражения на соответствие VK_SUCCESS.
@@ -81,6 +117,8 @@ public:
     VulkanDevice Device{};
 
     VulkanSwapchain swapchain{};
+    VulkanRenderpass MainRenderpass{};
+
     u32 ImageIndex{0};
     u32 CurrentFrame{0};
 

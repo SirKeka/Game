@@ -2,6 +2,7 @@
 #include "vulkan_platform.hpp"
 #include "vulkan_device.hpp"
 #include "vulkan_swapchain.hpp"
+#include "vulkan_renderpass.hpp"
 
 #include "core/logger.hpp"
 #include "core/mmemory.hpp"
@@ -24,9 +25,12 @@ VKAPI_ATTR VkBool32 VKAPI_CALL VkDebugCallback(
 
 VulkanAPI::~VulkanAPI()
 {
-     // Destroy in the opposite order of creation.
+    // Destroy in the opposite order of creation.
 
-    // Swapchain
+    // Проход рендеринга (Renderpass)
+    VulkanRenderpassDestroy(this, &this->MainRenderpass);
+
+    // Цепочка подкачки (Swapchain)
     VulkanSwapchainDestroy(this, &swapchain);
 
     MDEBUG("Уничтожение устройства Вулкан...");
@@ -167,7 +171,17 @@ bool VulkanAPI::Initialize(MWindow* window, const char* ApplicationName)
         this,
         FramebufferWidth,
         FramebufferHeight,
-        &swapchain);
+        &swapchain
+    );
+
+    VulkanRenderpassCreate(
+        this,
+        &this->MainRenderpass,
+        0, 0, this->FramebufferWidth, this->FramebufferHeight,
+        0.0f, 0.0f, 0.2f, 1.0f,
+        1.0f,
+        0
+    );
 
     MINFO("Средство визуализации Vulkan успешно инициализировано.");
     return true;
