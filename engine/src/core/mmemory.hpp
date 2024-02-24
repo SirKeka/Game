@@ -77,7 +77,7 @@ public:
     /// @param block указатель на блок памяти, который нужно обнулить
     /// @param bytes размер блока памяти в байтах
     /// @return указатель на нулевой блок памяти
-    MAPI static void* ZeroMemory(void* block, u64 bytes);
+    MAPI static void* ZeroMem(void* block, u64 bytes);
 
     /// @brief Функция копирует массив байтов из source указателя в dest
     /// @param dest указатель куда комируется массив байтов

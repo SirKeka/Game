@@ -114,7 +114,7 @@ void VulkanRenderpassBegin(VulkanCommandBuffer *CommandBuffer, VulkanRenderpass 
     BeginInfo.renderArea.extent.height = renderpass->h;
 
     VkClearValue ClearValues[2]; 
-    MMemory::ZeroMemory(ClearValues, sizeof(VkClearValue) * 2);
+    MMemory::ZeroMem(ClearValues, sizeof(VkClearValue) * 2);
     ClearValues[0].color.float32[0] = renderpass->r;
     ClearValues[0].color.float32[1] = renderpass->g;
     ClearValues[0].color.float32[2] = renderpass->b;

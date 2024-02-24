@@ -6,7 +6,6 @@
 #include "core/logger.hpp"
 #include "core/application.hpp"
 #include "core/input.hpp"
-#include "containers/darray.hpp"
 
 #include <windowsx.h>  // извлечение входных параметров
 #include <windows.h>

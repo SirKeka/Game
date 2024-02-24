@@ -1,7 +1,7 @@
 #include "vulkan_device.hpp"
 #include "core/logger.hpp"
 #include "core/mmemory.hpp"
-#include "containers/darray.hpp"
+//#include "containers/darray.hpp"
 #include "containers/mstring.hpp"
 
 struct VulkanPhysicalDeviceRequirements {
@@ -175,7 +175,7 @@ void VulkanDeviceDestroy(VulkanAPI* VkAPI)
         VkAPI->Device.SwapchainSupport.PresentModeCount = 0;
     }
 
-    MMemory::ZeroMemory(
+    MMemory::ZeroMem(
         &VkAPI->Device.SwapchainSupport.capabilities,
         sizeof(VkAPI->Device.SwapchainSupport.capabilities));
 

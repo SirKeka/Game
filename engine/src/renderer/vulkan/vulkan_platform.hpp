@@ -1,10 +1,11 @@
 #pragma once
 
 #include "defines.hpp"
-#include <containers/darray.hpp>
+//#include <containers/darray.hpp>
 
 class MWindow;
 class VulkanAPI;
+template<typename T> class DArray;
 
 bool PlatformCreateVulkanSurface(
     MWindow *window, 

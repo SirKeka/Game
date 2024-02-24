@@ -3,7 +3,7 @@
 #include "renderer/renderer_types.hpp"
 
 #include "core/asserts.hpp"
-//#include "containers\darray.hpp"
+#include "containers\darray.hpp"
 
 #include <vulkan/vulkan.h>
 
@@ -94,8 +94,6 @@ struct VulkanCommandBuffer {
     // Состояние буфера команд.
     VulkanCommandBufferState state;
 };
-
-template<typename T> class DArray;
 
 // Проверяет возвращаемое значение данного выражения на соответствие VK_SUCCESS.
 #define VK_CHECK(expr)           \

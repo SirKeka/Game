@@ -64,7 +64,7 @@ void MMemory::Free(void *block, u64 bytes, MemoryTag tag)
 
 }
 
-void* MMemory::ZeroMemory(void* block, u64 bytes)
+void* MMemory::ZeroMem(void* block, u64 bytes)
 {
     return memset(block, 0, bytes);
 }
