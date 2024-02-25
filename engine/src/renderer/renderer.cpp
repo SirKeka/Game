@@ -3,6 +3,8 @@
 #include "core/logger.hpp"
 #include "core/mmemory.hpp"
 
+#include "renderer/vulkan/vulkan_api.hpp"
+
 RendererType *Renderer::ptrRenderer;
 
 Renderer::~Renderer()

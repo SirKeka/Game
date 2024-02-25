@@ -10,7 +10,7 @@ void destroy(VulkanAPI* VkAPI, VulkanSwapchain* swapchain);
 
 void VulkanSwapchainCreate(VulkanAPI *VkAPI, u32 width, u32 height, VulkanSwapchain *OutSwapchain)
 {
-    // Simply create a new one.
+    // Просто создайте новый.
     create(VkAPI, width, height, OutSwapchain);
 }
 
@@ -78,6 +78,9 @@ void VulkanSwapchainPresent(
     } else if (result != VK_SUCCESS) {
         MFATAL("Не удалось представить изображение цепочки подкачки!");
     }
+
+     // Увеличьте (и зациклите) индекс.
+    VkAPI->CurrentFrame = (VkAPI->CurrentFrame + 1) % swapchain->MaxFramesInFlight;
 }
 
 void create(VulkanAPI *VkAPI, u32 width, u32 height, VulkanSwapchain *swapchain)

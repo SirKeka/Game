@@ -21,8 +21,8 @@ struct ApplicationState {
     Renderer Render;
     Game* GameInst;
     
-    i16 width;
-    i16 height;
+    u32 width;
+    u32 height;
     Clock clock;
     f64 LastTime;
 };
@@ -183,6 +183,12 @@ bool ApplicationRun() {
     AppState.Window->Close();
 
     return true;
+}
+
+void ApplicationGetFramebufferSize(u32 & width, u32 & height)
+{
+    width = AppState.width;
+    height = AppState.height;
 }
 
 bool ApplicationOnEvent(u16 code, void *sender, void *ListenerInst, EventContext context)

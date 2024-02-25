@@ -40,7 +40,8 @@ struct VulkanDevice
     VkFormat DepthFormat;
 };
 
-struct VulkanImage {
+struct VulkanImage 
+{
     VkImage handle;
     VkDeviceMemory memory;
     VkImageView view;
@@ -48,7 +49,8 @@ struct VulkanImage {
     u32 height;
 };
 
-enum VulkanRenderPassState {
+enum VulkanRenderPassState 
+{
     READY,
     RECORDING,
     IN_RENDER_PASS,
@@ -57,7 +59,8 @@ enum VulkanRenderPassState {
     NOT_ALLOCATED
 };
 
-struct VulkanRenderpass {
+struct VulkanRenderpass 
+{
     VkRenderPass handle;
     f32 x, y, w, h;
     f32 r, g, b, a;
@@ -68,7 +71,17 @@ struct VulkanRenderpass {
     VulkanRenderPassState state;
 };
 
-struct VulkanSwapchain {
+struct VulkanFramebuffer
+{
+    VkFramebuffer handle;
+    u32 AttachmentCount;
+    VkImageView* attachments;
+    VulkanRenderpass* renderpass;
+};
+
+
+struct VulkanSwapchain 
+{
     VkSurfaceFormatKHR ImageFormat;
     u8 MaxFramesInFlight;
     VkSwapchainKHR handle;
@@ -77,9 +90,13 @@ struct VulkanSwapchain {
     VkImageView* views;
 
     VulkanImage DepthAttachment;
+
+    // Буферы кадров, используемые для экранного рендеринга.
+    DArray<VulkanFramebuffer> framebuffers;
 };
 
-enum VulkanCommandBufferState {
+enum VulkanCommandBufferState 
+{
     COMMAND_BUFFER_STATE_READY,
     COMMAND_BUFFER_STATE_RECORDING,
     COMMAND_BUFFER_STATE_IN_RENDER_PASS,
@@ -88,11 +105,17 @@ enum VulkanCommandBufferState {
     COMMAND_BUFFER_STATE_NOT_ALLOCATED
 };
 
-struct VulkanCommandBuffer {
+struct VulkanCommandBuffer 
+{
     VkCommandBuffer handle;
 
     // Состояние буфера команд.
     VulkanCommandBufferState state;
+};
+
+struct VulkanFence {
+    VkFence handle;
+    bool IsSignaled;
 };
 
 // Проверяет возвращаемое значение данного выражения на соответствие VK_SUCCESS.
@@ -124,6 +147,14 @@ public:
     VulkanRenderpass MainRenderpass{};
 
     DArray<VulkanCommandBuffer> GraphicsCommandBuffers;
+    DArray<VkSemaphore> ImageAvailableSemaphores;
+    DArray<VkSemaphore> QueueCompleteSemaphores;
+
+    u32 InFlightFenceCount;
+    DArray<VulkanFence> InFlightFences;
+
+    // Содержит указатели на заборы, которые существуют и находятся в собственности в другом месте.
+    DArray<VulkanFence*> ImagesInFlight;
 
     u32 ImageIndex{0};
     u32 CurrentFrame{0};
@@ -146,5 +177,10 @@ public:
     i32 FindMemoryIndex(u32 TypeFilter, VkMemoryPropertyFlags PropertyFlags);
 
 private:
+    static u32 CachedFramebufferWidth;
+    static u32 CachedFramebufferHeight;
+
+private:
     void CreateCommandBuffers();
+    void RegenerateFramebuffers();
 };

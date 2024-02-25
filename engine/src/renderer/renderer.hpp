@@ -3,7 +3,6 @@
 #include "defines.hpp"
 
 #include "renderer_types.hpp"
-#include "renderer/vulkan/vulkan_api.hpp"
 
 struct StaticMeshData;
 struct PlatformState;

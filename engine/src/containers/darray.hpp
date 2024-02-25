@@ -145,7 +145,10 @@ template <typename T>
 void DArray<T>::Reserve(const u64 &NewCap)
 {
     // TODO: добавить std::move()
-    if (capacity == 0) ptrValue = MMemory::TAllocate<T>(sizeof(T) * NewCap, MEMORY_TAG_DARRAY);
+    if (capacity == 0) {
+        ptrValue = MMemory::TAllocate<T>(sizeof(T) * NewCap, MEMORY_TAG_DARRAY);
+        capacity = NewCap;
+    }
     else if (NewCap > capacity) {
         void* ptrNew = MMemory::Allocate(sizeof(T) * NewCap, MEMORY_TAG_DARRAY);
         MMemory::CopyMem(ptrNew, reinterpret_cast<void*>(ptrValue), sizeof(T) * capacity);

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "renderer/vulkan/vulkan_api.hpp"
+#include "vulkan_api.hpp"
 
 // TODO: возможно сделать в стиле ООП
 
