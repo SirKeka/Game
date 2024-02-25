@@ -6,6 +6,7 @@
 #include "vulkan_command_buffer.hpp"
 #include "vulkan_framebuffer.hpp"
 #include "vulkan_fence.hpp"
+#include "vulkan_utils.hpp"
 
 #include "core/logger.hpp"
 #include "core/mmemory.hpp"
@@ -283,11 +284,101 @@ void VulkanAPI::ShutDown()
 
 void VulkanAPI::Resized(u16 width, u16 height)
 {
+    // Обновите «генерацию размера кадрового буфера», счетчик, 
+    // который указывает, когда размер кадрового буфера был обновлен.
+    CachedFramebufferWidth = width;
+    CachedFramebufferHeight = height;
+    FramebufferSizeGeneration++;
 
+    MINFO("API рендеринга Vulkan-> изменен размер: w/h/gen: %i/%i/%llu", width, height, FramebufferSizeGeneration);
 }
 
 bool VulkanAPI::BeginFrame(f32 Deltatime)
 {
+    VulkanDevice* device = &this->Device;
+
+    // Проверьте, не воссоздается ли цепочка подкачки заново, и загрузитесь.
+    if (RecreatingSwapchain) {
+        VkResult result = vkDeviceWaitIdle(device->LogicalDevice);
+        if (!VulkanResultIsSuccess(result)) {
+            MERROR("Ошибка VulkanBeginFrame vkDeviceWaitIdle (1): '%s'", VulkanResultString(result, true));
+            return false;
+        }
+        MINFO("Воссоздание цепочки подкачки, загрузка.");
+        return false;
+    }
+
+    // Проверьте, был ли изменен размер фреймбуфера. Если это так, необходимо создать новую цепочку подкачки.
+    if (FramebufferSizeGeneration != FramebufferSizeLastGeneration) {
+        VkResult result = vkDeviceWaitIdle(device->LogicalDevice);
+        if (!VulkanResultIsSuccess(result)) {
+            MERROR("Ошибка VulkanBeginFrame vkDeviceWaitIdle (2): '%s'", VulkanResultString(result, true));
+            return false;
+        }
+
+        // Если воссоздание цепочки обмена не удалось (например, из-за того, 
+        // что окно было свернуто), загрузитесь, прежде чем снимать флаг.
+        if (!RecreateSwapchain(backend)) {
+            return false;
+        }
+
+        MINFO("Измененние размера, загрузка.");
+        return false;
+    }
+
+    // Дождитесь завершения выполнения текущего кадра. Поскольку ограждение свободен, он сможет двигаться дальше.
+    if (!VulkanFenceWait(
+            this,
+            &InFlightFences[CurrentFrame],
+            UINT64_MAX)) {
+        MWARN("Ошибка ожидания in-flight fence!");
+        return false;
+    }
+
+    // Получаем следующее изображение из цепочки обмена. Передайте семафор, который должен сигнализировать, когда это завершится.
+    // Этот же семафор позже будет ожидаться при отправке в очередь, чтобы убедиться, что это изображение доступно.
+    if (!VulkanSwapchainAcquireNextImageIndex(
+            this,
+            &swapchain,
+            UINT64_MAX,
+            ImageAvailableSemaphores[CurrentFrame],
+            0,
+            &ImageIndex)) {
+        return false;
+    }
+
+    // Начните запись команд.
+    VulkanCommandBuffer* CommandBuffer = &GraphicsCommandBuffers[ImageIndex];
+    VulkanCommandBufferReset(CommandBuffer);
+    VulkanCommandBufferBegin(CommandBuffer, false, false, false);
+
+    // Динамическое состояние
+    VkViewport viewport;
+    viewport.x = 0.0f;
+    viewport.y = (f32)FramebufferHeight;
+    viewport.width = (f32)FramebufferWidth;
+    viewport.height = -(f32)FramebufferHeight;
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+
+    // Ножницы
+    VkRect2D scissor;
+    scissor.offset.x = scissor.offset.y = 0;
+    scissor.extent.width = FramebufferWidth;
+    scissor.extent.height = FramebufferHeight;
+
+    vkCmdSetViewport(CommandBuffer->handle, 0, 1, &viewport);
+    vkCmdSetScissor(CommandBuffer->handle, 0, 1, &scissor);
+
+    MainRenderpass.w = FramebufferWidth;
+    MainRenderpass.h = FramebufferHeight;
+
+    // Начните этап рендеринга.
+    VulkanRenderpassBegin(
+        CommandBuffer,
+        &MainRenderpass,
+        swapchain.framebuffers[ImageIndex].handle);
+
     return true;
 }
 

@@ -133,6 +133,14 @@ public:
     // Текущая высота фреймбуфера.
     u32 FramebufferHeight{0};
 
+    // Текущее поколение размера кадрового буфера. Если он не соответствует 
+    // FramebufferSizeLastGeneration, необходимо создать новый.
+    u64 FramebufferSizeGeneration{0};
+
+    // Генерация кадрового буфера при его последнем создании. 
+    // При обновлении установите значение FramebufferSizeGeneration.
+    u64 FramebufferSizeLastGeneration{0};
+
     static VkInstance instance;
     static VkAllocationCallbacks* allocator;
     VkSurfaceKHR surface{};
