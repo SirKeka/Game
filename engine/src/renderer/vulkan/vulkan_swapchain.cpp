@@ -223,6 +223,7 @@ void create(VulkanAPI *VkAPI, u32 width, u32 height, VulkanSwapchain *swapchain)
 
 void destroy(VulkanAPI *VkAPI, VulkanSwapchain *swapchain)
 {
+    vkDeviceWaitIdle(VkAPI->Device.LogicalDevice);
     VulkanImageDestroy(VkAPI, &swapchain->DepthAttachment);
 
     // TODO: после выхода из функции main() попадаем в фаил exe_comon.inl который перенаправляет снова в этот цикл

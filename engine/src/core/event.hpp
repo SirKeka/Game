@@ -35,7 +35,6 @@ struct RegisteredEvent {
 
 struct EventCodeEntry {
     DArray<RegisteredEvent> events;
-    // RegisteredEvent* events;
 };
 
 // Кодов должно быть более чем достаточно...

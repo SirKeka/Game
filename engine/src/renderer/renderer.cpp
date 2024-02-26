@@ -54,6 +54,11 @@ bool Renderer::EndFrame(f32 DeltaTime)
 
 void Renderer::OnResized(u16 width, u16 height)
 {
+    if (ptrRenderer) {
+        ptrRenderer->Resized(width, height);
+    } else {
+        MWARN("Средства визуализации (Renderer) не существует, чтобы принять изменение размера: %i %i", width, height);
+    }
 }
 
 bool Renderer::DrawFrame(RenderPacket *packet)

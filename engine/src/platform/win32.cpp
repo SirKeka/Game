@@ -244,12 +244,17 @@ LRESULT CALLBACK Win32MessageProcessor(HWND hwnd, u32 msg, WPARAM w_param, LPARA
             return 0;
         case WM_SIZE: {
             // Получаем обновленный размер.
-            // RECT r;
-            // GetClientRect(hwnd, &r);
-            // u32 width = r.right - r.left;
-            // u32 height = r.bottom - r.top;
+            RECT r;
+            GetClientRect(hwnd, &r);
+            u32 width = r.right - r.left;
+            u32 height = r.bottom - r.top;
 
-            // TODO: Fire an event for window resize.
+            // Запускаем событие. Уровень приложения должен уловить это, но не обрабатывать, 
+            // поскольку это должно быть видно другим частям приложения.
+            EventContext context;
+            context.data.u16[0] = (u16)width;
+            context.data.u16[1] = (u16)height;
+            Event::Fire(EVENT_CODE_RESIZED, nullptr, context);
         } break;
         case WM_KEYDOWN:
         case WM_SYSKEYDOWN:

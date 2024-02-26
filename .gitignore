@@ -7,3 +7,11 @@ bin/engine.lib
 bin/engine.ilk
 bin/engine.exp
 bin/engine.dll
+bin/engine.dll
+bin/engine.exp
+bin/engine.ilk
+bin/engine.lib
+bin/engine.pdb
+bin/testbed.exe
+bin/testbed.ilk
+bin/testbed.pdb

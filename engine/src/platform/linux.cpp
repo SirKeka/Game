@@ -3,9 +3,9 @@
 // Уровень платформы Linux.
 #if MPLATFORM_LINUX
 
-#include "core/logger.h"
-#include "core/event.h"
-#include "core/input.h"
+#include "core/logger.hpp"
+#include "core/event.hpp"
+#include "core/input.hpp"
 
 #include "containers/darray.hpp"
 
@@ -250,7 +250,17 @@ bool Messages() {
                 break;
 
             case XCB_CONFIGURE_NOTIFY: {
-                // TODO: Изменение размера
+                // Изменение размера — обратите внимание, что это также запускается при перемещении окна, но в любом случае
+                // должно быть передано, поскольку изменение x/y может означать изменение размера в верхнем левом углу.
+                // Уровень приложения может решить, что с этим делать.
+                xcb_configure_notify_event_t *configure_event = (xcb_configure_notify_event_t *)event;
+
+                // Запустите событие. Уровень приложения должен уловить это, но не обрабатывать, 
+                // поскольку это должно быть видно другим частям приложения.
+                EventContext context;
+                context.data.u16[0] = configure_event->width;
+                context.data.u16[1] = configure_event->height;
+                Event::Fire(EVENT_CODE_RESIZED, nullptr, context);
             }
 
             case XCB_CLIENT_MESSAGE: {

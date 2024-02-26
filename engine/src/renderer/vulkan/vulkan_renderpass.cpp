@@ -4,6 +4,19 @@
 
 void VulkanRenderpassCreate(VulkanAPI *VkAPI, VulkanRenderpass *OutRenderpass, f32 x, f32 y, f32 w, f32 h, f32 r, f32 g, f32 b, f32 a, f32 depth, u32 stencil)
 {
+    OutRenderpass->x = x;
+    OutRenderpass->y = y;
+    OutRenderpass->w = w;
+    OutRenderpass->h = h;
+
+    OutRenderpass->r = r;
+    OutRenderpass->g = g;
+    OutRenderpass->b = b;
+    OutRenderpass->a = a;
+
+    OutRenderpass->depth = depth;
+    OutRenderpass->stencil = stencil;
+
     // Главный подпроход
     VkSubpassDescription subpass = {};
     subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;

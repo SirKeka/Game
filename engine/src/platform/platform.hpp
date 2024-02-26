@@ -2,6 +2,8 @@
 
 #include "defines.hpp"
 
+#include "core/event.hpp"
+
 class MWindow
 {
 public:

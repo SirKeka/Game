@@ -36,6 +36,7 @@ static ApplicationState AppState;
 // Обработчики событий
 bool ApplicationOnEvent(u16 code, void* sender, void* ListenerInst, EventContext context);
 bool ApplicationOnKey(u16 code, void* sender, void* ListenerInst, EventContext context);
+bool ApplicationOnResized(u16 code, void* sender, void* ListenerInst, EventContext context);
 
 bool ApplicationCreate(Game* GameInst) {
     if (initialized) {
@@ -66,9 +67,10 @@ bool ApplicationCreate(Game* GameInst) {
         return false;
     }
 
-    Event::Register(EVENT_CODE_APPLICATION_QUIT, 0, ApplicationOnEvent);
-    Event::Register(EVENT_CODE_KEY_PRESSED, 0, ApplicationOnKey);
-    Event::Register(EVENT_CODE_KEY_RELEASED, 0, ApplicationOnKey);
+    Event::Register(EVENT_CODE_APPLICATION_QUIT, nullptr, ApplicationOnEvent);
+    Event::Register(EVENT_CODE_KEY_PRESSED, nullptr, ApplicationOnKey);
+    Event::Register(EVENT_CODE_KEY_RELEASED, nullptr, ApplicationOnKey);
+    Event::Register(EVENT_CODE_RESIZED, nullptr, ApplicationOnResized);
     
     AppState.Window = new MWindow(GameInst->AppConfig.name,
                                   GameInst->AppConfig.StartPosX, 
@@ -173,9 +175,10 @@ bool ApplicationRun() {
     AppState.IsRunning = false;
 
     // Отключение системы событий.
-    Event::Unregister(EVENT_CODE_APPLICATION_QUIT, 0, ApplicationOnEvent);
-    Event::Unregister(EVENT_CODE_KEY_PRESSED, 0, ApplicationOnKey);
-    Event::Unregister(EVENT_CODE_KEY_RELEASED, 0, ApplicationOnKey);
+    Event::Unregister(EVENT_CODE_APPLICATION_QUIT, nullptr, ApplicationOnEvent);
+    Event::Unregister(EVENT_CODE_KEY_PRESSED, nullptr, ApplicationOnKey);
+    Event::Unregister(EVENT_CODE_KEY_RELEASED, nullptr, ApplicationOnKey);
+    Event::Unregister(EVENT_CODE_RESIZED, nullptr, ApplicationOnResized);
     AppState.Events->Shutdown();
     AppState.Inputs->~Input(); // ShutDown
     AppState.Render.Shutdown();
@@ -228,6 +231,38 @@ bool ApplicationOnKey(u16 code, void *sender, void *ListenerInst, EventContext c
             MDEBUG("Явно — клавиша B отущена!");
         } else {
             MDEBUG("'%c' клавиша отпущена в окне.", KeyCode);
+        }
+    }
+
+    return false;
+}
+
+bool ApplicationOnResized(u16 code, void *sender, void *ListenerInst, EventContext context)
+{
+    if (code == EVENT_CODE_RESIZED) {
+        u16 width = context.data.u16[0];
+        u16 height = context.data.u16[1];
+
+        // Проверьте, отличается ли это. Если да, запустите событие изменения размера.
+        if (width != AppState.width || height != AppState.height) {
+            AppState.width = width;
+            AppState.height = height;
+
+            MDEBUG("Изменение размера окна: %i, %i", width, height);
+
+            // Обработка сворачивания
+            if (width == 0 || height == 0) {
+                MINFO("Окно свернуто, приложение приостанавливается.");
+                AppState.IsSuspended = true;
+                return true;
+            } else {
+                if (AppState.IsSuspended) {
+                    MINFO("Окно восстановлено, возобновляется приложение.");
+                    AppState.IsSuspended = false;
+                }
+                AppState.GameInst->OnResize(width, height);
+                AppState.Render.OnResized(width, height);
+            }
         }
     }
 

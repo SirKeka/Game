@@ -3,7 +3,6 @@
 #include "renderer/renderer_types.hpp"
 
 #include "core/asserts.hpp"
-#include "containers\darray.hpp"
 
 #include <vulkan/vulkan.h>
 
@@ -167,7 +166,7 @@ public:
     u32 ImageIndex{0};
     u32 CurrentFrame{0};
 
-    bool RecreatingSwapchain;
+    bool RecreatingSwapchain{false};
 
 public:
     VulkanAPI() {};
@@ -191,4 +190,5 @@ private:
 private:
     void CreateCommandBuffers();
     void RegenerateFramebuffers();
+    bool RecreateSwapchain();
 };
