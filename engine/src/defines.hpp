@@ -100,3 +100,12 @@ STATIC_ASSERT(sizeof(f64) == 8, "Ожидается, что f64 будет им�
 
 #define MCLAMP(value, min, max) (value <= min) ? min : (value >= max) ? max \
                                                                       : value;
+
+// Встраивание
+#ifdef _MSC_VER
+#define MINLINE __forceinline
+#define MNOINLINE __declspec(noinline)
+#else
+#define MINLINE static inline
+#define MNOINLINE
+#endif

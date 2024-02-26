@@ -101,7 +101,7 @@ public:
 };
 
 template <typename T>
-MAPI T *MMemory::TAllocate(u64 bytes, MemoryTag tag)
+MAPI inline T *MMemory::TAllocate(u64 bytes, MemoryTag tag)
 {
     if (tag == MEMORY_TAG_UNKNOWN) {
         MWARN("allocate вызывается с использованием MEMORY_TAG_UNKNOWN. Переклассифицировать это распределение.");
@@ -116,7 +116,7 @@ MAPI T *MMemory::TAllocate(u64 bytes, MemoryTag tag)
 }
 
 template <typename T>
-MAPI void MMemory::TFree(T * block, u64 factor, MemoryTag tag)
+MAPI inline void MMemory::TFree(T * block, u64 factor, MemoryTag tag)
 {
     if (block) {
         if (tag == MEMORY_TAG_UNKNOWN) {
