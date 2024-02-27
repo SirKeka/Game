@@ -28,7 +28,9 @@
         "xiosbase": "cpp",
         "xlocale": "cpp",
         "string": "cpp",
-        "cstdlib": "cpp"
+        "cstdlib": "cpp",
+        "array": "cpp",
+        "span": "cpp"
     },
 
     "files.encoding": "utf8",

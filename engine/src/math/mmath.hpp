@@ -68,20 +68,4 @@ MAPI i32 RandomInRange(i32 min, i32 max);
 MAPI f32 fRandom();
 MAPI f32 RandomInRange(f32 min, f32 max);
 
-/// @brief Сравнивает все элементы вектора a и вектора b и гарантирует, что разница меньше допуска.
-/// @param a первый вектор.
-/// @param b второй вектор
-/// @param tolerance Допустимая разница. Обычно M_FLOAT_EPSILON или аналогичная.
-/// @return true, если в пределах допустимого; в противном случае false
-MINLINE bool Compare(const f32Vec2 &a, const f32Vec2 &b, f32 tolerance) {
-    if (abs(a.x - b.x) > tolerance) {
-        return false;
-    }
-
-    if (abs(a.y - b.y) > tolerance) {
-        return false;
-    }
-
-    return true;
-}
 } // namespace M::Math

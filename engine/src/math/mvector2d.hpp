@@ -170,7 +170,10 @@ MINLINE bool operator!=(const MVector2D<T> &a, const MVector2D<T> &b)
     if(a.x != b.x || a.y != b.y) return true;
 }
 
-/// @return квадрат длины
+/// @brief Возвращает квадрат длины предоставленного вектора.
+/// @tparam T тип коммпонентов вектора и возвращаемой длины
+/// @param v вектор
+/// @return длина в квадрате.
 template <typename T>
 MINLINE T VectorLengthSquared(const MVector2D<T>& v)
 {
@@ -188,6 +191,7 @@ template <typename T>
 MINLINE MVector2D<T> &MVector2D<T>::Normalize()
 {
     this /= VectorLenght(this);
+    return *this;
 }
 
 /// @brief Возвращает нормализованную копию вектора
@@ -198,6 +202,24 @@ template <typename T>
 MINLINE MVector2D<T>& VectorNormalize(const MVector2D<T>& v)
 {
     return v / VectorLenght(v);
+}
+
+/// @brief Сравнивает все элементы вектора a и вектора b и гарантирует, что разница меньше допуска.
+/// @param a первый вектор.
+/// @param b второй вектор
+/// @param tolerance Допустимая разница. Обычно M_FLOAT_EPSILON или аналогичная.
+/// @return true, если в пределах допустимого; в противном случае false
+template <typename T>
+MINLINE bool Compare(const MVector2D<T> &a, const MVector2D<T> &b, T tolerance) {
+    if (M::Math::abs(a.x - b.x) > tolerance) {
+        return false;
+    }
+
+    if (M::Math::abs(a.y - b.y) > tolerance) {
+        return false;
+    }
+
+    return true;
 }
 
 /// @brief Возвращает расстояние между вектором а и вектором b
