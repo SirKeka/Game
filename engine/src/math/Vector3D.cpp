@@ -1,5 +1,5 @@
-#include <cmath>
-#include "Vector3D.h"
+/*#include <cmath>
+#include "Vector3D.hpp"
 
 Vector3D::Vector3D(float a, float b, float c)
 	{
@@ -87,13 +87,13 @@ inline Vector3D Normalize(const Vector3D& v)
 	return v / Magnitude(v);
 }
 
-//Скалярное произведение между двумя векторами
+//пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 inline float Dot(const Vector3D& a, const Vector3D& b)
 {
 	return a.x * b.x + a.y * b.y + a.z * b.z;
 }
 
-//Векторное произведение между двумя векторами
+//пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 inline Vector3D Cross(const Vector3D& a, const Vector3D& b)
 {
 	return Vector3D(a.y * b.z - a.z * b.y,
@@ -101,7 +101,7 @@ inline Vector3D Cross(const Vector3D& a, const Vector3D& b)
 					a.x * b.y - a.y * b.x);
 }
 
-//Умножение двух векторов вместе с использованием перекрестного произведения, а затем умножения на третий вектор с использованием скалярного произведения
+//пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 inline float ScalarTripleProduct(const Vector3D& a, const Vector3D& b, const Vector3D& c)
 {
 	return Dot(Cross(a, b), c);
@@ -116,3 +116,4 @@ inline Vector3D Reject(const Vector3D& a, const Vector3D& b)
 {
 	return Vector3D(a - b * (Dot(a, b) / Dot(b, b)));
 }
+*/
