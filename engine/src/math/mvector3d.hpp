@@ -4,7 +4,7 @@
 
 #include "mmath.hpp"
 
-template<typename T> class MVector4D;
+template<typename T> class Vector4D;
 
 template<typename T>
 class Vector3D
@@ -12,11 +12,11 @@ class Vector3D
 public:
     union {
 		// Первый элемент.
-		T x; 
+		union {T x, r;};
 		// Второй элемент.
-		T y;
+		union {T y, g;};
 		// Третий элемент.
-		T z;
+		union {T z, b;};
 
 		T elements[3];
 	};
@@ -64,19 +64,19 @@ public:
 };
 
 template<typename T>
-MINLINE Vector3D<T>& operator +(const Vector3D<T>& a, const Vector3D<T>& b)
+MINLINE Vector3D<T> operator +(const Vector3D<T>& a, const Vector3D<T>& b)
 {
 	return Vector3D<T>(a.x + b.x, a.y + b.y, a.z + b.z);
 }
 
 template<typename T>
-MINLINE Vector3D<T>& operator -(const Vector3D<T>& a, const Vector3D<T>& b)
+MINLINE Vector3D<T> operator -(const Vector3D<T>& a, const Vector3D<T>& b)
 {
 	return Vector3D<T>(a.x - b.x, a.y - b.y, a.z - b.z);
 }
 
 template<typename T>
-MINLINE Vector3D<T>& operator *(const Vector3D<T>& a, const Vector3D<T>& b)
+MINLINE Vector3D<T> operator *(const Vector3D<T>& a, const Vector3D<T>& b)
 {
 	return Vector3D<T>(a.x * b.x, a.y * b.y, a.z * b.z);
 }
@@ -87,13 +87,13 @@ MINLINE Vector3D<T>& operator *(const Vector3D<T>& a, const Vector3D<T>& b)
 /// @param s скаляр
 /// @return Копию вектора кмноженного на скаляр
 template<typename T>
-MINLINE Vector3D<T>& operator *(const Vector3D<T>& v, T s)
+MINLINE Vector3D<T> operator *(const Vector3D<T>& v, T s)
 {
 	return Vector3D<T>(v.x * s, v.y * s, v.z * s);
 }
 
 template<typename T>
-MINLINE Vector3D<T>& operator /(const Vector3D<T>& a, const Vector3D<T>& b)
+MINLINE Vector3D<T> operator /(const Vector3D<T>& a, const Vector3D<T>& b)
 {
 	return Vector3D<T>(a.x / b.x, a.y / b.y, a.z / b.z);
 }
@@ -104,13 +104,13 @@ MINLINE Vector3D<T>& operator /(const Vector3D<T>& a, const Vector3D<T>& b)
 /// @param s скаляр
 /// @return Копию вектора раделенного на скаляр
 template<typename T>
-MINLINE Vector3D<T>& operator /(const Vector3D<T>& v, T s)
+MINLINE Vector3D<T> operator /(const Vector3D<T>& v, T s)
 {
 	return Vector3D<T>(v.x / s, v.y / s, v.z / s);
 }
 
 template<typename T>
-MINLINE Vector3D<T>& operator -(const Vector3D<T>& v)
+MINLINE Vector3D<T> operator -(const Vector3D<T>& v)
 {
 	return Vector3D<T>(-v.x, -v.y, -v.z);
 }
@@ -120,7 +120,7 @@ MINLINE Vector3D<T>& operator -(const Vector3D<T>& v)
 /// @param v вектор
 /// @return длина в квадрате.
 template<typename T>
-MINLINE T VectorLengthSquared(const Vector3D<T> v)
+MINLINE T VectorLenghtSquared(const Vector3D<T>& v)
 {
 	return v.x * v.x + v.y * v.y + v.z * v.z;
 }
@@ -130,13 +130,13 @@ MINLINE T VectorLengthSquared(const Vector3D<T> v)
 /// @param v вектор
 /// @return длина вектора
 template<typename T>
-MINLINE T VectorLength(const Vector3D<T> v)
+MINLINE T VectorLenght(const Vector3D<T>& v)
 {
-	M::Math::sqrt(VectorLengthSquared(v));
+	Math::sqrt(VectorLenghtSquared(v));
 }
 
 template<typename T>
-MINLINE Vector3D<T>& Normalize(const Vector3D<T>& v)
+MINLINE Vector3D<T> Normalize(const Vector3D<T>& v)
 {
 	return v / VectorLenght(v);
 }
@@ -158,10 +158,10 @@ MINLINE T Dot(const Vector3D<T>& a, const Vector3D<T>& b)
 /// @param b второй вектор
 /// @return вектор который ортогонален вектору а и b
 template<typename T>
-MINLINE Vector3D<T>& Cross(const Vector3D<T>& a, const Vector3D<T>& b)
+MINLINE Vector3D<T> Cross(const Vector3D<T>& a, const Vector3D<T>& b)
 {
 	return Vector3D<T>(a.y * b.z - a.z * b.y,
-						a.z * b.x - a.x * b.z,
+	 				a.z * b.x - a.x * b.z,
 						a.x * b.y - a.y * b.x);
 }
 
@@ -198,9 +198,9 @@ MINLINE Vector3D<T>::Vector3D(T x, T y, T z)
 }
 
 template <typename T>
-MVector4D<T>& Vec4toVec3(Vector3D<T>& v, T w)
+MINLINE Vector4D<T> Vec3toVec4(const Vector3D<T>& v, T w)
 {
-	return MVector4D&<T>(v.x, v.y, v.z, w);
+	return Vector4D<T>(v.x, v.y, v.z, w);
 }
 
 template <typename T>
@@ -326,6 +326,6 @@ MINLINE Vector3D<T> &Vector3D<T>::operator/=(const T s)
 template <typename T>
 MINLINE Vector3D<T> &Vector3D<T>::Normalize()
 {
-	this /= VectorLenght(this);
+	*this /= VectorLenght(*this);
     return *this;
 }

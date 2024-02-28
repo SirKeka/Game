@@ -25,7 +25,7 @@ public:
 
 	f32 Determinant();
 
-	static Matrix3D& GetIdentity();
+	static const Matrix3D GetIdentity();
 };
 
 Matrix3D operator *(const Matrix3D& A, const Matrix3D& B);

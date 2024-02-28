@@ -40,7 +40,7 @@ using i64Vec2 = Vector2D<long long>;
 //using u32Vec2 = MVector2D<unsigned int>;
 //using u64Vec2 = MVector2D<unsigned long long>;
 
-namespace M::Math
+namespace /*M::*/Math
 {
 // ------------------------------------------
 // Общие математические функции

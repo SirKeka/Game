@@ -10,20 +10,20 @@ template<typename T>
 class Vector4D
 {
 public:
-#if defined(KUSE_SIMD)
-    // ������������ ��� �������� SIMD.
-    alignas(16) __m128 data;
+#if defined(MUSE_SIMD)
+    // Используется для операций SIMD.
+    alignas(16) __m128 data; // или __m256
 #endif
 
     union { 
 		// Первый элемент.
-		T x;
+		union {T x, r;};
 		// Второй элемент.
-		T y; 
+		union {T y, g;};
 		// Третий элемент.
-		T z;
-		// Четвертый элемент
-		T w;
+		union {T z, b;};
+		// Четвертый элемент.
+		union {T w, a;};
 
 		alignas(16) T elements[4];
 	};
@@ -31,10 +31,10 @@ public:
 	Vector4D() {};
 	Vector4D(T x, T y, T z, T w);
 
-	/// @brief нулевой вектор
+	/// @brief РЅСѓР»РµРІРѕР№ РІРµРєС‚РѕСЂ
     /// @return (0, 0, 0, 0)
     static Vector4D Zero();
-    /// @brief единичный вектор
+    /// @brief РµРґРёРЅРёС‡РЅС‹Р№ РІРµРєС‚РѕСЂ
     /// @return (1, 1, 1, 1)
     static Vector4D One();
 
@@ -54,10 +54,9 @@ MINLINE Vector3D<T>& Vec4toVec3(Vector4D<T>& v)
 	return Vector3D&<T>(v.x, v.y, v.z);
 }
 
-/// @brief ���������� ����� Vector4D, ��������� Vector3D � �������� ����������� x, y � z � w ��� w.
-/// @tparam T ��� ����������� �������
-/// @param v ���������� ������
-/// @return ������������� ������
+/// @brief 
+/// @param v 
+/// @return 
 template <typename T>
 MINLINE Vector4D<T>& Vec4fromVec3(Vector3D<T>& v, T w)
 {
@@ -148,24 +147,24 @@ MINLINE Vector4D<T> &operator +(const Vector4D<T> &a, const Vector4D<T> &b)
 	return result;
 }
 
-/// @brief ���������� ������� ����� ���������������� �������.
-/// @tparam T ��� ������������ ������� � ������������� �������� �����
-/// @param v ������
-/// @return ����� � ��������.
+/// @brief Возвращает квадрат длины предоставленного вектора.
+/// @tparam T тип коммпонентов вектора и возвращаемого квадрата длины
+/// @param v вектор
+/// @return длина в квадрате.
 template<typename T>
-MINLINE T VectorLengthSquared(const Vector4D<T> v)
+MINLINE T VectorLengthSquared(const Vector4D<T>& v)
 {
 	return v.x * v.x + v.y * v.y + v.z * v.z + v.w * v.w;
 }
 
-/// @brief ���������� ����� ���������������� �������.
-/// @tparam T ��� ������������ ������� � ������������ �����
-/// @param v ������
-/// @return ����� �������
+/// @brief Возвращает длину предоставленного вектора.
+/// @tparam T тип коммпонентов вектора и возвращаемой длины
+/// @param v вектор
+/// @return длина вектора
 template<typename T>
-MINLINE T VectorLength(const Vector4D<T> v)
+MINLINE T VectorLength(const Vector4D<T>& v)
 {
-	M::Math::sqrt(VectorLengthSquared(v));
+	Math::sqrt(VectorLengthSquared(v));
 }
 
 template<typename T>
@@ -174,13 +173,13 @@ MINLINE Vector4D<T>& Normalize(const Vector4D<T>& v)
 	return v / VectorLenght(v);
 }
 
-/// @brief ��������� ������������ ��������������� ��������. ������ ������������ ��� ������� ������� �����������.
-/// @tparam T ��� ������������ �������� � ������������� ��������
-/// @param a ������ ������
-/// @param b ������ ������
-/// @return ��������� ���������� ������������ ��������
+/// @brief Скалярное произведение предоставленных векторов. Обычно используется для расчета разницы направлений.
+/// @tparam T тип коммпонентов векторов и возвращаемого значения
+/// @param a первый вектор
+/// @param b второй вектор
+/// @return результат скалярного произведения векторов
 template<typename T>
-MINLINE T Dot(const Vector3D<T>& a, const Vector3D<T>& b)
+MINLINE T Dot(const Vector4D<T>& a, const Vector4D<T>& b)
 {
 	return a.x * b.x + a.y *b.y + a.z * b.z + a.w * b.w;
 }

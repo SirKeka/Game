@@ -185,7 +185,7 @@ MINLINE T VectorLengthSquared(const Vector2D<T>& v)
 template <typename T>
 MINLINE T VectorLenght(const Vector2D<T>& v)
 {
-    M::Math::sqrt(VectorLengthSquared(v));
+    Math::sqrt(VectorLengthSquared(v));
 }
 
 template <typename T>
