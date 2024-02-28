@@ -30,7 +30,8 @@
         "string": "cpp",
         "cstdlib": "cpp",
         "array": "cpp",
-        "span": "cpp"
+        "span": "cpp",
+        "cmath": "cpp"
     },
 
     "files.encoding": "utf8",

@@ -29,12 +29,12 @@
 // Наименьшее положительное число, где 1.0 + FLOAT_EPSILON != 0
 #define M_FLOAT_EPSILON 1.192092896e-07f
 
-using f32Vec2 = MVector2D<float>;
-using f64Vec2 = MVector2D<double>;
-using i8Vec2 = MVector2D<char>;
-using i16Vec2 = MVector2D<signed short>;
-using i32Vec2 = MVector2D<int>;
-using i64Vec2 = MVector2D<long long>;
+using f32Vec2 = Vector2D<float>;
+using f64Vec2 = Vector2D<double>;
+using i8Vec2  = Vector2D<char>;
+using i16Vec2 = Vector2D<signed short>;
+using i32Vec2 = Vector2D<int>;
+using i64Vec2 = Vector2D<long long>;
 //using u8Vec2 = MVector2D<unsigned char>;
 //using u16Vec2 = MVector2D<unsigned short>;
 //using u32Vec2 = MVector2D<unsigned int>;
