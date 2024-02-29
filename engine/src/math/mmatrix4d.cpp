@@ -2,6 +2,8 @@
 #include "mvector3d.hpp"
 #include "mvector4d.hpp"
 
+#include "mmath.hpp"
+
 Matrix4D::Matrix4D(f32 n00, f32 n01, f32 n02, f32 n03, 
 				   f32 n10, f32 n11, f32 n12, f32 n13,
 				   f32 n20, f32 n21, f32 n22, f32 n23,
@@ -41,7 +43,7 @@ const Vector4D<f32>& Matrix4D::operator[](int j) const
 	return *reinterpret_cast<const Vector4D<f32>*>(n[j]);
 }
 
-MINLINE Matrix4D Matrix4D::GetIdentity()
+MINLINE Matrix4D Matrix4D::MakeIdentity()
 {
     return Matrix4D(1.0f, 0.0f, 0.0f, 0.0f,
 					0.0f, 1.0f, 0.0f, 0.0f,
@@ -67,20 +69,50 @@ MINLINE Matrix4D Matrix4D::MakeOrthographicProjection(f32 left, f32 right, f32 b
     return m;
 }
 
-MINLINE Matrix4D Matrix4D::MakePerspectiveProjection(f32 FOV_Radians, f32 AspectRatio, f32 NearClip, f32 FarClip)
+MINLINE Matrix4D Matrix4D::MakeFrustumProjection(f32 fovy, f32 s, f32 n, f32 f)
 {
-	f32 HalfTanFOV = Math::tan(FOV_Radians * 0.5f);
-    Matrix4D m {};
-    m(0, 0) = 1.0f / (AspectRatio * HalfTanFOV);
-    m(1, 1) = 1.0f / HalfTanFOV;
-    m(2, 2) = -((FarClip + NearClip) / (FarClip - NearClip));
-    m(2, 3) = -1.0f;
-    m(3, 2) = -((2.0f * FarClip * NearClip) / (FarClip - NearClip));
+    f32 g = 1.0F / Math::tan(fovy * 0.5f);
+	f32 k = f / (f - n);
 
-    return m;
+	return (Matrix4D(g / s, 0.0f, 0.0f, 0.0f,
+	                  0.0f,  g,   0.0f, 0.0f,
+	                  0.0f, 0.0f,  k,  -n * k,
+	                  0.0f, 0.0f, 1.0f, 0.0f));
 }
 
-MINLINE Matrix4D Matrix4D::MakeLookAt(const Vector3D<f32>& position, const Vector3D<f32>& target, const Vector3D<f32>& up)
+MINLINE Matrix4D Matrix4D::MakeRevFrustumProjection(f32 fovy, f32 s, f32 n, f32 f)
+{
+    f32 g = 1.0F / Math::tan(fovy * 0.5F);
+	f32 k = n / (n - f);
+
+	return (Matrix4D(g / s, 0.0F, 0.0F, 0.0F,
+	                  0.0F,  g,   0.0F, 0.0F,
+	                  0.0F, 0.0F,  k,  -f * k,
+	                  0.0F, 0.0F, 1.0F, 0.0F));
+}
+
+MINLINE Matrix4D Matrix4D::MakeInfiniteProjection(f32 fovy, f32 s, f32 n, f32 e)
+{
+    f32 g = 1.0f / Math::tan(fovy * 0.5f);
+	e = 1.0F - e;
+
+	return (Matrix4D(g / s, 0.0f, 0.0f, 0.0f,
+	                  0.0f,  g,   0.0f, 0.0f,
+	                  0.0f, 0.0f,  e,  -n * e,
+	                  0.0f, 0.0f, 1.0f, 0.0f));
+}
+
+MINLINE Matrix4D Matrix4D::MakeRevInfiniteProjection(f32 fovy, f32 s, f32 n, f32 e)
+{
+    f32 g = 1.0F / Math::tan(fovy * 0.5F);
+
+	return (Matrix4D(g / s, 0.0F, 0.0F,    0.0F,
+	                  0.0F,  g,   0.0F,    0.0F,
+	                  0.0F, 0.0F,  e,   n * (1.0F - e),
+	                  0.0F, 0.0F, 1.0F,    0.0F));
+}
+
+MINLINE Matrix4D Matrix4D::MakeLookAt(const Vector3D<f32> &position, const Vector3D<f32> &target, const Vector3D<f32> &up)
 {
     Vector3D<f32> Z_Axis;
 	Z_Axis = target - position;
@@ -129,7 +161,7 @@ MINLINE Matrix4D Matrix4D::MakeInverse(const Matrix4D &m)
 					r3.x, r3.y, r3.z,  Dot(c, s));
 }
 
-Matrix4D Matrix4D::MakeTransposed(const Matrix4D &m)
+MINLINE Matrix4D Matrix4D::MakeTransposed(const Matrix4D &m)
 {
     return Matrix4D(m(0, 0), m(1, 0), m(2, 0), m(3, 0),
 					m(0, 1), m(1, 1), m(2, 1), m(3, 1),
@@ -137,12 +169,103 @@ Matrix4D Matrix4D::MakeTransposed(const Matrix4D &m)
 					m(0, 3), m(1, 3), m(2, 3), m(3, 3));
 }
 
-Matrix4D Matrix4D::MakeTranslation(const Vector3D<f32> &position)
+MINLINE Matrix4D Matrix4D::MakeTranslation(const Vector3D<f32> &position)
 {
-    return Matrix4D(Vector4D<f32>(),
-					Vector4D<f32>(),
-					Vector4D<f32>(),
-					Vec3toVec4<f32>(position, 0.0f));
+    return Matrix4D(Vector4D<f32>(1.0f, 0.0f, 0.0f, 0.0f),
+					Vector4D<f32>(0.0f, 1.0f, 0.0f, 0.0f),
+					Vector4D<f32>(0.0f, 0.0f, 1.0f, 0.0f),
+					Vector4D<f32>(position,         1.0f));
+}
+
+MINLINE Matrix4D Matrix4D::MakeScale(const Vector3D<f32> &scale)
+{
+    return Matrix4D(scale.x,    0,       0,   	  0,
+					   0, 	 scale.y,    0,  	  0,
+					   0,       0, 	  scale.z,    0,
+					   0,       0,	     0,  	 1.0f);
+}
+
+MINLINE Matrix4D Matrix4D::MakeEulerX(f32 AngleRadians)
+{
+	Matrix4D m = MakeIdentity();
+	f32 c = Math::cos(AngleRadians);
+    f32 s = Math::sin(AngleRadians);
+
+	m(1, 1) = c;
+	m(1, 2) = s;
+	m(2, 1) = -c;
+	m(2, 2) = -s;
+
+    return m;
+}
+
+MINLINE Matrix4D Matrix4D::MakeEulerY(f32 AngleRadians)
+{
+	Matrix4D m = MakeIdentity();
+	f32 c = Math::cos(AngleRadians);
+    f32 s = Math::sin(AngleRadians);
+
+	m(0, 0) = c;
+	m(0, 2) = -s;
+	m(2, 0) = s;
+	m(2, 2) = c;
+
+    return m;
+}
+
+MINLINE Matrix4D Matrix4D::MakeEulerZ(f32 AngleRadians)
+{
+    Matrix4D m = MakeIdentity();
+	f32 c = Math::cos(AngleRadians);
+    f32 s = Math::sin(AngleRadians);
+
+	m(0, 0) = c;
+	m(0, 1) = s;
+	m(1, 0) = -s;
+	m(1, 2) = c;
+
+    return m;
+}
+
+MINLINE Matrix4D Matrix4D::MakeEulerXYZ(f32 X_Radians, f32 Y_Radians, f32 Z_Radians)
+{
+    Matrix4D rx = MakeEulerX(X_Radians);
+	Matrix4D ry = MakeEulerY(Y_Radians);
+	Matrix4D rz = MakeEulerZ(Z_Radians);
+	Matrix4D m = rx * ry;
+	m = m * rz;
+
+    return m;
+}
+
+MINLINE Vector3D<f32> Matrix4D::Forward(const Matrix4D &m)
+{
+    return -Normalize(Vector3D<f32>(m(0, 2), m(1, 2), m(2, 2)));
+}
+
+MINLINE Vector3D<f32> Matrix4D::Backward(const Matrix4D &m)
+{
+    return Normalize(Vector3D<f32>(m(0, 2), m(1, 2), m(2, 2)));
+}
+
+MINLINE Vector3D<f32> Matrix4D::Up(const Matrix4D& m)
+{
+	return Normalize(Vector3D<f32>(m(0, 1), m(1, 1), m(2, 2)));
+}
+
+MINLINE Vector3D<f32> Matrix4D::Left(const Matrix4D &m)
+{
+    return -Normalize(Vector3D<f32>(m(0, 0), m(1, 0), m(2, 0)));
+}
+
+MINLINE Vector3D<f32> Down(const Matrix4D& m)
+{
+	return -Normalize(Vector3D<f32>(m(0, 1), m(1, 1), m(2, 2)));
+}
+
+MINLINE Vector3D<f32> Right(const Matrix4D& m)
+{
+	return Normalize(Vector3D<f32>(m(0, 0), m(1, 0), m(2, 0)));
 }
 
 //  00 01 02 03
@@ -150,10 +273,10 @@ Matrix4D Matrix4D::MakeTranslation(const Vector3D<f32> &position)
 //  08 09 10 11
 //  12 13 14 15
 
-MINLINE Matrix4D &Matrix4D::Inverse()
+/*MINLINE Matrix4D &Matrix4D::Inverse()
 {
 	return MakeInverse(*this);
-}
+}*/
 
 Matrix4D operator*(Matrix4D &a, Matrix4D &b)
 {

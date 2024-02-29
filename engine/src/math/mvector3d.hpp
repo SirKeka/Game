@@ -23,6 +23,8 @@ public:
 
 	Vector3D() = default;
 	Vector3D(T x, T y, T z);
+	Vector3D(const Vector2D<T>& v);
+	Vector3D(const Vector4D<T>& v);
 
 	/// @brief нулевой вектор
     /// @return (0, 0, 0)
@@ -59,6 +61,7 @@ public:
 	Vector3D& operator *=(const T s);
 	Vector3D& operator /=(const Vector3D& v);
 	Vector3D& operator /=(const T s);
+	Vector3D<f32>& operator-();
 
 	Vector3D& Normalize();
 };
@@ -198,10 +201,18 @@ MINLINE Vector3D<T>::Vector3D(T x, T y, T z)
 }
 
 template <typename T>
-MINLINE Vector4D<T> Vec3toVec4(const Vector3D<T>& v, T w)
-{
-	return Vector4D<T>(v.x, v.y, v.z, w);
-}
+MINLINE Vector3D<T>::Vector3D(const Vector2D<T> &v)
+:
+x(v.x),
+y(v.y),
+z(v.z) {}
+
+template <typename T>
+MINLINE Vector3D<T>::Vector3D(const Vector4D<T> &v)
+:
+x(v.x),
+y(v.y),
+z(v.z) {}
 
 template <typename T>
 MINLINE Vector3D<T> Vector3D<T>::Zero()
@@ -324,8 +335,18 @@ MINLINE Vector3D<T> &Vector3D<T>::operator/=(const T s)
 }
 
 template <typename T>
+MINLINE Vector3D<f32> &Vector3D<T>::operator-()
+{
+	x *= -1;
+	y *= -1;
+	z *= -1;
+
+    return *this;
+}
+
+template <typename T>
 MINLINE Vector3D<T> &Vector3D<T>::Normalize()
 {
-	*this /= VectorLenght(*this);
+	*this /= VectorLenght<T>(*this);
     return *this;
 }

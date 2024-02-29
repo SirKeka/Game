@@ -30,11 +30,13 @@ public:
 
 	Vector4D() {};
 	Vector4D(T x, T y, T z, T w);
+	Vector4D(const Vector2D<T>& v, f32 z = 0, f32 w = 0);
+	Vector4D(const Vector3D<T>& v, f32 w = 0);
 
-	/// @brief РЅСѓР»РµРІРѕР№ РІРµРєС‚РѕСЂ
+	/// @brief Нулевой вектор
     /// @return (0, 0, 0, 0)
     static Vector4D Zero();
-    /// @brief РµРґРёРЅРёС‡РЅС‹Р№ РІРµРєС‚РѕСЂ
+    /// @brief Единичный вектор
     /// @return (1, 1, 1, 1)
     static Vector4D One();
 
@@ -49,27 +51,6 @@ public:
 };
 
 template <typename T>
-MINLINE Vector3D<T>& Vec4toVec3(Vector4D<T>& v)
-{
-	return Vector3D&<T>(v.x, v.y, v.z);
-}
-
-/// @brief 
-/// @param v 
-/// @return 
-template <typename T>
-MINLINE Vector4D<T>& Vec4fromVec3(Vector3D<T>& v, T w)
-{
-#if defined(MUSE_SIMD)
-    Vector4D<T> OutVector;
-    OutVector.data = _mm_setr_ps(x, y, z, w);
-    return OutVector;
-#else
-    return Vector4D<T>(v.x, v.y, v.z, w);
-#endif
-}
-
-template <typename T>
 MINLINE Vector4D<T>::Vector4D(T x, T y, T z, T w)
 {
 	#if defined(MUSE_SIMD)
@@ -78,6 +59,29 @@ MINLINE Vector4D<T>::Vector4D(T x, T y, T z, T w)
 	this->x = x;
 	this->y = y;
 	this->z = z;
+	this->w = w;
+#endif
+}
+
+template <typename T>
+MINLINE Vector4D<T>::Vector4D(const Vector2D<T> &v, f32 z, f32 w)
+:
+x(v.x),
+y(v.y),
+z(z),
+w(w) {}
+
+template <typename T>
+MINLINE Vector4D<T>::Vector4D(const Vector3D<T> &v, f32 w)
+{
+#if defined(MUSE_SIMD)
+    Vector4D<T> OutVector;
+    OutVector.data = _mm_setr_ps(x, y, z, w);
+    return OutVector;
+#else
+    this->x = v.x;
+	this->y = v.y;
+	this->z = v.z;
 	this->w = w;
 #endif
 }

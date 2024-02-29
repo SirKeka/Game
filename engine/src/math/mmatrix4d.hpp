@@ -26,11 +26,11 @@ public:
 
 	/// @brief Инвертирует текущую матрицу
 	/// @return инвертированную матрицу
-	Matrix4D& Inverse();
+	//Matrix4D& Inverse();
 
 	/// @brief Создает и возвращает единичную матрицу:
 	/// @return новая единичная матрица
-	static Matrix4D GetIdentity();
+	static MINLINE Matrix4D MakeIdentity();
 	/// @brief Создает и возвращает матрицу ортогональной проекции. Обычно используется для рендеринга плоских или 2D-сцен.
 	/// @param left левая сторона усеченного изображения.
 	/// @param right правая сторона усеченного изображения.
@@ -39,32 +39,98 @@ public:
 	/// @param NearClip расстояние до ближней плоскости отсечения.
 	/// @param FarClip дальнее расстояние от плоскости отсечения.
 	/// @return новая матрица ортогональной проекции.
-	static Matrix4D MakeOrthographicProjection(f32 left, f32 right, f32 bottom, f32 top, f32 NearClip, f32 FarClip);
-	/// @brief Создает и возвращает матрицу перспективной проекции. Обычно используется для рендеринга 3d-сцен.
-	/// @param FOV_Radians поле зрения в радианах.
-	/// @param AspectRatio соотношение сторон.
-	/// @param NearClip расстояние до ближней плоскости отсечения.
-	/// @param FarClip расстояние до дальней плоскости отсечения.
-	/// @return новая перспективная матрица.
-	static Matrix4D MakePerspectiveProjection(f32 FOV_Radians, f32 AspectRatio, f32 NearClip, f32 FarClip);
+	static MINLINE Matrix4D MakeOrthographicProjection(f32 left, f32 right, f32 bottom, f32 top, f32 NearClip, f32 FarClip);
+	/// @brief Создает матрицу 4х4, которая представляет перспективную проекцию для усеченной видимости
+	/// @param fovy вертикальное поле зрения в радианах.
+	/// @param s соотношение сторон области просмотра.
+	/// @param n расстояние до ближней плоскости отсечения.
+	/// @param f расстояние до дальней плоскости отсечения.
+	/// @return класс Matrix4D
+	static MINLINE Matrix4D MakeFrustumProjection(f32 fovy, f32 s, f32 n, f32 f);
+	/// @brief Cоздает матрицу 4×4, которая представляет обратную перспективную проекцию для усеченного вида
+	/// @param fovy вертикальное поле зрения в радианах.
+	/// @param s соотношение сторон области просмотра.
+	/// @param n расстояние до ближней плоскости отсечения.
+	/// @param f расстояние до дальней плоскости отсечения.
+	/// @return структура данных Matrix4D
+	static MINLINE Matrix4D MakeRevFrustumProjection(f32 fovy, f32 s, f32 n, f32 f);
+	/**Часто непрактично или, по крайней мере, неудобно, чтобы усеченный вид имел дальнюю плоскость, 
+	 * за которой невозможно визуализировать никакие объекты. Некоторым игровым движкам 
+	 * требуется нарисовать очень большой мир, в котором камера может видеть на много километров 
+	 * в любом направлении, и такие объекты, как небо, солнце, луна и звездные поля, 
+	 * должны быть отрисованы намного дальше, чтобы гарантировать, что они не пересекают какую-либо геометрию мира.
+	 * К счастью, дальнюю плоскость можно отодвинуть буквально на бесконечное расстояние от камеры, 
+	 * и это стало обычной практикой. Игровые движки по-прежнему могут выбирать объекты, находящиеся за пределами максимального 
+	 * расстояния просмотра, но матрица проекции больше не будет вызывать обрезку треугольников по дальней плоскости.*/
+	/// @brief Cоздает матрицу 4×4, которая представляет бесконечную перспективную проекцию для усеченного вида
+	/// @param fovy вертикальное поле зрения в радианах.
+	/// @param s cоотношение сторон окна просмотра
+	/// @param n расстояние до ближней плоскости
+	/// @param e 
+	/// @return структура данных Matrix4D
+	static MINLINE Matrix4D MakeInfiniteProjection(f32 fovy, f32 s, f32 n, f32 e);
+	/**
+	 * Чтобы воспользоваться преимуществами обратной проекции, игровой движок должен выполнить 
+	 * еще одну настройку, а именно изменить направление теста глубины на противоположное, 
+	 * поскольку объекты, расположенные ближе к камере, теперь записывают в буфер глубины большие значения.
+	*/
+	/// @brief 
+	/// @param fovy 
+	/// @param s 
+	/// @param n 
+	/// @param f 
+	/// @return 
+	static MINLINE Matrix4D MakeRevInfiniteProjection(f32 fovy, f32 s, f32 n, f32 e);
 	/// @brief Создает и возвращает матрицу просмотра или матрицу, рассматривающую цель с точки зрения позиции.
 	/// @param position положение матрицы.
 	/// @param target позиция, на которую нужно "смотреть".
 	/// @param up восходящий вектор.
 	/// @return Матрица, рассматривающая цель с точки зрения позиции.
-	static Matrix4D MakeLookAt(const Vector3D<f32>& position, const Vector3D<f32>& target, const Vector3D<f32>& up);
+	static MINLINE Matrix4D MakeLookAt(const Vector3D<f32>& position, const Vector3D<f32>& target, const Vector3D<f32>& up);
 	/// @brief Создает и возвращает значение, обратное предоставленной матрице.
 	/// @param m матрица, подлежащая инвертированию
 	/// @return перевернутая копия предоставленной матрицы.
-	static Matrix4D MakeInverse(const Matrix4D& m);
+	static MINLINE Matrix4D MakeInverse(const Matrix4D& m);
 	/// @brief Заменяет строки матрицы на столбцы.
 	/// @param m матрица, подлежащая транспонированию
 	/// @return копию транспонированной матрицы
-	static Matrix4D MakeTransposed(const Matrix4D& m);
+	static MINLINE Matrix4D MakeTransposed(const Matrix4D& m);
 	/// @brief 
 	/// @param position 
 	/// @return 
-	static Matrix4D MakeTranslation(const Vector3D<f32>& position);
+	static MINLINE Matrix4D MakeTranslation(const Vector3D<f32>& position);
+	/// @brief Возвращает матрицу масштаба, используя предоставленный масштаб.
+	/// @param scale 
+	/// @return 
+	static MINLINE Matrix4D MakeScale(const Vector3D<f32>& scale);
+	static MINLINE Matrix4D MakeEulerX(f32 AngleRadians);
+	static MINLINE Matrix4D MakeEulerY(f32 AngleRadians);
+	static MINLINE Matrix4D MakeEulerZ(f32 AngleRadians);
+	static MINLINE Matrix4D MakeEulerXYZ(f32 X_Radians, f32 Y_Radians, f32 Z_Radians);
+	/// @brief Возвращает вектор направленный вперед относительно предоставленной матрицы.
+	/// @param m матрица 4х4, на основе которой строится вектор.
+	/// @return трехкомпонентный вектор направления.
+	static MINLINE Vector3D<f32> Forward(const Matrix4D& m);
+	/// @brief Возвращает вектор направленный назад относительно предоставленной матрицы.
+	/// @param m матрица 4х4, на основе которой строится вектор.
+	/// @return трехкомпонентный вектор направления.
+	static MINLINE Vector3D<f32> Backward(const Matrix4D& m);
+	/// @brief Возвращает вектор направленный вверх относительно предоставленной матрицы.
+	/// @param m матрица 4х4, на основе которой строится вектор.
+	/// @return трехкомпонентный вектор направления.
+	static MINLINE Vector3D<f32> Up(const Matrix4D& m);
+	/// @brief Возвращает вектор направленный вниз относительно предоставленной матрицы.
+	/// @param m матрица 4х4, на основе которой строится вектор.
+	/// @return трехкомпонентный вектор направления.
+	static MINLINE Vector3D<f32> Down(const Matrix4D& m);
+	/// @brief Возвращает вектор направленный влево относительно предоставленной матрицы.
+	/// @param m матрица 4х4, на основе которой строится вектор.
+	/// @return трехкомпонентный вектор направления.
+	static MINLINE Vector3D<f32> Left(const Matrix4D& m);
+	/// @brief Возвращает вектор направленный вправо относительно предоставленной матрицы.
+	/// @param m матрица 4х4, на основе которой строится вектор.
+	/// @return трехкомпонентный вектор направления.
+	static MINLINE Vector3D<f32> Right(const Matrix4D& m);
 };
 
 	/// @brief Умножение матриц 4x4

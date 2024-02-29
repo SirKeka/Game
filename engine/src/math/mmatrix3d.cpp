@@ -39,14 +39,14 @@
 		return (*reinterpret_cast<const Vector3D<f32>*>(n[j]));
 	}
 
-	MINLINE f32 Matrix3D::Determinant()
+    MINLINE f32 Matrix3D::Determinant()
 	{
 		return (n[0][0] * (n[1][1] * n[2][2] - n[1][2] * n[2][1])
 			  + n[0][1] * (n[1][2] * n[2][0] - n[1][0] * n[2][2])
 			  + n[0][2] * (n[1][0] * n[2][1] - n[1][1] * n[2][0]));
 	}
 
-    MINLINE const Matrix3D Matrix3D::GetIdentity()
+    MINLINE Matrix3D Matrix3D::MakeIdentity()
     {
         return Matrix3D(1.0f, 0.0f, 0.0f,
 						0.0f, 1.0f, 0.0f,
