@@ -135,7 +135,7 @@ MINLINE T VectorLenghtSquared(const Vector3D<T>& v)
 template<typename T>
 MINLINE T VectorLenght(const Vector3D<T>& v)
 {
-	Math::sqrt(VectorLenghtSquared(v));
+	return Math::sqrt(VectorLenghtSquared(v));
 }
 
 template<typename T>

@@ -58,7 +58,8 @@ MAPI f32 abs(f32 x);
  * @param value Значение, подлежащее интерпретации.
  * @returns Истинно, если степень равна 2, в противном случае ложно.
  */
-MINLINE bool IsPowerOf2(u64 value) {
+MINLINE bool IsPowerOf2(u64 value) 
+{
     return (value != 0) && ((value & (value - 1)) == 0);
 }
 
@@ -67,5 +68,21 @@ MAPI i32 RandomInRange(i32 min, i32 max);
 
 MAPI f32 fRandom();
 MAPI f32 RandomInRange(f32 min, f32 max);
+
+/// @brief Преобразует указанные градусы в радианы.
+/// @param degrees градусы, подлежащие преобразованию.
+/// @return величина в радианах.
+MINLINE f32 DegToRad(f32 degrees) 
+{
+    return degrees * M_DEG2RAD_MULTIPLIER;
+}
+
+/// @brief Преобразует указанные радианы в градусы.
+/// @param radians радианы, подлежащие преобразованию.
+/// @return величина в градусах.
+MINLINE f32 RadToDeg(f32 radians) 
+{
+    return radians * M_RAD2DEG_MULTIPLIER;
+}
 
 } // namespace M::Math

@@ -2,6 +2,8 @@
 
 #include "defines.hpp"
 
+#include "quaternion.hpp"
+
 template<typename T> class Vector3D;
 template<typename T> class Vector4D;
 
@@ -18,6 +20,11 @@ public:
 			 f32 n20, f32 n21, f32 n22, f32 n23,
 			 f32 n30, f32 n31, f32 n32, f32 n33);
 	Matrix4D(const Vector4D<f32>& a, const Vector4D<f32>& b, const Vector4D<f32>& c, const Vector4D<f32>& d);
+	Matrix4D (Quaternion& q);
+	/// @brief Вычисляет матрицу поворота на основе кватерниона и пройденной центральной точки.
+	/// @param q кватернион
+	/// @param v вектор
+	Matrix4D (const Quaternion &q, const Vector3D<f32> &center);
 
 	f32& operator ()(int i, int j);
 	const f32& operator ()(int i, int j) const;

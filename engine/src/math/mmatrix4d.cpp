@@ -23,7 +23,50 @@ Matrix4D::Matrix4D(const Vector4D<f32>& a, const Vector4D<f32>& b, const Vector4
 	n[3][0] = d.x; n[3][1] = d.y; n[3][2] = d.z; n[3][3] = d.w;
 }
 
-f32& Matrix4D::operator()(int i, int j)
+Matrix4D::Matrix4D(Quaternion &q)
+{
+	// https://stackoverflow.com/questions/1556260/convert-quaternion-rotation-to-rotation-matrix
+	q.Normalize();
+	
+	n[0][0] = 1.0f - 2.0f * q.y * q.y - 2.0f * q.z * q.z;
+    n[0][1] = 2.0f * q.x * q.y - 2.0f * q.z * q.w;
+    n[0][2] = 2.0f * q.x * q.z + 2.0f * q.y * q.w;
+	n[0][3] = 0.0f;
+
+    n[1][0] = 2.0f * q.x * q.y + 2.0f * q.z * q.w;
+    n[1][1] = 1.0f - 2.0f * q.x * q.x - 2.0f * q.z * q.z;
+    n[1][2] = 2.0f * q.y * q.z - 2.0f * q.x * q.w;
+	n[1][3] = 0.0f;
+
+    n[2][0] = 2.0f * q.x * q.z - 2.0f * q.y * q.w;
+    n[2][1] = 2.0f * q.y * q.z + 2.0f * q.x * q.w;
+    n[2][2] = 1.0f - 2.0f * q.x * q.x - 2.0f * q.y * q.y;
+	n[2][3] = 0.0f;
+
+	n[3][0] = 0.0f; n[3][1] = 0.0f; n[3][2] = 0.0f; n[3][3] = 1.0f;
+}
+
+Matrix4D::Matrix4D(const Quaternion &q, const Vector3D<f32> &center)
+{
+	n[0][0] = (q.x * q.x) - (q.y * q.y) - (q.z * q.z) + (q.w * q.w);
+	n[0][1] = 2.0f * ((q.x * q.y) + (q.z * q.w));
+	n[0][2] = 2.0f * ((q.x * q.z) - (q.y * q.w));
+	n[0][3] = center.x - center.x * n[0][0] - center.y * n[0][1] - center.z * n[0][2];
+
+	n[1][0] = 2.0f * ((q.x * q.y) - (q.z * q.w));
+	n[1][1] = -(q.x * q.x) + (q.y * q.y) - (q.z * q.z) + (q.w * q.w);
+	n[1][2] = 2.0f * ((q.y * q.z) + (q.x * q.w));
+	n[1][3] = center.y - center.x * n[1][0] - center.y * n[1][1] - center.z * n[1][2];
+
+	n[2][0] = 2.0f * ((q.x * q.z) + (q.y * q.w));
+	n[2][1] = 2.0f * ((q.y * q.z) - (q.x * q.w));
+	n[2][2] = -(q.x * q.x) - (q.y * q.y) + (q.z * q.z) + (q.w * q.w);
+	n[2][3] = center.z - center.x * n[2][0] - center.y * n[2][1] - center.z * n[2][2];
+
+	n[3][0] = 0.0f; n[3][1] = 0.0f; n[3][2] = 0.0f; n[3][3] = 1.0f;
+}
+
+f32 &Matrix4D::operator()(int i, int j)
 {
 	return n[j][i];
 }
