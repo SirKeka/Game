@@ -1,7 +1,7 @@
 #pragma once
 #include "defines.hpp"
 
-class Clock
+class MAPI Clock
 {
 public:
     f64 StartTime;

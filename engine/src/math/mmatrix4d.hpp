@@ -20,7 +20,7 @@ public:
 			 f32 n20, f32 n21, f32 n22, f32 n23,
 			 f32 n30, f32 n31, f32 n32, f32 n33);
 	Matrix4D(const Vector4D<f32>& a, const Vector4D<f32>& b, const Vector4D<f32>& c, const Vector4D<f32>& d);
-	Matrix4D (Quaternion& q);
+	Matrix4D (const Quaternion& q);
 	/// @brief Вычисляет матрицу поворота на основе кватерниона и пройденной центральной точки.
 	/// @param q кватернион
 	/// @param v вектор

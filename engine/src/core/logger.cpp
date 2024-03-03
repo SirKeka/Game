@@ -7,18 +7,44 @@
 #include <string.h>
 #include <stdarg.h>
 
-bool InitializeLogging() 
+//static LoggerSystemState* ptrState;
+
+Logger::~Logger()
 {
-    // TODO: создать файл журнала.
-    return TRUE;
 }
 
-void ShutdownLogging() 
+bool Logger::InitializeLogging(u64& MemoryRequirement) 
+{
+    MemoryRequirement = sizeof(Logger);
+     if (this == 0) {
+        return true;
+    }
+
+    initialized = true;
+
+    // TODO: Удали это
+    MFATAL("Тестовое сообщение: %f", 3.14f);
+    MERROR("Тестовое сообщение: %f", 3.14f);
+    MWARN("Тестовое сообщение: %f", 3.14f);
+    MINFO("Тестовое сообщение: %f", 3.14f);
+    MDEBUG("Тестовое сообщение: %f", 3.14f);
+    MTRACE("Тестовое сообщение: %f", 3.14f);
+
+    return true;
+}
+
+void Logger::ShutdownLogging() 
 {
     // TODO: очистка журнала/запись записей в очереди.
+    ~Logger();
 }
 
-void LogOutput(LogLevel level, const char* message, ...) 
+void *Logger::operator new(u64 size)
+{
+    return MMemory::Allocate(sizeof(Logger), );
+}
+
+void Logger::LogOutput(LogLevel level, const char* message, ...) 
 {
     const char* LevelStrings[6] = {"[FATAL]: ", "[ОШИБКА]: ", "[ПРЕДУПРЕЖДЕНИЕ]:  ", "[ИНФО]:  ", "[ОТЛАДКА]: ", "[TRACE]: "};
     b8 is_error = LOG_LEVEL_WARN;
@@ -48,7 +74,7 @@ void LogOutput(LogLevel level, const char* message, ...)
     }
 }
 
-void LogOutput(LogLevel level, MString message, ...)
+void Logger::LogOutput(LogLevel level, MString message, ...)
 {
     const char* LevelStrings[6] = {"[FATAL]: ", "[ОШИБКА]: ", "[ПРЕДУПРЕЖДЕНИЕ]:  ", "[ИНФО]:  ", "[ОТЛАДКА]: ", "[TRACE]: "};
     b8 is_error = LOG_LEVEL_WARN;
@@ -78,7 +104,7 @@ void LogOutput(LogLevel level, MString message, ...)
     }
 }
 
-void ReportAssertionFailure(const char* expression, const char* message, const char* file, i32 line) 
+void Logger::ReportAssertionFailure(const char* expression, const char* message, const char* file, i32 line) 
 {
     LogOutput(LOG_LEVEL_FATAL, "Ошибка утверждения: %s, сообщение: '%s', в файле: %s, строка: %d\n", expression, message, file, line);
 }

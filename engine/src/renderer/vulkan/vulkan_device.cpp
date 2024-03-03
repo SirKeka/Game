@@ -48,7 +48,7 @@ bool VulkanDeviceCreate(VulkanAPI* VkAPI)
     if (!TransferSharesGraphicsQueue) {
         IndexCount++;
     }
-    u32 indices[IndexCount];
+    u32 indices[32];
     u8 index = 0;
     indices[index++] = VkAPI->Device.GraphicsQueueIndex;
     if (!PresentSharesGraphicsQueue) {
@@ -58,7 +58,7 @@ bool VulkanDeviceCreate(VulkanAPI* VkAPI)
         indices[index++] = VkAPI->Device.TransferQueueIndex;
     }
 
-    VkDeviceQueueCreateInfo QueueCreateInfos[IndexCount];
+    VkDeviceQueueCreateInfo QueueCreateInfos[32];
     for (u32 i = 0; i < IndexCount; ++i) {
         QueueCreateInfos[i].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
         QueueCreateInfos[i].queueFamilyIndex = indices[i];
@@ -266,7 +266,8 @@ bool SelectPhysicalDevice(VulkanAPI *VkAPI)
         return false;
     }
 
-    VkPhysicalDevice PhysicalDevices[PhysicalDeviceCount];
+    const u32 MaxDeviceCount = 32;
+    VkPhysicalDevice PhysicalDevices[MaxDeviceCount];
     VK_CHECK(vkEnumeratePhysicalDevices(VkAPI->instance, &PhysicalDeviceCount, PhysicalDevices));
     for (auto &&device : PhysicalDevices) {
         VkPhysicalDeviceProperties properties;
@@ -394,7 +395,7 @@ bool PhysicalDeviceMeetsRequirements(
 
     u32 QueueFamilyCount = 0;
     vkGetPhysicalDeviceQueueFamilyProperties(device, &QueueFamilyCount, 0);
-    VkQueueFamilyProperties QueueFamilies[QueueFamilyCount];
+    VkQueueFamilyProperties QueueFamilies[32];
     vkGetPhysicalDeviceQueueFamilyProperties(device, &QueueFamilyCount, QueueFamilies);
 
     // Посмотрите на каждую очередь и посмотрите, какие очереди она поддерживает

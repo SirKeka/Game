@@ -86,7 +86,6 @@ void VulkanSwapchainPresent(
 void create(VulkanAPI *VkAPI, u32 width, u32 height, VulkanSwapchain *swapchain)
 {
     VkExtent2D SwapchainExtent = {width, height};
-    swapchain->MaxFramesInFlight = 2;  // Тройная буферизация
 
     // Выберите формат поверхности подкачки.
     bool found = false;
@@ -136,6 +135,8 @@ void create(VulkanAPI *VkAPI, u32 width, u32 height, VulkanSwapchain *swapchain)
     if (VkAPI->Device.SwapchainSupport.capabilities.maxImageCount > 0 && ImageCount > VkAPI->Device.SwapchainSupport.capabilities.maxImageCount) {
         ImageCount = VkAPI->Device.SwapchainSupport.capabilities.maxImageCount;
     }
+
+    swapchain->MaxFramesInFlight = ImageCount - 1;  // Тройная буферизация
 
     // Информация о создании Swapchain
     VkSwapchainCreateInfoKHR SwapchainCreateInfo = {VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR};

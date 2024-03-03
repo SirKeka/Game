@@ -71,6 +71,7 @@ Quaternion &Quaternion::operator=(const Quaternion &q)
 	y = q.y;
 	z = q.z;
 	w = q.w;
+	return *this;
 }
 
 Vector3D<f32> &Quaternion::GetVectorPart(void)
@@ -133,8 +134,8 @@ void Quaternion::SetRotationMatrix(const Matrix3D& m)
 		x = (m(1,0) + m(0,1)) * f;
 		z = (m(2,1) + m(1,2)) * f;
 		w = (m(0,2) - m(2,0)) * f;
-	}
-	else
+    }
+    else
 	{
 		z = Math::sqrt(m22 - m00 - m11 + 1.0F) * 0.5F;
 		f32 f = 0.25F / z;
@@ -145,7 +146,7 @@ void Quaternion::SetRotationMatrix(const Matrix3D& m)
 	}
 }
 
-MINLINE const Quaternion& Quaternion::Normalize()
+Quaternion& Quaternion::Normalize()
 {
 	f32 n = Normal(*this);
     x /= n;
@@ -158,17 +159,6 @@ MINLINE const Quaternion& Quaternion::Normalize()
 MINLINE Quaternion Quaternion::Identity()
 {
     return Quaternion(0.f, 0.0f, 0.0f, 1.0f);
-}
-
-MINLINE f32 Normal(const Quaternion& q)
-{
-    return Math::sqrt(q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w);
-}
-
-MINLINE Quaternion Normalize(const Quaternion &q)
-{
-    f32 n = Normal(q);
-    return Quaternion(q.x / n, q.y / n, q.z / n, q.w / n);
 }
 
 MINLINE Quaternion Conjugate(const Quaternion &q)

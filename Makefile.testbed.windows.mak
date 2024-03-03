@@ -4,7 +4,7 @@ OBJ_DIR := obj
 
 ASSEMBLY := testbed
 EXTENSION := .exe
-COMPILER_FLAGS := -g -Wno-missing-braces -fdeclspec #-fPIC
+COMPILER_FLAGS := -g -MD -Werror=vla -Wno-missing-braces -fdeclspec #-fPIC
 INCLUDE_FLAGS := -Iengine\src -Itestbed\src 
 LINKER_FLAGS := -g -lengine.lib -L$(OBJ_DIR)\engine -L$(BUILD_DIR) #-Wl,-rpath,.
 DEFINES := -D_DEBUG -DMIMPORT
@@ -41,3 +41,5 @@ clean: # очистить каталог сборки
 $(OBJ_DIR)/%.cpp.o: %.cpp # скомпилировать .cpp в .cpp.o объект
 	@echo   $<...
 	@clang++ $< $(COMPILER_FLAGS) -c -o $@ $(DEFINES) $(INCLUDE_FLAGS)
+
+	-include $(OBJ_FILES:.o=.d)

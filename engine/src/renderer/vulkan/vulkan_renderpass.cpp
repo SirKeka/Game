@@ -22,7 +22,7 @@ void VulkanRenderpassCreate(VulkanAPI *VkAPI, VulkanRenderpass *OutRenderpass, f
     subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 
     // Вложения TODO: сделать это настраиваемым.
-    u32 AttachmentDescriptionCount = 2;
+    const u32 AttachmentDescriptionCount = 2;
     VkAttachmentDescription AttachmentDescriptions[AttachmentDescriptionCount];
 
     // Цветное вложение

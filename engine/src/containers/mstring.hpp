@@ -38,3 +38,13 @@ private:
 };
 
 bool StringsEqual(const char* strL, const char* strR);
+
+// Выполняет форматирование строки для определения заданной строки формата и параметров.
+MAPI i32 StringFormat(char* dest, const char* format, ...);
+
+/// @brief Выполняет форматирование переменной строки для определения заданной строки формата и va_list.
+/// @param dest определяет место назначения для отформатированной строки.
+/// @param format отформатируйте строку, которая должна быть отформатирована.
+/// @param va_list cписок переменных аргументов.
+/// @return размер записываемых данных.
+MAPI i32 StringFormatV(char* dest, const char* format, char* va_listp);

@@ -3,15 +3,7 @@
 #include "core/application.hpp"
 #include "core/mmemory.hpp"
 
-/* Представляет базовое состояние игры.
- * Вызывается для создания приложением. */
-class Game
-{
-private:
-
-    
-public:
-    // Конфигурация приложения.
+// Конфигурация приложения.
     struct ApplicationConfig {
         // Начальное положение окна по оси X, если применимо.
         i16 StartPosX;
@@ -27,7 +19,17 @@ public:
 
         // Имя приложения, используемое в оконном режиме, если применимо.
         const char* name;
-    } AppConfig;
+    };
+
+/* Представляет базовое состояние игры.
+ * Вызывается для создания приложением. */
+class Game
+{
+private:
+
+public:
+    ApplicationConfig AppConfig;
+    Application* State;
     
     MAPI Game(i16 StartPosX, i16 StartPosY, i16 StartWidth, i16 StartHeight, const char* name);
     // Функция инициализации

@@ -3,6 +3,8 @@
 #include "defines.hpp"
 #include "mmatrix3d.hpp"
 
+#include "mmath.hpp"
+
 template<typename T> struct Vector3D;
 
 class Quaternion
@@ -47,7 +49,7 @@ public:
 	void SetRotationMatrix(const Matrix3D& m);
 	
 	// Функция нормализует текущий кватернион
-	MINLINE const Quaternion& Normalize();
+	Quaternion& Normalize();
 
 	static MINLINE Quaternion Identity();
 	
@@ -58,11 +60,18 @@ Quaternion operator *(const Quaternion& q1, const Quaternion& q2);
 /// @brief Функция вычисляющая норму кватерниона
 /// @param q кватернион норму которого нужно найти
 /// @return значение нормы кватерниона
-MINLINE f32 Normal(const Quaternion& q);
+MINLINE f32 Normal(const Quaternion& q)
+{
+    return Math::sqrt(q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w);
+}
 /// @brief Функция нормализует принимаемый кватернилн
 /// @param q кватернион который нужно нормалищовать
 /// @return копию нормализованного кватерниона
-MINLINE Quaternion Normalize(const Quaternion& q);
+MINLINE Quaternion Normalize(const Quaternion& q)
+{
+	f32 n = Normal(q);
+    return Quaternion(q.x / n, q.y / n, q.z / n, q.w / n);
+}
 /// @brief Функция вычисляет сопряженное число кватерниона
 /// @param q кватернион сопряженное число которого нужно найти
 /// @return Quaterrnion(-x, -y, -z, w)

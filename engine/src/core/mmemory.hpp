@@ -11,6 +11,7 @@ enum MemoryTag
      // Для временного использования. Должно быть присвоено одно из следующих значений или создан новый тег.
     MEMORY_TAG_UNKNOWN,
     MEMORY_TAG_ARRAY,
+    MEMORY_TAG_LINEAR_ALLOCATOR,
     MEMORY_TAG_DARRAY,
     MEMORY_TAG_DICT,
     MEMORY_TAG_RING_QUEUE,
@@ -30,15 +31,15 @@ enum MemoryTag
     MEMORY_TAG_MAX_TAGS
 };
 
-class MMemory
+class MAPI MMemory
 {
 private:
-    struct SharPtr
+    /*struct SharPtr
     {
         void* ptr;
         u16 count;
         // u64 Bytes;
-    };
+    };*/
 
     //static DArray<SharPtr> ptr;
     
@@ -46,45 +47,45 @@ private:
     static u64 TaggedAllocations[MEMORY_TAG_MAX_TAGS];
     
 public:
-    MAPI MMemory() = default;
+    MMemory() = default;
     //MMemory(const MMemory&) = delete;
     //MMemory& operator=(MMemory&) = delete;
     ~MMemory(); /*noexcept*/ //= default;
-    MAPI void ShutDown();
+    void ShutDown();
     /// @brief Функция выделяет память
     /// @param bytes размер выделяемой памяти в байтах
     /// @param tag название(тег) для каких нужд используется память
     /// @return указатель на выделенный блок памяти
-    MAPI static void* Allocate(u64 bytes, MemoryTag tag);
+    static void* Allocate(u64 bytes, MemoryTag tag);
 
     template<typename T>
-    MAPI static T* TAllocate(u64 bytes, MemoryTag tag);
+    static T* TAllocate(u64 bytes, MemoryTag tag);
 
     /// @brief Функция освобождает память
     /// @param block указатель на блок памяти, который нужно освободить
     /// @param bytes размер блока памяти в байтах
     /// @param tag название(тег) для чего использовалась память
-    MAPI static void Free(void* block, u64 bytes, MemoryTag tag);
+    static void Free(void* block, u64 bytes, MemoryTag tag);
 
     template<typename T>
     /// @brief Функция освобождает память
     /// @param block указатель на блок памяти, который нужно освободить
     /// @param factor количество элементов Т в массиве блока памяти
     /// @param tag название(тег) для чего использовалась память
-    MAPI static void TFree(T* block, u64 factor, MemoryTag tag);
+    static void TFree(T* block, u64 factor, MemoryTag tag);
 
     /// @brief Функция зануляет выделенный блок памяти
     /// @param block указатель на блок памяти, который нужно обнулить
     /// @param bytes размер блока памяти в байтах
     /// @return указатель на нулевой блок памяти
-    MAPI static void* ZeroMem(void* block, u64 bytes);
+    static void* ZeroMem(void* block, u64 bytes);
 
     /// @brief Функция копирует массив байтов из source указателя в dest
     /// @param dest указатель куда комируется массив байтов
     /// @param source указатель из которого копируется массив байтов
     /// @param bytes количество байт памяти которое копируется
     /// @return указатель
-    MAPI static void CopyMem(void* dest, const void* source, u64 bytes);
+    static void CopyMem(void* dest, const void* source, u64 bytes);
 
     /// @brief 
     /// @param ptr значение указателя которое присваевается новому указателю
@@ -96,12 +97,12 @@ public:
     template<class U, class... Args>
     void Construct (U* ptr, Args && ...args);
 
-    static MAPI MString GetMemoryUsageStr();
+    static MString GetMemoryUsageStr();
     
 };
 
 template <typename T>
-MAPI inline T *MMemory::TAllocate(u64 bytes, MemoryTag tag)
+MINLINE T *MMemory::TAllocate(u64 bytes, MemoryTag tag)
 {
     if (tag == MEMORY_TAG_UNKNOWN) {
         MWARN("allocate вызывается с использованием MEMORY_TAG_UNKNOWN. Переклассифицировать это распределение.");
@@ -116,7 +117,7 @@ MAPI inline T *MMemory::TAllocate(u64 bytes, MemoryTag tag)
 }
 
 template <typename T>
-MAPI inline void MMemory::TFree(T * block, u64 factor, MemoryTag tag)
+MINLINE void MMemory::TFree(T * block, u64 factor, MemoryTag tag)
 {
     if (block) {
         if (tag == MEMORY_TAG_UNKNOWN) {

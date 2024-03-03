@@ -31,7 +31,8 @@
         "cstdlib": "cpp",
         "array": "cpp",
         "span": "cpp",
-        "cmath": "cpp"
+        "cmath": "cpp",
+        "format": "cpp"
     },
 
     "files.encoding": "utf8",

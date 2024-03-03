@@ -3,66 +3,33 @@
 
 #include "logger.hpp"
 
-#include "platform/platform.hpp"
-#include "core/mmemory.hpp"
-#include "core/event.hpp"
-#include "input.hpp"
-#include "clock.hpp"
+ApplicationState* Application::AppState;
 
-#include "renderer/renderer.hpp"
-
-struct ApplicationState {
-    //MMemory* mem;
-    Input* Inputs;
-    Event* Events;
-    bool IsRunning;
-    bool IsSuspended;
-    MWindow* Window;
-    Renderer Render;
-    Game* GameInst;
-    
-    u32 width;
-    u32 height;
-    Clock clock;
-    f64 LastTime;
-};
-
-// static Application App;
-
-static bool initialized = false;
-// TODO: Возможно убрать статик для запуска двух окон на разных экранах или придумать другую реализацию
-static ApplicationState AppState;
-
-// Обработчики событий
-bool ApplicationOnEvent(u16 code, void* sender, void* ListenerInst, EventContext context);
-bool ApplicationOnKey(u16 code, void* sender, void* ListenerInst, EventContext context);
-bool ApplicationOnResized(u16 code, void* sender, void* ListenerInst, EventContext context);
-
-bool ApplicationCreate(Game* GameInst) {
-    if (initialized) {
+bool Application::ApplicationCreate(Game *GameInst)
+{
+    if (GameInst->State) {
         MERROR("ApplicationCreate вызывался более одного раза.");
-        return FALSE;
+        return false;
     }
 
-    AppState.GameInst = GameInst;
+    GameInst->State = MMemory::TAllocate<Application>(sizeof(Application), MEMORY_TAG_APPLICATION);
+    AppState = GameInst->State->AppState;
+    AppState->GameInst = GameInst;
+    AppState->IsRunning = false;
+    AppState->IsSuspended = false;
+
+    u64 SystemsAllocatorTotalSize = 64 * 1024 * 1024;  // 64 mb
+    AppState->SystemAllocator = LinearAllocator(SystemsAllocatorTotalSize);
 
     // Инициализируйте подсистемы.
     InitializeLogging();
-    AppState.Inputs = new Input();
+    AppState->Inputs = new Input();
 
-    // TODO: Удали это
-    MFATAL("Тестовое сообщение: %f", 3.14f);
-    MERROR("Тестовое сообщение: %f", 3.14f);
-    MWARN("Тестовое сообщение: %f", 3.14f);
-    MINFO("Тестовое сообщение: %f", 3.14f);
-    MDEBUG("Тестовое сообщение: %f", 3.14f);
-    MTRACE("Тестовое сообщение: %f", 3.14f);
+    AppState->IsRunning = true;
+    AppState->IsSuspended = false;
 
-    AppState.IsRunning = true;
-    AppState.IsSuspended = false;
-
-    AppState.Events = new Event();
-    if (!AppState.Events->Initialize()) {
+    AppState->Events = new Event();
+    if (!AppState->Events->Initialize()) {
         MERROR("Система событий не смогла инициализироваться. Приложение не может быть продолжено.");
         return false;
     }
@@ -72,77 +39,77 @@ bool ApplicationCreate(Game* GameInst) {
     Event::Register(EVENT_CODE_KEY_RELEASED, nullptr, ApplicationOnKey);
     Event::Register(EVENT_CODE_RESIZED, nullptr, ApplicationOnResized);
     
-    AppState.Window = new MWindow(GameInst->AppConfig.name,
-                                  GameInst->AppConfig.StartPosX, 
-                                  GameInst->AppConfig.StartPosY, 
-                                  GameInst->AppConfig.StartHeight, 
-                                  GameInst->AppConfig.StartWidth);
+    AppState->Window = new MWindow(GameInst->AppConfig.name,
+                        GameInst->AppConfig.StartPosX, 
+                        GameInst->AppConfig.StartPosY, 
+                        GameInst->AppConfig.StartHeight, 
+                        GameInst->AppConfig.StartWidth);
 
-    if (!AppState.Window)
+    if (!AppState->Window)
     {
         return false;
     }
-    else AppState.Window->Create();
+    else AppState->Window->Create();
 
-    AppState.Render = Renderer();
+    AppState->Render = Renderer();
     // Запуск рендерера
-    if (!AppState.Render.Initialize(AppState.Window, AppState.GameInst->AppConfig.name, RENDERER_TYPE_VULKAN)) {
+    if (!AppState->Render.Initialize(AppState->Window, GameInst->AppConfig.name, RENDERER_TYPE_VULKAN)) {
         MFATAL("Не удалось инициализировать средство визуализации. Прерывание приложения.");
         return FALSE;
     }
 
     // Инициализируйте игру.
-    if (!AppState.GameInst->Initialize()) {
+    if (!GameInst->Initialize()) {
         MFATAL("Не удалось инициализировать игру.");
         return false;
     }
 
-    AppState.GameInst->OnResize(AppState.width, AppState.height);
+    GameInst->OnResize(AppState->width, AppState->height);
 
-    initialized = true;
+    AppState->initialized = true;
 
     return true;
 }
 
-bool ApplicationRun() {
-    AppState.clock.Start();
-    AppState.clock.Update();
-    AppState.clock.StartTime = AppState.clock.elapsed;
+bool Application::ApplicationRun() {
+    AppState->clock.Start();
+    AppState->clock.Update();
+    AppState->clock.StartTime = AppState->clock.elapsed;
     [[maybe_unused]] f64 RunningTime = 0;
     [[maybe_unused]] u8 FrameCount = 0;
     f64 TargetFrameSeconds = 1.0f / 60;
 
     MINFO(MMemory::GetMemoryUsageStr());
 
-    while (AppState.IsRunning) {
-        if(!AppState.Window->Messages()) {
-            AppState.IsRunning = false;
+    while (AppState->IsRunning) {
+        if(!AppState->Window->Messages()) {
+            AppState->IsRunning = false;
         }
 
-        if(!AppState.IsSuspended) {
+        if(!AppState->IsSuspended) {
             // Обновите часы и получите разницу во времени.
-                AppState.clock.Update();
-                f64 CurrentTime = AppState.clock.elapsed;
-                f64 delta = (CurrentTime - AppState.LastTime);
+                AppState->clock.Update();
+                f64 CurrentTime = AppState->clock.elapsed;
+                f64 delta = (CurrentTime - AppState->LastTime);
                 f64 FrameStartTime = MWindow::PlatformGetAbsoluteTime();
 
-            if (!AppState.GameInst->Update(delta)) {
+            if (!AppState->GameInst->Update(delta)) {
                 MFATAL("Ошибка обновления игры, выключение.");
-                AppState.IsRunning = false;
+                AppState->IsRunning = false;
                 break;
             }
 
             // Вызовите процедуру рендеринга игры.
-            if (!AppState.GameInst->Render(delta)) {
+            if (!AppState->GameInst->Render(delta)) {
                 MFATAL("Ошибка рендеринга игры, выключение.");
-                AppState.IsRunning = false;
+                AppState->IsRunning = false;
                 break;
             }
 
             // TODO: refactor packet creation
             RenderPacket packet;
             packet.DeltaTime = delta;
-            AppState.Render.DrawFrame(&packet);
+            AppState->Render.DrawFrame(&packet);
 
             // Выясните, сколько времени занял кадр и, если ниже
             f64 FrameEndTime = MWindow::PlatformGetAbsoluteTime();
@@ -165,41 +132,51 @@ bool ApplicationRun() {
             // должно выполняться после записи любого ввода; т.е. перед этой
             // строкой. В целях безопасности входные данные обновляются в
             // последнюю очередь перед завершением этого кадра.
-            AppState.Inputs->InputUpdate(delta);
+            AppState->Inputs->InputUpdate(delta);
 
             // Update last time
-            AppState.LastTime = CurrentTime;
+            AppState->LastTime = CurrentTime;
         }
     }
 
-    AppState.IsRunning = false;
+    AppState->IsRunning = false;
 
     // Отключение системы событий.
     Event::Unregister(EVENT_CODE_APPLICATION_QUIT, nullptr, ApplicationOnEvent);
     Event::Unregister(EVENT_CODE_KEY_PRESSED, nullptr, ApplicationOnKey);
     Event::Unregister(EVENT_CODE_KEY_RELEASED, nullptr, ApplicationOnKey);
     Event::Unregister(EVENT_CODE_RESIZED, nullptr, ApplicationOnResized);
-    AppState.Events->Shutdown();
-    AppState.Inputs->~Input(); // ShutDown
-    AppState.Render.Shutdown();
+    AppState->Events->Shutdown();
+    AppState->Inputs->~Input(); // ShutDown
+    AppState->Render.Shutdown();
 
-    AppState.Window->Close();
+    AppState->Window->Close();
 
     return true;
 }
 
-void ApplicationGetFramebufferSize(u32 & width, u32 & height)
+void Application::ApplicationGetFramebufferSize(u32 & width, u32 & height)
 {
-    width = AppState.width;
-    height = AppState.height;
+    width = AppState->width;
+    height = AppState->height;
 }
 
-bool ApplicationOnEvent(u16 code, void *sender, void *ListenerInst, EventContext context)
+void *Application::operator new(u64 size)
+{
+    return MMemory::Allocate(size, MEMORY_TAG_APPLICATION);
+}
+
+void Application::operator delete(void *ptr)
+{
+    return MMemory::Free(ptr, sizeof(Application), MEMORY_TAG_APPLICATION);
+}
+
+bool Application::ApplicationOnEvent(u16 code, void *sender, void *ListenerInst, EventContext context)
 {
     switch (code) {
         case EVENT_CODE_APPLICATION_QUIT: {
             MINFO("Получено событие EVENT_CODE_APPLICATION_QUIT, завершение работы.\n");
-            AppState.IsRunning = false;
+            AppState->IsRunning = false;
             return true;
         }
     }
@@ -207,7 +184,7 @@ bool ApplicationOnEvent(u16 code, void *sender, void *ListenerInst, EventContext
     return false;
 }
 
-bool ApplicationOnKey(u16 code, void *sender, void *ListenerInst, EventContext context)
+bool Application::ApplicationOnKey(u16 code, void *sender, void *ListenerInst, EventContext context)
 {
     if (code == EVENT_CODE_KEY_PRESSED) {
         u16 KeyCode = context.data.u16[0];
@@ -237,31 +214,31 @@ bool ApplicationOnKey(u16 code, void *sender, void *ListenerInst, EventContext c
     return false;
 }
 
-bool ApplicationOnResized(u16 code, void *sender, void *ListenerInst, EventContext context)
+bool Application::ApplicationOnResized(u16 code, void *sender, void *ListenerInst, EventContext context)
 {
     if (code == EVENT_CODE_RESIZED) {
         u16 width = context.data.u16[0];
         u16 height = context.data.u16[1];
 
         // Проверьте, отличается ли это. Если да, запустите событие изменения размера.
-        if (width != AppState.width || height != AppState.height) {
-            AppState.width = width;
-            AppState.height = height;
+        if (width != AppState->width || height != AppState->height) {
+            AppState->width = width;
+            AppState->height = height;
 
             MDEBUG("Изменение размера окна: %i, %i", width, height);
 
             // Обработка сворачивания
             if (width == 0 || height == 0) {
                 MINFO("Окно свернуто, приложение приостанавливается.");
-                AppState.IsSuspended = true;
+                AppState->IsSuspended = true;
                 return true;
             } else {
-                if (AppState.IsSuspended) {
+                if (AppState->IsSuspended) {
                     MINFO("Окно восстановлено, возобновляется приложение.");
-                    AppState.IsSuspended = false;
+                    AppState->IsSuspended = false;
                 }
-                AppState.GameInst->OnResize(width, height);
-                AppState.Render.OnResized(width, height);
+                AppState->GameInst->OnResize(width, height);
+                AppState->Render.OnResized(width, height);
             }
         }
     }

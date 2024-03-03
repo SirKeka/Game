@@ -23,24 +23,24 @@ Matrix4D::Matrix4D(const Vector4D<f32>& a, const Vector4D<f32>& b, const Vector4
 	n[3][0] = d.x; n[3][1] = d.y; n[3][2] = d.z; n[3][3] = d.w;
 }
 
-Matrix4D::Matrix4D(Quaternion &q)
+Matrix4D::Matrix4D(const Quaternion &q)
 {
 	// https://stackoverflow.com/questions/1556260/convert-quaternion-rotation-to-rotation-matrix
-	q.Normalize();
+	Quaternion nq = Normalize(q);
 	
-	n[0][0] = 1.0f - 2.0f * q.y * q.y - 2.0f * q.z * q.z;
-    n[0][1] = 2.0f * q.x * q.y - 2.0f * q.z * q.w;
-    n[0][2] = 2.0f * q.x * q.z + 2.0f * q.y * q.w;
+	n[0][0] = 1.0f - 2.0f * nq.y * nq.y - 2.0f * nq.z * nq.z;
+    n[0][1] = 2.0f * nq.x * nq.y - 2.0f * nq.z * nq.w;
+    n[0][2] = 2.0f * nq.x * nq.z + 2.0f * nq.y * nq.w;
 	n[0][3] = 0.0f;
 
-    n[1][0] = 2.0f * q.x * q.y + 2.0f * q.z * q.w;
-    n[1][1] = 1.0f - 2.0f * q.x * q.x - 2.0f * q.z * q.z;
-    n[1][2] = 2.0f * q.y * q.z - 2.0f * q.x * q.w;
+    n[1][0] = 2.0f * nq.x * nq.y + 2.0f * nq.z * nq.w;
+    n[1][1] = 1.0f - 2.0f * nq.x * nq.x - 2.0f * nq.z * nq.z;
+    n[1][2] = 2.0f * nq.y * nq.z - 2.0f * nq.x * nq.w;
 	n[1][3] = 0.0f;
 
-    n[2][0] = 2.0f * q.x * q.z - 2.0f * q.y * q.w;
-    n[2][1] = 2.0f * q.y * q.z + 2.0f * q.x * q.w;
-    n[2][2] = 1.0f - 2.0f * q.x * q.x - 2.0f * q.y * q.y;
+    n[2][0] = 2.0f * nq.x * nq.z - 2.0f * nq.y * nq.w;
+    n[2][1] = 2.0f * nq.y * nq.z + 2.0f * nq.x * nq.w;
+    n[2][2] = 1.0f - 2.0f * nq.x * nq.x - 2.0f * nq.y * nq.y;
 	n[2][3] = 0.0f;
 
 	n[3][0] = 0.0f; n[3][1] = 0.0f; n[3][2] = 0.0f; n[3][3] = 1.0f;

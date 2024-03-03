@@ -7,24 +7,25 @@
 static const char* MemoryTagStrings[MEMORY_TAG_MAX_TAGS] = {
     "UNKNOWN    ",
     "ARRAY      ",
+    "LINEAR ALLC",
     "DARRAY     ",
     "DICT       ",
-    "RING_QUEUE ",
+    "RING QUEUE ",
     "BST        ",
     "STRING     ",
     "APPLICATION",
     "JOB        ",
     "TEXTURE    ",
-    "MAT_INST   ",
+    "MAT INST   ",
     "RENDERER   ",
     "GAME       ",
     "TRANSFORM  ",
     "ENTITY     ",
-    "ENTITY_NODE",
+    "ENTITY NODE",
     "SCENE      "};
 
-u64 MMemory::TotalAllocated{0};
-u64 MMemory::TaggedAllocations[MEMORY_TAG_MAX_TAGS]{};
+u64 MMemory::TotalAllocated;
+u64 MMemory::TaggedAllocations[MEMORY_TAG_MAX_TAGS];
 
 MMemory::~MMemory()
 {

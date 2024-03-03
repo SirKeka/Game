@@ -67,7 +67,7 @@ public:
 };
 
 template<typename T>
-inline DArray<T>::DArray()
+MINLINE DArray<T>::DArray()
 :
 size(0),
 capacity(0),
@@ -75,7 +75,7 @@ capacity(0),
 ptrValue(nullptr/*reinterpret_cast<T*>(MMemory::Allocate(sizeof(T) * capacity, MEMORY_TAG_DARRAY))*/) {}
 
 template <typename T>
-DArray<T>::DArray(u64 lenght, const T &value)
+MINLINE DArray<T>::DArray(u64 lenght, const T &value)
 /*:
 size(lenght),
 capacity(lenght),
@@ -93,13 +93,13 @@ ptrValue(reinterpret_cast<T*>(MMemory::Allocate(sizeof(T) * capacity, MEMORY_TAG
 }
 
 template <typename T>
-DArray<T>::~DArray()
+MINLINE DArray<T>::~DArray()
 {
     if(this->capacity != 0) MMemory::Free(reinterpret_cast<void*>(ptrValue), sizeof(T) * capacity, MEMORY_TAG_DARRAY);
 }
 
 template <typename T>
-DArray<T>::DArray(const DArray &arr) 
+MINLINE DArray<T>::DArray(const DArray &arr) 
 : 
 size(arr.size),
 capacity(arr.capacity),
@@ -107,7 +107,7 @@ capacity(arr.capacity),
 ptrValue(arr.ptrValue) {}
 
 template <typename T>
-DArray<T>::DArray(DArray &&arr) :  size(arr.size), capacity(arr.capacity), /*mem(arr.mem),*/ ptrValue(arr.ptrValue)
+MINLINE DArray<T>::DArray(DArray &&arr) :  size(arr.size), capacity(arr.capacity), /*mem(arr.mem),*/ ptrValue(arr.ptrValue)
 {
     arr.size = 0;
     arr.capacity = 0;
@@ -116,33 +116,33 @@ DArray<T>::DArray(DArray &&arr) :  size(arr.size), capacity(arr.capacity), /*mem
 }
 
 template <typename T>
-T &DArray<T>::operator[](u64 index)
+MINLINE T &DArray<T>::operator[](u64 index)
 {
     if(index < 0 || index >= size) MERROR("Индекс за пределами этого массива! Длина: %i, индекс: %index", size, index);
     return ptrValue[index];
 }
 
 template <typename T>
-const T &DArray<T>::operator[](u64 index) const
+MINLINE const T &DArray<T>::operator[](u64 index) const
 {
     if(index < 0 || index >= size) MERROR("Индекс за пределами этого массива! Длина: %i, индекс: %index", size, index);
     return ptrValue[index];
 }
 
 template <typename T>
-inline T *DArray<T>::Data()
+MINLINE T *DArray<T>::Data()
 {
     return ptrValue;
 }
 
 template <typename T>
-inline const T *DArray<T>::Data() const
+MINLINE const T *DArray<T>::Data() const
 {   
     return ptrValue;
 }
 
 template <typename T>
-void DArray<T>::Reserve(const u64 &NewCap)
+MINLINE void DArray<T>::Reserve(const u64 &NewCap)
 {
     // TODO: добавить std::move()
     if (capacity == 0) {
@@ -159,34 +159,34 @@ void DArray<T>::Reserve(const u64 &NewCap)
 }
 
 template <typename T>
-inline constexpr u64 DArray<T>::Lenght() const noexcept
+MINLINE constexpr u64 DArray<T>::Lenght() const noexcept
 {
     return  this->size;
 }
 
 template <typename T>
-inline u64 DArray<T>::Capacity()
+MINLINE u64 DArray<T>::Capacity()
 {
     return this->capacity;
 }
 
 template <typename T>
-void DArray<T>::PushBack(const T &value)
+MINLINE void DArray<T>::PushBack(const T &value)
 {
     if(size == 0) Reserve(2);
-    if(size > capacity) Reserve(capacity * 2);
+    if(size == capacity) Reserve(capacity * 2);
     ptrValue[size] = value;
     size++;
 }
 
 template <typename T>
-void DArray<T>::PopBack()
+MINLINE void DArray<T>::PopBack()
 {
     if(size > 0) size--;
 }
 
 template <typename T>
-void DArray<T>::Insert(const T &value, u64 index)
+MINLINE void DArray<T>::Insert(const T &value, u64 index)
 {
     if (index >= size) MERROR("Индекс за пределами этого массива! Длина: %i, индекс: %index", size, index);
 
@@ -203,7 +203,7 @@ void DArray<T>::Insert(const T &value, u64 index)
 }
 
 template <typename T>
-void DArray<T>::PopAt(u64 index)
+MINLINE void DArray<T>::PopAt(u64 index)
 {
     if (index >= size) MERROR("Индекс за пределами этого массива! Длина: %i, индекс: %index", size, index);
 
@@ -219,7 +219,7 @@ void DArray<T>::PopAt(u64 index)
 }
 
 template <typename T>
-void DArray<T>::Resize(u64 NewSize, const T& value)
+MINLINE void DArray<T>::Resize(u64 NewSize, const T& value)
 {
     if(NewSize > capacity) {
         Reserve(NewSize);
