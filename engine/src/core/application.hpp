@@ -2,6 +2,7 @@
 
 #include "defines.hpp"
 
+#include "logger.hpp"
 #include "platform/platform.hpp"
 #include "core/mmemory.hpp"
 #include "core/event.hpp"
@@ -15,6 +16,7 @@
 class Game;
 
 struct ApplicationState {
+    Logger* logger;
     Input* Inputs;
     Event* Events;
     bool IsRunning;
@@ -28,6 +30,7 @@ struct ApplicationState {
     Clock clock;
     f64 LastTime;
     LinearAllocator SystemAllocator;
+
 };
 
 class Application

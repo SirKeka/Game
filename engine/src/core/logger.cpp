@@ -11,15 +11,11 @@
 
 Logger::~Logger()
 {
+    initialized = false;
 }
 
-bool Logger::InitializeLogging(u64& MemoryRequirement) 
+bool Logger::Initialize() 
 {
-    MemoryRequirement = sizeof(Logger);
-     if (this == 0) {
-        return true;
-    }
-
     initialized = true;
 
     // TODO: Удали это
@@ -33,16 +29,21 @@ bool Logger::InitializeLogging(u64& MemoryRequirement)
     return true;
 }
 
-void Logger::ShutdownLogging() 
+void Logger::Shutdown() 
 {
     // TODO: очистка журнала/запись записей в очереди.
-    ~Logger();
+    this->~Logger();
 }
 
-void *Logger::operator new(u64 size)
+/*void *Logger::operator new(u64 size)
 {
     return MMemory::Allocate(sizeof(Logger), );
 }
+
+void Logger::operator delete(void *ptr)
+{
+    return MMemory::Free(ptr,sizeof(Logger), );
+}*/
 
 void Logger::LogOutput(LogLevel level, const char* message, ...) 
 {
@@ -104,7 +105,7 @@ void Logger::LogOutput(LogLevel level, MString message, ...)
     }
 }
 
-void Logger::ReportAssertionFailure(const char* expression, const char* message, const char* file, i32 line) 
+void ReportAssertionFailure(const char* expression, const char* message, const char* file, i32 line) 
 {
-    LogOutput(LOG_LEVEL_FATAL, "Ошибка утверждения: %s, сообщение: '%s', в файле: %s, строка: %d\n", expression, message, file, line);
+    Logger::LogOutput(LOG_LEVEL_FATAL, "Ошибка утверждения: %s, сообщение: '%s', в файле: %s, строка: %d\n", expression, message, file, line);
 }

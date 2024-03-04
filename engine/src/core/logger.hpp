@@ -22,24 +22,24 @@ enum LogLevel {
     LOG_LEVEL_DEBUG = 4,
     LOG_LEVEL_TRACE = 5
 };
+
 class Logger
 {
 private:
     bool initialized;
 public:
-    Logger(/* args */);
+    Logger();
     ~Logger();
 
-    bool InitializeLogging(u64& MemoryRequirement);
-    void ShutdownLogging();
+    bool Initialize();
+    void Shutdown();
 
     MAPI static void LogOutput(LogLevel level, const char* message, ...);
     MAPI static void LogOutput(LogLevel level, MString message, ...);
 
-    MAPI void* operator new(u64 size);
-    MAPI void operator delete(void* ptr);
-private:
-    void ReportAssertionFailure(const char* expression, const char* message, const char* file, i32 line);
+    //MAPI void* operator new(u64 size);
+    //MAPI void operator delete(void* ptr);
+
 };
 
 // Регистрирует сообщение критического уровня.

@@ -1,8 +1,6 @@
 #include "application.hpp"
 #include "game_types.hpp"
 
-#include "logger.hpp"
-
 ApplicationState* Application::AppState;
 
 bool Application::ApplicationCreate(Game *GameInst)
@@ -22,7 +20,9 @@ bool Application::ApplicationCreate(Game *GameInst)
     AppState->SystemAllocator = LinearAllocator(SystemsAllocatorTotalSize);
 
     // Инициализируйте подсистемы.
-    InitializeLogging();
+    AppState->logger = new Logger();
+    AppState->logger->Initialize();
+
     AppState->Inputs = new Input();
 
     AppState->IsRunning = true;
@@ -65,8 +65,6 @@ bool Application::ApplicationCreate(Game *GameInst)
     }
 
     GameInst->OnResize(AppState->width, AppState->height);
-
-    AppState->initialized = true;
 
     return true;
 }
@@ -151,6 +149,7 @@ bool Application::ApplicationRun() {
     AppState->Render.Shutdown();
 
     AppState->Window->Close();
+    AppState->logger->Shutdown();
 
     return true;
 }
