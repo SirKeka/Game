@@ -1,6 +1,7 @@
 #include "mmemory.hpp"
 
-// TODO: Custom string lib
+#include "platform/platform.hpp"
+
 #include <cstring>
 #include <stdio.h>
 
@@ -31,8 +32,9 @@ MMemory::~MMemory()
 {
 }
 
-void MMemory::ShutDown()
+MINLINE void MMemory::Shutdown()
 {
+    this->~MMemory();
 }
 
 void *MMemory::Allocate(u64 bytes, MemoryTag tag)
@@ -112,4 +114,9 @@ MString MMemory::GetMemoryUsageStr()
     }
     MString Out = buffer;
     return Out;
+}
+
+void * MMemory::operator new(u64 size)
+{
+return ;
 }

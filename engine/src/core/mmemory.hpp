@@ -1,6 +1,7 @@
 #pragma once
 
 #include "defines.hpp"
+#include "memory/linear_allocator.hpp"
 #include "core/logger.hpp"
 #include "containers/mstring.hpp"
 //#include "containers/darray.hpp"
@@ -51,7 +52,7 @@ public:
     //MMemory(const MMemory&) = delete;
     //MMemory& operator=(MMemory&) = delete;
     ~MMemory(); /*noexcept*/ //= default;
-    void ShutDown();
+    void Shutdown();
     /// @brief Функция выделяет память
     /// @param bytes размер выделяемой памяти в байтах
     /// @param tag название(тег) для каких нужд используется память
@@ -99,6 +100,8 @@ public:
 
     static MString GetMemoryUsageStr();
     
+    void* operator new(u64 size);
+    void operator delete(void* ptr);
 };
 
 template <typename T>

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/mmemory.hpp"
+#include "defines.hpp"
 
 class MAPI LinearAllocator
 {

@@ -174,7 +174,7 @@ void *PlatformZeroMemory(void *block, u64 size) {
 }
 
 void *PlatformCopyMemory(void *dest, const void *source, u64 size) {
-    return memcpy(dest, source, size);
+    return memmove(dest, source, size);
 }
 
 void *PlatformSetMemory(void *dest, i32 value, u64 size) {

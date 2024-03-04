@@ -10,6 +10,8 @@ Game::Game(i16 StartPosX, i16 StartPosY, i16 StartWidth, i16 StartHeight, const 
     AppConfig.StartWidth = StartWidth;
     AppConfig.StartHeight = StartHeight;
     AppConfig.name = name;
+
+    State = nullptr;
 }
 
 bool Game::Initialize()

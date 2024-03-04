@@ -16,6 +16,8 @@
 class Game;
 
 struct ApplicationState {
+    LinearAllocator SystemAllocator;
+    MMemory* mem;
     Logger* logger;
     Input* Inputs;
     Event* Events;
@@ -29,7 +31,6 @@ struct ApplicationState {
     u32 height;
     Clock clock;
     f64 LastTime;
-    LinearAllocator SystemAllocator;
 
 };
 
@@ -45,7 +46,7 @@ public:
 
     MAPI bool ApplicationRun();
 
-    void ApplicationGetFramebufferSize(u32& width, u32& height);
+    static void ApplicationGetFramebufferSize(u32& width, u32& height);
 
     MAPI void* operator new(u64 size);
     MAPI void operator delete(void* ptr);

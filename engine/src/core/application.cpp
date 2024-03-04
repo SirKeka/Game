@@ -10,7 +10,7 @@ bool Application::ApplicationCreate(Game *GameInst)
         return false;
     }
 
-    GameInst->State = MMemory::TAllocate<Application>(sizeof(Application), MEMORY_TAG_APPLICATION);
+    GameInst->State->AppState = MMemory::TAllocate<ApplicationState>(sizeof(ApplicationState), MEMORY_TAG_APPLICATION);
     AppState = GameInst->State->AppState;
     AppState->GameInst = GameInst;
     AppState->IsRunning = false;
@@ -19,9 +19,14 @@ bool Application::ApplicationCreate(Game *GameInst)
     u64 SystemsAllocatorTotalSize = 64 * 1024 * 1024;  // 64 mb
     AppState->SystemAllocator = LinearAllocator(SystemsAllocatorTotalSize);
 
+    AppState->mem = new MMemory();
+
     // Инициализируйте подсистемы.
     AppState->logger = new Logger();
-    AppState->logger->Initialize();
+    if (!AppState->logger->Initialize()) { // AppState->logger->Initialize();
+        MERROR("Не удалось инициализировать систему ведения журнала; завершение работы.");
+        return false;
+    }
 
     AppState->Inputs = new Input();
 
@@ -150,6 +155,7 @@ bool Application::ApplicationRun() {
 
     AppState->Window->Close();
     AppState->logger->Shutdown();
+    AppState->mem->Shutdown();
 
     return true;
 }

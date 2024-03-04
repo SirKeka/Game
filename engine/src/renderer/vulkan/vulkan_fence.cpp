@@ -45,7 +45,7 @@ bool VulkanFenceWait(VulkanAPI *VkAPI, VulkanFence *fence, u64 TimeoutNs)
                 MWARN("vk_fence_wait - Таймаут");
                 break;
             case VK_ERROR_DEVICE_LOST:
-                MERROR("vk_fence_wait - VK_ERROR_DEVICE_LOST.");
+                MERROR("vk_fence_wait - VK_ERROR_DEVICE_LOST.");//
                 break;
             case VK_ERROR_OUT_OF_HOST_MEMORY:
                 MERROR("vk_fence_wait - VK_ERROR_OUT_OF_HOST_MEMORY.");

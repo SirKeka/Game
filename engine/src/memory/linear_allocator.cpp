@@ -1,5 +1,7 @@
 #include "linear_allocator.hpp"
 
+#include "core/mmemory.hpp"
+
 LinearAllocator::LinearAllocator(u64 TotalSize, void * memory)
 {
     if (this->TotalSize != 0) {

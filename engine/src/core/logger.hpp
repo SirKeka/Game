@@ -29,13 +29,12 @@ private:
     bool initialized;
 public:
     Logger();
-    ~Logger();
+    ~Logger() = default;
 
     bool Initialize();
     void Shutdown();
 
-    MAPI static void LogOutput(LogLevel level, const char* message, ...);
-    MAPI static void LogOutput(LogLevel level, MString message, ...);
+    MAPI static void Output(LogLevel level, MString message, ...);
 
     //MAPI void* operator new(u64 size);
     //MAPI void operator delete(void* ptr);
@@ -43,16 +42,16 @@ public:
 };
 
 // Регистрирует сообщение критического уровня.
-#define MFATAL(message, ...) Logger::LogOutput(LOG_LEVEL_FATAL, message, ##__VA_ARGS__);
+#define MFATAL(message, ...) Logger::Output(LOG_LEVEL_FATAL, message, ##__VA_ARGS__);
 
 #ifndef MERROR
 // Регистрирует сообщение об уровне ошибки.
-#define MERROR(message, ...) Logger::LogOutput(LOG_LEVEL_ERROR, message, ##__VA_ARGS__);
+#define MERROR(message, ...) Logger::Output(LOG_LEVEL_ERROR, message, ##__VA_ARGS__);
 #endif
 
 #if LOG_WARN_ENABLED == 1
 // Регистрирует сообщение уровня предупреждения.
-#define MWARN(message, ...) Logger::LogOutput(LOG_LEVEL_WARN, message, ##__VA_ARGS__);
+#define MWARN(message, ...) Logger::Output(LOG_LEVEL_WARN, message, ##__VA_ARGS__);
 #else
 // Ничего не делает, если LOG_WARN_ENABLED != 1
 #define MWARN(message, ...)
@@ -60,7 +59,7 @@ public:
 
 #if LOG_INFO_ENABLED == 1
 // Регистрирует сообщение информационного уровня.
-#define MINFO(message, ...) Logger::LogOutput(LOG_LEVEL_INFO, message, ##__VA_ARGS__);
+#define MINFO(message, ...) Logger::Output(LOG_LEVEL_INFO, message, ##__VA_ARGS__);
 #else
 // Does nothing when LOG_INFO_ENABLED != 1
 #define MINFO(message, ...)
@@ -68,7 +67,7 @@ public:
 
 #if LOG_DEBUG_ENABLED == 1
 // Регистрирует сообщение уровня отладки.
-#define MDEBUG(message, ...) Logger::LogOutput(LOG_LEVEL_DEBUG, message, ##__VA_ARGS__);
+#define MDEBUG(message, ...) Logger::Output(LOG_LEVEL_DEBUG, message, ##__VA_ARGS__);
 #else
 // Ничего не делает, если LOG_DEBUG_ENABLED != 1
 #define MDEBUG(message, ...)
@@ -76,7 +75,7 @@ public:
 
 #if LOG_TRACE_ENABLED == 1
 // Регистрирует сообщение уровня трассировки.
-#define MTRACE(message, ...) Logger::LogOutput(LOG_LEVEL_TRACE, message, ##__VA_ARGS__);
+#define MTRACE(message, ...) Logger::Output(LOG_LEVEL_TRACE, message, ##__VA_ARGS__);
 #else
 // Ничего не делает, если LOG_TRACE_ENABLED != 1
 #define MTRACE(message, ...)

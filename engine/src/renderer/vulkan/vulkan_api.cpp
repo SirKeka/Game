@@ -110,7 +110,7 @@ bool VulkanAPI::Initialize(MWindow* window, const char* ApplicationName)
     // TODO: пользовательский allocator.
     allocator = NULL;
 
-    ApplicationGetFramebufferSize(CachedFramebufferWidth, CachedFramebufferHeight);
+    Application::ApplicationGetFramebufferSize(CachedFramebufferWidth, CachedFramebufferHeight);
     FramebufferWidth = (CachedFramebufferWidth != 0) ? CachedFramebufferWidth : 800;
     FramebufferHeight = (CachedFramebufferHeight != 0) ? CachedFramebufferHeight : 600;
     CachedFramebufferWidth = 0;

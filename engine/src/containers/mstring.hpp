@@ -26,7 +26,7 @@ public:
 
     /// @param str константная строка
     /// @return длину(количество символов в строке)
-    MAPI u64 Length(const char* s);
+    MAPI u64 Length();
     //MAPI char* Copy(const char* s);
 
     /// @return строку типа си

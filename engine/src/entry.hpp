@@ -14,7 +14,6 @@ extern bool CreateGame(Game*& OutGame);
 int main(void) {
     system("chcp 65001 > nul"); // для отображения русских символов в консоли
 
-    MMemory* mem = new MMemory(); //Allocate(sizeof(Game), MEMORY_TAG_GAME);
     // Запросите экземпляр игры из приложения.
     Game* GameInst;
     
@@ -28,20 +27,18 @@ int main(void) {
         MFATAL("The game's function pointers must be assigned!");
         return -2;
     }*/
-
+    
     // Инициализация.
-    if (!ApplicationCreate(GameInst)) {
+    if (!GameInst->State->ApplicationCreate(GameInst)) {
         MINFO("Приложение не удалось создать!");
         return 1;
     }
 
     // Начать игровой цикл.
-    if(!ApplicationRun()) {
+    if(!GameInst->State->ApplicationRun()) {
         MINFO("Приложение не завершило работу корректно.");
         return 2;
     }
-
-    mem->ShutDown();
 
     return 0;
 }

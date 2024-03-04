@@ -56,7 +56,7 @@ bool MString::operator==(const MString &rhs)
     return true;
 }
 
-u64 MString::Length(const char *s)
+u64 MString::Length()
 {
     return lenght;
 }
