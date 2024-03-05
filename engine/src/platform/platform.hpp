@@ -27,6 +27,9 @@ public:
     // Получение времени
     static f64 PlatformGetAbsoluteTime();
 
+    // Настройка часов
+    static void ClockSetup();
+
     void* operator new(u64 size);
 };
 

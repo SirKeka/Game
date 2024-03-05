@@ -104,15 +104,16 @@ bool MWindow::Create()
         NULL,                // Дескриптор родительского окна
         NULL,                // Дескриптор меню окна
         state->HInstance,    // Дескриптор экземпляра программы
-        NULL);
+        NULL
+    );
 
-        if (handle == 0) {
-        MessageBoxA(NULL, "Не удалось создать окно!", "Ошибка!", MB_ICONEXCLAMATION | MB_OK);
+    if (handle == 0) {
+    MessageBoxA(NULL, "Не удалось создать окно!", "Ошибка!", MB_ICONEXCLAMATION | MB_OK);
 
-        MFATAL("Не удалось создать окно!");
-        return FALSE;
+    MFATAL("Не удалось создать окно!");
+    return FALSE;
     } else {
-        state->hwnd = handle;
+    state->hwnd = handle;
     }
 
     // Показывает окно
@@ -123,11 +124,7 @@ bool MWindow::Create()
     ShowWindow(state->hwnd, ShowWindowCommandFlags);
     //UpdateWindow(state->hwnd);
 
-    // Настройка часов
-    LARGE_INTEGER Frequency;
-    QueryPerformanceFrequency(&Frequency);          // Тактовая чистота процессора
-    ClockFrequency = 1.0 / (f64)Frequency.QuadPart;
-    QueryPerformanceCounter(&StartTime);
+    ClockSetup();
 
     return true;
 
@@ -156,9 +153,21 @@ bool MWindow::Messages()
 
 f64 MWindow::PlatformGetAbsoluteTime()
 {
+    if (!ClockFrequency) {
+        ClockSetup();
+    }
+
     LARGE_INTEGER NowTime;
     QueryPerformanceCounter(&NowTime);
     return (f64)NowTime.QuadPart * ClockFrequency;
+}
+
+void MWindow::ClockSetup()
+{
+    LARGE_INTEGER Frequency;
+    QueryPerformanceFrequency(&Frequency);          // Тактовая чистота процессора
+    ClockFrequency = 1.0 / (f64)Frequency.QuadPart;
+    QueryPerformanceCounter(&StartTime);
 }
 
 void *MWindow::operator new(u64 size)
@@ -269,30 +278,25 @@ LRESULT CALLBACK Win32MessageProcessor(HWND hwnd, u32 msg, WPARAM w_param, LPARA
             bool pressed = (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN);
             Keys key = static_cast<Keys> (w_param);
 
-            // Альтернативные клавиши
+            // Проверьте наличие расширенного кода сканирования.
+            bool IsExtended = (HIWORD(l_param) & KF_EXTENDED) == KF_EXTENDED;
             if (w_param == VK_MENU) {
-                if (GetKeyState(VK_RMENU) & 0x8000) {
-                    key = KEY_RALT;
-                } else if (GetKeyState(VK_LMENU) & 0x8000) {
-                    key = KEY_LALT;
-                }
+                key = IsExtended ? KEY_RALT : KEY_LALT;
             } else if (w_param == VK_SHIFT) {
-                if (GetKeyState(VK_RSHIFT) & 0x8000) {
-                    key = KEY_RSHIFT;
-                } else if (GetKeyState(VK_LSHIFT) & 0x8000) {
-                    key = KEY_LSHIFT;
-                }
+                // Досадно, что KF_EXTENDED не установлен для клавиш shift.
+                u32 LeftShift = MapVirtualKey(VK_LSHIFT, MAPVK_VK_TO_VSC);
+                u32 scancode = ((l_param & (0xFF << 16)) >> 16);
+                key = scancode == LeftShift ? KEY_LSHIFT : KEY_RSHIFT;
             } else if (w_param == VK_CONTROL) {
-                if (GetKeyState(VK_RCONTROL) & 0x8000) {
-                    key = KEY_RCONTROL;
-                } else if (GetKeyState(VK_LCONTROL) & 0x8000) {
-                    key = KEY_LCONTROL;
-                }
+                key = IsExtended ? KEY_RCONTROL : KEY_LCONTROL;
             }
 
             // Перейдите к подсистеме ввода для обработки.
             Input::InputProcessKey(key, pressed);
-        } break;
+
+            // Верните 0, чтобы предотвратить поведение окна по умолчанию при некоторых нажатиях клавиш, таких как alt.
+            return 0;
+        }  
         case WM_MOUSEMOVE: {
             // Mouse move
             i16 xPos = GET_X_LPARAM(l_param);

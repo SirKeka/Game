@@ -63,28 +63,28 @@ bool Input::WasKeyUp(Keys key)
 
 void Input::InputProcessKey(Keys key, bool pressed)
 {
-    if (key == KEY_LALT) {
-        MINFO("Левая клавиша alt нажата.");
-    } else if (key == KEY_RALT) {
-        MINFO("Правая клавиша alt нажата.");
-    }
-
-    if (key == KEY_LCONTROL) {
-        MINFO("Нажата левая клавиша ctrl.");
-    } else if (key == KEY_RCONTROL) {
-        MINFO("Нажата правая клавиша ctrl.");
-    }
-
-    if (key == KEY_LSHIFT) {
-        MINFO("Нажата левая клавиша shift.");
-    } else if (key == KEY_RSHIFT) {
-        MINFO("Нажата правая клавиша shift.");
-    }
-
     // Обрабатывайте это только в том случае, если состояние действительно изменилось.
     if (InState.KeyboardCurrent.keys[key] != pressed) {
         // Обновить внутреннее состояние.
         InState.KeyboardCurrent.keys[key] = pressed;
+
+        if (key == KEY_LALT) {
+            MINFO("Левая клавиша alt %s.", pressed ? "нажата" : "отпущена");
+        } else if (key == KEY_RALT) {
+            MINFO("Правая клавиша alt %s.", pressed ? "нажата" : "отпущена");
+        }
+
+        if (key == KEY_LCONTROL) {
+            MINFO("Левая клавиша ctrl %s.", pressed ? "нажата" : "отпущена");
+        } else if (key == KEY_RCONTROL) {
+            MINFO("Правая клавиша ctrl %s.", pressed ? "нажата" : "отпущена");
+        }
+
+        if (key == KEY_LSHIFT) {
+            MINFO("Левая клавиша shift %s.", pressed ? "нажата" : "отпущена");
+        } else if (key == KEY_RSHIFT) {
+            MINFO("Правая клавиша shift %s.", pressed ? "нажата" : "отпущена");
+        }
 
         // Запустите событие для немедленной обработки.
         EventContext context;
