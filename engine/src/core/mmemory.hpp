@@ -34,6 +34,8 @@ enum MemoryTag
 
 class MAPI MMemory
 {
+using LinearAllocator = WrapLinearAllocator<MMemory>;
+
 private:
     /*struct SharPtr
     {
@@ -46,6 +48,7 @@ private:
     
     static u64 TotalAllocated;
     static u64 TaggedAllocations[MEMORY_TAG_MAX_TAGS];
+    static u64 AllocCount;
     
 public:
     MMemory() = default;
@@ -95,13 +98,15 @@ public:
 
     //MAPI void* SetMemory(void* dest, i32 value, u64 bytes);
 
+    static u64 GetMemoryAllocCount();
+
     template<class U, class... Args>
     void Construct (U* ptr, Args && ...args);
 
     static MString GetMemoryUsageStr();
     
     void* operator new(u64 size);
-    void operator delete(void* ptr);
+    //void operator delete(void* ptr);
 };
 
 template <typename T>

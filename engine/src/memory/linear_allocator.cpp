@@ -4,7 +4,7 @@
 
 LinearAllocator::LinearAllocator(u64 TotalSize, void * memory)
 {
-    if (this->TotalSize != 0) {
+    if (this->TotalSize == 0) {
         this->TotalSize = TotalSize;
         this->allocated = 0;
         this->OwnsMemory = memory == nullptr;

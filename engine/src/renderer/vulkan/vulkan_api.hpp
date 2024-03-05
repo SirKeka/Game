@@ -125,6 +125,8 @@ struct VulkanFence {
 
 class VulkanAPI : public RendererType
 {
+using LinearAllocator = WrapLinearAllocator<VulkanAPI>;
+
 public:
     // Текущая ширина фреймбуфера.
     u32 FramebufferWidth{0};
@@ -179,7 +181,7 @@ public:
     bool EndFrame(f32 DeltaTime) override;
 
     void* operator new(u64 size);
-    void operator delete(void* ptr);
+    //void operator delete(void* ptr);
 
     i32 FindMemoryIndex(u32 TypeFilter, VkMemoryPropertyFlags PropertyFlags);
 

@@ -80,10 +80,10 @@ bool Renderer::DrawFrame(RenderPacket *packet)
 
 void *Renderer::operator new(u64 size)
 {
-    return MMemory::Allocate(size, MEMORY_TAG_RENDERER);
+    return LinearAllocator::Allocate(size);
 }
 
-void Renderer::operator delete(void *ptr)
+/*void Renderer::operator delete(void *ptr)
 {
     MMemory::Free(ptr,sizeof(Renderer), MEMORY_TAG_RENDERER);
-}
+}*/

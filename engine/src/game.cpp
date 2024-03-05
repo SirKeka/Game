@@ -22,6 +22,12 @@ bool Game::Initialize()
 
 bool Game::Update(f32 DeltaTime)
 {
+    static u64 AllocCount = 0;
+    u64 PrevAllocCount = AllocCount;
+    AllocCount = MMemory::GetMemoryAllocCount(); 
+    if (Input::IsKeyUp(KEY_M) && Input::WasKeyDown(KEY_M)) {
+        MDEBUG("Распределено: %llu (%llu в этом кадре)", AllocCount, AllocCount - PrevAllocCount);
+    }
     return true;
 }
 
@@ -40,9 +46,7 @@ Game::~Game()
 }
 
 void *Game::operator new(u64 size)
-{
-    MDEBUG("Выделено: %d", size, "байт");
-    
+{   
     return MMemory::Allocate(size, MEMORY_TAG_GAME);
 }
 

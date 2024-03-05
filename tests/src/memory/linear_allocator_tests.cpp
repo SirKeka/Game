@@ -8,8 +8,7 @@
 #include <memory/linear_allocator.hpp>
 
 u8 LinearAllocatorShouldCreateAndDestroy() {
-    LinearAllocator alloc;
-    alloc = LinearAllocator(sizeof(u64), 0);
+    LinearAllocator alloc = LinearAllocator(sizeof(u64));
 
     ExpectShouldNotBe(0, alloc.memory);
     ExpectShouldBe(sizeof(u64), alloc.TotalSize);

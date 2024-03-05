@@ -48,6 +48,8 @@ struct EventSystemState {
 
 class Event
 {
+using LinearAllocator = WrapLinearAllocator<Event>;
+
 private:
     static bool IsInitialized;
     static EventSystemState state;
@@ -83,6 +85,8 @@ public:
     /// @param data Данные о событии.
     /// @return TRUE, если обработано, иначе FALSE.
     MAPI static bool Fire(u16 code, void* sender, EventContext context);
+
+    void* operator new(u64 size);
 };
 
 

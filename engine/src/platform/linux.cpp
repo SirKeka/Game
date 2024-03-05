@@ -238,7 +238,7 @@ bool Messages() {
 
                 // Переходим к подсистеме ввода.
                 if (mouse_button != BUTTON_MAX_BUTTONS) {
-                    Input::InputProcessButton(mouse_button, pressed);
+                    Input::ProcessButton(mouse_button, pressed);
                 }
             }
             case XCB_MOTION_NOTIFY:

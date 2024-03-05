@@ -450,13 +450,13 @@ bool VulkanAPI::EndFrame(f32 DeltaTime)
 
 void *VulkanAPI::operator new(u64 size)
 {
-    return MMemory::Allocate(size, MEMORY_TAG_RENDERER);
+    return LinearAllocator::Allocate(size);
 }
 
-void VulkanAPI::operator delete(void *ptr)
+/*void VulkanAPI::operator delete(void *ptr)
 {
     MMemory::Free(ptr,sizeof(VulkanAPI), MEMORY_TAG_RENDERER);
-}
+}*/
 
 VKAPI_ATTR VkBool32 VKAPI_CALL VkDebugCallback(
     VkDebugUtilsMessageSeverityFlagBitsEXT MessageSeverity,

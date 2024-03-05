@@ -161,6 +161,11 @@ f64 MWindow::PlatformGetAbsoluteTime()
     return (f64)NowTime.QuadPart * ClockFrequency;
 }
 
+void *MWindow::operator new(u64 size)
+{
+    return LinearAllocator::Allocate(size);
+}
+
 void *PlatformAllocate(u64 size, bool aligned) {
     return malloc(size);
 }
@@ -329,7 +334,7 @@ LRESULT CALLBACK Win32MessageProcessor(HWND hwnd, u32 msg, WPARAM w_param, LPARA
             }
             // Переходим к подсистеме ввода.
             if (MouseButtons != BUTTON_MAX_BUTTONS) {
-                Input::InputProcessButton(MouseButtons, pressed);
+                Input::ProcessButton(MouseButtons, pressed);
             }
         } break;
     }

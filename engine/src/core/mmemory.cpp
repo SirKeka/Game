@@ -27,6 +27,7 @@ static const char* MemoryTagStrings[MEMORY_TAG_MAX_TAGS] = {
 
 u64 MMemory::TotalAllocated;
 u64 MMemory::TaggedAllocations[MEMORY_TAG_MAX_TAGS];
+u64 MMemory::AllocCount;
 
 MMemory::~MMemory()
 {
@@ -45,6 +46,7 @@ void *MMemory::Allocate(u64 bytes, MemoryTag tag)
 
     TotalAllocated += bytes;
     TaggedAllocations[tag] += bytes;
+    AllocCount++;
 
     u8* ptrRawMem = new u8[bytes];
     
@@ -60,6 +62,7 @@ void MMemory::Free(void *block, u64 bytes, MemoryTag tag)
 
         TotalAllocated -= bytes;
         TaggedAllocations[tag] -= bytes;
+        AllocCount--;
 
         u8* ptrRawMem = reinterpret_cast<u8*>(block);
         delete[] ptrRawMem;
@@ -75,6 +78,11 @@ void* MMemory::ZeroMem(void* block, u64 bytes)
 void MMemory::CopyMem(void *dest, const void *source, u64 bytes)
 {
     std::memmove(dest, source, bytes);
+}
+
+u64 MMemory::GetMemoryAllocCount()
+{
+    return AllocCount;
 }
 
 template <class U, class... Args>
@@ -118,5 +126,5 @@ MString MMemory::GetMemoryUsageStr()
 
 void * MMemory::operator new(u64 size)
 {
-return ;
+    return LinearAllocator::Allocate(size);
 }

@@ -1,5 +1,7 @@
 #include "event.hpp"
 
+#include "memory/linear_allocator.hpp"
+
 // Внутреннее состояние системы событий.
 bool Event::IsInitialized = false;
 EventSystemState Event::state;
@@ -105,4 +107,9 @@ bool Event::Fire(u16 code, void *sender, EventContext context)
 
     // Not found.
     return false;
+}
+
+void *Event::operator new(u64 size)
+{
+    return LinearAllocator::Allocate(size);
 }

@@ -24,7 +24,7 @@ struct ApplicationState {
     bool IsRunning;
     bool IsSuspended;
     MWindow* Window;
-    Renderer Render;
+    Renderer* Render;
     Game* GameInst;
     
     u32 width;

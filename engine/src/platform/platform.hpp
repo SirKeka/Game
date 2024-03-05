@@ -6,6 +6,8 @@
 
 class MWindow
 {
+using LinearAllocator = WrapLinearAllocator<MWindow>;
+
 public:
     void* InternalState;
 private:
@@ -24,6 +26,8 @@ public:
     bool Messages();
     // Получение времени
     static f64 PlatformGetAbsoluteTime();
+
+    void* operator new(u64 size);
 };
 
 // Функции управления памятью--------------------------------------------------------------------------------------------------

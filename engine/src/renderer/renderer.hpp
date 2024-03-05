@@ -3,12 +3,15 @@
 #include "defines.hpp"
 
 #include "renderer_types.hpp"
+#include "memory/linear_allocator.hpp"
 
 struct StaticMeshData;
 struct PlatformState;
 
 class Renderer
 {
+using LinearAllocator = WrapLinearAllocator<Renderer>;
+
 private:
     static RendererType* ptrRenderer;
 public:
@@ -27,6 +30,6 @@ public:
     bool DrawFrame(RenderPacket* packet);
 
     void* operator new(u64 size);
-    void operator delete(void* ptr);
+    // void operator delete(void* ptr);
 };
 

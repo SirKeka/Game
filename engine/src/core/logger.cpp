@@ -35,12 +35,12 @@ void Logger::Shutdown()
     this->~Logger();
 }
 
-/*void *Logger::operator new(u64 size)
+void *Logger::operator new(u64 size)
 {
-    return MMemory::Allocate(sizeof(Logger), );
+    return LinearAllocator::Allocate(size);
 }
 
-void Logger::operator delete(void *ptr)
+/*void Logger::operator delete(void *ptr)
 {
     return MMemory::Free(ptr,sizeof(Logger), );
 }*/

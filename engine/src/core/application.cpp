@@ -56,9 +56,9 @@ bool Application::ApplicationCreate(Game *GameInst)
     }
     else AppState->Window->Create();
 
-    AppState->Render = Renderer();
+    AppState->Render = new Renderer();
     // Запуск рендерера
-    if (!AppState->Render.Initialize(AppState->Window, GameInst->AppConfig.name, RENDERER_TYPE_VULKAN)) {
+    if (!AppState->Render->Initialize(AppState->Window, GameInst->AppConfig.name, RENDERER_TYPE_VULKAN)) {
         MFATAL("Не удалось инициализировать средство визуализации. Прерывание приложения.");
         return FALSE;
     }
@@ -112,7 +112,7 @@ bool Application::ApplicationRun() {
             // TODO: refactor packet creation
             RenderPacket packet;
             packet.DeltaTime = delta;
-            AppState->Render.DrawFrame(&packet);
+            AppState->Render->DrawFrame(&packet);
 
             // Выясните, сколько времени занял кадр и, если ниже
             f64 FrameEndTime = MWindow::PlatformGetAbsoluteTime();
@@ -151,7 +151,7 @@ bool Application::ApplicationRun() {
     Event::Unregister(EVENT_CODE_RESIZED, nullptr, ApplicationOnResized);
     AppState->Events->Shutdown();
     AppState->Inputs->~Input(); // ShutDown
-    AppState->Render.Shutdown();
+    AppState->Render->Shutdown();
 
     AppState->Window->Close();
     AppState->logger->Shutdown();
@@ -243,7 +243,7 @@ bool Application::ApplicationOnResized(u16 code, void *sender, void *ListenerIns
                     AppState->IsSuspended = false;
                 }
                 AppState->GameInst->OnResize(width, height);
-                AppState->Render.OnResized(width, height);
+                AppState->Render->OnResized(width, height);
             }
         }
     }

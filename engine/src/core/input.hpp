@@ -2,6 +2,8 @@
 
 #include "defines.hpp"
 
+#include "memory/linear_allocator.hpp"
+
 enum Buttons {
     BUTTON_LEFT,
     BUTTON_RIGHT,
@@ -164,6 +166,8 @@ struct InputState {
 
 class Input
 {
+using LinearAllocator = WrapLinearAllocator<Input>;
+
 private:
     // struct InputState;
     static bool initialized;
@@ -179,22 +183,24 @@ void InputUpdate(f64 DeltaTime);
 
 // ввод с клавиатуры
 
-MAPI bool InputIsKeyDown(Keys key);
-MAPI bool InputIsKeyUp(Keys key);
-MAPI bool InputWasKeyDown(Keys key);
-MAPI bool InputWasKeyUp(Keys key);
+MAPI static bool IsKeyDown(Keys key);
+MAPI static bool IsKeyUp(Keys key);
+MAPI static bool WasKeyDown(Keys key);
+MAPI static bool WasKeyUp(Keys key);
 
 static void InputProcessKey(Keys key, bool pressed);
 
 // ввод с помощью мыши
 MAPI bool InputIsButtonDown(Buttons button);
 MAPI bool InputIsButtonUp(Buttons button);
-MAPI bool InputWasButtonDown(Buttons button);
+MAPI bool WasButtonDown(Buttons button);
 MAPI bool InputWasButtonUp(Buttons button);
 MAPI void InputGetMousePosition(i16& x, i16& y);
 MAPI void InputGetPreviousMousePosition(i16& x, i16& y);
 
-static void InputProcessButton(Buttons button, bool pressed);
+static void ProcessButton(Buttons button, bool pressed);
 static void InputProcessMouseMove(i16 x, i16 y);
 static void InputProcessMouseWheel(i8 z_delta);
+
+void* operator new(u64 size);
 };

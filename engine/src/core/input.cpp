@@ -29,7 +29,7 @@ void Input::InputUpdate(f64 DeltaTime)
     }
 }
 
-bool Input::InputIsKeyDown(Keys key)
+bool Input::IsKeyDown(Keys key)
 {
     if (!initialized) {
         return false;
@@ -37,7 +37,7 @@ bool Input::InputIsKeyDown(Keys key)
     return InState.KeyboardCurrent.keys[key] == true;
 }
 
-bool Input::InputIsKeyUp(Keys key)
+bool Input::IsKeyUp(Keys key)
 {
     if (!initialized) {
         return true;
@@ -45,7 +45,7 @@ bool Input::InputIsKeyUp(Keys key)
     return InState.KeyboardCurrent.keys[key] == false;
 }
 
-bool Input::InputWasKeyDown(Keys key)
+bool Input::WasKeyDown(Keys key)
 {
     if (!initialized) {
         return false;
@@ -53,7 +53,7 @@ bool Input::InputWasKeyDown(Keys key)
     return InState.KeyboardPrevious.keys[key] == true;
 }
 
-bool Input::InputWasKeyUp(Keys key)
+bool Input::WasKeyUp(Keys key)
 {
     if (!initialized) {
         return true;
@@ -109,7 +109,7 @@ bool Input::InputIsButtonUp(Buttons button)
     return InState.MouseCurrent.Buttons[button] == false;
 }
 
-bool Input::InputWasButtonDown(Buttons button)
+bool Input::WasButtonDown(Buttons button)
 {
     if (!initialized) {
         return false;
@@ -147,7 +147,7 @@ void Input::InputGetPreviousMousePosition(i16& x, i16& y)
     y = InState.MousePrevious.PosY;
 }
 
-void Input::InputProcessButton(Buttons button, bool pressed)
+void Input::ProcessButton(Buttons button, bool pressed)
 {
     // Если состояние изменилось, создайте событие.
     if (InState.MouseCurrent.Buttons[button] != pressed) {
@@ -187,4 +187,9 @@ void Input::InputProcessMouseWheel(i8 z_delta)
     EventContext context;
     context.data.u8[0] = z_delta;
     Event::Fire(EVENT_CODE_MOUSE_WHEEL, 0, context);
+}
+
+void *Input::operator new(u64 size)
+{
+    return LinearAllocator::Allocate(size);
 }
