@@ -12,36 +12,36 @@ namespace VulkanShadersUtil
                             VulkanShaderStage *ShaderStages)
     {
         // Имя файла сборки.
-        char file_name[512];
-        StringFormat(file_name, "assets/shaders/%s.%s.spv", name, TypeStr);
+        char FileName[512];
+        StringFormat(FileName, "assets/shaders/%s.%s.spv", name, TypeStr);
 
         MMemory::ZeroMem(&ShaderStages[StageIndex].CreateInfo, sizeof(VkShaderModuleCreateInfo));
         ShaderStages[StageIndex].CreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 
         // Получить дескриптор файла.
-        file_handle handle;
-        if (!filesystem_open(file_name, FILE_MODE_READ, true, &handle)) {
-            MERROR("Unable to read shader module: %s.", file_name);
+        FileHandle handle;
+        if (!FilesystemOpen(FileName, FILE_MODE_READ, true, &handle)) {
+            MERROR("Unable to read shader module: %s.", FileName);
             return false;
         }
 
     // Прочитайте весь файл как двоичный.
     u64 size = 0;
-    u8* file_buffer = 0;
-    if (!filesystem_read_all_bytes(&handle, &file_buffer, &size)) {
-        MERROR("Unable to binary read shader module: %s.", file_name);
+    u8* FileBuffer = 0;
+    if (!FilesystemReadAllBytes(&handle, &FileBuffer, &size)) {
+        MERROR("Невозможно выполнить двоичное чтение модуля шейдера.: %s.", FileName);
         return false;
     }
     ShaderStages[StageIndex].CreateInfo.codeSize = size;
-    ShaderStages[StageIndex].CreateInfo.pCode = (u32*)file_buffer;
+    ShaderStages[StageIndex].CreateInfo.pCode = (u32*)FileBuffer;
 
     // Закройте файл.
-    filesystem_close(&handle);
+    FilesystemClose(&handle);
 
     VK_CHECK(vkCreateShaderModule(
-        context->device.logical_device,
+        VkAPI->Device.LogicalDevice,
         &ShaderStages[StageIndex].CreateInfo,
-        context->allocator,
+        VkAPI->allocator,
         &ShaderStages[StageIndex].handle));
 
     // Информация о стадии шейдера
@@ -51,9 +51,9 @@ namespace VulkanShadersUtil
     ShaderStages[StageIndex].ShaderStageCreateInfo.module = ShaderStages[StageIndex].handle;
     ShaderStages[StageIndex].ShaderStageCreateInfo.pName = "main";
 
-    if (file_buffer) {
-        MMemory::TFree<u8>(file_buffer, size, MEMORY_TAG_STRING);
-        file_buffer = 0;
+    if (FileBuffer) {
+        MMemory::TFree<u8>(FileBuffer, size, MEMORY_TAG_STRING);
+        FileBuffer = 0;
     }
 
     return true;
