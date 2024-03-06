@@ -177,10 +177,10 @@ void create(VulkanAPI *VkAPI, u32 width, u32 height, VulkanSwapchain *swapchain)
     swapchain->ImageCount = 0;
     VK_CHECK(vkGetSwapchainImagesKHR(VkAPI->Device.LogicalDevice, swapchain->handle, &swapchain->ImageCount, 0));
     if (!swapchain->images) {
-        swapchain->images = MMemory::TAllocate<VkImage>(sizeof(VkImage) * swapchain->ImageCount, MEMORY_TAG_RENDERER);
+        swapchain->images = MMemory::TAllocate<VkImage>(swapchain->ImageCount, MEMORY_TAG_RENDERER);
     }
     if (!swapchain->views) {
-        swapchain->views = MMemory::TAllocate<VkImageView>(sizeof(VkImageView) * swapchain->ImageCount, MEMORY_TAG_RENDERER);
+        swapchain->views = MMemory::TAllocate<VkImageView>(swapchain->ImageCount, MEMORY_TAG_RENDERER);
     }
     VK_CHECK(vkGetSwapchainImagesKHR(VkAPI->Device.LogicalDevice, swapchain->handle, &swapchain->ImageCount, swapchain->images));
 

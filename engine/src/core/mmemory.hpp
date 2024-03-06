@@ -63,7 +63,7 @@ public:
     static void* Allocate(u64 bytes, MemoryTag tag);
 
     template<typename T>
-    static T* TAllocate(u64 bytes, MemoryTag tag);
+    static T* TAllocate(u64 size, MemoryTag tag);
 
     /// @brief Функция освобождает память
     /// @param block указатель на блок памяти, который нужно освободить
@@ -110,18 +110,18 @@ public:
 };
 
 template <typename T>
-MINLINE T *MMemory::TAllocate(u64 bytes, MemoryTag tag)
+MINLINE T *MMemory::TAllocate(u64 size, MemoryTag tag)
 {
     if (tag == MEMORY_TAG_UNKNOWN) {
         MWARN("allocate вызывается с использованием MEMORY_TAG_UNKNOWN. Переклассифицировать это распределение.");
     }
 
-    TotalAllocated += bytes;
-    TaggedAllocations[tag] += bytes;
+    TotalAllocated += size * sizeof(T);
+    TaggedAllocations[tag] += size * sizeof(T);
 
-    u8* ptrRawMem = new u8[bytes];
+    T* ptrRawMem = new T[size];
     
-    return reinterpret_cast<T*> (ptrRawMem);
+    return ptrRawMem;
 }
 
 template <typename T>

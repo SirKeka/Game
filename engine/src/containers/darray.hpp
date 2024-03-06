@@ -85,7 +85,7 @@ ptrValue(reinterpret_cast<T*>(MMemory::Allocate(sizeof(T) * capacity, MEMORY_TAG
     if(lenght > 0) {
         this->size = lenght;
         this->capacity = lenght;
-        ptrValue = MMemory::TAllocate<T>(sizeof(T) * capacity, MEMORY_TAG_DARRAY);
+        ptrValue = MMemory::TAllocate<T>(capacity, MEMORY_TAG_DARRAY);
         for (u64 i = 0; i < lenght; i++) {
             ptrValue[i] = value;
         }
@@ -146,7 +146,7 @@ MINLINE void DArray<T>::Reserve(const u64 &NewCap)
 {
     // TODO: добавить std::move()
     if (capacity == 0) {
-        ptrValue = MMemory::TAllocate<T>(sizeof(T) * NewCap, MEMORY_TAG_DARRAY);
+        ptrValue = MMemory::TAllocate<T>(NewCap, MEMORY_TAG_DARRAY);
         capacity = NewCap;
     }
     else if (NewCap > capacity) {

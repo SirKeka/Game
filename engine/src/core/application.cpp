@@ -10,7 +10,7 @@ bool Application::ApplicationCreate(Game *GameInst)
         return false;
     }
 
-    GameInst->State->AppState = MMemory::TAllocate<ApplicationState>(sizeof(ApplicationState), MEMORY_TAG_APPLICATION);
+    GameInst->State->AppState = MMemory::TAllocate<ApplicationState>(1, MEMORY_TAG_APPLICATION);
     AppState = GameInst->State->AppState;
     AppState->GameInst = GameInst;
     AppState->IsRunning = false;

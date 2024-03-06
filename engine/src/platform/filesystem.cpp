@@ -1,0 +1,127 @@
+#include "filesystem.hpp"
+
+#include "core/logger.hpp"
+#include "core/mmemory.hpp"
+
+#include <iostream>
+#include <string.h>
+#include <sys/stat.h>
+
+bool Filesystem::Exists(const char *path)
+{
+    struct stat buffer;
+    return stat(path, &buffer) == 0;
+}
+
+bool Filesystem::Open(const char *path, FileModes mode, bool binary, FileHandle *OutHandle)
+{
+    OutHandle->IsValid = false;
+    OutHandle->handle = 0;
+    MString ModeStr;
+
+    if ((mode & FILE_MODE_READ) != 0 && (mode & FILE_MODE_WRITE) != 0) {
+        ModeStr = binary ? "w+b" : "w+";
+    } else if ((mode & FILE_MODE_READ) != 0 && (mode & FILE_MODE_WRITE) == 0) {
+        ModeStr = binary ? "rb" : "r";
+    } else if ((mode & FILE_MODE_READ) == 0 && (mode & FILE_MODE_WRITE) != 0) {
+        ModeStr = binary ? "wb" : "w";
+    } else {
+        MERROR("При попытке открыть файл был пройден недопустимый режим: '%s'", path);
+        return false;
+    }
+
+    // Попытайтесь открыть файл.
+    FILE* file = fopen(path, ModeStr.c_str());
+    if (!file) {
+        MERROR("Ошибка при открытии файла: '%s'", path);
+        return false;
+    }
+
+    OutHandle->handle = file;
+    OutHandle->IsValid = true;
+
+    return true;
+}
+
+void Filesystem::Close(FileHandle *handle)
+{
+    if (handle->handle) {
+        fclose(reinterpret_cast<FILE*>(handle->handle));
+        handle->handle = 0;
+        handle->IsValid = false;
+    }
+}
+
+bool Filesystem::ReadLine(FileHandle *handle, char *&LineBuf)
+{
+    if (handle->handle) {
+        // Since we are reading a single line, it should be safe to assume this is enough characters.
+        char buffer[32000];
+        if (fgets(buffer, 32000, reinterpret_cast<FILE*>(handle->handle)) != 0) {
+            u64 length = strlen(buffer);
+            LineBuf = MMemory::TAllocate<char>(length + 1, MEMORY_TAG_STRING);
+            strcpy(LineBuf, buffer);
+            return true;
+        }
+    }
+    return false;
+}
+
+bool Filesystem::WriteLine(FileHandle *handle, const char *text)
+{
+     if (handle->handle) {
+        i32 result = fputs(text, reinterpret_cast<FILE*>(handle->handle));
+        if (result != EOF) {
+            result = fputc('\n', reinterpret_cast<FILE*>(handle->handle));
+        }
+
+        // Обязательно очистите поток, чтобы он был немедленно записан в файл.
+        // Это предотвращает потерю данных в случае сбоя.
+        fflush(reinterpret_cast<FILE*>(handle->handle));
+        return result != EOF;
+    }
+    return false;
+}
+
+bool Filesystem::Read(FileHandle *handle, u64 DataSize, void *OutData, u64 *OutBytesRead)
+{
+    if (handle->handle && OutData) {
+        *OutBytesRead = fread(OutData, 1, DataSize, reinterpret_cast<FILE*>(handle->handle));
+        if (*OutBytesRead != DataSize) {
+            return false;
+        }
+        return true;
+    }
+    return false;
+}
+
+bool Filesystem::ReadAllBytes(FileHandle *handle, u8 *&OutBytes, u64 *OutBytesRead)
+{
+    if (handle->handle) {
+        // File size
+        fseek(reinterpret_cast<FILE*>(handle->handle), 0, SEEK_END);
+        u64 size = ftell(reinterpret_cast<FILE*>(handle->handle));
+        rewind(reinterpret_cast<FILE*>(handle->handle));
+
+        OutBytes = MMemory::TAllocate<u8>(size, MEMORY_TAG_STRING);
+        *OutBytesRead = fread(OutBytes, 1, size, reinterpret_cast<FILE*>(handle->handle));
+        if (*OutBytesRead != size) {
+            return false;
+        }
+        return true;
+    }
+    return false;
+}
+
+bool Filesystem::Write(FileHandle *handle, u64 DataSize, const void *data, u64 *OutBytesWritten)
+{
+    if (handle->handle) {
+        *OutBytesWritten = fwrite(data, 1, DataSize, reinterpret_cast<FILE*>(handle->handle));
+        if (*OutBytesWritten != DataSize) {
+            return false;
+        }
+        fflush(reinterpret_cast<FILE*>(handle->handle));
+        return true;
+    }
+    return false;
+}

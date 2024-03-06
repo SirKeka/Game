@@ -20,15 +20,15 @@ namespace VulkanShadersUtil
 
         // Получить дескриптор файла.
         FileHandle handle;
-        if (!FilesystemOpen(FileName, FILE_MODE_READ, true, &handle)) {
-            MERROR("Unable to read shader module: %s.", FileName);
+        if (!Filesystem::Open(FileName, FILE_MODE_READ, true, &handle)) {
+            MERROR("Невозможно прочитать шейдерный модуль: %s.", FileName);
             return false;
         }
 
     // Прочитайте весь файл как двоичный.
     u64 size = 0;
     u8* FileBuffer = 0;
-    if (!FilesystemReadAllBytes(&handle, &FileBuffer, &size)) {
+    if (!Filesystem::ReadAllBytes(&handle, FileBuffer, &size)) {
         MERROR("Невозможно выполнить двоичное чтение модуля шейдера.: %s.", FileName);
         return false;
     }
@@ -36,7 +36,7 @@ namespace VulkanShadersUtil
     ShaderStages[StageIndex].CreateInfo.pCode = (u32*)FileBuffer;
 
     // Закройте файл.
-    FilesystemClose(&handle);
+    Filesystem::Close(&handle);
 
     VK_CHECK(vkCreateShaderModule(
         VkAPI->Device.LogicalDevice,

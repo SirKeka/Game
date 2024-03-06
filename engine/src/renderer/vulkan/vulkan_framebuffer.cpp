@@ -8,7 +8,7 @@ void VulkanFramebufferCreate(
     VulkanFramebuffer *OutFramebuffer)
 {
     // Сделайте копию вложений, renderpass и количество вложений
-    OutFramebuffer->attachments = MMemory::TAllocate<VkImageView>(sizeof(VkImageView) * AttachmentCount, MEMORY_TAG_RENDERER);
+    OutFramebuffer->attachments = MMemory::TAllocate<VkImageView>(AttachmentCount, MEMORY_TAG_RENDERER);
     for (u32 i = 0; i < AttachmentCount; ++i) {
         OutFramebuffer->attachments[i] = attachments[i];
     }
