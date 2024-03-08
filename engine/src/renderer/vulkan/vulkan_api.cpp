@@ -7,10 +7,13 @@
 #include "vulkan_framebuffer.hpp"
 #include "vulkan_fence.hpp"
 #include "vulkan_utils.hpp"
+#include "vulkan_buffer.hpp"
 
 #include "core/logger.hpp"
 #include "core/mmemory.hpp"
 #include "core/application.hpp"
+
+#include "math/mvertex3D.hpp"
 
 // Shaders
 #include "shaders/vulkan_object_shader.hpp"
@@ -33,9 +36,14 @@ VulkanAPI::~VulkanAPI()
 
     // Уничтожать в порядке, обратном порядку создания.
 
+    ObjectVertexBuffer->Destroy(this);
+    ObjectIndexBuffer->Destroy(this);
+    delete ObjectVertexBuffer;
+    delete ObjectIndexBuffer;
+
     ObjectShader->DestroyShaderModule(this);
     delete ObjectShader;
-    
+
     // Sync objects
     for (u8 i = 0; i < swapchain.MaxFramesInFlight; ++i) {
         if (ImageAvailableSemaphores[i]) {
@@ -297,6 +305,8 @@ bool VulkanAPI::Initialize(MWindow* window, const char* ApplicationName)
         MERROR("Ошибка загрузки встроенного шейдера базового цвета (BasicLighting).");
         return false;
     }
+
+    CreateBuffers();
 
     MINFO("Средство визуализации Vulkan успешно инициализировано.");
     return true;
@@ -565,6 +575,39 @@ void VulkanAPI::RegenerateFramebuffers()
             attachments,
             &swapchain.framebuffers[i]);
     }
+}
+
+bool VulkanAPI::CreateBuffers()
+{
+    VkMemoryPropertyFlagBits MemoryPropertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+    const u64 VertexBufferSize = sizeof(Vertex3D) * 1024 * 1024;
+    ObjectVertexBuffer = new VulkanBuffer();
+    if (!ObjectVertexBuffer->Create(
+            this,
+            VertexBufferSize,
+            VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,// | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+            MemoryPropertyFlags,
+            true)) {
+        MERROR("Ошибка создания вершинного буфера.");
+        return false;
+    }
+    GeometryVertexOffset = 0;
+
+    const u64 IndexBufferSize = sizeof(u32) * 1024 * 1024;
+    ObjectIndexBuffer = new VulkanBuffer();
+    if (!ObjectIndexBuffer->Create(
+            this,
+            IndexBufferSize,
+            VK_BUFFER_USAGE_INDEX_BUFFER_BIT,// | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+            MemoryPropertyFlags,
+            true)) {
+        MERROR("Ошибка создания вершинного буфера.");
+        return false;
+    }
+    GeometryVertexOffset = 0; 
+
+    return true;
 }
 
 bool VulkanAPI::RecreateSwapchain()

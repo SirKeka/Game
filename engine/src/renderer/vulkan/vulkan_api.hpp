@@ -104,6 +104,8 @@ class VulkanObjectShader;
     MASSERT(expr == VK_SUCCESS); \
 }
 
+class VulkanBuffer;
+
 class VulkanAPI : public RendererType
 {
 using LinearAllocator = WrapLinearAllocator<VulkanAPI>;
@@ -136,6 +138,9 @@ public:
     VulkanSwapchain swapchain{};
     VulkanRenderpass MainRenderpass{};
 
+    VulkanBuffer* ObjectVertexBuffer;
+    VulkanBuffer* ObjectIndexBuffer;
+
     DArray<VulkanCommandBuffer> GraphicsCommandBuffers;
     DArray<VkSemaphore> ImageAvailableSemaphores;
     DArray<VkSemaphore> QueueCompleteSemaphores;
@@ -152,6 +157,9 @@ public:
     bool RecreatingSwapchain{false};
 
     VulkanObjectShader* ObjectShader;
+
+    u64 GeometryVertexOffset;
+    u64 GeometryIndexOffset;
 
 public:
     VulkanAPI() {}
@@ -176,4 +184,5 @@ private:
     void CreateCommandBuffers();
     void RegenerateFramebuffers();
     bool RecreateSwapchain();
+    bool CreateBuffers();
 };
