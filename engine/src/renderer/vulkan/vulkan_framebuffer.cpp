@@ -1,4 +1,5 @@
 #include "vulkan_framebuffer.hpp"
+#include "vulkan_device.hpp"
 
 void VulkanFramebufferCreate(
     VulkanAPI *VkAPI, 
@@ -25,7 +26,7 @@ void VulkanFramebufferCreate(
     FramebufferCreateInfo.layers = 1;
 
     VK_CHECK(vkCreateFramebuffer(
-        VkAPI->Device.LogicalDevice,
+        VkAPI->Device->LogicalDevice,
         &FramebufferCreateInfo,
         VkAPI->allocator,
         &OutFramebuffer->handle));
@@ -33,7 +34,7 @@ void VulkanFramebufferCreate(
 
 void VulkanFramebufferDestroy(VulkanAPI *VkAPI, VulkanFramebuffer *framebuffer)
 {
-    vkDestroyFramebuffer(VkAPI->Device.LogicalDevice, framebuffer->handle, VkAPI->allocator);
+    vkDestroyFramebuffer(VkAPI->Device->LogicalDevice, framebuffer->handle, VkAPI->allocator);
     if (framebuffer->attachments) { 
         MMemory::Free(framebuffer->attachments, sizeof(VkImageView) * framebuffer->AttachmentCount, MEMORY_TAG_RENDERER);
         framebuffer->attachments = 0;

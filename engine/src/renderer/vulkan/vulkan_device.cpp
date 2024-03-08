@@ -1,37 +1,9 @@
 #include "vulkan_device.hpp"
 #include "core/logger.hpp"
 #include "core/mmemory.hpp"
-//#include "containers/darray.hpp"
 #include "containers/mstring.hpp"
 
-struct VulkanPhysicalDeviceRequirements {
-    bool graphics;
-    bool present;
-    bool compute;
-    bool transfer;
-    DArray<const char*> DeviceExtensionNames;
-    bool SamplerAnisotropy;
-    bool DiscreteGPU;
-};
-
-struct VulkanPhysicalDeviceQueueFamilyInfo {
-    u32 GraphicsFamilyIndex;
-    u32 PresentFamilyIndex;
-    u32 ComputeFamilyIndex;
-    u32 TransferFamilyIndex;
-};
-
-bool SelectPhysicalDevice(VulkanAPI* VkAPI);
-bool PhysicalDeviceMeetsRequirements(
-    VkPhysicalDevice device,
-    VkSurfaceKHR surface,
-    const VkPhysicalDeviceProperties* properties,
-    const VkPhysicalDeviceFeatures* features,
-    const VulkanPhysicalDeviceRequirements* requirements,
-    VulkanPhysicalDeviceQueueFamilyInfo* OutQueueFamilyInfo,
-    VulkanSwapchainSupportInfo* OutSwapchainSupport);
-
-bool VulkanDeviceCreate(VulkanAPI* VkAPI)
+bool VulkanDevice::Create(VulkanAPI* VkAPI)
 {
     if (!SelectPhysicalDevice(VkAPI)) {
         return false;
@@ -39,8 +11,8 @@ bool VulkanDeviceCreate(VulkanAPI* VkAPI)
 
     MINFO("Создание логического устройства...");
     // ПРИМЕЧАНИЕ. Не создавайте дополнительные очереди для общих индексов.
-    bool PresentSharesGraphicsQueue = VkAPI->Device.GraphicsQueueIndex == VkAPI->Device.PresentQueueIndex;
-    bool TransferSharesGraphicsQueue = VkAPI->Device.GraphicsQueueIndex == VkAPI->Device.TransferQueueIndex;
+    bool PresentSharesGraphicsQueue = this->GraphicsQueueIndex == this->PresentQueueIndex;
+    bool TransferSharesGraphicsQueue = this->GraphicsQueueIndex == this->TransferQueueIndex;
     u32 IndexCount = 1;
     if (!PresentSharesGraphicsQueue) {
         IndexCount++;
@@ -50,12 +22,12 @@ bool VulkanDeviceCreate(VulkanAPI* VkAPI)
     }
     u32 indices[32];
     u8 index = 0;
-    indices[index++] = VkAPI->Device.GraphicsQueueIndex;
+    indices[index++] = this->GraphicsQueueIndex;
     if (!PresentSharesGraphicsQueue) {
-        indices[index++] = VkAPI->Device.PresentQueueIndex;
+        indices[index++] = this->PresentQueueIndex;
     }
     if (!TransferSharesGraphicsQueue) {
-        indices[index++] = VkAPI->Device.TransferQueueIndex;
+        indices[index++] = this->TransferQueueIndex;
     }
 
     VkDeviceQueueCreateInfo QueueCreateInfos[32];
@@ -64,7 +36,7 @@ bool VulkanDeviceCreate(VulkanAPI* VkAPI)
         QueueCreateInfos[i].queueFamilyIndex = indices[i];
         QueueCreateInfos[i].queueCount = 1;
         // TODO: Включите это для дальнейшего улучшения.
-        // if (indices[i] == VkAPI->Device.GraphicsQueueIndex) {
+        // if (indices[i] == this->GraphicsQueueIndex) {
         //    QueueCreateInfos[i].queueCount = 2;
         // }
         QueueCreateInfos[i].flags = 0;
@@ -92,99 +64,86 @@ bool VulkanDeviceCreate(VulkanAPI* VkAPI)
 
     // Создайте устройство.
     VK_CHECK(vkCreateDevice(
-        VkAPI->Device.PhysicalDevice,
+        this->PhysicalDevice,
         &DeviceCreateInfo,
         VkAPI->allocator,
-        &VkAPI->Device.LogicalDevice));
+        &this->LogicalDevice));
 
     MINFO("Логическое устройство создано.");
 
     // Получите очереди.
     vkGetDeviceQueue(
-        VkAPI->Device.LogicalDevice,
-        VkAPI->Device.GraphicsQueueIndex,
+        this->LogicalDevice,
+        this->GraphicsQueueIndex,
         0,
-        &VkAPI->Device.GraphicsQueue);
+        &this->GraphicsQueue);
 
     vkGetDeviceQueue(
-        VkAPI->Device.LogicalDevice,
-        VkAPI->Device.PresentQueueIndex,
+        this->LogicalDevice,
+        this->PresentQueueIndex,
         0,
-        &VkAPI->Device.PresentQueue);
+        &this->PresentQueue);
 
     vkGetDeviceQueue(
-        VkAPI->Device.LogicalDevice,
-        VkAPI->Device.TransferQueueIndex,
+        this->LogicalDevice,
+        this->TransferQueueIndex,
         0,
-        &VkAPI->Device.TransferQueue);
+        &this->TransferQueue);
     MINFO("Получены очереди.");
 
     // Создайте пул команд для графической очереди.
     VkCommandPoolCreateInfo PoolCreateInfo = {VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO};
-    PoolCreateInfo.queueFamilyIndex = VkAPI->Device.GraphicsQueueIndex;
+    PoolCreateInfo.queueFamilyIndex = this->GraphicsQueueIndex;
     PoolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
     VK_CHECK(vkCreateCommandPool(
-        VkAPI->Device.LogicalDevice,
+        this->LogicalDevice,
         &PoolCreateInfo,
         VkAPI->allocator,
-        &VkAPI->Device.GraphicsCommandPool));
+        &this->GraphicsCommandPool));
     MINFO("Пул графических команд создан.");
 
     return true;
 }
 
-void VulkanDeviceDestroy(VulkanAPI* VkAPI)
+VulkanDevice::~VulkanDevice()
 {
     // Неустановленные очереди
-    VkAPI->Device.GraphicsQueue = 0;
-    VkAPI->Device.PresentQueue = 0;
-    VkAPI->Device.TransferQueue = 0;
-
-    MINFO("Уничтожение командных пулов...");
-    vkDestroyCommandPool(
-        VkAPI->Device.LogicalDevice,
-        VkAPI->Device.GraphicsCommandPool,
-        VkAPI->allocator);
-
-    // Уничтожить логическое устройство
-    MINFO("Уничтожение логического устройства...");
-    if (VkAPI->Device.LogicalDevice) {
-        vkDestroyDevice(VkAPI->Device.LogicalDevice, VkAPI->allocator);
-        VkAPI->Device.LogicalDevice = 0;
-    }
+    GraphicsQueue = 0;
+    PresentQueue = 0;
+    TransferQueue = 0;
 
     // Физические устройства не уничтожаются.
     MINFO("Высвобождение ресурсов физического устройства...");
-    VkAPI->Device.PhysicalDevice = 0;
+    PhysicalDevice = 0;
 
-    if (VkAPI->Device.SwapchainSupport.formats) {
+    if (SwapchainSupport.formats) {
         MMemory::TFree<VkSurfaceFormatKHR>(
-            VkAPI->Device.SwapchainSupport.formats,
-            VkAPI->Device.SwapchainSupport.FormatCount,
+            SwapchainSupport.formats,
+            SwapchainSupport.FormatCount,
             MEMORY_TAG_RENDERER);
-        VkAPI->Device.SwapchainSupport.formats = 0;
-        VkAPI->Device.SwapchainSupport.FormatCount = 0;
+        SwapchainSupport.formats = 0;
+        SwapchainSupport.FormatCount = 0;
     }
 
-    if (VkAPI->Device.SwapchainSupport.PresentModes) {
+    if (SwapchainSupport.PresentModes) {
         MMemory::TFree<VkPresentModeKHR>(
-            VkAPI->Device.SwapchainSupport.PresentModes,
-            VkAPI->Device.SwapchainSupport.PresentModeCount,
+            SwapchainSupport.PresentModes,
+            SwapchainSupport.PresentModeCount,
             MEMORY_TAG_RENDERER);
-        VkAPI->Device.SwapchainSupport.PresentModes = 0;
-        VkAPI->Device.SwapchainSupport.PresentModeCount = 0;
+        SwapchainSupport.PresentModes = 0;
+        SwapchainSupport.PresentModeCount = 0;
     }
 
     MMemory::ZeroMem(
-        &VkAPI->Device.SwapchainSupport.capabilities,
-        sizeof(VkAPI->Device.SwapchainSupport.capabilities));
+        &SwapchainSupport.capabilities,
+        sizeof(SwapchainSupport.capabilities));
 
-    VkAPI->Device.GraphicsQueueIndex = -1;
-    VkAPI->Device.PresentQueueIndex = -1;
-    VkAPI->Device.TransferQueueIndex = -1;
+    GraphicsQueueIndex = -1;
+    PresentQueueIndex = -1;
+    TransferQueueIndex = -1;
 }
 
-void VulkanDeviceQuerySwapchainSupport(
+void VulkanDevice::QuerySwapchainSupport(
     VkPhysicalDevice PhysicalDevice, 
     VkSurfaceKHR Surface, 
     VulkanSwapchainSupportInfo * OutSupportInfo)
@@ -231,7 +190,7 @@ void VulkanDeviceQuerySwapchainSupport(
     }
 }
 
-bool VulkanDeviceDetectDepthFormat(VulkanDevice* Device)
+bool VulkanDevice::DetectDepthFormat(VulkanDevice* Device)
 {
     // Формат кандидатов
     const u64 CandidateCount = 3;
@@ -257,7 +216,7 @@ bool VulkanDeviceDetectDepthFormat(VulkanDevice* Device)
     return false;
 }
 
-bool SelectPhysicalDevice(VulkanAPI *VkAPI)
+bool VulkanDevice::SelectPhysicalDevice(VulkanAPI *VkAPI)
 {
     u32 PhysicalDeviceCount = 0;
     VK_CHECK(vkEnumeratePhysicalDevices(VkAPI->instance, &PhysicalDeviceCount, 0));
@@ -299,7 +258,7 @@ bool SelectPhysicalDevice(VulkanAPI *VkAPI)
             &features,
             &requirements,
             &QueueInfo,
-            &VkAPI->Device.SwapchainSupport);
+            &this->SwapchainSupport);
 
         if (result) {
             MINFO("Выбранное устройство: '%s'.", properties.deviceName);
@@ -346,22 +305,22 @@ bool SelectPhysicalDevice(VulkanAPI *VkAPI)
                 }
             }
 
-            VkAPI->Device.PhysicalDevice = device;
-            VkAPI->Device.GraphicsQueueIndex = QueueInfo.GraphicsFamilyIndex;
-            VkAPI->Device.PresentQueueIndex = QueueInfo.PresentFamilyIndex;
-            VkAPI->Device.TransferQueueIndex = QueueInfo.TransferFamilyIndex;
+            this->PhysicalDevice = device;
+            this->GraphicsQueueIndex = QueueInfo.GraphicsFamilyIndex;
+            this->PresentQueueIndex = QueueInfo.PresentFamilyIndex;
+            this->TransferQueueIndex = QueueInfo.TransferFamilyIndex;
             // ПРИМЕЧАНИЕ: при необходимости установите здесь вычислительный индекс.
 
             // Сохраните копию свойств, функций и информации о памяти для последующего использования.
-            VkAPI->Device.properties = properties;
-            VkAPI->Device.features = features;
-            VkAPI->Device.memory = memory;
+            this->properties = properties;
+            this->features = features;
+            this->memory = memory;
             break;
         }
     }
 
     // Убедитесь, что было выбрано устройство
-    if (!VkAPI->Device.PhysicalDevice) {
+    if (!this->PhysicalDevice) {
         MERROR("Не было найдено никаких физических устройств, отвечающих этим требованиям.");
         return false;
     }
@@ -370,7 +329,7 @@ bool SelectPhysicalDevice(VulkanAPI *VkAPI)
     return true;
 }
 
-bool PhysicalDeviceMeetsRequirements(
+bool VulkanDevice::PhysicalDeviceMeetsRequirements(
     VkPhysicalDevice device, 
     VkSurfaceKHR surface, 
     const VkPhysicalDeviceProperties *properties, 
@@ -454,7 +413,7 @@ bool PhysicalDeviceMeetsRequirements(
         MTRACE("Compute Family Index:  %i", OutQueueFamilyInfo->ComputeFamilyIndex);
 
         // Запросите поддержку цепочки подкачки(swapchain).
-        VulkanDeviceQuerySwapchainSupport(
+        QuerySwapchainSupport(
             device,
             surface,
             OutSwapchainSupport);

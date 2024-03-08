@@ -1,4 +1,5 @@
 #include "vulkan_renderpass.hpp"
+#include "vulkan_device.hpp"
 
 #include "core/mmemory.hpp"
 
@@ -48,7 +49,7 @@ void VulkanRenderpassCreate(VulkanAPI *VkAPI, VulkanRenderpass *OutRenderpass, f
 
     // Приставка по глубине, если она есть.
     VkAttachmentDescription DepthAttachment = {};
-    DepthAttachment.format = VkAPI->Device.DepthFormat;
+    DepthAttachment.format = VkAPI->Device->DepthFormat;
     DepthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
     DepthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
     DepthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -102,7 +103,7 @@ void VulkanRenderpassCreate(VulkanAPI *VkAPI, VulkanRenderpass *OutRenderpass, f
     RenderPassCreateInfo.flags = 0;
 
     VK_CHECK(vkCreateRenderPass(
-        VkAPI->Device.LogicalDevice,
+        VkAPI->Device->LogicalDevice,
         &RenderPassCreateInfo,
         VkAPI->allocator,
         &OutRenderpass->handle));
@@ -111,7 +112,7 @@ void VulkanRenderpassCreate(VulkanAPI *VkAPI, VulkanRenderpass *OutRenderpass, f
 void VulkanRenderpassDestroy(VulkanAPI *VkAPI, VulkanRenderpass *renderpass)
 {
     if (renderpass && renderpass->handle) {
-        vkDestroyRenderPass(VkAPI->Device.LogicalDevice, renderpass->handle, VkAPI->allocator);
+        vkDestroyRenderPass(VkAPI->Device->LogicalDevice, renderpass->handle, VkAPI->allocator);
         renderpass->handle = 0;
     }
 }

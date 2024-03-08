@@ -3,6 +3,7 @@
 #include "defines.hpp"
 #include "containers/mstring.hpp"
 #include "memory/linear_allocator.hpp"
+#include "platform/filesystem.hpp"
 
 #define LOG_WARN_ENABLED 1
 #define LOG_INFO_ENABLED 1
@@ -29,19 +30,20 @@ class Logger
 using LinearAllocator = WrapLinearAllocator<Logger>;
 
 private:
-    bool initialized;
+    static FileHandle LogFileHandle;
 public:
     Logger();
     ~Logger() = default;
 
     bool Initialize();
     void Shutdown();
-
+    
     MAPI static void Output(LogLevel level, MString message, ...);
 
     MAPI void* operator new(u64 size);
     //MAPI void operator delete(void* ptr);
-
+private:
+    static void AppendToLogFile(MString message);
 };
 
 // Регистрирует сообщение критического уровня.

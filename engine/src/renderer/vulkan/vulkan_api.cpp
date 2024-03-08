@@ -12,7 +12,8 @@
 #include "core/mmemory.hpp"
 #include "core/application.hpp"
 
-#include "platform/platform.hpp"
+// Shaders
+#include "shaders/vulkan_object_shader.hpp"
 
 VkInstance VulkanAPI::instance;
 VkAllocationCallbacks* VulkanAPI::allocator;
@@ -28,22 +29,25 @@ VKAPI_ATTR VkBool32 VKAPI_CALL VkDebugCallback(
 
 VulkanAPI::~VulkanAPI()
 {
-    vkDeviceWaitIdle(Device.LogicalDevice);
+    vkDeviceWaitIdle(Device->LogicalDevice);
 
     // Уничтожать в порядке, обратном порядку создания.
 
+    ObjectShader->DestroyShaderModule(this);
+    delete ObjectShader;
+    
     // Sync objects
     for (u8 i = 0; i < swapchain.MaxFramesInFlight; ++i) {
         if (ImageAvailableSemaphores[i]) {
             vkDestroySemaphore(
-                Device.LogicalDevice,
+                Device->LogicalDevice,
                 ImageAvailableSemaphores[i],
                 allocator);
             ImageAvailableSemaphores[i] = 0;
         }
         if (QueueCompleteSemaphores[i]) {
             vkDestroySemaphore(
-                Device.LogicalDevice,
+                Device->LogicalDevice,
                 QueueCompleteSemaphores[i],
                 allocator);
             QueueCompleteSemaphores[i] = 0;
@@ -67,7 +71,7 @@ VulkanAPI::~VulkanAPI()
         if (GraphicsCommandBuffers[i].handle) {
             VulkanCommandBufferFree(
                 this,
-                Device.GraphicsCommandPool,
+                Device->GraphicsCommandPool,
                 &GraphicsCommandBuffers[i]);
                 GraphicsCommandBuffers[i].handle = 0;
         }
@@ -86,8 +90,21 @@ VulkanAPI::~VulkanAPI()
     // Цепочка подкачки (Swapchain)
     VulkanSwapchainDestroy(this, &swapchain);
 
+    MINFO("Уничтожение командных пулов...");
+    vkDestroyCommandPool(
+        Device->LogicalDevice,
+        Device->GraphicsCommandPool,
+        allocator);
+
+    // Уничтожить логическое устройство
+    MINFO("Уничтожение логического устройства...");
+    if (Device->LogicalDevice) {
+        vkDestroyDevice(Device->LogicalDevice, allocator);
+        Device->LogicalDevice = 0;
+    }
+
     MDEBUG("Уничтожение устройства Вулкан...");
-    VulkanDeviceDestroy(this);
+    delete Device;
 
     MDEBUG("Уничтожение поверхности Вулкана...");
     if (surface) {
@@ -220,7 +237,8 @@ bool VulkanAPI::Initialize(MWindow* window, const char* ApplicationName)
     MDEBUG("Поверхность Vulkan создана.");
 
     // Создание устройства
-    if (!VulkanDeviceCreate(this)) {
+    Device = new VulkanDevice();
+    if (!Device->Create(this)) {
         MERROR("Не удалось создать устройство!");
         return false;
     }
@@ -256,8 +274,8 @@ bool VulkanAPI::Initialize(MWindow* window, const char* ApplicationName)
 
     for (u8 i = 0; i < swapchain.MaxFramesInFlight; ++i) {
         VkSemaphoreCreateInfo SemaphoreCreateInfo = {VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
-        vkCreateSemaphore(Device.LogicalDevice, &SemaphoreCreateInfo, allocator, &ImageAvailableSemaphores[i]);
-        vkCreateSemaphore(Device.LogicalDevice, &SemaphoreCreateInfo, allocator, &QueueCompleteSemaphores[i]);
+        vkCreateSemaphore(Device->LogicalDevice, &SemaphoreCreateInfo, allocator, &ImageAvailableSemaphores[i]);
+        vkCreateSemaphore(Device->LogicalDevice, &SemaphoreCreateInfo, allocator, &QueueCompleteSemaphores[i]);
 
         // Создайте ограждение в сигнальном состоянии, указывая, что первый кадр уже «отрисован».
         // Это не позволит приложению бесконечно ждать рендеринга первого кадра, 
@@ -271,6 +289,13 @@ bool VulkanAPI::Initialize(MWindow* window, const char* ApplicationName)
     ImagesInFlight.Resize(swapchain.ImageCount);
     for (u32 i = 0; i < swapchain.ImageCount; ++i) {
         ImagesInFlight[i] = 0;
+    }
+
+    // Создание встроенных шейдеров
+    ObjectShader = new VulkanObjectShader();
+    if (!ObjectShader->Create(this)) {
+        MERROR("Ошибка загрузки встроенного шейдера базового цвета (BasicLighting).");
+        return false;
     }
 
     MINFO("Средство визуализации Vulkan успешно инициализировано.");
@@ -297,7 +322,7 @@ bool VulkanAPI::BeginFrame(f32 Deltatime)
 {
     // Проверьте, не воссоздается ли цепочка подкачки заново, и загрузитесь.
     if (RecreatingSwapchain) {
-        VkResult result = vkDeviceWaitIdle(Device.LogicalDevice);
+        VkResult result = vkDeviceWaitIdle(Device->LogicalDevice);
         if (!VulkanResultIsSuccess(result)) {
             MERROR("Ошибка VulkanBeginFrame vkDeviceWaitIdle (1): '%s'", VulkanResultString(result, true));
             return false;
@@ -308,7 +333,7 @@ bool VulkanAPI::BeginFrame(f32 Deltatime)
 
     // Проверьте, был ли изменен размер фреймбуфера. Если это так, необходимо создать новую цепочку подкачки.
     if (FramebufferSizeGeneration != FramebufferSizeLastGeneration) {
-        VkResult result = vkDeviceWaitIdle(Device.LogicalDevice);
+        VkResult result = vkDeviceWaitIdle(Device->LogicalDevice);
         if (!VulkanResultIsSuccess(result)) {
             MERROR("Ошибка VulkanBeginFrame vkDeviceWaitIdle (2): '%s'", VulkanResultString(result, true));
             return false;
@@ -423,7 +448,7 @@ bool VulkanAPI::EndFrame(f32 DeltaTime)
     SubmitInfo.pWaitDstStageMask = flags;
 
     VkResult result = vkQueueSubmit(
-        Device.GraphicsQueue,
+        Device->GraphicsQueue,
         1,
         &SubmitInfo,
         InFlightFences[CurrentFrame].handle);
@@ -439,8 +464,8 @@ bool VulkanAPI::EndFrame(f32 DeltaTime)
     VulkanSwapchainPresent(
         this,
         &swapchain,
-        Device.GraphicsQueue,
-        Device.PresentQueue,
+        Device->GraphicsQueue,
+        Device->PresentQueue,
         QueueCompleteSemaphores[CurrentFrame],
         ImageIndex
     );
@@ -485,7 +510,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL VkDebugCallback(
 i32 VulkanAPI::FindMemoryIndex(u32 TypeFilter, VkMemoryPropertyFlags PropertyFlags)
 {
     VkPhysicalDeviceMemoryProperties MemoryProperties;
-    vkGetPhysicalDeviceMemoryProperties(Device.PhysicalDevice, &MemoryProperties);
+    vkGetPhysicalDeviceMemoryProperties(Device->PhysicalDevice, &MemoryProperties);
 
     for (u32 i = 0; i < MemoryProperties.memoryTypeCount; ++i) {
         // Проверьте каждый тип памяти, чтобы увидеть, установлен ли его бит в 1.
@@ -508,13 +533,13 @@ void VulkanAPI::CreateCommandBuffers()
         if (GraphicsCommandBuffers[i].handle) {
             VulkanCommandBufferFree(
                 this,
-                Device.GraphicsCommandPool,
+                Device->GraphicsCommandPool,
                 &GraphicsCommandBuffers[i]);
         } 
         //MMemory::ZeroMemory(&GraphicsCommandBuffers[i], sizeof(VulkanCommandBuffer));
         VulkanCommandBufferAllocate(
             this,
-            Device.GraphicsCommandPool,
+            Device->GraphicsCommandPool,
             true,
             &this->GraphicsCommandBuffers[i]);
     }
@@ -560,7 +585,7 @@ bool VulkanAPI::RecreateSwapchain()
     RecreatingSwapchain = true;
 
     // Дождитесь завершения всех операций.
-    vkDeviceWaitIdle(Device.LogicalDevice);
+    vkDeviceWaitIdle(Device->LogicalDevice);
 
     // Уберите это на всякий случай.
     for (u32 i = 0; i < swapchain.ImageCount; ++i) {
@@ -568,11 +593,11 @@ bool VulkanAPI::RecreateSwapchain()
     }
 
     // Поддержка запроса
-    VulkanDeviceQuerySwapchainSupport(
-        Device.PhysicalDevice,
+    Device->QuerySwapchainSupport(
+        Device->PhysicalDevice,
         surface,
-        &Device.SwapchainSupport);
-    VulkanDeviceDetectDepthFormat(&Device);
+        &Device->SwapchainSupport);
+    Device->DetectDepthFormat(Device);
 
     VulkanSwapchainRecreate(
         this,
@@ -593,7 +618,7 @@ bool VulkanAPI::RecreateSwapchain()
 
     // Очистка цепочки подкачки
     for (u32 i = 0; i < swapchain.ImageCount; ++i) {
-        VulkanCommandBufferFree(this, Device.GraphicsCommandPool, &GraphicsCommandBuffers[i]);
+        VulkanCommandBufferFree(this, Device->GraphicsCommandPool, &GraphicsCommandBuffers[i]);
     }
 
     // Буферы кадров.

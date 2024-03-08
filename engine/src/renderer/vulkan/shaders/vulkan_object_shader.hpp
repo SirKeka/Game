@@ -1,15 +1,9 @@
 #pragma once
 
 #include "renderer/vulkan/vulkan_api.hpp"
+#include "renderer/vulkan/vulkan_pipeline.hpp"
 
 #define OBJECT_SHADER_STAGE_COUNT 2
-
-struct VulkanPipeline
-{
-    VkPipeline handle;
-    VkPipelineLayout PipelineLayout;
-};
-
 
 struct VulkanShaderStage
 {
@@ -31,5 +25,6 @@ public:
     ~VulkanObjectShader() = default;
 
     bool Create(VulkanAPI* VkAPI);
+    void DestroyShaderModule(VulkanAPI* VkAPI);
     void Use(VulkanAPI* VkAPI);
 };

@@ -37,11 +37,11 @@ void VulkanImageCreate(
     ImageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;          // TODO: Настраиваемое количество образцов.
     ImageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;  // TODO: Настраиваемый режим обмена.
 
-    VK_CHECK(vkCreateImage(VkAPI->Device.LogicalDevice, &ImageCreateInfo, VkAPI->allocator, &OutImage->handle));
+    VK_CHECK(vkCreateImage(VkAPI->Device->LogicalDevice, &ImageCreateInfo, VkAPI->allocator, &OutImage->handle));
 
     // Запросить требования к памяти.
     VkMemoryRequirements MemoryRequirements;
-    vkGetImageMemoryRequirements(VkAPI->Device.LogicalDevice, OutImage->handle, &MemoryRequirements);
+    vkGetImageMemoryRequirements(VkAPI->Device->LogicalDevice, OutImage->handle, &MemoryRequirements);
 
     i32 MemoryType = VkAPI->FindMemoryIndex(MemoryRequirements.memoryTypeBits, MemoryFlags);
     if (MemoryType == -1) {
@@ -52,10 +52,10 @@ void VulkanImageCreate(
     VkMemoryAllocateInfo MemoryAllocateInfo = {VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
     MemoryAllocateInfo.allocationSize = MemoryRequirements.size;
     MemoryAllocateInfo.memoryTypeIndex = MemoryType;
-    VK_CHECK(vkAllocateMemory(VkAPI->Device.LogicalDevice, &MemoryAllocateInfo, VkAPI->allocator, &OutImage->memory));
+    VK_CHECK(vkAllocateMemory(VkAPI->Device->LogicalDevice, &MemoryAllocateInfo, VkAPI->allocator, &OutImage->memory));
 
     // Свяжите память
-    VK_CHECK(vkBindImageMemory(VkAPI->Device.LogicalDevice, OutImage->handle, OutImage->memory, 0));  // TODO: настраиваемое смещение памяти.
+    VK_CHECK(vkBindImageMemory(VkAPI->Device->LogicalDevice, OutImage->handle, OutImage->memory, 0));  // TODO: настраиваемое смещение памяти.
 
     // Создать представление
     if (CreateView) {
@@ -78,21 +78,21 @@ void VulkanImageViewCreate(VulkanAPI *VkAPI, VkFormat format, VulkanImage *image
     ViewCreateInfo.subresourceRange.baseArrayLayer = 0;
     ViewCreateInfo.subresourceRange.layerCount = 1;
 
-    VK_CHECK(vkCreateImageView(VkAPI->Device.LogicalDevice, &ViewCreateInfo, VkAPI->allocator, &image->view));
+    VK_CHECK(vkCreateImageView(VkAPI->Device->LogicalDevice, &ViewCreateInfo, VkAPI->allocator, &image->view));
 }
 
 void VulkanImageDestroy(VulkanAPI *VkAPI, VulkanImage *image)
 {
     if (image->view) {
-        vkDestroyImageView(VkAPI->Device.LogicalDevice, image->view, VkAPI->allocator);
+        vkDestroyImageView(VkAPI->Device->LogicalDevice, image->view, VkAPI->allocator);
         image->view = 0;
     }
     if (image->memory) {
-        vkFreeMemory(VkAPI->Device.LogicalDevice, image->memory, VkAPI->allocator);
+        vkFreeMemory(VkAPI->Device->LogicalDevice, image->memory, VkAPI->allocator);
         image->memory = 0;
     }
     if (image->handle) {
-        vkDestroyImage(VkAPI->Device.LogicalDevice, image->handle, VkAPI->allocator);
+        vkDestroyImage(VkAPI->Device->LogicalDevice, image->handle, VkAPI->allocator);
         image->handle = 0;
     }
 }

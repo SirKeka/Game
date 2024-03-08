@@ -2,6 +2,7 @@
 
 #include "defines.hpp"
 
+#include <stdio.h>
 
 class MString
 {
@@ -47,4 +48,4 @@ MAPI i32 StringFormat(char* dest, const char* format, ...);
 /// @param format отформатируйте строку, которая должна быть отформатирована.
 /// @param va_list cписок переменных аргументов.
 /// @return размер записываемых данных.
-MAPI i32 StringFormatV(char* dest, const char* format, char* va_listp);
+MAPI i32 StringFormatV(char* dest, const char* format, char* va_list);

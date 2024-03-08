@@ -17,27 +17,7 @@ struct VulkanSwapchainSupportInfo
     VkPresentModeKHR* PresentModes;
 };
 
-struct VulkanDevice
-{
-    VkPhysicalDevice PhysicalDevice;
-    VkDevice LogicalDevice;
-    VulkanSwapchainSupportInfo SwapchainSupport;
-    i32 GraphicsQueueIndex;
-    i32 PresentQueueIndex;
-    i32 TransferQueueIndex;
-
-    VkQueue GraphicsQueue;
-    VkQueue PresentQueue;
-    VkQueue TransferQueue;
-    
-    VkCommandPool GraphicsCommandPool;
-
-    VkPhysicalDeviceProperties properties;
-    VkPhysicalDeviceFeatures features;
-    VkPhysicalDeviceMemoryProperties memory;
-
-    VkFormat DepthFormat;
-};
+class VulkanDevice;
 
 struct VulkanImage 
 {
@@ -78,7 +58,6 @@ struct VulkanFramebuffer
     VulkanRenderpass* renderpass;
 };
 
-
 struct VulkanSwapchain 
 {
     VkSurfaceFormatKHR ImageFormat;
@@ -117,6 +96,8 @@ struct VulkanFence {
     bool IsSignaled;
 };
 
+class VulkanObjectShader;
+
 // Проверяет возвращаемое значение данного выражения на соответствие VK_SUCCESS.
 #define VK_CHECK(expr)           \
 {                                \
@@ -150,7 +131,7 @@ public:
     VkDebugUtilsMessengerEXT DebugMessenger;
 #endif
 
-    VulkanDevice Device{};
+    VulkanDevice* Device;
 
     VulkanSwapchain swapchain{};
     VulkanRenderpass MainRenderpass{};
@@ -170,8 +151,10 @@ public:
 
     bool RecreatingSwapchain{false};
 
+    VulkanObjectShader* ObjectShader;
+
 public:
-    VulkanAPI() {};
+    VulkanAPI() {}
     ~VulkanAPI();
     
     bool Initialize(MWindow* window, const char* ApplicationName) override;

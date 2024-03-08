@@ -7,16 +7,20 @@
 #include <string.h>
 #include <stdarg.h>
 
-//static LoggerSystemState* ptrState;
+FileHandle Logger::LogFileHandle;
 
 Logger::Logger()
 {
-    initialized = false;
+    
 }
 
 bool Logger::Initialize()
 {
-    initialized = true;
+    // Создайте новый/сотрите существующий файл журнала, затем откройте его.
+    if (!Filesystem::Open("console.log", FILE_MODE_WRITE, false, &LogFileHandle)) {
+        PlatformConsoleWriteError("ОШИБКА: Не удается открыть console.log для записи.", LOG_LEVEL_ERROR);
+        return false;
+    }
 
     // TODO: Удали это
     MFATAL("Тестовое сообщение: %f", 3.14f);
@@ -45,34 +49,47 @@ void *Logger::operator new(u64 size)
     return MMemory::Free(ptr,sizeof(Logger), );
 }*/
 
+void Logger::AppendToLogFile(MString message)
+{
+    if (LogFileHandle.IsValid) {
+        // Поскольку сообщение уже содержит '\n', просто запишите байты напрямую.
+        u64 length = message.Length();
+        u64 written = 0;
+        if (!Filesystem::Write(&LogFileHandle, length, message.c_str(), &written)) {
+            PlatformConsoleWriteError("ОШИБКА записи в console.log.", LOG_LEVEL_ERROR);
+        }
+    }
+}
+
 void Logger::Output(LogLevel level, MString message, ...)
 {
+    // TODO: Все эти строковые операции выполняются довольно медленно. В конечном 
+    // итоге это необходимо переместить в другой поток вместе с записью файла, 
+    // чтобы избежать замедления процесса во время попытки запуска движка.
     const char* LevelStrings[6] = {"[FATAL]: ", "[ОШИБКА]: ", "[ПРЕДУПРЕЖДЕНИЕ]:  ", "[ИНФО]:  ", "[ОТЛАДКА]: ", "[TRACE]: "};
-    bool is_error = LOG_LEVEL_WARN;
+    bool IsError = LOG_LEVEL_WARN;
 
     // Технически накладывает ограничение на длину одной записи журнала в 32 тыс. символов, но...
     // НЕ ДЕЛАЙТЕ ЭТОГО!
-    const i32 MsgLength = 32000;
-    char* OutMessage = new char[MsgLength]();
+    char OutMessage[32000] {};
 
     // Отформатируйте исходное сообщение.
-    // ПРИМЕЧАНИЕ. Как ни странно, заголовки MS в некоторых случаях переопределяют тип va_list GCC/Clang 
-    // с помощью «typedef char* va_list», и в результате здесь выдается странная ошибка. Обходной путь 
-    // на данный момент — просто использовать __builtin_va_list, который является типом, ожидаемым va_start GCC/Clang.
     __builtin_va_list arg_ptr;
     va_start(arg_ptr, message);
-    vsnprintf(OutMessage, MsgLength, message.c_str(), arg_ptr);
+    StringFormatV(OutMessage, message.c_str(), arg_ptr);
     va_end(arg_ptr);
 
-    char OutMessage2[MsgLength];
-    sprintf(OutMessage2, "%s%s\n", LevelStrings[level], OutMessage);
+    // Добавить уровень журнала к сообщению.
+    StringFormat(OutMessage, "%s%s\n", LevelStrings[level], OutMessage);
 
-    // Platform-specific output.
-    if (is_error) {
-        PlatformConsoleWriteError(OutMessage2, level);
+    if (IsError) {
+        PlatformConsoleWriteError(OutMessage, level);
     } else {
-        PlatformConsoleWrite(OutMessage2, level);
+        PlatformConsoleWrite(OutMessage, level);
     }
+
+    // Поставьте копию в очередь для записи в файл журнала.
+    AppendToLogFile(OutMessage);
 }
 
 void ReportAssertionFailure(const char* expression, const char* message, const char* file, i32 line) 

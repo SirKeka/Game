@@ -2,7 +2,6 @@
 #include "core/mmemory.hpp"
 
 #include <string>
-#include <stdio.h>
 #include <stdarg.h>
 
 MString::MString() : str(nullptr), lenght(0){   }
@@ -89,12 +88,12 @@ MAPI i32 StringFormat(char *dest, const char *format, ...)
     return -1;
 }
 
-MAPI i32 StringFormatV(char *dest, const char *format, char *va_listp)
+MAPI i32 StringFormatV(char *dest, const char *format, char* va_list)
 {
     if (dest) {
         // Большой, но может поместиться в стопке.
         char buffer[32000];
-        i32 written = vsnprintf(buffer, 32000, format, va_listp);
+        i32 written = vsnprintf(buffer, 32000, format, va_list);
         buffer[written] = 0;
         MMemory::CopyMem(dest, buffer, written + 1);
 
