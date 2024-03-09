@@ -15,18 +15,20 @@ public:
     alignas(16) __m128 data; // или __m256
 #endif
 
-    union { 
-		// Первый элемент.
-		union {f32 x, r;};
-		// Второй элемент.
-		union {f32 y, g;};
-		// Третий элемент.
-		union {f32 z, b;};
-		// Четвертый элемент.
-		union {f32 w, a;};
-
-		alignas(16) f32 elements[4];
-	};
+    union {
+        // Массив x, y, z, w
+        alignas(16) T elements[4];
+        struct {
+            // Первый элемент.
+			union {T x, r;};
+            // Второй элемент.
+			union {T y, g;};
+			// Третий элемент.
+			union {T z, b;};
+			// Четвертый элемент.
+			union {T w, a;};
+        };
+    };
 
 	Quaternion() = default;
 	Quaternion(f32 a, f32 b, f32 c, f32 s);

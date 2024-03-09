@@ -16,11 +16,12 @@ public:
     VulkanBuffer() = default;
     ~VulkanBuffer() = default;
 
-    bool Create(VulkanAPI* VkAPI,
-    u64 size,
-    VkBufferUsageFlagBits usage,
-    u32 MemoryPropertyFlags,
-    bool BindOnCreate);
+    bool Create(
+        VulkanAPI* VkAPI,
+        u64 size,
+        VkBufferUsageFlagBits usage,
+        u32 MemoryPropertyFlags,
+        bool BindOnCreate);
 
     void Destroy(VulkanAPI* VkAPI);
 
@@ -42,7 +43,6 @@ public:
         VkCommandPool pool,
         VkFence fence,
         VkQueue queue,
-        VkBuffer source,
         u64 SourceOffset,
         VkBuffer dest,
         u64 DestOffset,

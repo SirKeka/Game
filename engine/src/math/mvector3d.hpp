@@ -10,16 +10,18 @@ template<typename T>
 class Vector3D
 {
 public:
-    union {
-		// Первый элемент.
-		union {T x, r;};
-		// Второй элемент.
-		union {T y, g;};
-		// Третий элемент.
-		union {T z, b;};
-
-		T elements[3];
-	};
+	union {
+        // Массив x, y, z
+        T elements[3];
+        struct {
+            // Первый элемент.
+			union {T x, r;};
+            // Второй элемент.
+			union {T y, g;};
+			// Третий элемент.
+			union {T z, b;};
+        };
+    };
 
 	Vector3D() = default;
 	Vector3D(T x, T y, T z);

@@ -9,7 +9,7 @@ public:
     Vertex3D(f32 a, f32 b, f32 c) : Vector3D(a, b, c) {}
 
     //Операторы
-    Vertex3D& operator =(const Vector3D& v);
+    Vertex3D& operator =(const Vector3D<f32>& v);
 };
 
 MINLINE Vertex3D operator +(const Vertex3D& a, const Vector3D<f32>& b)

@@ -9,12 +9,14 @@ class Vector2D
 {
 public:
     union {
-        // Первый элемент.
-        T x; 
-        // Второй элемент.
-        T y;
-
+        // Массив x, y
         T elements[2];
+        struct {
+            // Первый элемент.
+			union {T x, r;};
+            // Второй элемент.
+			union {T y, g;};
+        };
     };
 
     Vector2D() {};

@@ -99,4 +99,6 @@ void VulkanObjectShader::DestroyShaderModule(VulkanAPI *VkAPI)
 
 void VulkanObjectShader::Use(VulkanAPI *VkAPI)
 {
+    u32 ImageIndex = VkAPI->ImageIndex;
+    pipeline.Bind(&VkAPI->GraphicsCommandBuffers[ImageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS);
 }

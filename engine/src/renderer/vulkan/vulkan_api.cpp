@@ -18,6 +18,7 @@
 // Shaders
 #include "shaders/vulkan_object_shader.hpp"
 
+
 VkInstance VulkanAPI::instance;
 VkAllocationCallbacks* VulkanAPI::allocator;
 u32 VulkanAPI::CachedFramebufferWidth = 0;
@@ -308,6 +309,29 @@ bool VulkanAPI::Initialize(MWindow* window, const char* ApplicationName)
 
     CreateBuffers();
 
+    // TODO: временный тестовый код
+    const u32 VertCount = 4;
+    Vertex3D verts[VertCount] {};
+
+    verts[0].x = 0.0;
+    verts[0].y = -0.5;
+
+    verts[1].x = 0.5;
+    verts[1].y = 0.5;
+
+    verts[2].x = 0;
+    verts[2].y = 0.5;
+
+    verts[3].x = 0.5;
+    verts[3].y = -0.5;
+
+    const u32 IndexCount = 6;
+    u32 indices[IndexCount] = {0, 1, 2, 0, 3, 1};
+
+    UploadDataRange(Device->GraphicsCommandPool, 0, Device->GraphicsQueue, *ObjectVertexBuffer, 0, sizeof(Vertex3D) * VertCount, verts);
+    UploadDataRange(Device->GraphicsCommandPool, 0, Device->GraphicsQueue, *ObjectIndexBuffer, 0, sizeof(u32) * IndexCount, indices);
+    // TODO: конец временного кода
+
     MINFO("Средство визуализации Vulkan успешно инициализировано.");
     return true;
 }
@@ -409,7 +433,22 @@ bool VulkanAPI::BeginFrame(f32 Deltatime)
     VulkanRenderpassBegin(
         &GraphicsCommandBuffers[ImageIndex],
         &MainRenderpass,
-        swapchain.framebuffers[ImageIndex].handle);
+        swapchain.framebuffers[ImageIndex].handle
+    );
+
+    // TODO: Временный тестовый код
+    ObjectShader->Use(this);
+
+    // Привязка буфера вершин к смещению.
+    VkDeviceSize offsets[1] = {0};
+    vkCmdBindVertexBuffers(GraphicsCommandBuffers[ImageIndex].handle, 0, 1, &ObjectVertexBuffer->handle, (VkDeviceSize*)offsets);
+
+    // Привязка индексного буфер по смещению.
+    vkCmdBindIndexBuffer(GraphicsCommandBuffers[ImageIndex].handle, ObjectIndexBuffer->handle, 0, VK_INDEX_TYPE_UINT32);
+
+    // Отрисовка.
+    vkCmdDrawIndexed(GraphicsCommandBuffers[ImageIndex].handle, 3, 1, 0, 0, 0);
+    // TODO: конец ыременного тестового кода
 
     return true;
 }
@@ -586,7 +625,7 @@ bool VulkanAPI::CreateBuffers()
     if (!ObjectVertexBuffer->Create(
             this,
             VertexBufferSize,
-            VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,// | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+            static_cast<VkBufferUsageFlagBits>(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT),
             MemoryPropertyFlags,
             true)) {
         MERROR("Ошибка создания вершинного буфера.");
@@ -599,15 +638,32 @@ bool VulkanAPI::CreateBuffers()
     if (!ObjectIndexBuffer->Create(
             this,
             IndexBufferSize,
-            VK_BUFFER_USAGE_INDEX_BUFFER_BIT,// | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+            static_cast<VkBufferUsageFlagBits>(VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT),
             MemoryPropertyFlags,
             true)) {
         MERROR("Ошибка создания вершинного буфера.");
         return false;
     }
     GeometryVertexOffset = 0; 
-
+    
     return true;
+}
+
+void VulkanAPI::UploadDataRange(VkCommandPool pool, VkFence fence, VkQueue queue, VulkanBuffer &buffer, u64 offset, u64 size, void *data)
+{
+    // Создание промежуточного буфера, видимого хосту, для загрузки. Отметьте его как источник передачи.
+    VkBufferUsageFlags flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+    VulkanBuffer staging;
+    staging.Create(this, size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, flags, true);
+
+    // Загрузка данных в промежуточный буфер.
+    staging.LoadData(this, 0, size, 0, data);
+
+    // Копирование из промежуточного хранилища в локальный буфер устройства.
+    staging.CopyTo(this, pool, fence, queue, 0, buffer.handle, offset, size);
+
+    // Очистка промежуточного буфера.
+    staging.Destroy(this);
 }
 
 bool VulkanAPI::RecreateSwapchain()

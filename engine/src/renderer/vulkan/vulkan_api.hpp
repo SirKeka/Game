@@ -185,4 +185,6 @@ private:
     void RegenerateFramebuffers();
     bool RecreateSwapchain();
     bool CreateBuffers();
+
+    void UploadDataRange(VkCommandPool pool, VkFence fence, VkQueue queue, VulkanBuffer& buffer, u64 offset, u64 size, void* data);
 };

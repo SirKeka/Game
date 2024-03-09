@@ -102,7 +102,7 @@ bool VulkanBuffer::Resize(VulkanAPI *VkAPI, u64 NewSize, VkQueue queue, VkComman
     VK_CHECK(vkBindBufferMemory(VkAPI->Device->LogicalDevice, NewBuffer, NewMemory, 0));
 
     // Скопируйте данные
-    CopyTo(VkAPI, pool, 0, queue, this->handle, 0, NewBuffer, 0, this->TotalSize);
+    CopyTo(VkAPI, pool, 0, queue, 0, NewBuffer, 0, this->TotalSize);
 
     // Убедитесь, что все, что потенциально может их использовать, завершено.
     vkDeviceWaitIdle(VkAPI->Device->LogicalDevice);
@@ -155,7 +155,6 @@ void VulkanBuffer::CopyTo(
     VkCommandPool pool, 
     VkFence fence, 
     VkQueue queue, 
-    VkBuffer source, 
     u64 SourceOffset, 
     VkBuffer dest, 
     u64 DestOffset, 
@@ -171,7 +170,7 @@ void VulkanBuffer::CopyTo(
     CopyRegion.dstOffset = DestOffset;
     CopyRegion.size = size;
 
-    vkCmdCopyBuffer(TempCommandBuffer.handle, source, dest, 1, &CopyRegion);
+    vkCmdCopyBuffer(TempCommandBuffer.handle, handle, dest, 1, &CopyRegion);
 
     // Отправьте буфер на выполнение и дождитесь его завершения.
     VulkanCommandBufferEndSingleUse(VkAPI, pool, &TempCommandBuffer, queue);

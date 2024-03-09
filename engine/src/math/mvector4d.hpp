@@ -15,18 +15,20 @@ public:
     alignas(16) __m128 data; // или __m256
 #endif
 
-    union { 
-		// Первый элемент.
-		union {T x, r;};
-		// Второй элемент.
-		union {T y, g;};
-		// Третий элемент.
-		union {T z, b;};
-		// Четвертый элемент.
-		union {T w, a;};
-
-		alignas(16) T elements[4];
-	};
+	union {
+        // Массив x, y, z, w
+        alignas(16) T elements[4];
+        struct {
+            // Первый элемент.
+			union {T x, r;};
+            // Второй элемент.
+			union {T y, g;};
+			// Третий элемент.
+			union {T z, b;};
+			// Четвертый элемент.
+			union {T w, a;};
+        };
+    };
 
 	Vector4D() {};
 	Vector4D(T x, T y, T z, T w);
