@@ -1,4 +1,4 @@
-#include "mmath.hpp"
+#include "math.hpp"
 #include "platform/platform.hpp"
 
 #include <math.h>

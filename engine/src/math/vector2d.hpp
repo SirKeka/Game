@@ -2,7 +2,7 @@
 
 #include "defines.hpp"
 
-#include "mmath.hpp"
+#include "math.hpp"
 
 template<typename T>
 class Vector2D

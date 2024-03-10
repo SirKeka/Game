@@ -1,18 +1,17 @@
-#include "mmatrix4d.hpp"
-#include "mvector3d.hpp"
-#include "mvector4d.hpp"
+#include "matrix4d.hpp"
+#include "vector4d.hpp"
 
-#include "mmath.hpp"
+#include "math.hpp"
 
 Matrix4D::Matrix4D(f32 n00, f32 n01, f32 n02, f32 n03, 
 				   f32 n10, f32 n11, f32 n12, f32 n13,
 				   f32 n20, f32 n21, f32 n22, f32 n23,
 				   f32 n30, f32 n31, f32 n32, f32 n33)
 {
-	n[0][0] = n00; n[0][1] = n10; n[0][2] = n20; n[0][3] = n30;
-	n[1][0] = n01; n[1][1] = n11; n[1][2] = n21; n[1][3] = n31;
-	n[2][0] = n02; n[2][1] = n12; n[2][2] = n22; n[2][3] = n32;
-	n[3][0] = n03; n[3][1] = n13; n[3][2] = n23; n[3][3] = n33;
+	n[0][0] = n00; n[0][1] = n01; n[0][2] = n02; n[0][3] = n03;
+	n[1][0] = n10; n[1][1] = n11; n[1][2] = n12; n[1][3] = n13;
+	n[2][0] = n20; n[2][1] = n21; n[2][2] = n22; n[2][3] = n23;
+	n[3][0] = n30; n[3][1] = n31; n[3][2] = n32; n[3][3] = n33;
 }
 
 Matrix4D::Matrix4D(const Vector4D<f32>& a, const Vector4D<f32>& b, const Vector4D<f32>& c, const Vector4D<f32>& d)
@@ -68,12 +67,12 @@ Matrix4D::Matrix4D(const Quaternion &q, const Vector3D<f32> &center)
 
 f32 &Matrix4D::operator()(int i, int j)
 {
-	return n[j][i];
+	return n[i][j];
 }
 
 const f32& Matrix4D::operator()(int i, int j) const
 {
-	return n[j][i];
+	return n[i][j];
 }
 
 Vector4D<f32>& Matrix4D::operator[](int j)
@@ -86,44 +85,20 @@ const Vector4D<f32>& Matrix4D::operator[](int j) const
 	return *reinterpret_cast<const Vector4D<f32>*>(n[j]);
 }
 
-MINLINE Matrix4D Matrix4D::MakeIdentity()
+/*MINLINE Matrix4D Matrix4D::MakeIdentity()
 {
     return Matrix4D(1.0f, 0.0f, 0.0f, 0.0f,
 					0.0f, 1.0f, 0.0f, 0.0f,
 					0.0f, 0.0f, 1.0f, 0.0f,
 					0.0f, 0.0f, 0.0f, 1.0f);
-}
+}*/
 
-MINLINE Matrix4D Matrix4D::MakeOrthographicProjection(f32 left, f32 right, f32 bottom, f32 top, f32 NearClip, f32 FarClip)
+/*MINLINE Matrix4D Matrix4D::MakeFrustumProjection(f32 fovy, f32 s, f32 n, f32 f)
 {
-    Matrix4D m {};
+    
+}*/
 
-    f32 lr = 1.0f / (left - right);
-    f32 bt = 1.0f / (bottom - top);
-    f32 nf = 1.0f / (NearClip - FarClip);
-
-    m(0, 0) = -2.0f * lr;
-    m(1, 1) = -2.0f * bt;
-    m(2, 2) =  2.0f * nf;
-
-    m(3, 0) = (left + right) * lr;
-    m(3, 1) = (top + bottom) * bt;
-    m(3, 2) = (FarClip + NearClip) * nf;
-    return m;
-}
-
-MINLINE Matrix4D Matrix4D::MakeFrustumProjection(f32 fovy, f32 s, f32 n, f32 f)
-{
-    f32 g = 1.0F / Math::tan(fovy * 0.5f);
-	f32 k = f / (f - n);
-
-	return (Matrix4D(g / s, 0.0f, 0.0f, 0.0f,
-	                  0.0f,  g,   0.0f, 0.0f,
-	                  0.0f, 0.0f,  k,  -n * k,
-	                  0.0f, 0.0f, 1.0f, 0.0f));
-}
-
-MINLINE Matrix4D Matrix4D::MakeRevFrustumProjection(f32 fovy, f32 s, f32 n, f32 f)
+/*MINLINE Matrix4D Matrix4D::MakeRevFrustumProjection(f32 fovy, f32 s, f32 n, f32 f)
 {
     f32 g = 1.0F / Math::tan(fovy * 0.5F);
 	f32 k = n / (n - f);
@@ -132,9 +107,9 @@ MINLINE Matrix4D Matrix4D::MakeRevFrustumProjection(f32 fovy, f32 s, f32 n, f32 
 	                  0.0F,  g,   0.0F, 0.0F,
 	                  0.0F, 0.0F,  k,  -f * k,
 	                  0.0F, 0.0F, 1.0F, 0.0F));
-}
+}*/
 
-MINLINE Matrix4D Matrix4D::MakeInfiniteProjection(f32 fovy, f32 s, f32 n, f32 e)
+/*MINLINE Matrix4D Matrix4D::MakeInfiniteProjection(f32 fovy, f32 s, f32 n, f32 e)
 {
     f32 g = 1.0f / Math::tan(fovy * 0.5f);
 	e = 1.0F - e;
@@ -143,9 +118,9 @@ MINLINE Matrix4D Matrix4D::MakeInfiniteProjection(f32 fovy, f32 s, f32 n, f32 e)
 	                  0.0f,  g,   0.0f, 0.0f,
 	                  0.0f, 0.0f,  e,  -n * e,
 	                  0.0f, 0.0f, 1.0f, 0.0f));
-}
+}*/
 
-MINLINE Matrix4D Matrix4D::MakeRevInfiniteProjection(f32 fovy, f32 s, f32 n, f32 e)
+/*MINLINE Matrix4D Matrix4D::MakeRevInfiniteProjection(f32 fovy, f32 s, f32 n, f32 e)
 {
     f32 g = 1.0F / Math::tan(fovy * 0.5F);
 
@@ -153,9 +128,9 @@ MINLINE Matrix4D Matrix4D::MakeRevInfiniteProjection(f32 fovy, f32 s, f32 n, f32
 	                  0.0F,  g,   0.0F,    0.0F,
 	                  0.0F, 0.0F,  e,   n * (1.0F - e),
 	                  0.0F, 0.0F, 1.0F,    0.0F));
-}
+}*/
 
-MINLINE Matrix4D Matrix4D::MakeLookAt(const Vector3D<f32> &position, const Vector3D<f32> &target, const Vector3D<f32> &up)
+MINLINE Matrix4D Matrix4::MakeLookAt(const Vector3D<f32> &position, const Vector3D<f32> &target, const Vector3D<f32> &up)
 {
     Vector3D<f32> Z_Axis;
 	Z_Axis = target - position;
@@ -170,7 +145,7 @@ MINLINE Matrix4D Matrix4D::MakeLookAt(const Vector3D<f32> &position, const Vecto
 					-Dot(X_Axis, position), -Dot(Y_Axis, position), Dot(Z_Axis, position), 1.0f);
 }
 
-MINLINE Matrix4D Matrix4D::MakeInverse(const Matrix4D &m)
+MINLINE Matrix4D Matrix4::MakeInverse(const Matrix4D &m)
 {
     const Vector3D<f32>& a = reinterpret_cast<const Vector3D<f32>&>(m[0]);
 	const Vector3D<f32>& b = reinterpret_cast<const Vector3D<f32>&>(m[1]);
@@ -204,7 +179,7 @@ MINLINE Matrix4D Matrix4D::MakeInverse(const Matrix4D &m)
 					r3.x, r3.y, r3.z,  Dot(c, s));
 }
 
-MINLINE Matrix4D Matrix4D::MakeTransposed(const Matrix4D &m)
+MINLINE Matrix4D Matrix4::MakeTransposed(const Matrix4D &m)
 {
     return Matrix4D(m(0, 0), m(1, 0), m(2, 0), m(3, 0),
 					m(0, 1), m(1, 1), m(2, 1), m(3, 1),
@@ -212,15 +187,15 @@ MINLINE Matrix4D Matrix4D::MakeTransposed(const Matrix4D &m)
 					m(0, 3), m(1, 3), m(2, 3), m(3, 3));
 }
 
-MINLINE Matrix4D Matrix4D::MakeTranslation(const Vector3D<f32> &position)
+/*MINLINE Matrix4D Matrix4D::MakeTranslation(const Vector3D<f32> &position)
 {
     return Matrix4D(Vector4D<f32>(1.0f, 0.0f, 0.0f, 0.0f),
 					Vector4D<f32>(0.0f, 1.0f, 0.0f, 0.0f),
 					Vector4D<f32>(0.0f, 0.0f, 1.0f, 0.0f),
 					Vector4D<f32>(position,         1.0f));
-}
+}*/
 
-MINLINE Matrix4D Matrix4D::MakeScale(const Vector3D<f32> &scale)
+MINLINE Matrix4D Matrix4::MakeScale(const Vector3D<f32> &scale)
 {
     return Matrix4D(scale.x,    0,       0,   	  0,
 					   0, 	 scale.y,    0,  	  0,
@@ -228,9 +203,9 @@ MINLINE Matrix4D Matrix4D::MakeScale(const Vector3D<f32> &scale)
 					   0,       0,	     0,  	 1.0f);
 }
 
-MINLINE Matrix4D Matrix4D::MakeEulerX(f32 AngleRadians)
+MINLINE Matrix4D Matrix4::MakeEulerX(f32 AngleRadians)
 {
-	Matrix4D m = MakeIdentity();
+	Matrix4D m = Matrix4::MakeIdentity();
 	f32 c = Math::cos(AngleRadians);
     f32 s = Math::sin(AngleRadians);
 
@@ -242,9 +217,9 @@ MINLINE Matrix4D Matrix4D::MakeEulerX(f32 AngleRadians)
     return m;
 }
 
-MINLINE Matrix4D Matrix4D::MakeEulerY(f32 AngleRadians)
+MINLINE Matrix4D Matrix4::MakeEulerY(f32 AngleRadians)
 {
-	Matrix4D m = MakeIdentity();
+	Matrix4D m = Matrix4::MakeIdentity();
 	f32 c = Math::cos(AngleRadians);
     f32 s = Math::sin(AngleRadians);
 
@@ -256,9 +231,9 @@ MINLINE Matrix4D Matrix4D::MakeEulerY(f32 AngleRadians)
     return m;
 }
 
-MINLINE Matrix4D Matrix4D::MakeEulerZ(f32 AngleRadians)
+MINLINE Matrix4D Matrix4::MakeEulerZ(f32 AngleRadians)
 {
-    Matrix4D m = MakeIdentity();
+    Matrix4D m = Matrix4::MakeIdentity();
 	f32 c = Math::cos(AngleRadians);
     f32 s = Math::sin(AngleRadians);
 
@@ -270,7 +245,7 @@ MINLINE Matrix4D Matrix4D::MakeEulerZ(f32 AngleRadians)
     return m;
 }
 
-MINLINE Matrix4D Matrix4D::MakeEulerXYZ(f32 X_Radians, f32 Y_Radians, f32 Z_Radians)
+MINLINE Matrix4D Matrix4::MakeEulerXYZ(f32 X_Radians, f32 Y_Radians, f32 Z_Radians)
 {
     Matrix4D rx = MakeEulerX(X_Radians);
 	Matrix4D ry = MakeEulerY(Y_Radians);
@@ -281,32 +256,32 @@ MINLINE Matrix4D Matrix4D::MakeEulerXYZ(f32 X_Radians, f32 Y_Radians, f32 Z_Radi
     return m;
 }
 
-MINLINE Vector3D<f32> Matrix4D::Forward(const Matrix4D &m)
+MINLINE Vector3D<f32> Matrix4::Forward(const Matrix4D &m)
 {
     return -Normalize(Vector3D<f32>(m(0, 2), m(1, 2), m(2, 2)));
 }
 
-MINLINE Vector3D<f32> Matrix4D::Backward(const Matrix4D &m)
+MINLINE Vector3D<f32> Matrix4::Backward(const Matrix4D &m)
 {
     return Normalize(Vector3D<f32>(m(0, 2), m(1, 2), m(2, 2)));
 }
 
-MINLINE Vector3D<f32> Matrix4D::Up(const Matrix4D& m)
+MINLINE Vector3D<f32> Matrix4::Up(const Matrix4D& m)
 {
 	return Normalize(Vector3D<f32>(m(0, 1), m(1, 1), m(2, 2)));
 }
 
-MINLINE Vector3D<f32> Matrix4D::Left(const Matrix4D &m)
+MINLINE Vector3D<f32> Matrix4::Left(const Matrix4D &m)
 {
     return -Normalize(Vector3D<f32>(m(0, 0), m(1, 0), m(2, 0)));
 }
 
-MINLINE Vector3D<f32> Down(const Matrix4D& m)
+MINLINE Vector3D<f32> Matrix4::Down(const Matrix4D& m)
 {
 	return -Normalize(Vector3D<f32>(m(0, 1), m(1, 1), m(2, 2)));
 }
 
-MINLINE Vector3D<f32> Right(const Matrix4D& m)
+MINLINE Vector3D<f32> Matrix4::Right(const Matrix4D& m)
 {
 	return Normalize(Vector3D<f32>(m(0, 0), m(1, 0), m(2, 0)));
 }

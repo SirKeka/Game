@@ -1,5 +1,5 @@
-#include "mmatrix3d.hpp"
-#include "mvector3d.hpp"
+#include "matrix3d.hpp"
+#include "vector3d.hpp"
 
 	Matrix3D::Matrix3D(f32 n00, f32 n01, f32 n02,
 					   f32 n10, f32 n11, f32 n12,

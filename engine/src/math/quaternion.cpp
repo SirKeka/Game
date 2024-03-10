@@ -1,6 +1,6 @@
 #include "quaternion.hpp"
 
-#include "mvector3d.hpp"
+#include "vector3d.hpp"
 
 Quaternion::Quaternion(f32 a, f32 b, f32 c, f32 s)
 {

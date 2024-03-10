@@ -1,5 +1,5 @@
 #include <core/logger.hpp>
-#include <math/mmath.hpp>
+#include <math/math.hpp>
 
 /**
  * @brief Ожидания будут соответствовать реальным.

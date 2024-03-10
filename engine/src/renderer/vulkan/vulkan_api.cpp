@@ -13,7 +13,7 @@
 #include "core/mmemory.hpp"
 #include "core/application.hpp"
 
-#include "math/mvertex3D.hpp"
+#include "math/vertex3D.hpp"
 
 // Shaders
 #include "shaders/vulkan_object_shader.hpp"
@@ -312,18 +312,19 @@ bool VulkanAPI::Initialize(MWindow* window, const char* ApplicationName)
     // TODO: временный тестовый код
     const u32 VertCount = 4;
     Vertex3D verts[VertCount] {};
+    const f32 f = 10.f;
 
-    verts[0].x = 0.0;
-    verts[0].y = -0.5;
+    verts[0].x = -0.5 * f;
+    verts[0].y = -0.5 * f;
 
-    verts[1].x = 0.5;
-    verts[1].y = 0.5;
+    verts[1].x = 0.5 * f;
+    verts[1].y = 0.5 * f;
 
-    verts[2].x = 0;
-    verts[2].y = 0.5;
+    verts[2].x = -0.5 * f;
+    verts[2].y = 0.5 * f;
 
-    verts[3].x = 0.5;
-    verts[3].y = -0.5;
+    verts[3].x = 0.5 * f;
+    verts[3].y = -0.5 * f;
 
     const u32 IndexCount = 6;
     u32 indices[IndexCount] = {0, 1, 2, 0, 3, 1};
@@ -436,21 +437,37 @@ bool VulkanAPI::BeginFrame(f32 Deltatime)
         swapchain.framebuffers[ImageIndex].handle
     );
 
+    return true;
+}
+
+    void VulkanAPI::UpdateGlobalState(const Matrix4D& projection, const Matrix4D& view, const Vector3D<f32>& ViewPosition, const Vector4D<f32>& AmbientColour, i32 mode)
+{
+    //VulkanCommandBuffer* CommandBuffer = &GraphicsCommandBuffers[ImageIndex];
+
+    ObjectShader->Use(this);
+
+    ObjectShader->GlobalUObj.projection = projection;
+    ObjectShader->GlobalUObj.view = view;
+
+    // TODO: другие свойства ubo
+
+    ObjectShader->UpdateGlobalState(this);
+
     // TODO: Временный тестовый код
     ObjectShader->Use(this);
 
     // Привязка буфера вершин к смещению.
     VkDeviceSize offsets[1] = {0};
-    vkCmdBindVertexBuffers(GraphicsCommandBuffers[ImageIndex].handle, 0, 1, &ObjectVertexBuffer->handle, (VkDeviceSize*)offsets);
+    vkCmdBindVertexBuffers(GraphicsCommandBuffers[ImageIndex].handle, 0, 1, &ObjectVertexBuffer->handle, static_cast<VkDeviceSize*>(offsets));
 
     // Привязка индексного буфер по смещению.
     vkCmdBindIndexBuffer(GraphicsCommandBuffers[ImageIndex].handle, ObjectIndexBuffer->handle, 0, VK_INDEX_TYPE_UINT32);
 
     // Отрисовка.
-    vkCmdDrawIndexed(GraphicsCommandBuffers[ImageIndex].handle, 3, 1, 0, 0, 0);
-    // TODO: конец ыременного тестового кода
+    vkCmdDrawIndexed(GraphicsCommandBuffers[ImageIndex].handle, 6, 1, 0, 0, 0);
+    // TODO: конец временного тестового кода
 
-    return true;
+    
 }
 
 bool VulkanAPI::EndFrame(f32 DeltaTime)

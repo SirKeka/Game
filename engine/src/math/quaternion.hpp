@@ -1,9 +1,9 @@
 #pragma once
 
 #include "defines.hpp"
-#include "mmatrix3d.hpp"
+#include "matrix3d.hpp"
 
-#include "mmath.hpp"
+#include "math.hpp"
 
 template<typename T> struct Vector3D;
 
@@ -17,16 +17,16 @@ public:
 
     union {
         // Массив x, y, z, w
-        alignas(16) T elements[4];
+        alignas(16) f32 elements[4];
         struct {
             // Первый элемент.
-			union {T x, r;};
+			union {f32 x, r;};
             // Второй элемент.
-			union {T y, g;};
+			union {f32 y, g;};
 			// Третий элемент.
-			union {T z, b;};
+			union {f32 z, b;};
 			// Четвертый элемент.
-			union {T w, a;};
+			union {f32 w, a;};
         };
     };
 

@@ -4,6 +4,9 @@
 #include "core/mmemory.hpp"
 
 #include "renderer/vulkan/vulkan_api.hpp"
+#include "math/vector3d.hpp"
+#include "math/vector4d.hpp"
+#include "math/matrix4d.hpp"
 
 RendererType *Renderer::ptrRenderer;
 
@@ -65,6 +68,12 @@ bool Renderer::DrawFrame(RenderPacket *packet)
 {
     // Если начальный кадр возвращается успешно, операции в середине кадра могут продолжаться.
     if (BeginFrame(packet->DeltaTime)) {
+        Matrix4D projection = Matrix4::MakeFrustumProjection(Math::DegToRad(45.0f), 1280 / 720.0f, 0.1f, 1000.0f);
+        static f32 z = -1.0f;
+        z -= 0.005f;
+        Matrix4D view = Matrix4::MakeTranslation(Vector3D<f32>{0, 0, z});
+
+        ptrRenderer->UpdateGlobalState(projection, view, Vector3D<f32>::Zero(), Vector4D<f32>::Zero(), 0);
 
         // Завершите кадр. Если это не удастся, скорее всего, это будет невозможно восстановить.
         bool result = EndFrame(packet->DeltaTime);

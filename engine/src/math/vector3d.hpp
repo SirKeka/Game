@@ -2,7 +2,7 @@
 
 #include "defines.hpp"
 
-#include "mmath.hpp"
+#include "math.hpp"
 
 template<typename T> class Vector4D;
 
@@ -24,34 +24,34 @@ public:
     };
 
 	Vector3D() = default;
-	Vector3D(T x, T y, T z);
+	constexpr explicit Vector3D(T x, T y, T z) noexcept;
 	Vector3D(const Vector2D<T>& v);
 	Vector3D(const Vector4D<T>& v);
 
 	/// @brief нулевой вектор
     /// @return (0, 0, 0)
-    static Vector3D Zero();
+    static constexpr Vector3D Zero() noexcept;
     /// @brief единичный вектор
     /// @return (1, 1, 1)
-    static Vector3D One();
+    static constexpr Vector3D One() noexcept;
     /// @brief Вектор указывающий вверх
     /// @return (0, 1, 0)
-    static Vector3D Up();
+    static constexpr Vector3D Up() noexcept;
     /// @brief Вектор указывающий вниз
     /// @return (0, -1, 0)
-    static Vector3D Down();
+    static constexpr Vector3D Down() noexcept;
     /// @brief Вектор указывающий налево
     /// @return (-1, 0, 0)
-    static Vector3D Left();
+    static constexpr Vector3D Left() noexcept;
     /// @brief Вектор указывающий направо
     /// @return (1, 0, 0)
-    static Vector3D Right();
+    static constexpr Vector3D Right() noexcept;
 	/// @brief Вектор указывающий вперед
 	/// @return (0, 0, -1)
-	static Vector3D Forward();
+	static constexpr Vector3D Forward() noexcept;
 	/// @brief Вектор указывающий назад
 	/// @return (0, 0, 1)
-	static Vector3D Backward();
+	static constexpr Vector3D Backward() noexcept;
 
 	T& operator [] (int i);
 	const T& operator [](int i) const;
@@ -195,7 +195,7 @@ MINLINE Vector3D<T>& Reject(const Vector3D<T>& a, const Vector3D<T>& b)
 }
 
 template <typename T>
-MINLINE Vector3D<T>::Vector3D(T x, T y, T z)
+MINLINE constexpr Vector3D<T>::Vector3D(T x, T y, T z) noexcept
 {
 	this->x = x;
 	this->y = y;
@@ -217,49 +217,49 @@ y(v.y),
 z(v.z) {}
 
 template <typename T>
-MINLINE Vector3D<T> Vector3D<T>::Zero()
+MINLINE constexpr Vector3D<T> Vector3D<T>::Zero() noexcept
 {
-    return Vector3D<T>(0, 0, 0);
+    return Vector3D<T>(T(), T(), T());
 }
 
 template <typename T>
-MINLINE Vector3D<T> Vector3D<T>::One()
+MINLINE constexpr Vector3D<T> Vector3D<T>::One() noexcept
 {
     return Vector3D<T>(1, 1, 1);
 }
 
 template <typename T>
-MINLINE Vector3D<T> Vector3D<T>::Up()
+MINLINE constexpr Vector3D<T> Vector3D<T>::Up() noexcept
 {
     return Vector3D<T>(0, 1, 0);
 }
 
 template <typename T>
-MINLINE Vector3D<T> Vector3D<T>::Down()
+MINLINE constexpr Vector3D<T> Vector3D<T>::Down() noexcept
 {
     return Vector3D<T>(0, -1, 0);
 }
 
 template <typename T>
-MINLINE Vector3D<T> Vector3D<T>::Left()
+MINLINE constexpr Vector3D<T> Vector3D<T>::Left() noexcept
 {
     return Vector3D<T>(-1, 0, 0);
 }
 
 template <typename T>
-MINLINE Vector3D<T> Vector3D<T>::Right()
+MINLINE constexpr Vector3D<T> Vector3D<T>::Right() noexcept
 {
     return Vector3D<T>(1, 0, 0);
 }
 
 template <typename T>
-MINLINE Vector3D<T> Vector3D<T>::Forward()
+MINLINE constexpr Vector3D<T> Vector3D<T>::Forward() noexcept
 {
     return Vector3D<T>(0, 0, -1);
 }
 
 template <typename T>
-MINLINE Vector3D<T> Vector3D<T>::Backward()
+MINLINE constexpr Vector3D<T> Vector3D<T>::Backward() noexcept
 {
     return Vector3D<T>(0, 0, 1);
 }
