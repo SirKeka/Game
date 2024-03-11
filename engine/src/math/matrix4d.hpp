@@ -169,58 +169,41 @@ public:
 	/// @return перевернутая копия предоставленной матрицы.
 	MINLINE Matrix4D MakeInverse(const Matrix4D& m)
 	{
-    	f32 t0  = m(10)  * m(15);
-    	f32 t1  = m(14)  * m(11);
-    	f32 t2  = m(6)   * m(15);
-    	f32 t3  = m(14)  * m(7) ;
-    	f32 t4  = m(6)   * m(11);
-    	f32 t5  = m(10)  * m(7) ;
-    	f32 t6  = m(2)   * m(15);
-    	f32 t7  = m(14)  * m(3) ;
-    	f32 t8  = m(2)   * m(11);
-    	f32 t9  = m(10)  * m(3) ;
-    	f32 t10 = m(2)   * m(7) ;
-    	f32 t11 = m(6)   * m(3) ;
-    	f32 t12 = m(8)   * m(13);
-    	f32 t13 = m(12)  * m(9) ;
-    	f32 t14 = m(4)   * m(13);
-    	f32 t15 = m(12)  * m(5) ;
-    	f32 t16 = m(4)   * m(9) ;
-    	f32 t17 = m(8)   * m(5) ;
-    	f32 t18 = m(0)   * m(13);
-    	f32 t19 = m(12)  * m(1) ;
-    	f32 t20 = m(0)   * m(9) ;
-    	f32 t21 = m(8)   * m(1) ;
-    	f32 t22 = m(0)   * m(5) ;
-    	f32 t23 = m(4)   * m(1) ;
+		const Vector3D<f32>& a = reinterpret_cast<const Vector3D<f32>&>(m[0]);
+		const Vector3D<f32>& b = reinterpret_cast<const Vector3D<f32>&>(m[1]);
+		const Vector3D<f32>& c = reinterpret_cast<const Vector3D<f32>&>(m[2]);
+		const Vector3D<f32>& d = reinterpret_cast<const Vector3D<f32>&>(m[3]);
 
-    	Matrix4D o {};
+		const f32& x = m(1, 4);
+		const f32& y = m(2, 4);
+		const f32& z = m(3, 4);
+		const f32& w = m(4, 4);
 
-		o(0) = (t0 * m(5) + t3 * m(9) + t4  * m(13)) - (t1 * m(5) + t2 * m(9) + t5  * m(13));
-    	o(1) = (t1 * m(1) + t6 * m(9) + t9  * m(13)) - (t0 * m(1) + t7 * m(9) + t8  * m(13));
-   		o(2) = (t2 * m(1) + t7 * m(5) + t10 * m(13)) - (t3 * m(1) + t6 * m(5) + t11 * m(13));
-    	o(3) = (t5 * m(1) + t8 * m(5) + t11 * m(9))  - (t4 * m(1) + t9 * m(5) + t10 * m(9));
+		Vector3D<f32> s = Cross(a, b);
+		Vector3D<f32> t = Cross(c, d);
+		Vector3D<f32> u = a * y - b * x;
+		Vector3D<f32> v = c * w - d * z;
 
-    	f32 d = 1.0f / (m(0) * o(0) + m(4) * o(1) + m(8) * o(2) + m(12) * o(3));
+		float invDet = 1.0F / (Dot(s, v) + Dot(t, u));
+		s *= invDet;
+		t *= invDet;
+		u *= invDet;
+		v *= invDet;
 
-    	o(0) = d * o(0);
-    	o(1) = d * o(1);
-    	o(2) = d * o(2);
-    	o(3) = d * o(3);
-		o(4) = d  * ((t1  * m(4)  + t2  * m(8)  + t5  * m(12)) - (t0  * m(4)  + t3  * m(8)  + t4  * m(12)));
-    	o(5) = d  * ((t0  * m(0)  + t7  * m(8)  + t8  * m(12)) - (t1  * m(0)  + t6  * m(8)  + t9  * m(12)));
-    	o(6) = d  * ((t3  * m(0)  + t6  * m(4)  + t11 * m(12)) - (t2  * m(0)  + t7  * m(4)  + t10 * m(12)));
-    	o(7) = d  * ((t4  * m(0)  + t9  * m(4)  + t10 * m(8))  - (t5  * m(0)  + t8  * m(4)  + t11 * m(8)));
-    	o(8) = d  * ((t12 * m(7)  + t15 * m(11) + t16 * m(15)) - (t13 * m(7)  + t14 * m(11) + t17 * m(15)));
-    	o(9) = d  * ((t13 * m(3)  + t18 * m(11) + t21 * m(15)) - (t12 * m(3)  + t19 * m(11) + t20 * m(15)));
-    	o(10) = d * ((t14 * m(3)  + t19 * m(7)  + t22 * m(15)) - (t15 * m(3)  + t18 * m(7)  + t23 * m(15)));
-    	o(11) = d * ((t17 * m(3)  + t20 * m(7)  + t23 * m(11)) - (t16 * m(3)  + t21 * m(7)  + t22 * m(11)));
-    	o(12) = d * ((t14 * m(10) + t17 * m(14) + t13 * m(6))  - (t16 * m(14) + t12 * m(6)  + t15 * m(10)));
-    	o(13) = d * ((t20 * m(14) + t12 * m(2)  + t19 * m(10)) - (t18 * m(10) + t21 * m(14) + t13 * m(2)));
-    	o(14) = d * ((t18 * m(6)  + t23 * m(14) + t15 * m(2))  - (t22 * m(14) + t14 * m(2)  + t19 * m(6)));
-    	o(15) = d * ((t22 * m(10) + t16 * m(2)  + t21 * m(6))  - (t20 * m(6)  + t23 * m(10) + t17 * m(2)));
+		Vector3D<f32> r0 = Cross(b, v) + t * y;
+		Vector3D<f32> r1 = Cross(v, a) - t * x;
+		Vector3D<f32> r2 = Cross(d, u) + s * w;
+		Vector3D<f32> r3 = Cross(u, c) - s * z;
 
-    	return o;
+		return Matrix4D(	r0.x, 	   r1.x, 	   r2.x,      r3.x,
+							r0.y, 	   r1.y, 	   r2.y,      r3.y,
+							r0.z, 	   r1.z, 	   r2.z,      r3.z,
+						-Dot(b, t), Dot(a, t), -Dot(d, s), Dot(c, s));
+
+		/*return (Matrix4D(r0.x, r0.y, r0.z, -Dot(b, t),
+		                 r1.x, r1.y, r1.z,  Dot(a, t),
+		                 r2.x, r2.y, r2.z, -Dot(d, s),
+		                 r3.x, r3.y, r3.z,  Dot(c, s)));*/
 	}
 	/// @brief Заменяет строки матрицы на столбцы.
 	/// @param m матрица, подлежащая транспонированию

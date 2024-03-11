@@ -14,6 +14,10 @@ using LinearAllocator = WrapLinearAllocator<Renderer>;
 
 private:
     static RendererType* ptrRenderer;
+    static Matrix4D projection;
+    static Matrix4D view;
+    static f32 NearClip;
+    static f32 FarClip;
 public:
     Renderer() = default;
     ~Renderer();

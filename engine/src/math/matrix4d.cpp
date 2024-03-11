@@ -70,14 +70,14 @@ f32 &Matrix4D::operator()(int i, int j)
 {
 	if((i < 1 || i > 4)) MERROR("Неверный индекс i! Должен быть от 1 до 4");
 	if ((j < 1 || i > 4)) MERROR("Неверный индекс j! Должен быть от 1 до 4");
-	return n[i][j];
+	return n[i - 1][j - 1];
 }
 
 const f32& Matrix4D::operator()(int i, int j) const
 {
 	if((i < 1 || i > 4)) MERROR("Неверный индекс i! Должен быть от 1 до 4");
 	if ((j < 1 || i > 4)) MERROR("Неверный индекс j! Должен быть от 1 до 4");
-	return n[i][j];
+	return n[i - 1][j - 1];
 }
 
 f32 &Matrix4D::operator()(int i)
@@ -310,12 +310,12 @@ MINLINE Vector3D<f32> Matrix4::Right(const Matrix4D& m)
 
 void Matrix4D::Inverse()
 {
-	Matrix4::MakeInverse(*this);
+	*this = Matrix4::MakeInverse(*this);
 }
 
 Matrix4D operator*(Matrix4D &a, Matrix4D &b)
 {
-	Matrix4D c;
+	Matrix4D c {};
     for (int i = 1; i < 5; i++) {
 		for (int j = 1; j < 5; j++) {
 			c(i, j) = a(i, 1) * b(1, j) + 
