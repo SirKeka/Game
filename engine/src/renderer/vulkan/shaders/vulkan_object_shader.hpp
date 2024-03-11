@@ -33,4 +33,5 @@ public:
     void DestroyShaderModule(VulkanAPI* VkAPI);
     void Use(VulkanAPI* VkAPI);
     void UpdateGlobalState(VulkanAPI* VkAPI);
+    void UpdateObject(VulkanAPI* VkAPI, const Matrix4D& model);
 };

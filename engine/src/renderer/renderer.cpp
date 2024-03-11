@@ -69,11 +69,24 @@ bool Renderer::DrawFrame(RenderPacket *packet)
     // Если начальный кадр возвращается успешно, операции в середине кадра могут продолжаться.
     if (BeginFrame(packet->DeltaTime)) {
         Matrix4D projection = Matrix4::MakeFrustumProjection(Math::DegToRad(45.0f), 1280 / 720.0f, 0.1f, 1000.0f);
-        static f32 z = -1.0f;
-        z -= 0.005f;
+
+        static f32 z = 0.0f;
+        z += 0.01f;
         Matrix4D view = Matrix4::MakeTranslation(Vector3D<f32>{0, 0, z});
+        view.Inverse();
 
         ptrRenderer->UpdateGlobalState(projection, view, Vector3D<f32>::Zero(), Vector4D<f32>::Zero(), 0);
+
+        Matrix4D m = Matrix4::MakeInverse(Matrix4D(2,1,0,0, 3,2,0,0, 1,1,3,4, 2,-1,2,3));
+        Matrix4D m2 = Matrix4D(2,1,0,0, 3,2,0,0, 1,1,3,4, 2,-1,2,3);
+        Matrix4D n = m * m2;
+
+        // Matrix4D model = Matrix4::MakeIdentity();
+        static f32 angle = 0.01f;
+        angle += 0.001f;
+        Quaternion rotation{Vector3D<f32>::Forward(), angle, false};
+        Matrix4D model {rotation, Vector3D<f32>::Zero()}; //= quat_to_rotation_matrix(rotation, vec3_zero());
+        ptrRenderer->UpdateObjects(model);
 
         // Завершите кадр. Если это не удастся, скорее всего, это будет невозможно восстановить.
         bool result = EndFrame(packet->DeltaTime);

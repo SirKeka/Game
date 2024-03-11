@@ -41,4 +41,5 @@ public:
     virtual bool BeginFrame(f32 Deltatime) = 0;
     virtual void UpdateGlobalState(const Matrix4D& projection, const Matrix4D& view, const Vector3D<f32>& ViewPosition, const Vector4D<f32>& AmbientColour, i32 mode) = 0;
     virtual bool EndFrame(f32 DeltaTime) = 0;
+    virtual void UpdateObjects(const Matrix4D& model) = 0;
 };

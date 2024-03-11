@@ -2,16 +2,17 @@
 #include "vector4d.hpp"
 
 #include "math.hpp"
+#include "core/logger.hpp"
 
-Matrix4D::Matrix4D(f32 n00, f32 n01, f32 n02, f32 n03, 
-				   f32 n10, f32 n11, f32 n12, f32 n13,
-				   f32 n20, f32 n21, f32 n22, f32 n23,
-				   f32 n30, f32 n31, f32 n32, f32 n33)
+Matrix4D::Matrix4D(f32 n11, f32 n12, f32 n13, f32 n14,
+				   f32 n21, f32 n22, f32 n23, f32 n24,
+				   f32 n31, f32 n32, f32 n33, f32 n34,
+				   f32 n41, f32 n42, f32 n43, f32 n44)
 {
-	n[0][0] = n00; n[0][1] = n01; n[0][2] = n02; n[0][3] = n03;
-	n[1][0] = n10; n[1][1] = n11; n[1][2] = n12; n[1][3] = n13;
-	n[2][0] = n20; n[2][1] = n21; n[2][2] = n22; n[2][3] = n23;
-	n[3][0] = n30; n[3][1] = n31; n[3][2] = n32; n[3][3] = n33;
+	n[0][0] = n11; n[0][1] = n12; n[0][2] = n13; n[0][3] = n14;
+	n[1][0] = n21; n[1][1] = n22; n[1][2] = n23; n[1][3] = n24;
+	n[2][0] = n31; n[2][1] = n32; n[2][2] = n33; n[2][3] = n34;
+	n[3][0] = n41; n[3][1] = n42; n[3][2] = n43; n[3][3] = n44;
 }
 
 Matrix4D::Matrix4D(const Vector4D<f32>& a, const Vector4D<f32>& b, const Vector4D<f32>& c, const Vector4D<f32>& d)
@@ -67,12 +68,28 @@ Matrix4D::Matrix4D(const Quaternion &q, const Vector3D<f32> &center)
 
 f32 &Matrix4D::operator()(int i, int j)
 {
+	if((i < 1 || i > 4)) MERROR("Неверный индекс i! Должен быть от 1 до 4");
+	if ((j < 1 || i > 4)) MERROR("Неверный индекс j! Должен быть от 1 до 4");
 	return n[i][j];
 }
 
 const f32& Matrix4D::operator()(int i, int j) const
 {
+	if((i < 1 || i > 4)) MERROR("Неверный индекс i! Должен быть от 1 до 4");
+	if ((j < 1 || i > 4)) MERROR("Неверный индекс j! Должен быть от 1 до 4");
 	return n[i][j];
+}
+
+f32 &Matrix4D::operator()(int i)
+{
+    if((i < 0 || i > 15)) MERROR("Неверный индекс i! Должен быть от 0 до 15");
+	return data[i];
+}
+
+const f32 &Matrix4D::operator()(int i) const
+{
+    if((i < 0 || i > 15)) MERROR("Неверный индекс i! Должен быть от 0 до 15");
+	return data[i];
 }
 
 Vector4D<f32>& Matrix4D::operator[](int j)
@@ -145,7 +162,7 @@ MINLINE Matrix4D Matrix4::MakeLookAt(const Vector3D<f32> &position, const Vector
 					-Dot(X_Axis, position), -Dot(Y_Axis, position), Dot(Z_Axis, position), 1.0f);
 }
 
-MINLINE Matrix4D Matrix4::MakeInverse(const Matrix4D &m)
+/*MINLINE Matrix4D Matrix4::MakeInverse(const Matrix4D &m)
 {
     const Vector3D<f32>& a = reinterpret_cast<const Vector3D<f32>&>(m[0]);
 	const Vector3D<f32>& b = reinterpret_cast<const Vector3D<f32>&>(m[1]);
@@ -177,7 +194,7 @@ MINLINE Matrix4D Matrix4::MakeInverse(const Matrix4D &m)
 					r1.x, r1.y, r1.z,  Dot(a, t),
 					r2.x, r2.y, r2.z, -Dot(d, s),
 					r3.x, r3.y, r3.z,  Dot(c, s));
-}
+}*/
 
 MINLINE Matrix4D Matrix4::MakeTransposed(const Matrix4D &m)
 {
@@ -291,20 +308,20 @@ MINLINE Vector3D<f32> Matrix4::Right(const Matrix4D& m)
 //  08 09 10 11
 //  12 13 14 15
 
-/*MINLINE Matrix4D &Matrix4D::Inverse()
+void Matrix4D::Inverse()
 {
-	return MakeInverse(*this);
-}*/
+	Matrix4::MakeInverse(*this);
+}
 
 Matrix4D operator*(Matrix4D &a, Matrix4D &b)
 {
 	Matrix4D c;
-    for (int i = 0; i < 4; i++) {
-		for (int j = 0; j < 4; j++) {
-			c(i, j) = a(i, 0) * b(0, j) + 
-					  a(i, 1) * b(1, j) + 
+    for (int i = 1; i < 5; i++) {
+		for (int j = 1; j < 5; j++) {
+			c(i, j) = a(i, 1) * b(1, j) + 
 					  a(i, 2) * b(2, j) + 
-					  a(i, 3) * b(3, j);
+					  a(i, 3) * b(3, j) + 
+					  a(i, 4) * b(4, j);
 		}
 	}
 	return c;

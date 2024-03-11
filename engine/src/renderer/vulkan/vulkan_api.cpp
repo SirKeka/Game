@@ -31,6 +31,25 @@ VKAPI_ATTR VkBool32 VKAPI_CALL VkDebugCallback(
     void* UserData
 );
 
+void VulkanAPI::UpdateObjects(const Matrix4D &model)
+{
+    ObjectShader->UpdateObject(this, model);
+    
+    // TODO: Временный тестовый код
+    ObjectShader->Use(this);
+
+    // Привязка буфера вершин к смещению.
+    VkDeviceSize offsets[1] = {0};
+    vkCmdBindVertexBuffers(GraphicsCommandBuffers[ImageIndex].handle, 0, 1, &ObjectVertexBuffer->handle, static_cast<VkDeviceSize*>(offsets));
+
+    // Привязка индексного буфер по смещению.
+    vkCmdBindIndexBuffer(GraphicsCommandBuffers[ImageIndex].handle, ObjectIndexBuffer->handle, 0, VK_INDEX_TYPE_UINT32);
+
+    // Отрисовка.
+    vkCmdDrawIndexed(GraphicsCommandBuffers[ImageIndex].handle, 6, 1, 0, 0, 0);
+    // TODO: конец временного тестового кода
+}
+
 VulkanAPI::~VulkanAPI()
 {
     vkDeviceWaitIdle(Device->LogicalDevice);
@@ -452,22 +471,6 @@ bool VulkanAPI::BeginFrame(f32 Deltatime)
     // TODO: другие свойства ubo
 
     ObjectShader->UpdateGlobalState(this);
-
-    // TODO: Временный тестовый код
-    ObjectShader->Use(this);
-
-    // Привязка буфера вершин к смещению.
-    VkDeviceSize offsets[1] = {0};
-    vkCmdBindVertexBuffers(GraphicsCommandBuffers[ImageIndex].handle, 0, 1, &ObjectVertexBuffer->handle, static_cast<VkDeviceSize*>(offsets));
-
-    // Привязка индексного буфер по смещению.
-    vkCmdBindIndexBuffer(GraphicsCommandBuffers[ImageIndex].handle, ObjectIndexBuffer->handle, 0, VK_INDEX_TYPE_UINT32);
-
-    // Отрисовка.
-    vkCmdDrawIndexed(GraphicsCommandBuffers[ImageIndex].handle, 6, 1, 0, 0, 0);
-    // TODO: конец временного тестового кода
-
-    
 }
 
 bool VulkanAPI::EndFrame(f32 DeltaTime)

@@ -24,8 +24,6 @@ Quaternion::Quaternion(const Vector3D<f32> &axis, f32 angle, bool normalize)
     f32 s = Math::sin(HalfAngle);
     f32 c = Math::cos(HalfAngle);
 
-
-
 	x = s * axis.x;
 	y = s * axis.y;
 	z = s * axis.z;

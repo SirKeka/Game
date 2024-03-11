@@ -105,6 +105,14 @@ bool VulkanPipeline::Create(
     // Макет конвейера
     VkPipelineLayoutCreateInfo PipelineLayoutCreateInfo = {VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
 
+    // Push-константы
+    VkPushConstantRange PushConstant;
+    PushConstant.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    PushConstant.offset = sizeof(Matrix4D) * 0;
+    PushConstant.size = sizeof(Matrix4D) * 2;
+    PipelineLayoutCreateInfo.pushConstantRangeCount = 1;
+    PipelineLayoutCreateInfo.pPushConstantRanges = &PushConstant;
+
     // Макеты набора дескрипторов
     PipelineLayoutCreateInfo.setLayoutCount = DescriptorSetLayoutCount;
     PipelineLayoutCreateInfo.pSetLayouts = DescriptorSetLayouts;

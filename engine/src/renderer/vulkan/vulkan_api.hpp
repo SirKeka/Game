@@ -171,7 +171,6 @@ public:
     bool BeginFrame(f32 Deltatime) override;
     void UpdateGlobalState(const Matrix4D& projection, const Matrix4D& view, const Vector3D<f32>& ViewPosition, const Vector4D<f32>& AmbientColour, i32 mode) override;
     bool EndFrame(f32 DeltaTime) override;
-    
 
     void* operator new(u64 size);
     //void operator delete(void* ptr);
@@ -189,4 +188,5 @@ private:
     bool CreateBuffers();
 
     void UploadDataRange(VkCommandPool pool, VkFence fence, VkQueue queue, VulkanBuffer& buffer, u64 offset, u64 size, void* data);
+    void UpdateObjects(const Matrix4D& model) override;
 };

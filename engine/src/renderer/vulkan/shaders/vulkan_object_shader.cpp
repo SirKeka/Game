@@ -112,7 +112,7 @@ bool VulkanObjectShader::Create(VulkanAPI *VkAPI)
             VkAPI,
             sizeof(GlobalUniformObject),
             static_cast<VkBufferUsageFlagBits>(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT),
-            /*VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | */VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
             true)) {
         MERROR("Не удалось создать буфер Vulkan для объектного шейдера.");
         return false;
@@ -166,9 +166,6 @@ void VulkanObjectShader::UpdateGlobalState(VulkanAPI *VkAPI)
     VkCommandBuffer CommandBuffer = VkAPI->GraphicsCommandBuffers[ImageIndex].handle;
     VkDescriptorSet GlobalDescriptor = GlobalDescriptorSets[ImageIndex];
 
-    // Привяжите глобальный набор дескрипторов, подлежащий обновлению.
-    vkCmdBindDescriptorSets(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.PipelineLayout, 0, 1, &GlobalDescriptor, 0, 0);
-
     // Сконфигурируйте дескрипторы для данного индекса.
     u32 range = sizeof(GlobalUniformObject);
     u64 offset = 0;
@@ -191,4 +188,17 @@ void VulkanObjectShader::UpdateGlobalState(VulkanAPI *VkAPI)
     DescriptorWrite.pBufferInfo = &bufferInfo;
 
     vkUpdateDescriptorSets(VkAPI->Device->LogicalDevice, 1, &DescriptorWrite, 0, 0);
+
+    // Привяжите глобальный набор дескрипторов, подлежащий обновлению.
+    vkCmdBindDescriptorSets(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.PipelineLayout, 0, 1, &GlobalDescriptor, 0, 0);
+
+    
+}
+
+void VulkanObjectShader::UpdateObject(VulkanAPI *VkAPI, const Matrix4D &model)
+{
+    u32 ImageIndex = VkAPI->ImageIndex;
+    VkCommandBuffer CommandBuffer = VkAPI->GraphicsCommandBuffers[ImageIndex].handle;
+
+    vkCmdPushConstants(CommandBuffer, pipeline.PipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(Matrix4D), &model);
 }

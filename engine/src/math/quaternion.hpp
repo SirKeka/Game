@@ -37,7 +37,7 @@ public:
 	/// @param axis 
 	/// @param angle 
 	/// @param normalize 
-	Quaternion(const Vector3D<f32>& axis, f32 angle, bool normalize = false);
+	Quaternion(const Vector3D<f32>& axis, f32 angle, bool normalize);
 	Quaternion(const Quaternion& q);
 	Quaternion(Quaternion&& q);
 
