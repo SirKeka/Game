@@ -23,7 +23,7 @@
 
 /* Представляет базовое состояние игры.
  * Вызывается для создания приложением. */
-class Game
+class GameTypes
 {
 private:
 
@@ -31,16 +31,14 @@ public:
     ApplicationConfig AppConfig;
     Application* State;
     
-    MAPI Game(i16 StartPosX, i16 StartPosY, i16 StartWidth, i16 StartHeight, const char* name);
+    //GameTypes();
+    virtual ~GameTypes() = default;
     // Функция инициализации
-    bool Initialize();                                                                                      
+    virtual bool Initialize() = 0;                                                                                      
     // Функция обновления игры
-    bool Update(f32 DeltaTime);
+    virtual bool Update(f32 DeltaTime) = 0;
     // Функция рендеринга игры
-    bool Render(f32 DeltaTime);
+    virtual bool Render(f32 DeltaTime) = 0;
     // Функция изменения размера окна игры
-    void OnResize( u32 Width, u32 Height);
-    ~Game();
-    MAPI void* operator new(u64 size);
-    MAPI void operator delete(void* ptr);
+    virtual void OnResize( u32 Width, u32 Height) = 0;
 };

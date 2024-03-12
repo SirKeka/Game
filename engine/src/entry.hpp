@@ -5,17 +5,15 @@
 #include "core/mmemory.hpp"
 #include "game_types.hpp"
 
-#include <new>
-
 // Внешне определенная функция для создания игры.
-extern bool CreateGame(Game*& OutGame);
+extern bool CreateGame(GameTypes*& OutGame);
 
 // Основная точка входа в приложение.Основная точка входа в приложение.
 int main(void) {
     system("chcp 65001 > nul"); // для отображения русских символов в консоли
 
     // Запросите экземпляр игры из приложения.
-    Game* GameInst;
+    GameTypes* GameInst;
     
     if (!CreateGame(GameInst)) {
         MFATAL("Не удалось создать игру!");

@@ -12,7 +12,7 @@ RendererType *Renderer::ptrRenderer;
 f32 Renderer::NearClip = 0.1f;
 f32 Renderer::FarClip = 1000.f;
 Matrix4D Renderer::projection = Matrix4::MakeFrustumProjection(Math::DegToRad(45.0f), 1280 / 720.0f, NearClip, FarClip);
-Matrix4D Renderer::view;
+Matrix4D Renderer::view = Matrix4::MakeTranslation(Vector3D<f32>{0, 0, -30.f});
 
 
 Renderer::~Renderer()
@@ -39,6 +39,7 @@ bool Renderer::Initialize(MWindow* window, const char *ApplicationName, ERendere
         //ptrRenderer = dynamic_cast<VulkanAPI*> (ptrRenderer);
         ptrRenderer = new VulkanAPI();
         return ptrRenderer->Initialize(window, ApplicationName);
+        view.Inverse();
     }
     return false;
 }
@@ -76,8 +77,6 @@ bool Renderer::DrawFrame(RenderPacket *packet)
     if (BeginFrame(packet->DeltaTime)) {
         static f32 z = 0.0f;
         z += 0.01f;
-        Matrix4D view = Matrix4::MakeTranslation(Vector3D<f32>{0, 0, z}); //-30.f
-        view.Inverse();
 
         ptrRenderer->UpdateGlobalState(projection, view, Vector3D<f32>::Zero(), Vector4D<f32>::Zero(), 0);
 
@@ -98,6 +97,11 @@ bool Renderer::DrawFrame(RenderPacket *packet)
     }
 
     return false;
+}
+
+void Renderer::SetView(Matrix4D view)
+{
+    this->view = view;
 }
 
 void *Renderer::operator new(u64 size)

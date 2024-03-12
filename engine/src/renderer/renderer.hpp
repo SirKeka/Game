@@ -33,6 +33,9 @@ public:
 
     bool DrawFrame(RenderPacket* packet);
 
+    // ВЗЛОМ: это не должно быть выставлено за пределы двигателя.
+    MAPI void SetView(Matrix4D view);
+
     void* operator new(u64 size);
     // void operator delete(void* ptr);
 };

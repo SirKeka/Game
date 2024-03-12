@@ -3,7 +3,7 @@
 
 ApplicationState* Application::AppState;
 
-bool Application::ApplicationCreate(Game *GameInst)
+bool Application::ApplicationCreate(GameTypes *GameInst)
 {
     if (GameInst->State) {
         MERROR("ApplicationCreate вызывался более одного раза.");

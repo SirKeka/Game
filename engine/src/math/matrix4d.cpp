@@ -273,6 +273,17 @@ MINLINE Matrix4D Matrix4::MakeEulerXYZ(f32 X_Radians, f32 Y_Radians, f32 Z_Radia
     return m;
 }
 
+MINLINE Matrix4D Matrix4::MakeEulerXYZ(Vector3D<f32> v)
+{
+    Matrix4D rx = MakeEulerX(v.x);
+	Matrix4D ry = MakeEulerY(v.y);
+	Matrix4D rz = MakeEulerZ(v.z);
+	Matrix4D m = rx * ry;
+	m = m * rz;
+
+    return m;
+}
+
 MINLINE Vector3D<f32> Matrix4::Forward(const Matrix4D &m)
 {
     return -Normalize(Vector3D<f32>(m(0, 2), m(1, 2), m(2, 2)));

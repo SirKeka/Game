@@ -1,4 +1,4 @@
-#include "game_types.hpp"
+#include "game.hpp"
 
 #include <core/logger.hpp>
 #include <new>
@@ -18,6 +18,12 @@ bool Game::Initialize()
 {
     MDEBUG("game_initialize() called!");
     return true;
+
+    CameraPosition = Vector3D<f32> (0, 0, -30.f);
+    CameraEuler = Vector3D<f32>::Zero();
+
+    view = Matrix4::MakeTranslation(CameraPosition);
+    view.Inverse();
 }
 
 bool Game::Update(f32 DeltaTime)
@@ -28,6 +34,8 @@ bool Game::Update(f32 DeltaTime)
     if (Input::IsKeyUp(KEY_M) && Input::WasKeyDown(KEY_M)) {
         MDEBUG("Распределено: %llu (%llu в этом кадре)", AllocCount, AllocCount - PrevAllocCount);
     }
+    State->AppState->Render->SetView(view);
+
     return true;
 }
 
@@ -53,4 +61,34 @@ void *Game::operator new(u64 size)
 void Game::operator delete(void *ptr)
 {
     MMemory::Free(ptr,sizeof(Game), MEMORY_TAG_GAME);
+}
+
+void Game::RecalculateViewMatrix()
+{
+    if(CameraViewDirty) {
+        Matrix4D rotation = Matrix4::MakeEulerXYZ(CameraEuler);
+        Matrix4D translation = Matrix4::MakeTranslation(CameraPosition);
+
+        view = rotation * translation;
+        view.Inverse();
+
+        CameraViewDirty = false;
+    }
+}
+
+void Game::CameraYaw(f32 amount)
+{
+    CameraEuler.y += amount;
+    CameraViewDirty = true;
+}
+
+void Game::CameraPitch(f32 amount)
+{
+    CameraEuler.x += amount;
+
+    // Зажмите, чтобы избежать блокировки Gimball.
+    f32 limit = Math::DegToRad(89.0f);
+    CameraEuler.x = MCLAMP(CameraEuler.x, -limit, limit);
+
+    CameraViewDirty = true;
 }

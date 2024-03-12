@@ -13,7 +13,7 @@
 
 #include "renderer/renderer.hpp"
 
-class Game;
+class GameTypes;
 
 struct ApplicationState {
     LinearAllocator SystemAllocator;
@@ -25,7 +25,7 @@ struct ApplicationState {
     bool IsSuspended;
     MWindow* Window;
     Renderer* Render;
-    Game* GameInst;
+    GameTypes* GameInst;
     
     u32 width;
     u32 height;
@@ -36,13 +36,13 @@ struct ApplicationState {
 
 class Application
 {
-private:
+public:
     static ApplicationState* AppState;
 public:
     Application() = default;
     ~Application();
 
-    MAPI bool ApplicationCreate(Game* GameInst);
+    MAPI bool ApplicationCreate(GameTypes* GameInst);
 
     MAPI bool ApplicationRun();
 

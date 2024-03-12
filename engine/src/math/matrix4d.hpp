@@ -230,6 +230,7 @@ public:
 	MINLINE Matrix4D MakeEulerY(f32 AngleRadians);
 	MINLINE Matrix4D MakeEulerZ(f32 AngleRadians);
 	MINLINE Matrix4D MakeEulerXYZ(f32 X_Radians, f32 Y_Radians, f32 Z_Radians);
+	MINLINE Matrix4D MakeEulerXYZ(Vector3D<f32> v);
 	/// @brief Возвращает вектор направленный вперед относительно предоставленной матрицы.
 	/// @param m матрица 4х4, на основе которой строится вектор.
 	/// @return трехкомпонентный вектор направления.
