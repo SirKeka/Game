@@ -209,9 +209,6 @@ public:
 	/// @return 
 	MINLINE Matrix4D MakeTranslation(const Vector3D<f32>& position)
 	{
-		/*Matrix4D m = Matrix4::MakeIdentity();
-		m(3, 2) = position.z;
-		return m;*/
 		return Matrix4D(	1.0f, 		0.0f, 	   0.0f,    0.0f,
 							0.0f, 		1.0f, 	   0.0f,    0.0f,
 							0.0f, 		0.0f, 	   1.0f,    0.0f,
@@ -228,24 +225,27 @@ public:
 		f32 c = Math::cos(AngleRadians);
     	f32 s = Math::sin(AngleRadians);
 
-		m(1, 1) = c;
-		m(1, 2) = s;
-		m(2, 1) = -c;
-		m(2, 2) = -s;
+		m(5)  = c;  //m(2, 2) = c;
+		m(6)  = s;  //m(2, 3) = s;
+		m(9)  = -s; //m(3, 2) = -s;
+		m(10) = c;  //m(3, 3) = -c;
 
     	return m;
 	}
-
+	// 0  1  2  3
+	// 4  5  6  7
+	// 8  9 10 11
+	//12 13 14 15
 	MAPI MINLINE Matrix4D MakeEulerY(f32 AngleRadians)
 	{
 		Matrix4D m = Matrix4::MakeIdentity();
 		f32 c = Math::cos(AngleRadians);
     	f32 s = Math::sin(AngleRadians);
 
-		m(0, 0) =  c;
-		m(0, 2) = -s;
-		m(2, 0) =  s;
-		m(2, 2) =  c;
+		m(0)  = c;  //m(1, 1) =  c;
+		m(2)  = -s; //m(1, 3) = -s;
+		m(8)  = s;  //m(3, 1) =  s;
+		m(10) = c;  //m(3, 3) =  c;
 
     	return m;
 	}
@@ -256,10 +256,10 @@ public:
 		f32 c = Math::cos(AngleRadians);
     	f32 s = Math::sin(AngleRadians);
 
-		m(0, 0) =  c;
-		m(0, 1) =  s;
-		m(1, 0) = -s;
-		m(1, 2) =  c;
+		m(0) = c;//m(1, 1) =  c;
+		m(1) = s;//m(1, 2) =  s;
+		m(4) = -s;//m(2, 1) = -s;
+		m(5) = c;//m(2, 2) =  c;
 
     	return m;
 	}
@@ -288,11 +288,17 @@ public:
 	/// @brief Возвращает вектор направленный вперед относительно предоставленной матрицы.
 	/// @param m матрица 4х4, на основе которой строится вектор.
 	/// @return трехкомпонентный вектор направления.
-	MINLINE Vector3D<f32> Forward(const Matrix4D& m);
+	MINLINE Vector3D<f32> Forward(const Matrix4D& m)
+	{
+		return -Normalize(Vector3D<f32>(m(2), m(6), m(10)));
+	}
 	/// @brief Возвращает вектор направленный назад относительно предоставленной матрицы.
 	/// @param m матрица 4х4, на основе которой строится вектор.
 	/// @return трехкомпонентный вектор направления.
-	MINLINE Vector3D<f32> Backward(const Matrix4D& m);
+	MINLINE Vector3D<f32> Backward(const Matrix4D& m)
+	{
+		return Normalize(Vector3D<f32>(m(2), m(6), m(10)));
+	}
 	/// @brief Возвращает вектор направленный вверх относительно предоставленной матрицы.
 	/// @param m матрица 4х4, на основе которой строится вектор.
 	/// @return трехкомпонентный вектор направления.
@@ -304,10 +310,16 @@ public:
 	/// @brief Возвращает вектор направленный влево относительно предоставленной матрицы.
 	/// @param m матрица 4х4, на основе которой строится вектор.
 	/// @return трехкомпонентный вектор направления.
-	MINLINE Vector3D<f32> Left(const Matrix4D& m);
+	MINLINE Vector3D<f32> Left(const Matrix4D& m)
+	{
+		return -Normalize(Vector3D<f32>(m(0), m(4), m(8)));
+	}
 	/// @brief Возвращает вектор направленный вправо относительно предоставленной матрицы.
 	/// @param m матрица 4х4, на основе которой строится вектор.
 	/// @return трехкомпонентный вектор направления.
-	MINLINE Vector3D<f32> Right(const Matrix4D& m);
+	MINLINE Vector3D<f32> Right(const Matrix4D& m)
+	{
+		return Normalize(Vector3D<f32>(m(0), m(4), m(8)));
+	}
 	} // namespace Matrix4D
 	

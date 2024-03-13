@@ -17,13 +17,15 @@ Game::Game(i16 StartPosX, i16 StartPosY, i16 StartWidth, i16 StartHeight, const 
 bool Game::Initialize()
 {
     MDEBUG("game_initialize() called!");
-    return true;
-
-    CameraPosition = Vector3D<f32> (0, 0, -30.f);
+    
+    CameraPosition = Vector3D<f32> (0, 0, 30.f);
     CameraEuler = Vector3D<f32>::Zero();
 
     view = Matrix4::MakeTranslation(CameraPosition);
     view.Inverse();
+    CameraViewDirty = true;
+    
+    return true;
 }
 
 bool Game::Update(f32 DeltaTime)
@@ -34,6 +36,69 @@ bool Game::Update(f32 DeltaTime)
     if (Input::IsKeyUp(KEY_M) && Input::WasKeyDown(KEY_M)) {
         MDEBUG("Распределено: %llu (%llu в этом кадре)", AllocCount, AllocCount - PrevAllocCount);
     }
+
+    // ВЗЛОМ: временный взлом для перемещения камеры по кругу.
+    if (Input::IsKeyDown(KEY_A) || Input::IsKeyDown(KEY_LEFT)) {
+        CameraYaw(1.0f * DeltaTime);
+    }
+
+    if (Input::IsKeyDown(KEY_D) || Input::IsKeyDown(KEY_RIGHT)) {
+        CameraYaw(-1.0f * DeltaTime);
+    }
+
+    if (Input::IsKeyDown(KEY_UP)) {
+        CameraPitch(1.0f * DeltaTime);
+    }
+
+    if (Input::IsKeyDown(KEY_DOWN)) {
+        CameraPitch(-1.0f * DeltaTime);
+    }
+
+    f32 TempMoveSpeed = 50.0f;
+    Vector3D<f32> velocity = Vector3D<f32>::Zero();
+
+    //Не работает
+    if (Input::IsKeyDown(KEY_W)) {
+        Vector3D<f32> forward = Matrix4::Forward(view);
+        velocity += forward;
+    }
+
+    //Не работает
+    if (Input::IsKeyDown(KEY_S)) {
+        Vector3D<f32> backward = Matrix4::Backward(view);
+        velocity += backward;
+    }
+
+    if (Input::IsKeyDown(KEY_Q)) {
+        Vector3D<f32> left = Matrix4::Left(view);
+        velocity += left;
+    }
+
+    if (Input::IsKeyDown(KEY_E)) {
+        Vector3D<f32> right = Matrix4::Right(view);
+        velocity += right;
+    }
+
+    if (Input::IsKeyDown(KEY_SPACE)) {
+        velocity.y -= 1.0f;
+    }
+
+    if (Input::IsKeyDown(KEY_X)) {
+        velocity.y += 1.0f;
+    }
+
+    Vector3D<f32> z = Vector3D<f32>::Zero();
+    if (!Compare(z, velocity, 0.0002f)) {
+        // Обязательно нормализуйте скорость перед применением.
+        velocity.Normalize();
+        CameraPosition.x += velocity.x * TempMoveSpeed * DeltaTime;
+        CameraPosition.y += velocity.y * TempMoveSpeed * DeltaTime;
+        CameraPosition.z += velocity.z * TempMoveSpeed * DeltaTime;
+        CameraViewDirty = true;
+    }
+
+    RecalculateViewMatrix();
+
     State->AppState->Render->SetView(view);
 
     return true;

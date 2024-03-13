@@ -186,40 +186,15 @@ MINLINE Matrix4D Matrix4::MakeScale(const Vector3D<f32> &scale)
 					   0,       0,	     0,  	 1.0f);
 }
 
-MINLINE Vector3D<f32> Matrix4::Forward(const Matrix4D &m)
-{
-    return -Normalize(Vector3D<f32>(m(0, 2), m(1, 2), m(2, 2)));
-}
-
-MINLINE Vector3D<f32> Matrix4::Backward(const Matrix4D &m)
-{
-    return Normalize(Vector3D<f32>(m(0, 2), m(1, 2), m(2, 2)));
-}
-
 MINLINE Vector3D<f32> Matrix4::Up(const Matrix4D& m)
 {
 	return Normalize(Vector3D<f32>(m(0, 1), m(1, 1), m(2, 2)));
-}
-
-MINLINE Vector3D<f32> Matrix4::Left(const Matrix4D &m)
-{
-    return -Normalize(Vector3D<f32>(m(0, 0), m(1, 0), m(2, 0)));
 }
 
 MINLINE Vector3D<f32> Matrix4::Down(const Matrix4D& m)
 {
 	return -Normalize(Vector3D<f32>(m(0, 1), m(1, 1), m(2, 2)));
 }
-
-MINLINE Vector3D<f32> Matrix4::Right(const Matrix4D& m)
-{
-	return Normalize(Vector3D<f32>(m(0, 0), m(1, 0), m(2, 0)));
-}
-
-//  00 01 02 03
-//  04 05 06 07
-//  08 09 10 11
-//  12 13 14 15
 
 void Matrix4D::Inverse()
 {

@@ -78,8 +78,8 @@ bool Application::ApplicationRun() {
     AppState->clock.Start();
     AppState->clock.Update();
     AppState->clock.StartTime = AppState->clock.elapsed;
-    [[maybe_unused]] f64 RunningTime = 0;
-    [[maybe_unused]] u8 FrameCount = 0;
+    f64 RunningTime = 0;
+    u8 FrameCount = 0;
     f64 TargetFrameSeconds = 1.0f / 60;
 
     MINFO(MMemory::GetMemoryUsageStr());

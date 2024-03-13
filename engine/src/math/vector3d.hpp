@@ -166,8 +166,8 @@ template<typename T>
 MINLINE Vector3D<T> Cross(const Vector3D<T>& a, const Vector3D<T>& b)
 {
 	return Vector3D<T>(a.y * b.z - a.z * b.y,
-	 				a.z * b.x - a.x * b.z,
-						a.x * b.y - a.y * b.x);
+	 				   a.z * b.x - a.x * b.z,
+					   a.x * b.y - a.y * b.x);
 }
 
 template<typename T>
@@ -269,7 +269,7 @@ MINLINE Vector3D<T> &Vector3D<T>::operator+=(const Vector3D<T> &v)
 {
     x += v.x;
 	y += v.y;
-	z += z.y;
+	z += v.y;
 	return *this;
 }
 
@@ -305,7 +305,7 @@ MINLINE Vector3D<T> &Vector3D<T>::operator*=(const Vector3D<T> &v)
 {
     x *= v.x;
 	y *= v.y;
-	z *= z.y;
+	z *= v.y;
 	return *this;
 }
 
@@ -351,4 +351,21 @@ MINLINE Vector3D<T> &Vector3D<T>::Normalize()
 {
 	*this /= VectorLenght<T>(*this);
     return *this;
+}
+
+template <typename T>
+MINLINE const bool Compare(const Vector3D<T> &v1, const Vector3D<T> &v2, f32 tolerance) {
+    if (Math::abs(v1.x - v2.x) > tolerance) {
+        return false;
+    }
+
+    if (Math::abs(v1.y - v2.y) > tolerance) {
+        return FALSE;
+    }
+
+    if (Math::abs(v1.z - v2.z) > tolerance) {
+        return false;
+    }
+
+    return true;
 }
