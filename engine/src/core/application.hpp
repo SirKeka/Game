@@ -37,7 +37,7 @@ struct ApplicationState {
 class Application
 {
 public:
-    static ApplicationState* AppState;
+    MAPI static ApplicationState* AppState;
 public:
     Application() = default;
     ~Application();

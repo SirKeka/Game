@@ -6,7 +6,7 @@
 
 template<typename T> class Vector4D;
 
-class Matrix4D
+class MAPI Matrix4D
 {
 public:
 	// TODO: SIMD
@@ -44,7 +44,7 @@ public:
 	/// @param a матрица 4x4
 	/// @param b матрица 4x4
 	/// @return результат умножения матрицы а на матрицу b
-	Matrix4D operator*(Matrix4D& a, Matrix4D& b);
+	MAPI Matrix4D operator*(Matrix4D& a, Matrix4D& b);
 
 	namespace Matrix4
 	{
@@ -167,7 +167,7 @@ public:
 	/// @brief Создает и возвращает значение, обратное предоставленной матрице.
 	/// @param m матрица, подлежащая инвертированию
 	/// @return перевернутая копия предоставленной матрицы.
-	MINLINE Matrix4D MakeInverse(const Matrix4D& m)
+	MAPI MINLINE Matrix4D MakeInverse(const Matrix4D& m)
 	{
 		const Vector3D<f32>& a = reinterpret_cast<const Vector3D<f32>&>(m[0]);
 		const Vector3D<f32>& b = reinterpret_cast<const Vector3D<f32>&>(m[1]);
@@ -199,11 +199,6 @@ public:
 							r0.y, 	   r1.y, 	   r2.y,      r3.y,
 							r0.z, 	   r1.z, 	   r2.z,      r3.z,
 						-Dot(b, t), Dot(a, t), -Dot(d, s), Dot(c, s));
-
-		/*return (Matrix4D(r0.x, r0.y, r0.z, -Dot(b, t),
-		                 r1.x, r1.y, r1.z,  Dot(a, t),
-		                 r2.x, r2.y, r2.z, -Dot(d, s),
-		                 r3.x, r3.y, r3.z,  Dot(c, s)));*/
 	}
 	/// @brief Заменяет строки матрицы на столбцы.
 	/// @param m матрица, подлежащая транспонированию
@@ -226,11 +221,70 @@ public:
 	/// @param scale 
 	/// @return 
 	MINLINE Matrix4D MakeScale(const Vector3D<f32>& scale);
-	MINLINE Matrix4D MakeEulerX(f32 AngleRadians);
-	MINLINE Matrix4D MakeEulerY(f32 AngleRadians);
-	MINLINE Matrix4D MakeEulerZ(f32 AngleRadians);
-	MINLINE Matrix4D MakeEulerXYZ(f32 X_Radians, f32 Y_Radians, f32 Z_Radians);
-	MINLINE Matrix4D MakeEulerXYZ(Vector3D<f32> v);
+
+	MINLINE Matrix4D MakeEulerX(f32 AngleRadians)
+	{
+		Matrix4D m = Matrix4::MakeIdentity();
+		f32 c = Math::cos(AngleRadians);
+    	f32 s = Math::sin(AngleRadians);
+
+		m(1, 1) = c;
+		m(1, 2) = s;
+		m(2, 1) = -c;
+		m(2, 2) = -s;
+
+    	return m;
+	}
+
+	MAPI MINLINE Matrix4D MakeEulerY(f32 AngleRadians)
+	{
+		Matrix4D m = Matrix4::MakeIdentity();
+		f32 c = Math::cos(AngleRadians);
+    	f32 s = Math::sin(AngleRadians);
+
+		m(0, 0) =  c;
+		m(0, 2) = -s;
+		m(2, 0) =  s;
+		m(2, 2) =  c;
+
+    	return m;
+	}
+
+	MAPI MINLINE Matrix4D MakeEulerZ(f32 AngleRadians)
+	{
+		Matrix4D m = Matrix4::MakeIdentity();
+		f32 c = Math::cos(AngleRadians);
+    	f32 s = Math::sin(AngleRadians);
+
+		m(0, 0) =  c;
+		m(0, 1) =  s;
+		m(1, 0) = -s;
+		m(1, 2) =  c;
+
+    	return m;
+	}
+
+	MAPI MINLINE Matrix4D MakeEulerXYZ(f32 X_Radians, f32 Y_Radians, f32 Z_Radians)
+	{
+		Matrix4D rx = MakeEulerX(X_Radians);
+		Matrix4D ry = MakeEulerY(Y_Radians);
+		Matrix4D rz = MakeEulerZ(Z_Radians);
+		Matrix4D m = rx * ry;
+		m = m * rz;
+
+    	return m;
+	}
+
+	MAPI MINLINE Matrix4D MakeEulerXYZ(Vector3D<f32> v)
+	{
+		Matrix4D rx = MakeEulerX(v.x);
+		Matrix4D ry = MakeEulerY(v.y);
+		Matrix4D rz = MakeEulerZ(v.z);
+		Matrix4D m = rx * ry;
+		m = m * rz;
+
+   		return m;
+	}
 	/// @brief Возвращает вектор направленный вперед относительно предоставленной матрицы.
 	/// @param m матрица 4х4, на основе которой строится вектор.
 	/// @return трехкомпонентный вектор направления.

@@ -162,40 +162,6 @@ MINLINE Matrix4D Matrix4::MakeLookAt(const Vector3D<f32> &position, const Vector
 					-Dot(X_Axis, position), -Dot(Y_Axis, position), Dot(Z_Axis, position), 1.0f);
 }
 
-/*MINLINE Matrix4D Matrix4::MakeInverse(const Matrix4D &m)
-{
-    const Vector3D<f32>& a = reinterpret_cast<const Vector3D<f32>&>(m[0]);
-	const Vector3D<f32>& b = reinterpret_cast<const Vector3D<f32>&>(m[1]);
-	const Vector3D<f32>& c = reinterpret_cast<const Vector3D<f32>&>(m[2]);
-	const Vector3D<f32>& d = reinterpret_cast<const Vector3D<f32>&>(m[3]);
-
-	const f32& x = m(3, 0);
-	const f32& y = m(3, 1);
-	const f32& z = m(3, 2);
-	const f32& w = m(3, 3);
-
-	Vector3D<f32> s = Cross(a, b);
-	Vector3D<f32> t = Cross(c, d);
-	Vector3D<f32> u = a * y - b * x;
-	Vector3D<f32> v = c * w - d * z;
-
-	f32 invDet = 1.0F / (Dot(s, v) + Dot(t, u));
-	s *= invDet;
-	t *= invDet;
-	u *= invDet;
-	v *= invDet;
-
-	Vector3D<f32> r0 = Cross(b, v) + t * y;
-	Vector3D<f32> r1 = Cross(v, a) - t * x;
-	Vector3D<f32> r2 = Cross(d, u) + s * w;
-	Vector3D<f32> r3 = Cross(u, c) - s * z;
-
-	return Matrix4D(r0.x, r0.y, r0.z, -Dot(b, t),
-					r1.x, r1.y, r1.z,  Dot(a, t),
-					r2.x, r2.y, r2.z, -Dot(d, s),
-					r3.x, r3.y, r3.z,  Dot(c, s));
-}*/
-
 MINLINE Matrix4D Matrix4::MakeTransposed(const Matrix4D &m)
 {
     return Matrix4D(m(0, 0), m(1, 0), m(2, 0), m(3, 0),
@@ -218,70 +184,6 @@ MINLINE Matrix4D Matrix4::MakeScale(const Vector3D<f32> &scale)
 					   0, 	 scale.y,    0,  	  0,
 					   0,       0, 	  scale.z,    0,
 					   0,       0,	     0,  	 1.0f);
-}
-
-MINLINE Matrix4D Matrix4::MakeEulerX(f32 AngleRadians)
-{
-	Matrix4D m = Matrix4::MakeIdentity();
-	f32 c = Math::cos(AngleRadians);
-    f32 s = Math::sin(AngleRadians);
-
-	m(1, 1) = c;
-	m(1, 2) = s;
-	m(2, 1) = -c;
-	m(2, 2) = -s;
-
-    return m;
-}
-
-MINLINE Matrix4D Matrix4::MakeEulerY(f32 AngleRadians)
-{
-	Matrix4D m = Matrix4::MakeIdentity();
-	f32 c = Math::cos(AngleRadians);
-    f32 s = Math::sin(AngleRadians);
-
-	m(0, 0) = c;
-	m(0, 2) = -s;
-	m(2, 0) = s;
-	m(2, 2) = c;
-
-    return m;
-}
-
-MINLINE Matrix4D Matrix4::MakeEulerZ(f32 AngleRadians)
-{
-    Matrix4D m = Matrix4::MakeIdentity();
-	f32 c = Math::cos(AngleRadians);
-    f32 s = Math::sin(AngleRadians);
-
-	m(0, 0) = c;
-	m(0, 1) = s;
-	m(1, 0) = -s;
-	m(1, 2) = c;
-
-    return m;
-}
-
-MINLINE Matrix4D Matrix4::MakeEulerXYZ(f32 X_Radians, f32 Y_Radians, f32 Z_Radians)
-{
-    Matrix4D rx = MakeEulerX(X_Radians);
-	Matrix4D ry = MakeEulerY(Y_Radians);
-	Matrix4D rz = MakeEulerZ(Z_Radians);
-	Matrix4D m = rx * ry;
-	m = m * rz;
-
-    return m;
-}
-
-MINLINE Matrix4D Matrix4::MakeEulerXYZ(Vector3D<f32> v)
-{
-    Matrix4D rx = MakeEulerX(v.x);
-	Matrix4D ry = MakeEulerY(v.y);
-	Matrix4D rz = MakeEulerZ(v.z);
-	Matrix4D m = rx * ry;
-	m = m * rz;
-
-    return m;
 }
 
 MINLINE Vector3D<f32> Matrix4::Forward(const Matrix4D &m)

@@ -5,6 +5,8 @@
 #include "core/mmemory.hpp"
 #include "game_types.hpp"
 
+#include <stdlib.h>
+
 // Внешне определенная функция для создания игры.
 extern bool CreateGame(GameTypes*& OutGame);
 
