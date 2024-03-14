@@ -17,7 +17,6 @@ void Clock::Update()
 
 void Clock::Start()
 {
-    Clock();
     StartTime = MWindow::PlatformGetAbsoluteTime();
     elapsed = 0;
 }

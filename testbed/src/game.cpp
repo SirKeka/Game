@@ -30,9 +30,9 @@ bool Game::Initialize()
 
 bool Game::Update(f32 DeltaTime)
 {
-    static u64 AllocCount = 0;
+    u64 AllocCount = 0;
     u64 PrevAllocCount = AllocCount;
-    AllocCount = MMemory::GetMemoryAllocCount(); 
+    AllocCount = MMemory::GetMemoryAllocCount(); // TODO: проверить странные значения
     if (Input::IsKeyUp(KEY_M) && Input::WasKeyDown(KEY_M)) {
         MDEBUG("Распределено: %llu (%llu в этом кадре)", AllocCount, AllocCount - PrevAllocCount);
     }
@@ -80,11 +80,11 @@ bool Game::Update(f32 DeltaTime)
     }
 
     if (Input::IsKeyDown(KEY_SPACE)) {
-        velocity.y -= 1.0f;
+        velocity.y += 1.0f;
     }
 
     if (Input::IsKeyDown(KEY_X)) {
-        velocity.y += 1.0f;
+        velocity.y -= 1.0f;
     }
 
     Vector3D<f32> z = Vector3D<f32>::Zero();

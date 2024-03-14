@@ -77,7 +77,7 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
 bool Application::ApplicationRun() {
     AppState->clock.Start();
     AppState->clock.Update();
-    AppState->clock.StartTime = AppState->clock.elapsed;
+    AppState->LastTime = AppState->clock.elapsed;
     f64 RunningTime = 0;
     u8 FrameCount = 0;
     f64 TargetFrameSeconds = 1.0f / 60;

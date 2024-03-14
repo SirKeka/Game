@@ -29,7 +29,7 @@ struct ApplicationState {
     
     u32 width;
     u32 height;
-    Clock clock;
+    Clock clock{};
     f64 LastTime;
 
 };
@@ -37,7 +37,7 @@ struct ApplicationState {
 class Application
 {
 public:
-    MAPI static ApplicationState* AppState;
+    MAPI static ApplicationState* AppState; //TODO: убрать MAPI 
 public:
     Application() = default;
     ~Application();

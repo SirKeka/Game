@@ -5,7 +5,7 @@
 
 #include "math.hpp"
 
-template<typename T> struct Vector3D;
+template<typename T> class Vector3D;
 
 class Quaternion
 {

@@ -191,12 +191,12 @@ MAPI static bool WasKeyUp(Keys key);
 static void InputProcessKey(Keys key, bool pressed);
 
 // ввод с помощью мыши
-MAPI bool InputIsButtonDown(Buttons button);
-MAPI bool InputIsButtonUp(Buttons button);
-MAPI bool WasButtonDown(Buttons button);
-MAPI bool InputWasButtonUp(Buttons button);
-MAPI void InputGetMousePosition(i16& x, i16& y);
-MAPI void InputGetPreviousMousePosition(i16& x, i16& y);
+MAPI static bool InputIsButtonDown(Buttons button);
+MAPI static bool InputIsButtonUp(Buttons button);
+MAPI static bool WasButtonDown(Buttons button);
+MAPI static bool InputWasButtonUp(Buttons button);
+MAPI static void InputGetMousePosition(i16& x, i16& y);
+MAPI static void InputGetPreviousMousePosition(i16& x, i16& y);
 
 static void ProcessButton(Buttons button, bool pressed);
 static void InputProcessMouseMove(i16 x, i16 y);

@@ -267,18 +267,18 @@ MINLINE constexpr Vector3D<T> Vector3D<T>::Backward() noexcept
 template <typename T>
 MINLINE Vector3D<T> &Vector3D<T>::operator+=(const Vector3D<T> &v)
 {
-    x += v.x;
-	y += v.y;
-	z += v.y;
+    this->x += v.x;
+	this->y += v.y;
+	this->z += v.z;
 	return *this;
 }
 
 template <typename T>
 MINLINE Vector3D<T> &Vector3D<T>::operator+=(const T s)
 {
-    x += s;
-	y += s;
-	z += s;
+    this->x += s;
+	this->y += s;
+	this->z += s;
 	return *this;
 }
 
@@ -339,9 +339,9 @@ MINLINE Vector3D<T> &Vector3D<T>::operator/=(const T s)
 template <typename T>
 MINLINE Vector3D<f32> &Vector3D<T>::operator-()
 {
-	x *= -1;
-	y *= -1;
-	z *= -1;
+	x = -x;
+	y = -y;
+	z = -z;
 
     return *this;
 }
