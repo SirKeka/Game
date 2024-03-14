@@ -18,15 +18,7 @@ struct VulkanSwapchainSupportInfo
 };
 
 class VulkanDevice;
-
-struct VulkanImage 
-{
-    VkImage handle;
-    VkDeviceMemory memory;
-    VkImageView view;
-    u32 width;
-    u32 height;
-};
+class VulkanImage;
 
 enum VulkanRenderPassState 
 {
@@ -67,7 +59,7 @@ struct VulkanSwapchain
     VkImage* images;
     VkImageView* views;
 
-    VulkanImage DepthAttachment;
+    VulkanImage* DepthAttachment;
 
     // Буферы кадров, используемые для экранного рендеринга.
     DArray<VulkanFramebuffer> framebuffers;

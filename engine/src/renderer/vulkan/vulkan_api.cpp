@@ -2,6 +2,7 @@
 #include "vulkan_platform.hpp"
 #include "vulkan_device.hpp"
 #include "vulkan_swapchain.hpp"
+#include "vulkan_image.hpp"
 #include "vulkan_renderpass.hpp"
 #include "vulkan_command_buffer.hpp"
 #include "vulkan_framebuffer.hpp"
@@ -623,7 +624,7 @@ void VulkanAPI::RegenerateFramebuffers()
         u32 AttachmentCount = 2;
         VkImageView attachments[] = {
             swapchain.views[i],
-            swapchain.DepthAttachment.view};
+            swapchain.DepthAttachment->view};
 
         VulkanFramebufferCreate(
             this,

@@ -206,7 +206,17 @@ void create(VulkanAPI *VkAPI, u32 width, u32 height, VulkanSwapchain *swapchain)
     }
 
     // Создайте изображение глубины и его вид.
-    VulkanImageCreate(
+    swapchain->DepthAttachment = new VulkanImage(VkAPI,
+        VK_IMAGE_TYPE_2D,
+        SwapchainExtent.width,
+        SwapchainExtent.height,
+        VkAPI->Device->DepthFormat,
+        VK_IMAGE_TILING_OPTIMAL,
+        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+        true,
+        VK_IMAGE_ASPECT_DEPTH_BIT);
+    /*swapchain->DepthAttachment->Create(
         VkAPI,
         VK_IMAGE_TYPE_2D,
         SwapchainExtent.width,
@@ -216,8 +226,7 @@ void create(VulkanAPI *VkAPI, u32 width, u32 height, VulkanSwapchain *swapchain)
         VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
         true,
-        VK_IMAGE_ASPECT_DEPTH_BIT,
-        &swapchain->DepthAttachment);
+        VK_IMAGE_ASPECT_DEPTH_BIT);*/
 
     MINFO("Swapchain успешно создан.");
 }
@@ -225,7 +234,7 @@ void create(VulkanAPI *VkAPI, u32 width, u32 height, VulkanSwapchain *swapchain)
 void destroy(VulkanAPI *VkAPI, VulkanSwapchain *swapchain)
 {
     vkDeviceWaitIdle(VkAPI->Device->LogicalDevice);
-    VulkanImageDestroy(VkAPI, &swapchain->DepthAttachment);
+    swapchain->DepthAttachment->Destroy(VkAPI);
 
     // TODO: после выхода из функции main() попадаем в фаил exe_comon.inl который перенаправляет снова в этот цикл
     // Уничтожайте только представления, а не изображения, поскольку они принадлежат цепочке обмена и, следовательно, уничтожаются, когда это происходит.
