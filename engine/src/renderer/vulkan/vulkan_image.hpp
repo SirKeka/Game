@@ -24,18 +24,6 @@ public:
         VkImageAspectFlags ViewAspectFlags);
     ~VulkanImage() = default;
 
-    void Create(
-        VulkanAPI* VkAPI,
-        VkImageType ImageType,
-        u32 width,
-        u32 height,
-        VkFormat format,
-        VkImageTiling tiling,
-        VkImageUsageFlags usage,
-        VkMemoryPropertyFlags MemoryFlags,
-        b32 CreateView,
-        VkImageAspectFlags ViewAspectFlags);
-
     void ViewCreate(
         VulkanAPI* VkAPI,
         VkFormat format,
@@ -45,20 +33,17 @@ public:
     void TransitionLayout(
         VulkanAPI* VkAPI,
         VulkanCommandBuffer* CommandBuffer,
-        VulkanImage* image,
         VkFormat format,
         VkImageLayout OldLayout,
         VkImageLayout NewLayout);
 
-    /**
-     * Copies data in buffer to provided image.
-     * @param VkAPI The Vulkan context.
-     * @param image The image to copy the buffer's data to.
-     * @param buffer The buffer whose data will be copied.
-     */
+    /// @brief Копирует данные из буфера в предоставленное изображение.
+    /// @param VkAPI указатель на объект отрисовщика типа VulkanAPI.
+    /// @param image изображение, в которое нужно скопировать данные буфера.
+    /// @param buffer буфер, данные которого будут скопированы.
+    /// @param CommandBuffer 
     void CopyFromBuffer(
         VulkanAPI* VkAPI,
-        VulkanImage* image,
         VkBuffer buffer,
         VulkanCommandBuffer* CommandBuffer);
 
@@ -66,5 +51,3 @@ public:
 
     void* operator new(u64 size);
 };
-
-

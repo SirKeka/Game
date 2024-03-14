@@ -63,21 +63,6 @@ VulkanImage::VulkanImage(
     }
 }
 
-/*void VulkanImage::Create(
-    VulkanAPI *VkAPI,
-    VkImageType ImageType,
-    u32 width,
-    u32 height,
-    VkFormat format,
-    VkImageTiling tiling,
-    VkImageUsageFlags usage,
-    VkMemoryPropertyFlags MemoryFlags,
-    b32 CreateView,
-    VkImageAspectFlags ViewAspectFlags)
-{
-    
-}*/
-
 void VulkanImage::ViewCreate(VulkanAPI *VkAPI, VkFormat format, VkImageAspectFlags AspectFlags)
 {
     VkImageViewCreateInfo ViewCreateInfo = {VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
@@ -93,6 +78,92 @@ void VulkanImage::ViewCreate(VulkanAPI *VkAPI, VkFormat format, VkImageAspectFla
     ViewCreateInfo.subresourceRange.layerCount = 1;
 
     VK_CHECK(vkCreateImageView(VkAPI->Device->LogicalDevice, &ViewCreateInfo, VkAPI->allocator, &this->view));
+}
+
+void VulkanImage::TransitionLayout(
+    VulkanAPI *VkAPI, 
+    VulkanCommandBuffer *CommandBuffer, 
+    VkFormat format, 
+    VkImageLayout OldLayout, 
+    VkImageLayout NewLayout)
+{
+    VkImageMemoryBarrier barrier = {VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
+    barrier.oldLayout = OldLayout;
+    barrier.newLayout = NewLayout;
+    barrier.srcQueueFamilyIndex = VkAPI->Device->GraphicsQueueIndex;
+    barrier.dstQueueFamilyIndex = VkAPI->Device->GraphicsQueueIndex;
+    barrier.image = this->handle;
+    barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    barrier.subresourceRange.baseMipLevel = 0;
+    barrier.subresourceRange.levelCount = 1;
+    barrier.subresourceRange.baseArrayLayer = 0;
+    barrier.subresourceRange.layerCount = 1;
+
+    VkPipelineStageFlags SourceStage;
+    VkPipelineStageFlags DestStage;
+
+    // Не беспокойтесь о старом макете — переход к оптимальному макету (для базовой реализации).
+    if (OldLayout == VK_IMAGE_LAYOUT_UNDEFINED && NewLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+        barrier.srcAccessMask = 0;
+        barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+
+        // Не важно, на какой стадии находится конвейер в начале.
+        SourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+
+        // Используется для копирования
+        DestStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    } else if (OldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && NewLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
+        // Переход от макета назначения передачи к макету, доступному только для чтения шейдерами.
+        barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+        // От стадии копирования до...
+        SourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+
+        // Стадия фрагмента.
+        DestStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    } else {
+        MFATAL("неподдерживаемый переход макета!");
+        return;
+    }
+
+    vkCmdPipelineBarrier(
+        CommandBuffer->handle,
+        SourceStage, DestStage,
+        0,
+        0, 0,
+        0, 0,
+        1, &barrier);
+}
+
+void VulkanImage::CopyFromBuffer(
+    VulkanAPI *VkAPI, 
+    VkBuffer buffer, 
+    VulkanCommandBuffer *CommandBuffer)
+{
+    // Region to copy
+    VkBufferImageCopy region;
+    MMemory::ZeroMem(&region, sizeof(VkBufferImageCopy));
+    region.bufferOffset = 0;
+    region.bufferRowLength = 0;
+    region.bufferImageHeight = 0;
+
+    region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    region.imageSubresource.mipLevel = 0;
+    region.imageSubresource.baseArrayLayer = 0;
+    region.imageSubresource.layerCount = 1;
+
+    region.imageExtent.width = this->width;
+    region.imageExtent.height = this->height;
+    region.imageExtent.depth = 1;
+
+    vkCmdCopyBufferToImage(
+        CommandBuffer->handle,
+        buffer,
+        this->handle,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        1,
+        &region);
 }
 
 void VulkanImage::Destroy(VulkanAPI *VkAPI)

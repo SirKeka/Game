@@ -216,17 +216,6 @@ void create(VulkanAPI *VkAPI, u32 width, u32 height, VulkanSwapchain *swapchain)
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
         true,
         VK_IMAGE_ASPECT_DEPTH_BIT);
-    /*swapchain->DepthAttachment->Create(
-        VkAPI,
-        VK_IMAGE_TYPE_2D,
-        SwapchainExtent.width,
-        SwapchainExtent.height,
-        VkAPI->Device->DepthFormat,
-        VK_IMAGE_TILING_OPTIMAL,
-        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-        true,
-        VK_IMAGE_ASPECT_DEPTH_BIT);*/
 
     MINFO("Swapchain успешно создан.");
 }
