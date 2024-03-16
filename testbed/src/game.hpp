@@ -1,6 +1,7 @@
 #pragma once
 
 #include <game_types.hpp>
+#include <math/matrix4d.hpp>
 
 class Game : public GameTypes
 {

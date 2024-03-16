@@ -12,9 +12,10 @@
 #include <stdlib.h>
 
 // Для создания поверхности
+#include <renderer/vulkan/vulkan_api.hpp>
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_win32.h>
-#include <renderer/vulkan/vulkan_api.hpp>
+
 
 struct PlatformState
 {
@@ -292,7 +293,7 @@ LRESULT CALLBACK Win32MessageProcessor(HWND hwnd, u32 msg, WPARAM w_param, LPARA
             }
 
             // Перейдите к подсистеме ввода для обработки.
-            Input::InputProcessKey(key, pressed);
+            Input::ProcessKey(key, pressed);
 
             // Верните 0, чтобы предотвратить поведение окна по умолчанию при некоторых нажатиях клавиш, таких как alt.
             return 0;
@@ -303,14 +304,14 @@ LRESULT CALLBACK Win32MessageProcessor(HWND hwnd, u32 msg, WPARAM w_param, LPARA
             i16 yPos = GET_Y_LPARAM(l_param);
 
             // Переходим к подсистеме ввода.
-            Input::InputProcessMouseMove(xPos, yPos);
+            Input::ProcessMouseMove(xPos, yPos);
         } break;
         case WM_MOUSEWHEEL: {
             i32 zDelta = GET_WHEEL_DELTA_WPARAM(w_param);
             if (zDelta != 0) {
                 // Свести входные данные в независимый от ОС (-1, 1)
                 zDelta = (zDelta < 0) ? -1 : 1;
-                Input::InputProcessMouseWheel(zDelta);
+                Input::ProcessMouseWheel(zDelta);
             }
         } break;
         case WM_LBUTTONDOWN:

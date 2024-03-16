@@ -6,7 +6,27 @@
  */
 #pragma once
 
-#include "vulkan_api.hpp"
+#include <vulkan/vulkan.h>
+
+class VulkanAPI;
+
+enum VulkanCommandBufferState 
+{
+    COMMAND_BUFFER_STATE_READY,
+    COMMAND_BUFFER_STATE_RECORDING,
+    COMMAND_BUFFER_STATE_IN_RENDER_PASS,
+    COMMAND_BUFFER_STATE_RECORDING_ENDED,
+    COMMAND_BUFFER_STATE_SUBMITTED,
+    COMMAND_BUFFER_STATE_NOT_ALLOCATED
+};
+
+struct VulkanCommandBuffer 
+{
+    VkCommandBuffer handle;
+
+    // Состояние буфера команд.
+    VulkanCommandBufferState state;
+};
 
 void VulkanCommandBufferAllocate(
     VulkanAPI* VkAPI,

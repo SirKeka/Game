@@ -1,3 +1,4 @@
+#pragma once
 #include "defines.hpp"
 #include "core/mmemory.hpp"
 #include "core/logger.hpp"
@@ -9,28 +10,59 @@ class MAPI DArray
 private:
     u64 size;
     u64 capacity;
-    // MMemory* mem;
     T* ptrValue;
-
-    
 
 // Функции
 public:
-    DArray();
-    DArray(u64 lenght, const T& value = T());
-    ~DArray();
+    DArray() : size(0), capacity(0), ptrValue(nullptr) {}
+
+    DArray(u64 lenght, const T& value = T{}) {
+        if(lenght > 0) {
+            this->size = lenght;
+            this->capacity = lenght;
+            ptrValue = MMemory::TAllocate<T>(capacity, MEMORY_TAG_DARRAY);
+            for (u64 i = 0; i < lenght; i++) {
+                ptrValue[i] = value;
+            }
+        }
+    }
+
+    ~DArray() {
+        if(this->capacity != 0) MMemory::Free(reinterpret_cast<void*>(ptrValue), sizeof(T) * capacity, MEMORY_TAG_DARRAY);
+    }
+
     // Конструктор копирования
-    DArray(const DArray& arr);
+    DArray(const DArray& arr) : size(arr.size), capacity(arr.capacity), ptrValue(arr.ptrValue) {}
+
     // Конструктор перемещения
-    DArray(DArray&& arr);
+    DArray(DArray&& arr) :  size(arr.size), capacity(arr.capacity), ptrValue(arr.ptrValue)
+    {
+        arr.size = 0;
+        arr.capacity = 0;
+        //arr.mem = nullptr;
+        arr.ptrValue = nullptr;
+    }
 
     // Доступ к элементу
 
-    T& operator [] (u64 index);
-    const T& operator [] (u64 index) const;
+    T& operator [] (u64 index) {
+        if(index < 0 || index >= size) MERROR("Индекс за пределами этого массива! Длина: %i, индекс: %index", size, index);
+        return ptrValue[index];
+    }
+
+    const T& operator [] (u64 index) const{
+        if(index < 0 || index >= size) MERROR("Индекс за пределами этого массива! Длина: %i, индекс: %index", size, index);
+        return ptrValue[index];
+    }
+
     /// @return Возвращает указатель на базовый массив, служащий хранилищем элементов.
-    T* Data();
-    const T* Data() const;
+    T* Data() {
+        return ptrValue;
+    }
+
+    const T* Data() const {
+        return ptrValue;
+    }
 
     // Емкость
 
@@ -38,196 +70,89 @@ public:
     /// которые вектор может содержать без необходимости перераспределения) до значения, 
     /// большего или равного NewCap. Если значение NewCap больше текущей capacity(емкости), 
     /// выделяется новое хранилище, в противном случае функция ничего не делает.
-    void Reserve(const u64& NewCap);
+    void Reserve(const u64& NewCap) {
+        // TODO: добавить std::move()
+        if (capacity == 0) {
+            ptrValue = MMemory::TAllocate<T>(NewCap, MEMORY_TAG_DARRAY);
+            capacity = NewCap;
+        }
+        else if (NewCap > capacity) {
+            void* ptrNew = MMemory::Allocate(sizeof(T) * NewCap, MEMORY_TAG_DARRAY);
+            MMemory::CopyMem(ptrNew, reinterpret_cast<void*>(ptrValue), sizeof(T) * capacity);
+            MMemory::Free(ptrValue, sizeof(T) * capacity, MEMORY_TAG_DARRAY);
+            ptrValue = reinterpret_cast<T*> (ptrNew);
+            capacity = NewCap;
+        }
+    }
+
     /// @return количество элементов контейнера
-    constexpr u64 Lenght() const noexcept;
+    constexpr u64 Lenght() const noexcept {
+        return  this->size;
+    }
 
     /// @return количество зарезервированных ячеек памяти типа Т
-    u64 Capacity();
+    u64 Capacity() {
+        return this->capacity;
+    }
 
     // Модифицирующие методы
 
     /// @brief Добавляет заданное значение элемента в конец контейнера.
     /// @param value элемент который нужно поместить в конец контейнера.
-    void PushBack(const T& value);
+    void PushBack(const T& value) {
+        if(size == 0) Reserve(2);
+        if(size == capacity) Reserve(capacity * 2);
+        ptrValue[size] = value;
+        size++;
+    }
+
     //void PushBack(T&& value);
     /// @brief Удаляет последний элемент контейнера.
-    void PopBack();
+    void PopBack() {
+        if(size > 0) size--;
+    }
 
     /// @brief Вставляет value в позицию index.
     /// @param value элемент, который нужно ставить.
     /// @param index индекс элемента в контейнере.
-    void Insert(const T& value, u64 index);
+    void Insert(const T& value, u64 index) {
+        if (index >= size) MERROR("Индекс за пределами этого массива! Длина: %i, индекс: %index", size, index);
+        if(index > size) Resize(size + 1, value);
+        // Если не последний элемент, скопируйте остальное наружу.
+        if (index != size - 1) {
+            MMemory::CopyMem(
+                reinterpret_cast<void*>(ptrValue + (index* sizeof(T))),
+                reinterpret_cast<void*>(ptrValue + (index + 1 * sizeof(T))),
+                size - 1);
+        }
+        size++;
+    }
+
     /// @brief Удаляет выбранный элемент.
-    void PopAt(u64 index);
+    void PopAt(u64 index) {
+        if (index >= size) MERROR("Индекс за пределами этого массива! Длина: %i, индекс: %index", size, index);
+
+        // Если не последний элемент, вырезаем запись и копируем остальное внутрь. TODO: оптимизироваать
+        if (index != size - 1) {
+            MMemory::CopyMem(
+                reinterpret_cast<void*>(ptrValue + (index * sizeof(T))),
+                reinterpret_cast<void*>(ptrValue + (index + 1 * sizeof(T))),
+                size - 1);
+        }
+        size--;
+    }
 
     /// @brief Изменяет размер контейнера, чтобы он содержал NewSize элементы, ничего не делает, если NewSize == size().
     /// @param NewSize новый размер контейнера
-    void Resize(u64 NewSize, const T& value = T());
-};
-
-template<typename T>
-MINLINE DArray<T>::DArray()
-:
-size(0),
-capacity(0),
-//mem(new MMemory()),
-ptrValue(nullptr/*reinterpret_cast<T*>(MMemory::Allocate(sizeof(T) * capacity, MEMORY_TAG_DARRAY))*/) {}
-
-template <typename T>
-MINLINE DArray<T>::DArray(u64 lenght, const T &value)
-/*:
-size(lenght),
-capacity(lenght),
-//mem(new MMemory()),
-ptrValue(reinterpret_cast<T*>(MMemory::Allocate(sizeof(T) * capacity, MEMORY_TAG_DARRAY)))*/
-{
-    if(lenght > 0) {
-        this->size = lenght;
-        this->capacity = lenght;
-        ptrValue = MMemory::TAllocate<T>(capacity, MEMORY_TAG_DARRAY);
-        for (u64 i = 0; i < lenght; i++) {
-            ptrValue[i] = value;
-        }
-    }
-}
-
-template <typename T>
-MINLINE DArray<T>::~DArray()
-{
-    if(this->capacity != 0) MMemory::Free(reinterpret_cast<void*>(ptrValue), sizeof(T) * capacity, MEMORY_TAG_DARRAY);
-}
-
-template <typename T>
-MINLINE DArray<T>::DArray(const DArray &arr) 
-: 
-size(arr.size),
-capacity(arr.capacity),
-//mem(arr.mem),
-ptrValue(arr.ptrValue) {}
-
-template <typename T>
-MINLINE DArray<T>::DArray(DArray &&arr) :  size(arr.size), capacity(arr.capacity), /*mem(arr.mem),*/ ptrValue(arr.ptrValue)
-{
-    arr.size = 0;
-    arr.capacity = 0;
-    //arr.mem = nullptr;
-    arr.ptrValue = nullptr;
-}
-
-template <typename T>
-MINLINE T &DArray<T>::operator[](u64 index)
-{
-    if(index < 0 || index >= size) MERROR("Индекс за пределами этого массива! Длина: %i, индекс: %index", size, index);
-    return ptrValue[index];
-}
-
-template <typename T>
-MINLINE const T &DArray<T>::operator[](u64 index) const
-{
-    if(index < 0 || index >= size) MERROR("Индекс за пределами этого массива! Длина: %i, индекс: %index", size, index);
-    return ptrValue[index];
-}
-
-template <typename T>
-MINLINE T *DArray<T>::Data()
-{
-    return ptrValue;
-}
-
-template <typename T>
-MINLINE const T *DArray<T>::Data() const
-{   
-    return ptrValue;
-}
-
-template <typename T>
-MINLINE void DArray<T>::Reserve(const u64 &NewCap)
-{
-    // TODO: добавить std::move()
-    if (capacity == 0) {
-        ptrValue = MMemory::TAllocate<T>(NewCap, MEMORY_TAG_DARRAY);
-        capacity = NewCap;
-    }
-    else if (NewCap > capacity) {
-        void* ptrNew = MMemory::Allocate(sizeof(T) * NewCap, MEMORY_TAG_DARRAY);
-        MMemory::CopyMem(ptrNew, reinterpret_cast<void*>(ptrValue), sizeof(T) * capacity);
-        MMemory::Free(ptrValue, sizeof(T) * capacity, MEMORY_TAG_DARRAY);
-        ptrValue = reinterpret_cast<T*> (ptrNew);
-        capacity = NewCap;
-    }
-}
-
-template <typename T>
-MINLINE constexpr u64 DArray<T>::Lenght() const noexcept
-{
-    return  this->size;
-}
-
-template <typename T>
-MINLINE u64 DArray<T>::Capacity()
-{
-    return this->capacity;
-}
-
-template <typename T>
-MINLINE void DArray<T>::PushBack(const T &value)
-{
-    if(size == 0) Reserve(2);
-    if(size == capacity) Reserve(capacity * 2);
-    ptrValue[size] = value;
-    size++;
-}
-
-template <typename T>
-MINLINE void DArray<T>::PopBack()
-{
-    if(size > 0) size--;
-}
-
-template <typename T>
-MINLINE void DArray<T>::Insert(const T &value, u64 index)
-{
-    if (index >= size) MERROR("Индекс за пределами этого массива! Длина: %i, индекс: %index", size, index);
-
-    if(index > size) Resize(size + 1, value);
-
-    // Если не последний элемент, скопируйте остальное наружу.
-    if (index != size - 1) {
-        MMemory::CopyMem(
-            reinterpret_cast<void*>(ptrValue + (index* sizeof(T))),
-            reinterpret_cast<void*>(ptrValue + (index + 1 * sizeof(T))),
-            size - 1);
-    }
-    size++;
-}
-
-template <typename T>
-MINLINE void DArray<T>::PopAt(u64 index)
-{
-    if (index >= size) MERROR("Индекс за пределами этого массива! Длина: %i, индекс: %index", size, index);
-
-    // Если не последний элемент, вырезаем запись и копируем остальное внутрь. TODO: оптимизироваать
-    if (index != size - 1) {
-        MMemory::CopyMem(
-            reinterpret_cast<void*>(ptrValue + (index * sizeof(T))),
-            reinterpret_cast<void*>(ptrValue + (index + 1 * sizeof(T))),
-            size - 1);
-    }
-    size--;
-    
-}
-
-template <typename T>
-MINLINE void DArray<T>::Resize(u64 NewSize, const T& value)
-{
-    if(NewSize > capacity) {
-        Reserve(NewSize);
-        // TODO: изменить
-        for (u64 i = size; i < NewSize; i++) {
-            ptrValue[i] = value;
-        }
+    void Resize(u64 NewSize, const T& value = T()) {
+        if(NewSize > capacity) {
+            Reserve(NewSize);
+            // TODO: изменить
+            for (u64 i = size; i < NewSize; i++) {
+                ptrValue[i] = value;
+            }
         
-    }
-    size = NewSize;
-}
+        }
+        size = NewSize;
+        }
+};

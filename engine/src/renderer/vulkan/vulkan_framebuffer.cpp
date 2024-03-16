@@ -1,45 +1,41 @@
 #include "vulkan_framebuffer.hpp"
+#include "vulkan_api.hpp"
 #include "vulkan_device.hpp"
 
-void VulkanFramebufferCreate(
-    VulkanAPI *VkAPI, 
-    VulkanRenderpass *renderpass, 
-    u32 width, u32 height, u32 AttachmentCount, 
-    VkImageView *attachments, 
-    VulkanFramebuffer *OutFramebuffer)
+VulkanFramebuffer::VulkanFramebuffer(VulkanAPI *VkAPI, VulkanRenderPass *renderpass, u32 width, u32 height, u32 AttachmentCount, VkImageView *attachments)
 {
     // Сделайте копию вложений, renderpass и количество вложений
-    OutFramebuffer->attachments = MMemory::TAllocate<VkImageView>(AttachmentCount, MEMORY_TAG_RENDERER);
+    this->attachments = MMemory::TAllocate<VkImageView>(AttachmentCount, MEMORY_TAG_RENDERER);
     for (u32 i = 0; i < AttachmentCount; ++i) {
-        OutFramebuffer->attachments[i] = attachments[i];
+        this->attachments[i] = attachments[i];
     }
-    OutFramebuffer->renderpass = renderpass;
-    OutFramebuffer->AttachmentCount = AttachmentCount;
+    this->renderpass = renderpass;
+    this->AttachmentCount = AttachmentCount;
 
     // Creation info
     VkFramebufferCreateInfo FramebufferCreateInfo = {VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
     FramebufferCreateInfo.renderPass = renderpass->handle;
     FramebufferCreateInfo.attachmentCount = AttachmentCount;
-    FramebufferCreateInfo.pAttachments = OutFramebuffer->attachments;
+    FramebufferCreateInfo.pAttachments = this->attachments;
     FramebufferCreateInfo.width = width;
     FramebufferCreateInfo.height = height;
     FramebufferCreateInfo.layers = 1;
 
     VK_CHECK(vkCreateFramebuffer(
-        VkAPI->Device->LogicalDevice,
+        VkAPI->Device.LogicalDevice,
         &FramebufferCreateInfo,
         VkAPI->allocator,
-        &OutFramebuffer->handle));
+        &this->handle));
 }
 
-void VulkanFramebufferDestroy(VulkanAPI *VkAPI, VulkanFramebuffer *framebuffer)
+void VulkanFramebuffer::Destroy(VulkanAPI *VkAPI)
 {
-    vkDestroyFramebuffer(VkAPI->Device->LogicalDevice, framebuffer->handle, VkAPI->allocator);
-    if (framebuffer->attachments) { 
-        MMemory::Free(framebuffer->attachments, sizeof(VkImageView) * framebuffer->AttachmentCount, MEMORY_TAG_RENDERER);
-        framebuffer->attachments = 0;
+    vkDestroyFramebuffer(VkAPI->Device.LogicalDevice, this->handle, VkAPI->allocator);
+    if (this->attachments) { 
+        MMemory::Free(this->attachments, sizeof(VkImageView) * this->AttachmentCount, MEMORY_TAG_RENDERER);
+        this->attachments = 0;
     }
-    framebuffer->handle = 0;
-    framebuffer->AttachmentCount = 0;
-    framebuffer->renderpass = 0;
+    this->handle = 0;
+    this->AttachmentCount = 0;
+    this->renderpass = 0;
 }

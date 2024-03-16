@@ -1,7 +1,7 @@
 #include "vulkan_command_buffer.hpp"
-#include "vulkan_device.hpp"
+#include "vulkan_api.hpp"
 
-#include "core/mmemory.hpp"
+//#include "core/mmemory.hpp"
 
 void VulkanCommandBufferAllocate(VulkanAPI *VkAPI, VkCommandPool pool, bool IsPrimary, VulkanCommandBuffer *OutCommandBuffer)
 {
@@ -15,7 +15,7 @@ void VulkanCommandBufferAllocate(VulkanAPI *VkAPI, VkCommandPool pool, bool IsPr
 
     OutCommandBuffer->state = COMMAND_BUFFER_STATE_NOT_ALLOCATED;
     VK_CHECK(vkAllocateCommandBuffers(
-        VkAPI->Device->LogicalDevice,
+        VkAPI->Device.LogicalDevice,
         &AllocateInfo,
         &OutCommandBuffer->handle));
     OutCommandBuffer->state = COMMAND_BUFFER_STATE_READY;
@@ -24,7 +24,7 @@ void VulkanCommandBufferAllocate(VulkanAPI *VkAPI, VkCommandPool pool, bool IsPr
 void VulkanCommandBufferFree(VulkanAPI *VkAPI, VkCommandPool pool, VulkanCommandBuffer *CommandBuffer)
 {
     vkFreeCommandBuffers(
-        VkAPI->Device->LogicalDevice,
+        VkAPI->Device.LogicalDevice,
         pool,
         1,
         &CommandBuffer->handle);

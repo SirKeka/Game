@@ -1,23 +1,14 @@
 #include "vulkan_api.hpp"
-#include "vulkan_platform.hpp"
-#include "vulkan_device.hpp"
-#include "vulkan_swapchain.hpp"
-#include "vulkan_image.hpp"
-#include "vulkan_renderpass.hpp"
-#include "vulkan_command_buffer.hpp"
-#include "vulkan_framebuffer.hpp"
 #include "vulkan_fence.hpp"
-#include "vulkan_utils.hpp"
-#include "vulkan_buffer.hpp"
-
-#include "core/logger.hpp"
-#include "core/mmemory.hpp"
+#include "vulkan_swapchain.hpp"
 #include "core/application.hpp"
+#include "vulkan_platform.hpp"
 
 #include "math/vertex3D.hpp"
+//#include "math/matrix4d.hpp"
 
-// Shaders
-#include "shaders/vulkan_object_shader.hpp"
+#include "vulkan_utils.hpp"
+
 
 
 VkInstance VulkanAPI::instance;
@@ -32,19 +23,19 @@ VKAPI_ATTR VkBool32 VKAPI_CALL VkDebugCallback(
     void* UserData
 );
 
-void VulkanAPI::UpdateObjects(const Matrix4D &model)
+void VulkanAPI::UpdateObjects(const GeometryRenderData& data)
 {
-    ObjectShader->UpdateObject(this, model);
+    ObjectShader.UpdateObject(this, data);
     
     // TODO: Временный тестовый код
-    ObjectShader->Use(this);
+    ObjectShader.Use(this);
 
     // Привязка буфера вершин к смещению.
     VkDeviceSize offsets[1] = {0};
-    vkCmdBindVertexBuffers(GraphicsCommandBuffers[ImageIndex].handle, 0, 1, &ObjectVertexBuffer->handle, static_cast<VkDeviceSize*>(offsets));
+    vkCmdBindVertexBuffers(GraphicsCommandBuffers[ImageIndex].handle, 0, 1, &ObjectVertexBuffer.handle, static_cast<VkDeviceSize*>(offsets));
 
     // Привязка индексного буфер по смещению.
-    vkCmdBindIndexBuffer(GraphicsCommandBuffers[ImageIndex].handle, ObjectIndexBuffer->handle, 0, VK_INDEX_TYPE_UINT32);
+    vkCmdBindIndexBuffer(GraphicsCommandBuffers[ImageIndex].handle, ObjectIndexBuffer.handle, 0, VK_INDEX_TYPE_UINT32);
 
     // Отрисовка.
     vkCmdDrawIndexed(GraphicsCommandBuffers[ImageIndex].handle, 6, 1, 0, 0, 0);
@@ -53,30 +44,27 @@ void VulkanAPI::UpdateObjects(const Matrix4D &model)
 
 VulkanAPI::~VulkanAPI()
 {
-    vkDeviceWaitIdle(Device->LogicalDevice);
+    vkDeviceWaitIdle(Device.LogicalDevice);
 
     // Уничтожать в порядке, обратном порядку создания.
 
-    ObjectVertexBuffer->Destroy(this);
-    ObjectIndexBuffer->Destroy(this);
-    delete ObjectVertexBuffer;
-    delete ObjectIndexBuffer;
+    ObjectVertexBuffer.Destroy(this);
+    ObjectIndexBuffer.Destroy(this);
 
-    ObjectShader->DestroyShaderModule(this);
-    delete ObjectShader;
+    ObjectShader.DestroyShaderModule(this);
 
     // Sync objects
     for (u8 i = 0; i < swapchain.MaxFramesInFlight; ++i) {
         if (ImageAvailableSemaphores[i]) {
             vkDestroySemaphore(
-                Device->LogicalDevice,
+                Device.LogicalDevice,
                 ImageAvailableSemaphores[i],
                 allocator);
             ImageAvailableSemaphores[i] = 0;
         }
         if (QueueCompleteSemaphores[i]) {
             vkDestroySemaphore(
-                Device->LogicalDevice,
+                Device.LogicalDevice,
                 QueueCompleteSemaphores[i],
                 allocator);
             QueueCompleteSemaphores[i] = 0;
@@ -100,7 +88,7 @@ VulkanAPI::~VulkanAPI()
         if (GraphicsCommandBuffers[i].handle) {
             VulkanCommandBufferFree(
                 this,
-                Device->GraphicsCommandPool,
+                Device.GraphicsCommandPool,
                 &GraphicsCommandBuffers[i]);
                 GraphicsCommandBuffers[i].handle = 0;
         }
@@ -110,30 +98,17 @@ VulkanAPI::~VulkanAPI()
 
     // Уничтожить кадровые буферы.
     for (u32 i = 0; i < swapchain.ImageCount; ++i) {
-        VulkanFramebufferDestroy(this, &swapchain.framebuffers[i]);
+        swapchain.framebuffers[i].Destroy(this);
     }
 
     // Проход рендеринга (Renderpass)
-    VulkanRenderpassDestroy(this, &this->MainRenderpass);
+    MainRenderpass.Destroy(this);
 
     // Цепочка подкачки (Swapchain)
     VulkanSwapchainDestroy(this, &swapchain);
 
-    MINFO("Уничтожение командных пулов...");
-    vkDestroyCommandPool(
-        Device->LogicalDevice,
-        Device->GraphicsCommandPool,
-        allocator);
-
-    // Уничтожить логическое устройство
-    MINFO("Уничтожение логического устройства...");
-    if (Device->LogicalDevice) {
-        vkDestroyDevice(Device->LogicalDevice, allocator);
-        Device->LogicalDevice = 0;
-    }
-
     MDEBUG("Уничтожение устройства Вулкан...");
-    delete Device;
+    Device.Destroy(this);
 
     MDEBUG("Уничтожение поверхности Вулкана...");
     if (surface) {
@@ -266,8 +241,7 @@ bool VulkanAPI::Initialize(MWindow* window, const char* ApplicationName)
     MDEBUG("Поверхность Vulkan создана.");
 
     // Создание устройства
-    Device = new VulkanDevice();
-    if (!Device->Create(this)) {
+    if (!Device.Create(this)) {
         MERROR("Не удалось создать устройство!");
         return false;
     }
@@ -280,9 +254,8 @@ bool VulkanAPI::Initialize(MWindow* window, const char* ApplicationName)
         &swapchain
     );
 
-    VulkanRenderpassCreate(
+    MainRenderpass = VulkanRenderPass(
         this,
-        &this->MainRenderpass,
         0, 0, this->FramebufferWidth, this->FramebufferHeight,
         0.0f, 0.0f, 0.2f, 1.0f,
         1.0f,
@@ -303,8 +276,8 @@ bool VulkanAPI::Initialize(MWindow* window, const char* ApplicationName)
 
     for (u8 i = 0; i < swapchain.MaxFramesInFlight; ++i) {
         VkSemaphoreCreateInfo SemaphoreCreateInfo = {VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
-        vkCreateSemaphore(Device->LogicalDevice, &SemaphoreCreateInfo, allocator, &ImageAvailableSemaphores[i]);
-        vkCreateSemaphore(Device->LogicalDevice, &SemaphoreCreateInfo, allocator, &QueueCompleteSemaphores[i]);
+        vkCreateSemaphore(Device.LogicalDevice, &SemaphoreCreateInfo, allocator, &ImageAvailableSemaphores[i]);
+        vkCreateSemaphore(Device.LogicalDevice, &SemaphoreCreateInfo, allocator, &QueueCompleteSemaphores[i]);
 
         // Создайте ограждение в сигнальном состоянии, указывая, что первый кадр уже «отрисован».
         // Это не позволит приложению бесконечно ждать рендеринга первого кадра, 
@@ -321,8 +294,7 @@ bool VulkanAPI::Initialize(MWindow* window, const char* ApplicationName)
     }
 
     // Создание встроенных шейдеров
-    ObjectShader = new VulkanObjectShader();
-    if (!ObjectShader->Create(this)) {
+    if (!ObjectShader.Create(this, this->DefaultDiffuse)) {
         MERROR("Ошибка загрузки встроенного шейдера базового цвета (BasicLighting).");
         return false;
     }
@@ -334,23 +306,38 @@ bool VulkanAPI::Initialize(MWindow* window, const char* ApplicationName)
     Vertex3D verts[VertCount] {};
     const f32 f = 10.f;
 
-    verts[0].x = -0.5 * f;
-    verts[0].y = -0.5 * f;
+    verts[0].position.x = -0.5 * f;
+    verts[0].position.y = -0.5 * f;
+    verts[0].texcoord.x = 0.0f;
+    verts[0].texcoord.y = 0.0f;
 
-    verts[1].x = 0.5 * f;
-    verts[1].y = 0.5 * f;
+    verts[1].position.y = 0.5 * f;
+    verts[1].position.x = 0.5 * f;
+    verts[1].texcoord.x = 1.0f;
+    verts[1].texcoord.y = 1.0f;
 
-    verts[2].x = -0.5 * f;
-    verts[2].y = 0.5 * f;
+    verts[2].position.x = -0.5 * f;
+    verts[2].position.y = 0.5 * f;
+    verts[2].texcoord.x = 0.0f;
+    verts[2].texcoord.y = 1.0f;
 
-    verts[3].x = 0.5 * f;
-    verts[3].y = -0.5 * f;
+    verts[3].position.x = 0.5 * f;
+    verts[3].position.y = -0.5 * f;
+    verts[3].texcoord.x = 1.0f;
+    verts[3].texcoord.y = 0.0f;
 
     const u32 IndexCount = 6;
     u32 indices[IndexCount] = {0, 1, 2, 0, 3, 1};
 
-    UploadDataRange(Device->GraphicsCommandPool, 0, Device->GraphicsQueue, *ObjectVertexBuffer, 0, sizeof(Vertex3D) * VertCount, verts);
-    UploadDataRange(Device->GraphicsCommandPool, 0, Device->GraphicsQueue, *ObjectIndexBuffer, 0, sizeof(u32) * IndexCount, indices);
+    UploadDataRange(Device.GraphicsCommandPool, 0, Device.GraphicsQueue, ObjectVertexBuffer, 0, sizeof(Vertex3D) * VertCount, verts);
+    UploadDataRange(Device.GraphicsCommandPool, 0, Device.GraphicsQueue, ObjectIndexBuffer, 0, sizeof(u32) * IndexCount, indices);
+
+    u32 ObjectID = 0;
+    if (!ObjectShader.AcquireResources(this, ObjectID)) {
+        MERROR("Не удалось получить ресурсы шейдера.");
+        return false;
+    }
+
     // TODO: конец временного кода
 
     MINFO("Средство визуализации Vulkan успешно инициализировано.");
@@ -375,9 +362,11 @@ void VulkanAPI::Resized(u16 width, u16 height)
 
 bool VulkanAPI::BeginFrame(f32 Deltatime)
 {
+    FrameDeltaTime = Deltatime;
+
     // Проверьте, не воссоздается ли цепочка подкачки заново, и загрузитесь.
     if (RecreatingSwapchain) {
-        VkResult result = vkDeviceWaitIdle(Device->LogicalDevice);
+        VkResult result = vkDeviceWaitIdle(Device.LogicalDevice);
         if (!VulkanResultIsSuccess(result)) {
             MERROR("Ошибка VulkanBeginFrame vkDeviceWaitIdle (1): '%s'", VulkanResultString(result, true));
             return false;
@@ -388,7 +377,7 @@ bool VulkanAPI::BeginFrame(f32 Deltatime)
 
     // Проверьте, был ли изменен размер фреймбуфера. Если это так, необходимо создать новую цепочку подкачки.
     if (FramebufferSizeGeneration != FramebufferSizeLastGeneration) {
-        VkResult result = vkDeviceWaitIdle(Device->LogicalDevice);
+        VkResult result = vkDeviceWaitIdle(Device.LogicalDevice);
         if (!VulkanResultIsSuccess(result)) {
             MERROR("Ошибка VulkanBeginFrame vkDeviceWaitIdle (2): '%s'", VulkanResultString(result, true));
             return false;
@@ -451,9 +440,8 @@ bool VulkanAPI::BeginFrame(f32 Deltatime)
     MainRenderpass.h = FramebufferHeight;
 
     // Начните этап рендеринга.
-    VulkanRenderpassBegin(
+    MainRenderpass.Begin(
         &GraphicsCommandBuffers[ImageIndex],
-        &MainRenderpass,
         swapchain.framebuffers[ImageIndex].handle
     );
 
@@ -464,20 +452,20 @@ bool VulkanAPI::BeginFrame(f32 Deltatime)
 {
     //VulkanCommandBuffer* CommandBuffer = &GraphicsCommandBuffers[ImageIndex];
 
-    ObjectShader->Use(this);
+    ObjectShader.Use(this);
 
-    ObjectShader->GlobalUObj.projection = projection;
-    ObjectShader->GlobalUObj.view = view;
+    ObjectShader.GlobalUObj.projection = projection;
+    ObjectShader.GlobalUObj.view = view;
 
     // TODO: другие свойства ubo
 
-    ObjectShader->UpdateGlobalState(this);
+    ObjectShader.UpdateGlobalState(this, FrameDeltaTime);
 }
 
 bool VulkanAPI::EndFrame(f32 DeltaTime)
 {
     // Конечный проход рендеринга
-    VulkanRenderpassEnd(&GraphicsCommandBuffers[ImageIndex], &MainRenderpass);
+    MainRenderpass.End(&GraphicsCommandBuffers[ImageIndex]);
 
     VulkanCommandBufferEnd(&GraphicsCommandBuffers[ImageIndex]);
 
@@ -518,7 +506,7 @@ bool VulkanAPI::EndFrame(f32 DeltaTime)
     SubmitInfo.pWaitDstStageMask = flags;
 
     VkResult result = vkQueueSubmit(
-        Device->GraphicsQueue,
+        Device.GraphicsQueue,
         1,
         &SubmitInfo,
         InFlightFences[CurrentFrame].handle);
@@ -534,8 +522,8 @@ bool VulkanAPI::EndFrame(f32 DeltaTime)
     VulkanSwapchainPresent(
         this,
         &swapchain,
-        Device->GraphicsQueue,
-        Device->PresentQueue,
+        Device.GraphicsQueue,
+        Device.PresentQueue,
         QueueCompleteSemaphores[CurrentFrame],
         ImageIndex
     );
@@ -580,7 +568,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL VkDebugCallback(
 i32 VulkanAPI::FindMemoryIndex(u32 TypeFilter, VkMemoryPropertyFlags PropertyFlags)
 {
     VkPhysicalDeviceMemoryProperties MemoryProperties;
-    vkGetPhysicalDeviceMemoryProperties(Device->PhysicalDevice, &MemoryProperties);
+    vkGetPhysicalDeviceMemoryProperties(Device.PhysicalDevice, &MemoryProperties);
 
     for (u32 i = 0; i < MemoryProperties.memoryTypeCount; ++i) {
         // Проверьте каждый тип памяти, чтобы увидеть, установлен ли его бит в 1.
@@ -603,13 +591,13 @@ void VulkanAPI::CreateCommandBuffers()
         if (GraphicsCommandBuffers[i].handle) {
             VulkanCommandBufferFree(
                 this,
-                Device->GraphicsCommandPool,
+                Device.GraphicsCommandPool,
                 &GraphicsCommandBuffers[i]);
         } 
         //MMemory::ZeroMemory(&GraphicsCommandBuffers[i], sizeof(VulkanCommandBuffer));
         VulkanCommandBufferAllocate(
             this,
-            Device->GraphicsCommandPool,
+            Device.GraphicsCommandPool,
             true,
             &this->GraphicsCommandBuffers[i]);
     }
@@ -626,14 +614,13 @@ void VulkanAPI::RegenerateFramebuffers()
             swapchain.views[i],
             swapchain.DepthAttachment->view};
 
-        VulkanFramebufferCreate(
+        swapchain.framebuffers[i] = VulkanFramebuffer(
             this,
             &MainRenderpass,
             FramebufferWidth,
             FramebufferHeight,
             AttachmentCount,
-            attachments,
-            &swapchain.framebuffers[i]);
+            attachments);
     }
 }
 
@@ -642,8 +629,7 @@ bool VulkanAPI::CreateBuffers()
     VkMemoryPropertyFlagBits MemoryPropertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
     const u64 VertexBufferSize = sizeof(Vertex3D) * 1024 * 1024;
-    ObjectVertexBuffer = new VulkanBuffer();
-    if (!ObjectVertexBuffer->Create(
+    if (!ObjectVertexBuffer.Create(
             this,
             VertexBufferSize,
             static_cast<VkBufferUsageFlagBits>(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT),
@@ -655,8 +641,7 @@ bool VulkanAPI::CreateBuffers()
     GeometryVertexOffset = 0;
 
     const u64 IndexBufferSize = sizeof(u32) * 1024 * 1024;
-    ObjectIndexBuffer = new VulkanBuffer();
-    if (!ObjectIndexBuffer->Create(
+    if (!ObjectIndexBuffer.Create(
             this,
             IndexBufferSize,
             static_cast<VkBufferUsageFlagBits>(VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT),
@@ -705,7 +690,7 @@ bool VulkanAPI::RecreateSwapchain()
     RecreatingSwapchain = true;
 
     // Дождитесь завершения всех операций.
-    vkDeviceWaitIdle(Device->LogicalDevice);
+    vkDeviceWaitIdle(Device.LogicalDevice);
 
     // Уберите это на всякий случай.
     for (u32 i = 0; i < swapchain.ImageCount; ++i) {
@@ -713,11 +698,11 @@ bool VulkanAPI::RecreateSwapchain()
     }
 
     // Поддержка запроса
-    Device->QuerySwapchainSupport(
-        Device->PhysicalDevice,
+    Device.QuerySwapchainSupport(
+        Device.PhysicalDevice,
         surface,
-        &Device->SwapchainSupport);
-    Device->DetectDepthFormat(Device);
+        &Device.SwapchainSupport);
+    Device.DetectDepthFormat(&Device);
 
     VulkanSwapchainRecreate(
         this,
@@ -738,12 +723,12 @@ bool VulkanAPI::RecreateSwapchain()
 
     // Очистка цепочки подкачки
     for (u32 i = 0; i < swapchain.ImageCount; ++i) {
-        VulkanCommandBufferFree(this, Device->GraphicsCommandPool, &GraphicsCommandBuffers[i]);
+        VulkanCommandBufferFree(this, Device.GraphicsCommandPool, &GraphicsCommandBuffers[i]);
     }
 
     // Буферы кадров.
     for (u32 i = 0; i < swapchain.ImageCount; ++i) {
-        VulkanFramebufferDestroy(this, &swapchain.framebuffers[i]);
+        swapchain.framebuffers[i].Destroy(this);
     }
 
     MainRenderpass.x = 0;

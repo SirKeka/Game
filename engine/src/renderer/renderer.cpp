@@ -4,19 +4,35 @@
 #include "core/mmemory.hpp"
 
 #include "renderer/vulkan/vulkan_api.hpp"
+#include "resources/texture.hpp"
 #include "math/vector3d.hpp"
 #include "math/vector4d.hpp"
 #include "math/matrix4d.hpp"
+
+// TODO: временно
+#define STB_IMAGE_IMPLEMENTATION
+#include "vendor/stb_image.h"
+// TODO: временно
 
 RendererType *Renderer::ptrRenderer;
 f32 Renderer::NearClip = 0.1f;
 f32 Renderer::FarClip = 1000.f;
 Matrix4D Renderer::projection = Matrix4::MakeFrustumProjection(Math::DegToRad(45.0f), 1280 / 720.0f, NearClip, FarClip);
 Matrix4D Renderer::view = Matrix4::MakeTranslation(Vector3D<f32>{0, 0, -30.f});
-
+Texture *Renderer::DefaultTexture = new Texture();
+Texture *Renderer::TestDiffuse {};
 
 Renderer::~Renderer()
 {
+
+    //TODO: временно
+    Event::Unregister(EVENT_CODE_DEBUG0, nullptr, EventOnDebugEvent);
+    //TODO: временно
+
+    DefaultTexture->Destroy(dynamic_cast<VulkanAPI*>(ptrRenderer));
+    delete DefaultTexture;
+    TestDiffuse->Destroy(dynamic_cast<VulkanAPI*>(ptrRenderer));
+    delete TestDiffuse;
     delete ptrRenderer; //TODO: Unhandled exception at 0x00007FFEADC9B93C (engine.dll) in testbed.exe: 0xC0000005: Access violation reading location 0x0000000000000000.
 }
 
@@ -37,9 +53,62 @@ bool Renderer::Initialize(MWindow* window, const char *ApplicationName, ERendere
     }*/
     if(type == RENDERER_TYPE_VULKAN) {
         //ptrRenderer = dynamic_cast<VulkanAPI*> (ptrRenderer);
+
+        // TODO: временно
+        Event::Register(EVENT_CODE_DEBUG0, nullptr, EventOnDebugEvent);
+        // TODO: временно
+
         ptrRenderer = new VulkanAPI();
-        return ptrRenderer->Initialize(window, ApplicationName);
+        // Возьмите указатель на текстуры по умолчанию для использования в серверной части.
+        ptrRenderer->DefaultDiffuse = DefaultTexture;
+        ptrRenderer->Initialize(window, ApplicationName);
         view.Inverse();
+
+        // ПРИМЕЧАНИЕ. Создайте текстуру по умолчанию — сине-белую шахматную доску размером 256x256.
+        // Это делается в коде для устранения зависимостей активов.
+        MTRACE("Создание текстуры по умолчанию...");
+        const u32 TexDimension = 256;
+        const u32 channels = 4;
+        const u32 PixelCount = TexDimension * TexDimension;
+        u8 pixels[PixelCount * channels];
+        //u8* pixels = kallocate(sizeof(u8) * PixelCount * bpp, MEMORY_TAG_TEXTURE);
+        MMemory::SetMemory(pixels, 255, sizeof(u8) * PixelCount * channels);
+
+        // Каждый пиксель.
+        for (u64 row = 0; row < TexDimension; ++row) {
+            for (u64 col = 0; col < TexDimension; ++col) {
+                u64 index = (row * TexDimension) + col;
+                u64 index_bpp = index * channels;
+                if (row % 2) {
+                    if (col % 2) {
+                        pixels[index_bpp + 0] = 0;
+                        pixels[index_bpp + 1] = 0;
+                    }
+                } else {
+                    if (!(col % 2)) {
+                        pixels[index_bpp + 0] = 0;
+                        pixels[index_bpp + 1] = 0;
+                    }
+                }
+            }
+        }
+        DefaultTexture->Create(
+            "default",
+            false,
+            TexDimension,
+            TexDimension,
+            4,
+            pixels,
+            false,
+            dynamic_cast<VulkanAPI*>(ptrRenderer));
+
+        // Вручную установите недействительную генерацию текстуры, поскольку это текстура по умолчанию.
+        DefaultTexture->generation = INVALID_ID;
+
+        // TODO: загрузить другие текстуры
+        TestDiffuse = new Texture();
+
+        return true;
     }
     return false;
 }
@@ -80,12 +149,21 @@ bool Renderer::DrawFrame(RenderPacket *packet)
 
         ptrRenderer->UpdateGlobalState(projection, view, Vector3D<f32>::Zero(), Vector4D<f32>::Zero(), 0);
 
-        //Matrix4D model = Matrix4::MakeIdentity();
+        Matrix4D model = Matrix4::MakeIdentity();
         static f32 angle = 0.01f;
         angle += 0.001f;
         Quaternion rotation{Vector3D<f32>::Forward(), angle, false};
-        Matrix4D model {rotation, Vector3D<f32>::Zero()}; //= quat_to_rotation_matrix(rotation, vec3_zero());
-        ptrRenderer->UpdateObjects(model);
+        //Matrix4D model {rotation, Vector3D<f32>::Zero()}; //= quat_to_rotation_matrix(rotation, vec3_zero());
+        //Matrix4D model = Matrix4::MakeTranslation(Vector3D<f32>{0, 0, 0});
+        // static f32 angle = 0.01f;
+        // angle += 0.001f;
+        // quat rotation = quat_from_axis_angle(vec3_forward(), angle, false);
+        // mat4 model = quat_to_rotation_matrix(rotation, vec3_zero());
+        GeometryRenderData data = {};
+        data.ObjectID = 0;  // TODO: actual object id
+        data.model = model;
+        data.textures[0] = this->TestDiffuse;
+        ptrRenderer->UpdateObjects(data);
 
         // Завершите кадр. Если это не удастся, скорее всего, это будет невозможно восстановить.
         bool result = EndFrame(packet->DeltaTime);
@@ -108,6 +186,108 @@ void *Renderer::operator new(u64 size)
 {
     return LinearAllocator::Allocate(size);
 }
+
+/*void Renderer::CreateTexture(Texture *t)
+{
+    t = new Texture();
+    t->generation = INVALID_ID;
+}*/
+
+bool Renderer::LoadTexture(MString TextureName, Texture *t)
+{
+    // TODO: Должен быть в состоянии находиться в любом месте.
+    const char* FormatStr = "assets/textures/%s.%s";
+    const i32 RequiredChannelCount = 4;
+    stbi_set_flip_vertically_on_load(true);
+    char FullFilePath[512];
+
+    // TODO: попробуйте разные расширения
+    StringFormat(FullFilePath, FormatStr, TextureName.c_str(), "png");
+
+    // Используйте временную текстуру для загрузки.
+    Texture TempTexture;
+
+    u8* data = stbi_load(
+        FullFilePath,
+        (i32*)&TempTexture.width,
+        (i32*)&TempTexture.height,
+        (i32*)&TempTexture.ChannelCount,
+        RequiredChannelCount);
+
+    TempTexture.ChannelCount = RequiredChannelCount;
+
+    if (data) {
+        u32 CurrentGeneration = t->generation;
+        t->generation = INVALID_ID;
+
+        u64 TotalSize = TempTexture.width * TempTexture.height * RequiredChannelCount;
+        // Проверка прозрачности
+        b32 HasTransparency = false;
+        for (u64 i = 0; i < TotalSize; i += RequiredChannelCount) {
+            u8 a = data[i + 3];
+            if (a < 255) {
+                HasTransparency = true;
+                break;
+            }
+        }
+
+        if (stbi_failure_reason()) {
+            MWARN("load_texture() не удалось загрузить файл '%s': %s", FullFilePath, stbi_failure_reason());
+        }
+
+        // Получите внутренние ресурсы текстур и загрузите их в графический процессор.
+        TempTexture = Texture(
+            TextureName,
+            true,
+            TempTexture.width,
+            TempTexture.height,
+            TempTexture.ChannelCount,
+            data,
+            HasTransparency,
+            dynamic_cast<VulkanAPI*>(ptrRenderer));
+
+        // Скопируйте старую текстуру.
+        Texture old = *t;
+
+        // Присвойте указателю временную текстуру.
+        *t = TempTexture;
+
+        // Уничтожьте старую текстуру.
+        old.Destroy(dynamic_cast<VulkanAPI*>(ptrRenderer));
+
+        if (CurrentGeneration == INVALID_ID) {
+            t->generation = 0;
+        } else {
+            t->generation = CurrentGeneration + 1;
+        }
+
+        // Очистите данные.
+        stbi_image_free(data);
+        return true;
+    } else {
+        if (stbi_failure_reason()) {
+            MWARN("load_texture() не удалось загрузить файл '%s': %s", FullFilePath, stbi_failure_reason());
+        }
+        return false;
+    }
+}
+
+// TODO: Врменно
+bool Renderer::EventOnDebugEvent(u16 code, void *sender, void *ListenerInst, EventContext data)
+{
+    const char* names[3] = {
+        "asphalt",
+        "iris",
+        "uvgrid"};
+    static i8 choice = 2;
+    choice++;
+    choice %= 3;
+
+    // Load up the new texture.
+    LoadTexture(names[choice], TestDiffuse);
+    return true;
+}
+//TODO: Временно
 
 /*void Renderer::operator delete(void *ptr)
 {

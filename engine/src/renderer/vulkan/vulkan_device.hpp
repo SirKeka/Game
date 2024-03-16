@@ -1,6 +1,18 @@
 #pragma once
 
-#include "vulkan_api.hpp"
+#include <vulkan/vulkan.h>
+#include "containers/darray.hpp"
+
+class VulkanAPI;
+
+struct VulkanSwapchainSupportInfo 
+{
+    VkSurfaceCapabilitiesKHR capabilities;
+    u32 FormatCount;
+    VkSurfaceFormatKHR* formats;
+    u32 PresentModeCount;
+    VkPresentModeKHR* PresentModes;
+};
 
 class VulkanDevice
 {
@@ -11,6 +23,7 @@ public:
     i32 GraphicsQueueIndex;
     i32 PresentQueueIndex;
     i32 TransferQueueIndex;
+    bool SupportsDeviceLocalHostVisible;
 
     VkQueue GraphicsQueue;
     VkQueue PresentQueue;
@@ -25,7 +38,7 @@ public:
     VkFormat DepthFormat;
 public:
     VulkanDevice() = default;
-    ~VulkanDevice();
+    ~VulkanDevice() = default;
 
     bool Create(VulkanAPI* VkAPI);
 

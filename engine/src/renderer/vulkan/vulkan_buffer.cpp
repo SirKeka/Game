@@ -1,5 +1,6 @@
 #include "vulkan_buffer.hpp"
 
+#include "vulkan_api.hpp"
 #include "vulkan_device.hpp"
 #include "vulkan_command_buffer.hpp"
 
@@ -20,11 +21,11 @@ bool VulkanBuffer::Create(
     BufferInfo.usage = usage;
     BufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;  // ПРИМЕЧАНИЕ: используется только в одной очереди.
 
-    VK_CHECK(vkCreateBuffer(VkAPI->Device->LogicalDevice, &BufferInfo, VkAPI->allocator, &this->handle));
+    VK_CHECK(vkCreateBuffer(VkAPI->Device.LogicalDevice, &BufferInfo, VkAPI->allocator, &this->handle));
 
     // Сбор требований к памяти.
     VkMemoryRequirements requirements;
-    vkGetBufferMemoryRequirements(VkAPI->Device->LogicalDevice, this->handle, &requirements);
+    vkGetBufferMemoryRequirements(VkAPI->Device.LogicalDevice, this->handle, &requirements);
     this->MemoryIndex = VkAPI->FindMemoryIndex(requirements.memoryTypeBits, this->MemoryPropertyFlags);
     if (this->MemoryIndex == -1) {
         MERROR("Не удалось создать буфер vulkan, поскольку не был найден индекс требуемого типа памяти.");
@@ -38,7 +39,7 @@ bool VulkanBuffer::Create(
 
     // Выделите память.
     VkResult result = vkAllocateMemory(
-        VkAPI->Device->LogicalDevice,
+        VkAPI->Device.LogicalDevice,
         &AllocateInfo,
         VkAPI->allocator,
         &this->memory);
@@ -58,11 +59,11 @@ bool VulkanBuffer::Create(
 void VulkanBuffer::Destroy(VulkanAPI *VkAPI)
 {
     if (memory) {
-        vkFreeMemory(VkAPI->Device->LogicalDevice, memory, VkAPI->allocator);
+        vkFreeMemory(VkAPI->Device.LogicalDevice, memory, VkAPI->allocator);
         memory = 0;
     }
     if (handle) {
-        vkDestroyBuffer(VkAPI->Device->LogicalDevice, handle, VkAPI->allocator);
+        vkDestroyBuffer(VkAPI->Device.LogicalDevice, handle, VkAPI->allocator);
         handle = 0;
     }
     TotalSize = 0;
@@ -79,11 +80,11 @@ bool VulkanBuffer::Resize(VulkanAPI *VkAPI, u64 NewSize, VkQueue queue, VkComman
     BufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;  // ПРИМЕЧАНИЕ: используется только в одной очереди.
 
     VkBuffer NewBuffer;
-    VK_CHECK(vkCreateBuffer(VkAPI->Device->LogicalDevice, &BufferInfo, VkAPI->allocator, &NewBuffer));
+    VK_CHECK(vkCreateBuffer(VkAPI->Device.LogicalDevice, &BufferInfo, VkAPI->allocator, &NewBuffer));
 
     // Сбор требований к памяти.
     VkMemoryRequirements requirements;
-    vkGetBufferMemoryRequirements(VkAPI->Device->LogicalDevice, NewBuffer, &requirements);
+    vkGetBufferMemoryRequirements(VkAPI->Device.LogicalDevice, NewBuffer, &requirements);
 
     // Распределить информацию о памяти
     VkMemoryAllocateInfo AllocateInfo = {VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
@@ -92,28 +93,28 @@ bool VulkanBuffer::Resize(VulkanAPI *VkAPI, u64 NewSize, VkQueue queue, VkComman
 
     // Выделение памяти.
     VkDeviceMemory NewMemory;
-    VkResult result = vkAllocateMemory(VkAPI->Device->LogicalDevice, &AllocateInfo, VkAPI->allocator, &NewMemory);
+    VkResult result = vkAllocateMemory(VkAPI->Device.LogicalDevice, &AllocateInfo, VkAPI->allocator, &NewMemory);
     if (result != VK_SUCCESS) {
         MERROR("Не удалось изменить размер буфера vulkan из-за сбоя выделения требуемой памяти. Ошибка: %i", result);
         return false;
     }
 
     // Привязать память нового буфера
-    VK_CHECK(vkBindBufferMemory(VkAPI->Device->LogicalDevice, NewBuffer, NewMemory, 0));
+    VK_CHECK(vkBindBufferMemory(VkAPI->Device.LogicalDevice, NewBuffer, NewMemory, 0));
 
     // Скопируйте данные
     CopyTo(VkAPI, pool, 0, queue, 0, NewBuffer, 0, this->TotalSize);
 
     // Убедитесь, что все, что потенциально может их использовать, завершено.
-    vkDeviceWaitIdle(VkAPI->Device->LogicalDevice);
+    vkDeviceWaitIdle(VkAPI->Device.LogicalDevice);
 
     // Уничтожьте старое
     if (this->memory) {
-        vkFreeMemory(VkAPI->Device->LogicalDevice, this->memory, VkAPI->allocator);
+        vkFreeMemory(VkAPI->Device.LogicalDevice, this->memory, VkAPI->allocator);
         this->memory = 0;
     }
     if (this->handle) {
-        vkDestroyBuffer(VkAPI->Device->LogicalDevice, this->handle, VkAPI->allocator);
+        vkDestroyBuffer(VkAPI->Device.LogicalDevice, this->handle, VkAPI->allocator);
         this->handle = 0;
     }
 
@@ -127,27 +128,27 @@ bool VulkanBuffer::Resize(VulkanAPI *VkAPI, u64 NewSize, VkQueue queue, VkComman
 
 void VulkanBuffer::Bind(VulkanAPI *VkAPI, u64 offset)
 {
-    VK_CHECK(vkBindBufferMemory(VkAPI->Device->LogicalDevice, this->handle, this->memory, offset));
+    VK_CHECK(vkBindBufferMemory(VkAPI->Device.LogicalDevice, this->handle, this->memory, offset));
 }
 
 void *VulkanBuffer::LockMemory(VulkanAPI *VkAPI, u64 offset, u64 size, u32 flags)
 {
     void* data;
-    VK_CHECK(vkMapMemory(VkAPI->Device->LogicalDevice, this->memory, offset, size, flags, &data));
+    VK_CHECK(vkMapMemory(VkAPI->Device.LogicalDevice, this->memory, offset, size, flags, &data));
     return data;
 }
 
 void VulkanBuffer::UnlockMemory(VulkanAPI *VkAPI)
 {
-    vkUnmapMemory(VkAPI->Device->LogicalDevice, this->memory);
+    vkUnmapMemory(VkAPI->Device.LogicalDevice, this->memory);
 }
 
 void VulkanBuffer::LoadData(VulkanAPI *VkAPI, u64 offset, u64 size, u32 flags, const void *data)
 {
     void* ptrData;
-    VK_CHECK(vkMapMemory(VkAPI->Device->LogicalDevice, this->memory, offset, size, flags, &ptrData));
+    VK_CHECK(vkMapMemory(VkAPI->Device.LogicalDevice, this->memory, offset, size, flags, &ptrData));
     MMemory::CopyMem(ptrData, data, size);
-    vkUnmapMemory(VkAPI->Device->LogicalDevice, this->memory);
+    vkUnmapMemory(VkAPI->Device.LogicalDevice, this->memory);
 }
 
 void VulkanBuffer::CopyTo(

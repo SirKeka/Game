@@ -6,7 +6,7 @@
 
 bool VulkanPipeline::Create(
     VulkanAPI *VkAPI, 
-    VulkanRenderpass *renderpass, 
+    VulkanRenderPass *renderpass, 
     u32 AttributeCount, 
     VkVertexInputAttributeDescription *attributes, 
     u32 DescriptorSetLayoutCount, 
@@ -119,7 +119,7 @@ bool VulkanPipeline::Create(
 
     // Создание макета конвейера.
     VK_CHECK(vkCreatePipelineLayout(
-        VkAPI->Device->LogicalDevice,
+        VkAPI->Device.LogicalDevice,
         &PipelineLayoutCreateInfo,
         VkAPI->allocator,
         &PipelineLayout));
@@ -147,7 +147,7 @@ bool VulkanPipeline::Create(
     PipelineCreateInfo.basePipelineIndex = -1;
 
     VkResult result = vkCreateGraphicsPipelines(
-        VkAPI->Device->LogicalDevice,
+        VkAPI->Device.LogicalDevice,
         VK_NULL_HANDLE,
         1,
         &PipelineCreateInfo,
@@ -168,12 +168,12 @@ void VulkanPipeline::Destroy(VulkanAPI *VkAPI/*, VulkanPipeline pipeline*/)
 {
     // Уничтожить конвейер
     if (handle) {
-        vkDestroyPipeline(VkAPI->Device->LogicalDevice, handle, VkAPI->allocator);
+        vkDestroyPipeline(VkAPI->Device.LogicalDevice, handle, VkAPI->allocator);
         handle = 0;
     }
     // Уничтожить макет
     if (PipelineLayout) {
-        vkDestroyPipelineLayout(VkAPI->Device->LogicalDevice, PipelineLayout, VkAPI->allocator);
+        vkDestroyPipelineLayout(VkAPI->Device.LogicalDevice, PipelineLayout, VkAPI->allocator);
         PipelineLayout = 0;
     }
 }

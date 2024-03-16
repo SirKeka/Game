@@ -80,6 +80,11 @@ void MMemory::CopyMem(void *dest, const void *source, u64 bytes)
     std::memmove(dest, source, bytes);
 }
 
+void *MMemory::SetMemory(void *dest, i32 value, u64 bytes)
+{
+    return std::memset(dest, value, bytes);
+}
+
 u64 MMemory::GetMemoryAllocCount()
 {
     return AllocCount;

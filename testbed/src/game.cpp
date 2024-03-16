@@ -1,6 +1,7 @@
 #include "game.hpp"
 
 #include <core/logger.hpp>
+#include <renderer/renderer.hpp>
 #include <new>
 
 Game::Game(i16 StartPosX, i16 StartPosY, i16 StartWidth, i16 StartHeight, const char* name) 
@@ -36,6 +37,14 @@ bool Game::Update(f32 DeltaTime)
     if (Input::IsKeyUp(KEY_M) && Input::WasKeyDown(KEY_M)) {
         MDEBUG("Распределено: %llu (%llu в этом кадре)", AllocCount, AllocCount - PrevAllocCount);
     }
+
+    // TODO: temp
+    if (Input::IsKeyUp(KEY_T) && Input::WasKeyDown(KEY_T)) {
+        MDEBUG("Swapping texture!");
+        EventContext context = {};
+        Event::Fire(EVENT_CODE_DEBUG0, this, context);
+    }
+    // TODO: end temp
 
     // ВЗЛОМ: временный взлом для перемещения камеры по кругу.
     if (Input::IsKeyDown(KEY_A) || Input::IsKeyDown(KEY_LEFT)) {

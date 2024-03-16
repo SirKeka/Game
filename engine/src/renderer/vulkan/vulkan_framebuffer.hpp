@@ -1,14 +1,27 @@
 #pragma once
 
-#include "vulkan_api.hpp"
+#include "defines.hpp"
+#include <vulkan/vulkan.h>
 
-void VulkanFramebufferCreate(
-    VulkanAPI* VkAPI,
-    VulkanRenderpass* renderpass,
+class VulkanAPI;
+class VulkanRenderPass;
+
+class VulkanFramebuffer
+{
+public:
+    VkFramebuffer handle;
+    u32 AttachmentCount;
+    VkImageView* attachments;
+    VulkanRenderPass* renderpass;
+public:
+    VulkanFramebuffer() = default;
+    VulkanFramebuffer(VulkanAPI* VkAPI,
+    VulkanRenderPass* renderpass,
     u32 width,
     u32 height,
     u32 AttachmentCount,
-    VkImageView* attachments,
-    VulkanFramebuffer* OutFramebuffer);
+    VkImageView* attachments);
+    ~VulkanFramebuffer() = default;
+    void Destroy(VulkanAPI* VkAPI);
+};
 
-void VulkanFramebufferDestroy(VulkanAPI* VkAPI, VulkanFramebuffer* framebuffer);

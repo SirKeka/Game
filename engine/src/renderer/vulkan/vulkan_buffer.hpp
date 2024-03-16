@@ -1,6 +1,8 @@
 #pragma once
 
-#include "vulkan_api.hpp"
+#include "defines.hpp"
+#include <vulkan/vulkan.h>
+class VulkanAPI;
 
 class VulkanBuffer
 {

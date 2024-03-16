@@ -1,7 +1,15 @@
 #pragma once
 #include "vector3d.hpp"
+#include "vector2d.hpp"
 
-class Vertex3D : public Vector3D<f32>
+struct Vertex3D
+{
+    Vector3D<f32> position;
+    Vector2D<f32> texcoord;
+};
+
+
+/*class Vertex3D : public Vector3D<f32>
 {
 public:
     //Конструкторы
@@ -25,4 +33,4 @@ MINLINE Vertex3D operator -(const Vertex3D& a, const Vector3D<f32>& b)
 MINLINE Vector3D<f32> operator -(const Vertex3D& a, const Vertex3D& b)
 {
     return Vector3D<f32>(a.x - b.x, a.y - b.y, a.z - b.z);
-}
+}*/

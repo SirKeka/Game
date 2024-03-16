@@ -19,9 +19,9 @@ public:
         };
     };
 
-    Vector2D() {};
+    Vector2D() = default;
     Vector2D(T x, T y);
-    ~Vector2D();
+    //~Vector2D();
 
     /// @brief нулевой вектор
     /// @return (0, 0)

@@ -1,6 +1,6 @@
 #include "vulkan_shader_utils.hpp"
 
-#include "vulkan_device.hpp"
+#include "vulkan_api.hpp"
 
 #include "platform/filesystem.hpp"
 
@@ -41,7 +41,7 @@ namespace VulkanShadersUtil
     Filesystem::Close(&handle);
 
     VK_CHECK(vkCreateShaderModule(
-        VkAPI->Device->LogicalDevice,
+        VkAPI->Device.LogicalDevice,
         &ShaderStages[StageIndex].CreateInfo,
         VkAPI->allocator,
         &ShaderStages[StageIndex].handle));

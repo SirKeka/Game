@@ -96,7 +96,7 @@ public:
     /// @return 
     //MAPI static void* ptrMove(void* ptr);
 
-    //MAPI void* SetMemory(void* dest, i32 value, u64 bytes);
+    static void* SetMemory(void* dest, i32 value, u64 bytes);
 
     static u64 GetMemoryAllocCount();
 

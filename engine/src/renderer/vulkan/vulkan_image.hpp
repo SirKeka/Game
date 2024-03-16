@@ -1,10 +1,13 @@
 #pragma once
 
-#include "vulkan_api.hpp"
+#include "defines.hpp"
+#include <vulkan/vulkan.h>
+
+class VulkanAPI;
+class VulkanCommandBuffer;
 
 class VulkanImage
 {
-using LinearAllocator = WrapLinearAllocator<VulkanImage>;
 public:
     VkImage handle{};
     VkDeviceMemory memory{};
@@ -12,6 +15,7 @@ public:
     u32 width = 0;
     u32 height = 0;
 public:
+    VulkanImage() = default;
     VulkanImage(VulkanAPI* VkAPI,
         VkImageType ImageType,
         u32 width,
@@ -24,10 +28,7 @@ public:
         VkImageAspectFlags ViewAspectFlags);
     ~VulkanImage() = default;
 
-    void ViewCreate(
-        VulkanAPI* VkAPI,
-        VkFormat format,
-        VkImageAspectFlags AspectFlags);
+    void ViewCreate(VulkanAPI* VkAPI, VkFormat format, VkImageAspectFlags AspectFlags);
 
         //Преобразует предоставленное изображение из OldLayout в NewLayout.
     void TransitionLayout(
@@ -42,12 +43,7 @@ public:
     /// @param image изображение, в которое нужно скопировать данные буфера.
     /// @param buffer буфер, данные которого будут скопированы.
     /// @param CommandBuffer 
-    void CopyFromBuffer(
-        VulkanAPI* VkAPI,
-        VkBuffer buffer,
-        VulkanCommandBuffer* CommandBuffer);
+    void CopyFromBuffer(VulkanAPI* VkAPI, VkBuffer buffer, VulkanCommandBuffer* CommandBuffer);
 
     void Destroy(VulkanAPI* VkAPI);
-
-    void* operator new(u64 size);
 };

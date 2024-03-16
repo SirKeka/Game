@@ -7,21 +7,50 @@
 */
 #pragma once
 
-#include "vulkan_api.hpp"
+#include "defines.hpp"
+#include "vulkan_command_buffer.hpp"
 
-void VulkanRenderpassCreate(
-    VulkanAPI* VkAPI, 
-    VulkanRenderpass* OutRenderpass,
-    f32 x, f32 y, f32 w, f32 h,
-    f32 r, f32 g, f32 b, f32 a,
-    f32 depth,
-    u32 stencil);
+class VulkanAPI;
+class VulkanCommandBuffer;
 
-void VulkanRenderpassDestroy(VulkanAPI* VkAPI, VulkanRenderpass* renderpass);
+enum VulkanRenderPassState 
+{
+    READY,
+    RECORDING,
+    IN_RENDER_PASS,
+    RECORDING_ENDED,
+    SUBMITTED,
+    NOT_ALLOCATED
+};
 
-void VulkanRenderpassBegin(
-    VulkanCommandBuffer* CommandBuffer, 
-    VulkanRenderpass* renderpass,
-    VkFramebuffer FrameBuffer);
+class VulkanRenderPass
+{
+public:
+    VkRenderPass handle;
+    f32 x, y, w, h;
+    f32 r, g, b, a;
 
-void VulkanRenderpassEnd(VulkanCommandBuffer* CommandBuffer, VulkanRenderpass* renderpass);
+    f32 depth;
+    u32 stencil;
+
+    VulkanRenderPassState state;
+public:
+    VulkanRenderPass() = default;
+    VulkanRenderPass(
+        VulkanAPI* VkAPI, 
+        f32 x, f32 y, f32 w, f32 h,
+        f32 r, f32 g, f32 b, f32 a,
+        f32 depth,
+        u32 stencil);
+    ~VulkanRenderPass() = default;
+
+    void Destroy(VulkanAPI* VkAPI);
+
+    void Begin(
+        VulkanCommandBuffer* CommandBuffer, 
+        VkFramebuffer FrameBuffer);
+
+    void End(VulkanCommandBuffer* CommandBuffer);
+};
+
+

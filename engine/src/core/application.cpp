@@ -1,5 +1,6 @@
 #include "application.hpp"
 #include "game_types.hpp"
+#include "renderer/renderer.hpp"
 
 ApplicationState* Application::AppState;
 
@@ -135,7 +136,7 @@ bool Application::ApplicationRun() {
             // должно выполняться после записи любого ввода; т.е. перед этой
             // строкой. В целях безопасности входные данные обновляются в
             // последнюю очередь перед завершением этого кадра.
-            AppState->Inputs->InputUpdate(delta);
+            AppState->Inputs->Update(delta);
 
             // Update last time
             AppState->LastTime = CurrentTime;

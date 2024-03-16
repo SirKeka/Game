@@ -1,9 +1,6 @@
 #include "vulkan_image.hpp"
-
-#include "vulkan_device.hpp"
-
-#include "core/mmemory.hpp"
-#include "core/logger.hpp"
+#include "vulkan_api.hpp"
+#include "core/asserts.hpp"
 
 VulkanImage::VulkanImage(
     VulkanAPI *VkAPI, 
@@ -36,11 +33,11 @@ VulkanImage::VulkanImage(
     ImageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;          // TODO: Настраиваемое количество образцов.
     ImageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;  // TODO: Настраиваемый режим обмена.
 
-    VK_CHECK(vkCreateImage(VkAPI->Device->LogicalDevice, &ImageCreateInfo, VkAPI->allocator, &this->handle));
+    VK_CHECK(vkCreateImage(VkAPI->Device.LogicalDevice, &ImageCreateInfo, VkAPI->allocator, &this->handle));
 
     // Запросить требования к памяти.
     VkMemoryRequirements MemoryRequirements;
-    vkGetImageMemoryRequirements(VkAPI->Device->LogicalDevice, this->handle, &MemoryRequirements);
+    vkGetImageMemoryRequirements(VkAPI->Device.LogicalDevice, this->handle, &MemoryRequirements);
 
     i32 MemoryType = VkAPI->FindMemoryIndex(MemoryRequirements.memoryTypeBits, MemoryFlags);
     if (MemoryType == -1) {
@@ -51,10 +48,10 @@ VulkanImage::VulkanImage(
     VkMemoryAllocateInfo MemoryAllocateInfo = {VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
     MemoryAllocateInfo.allocationSize = MemoryRequirements.size;
     MemoryAllocateInfo.memoryTypeIndex = MemoryType;
-    VK_CHECK(vkAllocateMemory(VkAPI->Device->LogicalDevice, &MemoryAllocateInfo, VkAPI->allocator, &this->memory));
+    VK_CHECK(vkAllocateMemory(VkAPI->Device.LogicalDevice, &MemoryAllocateInfo, VkAPI->allocator, &this->memory));
 
     // Свяжите память
-    VK_CHECK(vkBindImageMemory(VkAPI->Device->LogicalDevice, this->handle, this->memory, 0));  // TODO: настраиваемое смещение памяти.
+    VK_CHECK(vkBindImageMemory(VkAPI->Device.LogicalDevice, this->handle, this->memory, 0));  // TODO: настраиваемое смещение памяти.
 
     // Создать представление
     if (CreateView) {
@@ -77,7 +74,7 @@ void VulkanImage::ViewCreate(VulkanAPI *VkAPI, VkFormat format, VkImageAspectFla
     ViewCreateInfo.subresourceRange.baseArrayLayer = 0;
     ViewCreateInfo.subresourceRange.layerCount = 1;
 
-    VK_CHECK(vkCreateImageView(VkAPI->Device->LogicalDevice, &ViewCreateInfo, VkAPI->allocator, &this->view));
+    VK_CHECK(vkCreateImageView(VkAPI->Device.LogicalDevice, &ViewCreateInfo, VkAPI->allocator, &this->view));
 }
 
 void VulkanImage::TransitionLayout(
@@ -90,8 +87,8 @@ void VulkanImage::TransitionLayout(
     VkImageMemoryBarrier barrier = {VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
     barrier.oldLayout = OldLayout;
     barrier.newLayout = NewLayout;
-    barrier.srcQueueFamilyIndex = VkAPI->Device->GraphicsQueueIndex;
-    barrier.dstQueueFamilyIndex = VkAPI->Device->GraphicsQueueIndex;
+    barrier.srcQueueFamilyIndex = VkAPI->Device.GraphicsQueueIndex;
+    barrier.dstQueueFamilyIndex = VkAPI->Device.GraphicsQueueIndex;
     barrier.image = this->handle;
     barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     barrier.subresourceRange.baseMipLevel = 0;
@@ -169,20 +166,16 @@ void VulkanImage::CopyFromBuffer(
 void VulkanImage::Destroy(VulkanAPI *VkAPI)
 {
     if (this->view) {
-        vkDestroyImageView(VkAPI->Device->LogicalDevice, this->view, VkAPI->allocator);
+        vkDestroyImageView(VkAPI->Device.LogicalDevice, this->view, VkAPI->allocator);
         this->view = 0;
     }
     if (this->memory) {
-        vkFreeMemory(VkAPI->Device->LogicalDevice, this->memory, VkAPI->allocator);
+        vkFreeMemory(VkAPI->Device.LogicalDevice, this->memory, VkAPI->allocator);
         this->memory = 0;
     }
     if (this->handle) {
-        vkDestroyImage(VkAPI->Device->LogicalDevice, this->handle, VkAPI->allocator);
+        vkDestroyImage(VkAPI->Device.LogicalDevice, this->handle, VkAPI->allocator);
         this->handle = 0;
     }
 }
 
-void *VulkanImage::operator new(u64 size)
-{
-    return LinearAllocator::Allocate(size);
-}

@@ -2,11 +2,14 @@
 
 #include "defines.hpp"
 #include "math/matrix4d.hpp"
+#include "math/vector4d.hpp"
 
 struct StaticMeshData;
 class MWindow;
+class Texture;
 
-enum ERendererType {
+enum ERendererType 
+{
     RENDERER_TYPE_VULKAN,
     RENDERER_TYPE_OPENGL,
     RENDERER_TYPE_DIRECTX
@@ -26,11 +29,28 @@ struct GlobalUniformObject
     Matrix4D mReserved1;  // 64 байта, зарезервированные для будущего использования
 };
 
+struct ObjectUniformObject 
+{
+    Vector4D<f32> DiffuseColor; // 16 байт
+    Vector4D<f32> vReserved0;   // 16 байт, зарезервировано для будущего использования.
+    Vector4D<f32> vReserved1;   // 16 байт, зарезервировано для будущего использования.
+    Vector4D<f32> vReserved2;   // 16 байт, зарезервировано для будущего использования.
+};
+
+struct GeometryRenderData 
+{
+    u32 ObjectID;
+    Matrix4D model;
+    Texture* textures[16];
+};
 
 class RendererType
 {
 public:
     u64 FrameNumber;
+
+    // Указатель на текстуру по умолчанию.
+    Texture* DefaultDiffuse;
 public:
     //RendererType();
     virtual ~RendererType() = default;
@@ -41,5 +61,5 @@ public:
     virtual bool BeginFrame(f32 Deltatime) = 0;
     virtual void UpdateGlobalState(const Matrix4D& projection, const Matrix4D& view, const Vector3D<f32>& ViewPosition, const Vector4D<f32>& AmbientColour, i32 mode) = 0;
     virtual bool EndFrame(f32 DeltaTime) = 0;
-    virtual void UpdateObjects(const Matrix4D& model) = 0;
+    virtual void UpdateObjects(const GeometryRenderData& data) = 0;
 };

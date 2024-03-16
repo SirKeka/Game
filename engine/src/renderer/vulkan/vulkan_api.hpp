@@ -3,52 +3,12 @@
 #include "renderer/renderer_types.hpp"
 
 #include "core/asserts.hpp"
-
-#include <vulkan/vulkan.h>
-
-#include "platform/platform.hpp"
-
-struct VulkanSwapchainSupportInfo 
-{
-    VkSurfaceCapabilitiesKHR capabilities;
-    u32 FormatCount;
-    VkSurfaceFormatKHR* formats;
-    u32 PresentModeCount;
-    VkPresentModeKHR* PresentModes;
-};
-
-class VulkanDevice;
-class VulkanImage;
-
-enum VulkanRenderPassState 
-{
-    READY,
-    RECORDING,
-    IN_RENDER_PASS,
-    RECORDING_ENDED,
-    SUBMITTED,
-    NOT_ALLOCATED
-};
-
-struct VulkanRenderpass 
-{
-    VkRenderPass handle;
-    f32 x, y, w, h;
-    f32 r, g, b, a;
-
-    f32 depth;
-    u32 stencil;
-
-    VulkanRenderPassState state;
-};
-
-struct VulkanFramebuffer
-{
-    VkFramebuffer handle;
-    u32 AttachmentCount;
-    VkImageView* attachments;
-    VulkanRenderpass* renderpass;
-};
+#include "vulkan_image.hpp"
+#include "vulkan_framebuffer.hpp"
+#include "vulkan_device.hpp"
+#include "vulkan_renderpass.hpp"
+#include "vulkan_buffer.hpp"
+#include "shaders/vulkan_object_shader.hpp"
 
 struct VulkanSwapchain 
 {
@@ -65,30 +25,10 @@ struct VulkanSwapchain
     DArray<VulkanFramebuffer> framebuffers;
 };
 
-enum VulkanCommandBufferState 
-{
-    COMMAND_BUFFER_STATE_READY,
-    COMMAND_BUFFER_STATE_RECORDING,
-    COMMAND_BUFFER_STATE_IN_RENDER_PASS,
-    COMMAND_BUFFER_STATE_RECORDING_ENDED,
-    COMMAND_BUFFER_STATE_SUBMITTED,
-    COMMAND_BUFFER_STATE_NOT_ALLOCATED
-};
-
-struct VulkanCommandBuffer 
-{
-    VkCommandBuffer handle;
-
-    // Состояние буфера команд.
-    VulkanCommandBufferState state;
-};
-
 struct VulkanFence {
     VkFence handle;
     bool IsSignaled;
 };
-
-class VulkanObjectShader;
 
 // Проверяет возвращаемое значение данного выражения на соответствие VK_SUCCESS.
 #define VK_CHECK(expr)           \
@@ -96,13 +36,13 @@ class VulkanObjectShader;
     MASSERT(expr == VK_SUCCESS); \
 }
 
-class VulkanBuffer;
-
 class VulkanAPI : public RendererType
 {
 using LinearAllocator = WrapLinearAllocator<VulkanAPI>;
 
 public:
+    f32 FrameDeltaTime;
+
     // Текущая ширина фреймбуфера.
     u32 FramebufferWidth{0};
 
@@ -125,13 +65,13 @@ public:
     VkDebugUtilsMessengerEXT DebugMessenger;
 #endif
 
-    VulkanDevice* Device;
+    VulkanDevice Device{};
 
     VulkanSwapchain swapchain{};
-    VulkanRenderpass MainRenderpass{};
+    VulkanRenderPass MainRenderpass{};
 
-    VulkanBuffer* ObjectVertexBuffer;
-    VulkanBuffer* ObjectIndexBuffer;
+    VulkanBuffer ObjectVertexBuffer;
+    VulkanBuffer ObjectIndexBuffer;
 
     DArray<VulkanCommandBuffer> GraphicsCommandBuffers;
     DArray<VkSemaphore> ImageAvailableSemaphores;
@@ -148,7 +88,7 @@ public:
 
     bool RecreatingSwapchain{false};
 
-    VulkanObjectShader* ObjectShader;
+    VulkanObjectShader ObjectShader;
 
     u64 GeometryVertexOffset;
     u64 GeometryIndexOffset;
@@ -180,5 +120,5 @@ private:
     bool CreateBuffers();
 
     void UploadDataRange(VkCommandPool pool, VkFence fence, VkQueue queue, VulkanBuffer& buffer, u64 offset, u64 size, void* data);
-    void UpdateObjects(const Matrix4D& model) override;
+    void UpdateObjects(const GeometryRenderData& data) override;
 };

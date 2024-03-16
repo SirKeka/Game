@@ -18,15 +18,15 @@ Input::~Input()
     initialized = false;
 }
 
-void Input::InputUpdate(f64 DeltaTime)
+void Input::Update(f64 DeltaTime)
 {
     if (!initialized) {
         return;
+    }
 
-        // Копировать текущие состояния в предыдущие состояния. TODO: подумать о перемещении, а не копировании
+    // Копировать текущие состояния в предыдущие состояния. TODO: подумать о перемещении, а не копировании
         InState.KeyboardPrevious = InState.KeyboardCurrent;
         InState.MousePrevious = InState.MouseCurrent;
-    }
 }
 
 bool Input::IsKeyDown(Keys key)
@@ -61,7 +61,7 @@ bool Input::WasKeyUp(Keys key)
     return InState.KeyboardPrevious.keys[key] == false;
 }
 
-void Input::InputProcessKey(Keys key, bool pressed)
+void Input::ProcessKey(Keys key, bool pressed)
 {
     // Обрабатывайте это только в том случае, если состояние действительно изменилось.
     if (InState.KeyboardCurrent.keys[key] != pressed) {
@@ -93,7 +93,7 @@ void Input::InputProcessKey(Keys key, bool pressed)
     }
 }
 
-bool Input::InputIsButtonDown(Buttons button)
+bool Input::IsButtonDown(Buttons button)
 {
     if (!initialized) {
         return false;
@@ -101,7 +101,7 @@ bool Input::InputIsButtonDown(Buttons button)
     return InState.MouseCurrent.Buttons[button] == true;
 }
 
-bool Input::InputIsButtonUp(Buttons button)
+bool Input::IsButtonUp(Buttons button)
 {
     if (!initialized) {
         return true;
@@ -117,7 +117,7 @@ bool Input::WasButtonDown(Buttons button)
     return InState.MousePrevious.Buttons[button] == TRUE;
 }
 
-bool Input::InputWasButtonUp(Buttons button)
+bool Input::WasButtonUp(Buttons button)
 {
     if (!initialized) {
         return true;
@@ -125,7 +125,7 @@ bool Input::InputWasButtonUp(Buttons button)
     return InState.MousePrevious.Buttons[button] == false;
 }  
 
-void Input::InputGetMousePosition(i16& x, i16& y)
+void Input::GetMousePosition(i16& x, i16& y)
 {
     if (!initialized) {
         x = 0;
@@ -136,7 +136,7 @@ void Input::InputGetMousePosition(i16& x, i16& y)
     y = InState.MouseCurrent.PosY;
 }
 
-void Input::InputGetPreviousMousePosition(i16& x, i16& y)
+void Input::GetPreviousMousePosition(i16& x, i16& y)
 {
     if (!initialized) {
         x = 0;
@@ -160,7 +160,7 @@ void Input::ProcessButton(Buttons button, bool pressed)
     }
 }
 
-void Input::InputProcessMouseMove(i16 x, i16 y)
+void Input::ProcessMouseMove(i16 x, i16 y)
 {
     // Обрабатывайте только в том случае, если на самом деле они разные
     if (InState.MouseCurrent.PosX != x || InState.MouseCurrent.PosY != y) {
@@ -179,7 +179,7 @@ void Input::InputProcessMouseMove(i16 x, i16 y)
     }
 }
 
-void Input::InputProcessMouseWheel(i8 z_delta)
+void Input::ProcessMouseWheel(i8 z_delta)
 {
     // ПРИМЕЧАНИЕ. Внутреннее состояние для обновления отсутствует.
 

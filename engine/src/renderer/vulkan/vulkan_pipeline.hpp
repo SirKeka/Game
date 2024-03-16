@@ -1,6 +1,10 @@
 #pragma once
 
-#include "vulkan_api.hpp"
+#include "defines.hpp"
+#include "vulkan_renderpass.hpp"
+
+class VulkanAPI;
+class VulkanCommandBuffer;
 
 class VulkanPipeline
 {
@@ -13,7 +17,7 @@ public:
 
     bool Create(
     VulkanAPI* VkAPI,
-    VulkanRenderpass* renderpass,
+    VulkanRenderPass* renderpass,
     u32 AttributeCount,
     VkVertexInputAttributeDescription* attributes,
     u32 DescriptorSetLayoutCount,
@@ -22,10 +26,9 @@ public:
     VkPipelineShaderStageCreateInfo* stages,
     VkViewport viewport,
     VkRect2D scissor,
-    bool IsWireframe/*,
-    VulkanPipeline* OutPipeline*/);
+    bool IsWireframe);
 
-    void Destroy(VulkanAPI* VkAPI/*, VulkanPipeline pipeline*/);
+    void Destroy(VulkanAPI* VkAPI);
 
     void Bind(VulkanCommandBuffer* CommandBuffer, VkPipelineBindPoint BindPoint);
 };

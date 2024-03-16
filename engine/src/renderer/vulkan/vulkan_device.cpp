@@ -1,6 +1,6 @@
 #include "vulkan_device.hpp"
-#include "core/logger.hpp"
-#include "core/mmemory.hpp"
+#include "vulkan_api.hpp"
+//#include "core/mmemory.hpp"
 #include "containers/mstring.hpp"
 
 bool VulkanDevice::Create(VulkanAPI* VkAPI)
@@ -105,8 +105,21 @@ bool VulkanDevice::Create(VulkanAPI* VkAPI)
     return true;
 }
 
-VulkanDevice::~VulkanDevice()
+void VulkanDevice::Destroy(VulkanAPI *VkAPI)
 {
+    MINFO("Уничтожение командных пулов...");
+    vkDestroyCommandPool(
+        VkAPI->Device.LogicalDevice,
+        VkAPI->Device.GraphicsCommandPool,
+        VkAPI->allocator);
+
+    // Уничтожить логическое устройство
+    MINFO("Уничтожение логического устройства...");
+    if (VkAPI->Device.LogicalDevice) {
+        vkDestroyDevice(VkAPI->Device.LogicalDevice, VkAPI->allocator);
+        VkAPI->Device.LogicalDevice = 0;
+    }
+
     // Неустановленные очереди
     GraphicsQueue = 0;
     PresentQueue = 0;
@@ -237,6 +250,18 @@ bool VulkanDevice::SelectPhysicalDevice(VulkanAPI *VkAPI)
 
         VkPhysicalDeviceMemoryProperties memory;
         vkGetPhysicalDeviceMemoryProperties(device, &memory);
+
+        // Проверьте, поддерживает ли устройство комбинацию «видимый локальный/хост».
+        bool SupportsDeviceLocalHostVisible = false;
+        for (u32 i = 0; i < memory.memoryTypeCount; ++i) {
+            // Проверьте каждый тип памяти, чтобы увидеть, установлен ли его бит в 1.
+            if (
+                ((memory.memoryTypes[i].propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) != 0) &&
+                ((memory.memoryTypes[i].propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) != 0)) {
+                SupportsDeviceLocalHostVisible = true;
+                break;
+            }
+        }
     
         // TODO: Эти требования, вероятно, должны определяться движком
         // конфигурация.
@@ -315,6 +340,7 @@ bool VulkanDevice::SelectPhysicalDevice(VulkanAPI *VkAPI)
             this->properties = properties;
             this->features = features;
             this->memory = memory;
+            this->SupportsDeviceLocalHostVisible = SupportsDeviceLocalHostVisible;
             break;
         }
     }

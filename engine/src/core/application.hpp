@@ -5,15 +5,13 @@
 #include "logger.hpp"
 #include "platform/platform.hpp"
 #include "core/mmemory.hpp"
-#include "core/event.hpp"
+#include "event.hpp"
 #include "input.hpp"
 #include "clock.hpp"
 
-#include "memory/linear_allocator.hpp"
-
-#include "renderer/renderer.hpp"
-
+class Event;
 class GameTypes;
+class Renderer;
 
 struct ApplicationState {
     LinearAllocator SystemAllocator;

@@ -1,10 +1,10 @@
 #pragma once
 
-#include "renderer/vulkan/vulkan_api.hpp"
+#include "renderer/renderer_types.hpp"
 #include "renderer/vulkan/vulkan_pipeline.hpp"
 #include "renderer/vulkan/vulkan_buffer.hpp"
 
-#define OBJECT_SHADER_STAGE_COUNT 2
+class VulkanAPI;
 
 struct VulkanShaderStage
 {
@@ -13,6 +13,24 @@ struct VulkanShaderStage
     VkPipelineShaderStageCreateInfo ShaderStageCreateInfo;
 };
 
+#define OBJECT_SHADER_STAGE_COUNT 2
+
+struct VulkanDescriptorState {
+    // По одному на кадр
+    u32 generations[3];
+};
+
+#define VULKAN_OBJECT_SHADER_DESCRIPTOR_COUNT 2
+struct VulkanObjectShaderObjectState {
+    // За кадр
+    VkDescriptorSet DescriptorSets[3];
+
+    // Для каждого дескриптора
+    VulkanDescriptorState DescriptorStates[VULKAN_OBJECT_SHADER_DESCRIPTOR_COUNT];
+};
+
+// Максимальное количество объектов
+#define VULKAN_OBJECT_MAX_OBJECT_COUNT 1024
 
 class VulkanObjectShader
 {
@@ -23,15 +41,29 @@ public:
     VkDescriptorSet GlobalDescriptorSets[3]; // Один набор дескрипторов на кадр - максимум 3 для тройной буферизации.
     GlobalUniformObject GlobalUObj;
     VulkanBuffer GlobalUniformBuffer;
+    VkDescriptorPool ObjectDescriptorPool;
+    VkDescriptorSetLayout ObjectDescriptorSetLayout;
+    VulkanBuffer ObjectUniformBuffer; // Универсальный буфер объектов.
+    // TODO: Вместо этого создать здесь какой-нибудь свободный список.
+    u32 ObjectUniformBufferIndex = 0;
+
+    // TODO: сделать динамическим
+    VulkanObjectShaderObjectState ObjectStates[VULKAN_OBJECT_MAX_OBJECT_COUNT];
+
+    // Указатель на текстуру по умолчанию.
+    Texture* DefaultDiffuse;
+
     VulkanPipeline pipeline;
     
 public:
     VulkanObjectShader() = default;
     ~VulkanObjectShader() = default;
 
-    bool Create(VulkanAPI* VkAPI);
+    bool Create(VulkanAPI* VkAPI, Texture* DefaultDiffuse);
     void DestroyShaderModule(VulkanAPI* VkAPI);
     void Use(VulkanAPI* VkAPI);
-    void UpdateGlobalState(VulkanAPI* VkAPI);
-    void UpdateObject(VulkanAPI* VkAPI, const Matrix4D& model);
+    void UpdateGlobalState(VulkanAPI* VkAPI, f32 DeltaTime);
+    void UpdateObject(VulkanAPI* VkAPI, const GeometryRenderData& data);
+    bool AcquireResources(VulkanAPI* VkAPI, u32& OutObjectID);
+    void ReleaseResources(VulkanAPI* VkAPI, u32 ObjectID);
 };

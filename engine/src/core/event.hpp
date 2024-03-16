@@ -1,7 +1,6 @@
 #pragma once
 
 #include "defines.hpp"
-
 #include "containers/darray.hpp"
 
 struct EventContext {
@@ -132,6 +131,12 @@ enum SystemEventCode {
      * u16 width = data.data.u16[0];
      * u16 height = data.data.u16[1];   */
     EVENT_CODE_RESIZED = 0x08,
+
+    EVENT_CODE_DEBUG0 = 0x10,
+    EVENT_CODE_DEBUG1 = 0x11,
+    EVENT_CODE_DEBUG2 = 0x12,
+    EVENT_CODE_DEBUG3 = 0x13,
+    EVENT_CODE_DEBUG4 = 0x14,
 
     MAX_EVENT_CODE = 0xFF
 };

@@ -179,7 +179,7 @@ public:
 
 //void input_initialize();
 //void input_shutdown();
-void InputUpdate(f64 DeltaTime);
+void Update(f64 DeltaTime);
 
 // ввод с клавиатуры
 
@@ -188,19 +188,19 @@ MAPI static bool IsKeyUp(Keys key);
 MAPI static bool WasKeyDown(Keys key);
 MAPI static bool WasKeyUp(Keys key);
 
-static void InputProcessKey(Keys key, bool pressed);
+static void ProcessKey(Keys key, bool pressed);
 
 // ввод с помощью мыши
-MAPI static bool InputIsButtonDown(Buttons button);
-MAPI static bool InputIsButtonUp(Buttons button);
+MAPI static bool IsButtonDown(Buttons button);
+MAPI static bool IsButtonUp(Buttons button);
 MAPI static bool WasButtonDown(Buttons button);
-MAPI static bool InputWasButtonUp(Buttons button);
-MAPI static void InputGetMousePosition(i16& x, i16& y);
-MAPI static void InputGetPreviousMousePosition(i16& x, i16& y);
+MAPI static bool WasButtonUp(Buttons button);
+MAPI static void GetMousePosition(i16& x, i16& y);
+MAPI static void GetPreviousMousePosition(i16& x, i16& y);
 
 static void ProcessButton(Buttons button, bool pressed);
-static void InputProcessMouseMove(i16 x, i16 y);
-static void InputProcessMouseWheel(i8 z_delta);
+static void ProcessMouseMove(i16 x, i16 y);
+static void ProcessMouseWheel(i8 z_delta);
 
 void* operator new(u64 size);
 };
