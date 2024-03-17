@@ -23,7 +23,7 @@
  * @brief Предполагается, что ожидания будут действительными с учетом допуска M_FLOAT_EPSILON.
  */
 #define ExpectFloatToBe(expected, actual)                                                               \
-    if (kabs(expected - actual) > 0.001f) {                                                             \
+    if (Math::abs(expected - actual) > 0.001f) {                                                             \
         MERROR("--> Ожидается %f, но получил: %f. Фаил: %s:%d.", expected, actual, __FILE__, __LINE__); \
         return false;                                                                                   \
     }

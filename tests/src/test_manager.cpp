@@ -2,7 +2,7 @@
 
 #include <containers/darray.hpp>
 #include <core/logger.hpp>
-#include <containers/mstring.hpp>
+//#include <containers/mstring.hpp>
 #include <core/clock.hpp>
 
 struct TestEntry {
@@ -14,7 +14,7 @@ static DArray<TestEntry> tests;
 
 void TestManagerInit()
 {
-    static DArray<TestEntry> tests{};
+    static DArray<TestEntry> tests;
 }
 
 void TestManagerRegisterTest(u8 (*PFN_Test)(), const char *desc)

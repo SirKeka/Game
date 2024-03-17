@@ -1,4 +1,4 @@
-#include "vulkan_object_shader.hpp"
+#include "vulkan_material_shader.hpp"
 
 #include "math/vector3d.hpp"
 #include "renderer/vulkan/vulkan_api.hpp"
@@ -6,9 +6,9 @@
 #include "renderer/vulkan/vulkan_shader_utils.hpp"
 #include "resources/texture.hpp"
 
-#define BUILTIN_SHADER_NAME_OBJECT "Builtin.ObjectShader"
+#define BUILTIN_SHADER_NAME_OBJECT "Builtin.MaterialShader"
 
-bool VulkanObjectShader::Create(VulkanAPI *VkAPI, Texture* DefaultDiffuse)
+bool VulkanMaterialShader::Create(VulkanAPI *VkAPI, Texture* DefaultDiffuse)
 {
     this->DefaultDiffuse = DefaultDiffuse;
     // Инициализация модуля шейдера на каждом этапе.
@@ -186,7 +186,7 @@ bool VulkanObjectShader::Create(VulkanAPI *VkAPI, Texture* DefaultDiffuse)
     return true;
 }
 
-void VulkanObjectShader::DestroyShaderModule(VulkanAPI *VkAPI)
+void VulkanMaterialShader::DestroyShaderModule(VulkanAPI *VkAPI)
 {
     vkDestroyDescriptorPool(VkAPI->Device.LogicalDevice, ObjectDescriptorPool, VkAPI->allocator);
     vkDestroyDescriptorSetLayout(VkAPI->Device.LogicalDevice, ObjectDescriptorSetLayout, VkAPI->allocator);
@@ -211,13 +211,13 @@ void VulkanObjectShader::DestroyShaderModule(VulkanAPI *VkAPI)
     }
 }
 
-void VulkanObjectShader::Use(VulkanAPI *VkAPI)
+void VulkanMaterialShader::Use(VulkanAPI *VkAPI)
 {
     u32 ImageIndex = VkAPI->ImageIndex;
     pipeline.Bind(&VkAPI->GraphicsCommandBuffers[ImageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS);
 }
 
-void VulkanObjectShader::UpdateGlobalState(VulkanAPI *VkAPI, f32 DeltaTime)
+void VulkanMaterialShader::UpdateGlobalState(VulkanAPI *VkAPI, f32 DeltaTime)
 {
     u32 ImageIndex = VkAPI->ImageIndex;
     VkCommandBuffer CommandBuffer = VkAPI->GraphicsCommandBuffers[ImageIndex].handle;
@@ -250,7 +250,7 @@ void VulkanObjectShader::UpdateGlobalState(VulkanAPI *VkAPI, f32 DeltaTime)
     vkCmdBindDescriptorSets(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.PipelineLayout, 0, 1, &GlobalDescriptor, 0, 0);
 }
 
-void VulkanObjectShader::UpdateObject(VulkanAPI *VkAPI, const GeometryRenderData& data)
+void VulkanMaterialShader::UpdateObject(VulkanAPI *VkAPI, const GeometryRenderData& data)
 {
     u32 ImageIndex = VkAPI->ImageIndex;
     VkCommandBuffer CommandBuffer = VkAPI->GraphicsCommandBuffers[ImageIndex].handle;
@@ -353,7 +353,7 @@ void VulkanObjectShader::UpdateObject(VulkanAPI *VkAPI, const GeometryRenderData
     vkCmdBindDescriptorSets(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.PipelineLayout, 1, 1, &ObjectDescriptorSet, 0, 0);
 }
 
-bool VulkanObjectShader::AcquireResources(VulkanAPI *VkAPI, u32 &OutObjectID)
+bool VulkanMaterialShader::AcquireResources(VulkanAPI *VkAPI, u32 &OutObjectID)
 {
     // TODO: free list
     OutObjectID = this->ObjectUniformBufferIndex;
@@ -386,7 +386,7 @@ bool VulkanObjectShader::AcquireResources(VulkanAPI *VkAPI, u32 &OutObjectID)
     return true;
 }
 
-void VulkanObjectShader::ReleaseResources(VulkanAPI *VkAPI, u32 ObjectID)
+void VulkanMaterialShader::ReleaseResources(VulkanAPI *VkAPI, u32 ObjectID)
 {
 }
 

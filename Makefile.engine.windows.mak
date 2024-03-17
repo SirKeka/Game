@@ -28,7 +28,7 @@ scaffold: # создать каталог сборки
 .PHONY: link
 link: scaffold $(OBJ_FILES) # link
 	@echo Linking $(ASSEMBLY)...
-	@clang $(OBJ_FILES) -o $(BUILD_DIR)\$(ASSEMBLY)$(EXTENSION) $(LINKER_FLAGS)
+	@clang++ $(OBJ_FILES) -o $(BUILD_DIR)\$(ASSEMBLY)$(EXTENSION) $(LINKER_FLAGS)
 
 .PHONY: compile
 compile: #скомпилируйте файлы .cpp
@@ -43,4 +43,4 @@ $(OBJ_DIR)/%.cpp.o: %.cpp # скомпилировать .cpp в .cpp.o объе
 	@echo   $<...
 	@clang++ $< $(COMPILER_FLAGS) -c -o $@ $(DEFINES) $(INCLUDE_FLAGS)
 
-	-include $(OBJ_FILES:.o=.d)
+-include $(OBJ_FILES:.o=.d)

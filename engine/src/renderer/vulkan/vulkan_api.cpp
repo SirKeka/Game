@@ -25,10 +25,10 @@ VKAPI_ATTR VkBool32 VKAPI_CALL VkDebugCallback(
 
 void VulkanAPI::UpdateObjects(const GeometryRenderData& data)
 {
-    ObjectShader.UpdateObject(this, data);
+    MaterialShader.UpdateObject(this, data);
     
     // TODO: Временный тестовый код
-    ObjectShader.Use(this);
+    MaterialShader.Use(this);
 
     // Привязка буфера вершин к смещению.
     VkDeviceSize offsets[1] = {0};
@@ -51,7 +51,7 @@ VulkanAPI::~VulkanAPI()
     ObjectVertexBuffer.Destroy(this);
     ObjectIndexBuffer.Destroy(this);
 
-    ObjectShader.DestroyShaderModule(this);
+    MaterialShader.DestroyShaderModule(this);
 
     // Sync objects
     for (u8 i = 0; i < swapchain.MaxFramesInFlight; ++i) {
@@ -294,7 +294,7 @@ bool VulkanAPI::Initialize(MWindow* window, const char* ApplicationName)
     }
 
     // Создание встроенных шейдеров
-    if (!ObjectShader.Create(this, this->DefaultDiffuse)) {
+    if (!MaterialShader.Create(this, this->DefaultDiffuse)) {
         MERROR("Ошибка загрузки встроенного шейдера базового цвета (BasicLighting).");
         return false;
     }
@@ -333,7 +333,7 @@ bool VulkanAPI::Initialize(MWindow* window, const char* ApplicationName)
     UploadDataRange(Device.GraphicsCommandPool, 0, Device.GraphicsQueue, ObjectIndexBuffer, 0, sizeof(u32) * IndexCount, indices);
 
     u32 ObjectID = 0;
-    if (!ObjectShader.AcquireResources(this, ObjectID)) {
+    if (!MaterialShader.AcquireResources(this, ObjectID)) {
         MERROR("Не удалось получить ресурсы шейдера.");
         return false;
     }
@@ -452,14 +452,14 @@ bool VulkanAPI::BeginFrame(f32 Deltatime)
 {
     //VulkanCommandBuffer* CommandBuffer = &GraphicsCommandBuffers[ImageIndex];
 
-    ObjectShader.Use(this);
+    MaterialShader.Use(this);
 
-    ObjectShader.GlobalUObj.projection = projection;
-    ObjectShader.GlobalUObj.view = view;
+    MaterialShader.GlobalUObj.projection = projection;
+    MaterialShader.GlobalUObj.view = view;
 
     // TODO: другие свойства ubo
 
-    ObjectShader.UpdateGlobalState(this, FrameDeltaTime);
+    MaterialShader.UpdateGlobalState(this, FrameDeltaTime);
 }
 
 bool VulkanAPI::EndFrame(f32 DeltaTime)

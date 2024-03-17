@@ -2,9 +2,7 @@
 
 #include "defines.hpp"
 
-#include <stdio.h>
-
-class MString
+class MAPI MString
 {
 private:
     char* str;
@@ -12,33 +10,40 @@ private:
     u64 lenght;
 
 public:
-    MAPI MString();
-    MAPI MString(const char* s);
+    MString();
+    MString(const char* s);
     ~MString();
 
-    MAPI MString& operator= (const MString& s);
-    MAPI MString& operator= (const char* s);
-    //MAPI MString& operator= (char c);
-    //MAPI MString& operator= (MString&& s) noexcept;
+    MString& operator= (const MString& s);
+    MString& operator= (const char* s);
+    //MString& operator= (char c);
+    //MString& operator= (MString&& s) noexcept;
 
-    MAPI bool operator== (const MString& rhs);
-    //MAPI bool operator== (const char*   lhs, const string& rhs);
-    //MAPI bool operator== (const string& lhs, const char*   rhs);
+    explicit operator bool() const;
+
+    bool operator== (const MString& rhs);
 
     /// @param str константная строка
     /// @return длину(количество символов в строке)
-    MAPI u64 Length();
-    //MAPI char* Copy(const char* s);
+    u64 Length();
+    //char* Copy(const char* s);
 
     /// @return строку типа си
-    MAPI const char* c_str() const noexcept;
+    const char* c_str() const noexcept;
 
 private:
     void Destroy();
 
 };
 
-bool StringsEqual(const char* strL, const char* strR);
+//MAPI bool operator== (const char*   lhs, const string& rhs);
+//MAPI bool operator== (const string& lhs, const char*   rhs);
+
+// Сравнение строк с учетом регистра. True, если совпадает, в противном случае false.
+MAPI bool StringsEqual(const char* strL, const char* strR);
+
+// Сравнение строк без учета регистра. True, если совпадает, в противном случае false.
+MAPI bool StringsEquali(const char* str0, const char* str1);
 
 // Выполняет форматирование строки для определения заданной строки формата и параметров.
 MAPI i32 StringFormat(char* dest, const char* format, ...);

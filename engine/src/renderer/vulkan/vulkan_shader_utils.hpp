@@ -1,6 +1,6 @@
 #pragma once
 
-#include "shaders/vulkan_object_shader.hpp"
+#include "shaders/vulkan_material_shader.hpp"
 
 namespace VulkanShadersUtil
 {

@@ -7,19 +7,19 @@ EXTENSION := .exe
 COMPILER_FLAGS := -g -MD -Werror=vla -Wno-missing-braces -fdeclspec #-fPIC
 INCLUDE_FLAGS := -Iengine\src -Itests\src 
 LINKER_FLAGS := -g -lengine.lib -L$(OBJ_DIR)\engine -L$(BUILD_DIR) #-Wl,-rpath,.
-DEFINES := -D_DEBUG -DKIMPORT
+DEFINES := -D_DEBUG -DMIMPORT
 
-# Make does not offer a recursive wildcard function, so here's one:
+# Make не предлагает рекурсивную функцию подстановки, поэтому вот она:
 rwildcard=$(wildcard $1$2) $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2))
 
-SRC_FILES := $(call rwildcard,$(ASSEMBLY)/,*.cpp) # Get all .cpp files
-DIRECTORIES := \$(ASSEMBLY)\src $(subst $(DIR),,$(shell dir $(ASSEMBLY)\src /S /AD /B | findstr /i src)) # Get all directories under src.
-OBJ_FILES := $(SRC_FILES:%=$(OBJ_DIR)/%.o) # Get all compiled .cpp.o objects for tests
+SRC_FILES := $(call rwildcard,$(ASSEMBLY)/,*.cpp) # Получить все файлы .cpp
+DIRECTORIES := \$(ASSEMBLY)\src $(subst $(DIR),,$(shell dir $(ASSEMBLY)\src /S /AD /B | findstr /i src)) # Получите все каталоги в разделе src.
+OBJ_FILES := $(SRC_FILES:%=$(OBJ_DIR)/%.o) # Получить все скомпилированные объекты .cpp.o для движка
 
 all: scaffold compile link
 
 .PHONY: scaffold
-scaffold: # create build directory
+scaffold: # создать каталог сборки
 	@echo Scaffolding folder structure...
 	-@setlocal enableextensions enabledelayedexpansion && mkdir $(addprefix $(OBJ_DIR), $(DIRECTORIES)) 2>NUL || cd .
 	@echo Done.
@@ -30,15 +30,15 @@ link: scaffold $(OBJ_FILES) # link
 	@clang++ $(OBJ_FILES) -o $(BUILD_DIR)/$(ASSEMBLY)$(EXTENSION) $(LINKER_FLAGS)
 
 .PHONY: compile
-compile: #compile .cpp files
+compile: #компиляция файлов .cpp
 	@echo Compiling...
 
 .PHONY: clean
-clean: # clean build directory
+clean: # очистить каталог сборки
 	if exist $(BUILD_DIR)\$(ASSEMBLY)$(EXTENSION) del $(BUILD_DIR)\$(ASSEMBLY)$(EXTENSION)
 	rmdir /s /q $(OBJ_DIR)\$(ASSEMBLY)
 
-$(OBJ_DIR)/%.cpp.o: %.cpp # compile .cpp to .cpp.o object
+$(OBJ_DIR)/%.cpp.o: %.cpp # скомпилировать .cpp в .cpp.o объект
 	@echo   $<...
 	@clang++ $< $(COMPILER_FLAGS) -c -o $@ $(DEFINES) $(INCLUDE_FLAGS)
 

@@ -8,7 +8,7 @@
 #include "vulkan_device.hpp"
 #include "vulkan_renderpass.hpp"
 #include "vulkan_buffer.hpp"
-#include "shaders/vulkan_object_shader.hpp"
+#include "shaders/vulkan_material_shader.hpp"
 
 struct VulkanSwapchain 
 {
@@ -88,7 +88,7 @@ public:
 
     bool RecreatingSwapchain{false};
 
-    VulkanObjectShader ObjectShader;
+    VulkanMaterialShader MaterialShader;
 
     u64 GeometryVertexOffset;
     u64 GeometryIndexOffset;

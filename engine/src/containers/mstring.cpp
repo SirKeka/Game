@@ -40,6 +40,14 @@ MString &MString::operator=(const char *s)
     return *this;
 }
 
+MString::operator bool() const
+{
+    if (this->str != nullptr && this->lenght != 0) {
+        return true;
+    }
+    return false;
+}
+
 bool MString::operator==(const MString &rhs)
 {
     if (lenght != rhs.lenght) {
@@ -74,6 +82,15 @@ void MString::Destroy()
 bool StringsEqual(const char *strL, const char *strR)
 {
     return strcmp(strL, strR);
+}
+
+bool StringsEquali(const char *str0, const char *str1)
+{
+#if defined(__GNUC__)
+    return strcasecmp(str0, str1) == 0;
+#elif (defined _MSC_VER)
+    return _strcmpi(str0, str1) == 0;
+#endif
 }
 
 MAPI i32 StringFormat(char *dest, const char *format, ...)

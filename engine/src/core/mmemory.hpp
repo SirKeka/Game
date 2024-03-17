@@ -63,7 +63,18 @@ public:
     static void* Allocate(u64 bytes, MemoryTag tag);
 
     template<typename T>
-    static T* TAllocate(u64 size, MemoryTag tag);
+    static T* TAllocate(u64 size, MemoryTag tag) {
+        if (tag == MEMORY_TAG_UNKNOWN) {
+            MWARN("allocate вызывается с использованием MEMORY_TAG_UNKNOWN. Переклассифицировать это распределение.");
+        }
+
+        TotalAllocated += size * sizeof(T);
+        TaggedAllocations[tag] += size * sizeof(T);
+
+        T* ptrRawMem = new T[size];
+
+        return ptrRawMem;
+    }
 
     /// @brief Функция освобождает память
     /// @param block указатель на блок памяти, который нужно освободить
@@ -76,13 +87,29 @@ public:
     /// @param block указатель на блок памяти, который нужно освободить
     /// @param factor количество элементов Т в массиве блока памяти
     /// @param tag название(тег) для чего использовалась память
-    static void TFree(T* block, u64 factor, MemoryTag tag);
+    static void TFree(T* block, u64 factor, MemoryTag tag) {
+        if (block) {
+            if (tag == MEMORY_TAG_UNKNOWN) {
+                MWARN("free вызывается с использованием MEMORY_TAG_UNKNOWN. Переклассифицировать это распределение.");
+            }
+
+            TotalAllocated -= sizeof(T) * factor;
+            TaggedAllocations[tag] -= sizeof(T) * factor;
+
+            delete[] block;
+        }
+    }
 
     /// @brief Функция зануляет выделенный блок памяти
     /// @param block указатель на блок памяти, который нужно обнулить
     /// @param bytes размер блока памяти в байтах
     /// @return указатель на нулевой блок памяти
     static void* ZeroMem(void* block, u64 bytes);
+
+    template<typename T>
+    static void* TZeroMem(T* block, u64 bytes){
+        return ZeroMem(reinterpret_cast<void*>(block), bytes);
+    }
 
     /// @brief Функция копирует массив байтов из source указателя в dest
     /// @param dest указатель куда комируется массив байтов
@@ -108,36 +135,6 @@ public:
     void* operator new(u64 size);
     //void operator delete(void* ptr);
 };
-
-template <typename T>
-MINLINE T *MMemory::TAllocate(u64 size, MemoryTag tag)
-{
-    if (tag == MEMORY_TAG_UNKNOWN) {
-        MWARN("allocate вызывается с использованием MEMORY_TAG_UNKNOWN. Переклассифицировать это распределение.");
-    }
-
-    TotalAllocated += size * sizeof(T);
-    TaggedAllocations[tag] += size * sizeof(T);
-
-    T* ptrRawMem = new T[size];
-    
-    return ptrRawMem;
-}
-
-template <typename T>
-MINLINE void MMemory::TFree(T * block, u64 factor, MemoryTag tag)
-{
-    if (block) {
-        if (tag == MEMORY_TAG_UNKNOWN) {
-            MWARN("free вызывается с использованием MEMORY_TAG_UNKNOWN. Переклассифицировать это распределение.");
-        }
-
-        TotalAllocated -= sizeof(T) * factor;
-        TaggedAllocations[tag] -= sizeof(T) * factor;
-
-        delete[] block;
-    }
-}
 
 /*template<typename T>
 MAPI T * MMemory::TZeroMemory(T * block, u64 bytes)

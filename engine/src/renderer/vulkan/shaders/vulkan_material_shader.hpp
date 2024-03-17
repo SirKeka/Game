@@ -32,7 +32,7 @@ struct VulkanObjectShaderObjectState {
 // Максимальное количество объектов
 #define VULKAN_OBJECT_MAX_OBJECT_COUNT 1024
 
-class VulkanObjectShader
+class VulkanMaterialShader
 {
 public:
     VulkanShaderStage stages[OBJECT_SHADER_STAGE_COUNT];
@@ -56,8 +56,8 @@ public:
     VulkanPipeline pipeline;
     
 public:
-    VulkanObjectShader() = default;
-    ~VulkanObjectShader() = default;
+    VulkanMaterialShader() = default;
+    ~VulkanMaterialShader() = default;
 
     bool Create(VulkanAPI* VkAPI, Texture* DefaultDiffuse);
     void DestroyShaderModule(VulkanAPI* VkAPI);

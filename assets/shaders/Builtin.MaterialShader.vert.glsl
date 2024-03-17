@@ -24,6 +24,7 @@ layout(location = 1) out struct dto {
 
 
 void main() {
+	
 	out_dto.tex_coord = in_texcoord;
     gl_Position = global_ubo.projection * global_ubo.view * u_push_constants.model * vec4(in_position, 1.0);
 }
