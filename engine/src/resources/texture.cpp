@@ -20,9 +20,9 @@ Texture::Texture() /*:
         Data = nullptr;
     }
 
-Texture::Texture(MString name, bool AutoRelease, i32 width, i32 height, i32 ChannelCount, const u8 *pixels, bool HasTransparency, VulkanAPI *VkAPI)
+Texture::Texture(MString name,i32 width, i32 height, i32 ChannelCount, const u8 *pixels, bool HasTransparency, VulkanAPI *VkAPI)
 {
-    Create(name, AutoRelease, width, height, ChannelCount, pixels, HasTransparency, VkAPI);
+    Create(name, width, height, ChannelCount, pixels, HasTransparency, VkAPI);
 }
 
 Texture::Texture(const Texture &t) 
@@ -35,7 +35,7 @@ HasTransparency(t.HasTransparency),
 generation(t.generation), 
 Data(t.Data) {}
 
-void Texture::Create(MString name, bool AutoRelease, i32 width, i32 height, i32 ChannelCount, const u8 *pixels, bool HasTransparency, VulkanAPI *VkAPI)
+void Texture::Create(MString name,i32 width, i32 height, i32 ChannelCount, const u8 *pixels, bool HasTransparency, VulkanAPI *VkAPI)
 {
     this->width = width;
     this->height = height;
@@ -44,8 +44,6 @@ void Texture::Create(MString name, bool AutoRelease, i32 width, i32 height, i32 
 
     // Создание внутренних данных.
     // TODO: Используйте для этого распределитель.
-    //out_texture->internal_data = (vulkan_texture_data*)kallocate(sizeof(vulkan_texture_data), MEMORY_TAG_TEXTURE);
-    //vulkan_texture_data* Data = (vulkan_texture_data*)out_texture->internal_data;
     Data = reinterpret_cast<VulkanTextureData*>(MMemory::Allocate(sizeof(VulkanTextureData), MEMORY_TAG_TEXTURE));
     VkDeviceSize ImageSize = width * height * ChannelCount;
 

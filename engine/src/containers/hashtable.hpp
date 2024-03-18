@@ -5,7 +5,7 @@
 #include <core/mmemory.hpp>
 
 /// @brief Представляет простую хеш-таблицу. Члены этой структуры не должны изменяться за пределами связанных с ней функций.
-/// Для типов, не являющихся указателями, таблица сохраняет копию значения. Для типов указателей обязательно используйте методы установки и получения _ptr. 
+/// Для типов, не являющихся указателями, таблица сохраняет копию значения.
 /// Таблица не берет на себя ответственность за указатели или связанные с ними выделения памяти и должна управляться извне.
 template <typename T>
 class HashTable
@@ -59,10 +59,6 @@ public:
                 return false;
             }
         }
-        /*if (this->IsPointerType) {
-            MERROR("«Set» не следует использовать с таблицами, имеющими типы указателей. Вместо этого используйте «SetPtr».");
-            return false;
-        }*/
 
         u64 hash = Name(name, ElementCount);
         if(IsPointerType) {
@@ -78,14 +74,13 @@ public:
     /// @param OutValue указатель для хранения полученного значения. Обязательно.
     /// @return true или false, если передается нулевой указатель.
     bool Get(MString name, T* OutValue) {
-        if (!name || !OutValue) {
-            MWARN("«Get» требует существования имени и OutValue.");
-            return false;
+        if(!IsPointerType) {
+            if (!name || !OutValue) {
+                MWARN("«Get» требует существования имени и OutValue.");
+                return false;
+            }
         }
-        /*if (this->IsPointerType) {
-            MERROR("«Get» не следует использовать с таблицами, имеющими типы указателей. Вместо этого используйте «GetPtr».");
-            return false;
-        }*/
+
         u64 hash = Name(name, this->ElementCount);
         if(IsPointerType) {
             *OutValue = this->memory[hash];

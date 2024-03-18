@@ -294,7 +294,7 @@ bool VulkanAPI::Initialize(MWindow* window, const char* ApplicationName)
     }
 
     // Создание встроенных шейдеров
-    if (!MaterialShader.Create(this, this->DefaultDiffuse)) {
+    if (!MaterialShader.Create(this)) {
         MERROR("Ошибка загрузки встроенного шейдера базового цвета (BasicLighting).");
         return false;
     }

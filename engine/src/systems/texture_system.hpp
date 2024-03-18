@@ -21,16 +21,16 @@ private:
     Texture* RegisteredTextures;
 
     // Хэш-таблица для поиска текстур.
-    HashTable RegisteredTextureTable;
+    HashTable<TextureReference> RegisteredTextureTable;
 
 public:
     TextureSystem() : MaxTextureCount(0) {}
     ~TextureSystem() = default;
 
-    bool Initialize(u64* memory_requirement, void* state);
-    void Shutdown(void* state);
+    bool Initialize(u32 MaxTextureCount, VulkanAPI* VkAPI);
+    void Shutdown(VulkanAPI* VkAPI);
 
-    Texture* Acquire(MString name, bool AutoRelease);
+    Texture* Acquire(MString name, bool AutoRelease, VulkanAPI* VkAPI);
     void Release(MString name);
 
     Texture* GetDefaultTexture();
@@ -39,7 +39,9 @@ public:
     //void operator delete(void* ptr)
 
 private:
-    bool LoadTexture(MString TextureName, Texture* t);
+    bool CreateDefaultTexture(VulkanAPI* VkAPI);
+    void DestroyDefaultTexture(VulkanAPI* VkAPI);
+    bool LoadTexture(MString TextureName, Texture* t, VulkanAPI* VkAPI);
 };
 
 

@@ -8,7 +8,7 @@
 
 #define BUILTIN_SHADER_NAME_OBJECT "Builtin.MaterialShader"
 
-bool VulkanMaterialShader::Create(VulkanAPI *VkAPI, Texture* DefaultDiffuse)
+bool VulkanMaterialShader::Create(VulkanAPI *VkAPI)
 {
     // Инициализация модуля шейдера на каждом этапе.
     char StageTypeStrs[OBJECT_SHADER_STAGE_COUNT][5] = {"vert", "frag"};
@@ -311,7 +311,6 @@ void VulkanMaterialShader::UpdateObject(VulkanAPI *VkAPI, const GeometryRenderDa
         // Если текстура еще не была загружена, используйте значение по умолчанию.
         // TODO: Определите, какое использование имеет текстура, и на основе этого выберите подходящее значение по умолчанию.
         if (t->generation == INVALID_ID) {
-            t = DefaultDiffuse;
 
             // Сбросьте генерацию дескриптора, если используется текстура по умолчанию.
             *DescriptorGeneration = INVALID_ID;
