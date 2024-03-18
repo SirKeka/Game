@@ -23,8 +23,8 @@ public:
     VulkanTextureData* Data;
 public:
     Texture();
-    Texture(MString name, 
-        bool AutoRelease, 
+    Texture(
+        MString name, 
         i32 width, 
         i32 height, 
         i32 ChannelCount, 
@@ -33,8 +33,8 @@ public:
         VulkanAPI* VkAPI);
     ~Texture() = default;
     Texture(const Texture& t);
-    void Create(MString name, 
-        bool AutoRelease, 
+    void Create(
+        MString name, 
         i32 width, 
         i32 height, 
         i32 ChannelCount, 

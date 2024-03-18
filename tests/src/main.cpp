@@ -1,6 +1,7 @@
 #include "test_manager.hpp"
 
 #include "memory/linear_allocator_tests.hpp"
+#include "containers/hashtable_tests.hpp"
 
 #include <core/logger.hpp>
 #include <stdlib.h>
@@ -13,6 +14,7 @@ int main() {
     // TODO: добавьте сюда тестовые регистрации.
     LinearAllocatorRegisterTests();
 
+    hashtable_register_tests();
 
     MDEBUG("Запуск тестов...");
 

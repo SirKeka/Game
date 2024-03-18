@@ -9,10 +9,6 @@
 #include "math/vector4d.hpp"
 #include "math/matrix4d.hpp"
 
-// TODO: временно
-#define STB_IMAGE_IMPLEMENTATION
-#include "vendor/stb_image.h"
-// TODO: временно
 
 RendererType *Renderer::ptrRenderer;
 f32 Renderer::NearClip = 0.1f;
@@ -20,7 +16,6 @@ f32 Renderer::FarClip = 1000.f;
 Matrix4D Renderer::projection = Matrix4::MakeFrustumProjection(Math::DegToRad(45.0f), 1280 / 720.0f, NearClip, FarClip);
 Matrix4D Renderer::view = Matrix4::MakeTranslation(Vector3D<f32>{0, 0, -30.f});
 Texture *Renderer::DefaultTexture = new Texture();
-Texture *Renderer::TestDiffuse {};
 
 Renderer::~Renderer()
 {
@@ -31,8 +26,6 @@ Renderer::~Renderer()
 
     DefaultTexture->Destroy(dynamic_cast<VulkanAPI*>(ptrRenderer));
     delete DefaultTexture;
-    TestDiffuse->Destroy(dynamic_cast<VulkanAPI*>(ptrRenderer));
-    delete TestDiffuse;
     delete ptrRenderer; //TODO: Unhandled exception at 0x00007FFEADC9B93C (engine.dll) in testbed.exe: 0xC0000005: Access violation reading location 0x0000000000000000.
 }
 
@@ -94,7 +87,6 @@ bool Renderer::Initialize(MWindow* window, const char *ApplicationName, ERendere
         }
         DefaultTexture->Create(
             "default",
-            false,
             TexDimension,
             TexDimension,
             4,
@@ -104,9 +96,6 @@ bool Renderer::Initialize(MWindow* window, const char *ApplicationName, ERendere
 
         // Вручную установите недействительную генерацию текстуры, поскольку это текстура по умолчанию.
         DefaultTexture->generation = INVALID_ID;
-
-        // TODO: загрузить другие текстуры
-        TestDiffuse = new Texture();
 
         return true;
     }
@@ -162,7 +151,7 @@ bool Renderer::DrawFrame(RenderPacket *packet)
         GeometryRenderData data = {};
         data.ObjectID = 0;  // TODO: actual object id
         data.model = model;
-        data.textures[0] = this->TestDiffuse;
+        //data.textures[0] = this->TestDiffuse;
         ptrRenderer->UpdateObjects(data);
 
         // Завершите кадр. Если это не удастся, скорее всего, это будет невозможно восстановить.
@@ -187,91 +176,6 @@ void *Renderer::operator new(u64 size)
     return LinearAllocator::Allocate(size);
 }
 
-/*void Renderer::CreateTexture(Texture *t)
-{
-    t = new Texture();
-    t->generation = INVALID_ID;
-}*/
-
-bool Renderer::LoadTexture(MString TextureName, Texture *t)
-{
-    // TODO: Должен быть в состоянии находиться в любом месте.
-    const char* FormatStr = "assets/textures/%s.%s";
-    const i32 RequiredChannelCount = 4;
-    stbi_set_flip_vertically_on_load(true);
-    char FullFilePath[512];
-
-    // TODO: попробуйте разные расширения
-    StringFormat(FullFilePath, FormatStr, TextureName.c_str(), "png");
-
-    // Используйте временную текстуру для загрузки.
-    Texture TempTexture;
-
-    u8* data = stbi_load(
-        FullFilePath,
-        (i32*)&TempTexture.width,
-        (i32*)&TempTexture.height,
-        (i32*)&TempTexture.ChannelCount,
-        RequiredChannelCount);
-
-    TempTexture.ChannelCount = RequiredChannelCount;
-
-    if (data) {
-        u32 CurrentGeneration = t->generation;
-        t->generation = INVALID_ID;
-
-        u64 TotalSize = TempTexture.width * TempTexture.height * RequiredChannelCount;
-        // Проверка прозрачности
-        b32 HasTransparency = false;
-        for (u64 i = 0; i < TotalSize; i += RequiredChannelCount) {
-            u8 a = data[i + 3];
-            if (a < 255) {
-                HasTransparency = true;
-                break;
-            }
-        }
-
-        if (stbi_failure_reason()) {
-            MWARN("load_texture() не удалось загрузить файл '%s': %s", FullFilePath, stbi_failure_reason());
-        }
-
-        // Получите внутренние ресурсы текстур и загрузите их в графический процессор.
-        TempTexture = Texture(
-            TextureName,
-            true,
-            TempTexture.width,
-            TempTexture.height,
-            TempTexture.ChannelCount,
-            data,
-            HasTransparency,
-            dynamic_cast<VulkanAPI*>(ptrRenderer));
-
-        // Скопируйте старую текстуру.
-        Texture old = *t;
-
-        // Присвойте указателю временную текстуру.
-        *t = TempTexture;
-
-        // Уничтожьте старую текстуру.
-        old.Destroy(dynamic_cast<VulkanAPI*>(ptrRenderer));
-
-        if (CurrentGeneration == INVALID_ID) {
-            t->generation = 0;
-        } else {
-            t->generation = CurrentGeneration + 1;
-        }
-
-        // Очистите данные.
-        stbi_image_free(data);
-        return true;
-    } else {
-        if (stbi_failure_reason()) {
-            MWARN("load_texture() не удалось загрузить файл '%s': %s", FullFilePath, stbi_failure_reason());
-        }
-        return false;
-    }
-}
-
 // TODO: Врменно
 bool Renderer::EventOnDebugEvent(u16 code, void *sender, void *ListenerInst, EventContext data)
 {
@@ -284,7 +188,7 @@ bool Renderer::EventOnDebugEvent(u16 code, void *sender, void *ListenerInst, Eve
     choice %= 3;
 
     // Load up the new texture.
-    LoadTexture(names[choice], TestDiffuse);
+    //LoadTexture(names[choice], TestDiffuse);
     return true;
 }
 //TODO: Временно

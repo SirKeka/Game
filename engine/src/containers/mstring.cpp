@@ -75,8 +75,8 @@ const char *MString::c_str() const noexcept
 
 void MString::Destroy()
 {
+    MMemory::TFree<char>(str, lenght, MEMORY_TAG_STRING);
     lenght = 0;
-    MMemory::Free(reinterpret_cast<void*>(str), lenght, MEMORY_TAG_STRING);
 }
 
 bool StringsEqual(const char *strL, const char *strR)

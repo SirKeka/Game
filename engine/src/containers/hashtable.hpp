@@ -1,14 +1,14 @@
 #pragma once
 
-#include "defines.hpp"
-#include "mstring.hpp"
-#include "core/mmemory.hpp"
+#include <defines.hpp>
+#include <containers/mstring.hpp>
+#include <core/mmemory.hpp>
 
 /// @brief Представляет простую хеш-таблицу. Члены этой структуры не должны изменяться за пределами связанных с ней функций.
 /// Для типов, не являющихся указателями, таблица сохраняет копию значения. Для типов указателей обязательно используйте методы установки и получения _ptr. 
 /// Таблица не берет на себя ответственность за указатели или связанные с ними выделения памяти и должна управляться извне.
 template <typename T>
-class MAPI HashTable
+class HashTable
 {
 public:
     //u64 ElementSize;
@@ -43,7 +43,9 @@ public:
     }
 
     /// @brief Уничтожает предоставленную хэш-таблицу. Не освобождает память для типов указателей.
-    ~HashTable() = default;
+    ~HashTable() {
+        memory = nullptr;
+        ElementCount = 0;}
 
     /// @brief Сохраняет копию данных в виде значения в предоставленной хэш-таблице.
     /// Используйте только для таблиц, которые были *НЕ* созданы с IsPointerType = true.
@@ -51,9 +53,11 @@ public:
     /// @param value значение, которое необходимо установить. Обязательно.
     /// @return true или false, если передается нулевой указатель.
     bool Set(MString name, T* value) {
-        if (!name || !value) {
-            MERROR("«Set» требует существования имени и значения.");
-            return false;
+        if (!this->IsPointerType) {
+            if (!name || !value) {
+                MERROR("«Set» требует существования имени и значения.");
+                return false;
+            }
         }
         /*if (this->IsPointerType) {
             MERROR("«Set» не следует использовать с таблицами, имеющими типы указателей. Вместо этого используйте «SetPtr».");
@@ -61,30 +65,12 @@ public:
         }*/
 
         u64 hash = Name(name, ElementCount);
-        if(IsPointerType) memory[hash] = *value/* ? *value : nullptr*/;
+        if(IsPointerType) {
+            memory[hash] = value ? *value : 0;
+        }
         else MMemory::CopyMem(memory + (sizeof(T) * hash), value, sizeof(T));
         return true;
     }
-
-    /// @brief Сохраняет указатель, указанный в значении в хэш-таблице.
-    /// Используйте только для таблиц, которые были созданы с IsPointerType = true.
-    /// @param name имя записи, которую нужно задать. Обязательно.
-    /// @param value значение указателя, которое должно быть установлено. Можно передать значение 0 для "отмены установки" записи.
-    /// @return true или false, если передается нулевой указатель или если запись равна 0.
-    /*bool SetPtr(MString name, T* value) {
-        if (!name) {
-            MWARN("«SetPtr» требует существования имени.");
-            return false;
-        }
-        if (!this->IsPointerType) {
-            MERROR("«SetPtr» не следует использовать с таблицами, не имеющими типов указателей. Вместо этого используйте «Set».");
-            return false;
-        }
-
-        u64 hash = Name(name, this->ElementCount);
-        (reinterpret_cast<T**>(this->memory))[hash] = value ? *value : 0;
-        return true;
-    }*/
 
     /// @brief Получает копию данных, присутствующих в хэш-таблице.
     /// Используйте только для таблиц, которые были *НЕ* созданы с IsPointerType = true.
@@ -101,30 +87,13 @@ public:
             return false;
         }*/
         u64 hash = Name(name, this->ElementCount);
-        if(IsPointerType) *OutValue = this->memory[hash];
+        if(IsPointerType) {
+            *OutValue = this->memory[hash];
+            return *OutValue != 0;
+            }
         else MMemory::CopyMem(OutValue, this->memory + (sizeof(T) * hash), sizeof(T));
         return true;
     }
-
-    /// @brief Получает указатель на данные, присутствующие в хэш-таблице.
-    /// Используйте только для таблиц, которые были созданы с IsPointerType = true.
-    /// @param name имя извлекаемой записи. Обязательно.
-    /// @param OutValue Указатель для хранения полученного значения. Обязательно.
-    /// @return true, если получено успешно; false, если передан нулевой указатель или полученное значение равно 0.
-    /*bool GetPtr(MString name, T* OutValue) {
-        if (!name || !OutValue) {
-            MWARN("«GetPtr» требует существования этого имени и OutValue.");
-            return false;
-        }
-        if (!this->IsPointerType) {
-            MERROR("«GetPtr» не следует использовать с таблицами, не имеющими типов указателей. Вместо этого используйте «Получить».");
-            return false;
-        }
-
-        u64 hash = Name(name, this->ElementCount);
-        *OutValue = (reinterpret_cast<T**>(this->memory))[hash];
-        return *OutValue != 0;
-    }*/
 
     /// @brief Заполняет все записи в хэш-таблице заданным значением.
     /// Полезно, когда несуществующие имена должны возвращать некоторое значение по умолчанию.

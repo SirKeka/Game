@@ -50,16 +50,13 @@ public:
     // TODO: сделать динамическим
     VulkanObjectShaderObjectState ObjectStates[VULKAN_OBJECT_MAX_OBJECT_COUNT];
 
-    // Указатель на текстуру по умолчанию.
-    Texture* DefaultDiffuse;
-
     VulkanPipeline pipeline;
     
 public:
     VulkanMaterialShader() = default;
     ~VulkanMaterialShader() = default;
 
-    bool Create(VulkanAPI* VkAPI, Texture* DefaultDiffuse);
+    bool Create(VulkanAPI* VkAPI);
     void DestroyShaderModule(VulkanAPI* VkAPI);
     void Use(VulkanAPI* VkAPI);
     void UpdateGlobalState(VulkanAPI* VkAPI, f32 DeltaTime);

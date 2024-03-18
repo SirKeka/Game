@@ -10,7 +10,6 @@
 
 bool VulkanMaterialShader::Create(VulkanAPI *VkAPI, Texture* DefaultDiffuse)
 {
-    this->DefaultDiffuse = DefaultDiffuse;
     // Инициализация модуля шейдера на каждом этапе.
     char StageTypeStrs[OBJECT_SHADER_STAGE_COUNT][5] = {"vert", "frag"};
     VkShaderStageFlagBits StageTypes[OBJECT_SHADER_STAGE_COUNT] = {VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_FRAGMENT_BIT};

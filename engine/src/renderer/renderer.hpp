@@ -25,10 +25,6 @@ private:
     static f32 NearClip;
     static f32 FarClip;
     static Texture* DefaultTexture;
-
-    // TODO: временно
-    static Texture* TestDiffuse;
-    // TODO: временно
 public:
     Renderer() = default;
     ~Renderer();
@@ -47,7 +43,6 @@ public:
     // void operator delete(void* ptr);
 private:
     //static void CreateTexture(Texture* t);
-    static bool LoadTexture(MString TextureName, Texture* t);
 
     //TODO: Временно
     static bool EventOnDebugEvent(u16 code, void* sender, void* ListenerInst, EventContext data);
