@@ -173,7 +173,7 @@ void MWindow::ClockSetup()
 
 void *MWindow::operator new(u64 size)
 {
-    return LinearAllocator::Allocate(size);
+    return Application::AllocMemory(size);
 }
 
 void *PlatformAllocate(u64 size, bool aligned) {

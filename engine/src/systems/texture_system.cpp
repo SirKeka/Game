@@ -1,6 +1,7 @@
 #include "texture_system.hpp"
 #include "containers/mstring.hpp"
 #include "renderer/renderer.hpp"
+#include "core/application.hpp"
 
 // TODO: временно
 #define STB_IMAGE_IMPLEMENTATION
@@ -194,7 +195,7 @@ void *TextureSystem::operator new(u64 size)
     u64 ArrayRequirement = sizeof(Texture) * MaxTextureCount;
     u64 HashtableRequirement = sizeof(TextureReference) * MaxTextureCount;
     //*memory_requirement = struct_requirement + array_requirement + hashtable_requirement;
-    return LinearAllocator::Allocate(size + ArrayRequirement + HashtableRequirement);
+    return Application::AllocMemory(size + ArrayRequirement + HashtableRequirement);
 }
 
 bool TextureSystem::CreateDefaultTexture()

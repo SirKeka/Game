@@ -533,7 +533,7 @@ bool VulkanAPI::EndFrame(f32 DeltaTime)
 
 void *VulkanAPI::operator new(u64 size)
 {
-    return LinearAllocator::Allocate(size);
+    return Application::AllocMemory(size);
 }
 
 /*void VulkanAPI::operator delete(void *ptr)

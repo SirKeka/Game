@@ -2,7 +2,6 @@
 
 #include "defines.hpp"
 #include "containers/mstring.hpp"
-#include "memory/linear_allocator.hpp"
 #include "platform/filesystem.hpp"
 
 #define LOG_WARN_ENABLED 1

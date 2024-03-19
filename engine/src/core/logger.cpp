@@ -1,6 +1,7 @@
 #include "logger.hpp"
 #include "asserts.hpp"
 #include "platform/platform.hpp"
+#include "application.hpp"
 
 // TODO: временное
 #include <stdio.h>
@@ -41,7 +42,7 @@ void Logger::Shutdown()
 
 void *Logger::operator new(u64 size)
 {
-    return LinearAllocator::Allocate(size);
+    return Application::AllocMemory(size);
 }
 
 void Logger::AppendToLogFile(MString message)

@@ -18,17 +18,17 @@ class Renderer
 {
 private:
     static RendererType* ptrRenderer;
-    static Matrix4D projection;
-    static Matrix4D view;
-    static f32 NearClip;
-    static f32 FarClip;
+    Matrix4D projection;
+    Matrix4D view;
+    f32 NearClip;
+    f32 FarClip;
 
-    static Texture* TestDiffuse; //TODO: временно
+    Texture* TestDiffuse; //TODO: временно
 public:
-    Renderer() = default;
+    Renderer() : projection(), view(), NearClip(0.f), FarClip(0.f) {}
     ~Renderer();
 
-    static bool Initialize(MWindow* window, const char *ApplicationName, ERendererType type);
+    bool Initialize(MWindow* window, const char *ApplicationName, ERendererType type);
     void Shutdown();
     bool BeginFrame(f32 DeltaTime);
     bool EndFrame(f32 DeltaTime);
@@ -45,7 +45,7 @@ private:
     //static void CreateTexture(Texture* t);
 
     //TODO: Временно
-    static bool EventOnDebugEvent(u16 code, void* sender, void* ListenerInst, EventContext data);
+    bool EventOnDebugEvent(u16 code, void* sender, void* ListenerInst, EventContext data);
     //TODO: Временно
 };
 

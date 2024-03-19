@@ -1,22 +1,15 @@
 #include "renderer.hpp"
-
-#include "core/logger.hpp"
-#include "core/mmemory.hpp"
-
+#include "core/application.hpp"
 #include "renderer/vulkan/vulkan_api.hpp"
 #include "systems/texture_system.hpp"
-#include "math/vector3d.hpp"
-#include "math/vector4d.hpp"
-#include "math/matrix4d.hpp"
-
 
 RendererType *Renderer::ptrRenderer;
-f32 Renderer::NearClip = 0.1f;
+/*f32 Renderer::NearClip = 0.1f;
 f32 Renderer::FarClip = 1000.f;
 Matrix4D Renderer::projection = Matrix4::MakeFrustumProjection(Math::DegToRad(45.0f), 1280 / 720.0f, NearClip, FarClip);
 Matrix4D Renderer::view = Matrix4::MakeTranslation(Vector3D<f32>{0, 0, -30.f});
 
-Texture *Renderer::TestDiffuse = nullptr;
+Texture *Renderer::TestDiffuse = nullptr;*/
 
 Renderer::~Renderer()
 {
@@ -53,36 +46,11 @@ bool Renderer::Initialize(MWindow* window, const char *ApplicationName, ERendere
         ptrRenderer = new VulkanAPI();
         // Возьмите указатель на текстуры по умолчанию для использования в серверной части.
         ptrRenderer->Initialize(window, ApplicationName);
+        NearClip = 0.1f;
+        FarClip = 1000.f;
+        projection = Matrix4::MakeFrustumProjection(Math::DegToRad(45.0f), 1280 / 720.0f, NearClip, FarClip);
+        view = Matrix4::MakeTranslation(Vector3D<f32>{0, 0, -30.f});
         view.Inverse();
-
-        // ПРИМЕЧАНИЕ. Создайте текстуру по умолчанию — сине-белую шахматную доску размером 256x256.
-        // Это делается в коде для устранения зависимостей активов.
-        MTRACE("Создание текстуры по умолчанию...");
-        const u32 TexDimension = 256;
-        const u32 channels = 4;
-        const u32 PixelCount = TexDimension * TexDimension;
-        u8 pixels[PixelCount * channels];
-        //u8* pixels = kallocate(sizeof(u8) * PixelCount * bpp, MEMORY_TAG_TEXTURE);
-        MMemory::SetMemory(pixels, 255, sizeof(u8) * PixelCount * channels);
-
-        // Каждый пиксель.
-        for (u64 row = 0; row < TexDimension; ++row) {
-            for (u64 col = 0; col < TexDimension; ++col) {
-                u64 index = (row * TexDimension) + col;
-                u64 index_bpp = index * channels;
-                if (row % 2) {
-                    if (col % 2) {
-                        pixels[index_bpp + 0] = 0;
-                        pixels[index_bpp + 1] = 0;
-                    }
-                } else {
-                    if (!(col % 2)) {
-                        pixels[index_bpp + 0] = 0;
-                        pixels[index_bpp + 1] = 0;
-                    }
-                }
-            }
-        }
 
         return true;
     }
@@ -172,7 +140,7 @@ void Renderer::SetView(Matrix4D view)
 
 void *Renderer::operator new(u64 size)
 {
-    return LinearAllocator::Allocate(size);
+    return Application::AllocMemory(size);
 }
 
 // TODO: Врменно

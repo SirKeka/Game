@@ -2,7 +2,7 @@
 
 #include "core/mmemory.hpp"
 
-void LinearAllocator::LinearAllocator(u64 TotalSize, void * memory)
+LinearAllocator::LinearAllocator(u64 TotalSize, void *memory)
 {
     if (this->TotalSize == 0) {
         this->TotalSize = TotalSize;

@@ -1,6 +1,7 @@
 #include "mmemory.hpp"
 
 #include "platform/platform.hpp"
+#include "core/application.hpp"
 
 #include <cstring>
 #include <stdio.h>

@@ -1,7 +1,5 @@
 #include "input.hpp"
-#include "core/event.hpp"
-#include "core/mmemory.hpp"
-#include "core/logger.hpp"
+#include "application.hpp"
 
 bool Input::initialized = false;
 InputState Input::InState {};
@@ -191,5 +189,5 @@ void Input::ProcessMouseWheel(i8 z_delta)
 
 void *Input::operator new(u64 size)
 {
-    return LinearAllocator::Allocate(size);
+    return Application::AllocMemory(size);
 }

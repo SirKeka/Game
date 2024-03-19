@@ -1,6 +1,8 @@
 #include "application.hpp"
 #include "game_types.hpp"
 #include "renderer/renderer.hpp"
+#include "systems/texture_system.hpp"
+
 
 ApplicationState* Application::AppState;
 
@@ -66,7 +68,7 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
 
     // Система текстур.
     TextureSystem::SetMaxTextureCount(65536);
-    AppState->TexSys = AppState->SystemAllocator.Allocate<TextureSystem>(sizeof(TextureSystem)); //new TextureSystem();
+    AppState->TexSys = new TextureSystem();
     AppState->TexSys->Initialize();
 
     // Инициализируйте игру.

@@ -52,6 +52,7 @@ public:
 
     MAPI void* operator new(u64 size);
     MAPI void operator delete(void* ptr);
+    static void* AllocMemory(u64 size);
 
 private:
     // Обработчики событий
@@ -59,5 +60,4 @@ private:
     static bool ApplicationOnKey(u16 code, void* sender, void* ListenerInst, EventContext context);
     static bool ApplicationOnResized(u16 code, void* sender, void* ListenerInst, EventContext context);
 
-    static void* AllocMemory(u64 size);
 };

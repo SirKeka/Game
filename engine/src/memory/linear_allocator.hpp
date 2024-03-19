@@ -6,9 +6,9 @@
 class MAPI LinearAllocator
 {
 public:
-    u64 TotalSize;
-    u64 allocated;
-    void* memory;
+    u64 TotalSize{0};
+    u64 allocated{0};
+    void* memory{nullptr};
     bool OwnsMemory{false};
 public:
     LinearAllocator() : TotalSize(0), allocated(0), memory(nullptr), OwnsMemory(false) {}
@@ -19,7 +19,7 @@ public:
         if (memory) {
             if (allocated + size > TotalSize) {
                 u64 remaining = TotalSize - allocated;
-                MERROR("LinearAllocator::AllocateConstruct - Попытка выделить %lluбайт, только %lluбайт осталось.", size, remaining);
+                MERROR("LinearAllocator::AllocateConstruct - Попытка выделить %llu байт, только %llu байт осталось.", size, remaining);
                 return nullptr;
             }
 
