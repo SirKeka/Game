@@ -64,6 +64,11 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
         return FALSE;
     }
 
+    // Система текстур.
+    TextureSystem::SetMaxTextureCount(65536);
+    AppState->TexSys = AppState->SystemAllocator.Allocate<TextureSystem>(sizeof(TextureSystem)); //new TextureSystem();
+    AppState->TexSys->Initialize();
+
     // Инициализируйте игру.
     if (!GameInst->Initialize()) {
         MFATAL("Не удалось инициализировать игру.");
@@ -152,6 +157,7 @@ bool Application::ApplicationRun() {
     Event::Unregister(EVENT_CODE_RESIZED, nullptr, ApplicationOnResized);
     AppState->Events->Shutdown();
     AppState->Inputs->~Input(); // ShutDown
+    AppState->TexSys->Shutdown();
     AppState->Render->Shutdown();
 
     AppState->Window->Close();
@@ -250,4 +256,9 @@ bool Application::ApplicationOnResized(u16 code, void *sender, void *ListenerIns
     }
 
     return false;
+}
+
+void *Application::AllocMemory(u64 size)
+{
+    return AppState->SystemAllocator.Allocate(size);
 }

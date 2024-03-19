@@ -14,7 +14,7 @@ public:
     //u64 ElementSize;
     u32 ElementCount;
     bool IsPointerType;
-    T* memory;
+    void* memory;
 private:
     static const u64 multiplier;
 public:
@@ -39,7 +39,7 @@ public:
     this->ElementCount = ElementCount;
     //this->ElementSize = ElementSize;
     this->IsPointerType = IsPointerType;
-    MMemory::TZeroMem<T>(this->memory, sizeof(T) * ElementCount);
+    MMemory::ZeroMem(this->memory, sizeof(T) * ElementCount);
     }
 
     /// @brief Уничтожает предоставленную хэш-таблицу. Не освобождает память для типов указателей.
@@ -59,16 +59,14 @@ public:
                 return false;
             }
         }
-        /*if (this->IsPointerType) {
-            MERROR("«Set» не следует использовать с таблицами, имеющими типы указателей. Вместо этого используйте «SetPtr».");
-            return false;
-        }*/
 
         u64 hash = Name(name, ElementCount);
         if(IsPointerType) {
-            memory[hash] = value ? *value : 0;
+            void** v = (void**)value;
+            ((void**)(memory))[hash] = v ? *v : nullptr;
+            
         }
-        else MMemory::CopyMem(memory + (sizeof(T) * hash), value, sizeof(T));
+        else MMemory::CopyMem((u8*)memory + (sizeof(T) * hash), value, sizeof(T));
         return true;
     }
 
@@ -78,20 +76,19 @@ public:
     /// @param OutValue указатель для хранения полученного значения. Обязательно.
     /// @return true или false, если передается нулевой указатель.
     bool Get(MString name, T* OutValue) {
-        if (!name || !OutValue) {
-            MWARN("«Get» требует существования имени и OutValue.");
-            return false;
+        if (!this->IsPointerType) {
+            if (!name || !OutValue) {
+                MWARN("«Get» требует существования имени и OutValue.");
+                return false;
+            }
         }
-        /*if (this->IsPointerType) {
-            MERROR("«Get» не следует использовать с таблицами, имеющими типы указателей. Вместо этого используйте «GetPtr».");
-            return false;
-        }*/
+
         u64 hash = Name(name, this->ElementCount);
         if(IsPointerType) {
-            *OutValue = this->memory[hash];
-            return *OutValue != 0;
+            *OutValue = (reinterpret_cast<T*>(this->memory))[hash];
+            return *(reinterpret_cast<void**>(OutValue)) != 0;
             }
-        else MMemory::CopyMem(OutValue, this->memory + (sizeof(T) * hash), sizeof(T));
+        else MMemory::CopyMem(OutValue, (u8*)this->memory + (sizeof(T) * hash), sizeof(T));
         return true;
     }
 

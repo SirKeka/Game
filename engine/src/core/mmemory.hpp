@@ -1,7 +1,6 @@
 #pragma once
 
 #include "defines.hpp"
-#include "memory/linear_allocator.hpp"
 #include "core/logger.hpp"
 #include "containers/mstring.hpp"
 //#include "containers/darray.hpp"
@@ -34,8 +33,6 @@ enum MemoryTag
 
 class MAPI MMemory
 {
-using LinearAllocator = WrapLinearAllocator<MMemory>;
-
 private:
     /*struct SharPtr
     {
@@ -51,7 +48,7 @@ private:
     static u64 AllocCount;
     
 public:
-    MMemory() = default;
+    //MMemory() = default;
     //MMemory(const MMemory&) = delete;
     //MMemory& operator=(MMemory&) = delete;
     ~MMemory(); /*noexcept*/ //= default;
@@ -131,13 +128,6 @@ public:
     void Construct (U* ptr, Args && ...args);
 
     static MString GetMemoryUsageStr();
-    
-    void* operator new(u64 size);
-    //void operator delete(void* ptr);
-};
 
-/*template<typename T>
-MAPI T * MMemory::TZeroMemory(T * block, u64 bytes)
-{
-return memset(block, 0, bytes);
-}*/
+    void* operator new(u64 size);
+};

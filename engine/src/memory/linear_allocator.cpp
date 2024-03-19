@@ -2,7 +2,7 @@
 
 #include "core/mmemory.hpp"
 
-LinearAllocator::LinearAllocator(u64 TotalSize, void * memory)
+void LinearAllocator::LinearAllocator(u64 TotalSize, void * memory)
 {
     if (this->TotalSize == 0) {
         this->TotalSize = TotalSize;
@@ -28,24 +28,6 @@ LinearAllocator::~LinearAllocator()
         TotalSize = 0;
         OwnsMemory = false;
     }
-}
-
-void *LinearAllocator::Allocate(u64 size)
-{
-    if (memory) {
-        if (allocated + size > TotalSize) {
-            u64 remaining = TotalSize - allocated;
-            MERROR("Linear Allocator::Allocate - Попытка выделить %lluB, только %lluB осталось.", size, remaining);
-            return nullptr;
-        }
-
-        void* block = reinterpret_cast<u8*>(memory) + allocated;
-        allocated += size;
-        return block;
-    }
-
-    MERROR("Linear Allocator::Allocate - предоставленный распределитель не инициализирован.");
-    return nullptr;
 }
 
 void LinearAllocator::FreeAll()

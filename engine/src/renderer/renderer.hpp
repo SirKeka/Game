@@ -3,7 +3,6 @@
 #include "defines.hpp"
 
 #include "renderer_types.hpp"
-#include "memory/linear_allocator.hpp"
 
 // TODO: временно
 #include "containers/mstring.hpp"
@@ -13,18 +12,18 @@
 struct StaticMeshData;
 struct PlatformState;
 class Texture;
+class VulkanAPI;
 
 class Renderer
 {
-using LinearAllocator = WrapLinearAllocator<Renderer>;
-
 private:
     static RendererType* ptrRenderer;
     static Matrix4D projection;
     static Matrix4D view;
     static f32 NearClip;
     static f32 FarClip;
-    static Texture* DefaultTexture;
+
+    static Texture* TestDiffuse; //TODO: временно
 public:
     Renderer() = default;
     ~Renderer();
@@ -35,6 +34,7 @@ public:
     bool EndFrame(f32 DeltaTime);
     void OnResized(u16 width, u16 height);
     bool DrawFrame(RenderPacket* packet);
+    static VulkanAPI* GetRendererType();
 
     // ВЗЛОМ: это не должно быть выставлено за пределы движка.
     MAPI void SetView(Matrix4D view);

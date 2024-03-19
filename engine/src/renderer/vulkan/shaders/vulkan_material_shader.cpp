@@ -4,7 +4,7 @@
 #include "renderer/vulkan/vulkan_api.hpp"
 #include "renderer/vulkan/vulkan_device.hpp"
 #include "renderer/vulkan/vulkan_shader_utils.hpp"
-#include "resources/texture.hpp"
+#include "systems/texture_system.hpp"
 
 #define BUILTIN_SHADER_NAME_OBJECT "Builtin.MaterialShader"
 
@@ -311,7 +311,7 @@ void VulkanMaterialShader::UpdateObject(VulkanAPI *VkAPI, const GeometryRenderDa
         // Если текстура еще не была загружена, используйте значение по умолчанию.
         // TODO: Определите, какое использование имеет текстура, и на основе этого выберите подходящее значение по умолчанию.
         if (t->generation == INVALID_ID) {
-
+            t = TextureSystem::GetDefaultTexture();
             // Сбросьте генерацию дескриптора, если используется текстура по умолчанию.
             *DescriptorGeneration = INVALID_ID;
         }

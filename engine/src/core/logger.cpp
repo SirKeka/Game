@@ -44,11 +44,6 @@ void *Logger::operator new(u64 size)
     return LinearAllocator::Allocate(size);
 }
 
-/*void Logger::operator delete(void *ptr)
-{
-    return MMemory::Free(ptr,sizeof(Logger), );
-}*/
-
 void Logger::AppendToLogFile(MString message)
 {
     if (LogFileHandle.IsValid) {

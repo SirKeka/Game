@@ -4,44 +4,43 @@
 #include "containers/hashtable.hpp"
 
 #define DEFAULT_TEXTURE_NAME "default"
+struct TextureReference;
 
 class TextureSystem
 {
-    struct TextureReference {
-        u64 ReferenceCount;
-        u32 handle;
-        bool AutoRelease;
-    };
-
 private:
-    u32 MaxTextureCount;
-    Texture DefaultTexture;
+    static u32 MaxTextureCount;
+    static Texture DefaultTexture;
 
     // Массив зарегистрированных текстур.
-    Texture* RegisteredTextures;
+    static Texture* RegisteredTextures;
 
     // Хэш-таблица для поиска текстур.
-    HashTable<TextureReference> RegisteredTextureTable;
+    static HashTable<TextureReference> RegisteredTextureTable;
 
 public:
-    TextureSystem() : MaxTextureCount(0) {}
+    TextureSystem() {}
     ~TextureSystem() = default;
 
-    bool Initialize(u32 MaxTextureCount, VulkanAPI* VkAPI);
-    void Shutdown(VulkanAPI* VkAPI);
+    bool Initialize();
+    void Shutdown();
 
-    Texture* Acquire(MString name, bool AutoRelease, VulkanAPI* VkAPI);
-    void Release(MString name);
-
-    Texture* GetDefaultTexture();
+    static Texture* Acquire(MString name, bool AutoRelease);
+    static void Release(MString name);
+    /// @brief Функция для получения стандартной текстуры.
+    /// @return указатель на стандартную текстуру.
+    static Texture* GetDefaultTexture();
+    /// @brief Задает максимальное возможное количество текстур от которого зависит размер выделяеймой памяти под систему.
+    /// @param value максимальное количество текстур.
+    static void SetMaxTextureCount(u32 value);
 
     void* operator new(u64 size);
     //void operator delete(void* ptr)
 
 private:
-    bool CreateDefaultTexture(VulkanAPI* VkAPI);
-    void DestroyDefaultTexture(VulkanAPI* VkAPI);
-    bool LoadTexture(MString TextureName, Texture* t, VulkanAPI* VkAPI);
+    bool CreateDefaultTexture();
+    void DestroyDefaultTexture();
+    static bool LoadTexture(MString TextureName, Texture* t);
 };
 
 

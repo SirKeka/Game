@@ -166,8 +166,6 @@ struct InputState {
 
 class Input
 {
-using LinearAllocator = WrapLinearAllocator<Input>;
-
 private:
     // struct InputState;
     static bool initialized;

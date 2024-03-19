@@ -47,8 +47,6 @@ struct EventSystemState {
 
 class Event
 {
-using LinearAllocator = WrapLinearAllocator<Event>;
-
 private:
     static bool IsInitialized;
     static EventSystemState state;

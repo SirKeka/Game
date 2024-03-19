@@ -53,18 +53,38 @@ public:
     /// @param value значение, которое необходимо установить. Обязательно.
     /// @return true или false, если передается нулевой указатель.
     bool Set(MString name, T* value) {
-        if (!this->IsPointerType) {
-            if (!name || !value) {
-                MERROR("«Set» требует существования имени и значения.");
-                return false;
-            }
+        if (!name || !value) {
+            MERROR("«HashTable::Set» требует существования имени и значения.");
+            return false;
+        }
+        if (!IsPointerType) {
+            MERROR("«HashTable::Set» не следует использовать с таблицами, имеющими типы указателей. Вместо этого используйте «HashTable::pSet».");
+            return false;
         }
 
         u64 hash = Name(name, ElementCount);
-        if(IsPointerType) {
-            memory[hash] = value ? *value : 0;
+        MMemory::CopyMem(memory + (sizeof(T) * hash), value, sizeof(T));
+        return true;
+    }
+
+    /// @brief Сохраняет указатель, указанный в значении в хеш-таблице.
+    /// Используйте только для таблиц, созданных с IsPointerType = true.
+    /// @param table указатель на таблицу, из которой нужно получить данные. Необходимый.
+    /// @param name имя устанавливаемой записи. Необходимый.
+    /// @param value значение указателя, которое нужно установить. Можно передать 0, чтобы «сбросить» запись.
+    /// @return true; или false, если передается нулевой указатель или если запись равна 0.
+    bool pSet(MString name, T* value) {
+        if (!name) {
+            MWARN("«HashTable::pSet» требует наличия имени.");
+            return false;
         }
-        else MMemory::CopyMem(memory + (sizeof(T) * hash), value, sizeof(T));
+        if (!IsPointerType) {
+            MERROR("«HashTable::pSet» не следует использовать с таблицами, у которых нет типов указателей. Вместо этого используйте HashTable::Set.");
+            return false;
+        }
+
+        u64 hash = Name(name, ElementCount);
+        memory[hash] = value ? *value : 0;
         return true;
     }
 
@@ -84,7 +104,7 @@ public:
         u64 hash = Name(name, this->ElementCount);
         if(IsPointerType) {
             *OutValue = this->memory[hash];
-            return *OutValue != 0;
+            return *((void**)(OutValue)) != 0;
             }
         else MMemory::CopyMem(OutValue, this->memory + (sizeof(T) * hash), sizeof(T));
         return true;

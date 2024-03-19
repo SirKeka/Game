@@ -1,12 +1,9 @@
 #pragma once
 
 #include "defines.hpp"
-#include "memory/linear_allocator.hpp"
 
 class MWindow
 {
-using LinearAllocator = WrapLinearAllocator<MWindow>;
-
 public:
     void* InternalState;
 private:

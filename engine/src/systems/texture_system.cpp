@@ -1,19 +1,31 @@
 #include "texture_system.hpp"
 #include "containers/mstring.hpp"
+#include "renderer/renderer.hpp"
 
 // TODO: временно
 #define STB_IMAGE_IMPLEMENTATION
 #include "vendor/stb_image.h"
 // TODO: временно
 
-bool TextureSystem::Initialize(u32 MaxTextureCount, VulkanAPI* VkAPI)
+struct TextureReference {
+        u64 ReferenceCount;
+        u32 handle;
+        bool AutoRelease;
+    };
+
+u32 TextureSystem::MaxTextureCount = 0;
+Texture TextureSystem::DefaultTexture;
+Texture* TextureSystem::RegisteredTextures;
+HashTable<TextureReference> TextureSystem::RegisteredTextureTable;
+
+bool TextureSystem::Initialize()
 {
     if (MaxTextureCount == 0) {
         MFATAL("TextureSystemInitialize — MaxTextureCount должно быть > 0.");
         return false;
     }
 
-    u64 StructRequirement = sizeof(*this);
+    u64 StructRequirement = sizeof(TextureSystem);
     u64 ArrayRequirement = sizeof(Texture) * MaxTextureCount;
     u64 HashtableRequirement = sizeof(TextureReference) * MaxTextureCount;
     //*MemoryRequirement = StructRequirement + ArrayRequirement + HashtableRequirement;
@@ -46,36 +58,35 @@ bool TextureSystem::Initialize(u32 MaxTextureCount, VulkanAPI* VkAPI)
     }
 
     // Создайте текстуры по умолчанию для использования в системе.
-    CreateDefaultTexture(VkAPI);
+    CreateDefaultTexture();
 
     return true;
 }
 
-void TextureSystem::Shutdown(VulkanAPI* VkAPI)
+void TextureSystem::Shutdown()
 {
     if (this->RegisteredTextures) {
         // Уничтожить все загруженные текстуры.
         for (u32 i = 0; i < this->MaxTextureCount; ++i) {
             Texture* t = &this->RegisteredTextures[i];
             if (t->generation != INVALID_ID) {
-                t->Destroy(VkAPI);
-                //renderer_destroy_texture(t);
+                t->Destroy(Renderer::GetRendererType());
             }
         }
-        DefaultTexture.Destroy(VkAPI);
+        DefaultTexture.Destroy(Renderer::GetRendererType());
     }
 }
 
-Texture *TextureSystem::Acquire(MString name, bool AutoRelease, VulkanAPI* VkAPI)
+Texture *TextureSystem::Acquire(MString name, bool AutoRelease)
 {
     // Вернуть текстуру по умолчанию, но предупредить об этом, поскольку она должна быть возвращена через GetDefaultTexture();
     if (StringsEquali(name.c_str(), DEFAULT_TEXTURE_NAME)) {
         MWARN("TextureSystem::Acquire вызывает текстуру по умолчанию. Используйте TextureSystem::GetDefaultTexture для текстуры «по умолчанию».");
-        return &this->DefaultTexture;
+        return &DefaultTexture;
     }
 
     TextureReference ref;
-    if (/*RegisteredTextureTable.Get(name, &ref)*/true) {
+    if (RegisteredTextureTable.Get(name, &ref)) {
         // Это можно изменить только при первой загрузке текстуры.
         if (ref.ReferenceCount == 0) {
             ref.AutoRelease = AutoRelease;
@@ -83,13 +94,13 @@ Texture *TextureSystem::Acquire(MString name, bool AutoRelease, VulkanAPI* VkAPI
         ref.ReferenceCount++;
         if (ref.handle == INVALID_ID) {
             // Это означает, что здесь нет текстуры. Сначала найдите свободный индекс.
-            u32 count = this->MaxTextureCount;
+            u32 count = MaxTextureCount;
             Texture* t = nullptr;
             for (u32 i = 0; i < count; ++i) {
-                if (this->RegisteredTextures[i].id == INVALID_ID) {
+                if (RegisteredTextures[i].id == INVALID_ID) {
                     // Свободный слот найден. Используйте его индекс в качестве дескриптора.
                     ref.handle = i;
-                    t = &this->RegisteredTextures[i];
+                    t = &RegisteredTextures[i];
                     break;
                 }
             }
@@ -97,13 +108,13 @@ Texture *TextureSystem::Acquire(MString name, bool AutoRelease, VulkanAPI* VkAPI
             // Убедитесь, что пустой слот действительно найден.
             if (!t || ref.handle == INVALID_ID) {
                 MFATAL("TextureSystem::Acquire — Система текстур больше не может содержать текстуры. Настройте конфигурацию, чтобы разрешить больше.");
-                return 0;
+                return nullptr;
             }
 
             // Создайте новую текстуру.
-            if (!LoadTexture(name, t, VkAPI)) {
+            if (!LoadTexture(name, t)) {
                 MERROR("Не удалось загрузить текстуру '%s'.", name.c_str());
-                return 0;
+                return nullptr;
             }
 
             // Также используйте дескриптор в качестве идентификатора текстуры.
@@ -114,8 +125,8 @@ Texture *TextureSystem::Acquire(MString name, bool AutoRelease, VulkanAPI* VkAPI
         }
 
         // Обновите запись.
-        //RegisteredTextureTable.Set(name, &ref);
-        return &this->RegisteredTextures[ref.handle];
+        RegisteredTextureTable.Set(name, &ref);
+        return &RegisteredTextures[ref.handle];
     }
 
     // ПРИМЕЧАНИЕ. Это произойдет только в том случае, если что-то пойдет не так с состоянием.
@@ -123,17 +134,70 @@ Texture *TextureSystem::Acquire(MString name, bool AutoRelease, VulkanAPI* VkAPI
     return 0;
 }
 
-void *TextureSystem::operator new(u64 size)
+void TextureSystem::Release(MString name)
 {
-    // Блок памяти будет содержать структуру состояния, затем блок массива, затем блок хеш-таблицы.
-    //u64 StructRequirement = sizeof(TextureSystem);
-    //u64 ArrayRequirement = sizeof(Texture) * MaxTextureCount;
-    //u64 HashtableRequirement = sizeof(TextureReference) * MaxTextureCount;
-    //*memory_requirement = struct_requirement + array_requirement + hashtable_requirement;
+    // Игнорируйте запросы на выпуск текстуры по умолчанию.
+    if (StringsEquali(name.c_str(), DEFAULT_TEXTURE_NAME)) {
+        return;
+    }
+    TextureReference ref;
+    if (RegisteredTextureTable.Get(name, &ref)) {
+        if (ref.ReferenceCount == 0) {
+            MWARN("Попробовал выпустить несуществующую текстуру: '%s'", name.c_str());
+            return;
+        }
+        ref.ReferenceCount--;
+        if (ref.ReferenceCount == 0 && ref.AutoRelease) {
+            Texture* t = &RegisteredTextures[ref.handle];
+
+            // Release texture.
+            t->Destroy(Renderer::GetRendererType());
+
+            // Сбросьте запись массива и убедитесь, что установлены недопустимые идентификаторы.
+            t = {};
+            t->id = INVALID_ID;
+            t->generation = INVALID_ID;
+
+            // Сброс ссылки.
+            ref.handle = INVALID_ID;
+            ref.AutoRelease = false;
+            MTRACE("Released texture '%s'., Текстура выгружена, поскольку количество ссылок = 0 и AutoRelease = true.", name.c_str());
+        } else {
+            MTRACE("Released texture '%s', теперь счетчик ссылок равен '%i' (AutoRelease=%s).", name.c_str(), ref.ReferenceCount, ref.AutoRelease ? "true" : "false");
+        }
+
+        // Update the entry.
+        RegisteredTextureTable.Set(name, &ref);
+    } else {
+        MERROR("TextureSystem::Release не удалось освободить текстуру '%s'.", name.c_str());
+    }
+}
+
+Texture *TextureSystem::GetDefaultTexture()
+{
+    if (DefaultTexture) {
+        return &DefaultTexture;
+    }
+
+    MERROR("TextureSystem::GetDefaultTexture вызывается перед инициализацией системы текстур! Возвратился нулевой указатель.");
     return nullptr;
 }
 
-bool TextureSystem::CreateDefaultTexture(VulkanAPI *VkAPI)
+void TextureSystem::SetMaxTextureCount(u32 value)
+{
+    MaxTextureCount = value;
+}
+
+void *TextureSystem::operator new(u64 size)
+{
+    // Блок памяти будет содержать структуру состояния, затем блок массива, затем блок хеш-таблицы.
+    u64 ArrayRequirement = sizeof(Texture) * MaxTextureCount;
+    u64 HashtableRequirement = sizeof(TextureReference) * MaxTextureCount;
+    //*memory_requirement = struct_requirement + array_requirement + hashtable_requirement;
+    return LinearAllocator::Allocate(size + ArrayRequirement + HashtableRequirement);
+}
+
+bool TextureSystem::CreateDefaultTexture()
 {
     // ПРИМЕЧАНИЕ. Создайте текстуру по умолчанию — сине-белую шахматную доску размером 256x256.
     // Это делается в коде для устранения зависимостей активов.
@@ -161,19 +225,19 @@ bool TextureSystem::CreateDefaultTexture(VulkanAPI *VkAPI)
             }
         }
     }
-    DefaultTexture.Create(DEFAULT_TEXTURE_NAME, TexDimension, TexDimension, 4, pixels, false, VkAPI);
+    DefaultTexture.Create(DEFAULT_TEXTURE_NAME, TexDimension, TexDimension, 4, pixels, false, Renderer::GetRendererType());
     // Вручную установите недействительную генерацию текстуры, поскольку это текстура по умолчанию.
     this->DefaultTexture.generation = INVALID_ID;
 
     return true;
 }
 
-void TextureSystem::DestroyDefaultTexture(VulkanAPI *VkAPI)
+void TextureSystem::DestroyDefaultTexture()
 {
-    DefaultTexture.Destroy(VkAPI);
+    DefaultTexture.Destroy(Renderer::GetRendererType());
 }
 
-bool TextureSystem::LoadTexture(MString TextureName, Texture *t, VulkanAPI *VkAPI)
+bool TextureSystem::LoadTexture(MString TextureName, Texture *t)
 {
     // TODO: Должен быть в состоянии находиться в любом месте.
     const char* FormatStr = "assets/textures/%s.%s";
@@ -223,7 +287,7 @@ bool TextureSystem::LoadTexture(MString TextureName, Texture *t, VulkanAPI *VkAP
             TempTexture.ChannelCount,
             data,
             HasTransparency,
-            VkAPI);
+            Renderer::GetRendererType());
 
         // Скопируйте старую текстуру.
         Texture old = *t;
@@ -232,7 +296,7 @@ bool TextureSystem::LoadTexture(MString TextureName, Texture *t, VulkanAPI *VkAP
         *t = TempTexture;
 
         // Уничтожьте старую текстуру.
-        old.Destroy(VkAPI);
+        old.Destroy(Renderer::GetRendererType());
 
         if (CurrentGeneration == INVALID_ID) {
             t->generation = 0;

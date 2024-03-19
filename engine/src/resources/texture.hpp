@@ -43,6 +43,8 @@ public:
         VulkanAPI* VkAPI);
     void Destroy(VulkanAPI* VkAPI);
 
+
+    explicit operator bool() const;
     void* operator new(u64 size);
     void operator delete(void* ptr);
 };

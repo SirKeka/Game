@@ -38,8 +38,6 @@ struct VulkanFence {
 
 class VulkanAPI : public RendererType
 {
-using LinearAllocator = WrapLinearAllocator<VulkanAPI>;
-
 public:
     f32 FrameDeltaTime;
 

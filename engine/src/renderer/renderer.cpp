@@ -4,7 +4,7 @@
 #include "core/mmemory.hpp"
 
 #include "renderer/vulkan/vulkan_api.hpp"
-#include "resources/texture.hpp"
+#include "systems/texture_system.hpp"
 #include "math/vector3d.hpp"
 #include "math/vector4d.hpp"
 #include "math/matrix4d.hpp"
@@ -15,7 +15,8 @@ f32 Renderer::NearClip = 0.1f;
 f32 Renderer::FarClip = 1000.f;
 Matrix4D Renderer::projection = Matrix4::MakeFrustumProjection(Math::DegToRad(45.0f), 1280 / 720.0f, NearClip, FarClip);
 Matrix4D Renderer::view = Matrix4::MakeTranslation(Vector3D<f32>{0, 0, -30.f});
-Texture *Renderer::DefaultTexture = new Texture();
+
+Texture *Renderer::TestDiffuse = nullptr;
 
 Renderer::~Renderer()
 {
@@ -24,8 +25,6 @@ Renderer::~Renderer()
     Event::Unregister(EVENT_CODE_DEBUG0, nullptr, EventOnDebugEvent);
     //TODO: временно
 
-    DefaultTexture->Destroy(dynamic_cast<VulkanAPI*>(ptrRenderer));
-    delete DefaultTexture;
     delete ptrRenderer; //TODO: Unhandled exception at 0x00007FFEADC9B93C (engine.dll) in testbed.exe: 0xC0000005: Access violation reading location 0x0000000000000000.
 }
 
@@ -53,7 +52,6 @@ bool Renderer::Initialize(MWindow* window, const char *ApplicationName, ERendere
 
         ptrRenderer = new VulkanAPI();
         // Возьмите указатель на текстуры по умолчанию для использования в серверной части.
-        ptrRenderer->DefaultDiffuse = DefaultTexture;
         ptrRenderer->Initialize(window, ApplicationName);
         view.Inverse();
 
@@ -85,17 +83,6 @@ bool Renderer::Initialize(MWindow* window, const char *ApplicationName, ERendere
                 }
             }
         }
-        DefaultTexture->Create(
-            "default",
-            TexDimension,
-            TexDimension,
-            4,
-            pixels,
-            false,
-            dynamic_cast<VulkanAPI*>(ptrRenderer));
-
-        // Вручную установите недействительную генерацию текстуры, поскольку это текстура по умолчанию.
-        DefaultTexture->generation = INVALID_ID;
 
         return true;
     }
@@ -151,7 +138,14 @@ bool Renderer::DrawFrame(RenderPacket *packet)
         GeometryRenderData data = {};
         data.ObjectID = 0;  // TODO: actual object id
         data.model = model;
-        //data.textures[0] = this->TestDiffuse;
+
+        // TODO: временно.
+        // Grab the default if does not exist.
+        if (!TestDiffuse) {
+            TestDiffuse = TextureSystem::GetDefaultTexture();
+        }
+
+        data.textures[0] = this->TestDiffuse;
         ptrRenderer->UpdateObjects(data);
 
         // Завершите кадр. Если это не удастся, скорее всего, это будет невозможно восстановить.
@@ -164,6 +158,11 @@ bool Renderer::DrawFrame(RenderPacket *packet)
     }
 
     return false;
+}
+
+VulkanAPI *Renderer::GetRendererType()
+{
+    return dynamic_cast<VulkanAPI*>(ptrRenderer);
 }
 
 void Renderer::SetView(Matrix4D view)
@@ -184,11 +183,18 @@ bool Renderer::EventOnDebugEvent(u16 code, void *sender, void *ListenerInst, Eve
         "iris",
         "uvgrid"};
     static i8 choice = 2;
+
+    // Сохраните старое имя.
+    MString OldName = names[choice];
+
     choice++;
     choice %= 3;
 
-    // Load up the new texture.
-    //LoadTexture(names[choice], TestDiffuse);
+    // Приобретите новую текстуру.
+    TestDiffuse = TextureSystem::Acquire(names[choice], true);
+
+    // Удалите старую текстуру.
+    TextureSystem::Release(OldName);
     return true;
 }
 //TODO: Временно

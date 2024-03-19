@@ -145,6 +145,14 @@ void Texture::Destroy(VulkanAPI *VkAPI)
     //MMemory::ZeroMem(Texture, sizeof(Texture));
 }
 
+Texture::operator bool() const
+{
+    if (id     != 0 && width  != 0 && height != 0 && ChannelCount != 0 && HasTransparency != 0 && generation != 0 && Data != nullptr) {
+        return true;
+    }
+    return false;
+}
+
 void *Texture::operator new(u64 size)
 {
     return MMemory::Allocate(size, MEMORY_TAG_TEXTURE);

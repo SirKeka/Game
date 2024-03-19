@@ -27,8 +27,6 @@ enum LogLevel {
 
 class Logger
 {
-using LinearAllocator = WrapLinearAllocator<Logger>;
-
 private:
     static FileHandle LogFileHandle;
 public:

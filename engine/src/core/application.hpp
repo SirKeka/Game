@@ -12,6 +12,7 @@
 class Event;
 class GameTypes;
 class Renderer;
+class TextureSystem;
 
 struct ApplicationState {
     LinearAllocator SystemAllocator;
@@ -24,6 +25,9 @@ struct ApplicationState {
     MWindow* Window;
     Renderer* Render;
     GameTypes* GameInst;
+
+    //Системы
+    TextureSystem* TexSys;
     
     u32 width;
     u32 height;
@@ -55,5 +59,5 @@ private:
     static bool ApplicationOnKey(u16 code, void* sender, void* ListenerInst, EventContext context);
     static bool ApplicationOnResized(u16 code, void* sender, void* ListenerInst, EventContext context);
 
-    
+    static void* AllocMemory(u64 size);
 };
