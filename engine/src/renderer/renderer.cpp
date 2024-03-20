@@ -15,7 +15,8 @@ Renderer::~Renderer()
 {
 
     //TODO: временно
-    Event::Unregister(EVENT_CODE_DEBUG0, nullptr, EventOnDebugEvent);
+    //bool (Renderer::*OnDebugEvent(u16, void*, void*, EventContext)) = ;
+    Event::GetInstance()->Unregister(EVENT_CODE_DEBUG0, nullptr, &Renderer::EventOnDebugEvent(u16 code, void* sender, void* ListenerInst, EventContext data));
     //TODO: временно
 
     delete ptrRenderer; //TODO: Unhandled exception at 0x00007FFEADC9B93C (engine.dll) in testbed.exe: 0xC0000005: Access violation reading location 0x0000000000000000.
@@ -40,7 +41,7 @@ bool Renderer::Initialize(MWindow* window, const char *ApplicationName, ERendere
         //ptrRenderer = dynamic_cast<VulkanAPI*> (ptrRenderer);
 
         // TODO: временно
-        Event::Register(EVENT_CODE_DEBUG0, nullptr, EventOnDebugEvent);
+        Event::GetInstance()->Register(EVENT_CODE_DEBUG0, nullptr, EventOnDebugEvent);
         // TODO: временно
 
         ptrRenderer = new VulkanAPI();
@@ -165,9 +166,4 @@ bool Renderer::EventOnDebugEvent(u16 code, void *sender, void *ListenerInst, Eve
     TextureSystem::Release(OldName);
     return true;
 }
-//TODO: Временно
-
-/*void Renderer::operator delete(void *ptr)
-{
-    MMemory::Free(ptr,sizeof(Renderer), MEMORY_TAG_RENDERER);
-}*/
+// TODO: Временно

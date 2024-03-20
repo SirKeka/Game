@@ -2,20 +2,14 @@
 
 #include "core/application.hpp"
 
-// Внутреннее состояние системы событий.
-bool Event::IsInitialized = false;
-EventSystemState Event::state;
-
 bool Event::Initialize()
 {
-    if (IsInitialized == true) {
-        return false;
+    MMemory::ZeroMem(&state, sizeof(state));
+    event = new Event();
+    if (!event) {
+       return false;
     }
-    IsInitialized = false;
-    // MZeroMemory(&state, sizeof(state));
-
-    IsInitialized = true;
-
+    
     return true;
 }
 
@@ -28,17 +22,14 @@ void Event::Shutdown()
             // state.registered[i].events = 0;
         }
     }
+    this->~Event();
 }
 
 bool Event::Register(u16 code, void *listener, PFN_OnEvent OnEvent)
 {
-    if(IsInitialized == false) {
+    if(!event) {
         return false;
     }
-
-    /*if(state.registered[code].events.capacity == 0) {
-        state.registered[code].events = DArray<RegisteredEvent>();
-    }*/
 
     DArray<u64> RegisteredCount;
     u64 registered_count = state.registered[code].events.Lenght();
@@ -60,7 +51,7 @@ bool Event::Register(u16 code, void *listener, PFN_OnEvent OnEvent)
 
 bool Event::Unregister(u16 code, void *listener, PFN_OnEvent OnEvent)
 {
-    if(IsInitialized == false) {
+    if(!event) {
         return false;
     }
 
@@ -73,7 +64,7 @@ bool Event::Unregister(u16 code, void *listener, PFN_OnEvent OnEvent)
     u64 RegisteredCount = state.registered[code].events.Lenght();
     for(u64 i = 0; i < RegisteredCount; ++i) {
         RegisteredEvent e = state.registered[code].events[i];
-        if(e.listener == listener && e.callback == OnEvent) {
+        if(e.listener == listener/* && e.callback == OnEvent*/) {
             // Нашёл, удали
             // RegisteredEvent PoppedEvent;
             state.registered[code].events.PopAt(i);
@@ -87,7 +78,7 @@ bool Event::Unregister(u16 code, void *listener, PFN_OnEvent OnEvent)
 
 bool Event::Fire(u16 code, void *sender, EventContext context)
 {
-    if(IsInitialized == false) {
+    if(!event) {
         return false;
     }
 
@@ -107,6 +98,11 @@ bool Event::Fire(u16 code, void *sender, EventContext context)
 
     // Not found.
     return false;
+}
+
+Event *Event::GetInstance()
+{
+    return event;
 }
 
 void *Event::operator new(u64 size)

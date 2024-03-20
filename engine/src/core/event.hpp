@@ -2,6 +2,7 @@
 
 #include "defines.hpp"
 #include "containers/darray.hpp"
+#include <functional>
 
 struct EventContext {
     // 128 байт
@@ -25,6 +26,7 @@ struct EventContext {
 };
 
 // Должен возвращать true, если обработано.
+//using PFN_OnEvent = std::function<bool(u16 code, void* sender, void* ListenerInst, EventContext data)>;
 typedef bool (*PFN_OnEvent)(u16 code, void* sender, void* ListenerInst, EventContext data);
 
 struct RegisteredEvent {
@@ -45,15 +47,19 @@ struct EventSystemState {
     EventCodeEntry registered[MAX_MESSAGE_CODES];
 };
 
-class Event
+class MAPI Event
 {
 private:
-    static bool IsInitialized;
-    static EventSystemState state;
+    EventSystemState state;
+
+    static Event* event;
     
 public:
     Event() = default;
-    ~Event();
+    ~Event() = default;
+
+    Event(const Event&) = delete;
+    Event& operator= (const Event&) = delete;
 
     bool Initialize();
     void Shutdown();
@@ -65,7 +71,7 @@ public:
     /// @param listener Указатель на экземпляр прослушивателя. Может быть 0/NULL.
     /// @param OnEvent Указатель функции обратного вызова, который будет вызываться при запуске кода события.
     /// @return TRUE, если событие успешно зарегистрировано; в противном случае FALSE.
-    MAPI static bool Register(u16 code, void* listener, PFN_OnEvent OnEvent);
+    bool Register(u16 code, void* listener, PFN_OnEvent OnEvent);
 
     /// @brief Отмените регистрацию от прослушивания событий, отправляемых с помощью предоставленного кода.
     /// Если соответствующая регистрация не найдена, эта функция возвращает FALSE.
@@ -73,7 +79,7 @@ public:
     /// @param listener Указатель на экземпляр прослушивателя. Может быть 0/NULL.
     /// @param OnEvent Указатель функции обратного вызова, регистрацию которого необходимо отменить.
     /// @return TRUE, если событие успешно отменено; в противном случае FALSE.
-    MAPI static bool Unregister(u16 code, void* listener, PFN_OnEvent OnEvent);
+    bool Unregister(u16 code, void* listener, PFN_OnEvent OnEvent);
 
     /// @brief Вызывает событие для слушателей данного кода. Если обработчик событий возвращает TRUE, 
     /// событие считается обработанным и больше не передается прослушивателям.
@@ -81,7 +87,9 @@ public:
     /// @param sender Указатель на отправителя. Может быть 0/NULL.
     /// @param data Данные о событии.
     /// @return TRUE, если обработано, иначе FALSE.
-    MAPI static bool Fire(u16 code, void* sender, EventContext context);
+    bool Fire(u16 code, void* sender, EventContext context);
+
+    static Event* GetInstance();
 
     void* operator new(u64 size);
 };

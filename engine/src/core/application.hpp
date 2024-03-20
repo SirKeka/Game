@@ -9,7 +9,6 @@
 #include "input.hpp"
 #include "clock.hpp"
 
-class Event;
 class GameTypes;
 class Renderer;
 class TextureSystem;
@@ -54,10 +53,13 @@ public:
     MAPI void operator delete(void* ptr);
     static void* AllocMemory(u64 size);
 
+    /// @return возвращает указатель на систему событий
+    static Event* GetEvent();
+
 private:
     // Обработчики событий
-    static bool ApplicationOnEvent(u16 code, void* sender, void* ListenerInst, EventContext context);
-    static bool ApplicationOnKey(u16 code, void* sender, void* ListenerInst, EventContext context);
-    static bool ApplicationOnResized(u16 code, void* sender, void* ListenerInst, EventContext context);
+    static bool OnEvent(u16 code, void* sender, void* ListenerInst, EventContext context);
+    static bool OnKey(u16 code, void* sender, void* ListenerInst, EventContext context);
+    static bool OnResized(u16 code, void* sender, void* ListenerInst, EventContext context);
 
 };

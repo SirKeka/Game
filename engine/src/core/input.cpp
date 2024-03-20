@@ -87,7 +87,7 @@ void Input::ProcessKey(Keys key, bool pressed)
         // Запустите событие для немедленной обработки.
         EventContext context;
         context.data.u16[0] = key;
-        Event::Fire(pressed ? EVENT_CODE_KEY_PRESSED : EVENT_CODE_KEY_RELEASED, 0, context);
+        Event::GetInstance()->Fire(pressed ? EVENT_CODE_KEY_PRESSED : EVENT_CODE_KEY_RELEASED, 0, context);
     }
 }
 
@@ -154,7 +154,7 @@ void Input::ProcessButton(Buttons button, bool pressed)
         // Запустите событие.
         EventContext context;
         context.data.u16[0] = button;
-        Event::Fire(pressed ? EVENT_CODE_BUTTON_PRESSED : EVENT_CODE_BUTTON_RELEASED, 0, context);
+        Event::GetInstance()->Fire(pressed ? EVENT_CODE_BUTTON_PRESSED : EVENT_CODE_BUTTON_RELEASED, 0, context);
     }
 }
 
@@ -173,7 +173,7 @@ void Input::ProcessMouseMove(i16 x, i16 y)
         EventContext context;
         context.data.u16[0] = x;
         context.data.u16[1] = y;
-        Event::Fire(EVENT_CODE_MOUSE_MOVED, 0, context);
+        Event::GetInstance()->Fire(EVENT_CODE_MOUSE_MOVED, 0, context);
     }
 }
 
@@ -184,7 +184,7 @@ void Input::ProcessMouseWheel(i8 z_delta)
     // Запустите событие.
     EventContext context;
     context.data.u8[0] = z_delta;
-    Event::Fire(EVENT_CODE_MOUSE_WHEEL, 0, context);
+    Event::GetInstance()->Fire(EVENT_CODE_MOUSE_WHEEL, 0, context);
 }
 
 void *Input::operator new(u64 size)

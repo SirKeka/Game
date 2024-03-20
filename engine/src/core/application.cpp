@@ -3,7 +3,6 @@
 #include "renderer/renderer.hpp"
 #include "systems/texture_system.hpp"
 
-
 ApplicationState* Application::AppState;
 
 bool Application::ApplicationCreate(GameTypes *GameInst)
@@ -42,10 +41,10 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
         return false;
     }
 
-    Event::Register(EVENT_CODE_APPLICATION_QUIT, nullptr, ApplicationOnEvent);
-    Event::Register(EVENT_CODE_KEY_PRESSED, nullptr, ApplicationOnKey);
-    Event::Register(EVENT_CODE_KEY_RELEASED, nullptr, ApplicationOnKey);
-    Event::Register(EVENT_CODE_RESIZED, nullptr, ApplicationOnResized);
+    AppState->Events->Register(EVENT_CODE_APPLICATION_QUIT, nullptr, OnEvent);
+    AppState->Events->Register(EVENT_CODE_KEY_PRESSED, nullptr, OnKey);
+    AppState->Events->Register(EVENT_CODE_KEY_RELEASED, nullptr, OnKey);
+    AppState->Events->Register(EVENT_CODE_RESIZED, nullptr, OnResized);
     
     AppState->Window = new MWindow(GameInst->AppConfig.name,
                         GameInst->AppConfig.StartPosX, 
@@ -153,10 +152,10 @@ bool Application::ApplicationRun() {
     AppState->IsRunning = false;
 
     // Отключение системы событий.
-    Event::Unregister(EVENT_CODE_APPLICATION_QUIT, nullptr, ApplicationOnEvent);
-    Event::Unregister(EVENT_CODE_KEY_PRESSED, nullptr, ApplicationOnKey);
-    Event::Unregister(EVENT_CODE_KEY_RELEASED, nullptr, ApplicationOnKey);
-    Event::Unregister(EVENT_CODE_RESIZED, nullptr, ApplicationOnResized);
+    AppState->Events->Unregister(EVENT_CODE_APPLICATION_QUIT, nullptr, OnEvent);
+    AppState->Events->Unregister(EVENT_CODE_KEY_PRESSED, nullptr, OnKey);
+    AppState->Events->Unregister(EVENT_CODE_KEY_RELEASED, nullptr, OnKey);
+    AppState->Events->Unregister(EVENT_CODE_RESIZED, nullptr, OnResized);
     AppState->Events->Shutdown();
     AppState->Inputs->~Input(); // ShutDown
     AppState->TexSys->Shutdown();
@@ -185,7 +184,7 @@ void Application::operator delete(void *ptr)
     return MMemory::Free(ptr, sizeof(Application), MEMORY_TAG_APPLICATION);
 }
 
-bool Application::ApplicationOnEvent(u16 code, void *sender, void *ListenerInst, EventContext context)
+bool Application::OnEvent(u16 code, void *sender, void *ListenerInst, EventContext context)
 {
     switch (code) {
         case EVENT_CODE_APPLICATION_QUIT: {
@@ -198,14 +197,14 @@ bool Application::ApplicationOnEvent(u16 code, void *sender, void *ListenerInst,
     return false;
 }
 
-bool Application::ApplicationOnKey(u16 code, void *sender, void *ListenerInst, EventContext context)
+bool Application::OnKey(u16 code, void *sender, void *ListenerInst, EventContext context)
 {
     if (code == EVENT_CODE_KEY_PRESSED) {
         u16 KeyCode = context.data.u16[0];
         if (KeyCode == KEY_ESCAPE) {
             // ПРИМЕЧАНИЕ. Технически событие генерируется само по себе, но могут быть и другие прослушиватели.
             EventContext data = {};
-            Event::Fire(EVENT_CODE_APPLICATION_QUIT, 0, data);
+            AppState->Events->Fire(EVENT_CODE_APPLICATION_QUIT, 0, data);
 
             // Заблокируйте что-либо еще от обработки этого.
             return true;
@@ -228,7 +227,7 @@ bool Application::ApplicationOnKey(u16 code, void *sender, void *ListenerInst, E
     return false;
 }
 
-bool Application::ApplicationOnResized(u16 code, void *sender, void *ListenerInst, EventContext context)
+bool Application::OnResized(u16 code, void *sender, void *ListenerInst, EventContext context)
 {
     if (code == EVENT_CODE_RESIZED) {
         u16 width = context.data.u16[0];
@@ -263,4 +262,9 @@ bool Application::ApplicationOnResized(u16 code, void *sender, void *ListenerIns
 void *Application::AllocMemory(u64 size)
 {
     return AppState->SystemAllocator.Allocate(size);
+}
+
+Event *Application::GetEvent()
+{
+    return AppState->Events;
 }

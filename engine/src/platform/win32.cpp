@@ -269,7 +269,7 @@ LRESULT CALLBACK Win32MessageProcessor(HWND hwnd, u32 msg, WPARAM w_param, LPARA
             EventContext context;
             context.data.u16[0] = (u16)width;
             context.data.u16[1] = (u16)height;
-            Event::Fire(EVENT_CODE_RESIZED, nullptr, context);
+            Event::GetInstance()->Fire(EVENT_CODE_RESIZED, nullptr, context);
         } break;
         case WM_KEYDOWN:
         case WM_SYSKEYDOWN:
