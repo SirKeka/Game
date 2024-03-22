@@ -3,8 +3,7 @@
 #include "defines.hpp"
 
 #include "math.hpp"
-
-template<typename T> class Vector3D;
+#include "vector3d.hpp"
 
 template<typename T>
 class Vector4D

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "defines.hpp"
+#include "math/vector4d.hpp"
 
 class MAPI MString
 {
@@ -12,6 +13,7 @@ private:
 public:
     MString();
     MString(const char* s);
+    MString(const MString& s);
     MString(MString&& s);
     ~MString();
 
@@ -48,19 +50,19 @@ public:
     /// @param str Строка для анализа. Должна быть разделена пробелами (т. е. "1.0 2.0 3.0 4.0")
     /// @param OutVector A pointer to the vector to write to.
     /// @return True, если синтаксический анализ прошел успешно; в противном случае false. 
-    bool ToVector4D(char* str, Vector4D* OutVector);
+    bool ToVector4D(char* str, Vector4D<f32>* OutVector);
 
     /// @brief Пытается проанализировать вектор из предоставленной строки.
     /// @param str Строка для анализа. Должна быть разделена пробелами (т. е. «1,0 2,0 3,0»)
     /// @param OutVector Ссылка на вектор для записи.
     /// @return True, если синтаксический анализ прошел успешно; в противном случае false.
-    bool ToVector3D(char* str, Vector3D* OutVector);
+    bool ToVector3D(char* str, Vector3D<f32>* OutVector);
 
     /// @brief Пытается проанализировать вектор из предоставленной строки.
     /// @param str Строка для анализа. Должна быть разделена пробелами (т. е. "1.0 2.0")
     /// @param OutVector A pointer to the vector to write to.
     /// @return True, если синтаксический анализ прошел успешно; в противном случае false.
-    bool ToVec2(char* str, Vector2D* OutVector);
+    bool ToVec2(char* str, Vector2D<f32>* OutVector);
 
     /// @brief Пытается проанализировать 32-битное число с плавающей запятой из предоставленной строки.
     /// @param str Строка для анализа. *Не* должно иметь постфикс «f».

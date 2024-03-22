@@ -13,6 +13,13 @@ MString::MString(const char *s)
     MMemory::CopyMem(this->str, s, lenght);
 }
 
+MString::MString(const MString &s)
+{
+    lenght = s.lenght;
+    this->str = MMemory::TAllocate<char>(lenght, MEMORY_TAG_STRING);
+    MMemory::CopyMem(this->str, s.str, lenght);
+}
+
 MString::MString(MString &&s) : str(s.str), lenght(s.lenght)
 {
     s.str = nullptr;
@@ -105,7 +112,7 @@ MString &MString::Trim()
         p[1] = '\0';
     }
 
-    return str;
+    return *this;
 }
 
 void MString::Mid(char *dest, const char *source, i32 start, i32 length)
@@ -150,24 +157,24 @@ i32 MString::IndexOf(char *str, char c)
     return -1;
 }
 
-bool MString::ToVector4D(char *str, Vector4D *OutVector)
+bool MString::ToVector4D(char *str, Vector4D<f32> *OutVector)
 {
     if (!str) {
         return false;
     }
 
-    MMemory::ZeroMem(OutVector, sizeof(Vector4D));
+    MMemory::ZeroMem(OutVector, sizeof(Vector4D<f32>));
     i32 result = sscanf(str, "%f %f %f %f", &OutVector->x, &OutVector->y, &OutVector->z, &OutVector->w);
     return result != -1;
 }
 
-bool MString::ToVector3D(char *str, Vector3D *OutVector)
+bool MString::ToVector3D(char *str, Vector3D<f32> *OutVector)
 {
     if (!str) {
         return false;
     }
 
-    MMemory::ZeroMem(OutVector, sizeof(Vector3D));
+    MMemory::ZeroMem(OutVector, sizeof(Vector3D<f32>));
     i32 result = sscanf(str, "%f %f %f", &OutVector->x, &OutVector->y, &OutVector->z);
     return result != -1;
 }
