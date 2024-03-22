@@ -13,6 +13,12 @@ MString::MString(const char *s)
     MMemory::CopyMem(this->str, s, lenght);
 }
 
+MString::MString(MString &&s) : str(s.str), lenght(s.lenght)
+{
+    s.str = nullptr;
+    s.lenght = 0;
+}
+
 MString::~MString()
 {
     Destroy();
@@ -71,6 +77,99 @@ u64 MString::Length()
 const char *MString::c_str() const noexcept
 {
     return str;
+}
+
+char *MString::Copy(char *dest, const char *source)
+{
+    return strcpy(dest, source);
+}
+
+char *MString::nCopy(char *dest, const char *source, i64 length)
+{
+    return strncpy(dest, source, length);
+}
+
+MString &MString::Trim()
+{
+    while (isspace((unsigned char)*str)) {
+        str++;
+    }
+    if (*str) {
+        char* p = str;
+        while (*p) {
+            p++;
+        }
+        while (isspace((unsigned char)*(--p)))
+            ;
+
+        p[1] = '\0';
+    }
+
+    return str;
+}
+
+void MString::Mid(char *dest, const char *source, i32 start, i32 length)
+{
+    if (length == 0) {
+        return;
+    }
+    u64 srcLength = strlen(source);
+    if (start >= srcLength) {
+        dest[0] = 0;
+        return;
+    }
+    if (length > 0) {
+        for (u64 i = start, j = 0; j < length && source[i]; ++i, ++j) {
+            dest[j] = source[i];
+        }
+        dest[start + length] = 0;
+    } else {
+        // Если передано отрицательное значение, перейдите к концу строки.
+        u64 j = 0;
+        for (u64 i = start; source[i]; ++i, ++j) {
+            dest[j] = source[i];
+        }
+        dest[start + j] = 0;
+    }
+}
+
+i32 MString::IndexOf(char *str, char c)
+{
+    if (!str) {
+        return -1;
+    }
+    u32 length = strlen(str);
+    if (length > 0) {
+        for (u32 i = 0; i < length; ++i) {
+            if (str[i] == c) {
+                return i;
+            }
+        }
+    }
+
+    return -1;
+}
+
+bool MString::ToVector4D(char *str, Vector4D *OutVector)
+{
+    if (!str) {
+        return false;
+    }
+
+    MMemory::ZeroMem(OutVector, sizeof(Vector4D));
+    i32 result = sscanf(str, "%f %f %f %f", &OutVector->x, &OutVector->y, &OutVector->z, &OutVector->w);
+    return result != -1;
+}
+
+bool MString::ToVector3D(char *str, Vector3D *OutVector)
+{
+    if (!str) {
+        return false;
+    }
+
+    MMemory::ZeroMem(OutVector, sizeof(Vector3D));
+    i32 result = sscanf(str, "%f %f %f", &OutVector->x, &OutVector->y, &OutVector->z);
+    return result != -1;
 }
 
 void MString::Destroy()
