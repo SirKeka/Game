@@ -17,8 +17,8 @@ struct ApplicationState {
     LinearAllocator SystemAllocator;
     MMemory* mem;
     Logger* logger;
-    Input* Inputs;
-    Event* Events;
+    //Input Inputs;
+    //Event Events;
     bool IsRunning;
     bool IsSuspended;
     MWindow* Window;
@@ -52,9 +52,6 @@ public:
     MAPI void* operator new(u64 size);
     MAPI void operator delete(void* ptr);
     static void* AllocMemory(u64 size);
-
-    /// @return возвращает указатель на систему событий
-    static Event* GetEvent();
 
 private:
     // Обработчики событий

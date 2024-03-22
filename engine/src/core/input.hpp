@@ -157,48 +157,49 @@ struct Mouse
     i16 PosY;
     u8 Buttons[BUTTON_MAX_BUTTONS];
 };
-struct InputState {
+
+class MAPI Input
+{
+private:
     Keyboard KeyboardCurrent;
     Keyboard KeyboardPrevious;
     Mouse MouseCurrent;
     Mouse MousePrevious;
-};
 
-class Input
-{
-private:
-    // struct InputState;
-    static bool initialized;
-    static InputState InState;
+    static Input* input;
 
+    Input() : KeyboardCurrent(), KeyboardPrevious(), MouseCurrent(), MousePrevious() {};
 public:
-    Input();
     ~Input();
 
-//void input_initialize();
-//void input_shutdown();
-void Update(f64 DeltaTime);
+    Input(const Input&) = delete;
+    Input& operator= (const Input&) = delete;
 
-// ввод с клавиатуры
+    void Initialize();
+    void Sutdown();
+    void Update(f64 DeltaTime);
 
-MAPI static bool IsKeyDown(Keys key);
-MAPI static bool IsKeyUp(Keys key);
-MAPI static bool WasKeyDown(Keys key);
-MAPI static bool WasKeyUp(Keys key);
+    // ввод с клавиатуры
 
-static void ProcessKey(Keys key, bool pressed);
+    bool IsKeyDown(Keys key);
+    bool IsKeyUp(Keys key);
+    bool WasKeyDown(Keys key);
+    bool WasKeyUp(Keys key);
 
-// ввод с помощью мыши
-MAPI static bool IsButtonDown(Buttons button);
-MAPI static bool IsButtonUp(Buttons button);
-MAPI static bool WasButtonDown(Buttons button);
-MAPI static bool WasButtonUp(Buttons button);
-MAPI static void GetMousePosition(i16& x, i16& y);
-MAPI static void GetPreviousMousePosition(i16& x, i16& y);
+    void ProcessKey(Keys key, bool pressed);
 
-static void ProcessButton(Buttons button, bool pressed);
-static void ProcessMouseMove(i16 x, i16 y);
-static void ProcessMouseWheel(i8 z_delta);
+    // ввод с помощью мыши
+    bool IsButtonDown(Buttons button);
+    bool IsButtonUp(Buttons button);
+    bool WasButtonDown(Buttons button);
+    bool WasButtonUp(Buttons button);
+    void GetMousePosition(i16& x, i16& y);
+    void GetPreviousMousePosition(i16& x, i16& y);
 
-void* operator new(u64 size);
+    void ProcessButton(Buttons button, bool pressed);
+    void ProcessMouseMove(i16 x, i16 y);
+    void ProcessMouseWheel(i8 z_delta);
+
+    static Input* Instance();
+    void* operator new(u64 size);
 };

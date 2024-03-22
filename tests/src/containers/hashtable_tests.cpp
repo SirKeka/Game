@@ -60,12 +60,12 @@ struct ht_test_struct {
 };
 
 u8 hashtable_should_set_and_get_ptr_successfully() {
-    HashTable<ht_test_struct*> table;
+    HashTable<ht_test_struct> table;
     //u64 ElementSize = sizeof(ht_test_struct*);
     u64 ElementCount = 3;
-    ht_test_struct* memory[3];
+    ht_test_struct memory[3];
 
-    table = HashTable<ht_test_struct*>(ElementCount, true, memory);
+    table = HashTable<ht_test_struct>(ElementCount, false, memory);
 
     ExpectShouldNotBe(0, table.memory);
     //ExpectShouldBe(sizeof(ht_test_struct*), table.ElementSize);
@@ -76,10 +76,10 @@ u8 hashtable_should_set_and_get_ptr_successfully() {
     testval1->b_value = true;
     testval1->u_value = 63;
     testval1->f_value = 3.1415f;
-    table.Set("test1", reinterpret_cast<ht_test_struct**>(&testval1));
+    table.Set("test1", reinterpret_cast<ht_test_struct*>(&testval1));
 
     ht_test_struct* get_testval_1 = 0;
-    table.Get("test1", reinterpret_cast<ht_test_struct**>(&get_testval_1));
+    table.Get("test1", reinterpret_cast<ht_test_struct*>(&get_testval_1));
 
     ExpectShouldBe(testval1->b_value, get_testval_1->b_value);
     ExpectShouldBe(testval1->u_value, get_testval_1->u_value);

@@ -293,7 +293,7 @@ LRESULT CALLBACK Win32MessageProcessor(HWND hwnd, u32 msg, WPARAM w_param, LPARA
             }
 
             // Перейдите к подсистеме ввода для обработки.
-            Input::ProcessKey(key, pressed);
+            Input::Instance()->ProcessKey(key, pressed);
 
             // Верните 0, чтобы предотвратить поведение окна по умолчанию при некоторых нажатиях клавиш, таких как alt.
             return 0;
@@ -304,14 +304,14 @@ LRESULT CALLBACK Win32MessageProcessor(HWND hwnd, u32 msg, WPARAM w_param, LPARA
             i16 yPos = GET_Y_LPARAM(l_param);
 
             // Переходим к подсистеме ввода.
-            Input::ProcessMouseMove(xPos, yPos);
+            Input::Instance()->ProcessMouseMove(xPos, yPos);
         } break;
         case WM_MOUSEWHEEL: {
             i32 zDelta = GET_WHEEL_DELTA_WPARAM(w_param);
             if (zDelta != 0) {
                 // Свести входные данные в независимый от ОС (-1, 1)
                 zDelta = (zDelta < 0) ? -1 : 1;
-                Input::ProcessMouseWheel(zDelta);
+                Input::Instance()->ProcessMouseWheel(zDelta);
             }
         } break;
         case WM_LBUTTONDOWN:
@@ -339,7 +339,7 @@ LRESULT CALLBACK Win32MessageProcessor(HWND hwnd, u32 msg, WPARAM w_param, LPARA
             }
             // Переходим к подсистеме ввода.
             if (MouseButtons != BUTTON_MAX_BUTTONS) {
-                Input::ProcessButton(MouseButtons, pressed);
+                Input::Instance()->ProcessButton(MouseButtons, pressed);
             }
         } break;
     }

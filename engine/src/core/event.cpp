@@ -2,9 +2,10 @@
 
 #include "core/application.hpp"
 
+Event* Event::event = nullptr;
+
 bool Event::Initialize()
 {
-    MMemory::ZeroMem(&state, sizeof(state));
     event = new Event();
     if (!event) {
        return false;
@@ -17,11 +18,12 @@ void Event::Shutdown()
 {
     // Освободите массивы событий. А объекты, на которые указывают, должны уничтожаться самостоятельно.
     for(u16 i = 0; i < MAX_MESSAGE_CODES; ++i){
-        if(state.registered[i].events.Capacity() > 0) {
-            state.registered[i].events.~DArray();
+        if(registered[i].events.Capacity() > 0) {
+            registered[i].events.~DArray();
             // state.registered[i].events = 0;
         }
     }
+    delete event;
     this->~Event();
 }
 
@@ -32,9 +34,9 @@ bool Event::Register(u16 code, void *listener, PFN_OnEvent OnEvent)
     }
 
     DArray<u64> RegisteredCount;
-    u64 registered_count = state.registered[code].events.Lenght();
+    u64 registered_count = registered[code].events.Lenght();
     for(u64 i = 0; i < registered_count; ++i) {
-        if(state.registered[code].events[i].listener == listener) {
+        if(registered[code].events[i].listener == listener) {
             // TODO: warn
             return false;
         }
@@ -44,7 +46,7 @@ bool Event::Register(u16 code, void *listener, PFN_OnEvent OnEvent)
     RegisteredEvent event;
     event.listener = listener;
     event.callback = OnEvent;
-    state.registered[code].events.PushBack(event);
+    registered[code].events.PushBack(event);
 
     return true;
 }
@@ -56,18 +58,18 @@ bool Event::Unregister(u16 code, void *listener, PFN_OnEvent OnEvent)
     }
 
     // По коду ничего не прописано, загружаемся.
-    if(state.registered[code].events.Capacity() == 0) {
+    if(registered[code].events.Capacity() == 0) {
         // TODO: warn
         return false;
     }
 
-    u64 RegisteredCount = state.registered[code].events.Lenght();
+    u64 RegisteredCount = registered[code].events.Lenght();
     for(u64 i = 0; i < RegisteredCount; ++i) {
-        RegisteredEvent e = state.registered[code].events[i];
+        RegisteredEvent e = registered[code].events[i];
         if(e.listener == listener/* && e.callback == OnEvent*/) {
             // Нашёл, удали
             // RegisteredEvent PoppedEvent;
-            state.registered[code].events.PopAt(i);
+            registered[code].events.PopAt(i);
             return true;
         }
     }
@@ -83,13 +85,13 @@ bool Event::Fire(u16 code, void *sender, EventContext context)
     }
 
     // Если для кода ничего не зарегистрировано, выйдите из системы.
-    if(state.registered[code].events.Capacity() == 0) {
+    if(registered[code].events.Capacity() == 0) {
         return false;
     }
 
-    u64 RegisteredCount = state.registered[code].events.Lenght();
+    u64 RegisteredCount = registered[code].events.Lenght();
     for(u64 i = 0; i < RegisteredCount; ++i) {
-        RegisteredEvent e = state.registered[code].events[i];
+        RegisteredEvent e = registered[code].events[i];
         if(e.callback(code, sender, e.listener, context)) {
             // Сообщение обработано, не отправляйте его другим слушателям.
             return true;

@@ -23,7 +23,9 @@ private:
     f32 NearClip;
     f32 FarClip;
 
-    Texture* TestDiffuse; //TODO: временно
+    //TODO: временно
+    static Texture* TestDiffuse; 
+    //TODO: временно
 public:
     Renderer() : projection(), view(), NearClip(0.f), FarClip(0.f) {}
     ~Renderer();
@@ -45,7 +47,7 @@ private:
     //static void CreateTexture(Texture* t);
 
     //TODO: Временно
-    bool EventOnDebugEvent(u16 code, void* sender, void* ListenerInst, EventContext data);
+    static bool EventOnDebugEvent(u16 code, void* sender, void* ListenerInst, EventContext data);
     //TODO: Временно
 };
 

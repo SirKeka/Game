@@ -2,7 +2,7 @@
 
 #include "defines.hpp"
 #include "containers/darray.hpp"
-#include <functional>
+//#include <functional>
 
 struct EventContext {
     // 128 байт
@@ -41,21 +41,15 @@ struct EventCodeEntry {
 // Кодов должно быть более чем достаточно...
 #define MAX_MESSAGE_CODES 16384
 
-// Структура состояния.
-struct EventSystemState {
-    // Таблица поиска кодов событий.
-    EventCodeEntry registered[MAX_MESSAGE_CODES];
-};
-
 class MAPI Event
 {
 private:
-    EventSystemState state;
+    // Таблица поиска кодов событий.
+    EventCodeEntry registered[MAX_MESSAGE_CODES] {};
 
     static Event* event;
-    
+    Event() : registered() {};
 public:
-    Event() = default;
     ~Event() = default;
 
     Event(const Event&) = delete;

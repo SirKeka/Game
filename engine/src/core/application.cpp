@@ -30,21 +30,21 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
         return false;
     }
 
-    AppState->Inputs = new Input();
+    Input::Instance()->Initialize();
 
     AppState->IsRunning = true;
     AppState->IsSuspended = false;
 
-    AppState->Events = new Event();
-    if (!AppState->Events->Initialize()) {
+    //AppState->Events = new Event();
+    if (!Event::GetInstance()->Initialize()) {
         MERROR("Система событий не смогла инициализироваться. Приложение не может быть продолжено.");
         return false;
     }
 
-    AppState->Events->Register(EVENT_CODE_APPLICATION_QUIT, nullptr, OnEvent);
-    AppState->Events->Register(EVENT_CODE_KEY_PRESSED, nullptr, OnKey);
-    AppState->Events->Register(EVENT_CODE_KEY_RELEASED, nullptr, OnKey);
-    AppState->Events->Register(EVENT_CODE_RESIZED, nullptr, OnResized);
+    Event::GetInstance()->Register(EVENT_CODE_APPLICATION_QUIT, nullptr, OnEvent);
+    Event::GetInstance()->Register(EVENT_CODE_KEY_PRESSED, nullptr, OnKey);
+    Event::GetInstance()->Register(EVENT_CODE_KEY_RELEASED, nullptr, OnKey);
+    Event::GetInstance()->Register(EVENT_CODE_RESIZED, nullptr, OnResized);
     
     AppState->Window = new MWindow(GameInst->AppConfig.name,
                         GameInst->AppConfig.StartPosX, 
@@ -67,8 +67,11 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
 
     // Система текстур.
     TextureSystem::SetMaxTextureCount(65536);
-    AppState->TexSys = new TextureSystem();
-    AppState->TexSys->Initialize();
+    if (!TextureSystem::Instance()->Initialize()) {
+        MFATAL("Не удалось инициализировать систему текстур. Приложение не может быть продолжено.");
+        return false;
+    }
+     //AppState->TexSys->Initialize();
 
     // Инициализируйте игру.
     if (!GameInst->Initialize()) {
@@ -142,7 +145,7 @@ bool Application::ApplicationRun() {
             // должно выполняться после записи любого ввода; т.е. перед этой
             // строкой. В целях безопасности входные данные обновляются в
             // последнюю очередь перед завершением этого кадра.
-            AppState->Inputs->Update(delta);
+            Input::Instance()->Update(delta);
 
             // Update last time
             AppState->LastTime = CurrentTime;
@@ -152,12 +155,12 @@ bool Application::ApplicationRun() {
     AppState->IsRunning = false;
 
     // Отключение системы событий.
-    AppState->Events->Unregister(EVENT_CODE_APPLICATION_QUIT, nullptr, OnEvent);
-    AppState->Events->Unregister(EVENT_CODE_KEY_PRESSED, nullptr, OnKey);
-    AppState->Events->Unregister(EVENT_CODE_KEY_RELEASED, nullptr, OnKey);
-    AppState->Events->Unregister(EVENT_CODE_RESIZED, nullptr, OnResized);
-    AppState->Events->Shutdown();
-    AppState->Inputs->~Input(); // ShutDown
+    Event::GetInstance()->Unregister(EVENT_CODE_APPLICATION_QUIT, nullptr, OnEvent);
+    Event::GetInstance()->Unregister(EVENT_CODE_KEY_PRESSED, nullptr, OnKey);
+    Event::GetInstance()->Unregister(EVENT_CODE_KEY_RELEASED, nullptr, OnKey);
+    Event::GetInstance()->Unregister(EVENT_CODE_RESIZED, nullptr, OnResized);
+    Event::GetInstance()->Shutdown();
+    Input::Instance()->Sutdown();
     AppState->TexSys->Shutdown();
     AppState->Render->Shutdown();
 
@@ -204,7 +207,7 @@ bool Application::OnKey(u16 code, void *sender, void *ListenerInst, EventContext
         if (KeyCode == KEY_ESCAPE) {
             // ПРИМЕЧАНИЕ. Технически событие генерируется само по себе, но могут быть и другие прослушиватели.
             EventContext data = {};
-            AppState->Events->Fire(EVENT_CODE_APPLICATION_QUIT, 0, data);
+            Event::GetInstance()->Fire(EVENT_CODE_APPLICATION_QUIT, 0, data);
 
             // Заблокируйте что-либо еще от обработки этого.
             return true;
@@ -262,9 +265,4 @@ bool Application::OnResized(u16 code, void *sender, void *ListenerInst, EventCon
 void *Application::AllocMemory(u64 size)
 {
     return AppState->SystemAllocator.Allocate(size);
-}
-
-Event *Application::GetEvent()
-{
-    return AppState->Events;
 }

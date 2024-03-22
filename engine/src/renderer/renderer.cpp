@@ -7,16 +7,16 @@ RendererType *Renderer::ptrRenderer;
 /*f32 Renderer::NearClip = 0.1f;
 f32 Renderer::FarClip = 1000.f;
 Matrix4D Renderer::projection = Matrix4::MakeFrustumProjection(Math::DegToRad(45.0f), 1280 / 720.0f, NearClip, FarClip);
-Matrix4D Renderer::view = Matrix4::MakeTranslation(Vector3D<f32>{0, 0, -30.f});
+Matrix4D Renderer::view = Matrix4::MakeTranslation(Vector3D<f32>{0, 0, -30.f});*/
 
-Texture *Renderer::TestDiffuse = nullptr;*/
+Texture *Renderer::TestDiffuse = nullptr;
 
 Renderer::~Renderer()
 {
 
     //TODO: временно
     //bool (Renderer::*OnDebugEvent(u16, void*, void*, EventContext)) = ;
-    Event::GetInstance()->Unregister(EVENT_CODE_DEBUG0, nullptr, &Renderer::EventOnDebugEvent(u16 code, void* sender, void* ListenerInst, EventContext data));
+    Event::GetInstance()->Unregister(EVENT_CODE_DEBUG0, nullptr, EventOnDebugEvent);
     //TODO: временно
 
     delete ptrRenderer; //TODO: Unhandled exception at 0x00007FFEADC9B93C (engine.dll) in testbed.exe: 0xC0000005: Access violation reading location 0x0000000000000000.
@@ -89,18 +89,9 @@ bool Renderer::DrawFrame(RenderPacket *packet)
 {
     // Если начальный кадр возвращается успешно, операции в середине кадра могут продолжаться.
     if (BeginFrame(packet->DeltaTime)) {
-        static f32 z = 0.0f;
-        z += 0.01f;
-
         ptrRenderer->UpdateGlobalState(projection, view, Vector3D<f32>::Zero(), Vector4D<f32>::Zero(), 0);
 
         Matrix4D model = Matrix4::MakeIdentity();
-        static f32 angle = 0.01f;
-        angle += 0.001f;
-        Quaternion rotation{Vector3D<f32>::Forward(), angle, false};
-        //Matrix4D model {rotation, Vector3D<f32>::Zero()}; //= quat_to_rotation_matrix(rotation, vec3_zero());
-        //Matrix4D model = Matrix4::MakeTranslation(Vector3D<f32>{0, 0, 0});
-        // static f32 angle = 0.01f;
         // angle += 0.001f;
         // quat rotation = quat_from_axis_angle(vec3_forward(), angle, false);
         // mat4 model = quat_to_rotation_matrix(rotation, vec3_zero());
@@ -111,7 +102,7 @@ bool Renderer::DrawFrame(RenderPacket *packet)
         // TODO: временно.
         // Grab the default if does not exist.
         if (!TestDiffuse) {
-            TestDiffuse = TextureSystem::GetDefaultTexture();
+            TestDiffuse = TextureSystem::Instance()->GetDefaultTexture();
         }
 
         data.textures[0] = this->TestDiffuse;
@@ -160,10 +151,10 @@ bool Renderer::EventOnDebugEvent(u16 code, void *sender, void *ListenerInst, Eve
     choice %= 3;
 
     // Приобретите новую текстуру.
-    TestDiffuse = TextureSystem::Acquire(names[choice], true);
+    TestDiffuse = TextureSystem::Instance()->Acquire(names[choice], true);
 
     // Удалите старую текстуру.
-    TextureSystem::Release(OldName);
+    TextureSystem::Instance()->Release(OldName);
     return true;
 }
 // TODO: Временно

@@ -34,32 +34,32 @@ bool Game::Update(f32 DeltaTime)
     u64 AllocCount = 0;
     u64 PrevAllocCount = AllocCount;
     AllocCount = MMemory::GetMemoryAllocCount(); // TODO: проверить странные значения
-    if (Input::IsKeyUp(KEY_M) && Input::WasKeyDown(KEY_M)) {
+    if (Input::Instance()->Instance()->IsKeyUp(KEY_M) && Input::Instance()->WasKeyDown(KEY_M)) {
         MDEBUG("Распределено: %llu (%llu в этом кадре)", AllocCount, AllocCount - PrevAllocCount);
     }
 
     // TODO: temp
-    if (Input::IsKeyUp(KEY_T) && Input::WasKeyDown(KEY_T)) {
+    if (Input::Instance()->IsKeyUp(KEY_T) && Input::Instance()->WasKeyDown(KEY_T)) {
         MDEBUG("Swapping texture!");
         EventContext context = {};
-        Event::Fire(EVENT_CODE_DEBUG0, this, context);
+        Event::GetInstance()->Fire(EVENT_CODE_DEBUG0, this, context);
     }
     // TODO: end temp
 
     // ВЗЛОМ: временный взлом для перемещения камеры по кругу.
-    if (Input::IsKeyDown(KEY_A) || Input::IsKeyDown(KEY_LEFT)) {
+    if (Input::Instance()->IsKeyDown(KEY_A) || Input::Instance()->IsKeyDown(KEY_LEFT)) {
         CameraYaw(1.0f * DeltaTime);
     }
 
-    if (Input::IsKeyDown(KEY_D) || Input::IsKeyDown(KEY_RIGHT)) {
+    if (Input::Instance()->IsKeyDown(KEY_D) || Input::Instance()->IsKeyDown(KEY_RIGHT)) {
         CameraYaw(-1.0f * DeltaTime);
     }
 
-    if (Input::IsKeyDown(KEY_UP)) {
+    if (Input::Instance()->IsKeyDown(KEY_UP)) {
         CameraPitch(1.0f * DeltaTime);
     }
 
-    if (Input::IsKeyDown(KEY_DOWN)) {
+    if (Input::Instance()->IsKeyDown(KEY_DOWN)) {
         CameraPitch(-1.0f * DeltaTime);
     }
 
@@ -67,32 +67,32 @@ bool Game::Update(f32 DeltaTime)
     Vector3D<f32> velocity = Vector3D<f32>::Zero();
 
     //Не работает
-    if (Input::IsKeyDown(KEY_W)) {
+    if (Input::Instance()->IsKeyDown(KEY_W)) {
         Vector3D<f32> forward = Matrix4::Forward(view);
         velocity += forward;
     }
 
     //Не работает
-    if (Input::IsKeyDown(KEY_S)) {
+    if (Input::Instance()->IsKeyDown(KEY_S)) {
         Vector3D<f32> backward = Matrix4::Backward(view);
         velocity += backward;
     }
 
-    if (Input::IsKeyDown(KEY_Q)) {
+    if (Input::Instance()->IsKeyDown(KEY_Q)) {
         Vector3D<f32> left = Matrix4::Left(view);
         velocity += left;
     }
 
-    if (Input::IsKeyDown(KEY_E)) {
+    if (Input::Instance()->IsKeyDown(KEY_E)) {
         Vector3D<f32> right = Matrix4::Right(view);
         velocity += right;
     }
 
-    if (Input::IsKeyDown(KEY_SPACE)) {
+    if (Input::Instance()->IsKeyDown(KEY_SPACE)) {
         velocity.y += 1.0f;
     }
 
-    if (Input::IsKeyDown(KEY_X)) {
+    if (Input::Instance()->IsKeyDown(KEY_X)) {
         velocity.y -= 1.0f;
     }
 

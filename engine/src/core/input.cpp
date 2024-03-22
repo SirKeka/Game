@@ -1,70 +1,77 @@
 #include "input.hpp"
 #include "application.hpp"
 
-bool Input::initialized = false;
-InputState Input::InState {};
-
-Input::Input()
-{
-    initialized = true;
-    MINFO("Подсистема ввода инициализирована.");
-}
+Input* Input::input = nullptr;
 
 Input::~Input()
 {
     // TODO: Добавить процедуры выключения при необходимости.
-    initialized = false;
+    
+}
+
+void Input::Initialize()
+{
+    if (!input) {
+        input = new Input();
+    };
+    
+    MINFO("Подсистема ввода инициализирована.");
+}
+
+void Input::Sutdown()
+{
+    delete input;
 }
 
 void Input::Update(f64 DeltaTime)
 {
-    if (!initialized) {
+    if (!input) {
         return;
     }
 
     // Копировать текущие состояния в предыдущие состояния. TODO: подумать о перемещении, а не копировании
-        InState.KeyboardPrevious = InState.KeyboardCurrent;
-        InState.MousePrevious = InState.MouseCurrent;
+        KeyboardPrevious = KeyboardCurrent;
+        MousePrevious = MouseCurrent;
 }
 
 bool Input::IsKeyDown(Keys key)
 {
-    if (!initialized) {
+    if (!input) {
         return false;
     }
-    return InState.KeyboardCurrent.keys[key] == true;
+    return KeyboardCurrent.keys[key] == true;
 }
 
 bool Input::IsKeyUp(Keys key)
 {
-    if (!initialized) {
+    if (!input) {
         return true;
     }
-    return InState.KeyboardCurrent.keys[key] == false;
+    return KeyboardCurrent.keys[key] == false;
 }
 
 bool Input::WasKeyDown(Keys key)
 {
-    if (!initialized) {
+    if (!input) {
         return false;
     }
-    return InState.KeyboardPrevious.keys[key] == true;
+    return KeyboardPrevious.keys[key] == true;
 }
 
 bool Input::WasKeyUp(Keys key)
 {
-    if (!initialized) {
+    if (!input) {
         return true;
     }
-    return InState.KeyboardPrevious.keys[key] == false;
+    return KeyboardPrevious.keys[key] == false;
 }
 
 void Input::ProcessKey(Keys key, bool pressed)
 {
     // Обрабатывайте это только в том случае, если состояние действительно изменилось.
-    if (InState.KeyboardCurrent.keys[key] != pressed) {
+    if (KeyboardCurrent.keys[key] != pressed) {
         // Обновить внутреннее состояние.
-        InState.KeyboardCurrent.keys[key] = pressed;
+        KeyboardCurrent.keys[key] = pressed;
 
         if (key == KEY_LALT) {
             MINFO("Левая клавиша alt %s.", pressed ? "нажата" : "отпущена");
@@ -93,63 +100,63 @@ void Input::ProcessKey(Keys key, bool pressed)
 
 bool Input::IsButtonDown(Buttons button)
 {
-    if (!initialized) {
+    if (!input) {
         return false;
     }
-    return InState.MouseCurrent.Buttons[button] == true;
+    return MouseCurrent.Buttons[button] == true;
 }
 
 bool Input::IsButtonUp(Buttons button)
 {
-    if (!initialized) {
+    if (!input) {
         return true;
     }
-    return InState.MouseCurrent.Buttons[button] == false;
+    return MouseCurrent.Buttons[button] == false;
 }
 
 bool Input::WasButtonDown(Buttons button)
 {
-    if (!initialized) {
+    if (!input) {
         return false;
     }
-    return InState.MousePrevious.Buttons[button] == TRUE;
+    return MousePrevious.Buttons[button] == TRUE;
 }
 
 bool Input::WasButtonUp(Buttons button)
 {
-    if (!initialized) {
+    if (!input) {
         return true;
     }
-    return InState.MousePrevious.Buttons[button] == false;
+    return MousePrevious.Buttons[button] == false;
 }  
 
 void Input::GetMousePosition(i16& x, i16& y)
 {
-    if (!initialized) {
+    if (!input) {
         x = 0;
         y = 0;
         return;
     }
-    x = InState.MouseCurrent.PosX;
-    y = InState.MouseCurrent.PosY;
+    x = MouseCurrent.PosX;
+    y = MouseCurrent.PosY;
 }
 
 void Input::GetPreviousMousePosition(i16& x, i16& y)
 {
-    if (!initialized) {
+    if (!input) {
         x = 0;
         y = 0;
         return;
     }
-    x = InState.MousePrevious.PosX;
-    y = InState.MousePrevious.PosY;
+    x = MousePrevious.PosX;
+    y = MousePrevious.PosY;
 }
 
 void Input::ProcessButton(Buttons button, bool pressed)
 {
     // Если состояние изменилось, создайте событие.
-    if (InState.MouseCurrent.Buttons[button] != pressed) {
-        InState.MouseCurrent.Buttons[button] = pressed;
+    if (MouseCurrent.Buttons[button] != pressed) {
+        MouseCurrent.Buttons[button] = pressed;
 
         // Запустите событие.
         EventContext context;
@@ -161,13 +168,13 @@ void Input::ProcessButton(Buttons button, bool pressed)
 void Input::ProcessMouseMove(i16 x, i16 y)
 {
     // Обрабатывайте только в том случае, если на самом деле они разные
-    if (InState.MouseCurrent.PosX != x || InState.MouseCurrent.PosY != y) {
+    if (MouseCurrent.PosX != x || MouseCurrent.PosY != y) {
         // ПРИМЕЧАНИЕ. Включите это при отладке.
         //MDEBUG("Позиция мыши: %i, %i!", x, y);
 
         // Обновить внутреннее состояние.
-        InState.MouseCurrent.PosX = x;
-        InState.MouseCurrent.PosY = y;
+        MouseCurrent.PosX = x;
+        MouseCurrent.PosY = y;
 
         // Запустите событие.
         EventContext context;
@@ -185,6 +192,11 @@ void Input::ProcessMouseWheel(i8 z_delta)
     EventContext context;
     context.data.u8[0] = z_delta;
     Event::GetInstance()->Fire(EVENT_CODE_MOUSE_WHEEL, 0, context);
+}
+
+Input *Input::Instance()
+{
+    return input;
 }
 
 void *Input::operator new(u64 size)

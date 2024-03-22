@@ -2,22 +2,22 @@
 #include "renderer/vulkan/vulkan_api.hpp"
 #include "renderer/vulkan/vulkan_utils.hpp"
 
-Texture::Texture() /*: 
+Texture::Texture() : 
     id(0), 
     width(0), 
     height(0), 
     ChannelCount(0), 
     HasTransparency(false), 
     generation(INVALID_ID), 
-    Data(nullptr) */
+    Data(nullptr) 
     {
-        id = 0;
+        /*id = 0;
         width = 0;
         height = 0;
         ChannelCount = 0;
         HasTransparency = 0;
         generation = INVALID_ID;
-        Data = nullptr;
+        Data = nullptr;*/
     }
 
 Texture::Texture(MString name,i32 width, i32 height, i32 ChannelCount, const u8 *pixels, bool HasTransparency, VulkanAPI *VkAPI)

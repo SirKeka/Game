@@ -10,30 +10,34 @@ class TextureSystem
 {
 private:
     static u32 MaxTextureCount;
-    static Texture DefaultTexture;
+    Texture DefaultTexture;
 
     // Массив зарегистрированных текстур.
-    static Texture* RegisteredTextures;
+    Texture* RegisteredTextures;
 
     // Хэш-таблица для поиска текстур.
-    static HashTable<TextureReference> RegisteredTextureTable;
+    HashTable<TextureReference> RegisteredTextureTable;
 
+    static TextureSystem* state;
+
+    TextureSystem();
 public:
-    TextureSystem() {}
-    ~TextureSystem() = default;
+    ~TextureSystem();
+    TextureSystem(const TextureSystem&) = delete;
+    TextureSystem& operator= (const TextureSystem&) = delete;
 
     bool Initialize();
     void Shutdown();
 
-    static Texture* Acquire(MString name, bool AutoRelease);
-    static void Release(MString name);
+    Texture* Acquire(MString name, bool AutoRelease);
+    void Release(MString name);
     /// @brief Функция для получения стандартной текстуры.
     /// @return указатель на стандартную текстуру.
-    static Texture* GetDefaultTexture();
+    Texture* GetDefaultTexture();
     /// @brief Задает максимальное возможное количество текстур от которого зависит размер выделяеймой памяти под систему.
     /// @param value максимальное количество текстур.
     static void SetMaxTextureCount(u32 value);
-
+    static TextureSystem* Instance();
     void* operator new(u64 size);
     //void operator delete(void* ptr)
 

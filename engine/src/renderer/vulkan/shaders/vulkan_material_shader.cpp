@@ -307,17 +307,19 @@ void VulkanMaterialShader::UpdateObject(VulkanAPI *VkAPI, const GeometryRenderDa
     for (u32 SamplerIndex = 0; SamplerIndex < SamplerCount; ++SamplerIndex) {
         Texture* t = data.textures[SamplerIndex];
         u32* DescriptorGeneration = &ObjectState->DescriptorStates[DescriptorIndex].generations[ImageIndex];
+        u32* DescriptorID = &ObjectState->DescriptorStates[DescriptorIndex].ids[ImageIndex];
 
         // Если текстура еще не была загружена, используйте значение по умолчанию.
         // TODO: Определите, какое использование имеет текстура, и на основе этого выберите подходящее значение по умолчанию.
         if (t->generation == INVALID_ID) {
-            t = TextureSystem::GetDefaultTexture();
+            t = TextureSystem::Instance()->GetDefaultTexture();
             // Сбросьте генерацию дескриптора, если используется текстура по умолчанию.
             *DescriptorGeneration = INVALID_ID;
+
         }
 
         // Сначала проверьте, нуждается ли дескриптор в обновлении.
-        if (t && (*DescriptorGeneration != t->generation || *DescriptorGeneration == INVALID_ID)) {
+        if (t && (*DescriptorID != t->id || *DescriptorGeneration != t->generation || *DescriptorGeneration == INVALID_ID)) {
             VulkanTextureData* InternalData = /*(vulkan_texture_data*)*/t->Data;
 
             // Назначьте вид и сэмплер.
@@ -338,6 +340,7 @@ void VulkanMaterialShader::UpdateObject(VulkanAPI *VkAPI, const GeometryRenderDa
             // Синхронизировать генерацию кадров, если не используется текстура по умолчанию.
             if (t->generation != INVALID_ID) {
                 *DescriptorGeneration = t->generation;
+                *DescriptorID = t->id; 
             }
             DescriptorIndex++;
         }
@@ -362,6 +365,7 @@ bool VulkanMaterialShader::AcquireResources(VulkanAPI *VkAPI, u32 &OutObjectID)
     for (u32 i = 0; i < VULKAN_OBJECT_SHADER_DESCRIPTOR_COUNT; ++i) {
         for (u32 j = 0; j < 3; ++j) {
             ObjectState->DescriptorStates[i].generations[j] = INVALID_ID;
+            ObjectState->DescriptorStates[i].ids[j] = INVALID_ID;
         }
     }
 
@@ -386,6 +390,18 @@ bool VulkanMaterialShader::AcquireResources(VulkanAPI *VkAPI, u32 &OutObjectID)
 
 void VulkanMaterialShader::ReleaseResources(VulkanAPI *VkAPI, u32 ObjectID)
 {
+    VulkanObjectShaderObjectState* ObjectState = &ObjectStates[ObjectID];
+
+    const u32 DescriptorSetCount = 3;
+    // Освободите наборы дескрипторов объектов.
+    VkResult result = vkFreeDescriptorSets(VkAPI->Device.LogicalDevice, ObjectDescriptorPool, DescriptorSetCount, ObjectState->DescriptorSets);
+    if (result != VK_SUCCESS) {
+        MERROR("Ошибка при освобождении наборов дескрипторов объектных шейдеров!");
+    }
+    for (u32 i = 0; i < VULKAN_OBJECT_SHADER_DESCRIPTOR_COUNT; ++i) {
+        for (u32 j = 0; j < 3; ++j) {
+            ObjectState->DescriptorStates[i].generations[j] = INVALID_ID;
+            ObjectState->DescriptorStates[i].ids[j] = INVALID_ID;
+        }
+    }
 }
-
-

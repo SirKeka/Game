@@ -57,7 +57,7 @@ public:
             MERROR("«HashTable::Set» требует существования имени и значения.");
             return false;
         }
-        if (!IsPointerType) {
+        if (IsPointerType) {
             MERROR("«HashTable::Set» не следует использовать с таблицами, имеющими типы указателей. Вместо этого используйте «HashTable::pSet».");
             return false;
         }

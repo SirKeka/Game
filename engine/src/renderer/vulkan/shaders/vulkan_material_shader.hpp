@@ -18,6 +18,7 @@ struct VulkanShaderStage
 struct VulkanDescriptorState {
     // По одному на кадр
     u32 generations[3];
+    u32 ids[3];
 };
 
 #define VULKAN_OBJECT_SHADER_DESCRIPTOR_COUNT 2

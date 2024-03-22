@@ -9,30 +9,25 @@
 // TODO: временно
 
 struct TextureReference {
-        u64 ReferenceCount;
-        u32 handle;
-        bool AutoRelease;
-    };
+    u64 ReferenceCount;
+    u32 handle;
+    bool AutoRelease;
+};
 
 u32 TextureSystem::MaxTextureCount = 0;
-Texture TextureSystem::DefaultTexture;
-Texture* TextureSystem::RegisteredTextures;
-HashTable<TextureReference> TextureSystem::RegisteredTextureTable;
+TextureSystem* TextureSystem::state = nullptr;
 
-bool TextureSystem::Initialize()
+TextureSystem::TextureSystem() : 
+    DefaultTexture(), 
+    RegisteredTextures(nullptr), 
+    RegisteredTextureTable() 
 {
-    if (MaxTextureCount == 0) {
-        MFATAL("TextureSystemInitialize — MaxTextureCount должно быть > 0.");
-        return false;
-    }
-
-    u64 StructRequirement = sizeof(TextureSystem);
+    //u64 StructRequirement = sizeof(TextureSystem);
     u64 ArrayRequirement = sizeof(Texture) * MaxTextureCount;
-    u64 HashtableRequirement = sizeof(TextureReference) * MaxTextureCount;
+    //u64 HashtableRequirement = sizeof(TextureReference) * MaxTextureCount;
     //*MemoryRequirement = StructRequirement + ArrayRequirement + HashtableRequirement;
 
     //state_ptr = state;
-    this->MaxTextureCount = MaxTextureCount;
 
     // Блок массива находится после состояния. Уже выделено, поэтому просто установите указатель.
     u8* ArrayBlock = reinterpret_cast<u8*>(this + sizeof(TextureSystem));
@@ -60,11 +55,9 @@ bool TextureSystem::Initialize()
 
     // Создайте текстуры по умолчанию для использования в системе.
     CreateDefaultTexture();
-
-    return true;
 }
 
-void TextureSystem::Shutdown()
+TextureSystem::~TextureSystem()
 {
     if (this->RegisteredTextures) {
         // Уничтожить все загруженные текстуры.
@@ -76,6 +69,22 @@ void TextureSystem::Shutdown()
         }
         DefaultTexture.Destroy(Renderer::GetRendererType());
     }
+}
+
+bool TextureSystem::Initialize()
+{
+    state = new TextureSystem();
+    if (state->MaxTextureCount == 0) {
+        MFATAL("TextureSystemInitialize — MaxTextureCount должно быть > 0.");
+        return false;
+    }
+
+    return true;
+}
+
+void TextureSystem::Shutdown()
+{
+    delete state;
 }
 
 Texture *TextureSystem::Acquire(MString name, bool AutoRelease)
@@ -155,7 +164,7 @@ void TextureSystem::Release(MString name)
             t->Destroy(Renderer::GetRendererType());
 
             // Сбросьте запись массива и убедитесь, что установлены недопустимые идентификаторы.
-            t = {};
+            MMemory::TZeroMem<Texture>(t, sizeof(Texture));
             t->id = INVALID_ID;
             t->generation = INVALID_ID;
 
@@ -176,7 +185,7 @@ void TextureSystem::Release(MString name)
 
 Texture *TextureSystem::GetDefaultTexture()
 {
-    if (DefaultTexture) {
+    if (state) {
         return &DefaultTexture;
     }
 
@@ -189,9 +198,15 @@ void TextureSystem::SetMaxTextureCount(u32 value)
     MaxTextureCount = value;
 }
 
+TextureSystem *TextureSystem::Instance()
+{
+    return state;
+}
+
 void *TextureSystem::operator new(u64 size)
 {
     // Блок памяти будет содержать структуру состояния, затем блок массива, затем блок хеш-таблицы.
+    u64 StructRequirement = sizeof(TextureSystem);
     u64 ArrayRequirement = sizeof(Texture) * MaxTextureCount;
     u64 HashtableRequirement = sizeof(TextureReference) * MaxTextureCount;
     //*memory_requirement = struct_requirement + array_requirement + hashtable_requirement;
