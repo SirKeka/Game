@@ -45,7 +45,7 @@ namespace Filesystem
      * @param LineBuf указатель на массив символов, который будет выделен и заполнен этим методом.
      * @returns true в случае успеха; в противном случае false.
      */
-    MAPI bool ReadLine(FileHandle* handle, char*& LineBuf);
+    MAPI bool ReadLine(FileHandle* handle, u64 MaxLength, char** LineBuf, u64* OutLineLength);
 
     /** 
      * Записывает текст в предоставленный файл, добавляя после этого '\n'.

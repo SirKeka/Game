@@ -9,6 +9,7 @@ Texture::Texture() :
     ChannelCount(0), 
     HasTransparency(false), 
     generation(INVALID_ID), 
+    name(TEXTURE_NAME_MAX_LENGTH),
     Data(nullptr) 
     {
         /*id = 0;
@@ -33,14 +34,16 @@ height(t.height),
 ChannelCount(t.ChannelCount), 
 HasTransparency(t.HasTransparency), 
 generation(t.generation), 
+name(t.name),
 Data(t.Data) {}
 
-void Texture::Create(MString name,i32 width, i32 height, i32 ChannelCount, const u8 *pixels, bool HasTransparency, VulkanAPI *VkAPI)
+void Texture::Create(MString name, i32 width, i32 height, i32 ChannelCount, const u8 *pixels, bool HasTransparency, VulkanAPI *VkAPI)
 {
     this->width = width;
     this->height = height;
     this->ChannelCount = ChannelCount;
     this->generation = INVALID_ID;
+    this->name = name;
 
     // Создание внутренних данных.
     // TODO: Используйте для этого распределитель.

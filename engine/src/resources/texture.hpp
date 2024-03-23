@@ -4,6 +4,8 @@
 #include "renderer/vulkan/vulkan_image.hpp"
 #include "containers/mstring.hpp"
 
+#define TEXTURE_NAME_MAX_LENGTH 512
+
 class VulkanAPI;
 
 struct VulkanTextureData {
@@ -20,6 +22,7 @@ public:
     u8 ChannelCount;
     bool HasTransparency;
     u32 generation;
+    MString name;
     VulkanTextureData* Data;
 public:
     Texture();

@@ -156,27 +156,28 @@ void TextureSystem::Release(MString name)
             MWARN("Попробовал выпустить несуществующую текстуру: '%s'", name.c_str());
             return;
         }
+
+        // Возьмите копию имени, так как оно будет уничтожено при уничтожении 
+        // (поскольку имя передается как указатель на фактическое имя текстуры).
+        MString NameCopy = MString(TEXTURE_NAME_MAX_LENGTH);
+        NameCopy = name;
+
         ref.ReferenceCount--;
         if (ref.ReferenceCount == 0 && ref.AutoRelease) {
             Texture* t = &RegisteredTextures[ref.handle];
 
-            // Release texture.
+            // Уничтожить/ сбросить текстуру.
             t->Destroy(Renderer::GetRendererType());
-
-            // Сбросьте запись массива и убедитесь, что установлены недопустимые идентификаторы.
-            MMemory::TZeroMem<Texture>(t, sizeof(Texture));
-            t->id = INVALID_ID;
-            t->generation = INVALID_ID;
 
             // Сброс ссылки.
             ref.handle = INVALID_ID;
             ref.AutoRelease = false;
-            MTRACE("Released texture '%s'., Текстура выгружена, поскольку количество ссылок = 0 и AutoRelease = true.", name.c_str());
+            MTRACE("Released texture '%s'., Текстура выгружена, поскольку количество ссылок = 0 и AutoRelease = true.", NameCopy.c_str());
         } else {
-            MTRACE("Released texture '%s', теперь счетчик ссылок равен '%i' (AutoRelease=%s).", name.c_str(), ref.ReferenceCount, ref.AutoRelease ? "true" : "false");
+            MTRACE("Released texture '%s', теперь счетчик ссылок равен '%i' (AutoRelease=%s).", NameCopy.c_str(), ref.ReferenceCount, ref.AutoRelease ? "true" : "false");
         }
 
-        // Update the entry.
+        // Обновите запись.
         RegisteredTextureTable.Set(name, &ref);
     } else {
         MERROR("TextureSystem::Release не удалось освободить текстуру '%s'.", name.c_str());
@@ -242,6 +243,7 @@ bool TextureSystem::CreateDefaultTexture()
         }
     }
     DefaultTexture.Create(DEFAULT_TEXTURE_NAME, TexDimension, TexDimension, 4, pixels, false, Renderer::GetRendererType());
+
     // Вручную установите недействительную генерацию текстуры, поскольку это текстура по умолчанию.
     this->DefaultTexture.generation = INVALID_ID;
 
@@ -293,6 +295,9 @@ bool TextureSystem::LoadTexture(MString TextureName, Texture *t)
 
         if (stbi_failure_reason()) {
             MWARN("load_texture() не удалось загрузить файл '%s': %s", FullFilePath, stbi_failure_reason());
+            // Устраните ошибку, чтобы следующая загрузка не завершилась неудачно.
+            stbi__err(0, 0);
+            return false;
         }
 
         // Получите внутренние ресурсы текстур и загрузите их в графический процессор.
@@ -326,6 +331,8 @@ bool TextureSystem::LoadTexture(MString TextureName, Texture *t)
     } else {
         if (stbi_failure_reason()) {
             MWARN("load_texture() не удалось загрузить файл '%s': %s", FullFilePath, stbi_failure_reason());
+            // Устраните ошибку, чтобы следующая загрузка не завершилась неудачно.
+            stbi__err(0, 0);
         }
         return false;
     }

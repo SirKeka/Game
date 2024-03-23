@@ -6,6 +6,12 @@
 
 MString::MString() : str(nullptr), lenght(0){   }
 
+MString::MString(u64 lenght)
+{
+    this->lenght = lenght + 1;
+    this->str = MMemory::TAllocate<char>(lenght, MEMORY_TAG_STRING);
+}
+
 MString::MString(const char *s)
 {
     lenght = strlen(s) + 1;
@@ -33,10 +39,12 @@ MString::~MString()
 
 MString &MString::operator=(const MString &s)
 {
-    if (this->str != nullptr) Destroy();
+    if (this->lenght < s.lenght) {
+        Destroy();
+        lenght = s.lenght + 1;
+        this->str = MMemory::TAllocate<char>(lenght, MEMORY_TAG_STRING);
+    }
 
-    lenght = strlen(s.str) + 1;
-    this->str = MMemory::TAllocate<char>(lenght, MEMORY_TAG_STRING);
     MMemory::CopyMem(this->str, s.str, lenght);
     
     return *this;
@@ -44,10 +52,12 @@ MString &MString::operator=(const MString &s)
 
 MString &MString::operator=(const char *s)
 {
-    if (this->str != nullptr) Destroy();
+    if (this->lenght < strlen(s)) {
+        Destroy();
+        lenght = strlen(s) + 1;
+        this->str = MMemory::TAllocate<char>(lenght, MEMORY_TAG_STRING);
+    }
 
-    lenght = strlen(s) + 1;
-    this->str = MMemory::TAllocate<char>(lenght, MEMORY_TAG_STRING);
     MMemory::CopyMem(this->str, s, lenght);
     
     return *this;
@@ -177,6 +187,136 @@ bool MString::ToVector3D(char *str, Vector3D<f32> *OutVector)
     MMemory::ZeroMem(OutVector, sizeof(Vector3D<f32>));
     i32 result = sscanf(str, "%f %f %f", &OutVector->x, &OutVector->y, &OutVector->z);
     return result != -1;
+}
+
+bool MString::ToVector2D(char *str, Vector2D<f32> *OutVector)
+{
+    if (!str) {
+        return false;
+    }
+
+    MMemory::ZeroMem(OutVector, sizeof(Vector2D<f32>));
+    i32 result = sscanf(str, "%f %f", &OutVector->x, &OutVector->y);
+    return result != -1;
+}
+
+bool MString::ToFloat(char *str, f32 *f)
+{
+    if (!str) {
+        return false;
+    }
+
+    *f = 0;
+    i32 result = sscanf(str, "%f", f);
+    return result != -1;
+}
+
+bool MString::ToFloat(char *str, f64 *f)
+{
+    if (!str) {
+        return false;
+    }
+
+    *f = 0;
+    i32 result = sscanf(str, "%lf", f);
+    return result != -1;
+}
+
+bool MString::ToInt(char *str, i8 *i)
+{
+    if (!str) {
+        return false;
+    }
+
+    *i = 0;
+    i32 result = sscanf(str, "%hhi", i);
+    return result != -1;
+}
+
+bool MString::ToInt(char *str, i16 *i)
+{
+    if (!str) {
+        return false;
+    }
+
+    *i = 0;
+    i32 result = sscanf(str, "%hi", i);
+    return result != -1;
+}
+
+bool MString::ToInt(char *str, i32 *i)
+{
+    if (!str) {
+        return false;
+    }
+
+    *i = 0;
+    i32 result = sscanf(str, "%i", i);
+    return result != -1;
+}
+
+bool MString::ToInt(char *str, i64 *i)
+{
+    if (!str) {
+        return false;
+    }
+
+    *i = 0;
+    i32 result = sscanf(str, "%lli", i);
+    return result != -1;
+}
+
+bool MString::ToUInt(char *str, u8 *u)
+{
+    if (!str) {
+        return false;
+    }
+
+    *u = 0;
+    i32 result = sscanf(str, "%hhu", u);
+    return result != -1;
+}
+
+bool MString::ToUInt(char *str, u16 *u)
+{
+    if (!str) {
+        return false;
+    }
+
+    *u = 0;
+    i32 result = sscanf(str, "%hu", u);
+    return result != -1;
+}
+
+bool MString::ToUInt(char *str, u32 *u)
+{
+    if (!str) {
+        return false;
+    }
+
+    *u = 0;
+    i32 result = sscanf(str, "%u", u);
+    return result != -1;
+}
+
+bool MString::ToUInt(char *str, u64 *u)
+{
+    if (!str) {
+        return false;
+    }
+
+    *u = 0;
+    i32 result = sscanf(str, "%llu", u);
+    return result != -1;
+}
+
+bool MString::ToBool(char *str, b8 *b)
+{
+    if (!str) {
+        return false;
+    }
+
+    return StringsEqual(str, "1") || StringsEqual(str, "true");
 }
 
 void MString::Destroy()

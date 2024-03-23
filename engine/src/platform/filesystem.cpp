@@ -9,8 +9,13 @@
 
 bool Filesystem::Exists(const char *path)
 {
+#ifdef _MSC_VER
+    struct _stat buffer;
+    return _stat(path, &buffer);
+#else
     struct stat buffer;
     return stat(path, &buffer) == 0;
+#endif
 }
 
 bool Filesystem::Open(const char *path, FileModes mode, bool binary, FileHandle *OutHandle)
@@ -52,15 +57,12 @@ void Filesystem::Close(FileHandle *handle)
     }
 }
 
-bool Filesystem::ReadLine(FileHandle *handle, char *&LineBuf)
+bool Filesystem::ReadLine(FileHandle *handle, u64 MaxLength, char** LineBuf, u64* OutLineLength)
 {
-    if (handle->handle) {
-        // Since we are reading a single line, it should be safe to assume this is enough characters.
-        char buffer[32000];
-        if (fgets(buffer, 32000, reinterpret_cast<FILE*>(handle->handle)) != 0) {
-            u64 length = strlen(buffer);
-            LineBuf = MMemory::TAllocate<char>(length + 1, MEMORY_TAG_STRING);
-            strcpy(LineBuf, buffer);
+    if (handle->handle && LineBuf && OutLineLength && MaxLength > 0) {
+        char* buf = *LineBuf;
+        if (fgets(buf, MaxLength, (FILE*)handle->handle) != 0) {
+            *OutLineLength = strlen(*LineBuf);
             return true;
         }
     }
