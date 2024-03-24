@@ -4,17 +4,16 @@
 #include "renderer/vulkan/vulkan_api.hpp"
 #include "renderer/vulkan/vulkan_device.hpp"
 #include "renderer/vulkan/vulkan_shader_utils.hpp"
-#include "systems/texture_system.hpp"
 
 #define BUILTIN_SHADER_NAME_OBJECT "Builtin.MaterialShader"
 
 bool VulkanMaterialShader::Create(VulkanAPI *VkAPI)
 {
     // Инициализация модуля шейдера на каждом этапе.
-    char StageTypeStrs[OBJECT_SHADER_STAGE_COUNT][5] = {"vert", "frag"};
-    VkShaderStageFlagBits StageTypes[OBJECT_SHADER_STAGE_COUNT] = {VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_FRAGMENT_BIT};
+    char StageTypeStrs[MATERIAL_SHADER_STAGE_COUNT][5] = {"vert", "frag"};
+    VkShaderStageFlagBits StageTypes[MATERIAL_SHADER_STAGE_COUNT] = {VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_FRAGMENT_BIT};
 
-    for (u32 i = 0; i < OBJECT_SHADER_STAGE_COUNT; ++i) {
+    for (u32 i = 0; i < MATERIAL_SHADER_STAGE_COUNT; ++i) {
         if (!VulkanShadersUtil::CreateShaderModule(VkAPI, BUILTIN_SHADER_NAME_OBJECT, StageTypeStrs[i], StageTypes[i], i, stages)) {
             MERROR("Невозможно создать %s шейдерный модуль для '%s'.", StageTypeStrs[i], BUILTIN_SHADER_NAME_OBJECT);
             return false;
@@ -47,12 +46,12 @@ bool VulkanMaterialShader::Create(VulkanAPI *VkAPI)
 
     // Локальные/объектные дескрипторы
     const u32 LocalSamplerCount = 1;
-    VkDescriptorType DescriptorTypes[VULKAN_OBJECT_SHADER_DESCRIPTOR_COUNT] = {
+    VkDescriptorType DescriptorTypes[VULKAN_MATERIAL_SHADER_DESCRIPTOR_COUNT] = {
         VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,          // Привязка 0 - однородный буфер(uniform buffer)
         VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,  // Привязка 1 - Diffuse sampler layout.
     };
-    VkDescriptorSetLayoutBinding bindings[VULKAN_OBJECT_SHADER_DESCRIPTOR_COUNT] {};
-    for (u32 i = 0; i < VULKAN_OBJECT_SHADER_DESCRIPTOR_COUNT; ++i) {
+    VkDescriptorSetLayoutBinding bindings[VULKAN_MATERIAL_SHADER_DESCRIPTOR_COUNT] {};
+    for (u32 i = 0; i < VULKAN_MATERIAL_SHADER_DESCRIPTOR_COUNT; ++i) {
         bindings[i].binding = i;
         bindings[i].descriptorCount = 1;
         bindings[i].descriptorType = DescriptorTypes[i];
@@ -60,7 +59,7 @@ bool VulkanMaterialShader::Create(VulkanAPI *VkAPI)
     }
 
     VkDescriptorSetLayoutCreateInfo LayoutInfo = {VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO};
-    LayoutInfo.bindingCount = VULKAN_OBJECT_SHADER_DESCRIPTOR_COUNT;
+    LayoutInfo.bindingCount = VULKAN_MATERIAL_SHADER_DESCRIPTOR_COUNT;
     LayoutInfo.pBindings = bindings;
     VK_CHECK(vkCreateDescriptorSetLayout(VkAPI->Device.LogicalDevice, &LayoutInfo, 0, &this->ObjectDescriptorSetLayout));
 
@@ -68,15 +67,15 @@ bool VulkanMaterialShader::Create(VulkanAPI *VkAPI)
     VkDescriptorPoolSize ObjectPoolSizes[2];
     // Первый раздел будет использоваться для универсальных буферов.
     ObjectPoolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    ObjectPoolSizes[0].descriptorCount = VULKAN_OBJECT_MAX_OBJECT_COUNT;
+    ObjectPoolSizes[0].descriptorCount = VULKAN_MAX_MATERIAL_OBJECT_COUNT;
     // Второй раздел будет использоваться для образцов изображений.
     ObjectPoolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    ObjectPoolSizes[1].descriptorCount = LocalSamplerCount * VULKAN_OBJECT_MAX_OBJECT_COUNT;
+    ObjectPoolSizes[1].descriptorCount = LocalSamplerCount * VULKAN_MAX_MATERIAL_OBJECT_COUNT;
 
     VkDescriptorPoolCreateInfo ObjectPoolInfo = {VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
     ObjectPoolInfo.poolSizeCount = 2;
     ObjectPoolInfo.pPoolSizes = ObjectPoolSizes;
-    ObjectPoolInfo.maxSets = VULKAN_OBJECT_MAX_OBJECT_COUNT;
+    ObjectPoolInfo.maxSets = VULKAN_MAX_MATERIAL_OBJECT_COUNT;
 
     // Создание пула дескрипторов объектов.
     VK_CHECK(vkCreateDescriptorPool(VkAPI->Device.LogicalDevice, &ObjectPoolInfo, VkAPI->allocator, &this->ObjectDescriptorPool));
@@ -124,9 +123,9 @@ bool VulkanMaterialShader::Create(VulkanAPI *VkAPI)
 
     // Этапы
     // ПРИМЕЧАНИЕ: Должно соответствовать количеству shader->stages.
-    VkPipelineShaderStageCreateInfo StageCreateInfos[OBJECT_SHADER_STAGE_COUNT]{};
+    VkPipelineShaderStageCreateInfo StageCreateInfos[MATERIAL_SHADER_STAGE_COUNT]{};
     //MMemory::ZeroMem(StageCreateInfos, sizeof(StageCreateInfos));
-    for (u32 i = 0; i < OBJECT_SHADER_STAGE_COUNT; ++i) {
+    for (u32 i = 0; i < MATERIAL_SHADER_STAGE_COUNT; ++i) {
         StageCreateInfos[i].sType = stages[i].ShaderStageCreateInfo.sType;
         StageCreateInfos[i] = stages[i].ShaderStageCreateInfo;
     }
@@ -138,7 +137,7 @@ bool VulkanMaterialShader::Create(VulkanAPI *VkAPI)
             AttributeDescriptions,
             DescriptorSetLayoutCount,
             layouts,
-            OBJECT_SHADER_STAGE_COUNT,
+            MATERIAL_SHADER_STAGE_COUNT,
             StageCreateInfos,
             viewport,
             scissor,
@@ -204,7 +203,7 @@ void VulkanMaterialShader::DestroyShaderModule(VulkanAPI *VkAPI)
     vkDestroyDescriptorSetLayout(VkAPI->Device.LogicalDevice, GlobalDescriptorSetLayout, VkAPI->allocator);
     
     // Уничтожьте шейдерные модули.
-    for (u32 i = 0; i < OBJECT_SHADER_STAGE_COUNT; ++i) {
+    for (u32 i = 0; i < MATERIAL_SHADER_STAGE_COUNT; ++i) {
         vkDestroyShaderModule(VkAPI->Device.LogicalDevice, stages[i].handle, VkAPI->allocator);
         stages[i].handle = 0;
     }
@@ -257,11 +256,11 @@ void VulkanMaterialShader::UpdateObject(VulkanAPI *VkAPI, const GeometryRenderDa
     vkCmdPushConstants(CommandBuffer, pipeline.PipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(Matrix4D), &data.model);
 
     // Получить данные о материале.
-    VulkanObjectShaderObjectState* ObjectState = &ObjectStates[data.ObjectID];
+    VulkanMaterialShaderInstanceState* ObjectState = &InstanceStates[data.ObjectID];
     VkDescriptorSet ObjectDescriptorSet = ObjectState->DescriptorSets[ImageIndex];
 
     // TODO: если требуется обновление
-    VkWriteDescriptorSet DescriptorWrites[VULKAN_OBJECT_SHADER_DESCRIPTOR_COUNT] {};
+    VkWriteDescriptorSet DescriptorWrites[VULKAN_MATERIAL_SHADER_DESCRIPTOR_COUNT] {};
     u32 DescriptorCount = 0;
     u32 DescriptorIndex = 0;
 
@@ -361,8 +360,8 @@ bool VulkanMaterialShader::AcquireResources(VulkanAPI *VkAPI, u32 &OutObjectID)
     this->ObjectUniformBufferIndex++;
 
     u32 ObjectID = OutObjectID;
-    VulkanObjectShaderObjectState* ObjectState = &this->ObjectStates[ObjectID];
-    for (u32 i = 0; i < VULKAN_OBJECT_SHADER_DESCRIPTOR_COUNT; ++i) {
+    VulkanMaterialShaderInstanceState* ObjectState = &this->InstanceStates[ObjectID];
+    for (u32 i = 0; i < VULKAN_MATERIAL_SHADER_DESCRIPTOR_COUNT; ++i) {
         for (u32 j = 0; j < 3; ++j) {
             ObjectState->DescriptorStates[i].generations[j] = INVALID_ID;
             ObjectState->DescriptorStates[i].ids[j] = INVALID_ID;
@@ -390,7 +389,7 @@ bool VulkanMaterialShader::AcquireResources(VulkanAPI *VkAPI, u32 &OutObjectID)
 
 void VulkanMaterialShader::ReleaseResources(VulkanAPI *VkAPI, u32 ObjectID)
 {
-    VulkanObjectShaderObjectState* ObjectState = &ObjectStates[ObjectID];
+    VulkanMaterialShaderInstanceState* ObjectState = &InstanceStates[ObjectID];
 
     const u32 DescriptorSetCount = 3;
     // Освободите наборы дескрипторов объектов.
@@ -398,7 +397,7 @@ void VulkanMaterialShader::ReleaseResources(VulkanAPI *VkAPI, u32 ObjectID)
     if (result != VK_SUCCESS) {
         MERROR("Ошибка при освобождении наборов дескрипторов объектных шейдеров!");
     }
-    for (u32 i = 0; i < VULKAN_OBJECT_SHADER_DESCRIPTOR_COUNT; ++i) {
+    for (u32 i = 0; i < VULKAN_MATERIAL_SHADER_DESCRIPTOR_COUNT; ++i) {
         for (u32 j = 0; j < 3; ++j) {
             ObjectState->DescriptorStates[i].generations[j] = INVALID_ID;
             ObjectState->DescriptorStates[i].ids[j] = INVALID_ID;

@@ -13,6 +13,11 @@ struct VulkanTextureData {
     VkSampler sampler;
 };
 
+enum TextureUse {
+    TEXTURE_USE_UNKNOWN = 0x00,
+    TEXTURE_USE_MAP_DIFFUSE = 0x01
+};
+
 class Texture
 {
 public:

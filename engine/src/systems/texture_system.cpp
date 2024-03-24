@@ -73,11 +73,11 @@ TextureSystem::~TextureSystem()
 
 bool TextureSystem::Initialize()
 {
-    state = new TextureSystem();
     if (state->MaxTextureCount == 0) {
         MFATAL("TextureSystemInitialize — MaxTextureCount должно быть > 0.");
         return false;
     }
+    state = new TextureSystem();
 
     return true;
 }
@@ -264,7 +264,7 @@ bool TextureSystem::LoadTexture(MString TextureName, Texture *t)
     char FullFilePath[512];
 
     // TODO: попробуйте разные расширения
-    StringFormat(FullFilePath, FormatStr, TextureName.c_str(), "png");
+    MString::Format(FullFilePath, FormatStr, TextureName.c_str(), "png");
 
     // Используйте временную текстуру для загрузки.
     Texture TempTexture;

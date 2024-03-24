@@ -24,13 +24,13 @@ public:
     /// @param ElementCount максимальное количество элементов. Размер не может быть изменен.
     /// @param IsPointerType блок памяти, который будет использоваться. Должен быть равен по размеру ElementSize * ElementCount;
     /// @param memory указывает, будет ли эта хэш-таблица содержать типы указателей.
-    HashTable(/*u64 ElementSize, */u32 ElementCount, bool IsPointerType, T* memory) {
+    HashTable(u32 ElementCount, bool IsPointerType, T* memory) {
         if (!memory) {
         MERROR("Создать не получилось! Требуется указатель на память");
         return;
     }
-    if (!ElementCount/* || !ElementSize*/) {
-        MERROR(/*"ElementSize и */"ElementCount должен быть положительным значением, отличным от нуля.");
+    if (!ElementCount) {
+        MERROR("ElementCount должен быть положительным значением, отличным от нуля.");
         return;
     }
 

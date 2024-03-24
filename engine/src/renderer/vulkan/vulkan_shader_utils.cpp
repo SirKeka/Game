@@ -15,7 +15,7 @@ namespace VulkanShadersUtil
     {
         // Имя файла сборки.
         char FileName[512];
-        StringFormat(FileName, "assets/shaders/%s.%s.spv", name, TypeStr);
+        MString::Format(FileName, "assets/shaders/%s.%s.spv", name, TypeStr);
 
         MMemory::ZeroMem(&ShaderStages[StageIndex].CreateInfo, sizeof(VkShaderModuleCreateInfo));
         ShaderStages[StageIndex].CreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;

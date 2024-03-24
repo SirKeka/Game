@@ -3,6 +3,7 @@
 #include "renderer/renderer_types.hpp"
 #include "renderer/vulkan/vulkan_pipeline.hpp"
 #include "renderer/vulkan/vulkan_buffer.hpp"
+#include "systems/texture_system.hpp"
 
 class VulkanAPI;
 
@@ -13,7 +14,8 @@ struct VulkanShaderStage
     VkPipelineShaderStageCreateInfo ShaderStageCreateInfo;
 };
 
-#define OBJECT_SHADER_STAGE_COUNT 2
+#define MATERIAL_SHADER_STAGE_COUNT 2
+#define VULKAN_MATERIAL_SHADER_SAMPLER_COUNT 1
 
 struct VulkanDescriptorState {
     // По одному на кадр
@@ -21,22 +23,22 @@ struct VulkanDescriptorState {
     u32 ids[3];
 };
 
-#define VULKAN_OBJECT_SHADER_DESCRIPTOR_COUNT 2
-struct VulkanObjectShaderObjectState {
+#define VULKAN_MATERIAL_SHADER_DESCRIPTOR_COUNT 2
+struct VulkanMaterialShaderInstanceState {
     // За кадр
     VkDescriptorSet DescriptorSets[3];
 
     // Для каждого дескриптора
-    VulkanDescriptorState DescriptorStates[VULKAN_OBJECT_SHADER_DESCRIPTOR_COUNT];
+    VulkanDescriptorState DescriptorStates[VULKAN_MATERIAL_SHADER_DESCRIPTOR_COUNT];
 };
 
 // Максимальное количество объектов
-#define VULKAN_OBJECT_MAX_OBJECT_COUNT 1024
+#define VULKAN_MAX_MATERIAL_OBJECT_COUNT 1024
 
 class VulkanMaterialShader
 {
 public:
-    VulkanShaderStage stages[OBJECT_SHADER_STAGE_COUNT];
+    VulkanShaderStage stages[MATERIAL_SHADER_STAGE_COUNT];
     VkDescriptorPool GlobalDescriptorPool;
     VkDescriptorSetLayout GlobalDescriptorSetLayout;
     VkDescriptorSet GlobalDescriptorSets[3]; // Один набор дескрипторов на кадр - максимум 3 для тройной буферизации.
@@ -48,8 +50,10 @@ public:
     // TODO: Вместо этого создать здесь какой-нибудь свободный список.
     u32 ObjectUniformBufferIndex = 0;
 
+    TextureUse SamplerUses[VULKAN_MATERIAL_SHADER_SAMPLER_COUNT];
+
     // TODO: сделать динамическим
-    VulkanObjectShaderObjectState ObjectStates[VULKAN_OBJECT_MAX_OBJECT_COUNT];
+    VulkanMaterialShaderInstanceState InstanceStates[VULKAN_MAX_MATERIAL_OBJECT_COUNT];
 
     VulkanPipeline pipeline;
     

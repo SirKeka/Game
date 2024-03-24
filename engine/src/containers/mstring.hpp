@@ -30,10 +30,20 @@ public:
     /// @param str константная строка
     /// @return длину(количество символов в строке)
     u64 Length();
+    static u64 Length(const char* s);
     //char* Copy(const char* s);
 
     /// @return строку типа си
     const char* c_str() const noexcept;
+
+    // Выполняет форматирование строки для определения заданной строки формата и параметров.
+    static i32 Format(char* dest, const char* format, ...);
+    /// @brief Выполняет форматирование переменной строки для определения заданной строки формата и va_list.
+    /// @param dest определяет место назначения для отформатированной строки.
+    /// @param format отформатируйте строку, которая должна быть отформатирована.
+    /// @param va_list cписок переменных аргументов.
+    /// @return размер записываемых данных.
+    static i32 FormatV(char* dest, const char* format, char* va_list);
 
     static char* Copy(char* dest, const char* source);
     static char* nCopy(char* dest, const char* source, i64 length);
@@ -145,13 +155,3 @@ MAPI bool StringsEqual(const char* strL, const char* strR);
 
 // Сравнение строк без учета регистра. True, если совпадает, в противном случае false.
 MAPI bool StringsEquali(const char* str0, const char* str1);
-
-// Выполняет форматирование строки для определения заданной строки формата и параметров.
-MAPI i32 StringFormat(char* dest, const char* format, ...);
-
-/// @brief Выполняет форматирование переменной строки для определения заданной строки формата и va_list.
-/// @param dest определяет место назначения для отформатированной строки.
-/// @param format отформатируйте строку, которая должна быть отформатирована.
-/// @param va_list cписок переменных аргументов.
-/// @return размер записываемых данных.
-MAPI i32 StringFormatV(char* dest, const char* format, char* va_list);

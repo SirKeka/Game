@@ -72,11 +72,11 @@ void Logger::Output(LogLevel level, MString message, ...)
     // Отформатируйте исходное сообщение.
     __builtin_va_list arg_ptr;
     va_start(arg_ptr, message);
-    StringFormatV(OutMessage, message.c_str(), arg_ptr);
+    MString::FormatV(OutMessage, message.c_str(), arg_ptr);
     va_end(arg_ptr);
 
     // Добавить уровень журнала к сообщению.
-    StringFormat(OutMessage, "%s%s\n", LevelStrings[level], OutMessage);
+    MString::Format(OutMessage, "%s%s\n", LevelStrings[level], OutMessage);
 
     if (IsError) {
         PlatformConsoleWriteError(OutMessage, level);
