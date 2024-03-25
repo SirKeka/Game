@@ -49,19 +49,20 @@ public:
     static char* nCopy(char* dest, const char* source, i64 length);
 
     MString& Trim();
+    static char* Trim(char* s);
 
-    void Mid(char* dest, const char* source, i32 start, i32 length);
+    static void Mid(char* dest, const char* source, i32 start, i32 length);
     /// @brief Возвращает индекс первого вхождения c в строку; в противном случае -1.
     /// @param str Строка для сканирования.
     /// @param c Персонаж, которого нужно искать.
     /// @return Индекс первого вхождения c; в противном случае -1, если не найден. 
-    i32 IndexOf(char* str, char c);
+    static i32 IndexOf(char* str, char c);
  
     /// @brief Пытается проанализировать вектор из предоставленной строки.
     /// @param str Строка для анализа. Должна быть разделена пробелами (т. е. "1.0 2.0 3.0 4.0")
     /// @param OutVector A pointer to the vector to write to.
     /// @return True, если синтаксический анализ прошел успешно; в противном случае false. 
-    bool ToVector4D(char* str, Vector4D<f32>* OutVector);
+    static bool ToVector4D(char* str, Vector4D<f32>* OutVector);
 
     /// @brief Пытается проанализировать вектор из предоставленной строки.
     /// @param str Строка для анализа. Должна быть разделена пробелами (т. е. «1,0 2,0 3,0»)

@@ -6,6 +6,7 @@
 #include "systems/texture_system.hpp"
 
 class VulkanAPI;
+class Material;
 
 struct VulkanShaderStage
 {
@@ -66,6 +67,6 @@ public:
     void Use(VulkanAPI* VkAPI);
     void UpdateGlobalState(VulkanAPI* VkAPI, f32 DeltaTime);
     void UpdateObject(VulkanAPI* VkAPI, const GeometryRenderData& data);
-    bool AcquireResources(VulkanAPI* VkAPI, u32& OutObjectID);
-    void ReleaseResources(VulkanAPI* VkAPI, u32 ObjectID);
+    bool AcquireResources(VulkanAPI* VkAPI, Material* material);
+    void ReleaseResources(VulkanAPI* VkAPI, Material* material);
 };

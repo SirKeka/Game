@@ -1,9 +1,5 @@
 #include "vulkan_material_shader.hpp"
-
-#include "math/vector3d.hpp"
-#include "renderer/vulkan/vulkan_api.hpp"
-#include "renderer/vulkan/vulkan_device.hpp"
-#include "renderer/vulkan/vulkan_shader_utils.hpp"
+#include "systems/material_system.hpp"
 
 #define BUILTIN_SHADER_NAME_OBJECT "Builtin.MaterialShader"
 
@@ -353,14 +349,13 @@ void VulkanMaterialShader::UpdateObject(VulkanAPI *VkAPI, const GeometryRenderDa
     vkCmdBindDescriptorSets(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.PipelineLayout, 1, 1, &ObjectDescriptorSet, 0, 0);
 }
 
-bool VulkanMaterialShader::AcquireResources(VulkanAPI *VkAPI, u32 &OutObjectID)
+bool VulkanMaterialShader::AcquireResources(VulkanAPI *VkAPI, Material* material)
 {
     // TODO: free list
-    OutObjectID = this->ObjectUniformBufferIndex;
+    material->InternalId = this->ObjectUniformBufferIndex;
     this->ObjectUniformBufferIndex++;
 
-    u32 ObjectID = OutObjectID;
-    VulkanMaterialShaderInstanceState* ObjectState = &this->InstanceStates[ObjectID];
+    VulkanMaterialShaderInstanceState* ObjectState = &this->InstanceStates[material->InternalId];
     for (u32 i = 0; i < VULKAN_MATERIAL_SHADER_DESCRIPTOR_COUNT; ++i) {
         for (u32 j = 0; j < 3; ++j) {
             ObjectState->DescriptorStates[i].generations[j] = INVALID_ID;
@@ -387,9 +382,9 @@ bool VulkanMaterialShader::AcquireResources(VulkanAPI *VkAPI, u32 &OutObjectID)
     return true;
 }
 
-void VulkanMaterialShader::ReleaseResources(VulkanAPI *VkAPI, u32 ObjectID)
+void VulkanMaterialShader::ReleaseResources(VulkanAPI *VkAPI, Material* material)
 {
-    VulkanMaterialShaderInstanceState* ObjectState = &InstanceStates[ObjectID];
+    VulkanMaterialShaderInstanceState* ObjectState = &InstanceStates[material->InternalId];
 
     const u32 DescriptorSetCount = 3;
     // Освободите наборы дескрипторов объектов.

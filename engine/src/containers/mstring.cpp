@@ -156,6 +156,25 @@ MString &MString::Trim()
     return *this;
 }
 
+char *MString::Trim(char *s)
+{
+    while (isspace((unsigned char)*s)) {
+        s++;
+    }
+    if (*s) {
+        char* p = s;
+        while (*p) {
+            p++;
+        }
+        while (isspace((unsigned char)*(--p)))
+            ;
+
+        p[1] = '\0';
+    }
+
+    return s;
+}
+
 void MString::Mid(char *dest, const char *source, i32 start, i32 length)
 {
     if (length == 0) {
@@ -198,14 +217,14 @@ i32 MString::IndexOf(char *str, char c)
     return -1;
 }
 
-bool MString::ToVector4D(char *str, Vector4D<f32> *OutVector)
+bool MString::ToVector4D(char *s, Vector4D<f32> *OutVector)
 {
-    if (!str) {
+    if (!s) {
         return false;
     }
 
     MMemory::ZeroMem(OutVector, sizeof(Vector4D<f32>));
-    i32 result = sscanf(str, "%f %f %f %f", &OutVector->x, &OutVector->y, &OutVector->z, &OutVector->w);
+    i32 result = sscanf(s, "%f %f %f %f", &OutVector->x, &OutVector->y, &OutVector->z, &OutVector->w);
     return result != -1;
 }
 

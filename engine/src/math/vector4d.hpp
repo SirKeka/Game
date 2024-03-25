@@ -29,10 +29,31 @@ public:
         };
     };
 
-	Vector4D() {};
-	Vector4D(T x, T y, T z, T w);
-	Vector4D(const Vector2D<T>& v, f32 z = 0, f32 w = 0);
-	Vector4D(const Vector3D<T>& v, f32 w = 0);
+	Vector4D() : x(), y(), z(), w() {};
+	Vector4D(T x, T y, T z, T w) {
+#if defined(MUSE_SIMD)
+    	data = _mm_setr_ps(x, y, z, w);
+#else
+		this->x = x;
+		this->y = y;
+		this->z = z;
+		this->w = w;
+#endif
+	}
+
+	Vector4D(const Vector2D<T>& v, f32 z = 0, f32 w = 0): x(v.x), y(v.y), z(z), w(w) {}
+	Vector4D(const Vector3D<T>& v, f32 w = 0) {
+#if defined(MUSE_SIMD)
+    	Vector4D<T> OutVector;
+    	OutVector.data = _mm_setr_ps(x, y, z, w);
+    	return OutVector;
+#else
+    	this->x = v.x;
+		this->y = v.y;
+		this->z = v.z;
+		this->w = w;
+#endif
+	}
 
 	/// @brief Нулевой вектор
     /// @return (0, 0, 0, 0)
@@ -50,42 +71,6 @@ public:
 	
 	Vector4D& Normalize();
 };
-
-template <typename T>
-MINLINE Vector4D<T>::Vector4D(T x, T y, T z, T w)
-{
-	#if defined(MUSE_SIMD)
-    data = _mm_setr_ps(x, y, z, w);
-#else
-	this->x = x;
-	this->y = y;
-	this->z = z;
-	this->w = w;
-#endif
-}
-
-template <typename T>
-MINLINE Vector4D<T>::Vector4D(const Vector2D<T> &v, f32 z, f32 w)
-:
-x(v.x),
-y(v.y),
-z(z),
-w(w) {}
-
-template <typename T>
-MINLINE Vector4D<T>::Vector4D(const Vector3D<T> &v, f32 w)
-{
-#if defined(MUSE_SIMD)
-    Vector4D<T> OutVector;
-    OutVector.data = _mm_setr_ps(x, y, z, w);
-    return OutVector;
-#else
-    this->x = v.x;
-	this->y = v.y;
-	this->z = v.z;
-	this->w = w;
-#endif
-}
 
 template <typename T>
 MINLINE Vector4D<T> Vector4D<T>::Zero()
