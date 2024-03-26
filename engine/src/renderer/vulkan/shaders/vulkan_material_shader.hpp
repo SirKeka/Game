@@ -5,9 +5,6 @@
 #include "renderer/vulkan/vulkan_buffer.hpp"
 #include "systems/texture_system.hpp"
 
-class VulkanAPI;
-class Material;
-
 struct VulkanShaderStage
 {
     VkShaderModuleCreateInfo CreateInfo;
@@ -62,11 +59,11 @@ public:
     VulkanMaterialShader() = default;
     ~VulkanMaterialShader() = default;
 
-    bool Create(VulkanAPI* VkAPI);
-    void DestroyShaderModule(VulkanAPI* VkAPI);
-    void Use(VulkanAPI* VkAPI);
-    void UpdateGlobalState(VulkanAPI* VkAPI, f32 DeltaTime);
-    void UpdateObject(VulkanAPI* VkAPI, const GeometryRenderData& data);
-    bool AcquireResources(VulkanAPI* VkAPI, Material* material);
-    void ReleaseResources(VulkanAPI* VkAPI, Material* material);
+    bool Create(class VulkanAPI* VkAPI);
+    void DestroyShaderModule(class VulkanAPI* VkAPI);
+    void Use(class VulkanAPI* VkAPI);
+    void UpdateGlobalState(class VulkanAPI* VkAPI, f32 DeltaTime);
+    void UpdateObject(class VulkanAPI* VkAPI, const GeometryRenderData& data);
+    bool AcquireResources(class VulkanAPI* VkAPI, class Material* material);
+    void ReleaseResources(class VulkanAPI* VkAPI, class Material* material);
 };

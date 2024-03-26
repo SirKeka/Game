@@ -148,7 +148,7 @@ MString &MString::Trim()
             p++;
         }
         while (isspace((unsigned char)*(--p)))
-            ;
+        ;
 
         p[1] = '\0';
     }

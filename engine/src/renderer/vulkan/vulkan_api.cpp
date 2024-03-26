@@ -332,12 +332,6 @@ bool VulkanAPI::Initialize(MWindow* window, const char* ApplicationName)
     UploadDataRange(Device.GraphicsCommandPool, 0, Device.GraphicsQueue, ObjectVertexBuffer, 0, sizeof(Vertex3D) * VertCount, verts);
     UploadDataRange(Device.GraphicsCommandPool, 0, Device.GraphicsQueue, ObjectIndexBuffer, 0, sizeof(u32) * IndexCount, indices);
 
-    u32 ObjectID = 0;
-    if (!MaterialShader.AcquireResources(this, ObjectID)) {
-        MERROR("Не удалось получить ресурсы шейдера.");
-        return false;
-    }
-
     // TODO: конец временного кода
 
     MINFO("Средство визуализации Vulkan успешно инициализировано.");

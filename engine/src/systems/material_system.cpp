@@ -34,6 +34,11 @@ MaterialSystem::MaterialSystem()
     }
 }
 
+void MaterialSystem::SetMaxMaterialCount(u32 value)
+{
+    MaxMaterialCount = value;
+}
+
 bool MaterialSystem::Initialize()
 {
     if (MaxMaterialCount == 0) {
@@ -58,12 +63,12 @@ void MaterialSystem::Shutdown()
         // Сделать недействительными все материалы в массиве.
         for (u32 i = 0; i < MaxMaterialCount; ++i) {
             if (state->RegisteredMaterials[i].id != INVALID_ID) {
-                state->RegisteredMaterials[i].Destroy(); //destroy_material(&this->RegisteredMaterials[i]);
+                DestroyMaterial(&state->RegisteredMaterials[i]);
             }
         }
 
         // Уничтожьте материал по умолчанию.
-        state->DefaultMaterial.Destroy(); //destroy_material(&this->DefaultMaterial);
+        DestroyMaterial(&state->DefaultMaterial);
     }
 
     delete state;
@@ -169,7 +174,7 @@ void MaterialSystem::Release(const char *name)
             Material* m = &this->RegisteredMaterials[ref.handle];
 
             // Уничтожить/сбросить материал.
-            m->Destroy();
+            DestroyMaterial(m);
 
             // Сбросьте ссылку.
             ref.handle = INVALID_ID;
@@ -193,10 +198,10 @@ bool MaterialSystem::CreateDefaultMaterial()
     this->DefaultMaterial.generation = INVALID_ID;
     MString::nCopy(this->DefaultMaterial.name, DEFAULT_MATERIAL_NAME, MATERIAL_NAME_MAX_LENGTH);
     this->DefaultMaterial.DiffuseColour = Vector4D<f32>::One();  // белый
-    this->DefaultMaterial.DiffuseMap.use = TEXTURE_USE_MAP_DIFFUSE;
+    this->DefaultMaterial.DiffuseMap.use = TextureUse::MapDiffuse;
     this->DefaultMaterial.DiffuseMap.texture = TextureSystem::Instance()->GetDefaultTexture();
 
-    if (!this->DefaultMaterial.Create()) {
+    if (!) { // this->DefaultMaterial.Create()
         MFATAL("Не удалось получить ресурсы средства рендеринга для текстуры по умолчанию. Приложение не может быть продолжено.");
         return false;
     }
@@ -216,7 +221,7 @@ bool MaterialSystem::LoadMaterial(MaterialConfig config, Material *m)
 
     // Diffuse map
     if (MString::Length(config.DiffuseMapName) > 0) {
-        m->DiffuseMap.use = TEXTURE_USE_MAP_DIFFUSE;
+        m->DiffuseMap.use = TextureUse::MapDiffuse;
         m->DiffuseMap.texture = TextureSystem::Instance()->Acquire(config.DiffuseMapName, true);
         if (!m->DiffuseMap.texture) {
             MWARN("Невозможно загрузить текстуру '%s' для материала '%s', используя значение по умолчанию.", config.DiffuseMapName, m->name);
@@ -224,7 +229,7 @@ bool MaterialSystem::LoadMaterial(MaterialConfig config, Material *m)
         }
     } else {
         // ПРИМЕЧАНИЕ. Устанавливается только для ясности, поскольку вызов MMemory::ZeroMem выше уже делает это.
-        m->DiffuseMap.use = TEXTURE_USE_UNKNOWN;
+        m->DiffuseMap.use = TextureUse::Unknown;
         m->DiffuseMap.texture = 0;
     }
 
@@ -249,7 +254,7 @@ void MaterialSystem::DestroyMaterial(Material *m)
     }
 
     // Освободите ресурсы средства рендеринга.
-    m->Destroy();
+    //renderer_destroy_material(m);
 
     // Обнулить это, сделать удостоверения недействительными.
     MMemory::ZeroMem(m, sizeof(Material));

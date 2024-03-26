@@ -2,6 +2,7 @@
 #include "game_types.hpp"
 #include "renderer/renderer.hpp"
 #include "systems/texture_system.hpp"
+#include "systems/material_system.hpp"
 
 ApplicationState* Application::AppState;
 
@@ -71,7 +72,13 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
         MFATAL("Не удалось инициализировать систему текстур. Приложение не может быть продолжено.");
         return false;
     }
-     //AppState->TexSys->Initialize();
+
+    MaterialSystem::SetMaxMaterialCount(4096);
+    if (MaterialSystem::Instance()->Initialize()) {
+        MFATAL("Не удалось инициализировать систему материалов. Приложение не может быть продолжено.");
+        return false;
+    }
+    
 
     // Инициализируйте игру.
     if (!GameInst->Initialize()) {
@@ -161,7 +168,8 @@ bool Application::ApplicationRun() {
     Event::GetInstance()->Unregister(EVENT_CODE_RESIZED, nullptr, OnResized);
     Event::GetInstance()->Shutdown();
     Input::Instance()->Sutdown();
-    AppState->TexSys->Shutdown();
+    MaterialSystem::Instance()->Shutdown();
+    TextureSystem::Instance()->Shutdown();
     AppState->Render->Shutdown();
 
     AppState->Window->Close();

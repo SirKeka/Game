@@ -18,8 +18,8 @@ public:
     Vector4D<f32> DiffuseColour;
     TextureMap DiffuseMap;
 public:
-    Material(/* args */);
-    ~Material();
+    Material() : id(), generation(), InternalId(), name(), DiffuseColour(), DiffuseMap() {}
+    ~Material() = delete;
     void Destroy();
 
 };

@@ -2,6 +2,7 @@
 #include "core/application.hpp"
 #include "renderer/vulkan/vulkan_api.hpp"
 #include "systems/texture_system.hpp"
+#include "systems/material_system.hpp"
 
 RendererType *Renderer::ptrRenderer;
 /*f32 Renderer::NearClip = 0.1f;
@@ -9,7 +10,7 @@ f32 Renderer::FarClip = 1000.f;
 Matrix4D Renderer::projection = Matrix4::MakeFrustumProjection(Math::DegToRad(45.0f), 1280 / 720.0f, NearClip, FarClip);
 Matrix4D Renderer::view = Matrix4::MakeTranslation(Vector3D<f32>{0, 0, -30.f});*/
 
-Texture *Renderer::TestDiffuse = nullptr;
+Material *Renderer::TestMaterial = nullptr;
 
 Renderer::~Renderer()
 {
@@ -96,16 +97,26 @@ bool Renderer::DrawFrame(RenderPacket *packet)
         // quat rotation = quat_from_axis_angle(vec3_forward(), angle, false);
         // mat4 model = quat_to_rotation_matrix(rotation, vec3_zero());
         GeometryRenderData data = {};
-        data.ObjectID = 0;  // TODO: actual object id
         data.model = model;
 
         // TODO: временно.
         // Grab the default if does not exist.
-        if (!TestDiffuse) {
-            TestDiffuse = TextureSystem::Instance()->GetDefaultTexture();
+        if (!TestMaterial) {
+            // Automatic config
+            this->TestMaterial = MaterialSystem::Instance()->Acquire("test_material");
+            if (!this->TestMaterial) {
+                MWARN("Автоматическая загрузка материала не удалась, и был выполнен возврат к материалу по умолчанию, выполненному вручную.");
+                // Ручная настройка
+                MaterialConfig config;
+                MString::nCopy(config.name, "test_material", MATERIAL_NAME_MAX_LENGTH);
+                config.AutoRelease = false;
+                config.DiffuseColour = Vector4D<f32>::One();  // белый
+                MString::nCopy(config.DiffuseMapName, DEFAULT_TEXTURE_NAME, TEXTURE_NAME_MAX_LENGTH);
+                this->TestMaterial = MaterialSystem::Instance()->AcquireFromConfig(config);
+            }
         }
 
-        data.textures[0] = this->TestDiffuse;
+        data.material = this->TestMaterial;
         ptrRenderer->UpdateObjects(data);
 
         // Завершите кадр. Если это не удастся, скорее всего, это будет невозможно восстановить.
@@ -151,7 +162,12 @@ bool Renderer::EventOnDebugEvent(u16 code, void *sender, void *ListenerInst, Eve
     choice %= 3;
 
     // Приобретите новую текстуру.
-    TestDiffuse = TextureSystem::Instance()->Acquire(names[choice], true);
+    TestMaterial->DiffuseMap.texture = TextureSystem::Instance()->Acquire(names[choice], true);
+    if (TestMaterial->DiffuseMap.texture) {
+        MWARN("Event::OnDebugEvent нет текстуры! используется по умолчанию");
+        TestMaterial->DiffuseMap.texture = TextureSystem::Instance()->GetDefaultTexture();
+    }
+    
 
     // Удалите старую текстуру.
     TextureSystem::Instance()->Release(OldName);

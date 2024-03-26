@@ -24,7 +24,7 @@ private:
     f32 FarClip;
 
     //TODO: временно
-    static Texture* TestDiffuse; 
+    static Material* TestMaterial; 
     //TODO: временно
 public:
     Renderer() : projection(), view(), NearClip(0.f), FarClip(0.f) {}

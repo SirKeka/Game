@@ -4,7 +4,8 @@
 
 #define DEFAULT_MATERIAL_NAME "default"
 
-struct MaterialConfig {
+struct MaterialConfig 
+{
     char name[MATERIAL_NAME_MAX_LENGTH];
     bool AutoRelease;
     char DiffuseMapName[TEXTURE_NAME_MAX_LENGTH];
@@ -40,11 +41,12 @@ private:
 
     MaterialSystem();
 public:
-    ~MaterialSystem();
+    ~MaterialSystem() = default;
     MaterialSystem(const MaterialSystem&) = delete;
     MaterialSystem& operator= (const MaterialSystem&) = delete;
 
-    static MINLINE MaterialSystem* Instance() { if(state) return state; }
+    static MINLINE MaterialSystem* Instance() { /*if(state) */return state; }
+    static void SetMaxMaterialCount(u32 value);
 
     bool Initialize();
     void Shutdown();

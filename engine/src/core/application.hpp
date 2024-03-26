@@ -11,7 +11,7 @@
 
 class GameTypes;
 class Renderer;
-class TextureSystem;
+//class TextureSystem;
 
 struct ApplicationState {
     LinearAllocator SystemAllocator;
@@ -26,7 +26,7 @@ struct ApplicationState {
     GameTypes* GameInst;
 
     //Системы
-    TextureSystem* TexSys;
+    //TextureSystem* TexSys;
     
     u32 width;
     u32 height;
