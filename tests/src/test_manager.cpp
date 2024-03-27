@@ -52,7 +52,7 @@ void TestManagerRunTests()
             ++failed;
         }
         char status[20];
-        StringFormat(status, failed ? "*** %d FAILED ***" : "SUCCESS", failed);
+        MString::Format(status, failed ? "*** %d FAILED ***" : "SUCCESS", failed);
         TotalTime.Update();
         MINFO("Executed %d of %d (skipped %d) %s (%.6f сек / %.6f сек всего", i + 1, count, skipped, status, TestTime.elapsed, TotalTime.elapsed);
     }

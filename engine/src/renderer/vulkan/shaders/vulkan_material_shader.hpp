@@ -31,7 +31,7 @@ struct VulkanMaterialShaderInstanceState {
 };
 
 // Максимальное количество объектов
-#define VULKAN_MAX_MATERIAL_OBJECT_COUNT 1024
+#define VULKAN_MAX_MATERIAL_COUNT 1024
 
 class VulkanMaterialShader
 {
@@ -51,7 +51,7 @@ public:
     TextureUse SamplerUses[VULKAN_MATERIAL_SHADER_SAMPLER_COUNT];
 
     // TODO: сделать динамическим
-    VulkanMaterialShaderInstanceState InstanceStates[VULKAN_MAX_MATERIAL_OBJECT_COUNT];
+    VulkanMaterialShaderInstanceState InstanceStates[VULKAN_MAX_MATERIAL_COUNT];
 
     VulkanPipeline pipeline;
     

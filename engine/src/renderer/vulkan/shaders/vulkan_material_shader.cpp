@@ -66,15 +66,15 @@ bool VulkanMaterialShader::Create(VulkanAPI *VkAPI)
     VkDescriptorPoolSize ObjectPoolSizes[2];
     // Первый раздел будет использоваться для универсальных буферов.
     ObjectPoolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    ObjectPoolSizes[0].descriptorCount = VULKAN_MAX_MATERIAL_OBJECT_COUNT;
+    ObjectPoolSizes[0].descriptorCount = VULKAN_MAX_MATERIAL_COUNT;
     // Второй раздел будет использоваться для образцов изображений.
     ObjectPoolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    ObjectPoolSizes[1].descriptorCount = VULKAN_MATERIAL_SHADER_SAMPLER_COUNT * VULKAN_MAX_MATERIAL_OBJECT_COUNT;
+    ObjectPoolSizes[1].descriptorCount = VULKAN_MATERIAL_SHADER_SAMPLER_COUNT * VULKAN_MAX_MATERIAL_COUNT;
 
     VkDescriptorPoolCreateInfo ObjectPoolInfo = {VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
     ObjectPoolInfo.poolSizeCount = 2;
     ObjectPoolInfo.pPoolSizes = ObjectPoolSizes;
-    ObjectPoolInfo.maxSets = VULKAN_MAX_MATERIAL_OBJECT_COUNT;
+    ObjectPoolInfo.maxSets = VULKAN_MAX_MATERIAL_COUNT;
     ObjectPoolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
 
     // Создание пула дескрипторов объектов.
@@ -173,7 +173,7 @@ bool VulkanMaterialShader::Create(VulkanAPI *VkAPI)
     // Создание object uniform buffer.
     if (!ObjectUniformBuffer.Create(
             VkAPI,
-            sizeof(MaterialUniformObject),  //* MAX_MATERIAL_INSTANCE_COUNT,
+            sizeof(MaterialUniformObject) * VULKAN_MAX_MATERIAL_COUNT,
             static_cast<VkBufferUsageFlagBits>(VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
             true)) {

@@ -20,7 +20,7 @@ void Input::Initialize()
 
 void Input::Sutdown()
 {
-    delete input;
+    //delete input;
 }
 
 void Input::Update(f64 DeltaTime)

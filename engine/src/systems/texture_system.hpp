@@ -29,8 +29,8 @@ public:
     bool Initialize();
     void Shutdown();
 
-    Texture* Acquire(MString name, bool AutoRelease);
-    void Release(MString name);
+    Texture* Acquire(const char* name, bool AutoRelease);
+    void Release(const char* name);
     /// @brief Функция для получения стандартной текстуры.
     /// @return указатель на стандартную текстуру.
     Texture* GetDefaultTexture();
@@ -44,7 +44,7 @@ public:
 private:
     bool CreateDefaultTexture();
     void DestroyDefaultTexture();
-    static bool LoadTexture(MString TextureName, Texture* t);
+    static bool LoadTexture(const char* TextureName, Texture* t);
 };
 
 

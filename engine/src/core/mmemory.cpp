@@ -36,7 +36,7 @@ MMemory::~MMemory()
 
 MINLINE void MMemory::Shutdown()
 {
-    this->~MMemory();
+    //this->~MMemory();
 }
 
 void *MMemory::Allocate(u64 bytes, MemoryTag tag)

@@ -21,7 +21,7 @@ Texture::Texture() :
         Data = nullptr;*/
     }
 
-Texture::Texture(MString name,i32 width, i32 height, i32 ChannelCount, const u8 *pixels, bool HasTransparency, VulkanAPI *VkAPI)
+Texture::Texture(const char* name,i32 width, i32 height, i32 ChannelCount, const u8 *pixels, bool HasTransparency, VulkanAPI *VkAPI)
 {
     Create(name, width, height, ChannelCount, pixels, HasTransparency, VkAPI);
 }
@@ -37,7 +37,7 @@ generation(t.generation),
 name(t.name),
 Data(t.Data) {}
 
-void Texture::Create(MString name, i32 width, i32 height, i32 ChannelCount, const u8 *pixels, bool HasTransparency, VulkanAPI *VkAPI)
+void Texture::Create(const char* name, i32 width, i32 height, i32 ChannelCount, const u8 *pixels, bool HasTransparency, VulkanAPI *VkAPI)
 {
     this->width = width;
     this->height = height;

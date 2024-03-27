@@ -101,6 +101,8 @@ public:
     bool BeginFrame(f32 Deltatime) override;
     void UpdateGlobalState(const Matrix4D& projection, const Matrix4D& view, const Vector3D<f32>& ViewPosition, const Vector4D<f32>& AmbientColour, i32 mode) override;
     bool EndFrame(f32 DeltaTime) override;
+    bool CreateMaterial(class Material* material) override;
+    void DestroyMaterial(class Material* material) override;
 
     void* operator new(u64 size);
     //void operator delete(void* ptr);

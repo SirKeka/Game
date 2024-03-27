@@ -37,7 +37,7 @@ bool Logger::Initialize()
 void Logger::Shutdown() 
 {
     // TODO: очистка журнала/запись записей в очереди.
-    this->~Logger();
+    //this->~Logger();
 }
 
 void *Logger::operator new(u64 size)

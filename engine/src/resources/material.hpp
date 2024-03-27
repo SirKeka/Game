@@ -19,7 +19,7 @@ public:
     TextureMap DiffuseMap;
 public:
     Material() : id(), generation(), InternalId(), name(), DiffuseColour(), DiffuseMap() {}
-    ~Material() = delete;
-    void Destroy();
+    //~Material() = delete;
+    //void Destroy();
 
 };

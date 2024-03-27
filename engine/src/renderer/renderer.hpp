@@ -36,7 +36,10 @@ public:
     bool EndFrame(f32 DeltaTime);
     void OnResized(u16 width, u16 height);
     bool DrawFrame(RenderPacket* packet);
+
     static VulkanAPI* GetRendererType();
+    static bool CreateMaterial(class Material* material);
+    static void DestroyMaterial(class Material* material);
 
     // ВЗЛОМ: это не должно быть выставлено за пределы движка.
     MAPI void SetView(Matrix4D view);

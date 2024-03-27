@@ -138,7 +138,7 @@ void MWindow::Close()
         DestroyWindow(state->hwnd);
         state->hwnd = 0;
     }
-    this->~MWindow();
+    //this->~MWindow();
 }
 
 bool MWindow::Messages()

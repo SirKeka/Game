@@ -62,4 +62,6 @@ public:
     virtual void UpdateGlobalState(const Matrix4D& projection, const Matrix4D& view, const Vector3D<f32>& ViewPosition, const Vector4D<f32>& AmbientColour, i32 mode) = 0;
     virtual bool EndFrame(f32 DeltaTime) = 0;
     virtual void UpdateObjects(const GeometryRenderData& data) = 0;
+    virtual bool CreateMaterial(class Material* material) = 0;
+    virtual void DestroyMaterial(class Material* material) = 0;
 };

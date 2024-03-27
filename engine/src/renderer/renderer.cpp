@@ -61,7 +61,7 @@ bool Renderer::Initialize(MWindow* window, const char *ApplicationName, ERendere
 
 void Renderer::Shutdown()
 {
-    this->~Renderer();
+    //this->~Renderer();
 }
 
 bool Renderer::BeginFrame(f32 DeltaTime)
@@ -136,6 +136,16 @@ VulkanAPI *Renderer::GetRendererType()
     return dynamic_cast<VulkanAPI*>(ptrRenderer);
 }
 
+bool Renderer::CreateMaterial(Material *material)
+{
+    return ptrRenderer->CreateMaterial(material);
+}
+
+void Renderer::DestroyMaterial(Material *material)
+{
+    ptrRenderer->DestroyMaterial(material);
+}
+
 void Renderer::SetView(Matrix4D view)
 {
     this->view = view;
@@ -170,7 +180,7 @@ bool Renderer::EventOnDebugEvent(u16 code, void *sender, void *ListenerInst, Eve
     
 
     // Удалите старую текстуру.
-    TextureSystem::Instance()->Release(OldName);
+    TextureSystem::Instance()->Release(OldName.c_str());
     return true;
 }
 // TODO: Временно

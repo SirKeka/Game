@@ -1,6 +1,8 @@
 #include "material_system.hpp"
 #include "systems/texture_system.hpp"
-#include "math/vector4d.hpp"
+#include "renderer/renderer.hpp"
+
+#include "core/application.hpp"
 
 u32 MaterialSystem::MaxMaterialCount = 0;
 MaterialSystem* MaterialSystem::state = nullptr;
@@ -71,7 +73,7 @@ void MaterialSystem::Shutdown()
         DestroyMaterial(&state->DefaultMaterial);
     }
 
-    delete state;
+    //delete state;
 }
 
 Material *MaterialSystem::Acquire(const char *name)
@@ -85,7 +87,7 @@ Material *MaterialSystem::Acquire(const char *name)
     char FullFilePath[512];
 
     // TODO: попробуйте разные расширения
-    MString::Format(FullFilePath, FormatStr, name, "kmt");
+    MString::Format(FullFilePath, FormatStr, name, "mmt");
     if (!LoadConfigurationFile(FullFilePath, &config)) {
         MERROR("Не удалось загрузить файл материала: '%s'. Нулевой указатель будет возвращен.", FullFilePath);
         return 0;
@@ -201,7 +203,7 @@ bool MaterialSystem::CreateDefaultMaterial()
     this->DefaultMaterial.DiffuseMap.use = TextureUse::MapDiffuse;
     this->DefaultMaterial.DiffuseMap.texture = TextureSystem::Instance()->GetDefaultTexture();
 
-    if (!) { // this->DefaultMaterial.Create()
+    if (!Renderer::CreateMaterial(&this->DefaultMaterial)) {
         MFATAL("Не удалось получить ресурсы средства рендеринга для текстуры по умолчанию. Приложение не может быть продолжено.");
         return false;
     }
@@ -236,7 +238,7 @@ bool MaterialSystem::LoadMaterial(MaterialConfig config, Material *m)
     // TODO: другие карты
 
     // Отправьте его рендереру для получения ресурсов.
-    if (!renderer_create_material(m)) {
+    if (!Renderer::CreateMaterial(m)) {
         MERROR("Не удалось получить ресурсы средства визуализации для материала '%s'.", m->name);
         return false;
     }
@@ -250,7 +252,7 @@ void MaterialSystem::DestroyMaterial(Material *m)
 
     // Выпустите ссылки на текстуры.
     if (m->DiffuseMap.texture) {
-        TextureSystem::Instance()->Release(m->DiffuseMap.texture->name);
+        TextureSystem::Instance()->Release(m->DiffuseMap.texture->name.c_str());
     }
 
     // Освободите ресурсы средства рендеринга.
@@ -261,6 +263,7 @@ void MaterialSystem::DestroyMaterial(Material *m)
     m->id = INVALID_ID;
     m->generation = INVALID_ID;
     m->InternalId = INVALID_ID;
+    m = nullptr;
 }
 
 bool MaterialSystem::LoadConfigurationFile(const char *path, MaterialConfig *OutConfig)

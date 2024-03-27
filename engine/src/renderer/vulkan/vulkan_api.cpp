@@ -3,6 +3,7 @@
 #include "vulkan_swapchain.hpp"
 #include "core/application.hpp"
 #include "vulkan_platform.hpp"
+#include "resources/material.hpp"
 
 #include "math/vertex3D.hpp"
 //#include "math/matrix4d.hpp"
@@ -523,6 +524,35 @@ bool VulkanAPI::EndFrame(f32 DeltaTime)
     );
 
     return true;
+}
+
+bool VulkanAPI::CreateMaterial(Material *material)
+{
+    if (material) {
+        if (!MaterialShader.AcquireResources(this, material)) {
+            MERROR("VulkanRenderer::CreateMaterial — не удалось получить ресурсы шейдера.");
+            return false;
+        }
+
+        MTRACE("Средство визуализации: материал создан.");
+        return true;
+    }
+
+    MERROR("VulkanRenderer::CreateMaterial вызывается с nullptr. Создание не удалось.");
+    return false;
+}
+
+void VulkanAPI::DestroyMaterial(Material *material)
+{
+    if (material) {
+        if (material->InternalId != INVALID_ID) {
+            MaterialShader.ReleaseResources(this, material);
+        } else {
+            MWARN("VulkanRenderer::DestroyMaterial вызывается с InternalId = INVALID_ID. Ничего не было сделано.");
+        }
+    } else {
+        MWARN("VulkanRenderer::DestroyMaterial вызывается с nullptr. Ничего не было сделано.");
+    }
 }
 
 void *VulkanAPI::operator new(u64 size)

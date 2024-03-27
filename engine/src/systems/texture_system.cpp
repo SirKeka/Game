@@ -84,13 +84,13 @@ bool TextureSystem::Initialize()
 
 void TextureSystem::Shutdown()
 {
-    delete state;
+    //delete state;
 }
 
-Texture *TextureSystem::Acquire(MString name, bool AutoRelease)
+Texture *TextureSystem::Acquire(const char* name, bool AutoRelease)
 {
     // Вернуть текстуру по умолчанию, но предупредить об этом, поскольку она должна быть возвращена через GetDefaultTexture();
-    if (StringsEquali(name.c_str(), DEFAULT_TEXTURE_NAME)) {
+    if (StringsEquali(name, DEFAULT_TEXTURE_NAME)) {
         MWARN("TextureSystem::Acquire вызывает текстуру по умолчанию. Используйте TextureSystem::GetDefaultTexture для текстуры «по умолчанию».");
         return &DefaultTexture;
     }
@@ -123,15 +123,15 @@ Texture *TextureSystem::Acquire(MString name, bool AutoRelease)
 
             // Создайте новую текстуру.
             if (!LoadTexture(name, t)) {
-                MERROR("Не удалось загрузить текстуру '%s'.", name.c_str());
+                MERROR("Не удалось загрузить текстуру '%s'.", name);
                 return nullptr;
             }
 
             // Также используйте дескриптор в качестве идентификатора текстуры.
             t->id = ref.handle;
-            MTRACE("Текстура '%s' еще не существует. Создано, и RefCount теперь равен %i.", name.c_str(), ref.ReferenceCount);
+            MTRACE("Текстура '%s' еще не существует. Создано, и RefCount теперь равен %i.", name, ref.ReferenceCount);
         } else {
-            MTRACE("Текстура '%s' уже существует, RefCount увеличен до %i.", name.c_str(), ref.ReferenceCount);
+            MTRACE("Текстура '%s' уже существует, RefCount увеличен до %i.", name, ref.ReferenceCount);
         }
 
         // Обновите запись.
@@ -140,20 +140,20 @@ Texture *TextureSystem::Acquire(MString name, bool AutoRelease)
     }
 
     // ПРИМЕЧАНИЕ. Это произойдет только в том случае, если что-то пойдет не так с состоянием.
-    MERROR("TextureSystem::Acquire не удалось получить текстуру '%s'. Нулевой указатель будет возвращен.", name.c_str());
+    MERROR("TextureSystem::Acquire не удалось получить текстуру '%s'. Нулевой указатель будет возвращен.", name);
     return 0;
 }
 
-void TextureSystem::Release(MString name)
+void TextureSystem::Release(const char* name)
 {
     // Игнорируйте запросы на выпуск текстуры по умолчанию.
-    if (StringsEquali(name.c_str(), DEFAULT_TEXTURE_NAME)) {
+    if (StringsEquali(name, DEFAULT_TEXTURE_NAME)) {
         return;
     }
     TextureReference ref;
     if (RegisteredTextureTable.Get(name, &ref)) {
         if (ref.ReferenceCount == 0) {
-            MWARN("Попробовал выпустить несуществующую текстуру: '%s'", name.c_str());
+            MWARN("Попробовал выпустить несуществующую текстуру: '%s'", name);
             return;
         }
 
@@ -180,7 +180,7 @@ void TextureSystem::Release(MString name)
         // Обновите запись.
         RegisteredTextureTable.Set(name, &ref);
     } else {
-        MERROR("TextureSystem::Release не удалось освободить текстуру '%s'.", name.c_str());
+        MERROR("TextureSystem::Release не удалось освободить текстуру '%s'.", name);
     }
 }
 
@@ -222,7 +222,8 @@ bool TextureSystem::CreateDefaultTexture()
     const u32 TexDimension = 256;
     const u32 channels = 4;
     const u32 PixelCount = TexDimension * TexDimension;
-    u8 pixels[PixelCount * channels] {};
+    u8 pixels[PixelCount * channels];
+    MMemory::SetMemory(pixels, 255, PixelCount * channels);
 
     // Каждый пиксель.
     for (u64 row = 0; row < TexDimension; ++row) {
@@ -255,7 +256,7 @@ void TextureSystem::DestroyDefaultTexture()
     DefaultTexture.Destroy(Renderer::GetRendererType());
 }
 
-bool TextureSystem::LoadTexture(MString TextureName, Texture *t)
+bool TextureSystem::LoadTexture(const char* TextureName, Texture *t)
 {
     // TODO: Должен быть в состоянии находиться в любом месте.
     const char* FormatStr = "assets/textures/%s.%s";
@@ -264,7 +265,7 @@ bool TextureSystem::LoadTexture(MString TextureName, Texture *t)
     char FullFilePath[512];
 
     // TODO: попробуйте разные расширения
-    MString::Format(FullFilePath, FormatStr, TextureName.c_str(), "png");
+    MString::Format(FullFilePath, FormatStr, TextureName, "png");
 
     // Используйте временную текстуру для загрузки.
     Texture TempTexture;

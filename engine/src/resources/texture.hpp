@@ -32,7 +32,7 @@ public:
 public:
     Texture();
     Texture(
-        MString name, 
+        const char* name, 
         i32 width, 
         i32 height, 
         i32 ChannelCount, 
@@ -42,7 +42,7 @@ public:
     ~Texture() = default;
     Texture(const Texture& t);
     void Create(
-        MString name, 
+        const char* name, 
         i32 width, 
         i32 height, 
         i32 ChannelCount, 
