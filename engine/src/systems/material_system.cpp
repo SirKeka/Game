@@ -193,6 +193,16 @@ void MaterialSystem::Release(const char *name)
     }
 }
 
+Material *MaterialSystem::GetDefaultMaterial()
+{
+     if (state) {
+        return &state->DefaultMaterial;
+    }
+
+    MFATAL("MaterialSystem::GetDefaultMaterial вызывается перед инициализацией системы.");
+    return nullptr;
+}
+
 bool MaterialSystem::CreateDefaultMaterial()
 {
     this->DefaultMaterial = Material(); //kzero_memory(&this->DefaultMaterial, sizeof(Material));
@@ -342,5 +352,5 @@ void *MaterialSystem::operator new(u64 size)
     // Блок памяти будет содержать структуру состояния, затем блок массива, затем блок хеш-таблицы.
     u64 ArrayRequirement = sizeof(Material) * MaxMaterialCount;
     u64 HashtableRequirement = sizeof(MaterialReference) * MaxMaterialCount;
-    return Application::AllocMemory(size + ArrayRequirement + HashtableRequirement);
+    return LinearAllocator::Instance().Allocate(size + ArrayRequirement + HashtableRequirement);
 }

@@ -24,7 +24,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL VkDebugCallback(
     void* UserData
 );
 
-void VulkanAPI::UpdateObjects(const GeometryRenderData& data)
+void VulkanAPI::DrawGeometry(const GeometryRenderData& data)
 {
     MaterialShader.UpdateObject(this, data);
     
@@ -557,7 +557,7 @@ void VulkanAPI::DestroyMaterial(Material *material)
 
 void *VulkanAPI::operator new(u64 size)
 {
-    return Application::AllocMemory(size);
+    return LinearAllocator::Instance().Allocate(size);
 }
 
 /*void VulkanAPI::operator delete(void *ptr)

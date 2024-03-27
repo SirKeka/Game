@@ -43,7 +43,7 @@ void Texture::Create(const char* name, i32 width, i32 height, i32 ChannelCount, 
     this->height = height;
     this->ChannelCount = ChannelCount;
     this->generation = INVALID_ID;
-    this->name = name;
+    MMemory::CopyMem(this->name, name, sizeof(name));
 
     // Создание внутренних данных.
     // TODO: Используйте для этого распределитель.

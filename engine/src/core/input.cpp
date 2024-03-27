@@ -201,5 +201,5 @@ Input *Input::Instance()
 
 void *Input::operator new(u64 size)
 {
-    return Application::AllocMemory(size);
+    return LinearAllocator::Instance().Allocate(size);
 }

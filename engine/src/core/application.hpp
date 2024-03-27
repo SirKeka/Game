@@ -51,7 +51,6 @@ public:
 
     MAPI void* operator new(u64 size);
     MAPI void operator delete(void* ptr);
-    static void* AllocMemory(u64 size);
 
 private:
     // Обработчики событий

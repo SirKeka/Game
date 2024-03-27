@@ -211,7 +211,7 @@ void *TextureSystem::operator new(u64 size)
     u64 ArrayRequirement = sizeof(Texture) * MaxTextureCount;
     u64 HashtableRequirement = sizeof(TextureReference) * MaxTextureCount;
     //*memory_requirement = struct_requirement + array_requirement + hashtable_requirement;
-    return Application::AllocMemory(size + ArrayRequirement + HashtableRequirement);
+    return LinearAllocator::Instance().Allocate(size + ArrayRequirement + HashtableRequirement);
 }
 
 bool TextureSystem::CreateDefaultTexture()

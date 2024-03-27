@@ -27,7 +27,7 @@ public:
     u8 ChannelCount;
     bool HasTransparency;
     u32 generation;
-    MString name;
+    char name;
     VulkanTextureData* Data;
 public:
     Texture();

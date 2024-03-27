@@ -1,0 +1,91 @@
+#pragma once
+
+#include "defines.hpp"
+#include "resources/geometry.hpp"
+#include "resources/material.hpp"
+
+struct GeometryConfig {
+    u32 VertexCount;
+    struct Vertex3D* vertices;
+    u32 IndexCount;
+    u32* indices;
+    char name[GEOMETRY_NAME_MAX_LENGTH];
+    char MaterialName[MATERIAL_NAME_MAX_LENGTH];
+};
+
+#define DEFAULT_GEOMETRY_NAME "default"
+
+class GeometrySystem
+{
+private:
+    // Максимальное количество геометрий, которые можно загрузить одновременно.
+    // ПРИМЕЧАНИЕ. Должно быть значительно больше, чем количество статических сеток, 
+    // потому что их может и будет больше одного на сетку.
+    // Принимаем во внимание и другие системы
+    static u32 MaxGeometryCount;
+
+    u32 VertexCount;
+    struct Vertex3D* vertices;
+    u32 IndexCount;
+    u32* indices;
+    char name[GEOMETRY_NAME_MAX_LENGTH];
+    char MaterialName[MATERIAL_NAME_MAX_LENGTH];
+
+    Geometry DefaultGeometry;
+
+    // Массив зарегистрированных сеток.
+    struct GeometryReference* RegisteredGeometries;
+
+    static GeometrySystem state;
+
+    GeometrySystem();
+    ~GeometrySystem();
+public:
+    GeometrySystem(const GeometrySystem&) = delete;
+    GeometrySystem& operator= (const GeometrySystem&) = delete;
+
+    static GeometrySystem* Instance() { return state; }
+    static void SetMaxGeometryCount(u32 value);
+
+    bool Initialize();
+    void Shutdown(void* state);
+
+    bool CreateDefaultGeometry();
+    /// @brief Получает существующую геометрию по идентификатору.
+    /// @param id Идентификатор геометрии, по которому необходимо получить данные.
+    /// @return Указатель на полученную геометрию или nullptr в случае неудачи.
+    Geometry* AcquireByID(u32 id);
+    /// @brief Регистрирует и получает новую геометрию, используя данную конфигурацию.
+    /// @param config Конфигурация геометрии.
+    /// @param AutoRelease Указывает, должна ли полученная геометрия быть выгружена, когда ее счетчик ссылок достигнет 0.
+    /// @return Указатель на полученную геометрию или nullptr в случае неудачи. 
+    Geometry* AcquireFromConfig(GeometryConfig config, bool AutoRelease);
+    /// @brief Освобождает ссылку на предоставленную геометрию.
+    /// @param Geometry Геометрия, которую нужно освободить.
+    void Release(Geometry* geometry);
+    /// @brief Получает указатель на геометрию по умолчанию.
+    /// @return Указатель на геометрию по умолчанию.
+    Geometry* GetDefault();
+    /// @brief Генерирует конфигурацию для геометрии плоскости с учетом предоставленных параметров.
+    /// ПРИМЕЧАНИЕ: массивы вершин и индексов распределяются динамически и должны освобождаться при удалении объекта.
+    /// Таким образом, это не следует считать производственным кодом.
+    /// @param width Общая ширина плоскости. Должно быть ненулевое.
+    /// @param height Общая высота плоскости. Должно быть ненулевое.
+    /// @param xSegmentCount Количество сегментов по оси X в плоскости. Должно быть ненулевое.
+    /// @param ySegmentCount Количество сегментов по оси Y в плоскости. Должно быть ненулевое.
+    /// @param TileX Сколько раз текстура должна пересекать плоскость по оси X. Должно быть ненулевое.
+    /// @param TileY Сколько раз текстура должна пересекать плоскость по оси Y. Должно быть ненулевое.
+    /// @param name Имя сгенерированной геометрии.
+    /// @param MaterialName Имя материала, который будет использоваться.
+    /// @return Конфигурация геометрии, которую затем можно передать в Geometry_system_acquire_from_config().
+    GeometryConfig GeneratePlaneConfig(
+        f32 width, f32 height, 
+        u32 xSegmentCount, 
+        u32 ySegmentCount, 
+        f32 TileX, f32 TileY, 
+        const char* name, 
+        const char* MaterialName);
+
+public:
+    void* operator new(u64 size);
+};

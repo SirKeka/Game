@@ -20,7 +20,7 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
     AppState->IsSuspended = false;
 
     u64 SystemsAllocatorTotalSize = 64 * 1024 * 1024;  // 64 mb
-    AppState->SystemAllocator = LinearAllocator(SystemsAllocatorTotalSize);
+    AppState->SystemAllocator.Initialize(SystemsAllocatorTotalSize);
 
     AppState->mem = new MMemory();
 
@@ -267,9 +267,4 @@ bool Application::OnResized(u16 code, void *sender, void *ListenerInst, EventCon
     }
 
     return false;
-}
-
-void *Application::AllocMemory(u64 size)
-{
-    return AppState->SystemAllocator.Allocate(size);
 }

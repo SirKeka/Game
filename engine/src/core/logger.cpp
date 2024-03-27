@@ -42,7 +42,7 @@ void Logger::Shutdown()
 
 void *Logger::operator new(u64 size)
 {
-    return Application::AllocMemory(size);
+    return LinearAllocator::Instance().Allocate(size);
 }
 
 void Logger::AppendToLogFile(MString message)

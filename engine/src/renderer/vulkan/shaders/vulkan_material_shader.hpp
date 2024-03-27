@@ -30,7 +30,8 @@ struct VulkanMaterialShaderInstanceState {
     VulkanDescriptorState DescriptorStates[VULKAN_MATERIAL_SHADER_DESCRIPTOR_COUNT];
 };
 
-// Максимальное количество объектов
+// Максимальное количество экземпляров материала
+// TODO: сделать настраиваемым
 #define VULKAN_MAX_MATERIAL_COUNT 1024
 
 class VulkanMaterialShader

@@ -5,9 +5,6 @@
 #include "math/vector4d.hpp"
 
 struct StaticMeshData;
-class MWindow;
-class Texture;
-class Material;
 
 enum ERendererType 
 {
@@ -19,6 +16,9 @@ enum ERendererType
 struct RenderPacket
 {
     f32 DeltaTime;
+
+    u32 GeometryCount;
+    struct GeometryRenderData* geometries;
 };
 
 /*размер данной струтуры для карт Nvidia должен быть равен 256 байт*/
@@ -41,7 +41,18 @@ struct MaterialUniformObject
 struct GeometryRenderData 
 {
     Matrix4D model;
-    Material* material;
+    class Geometry* geometry;
+};
+
+struct VulkanGeometryData {
+    u32 id;
+    u32 generation;
+    u32 VertexCount;
+    u32 VertexSize;
+    u32 VertexBufferOffset;
+    u32 IndexCount;
+    u32 IndexSize;
+    u32 IndexBufferOffset;
 };
 
 class RendererType
@@ -50,18 +61,18 @@ public:
     u64 FrameNumber;
 
     // Указатель на текстуру по умолчанию.
-    Texture* DefaultDiffuse;
+    class Texture* DefaultDiffuse;
 public:
     //RendererType();
     virtual ~RendererType() = default;
 
-    virtual bool Initialize(MWindow* window, const char* ApplicationName) = 0;
+    virtual bool Initialize(class MWindow* window, const char* ApplicationName) = 0;
     virtual void ShutDown() = 0;
     virtual void Resized(u16 width, u16 height) = 0;
     virtual bool BeginFrame(f32 Deltatime) = 0;
     virtual void UpdateGlobalState(const Matrix4D& projection, const Matrix4D& view, const Vector3D<f32>& ViewPosition, const Vector4D<f32>& AmbientColour, i32 mode) = 0;
     virtual bool EndFrame(f32 DeltaTime) = 0;
-    virtual void UpdateObjects(const GeometryRenderData& data) = 0;
+    virtual void DrawGeometry(const GeometryRenderData& data) = 0;
     virtual bool CreateMaterial(class Material* material) = 0;
     virtual void DestroyMaterial(class Material* material) = 0;
 };

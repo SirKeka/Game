@@ -120,5 +120,5 @@ private:
     bool CreateBuffers();
 
     void UploadDataRange(VkCommandPool pool, VkFence fence, VkQueue queue, VulkanBuffer& buffer, u64 offset, u64 size, void* data);
-    void UpdateObjects(const GeometryRenderData& data) override;
+    void DrawGeometry(const GeometryRenderData& data) override;
 };

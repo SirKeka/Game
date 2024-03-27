@@ -132,5 +132,5 @@ MString MMemory::GetMemoryUsageStr()
 
 void * MMemory::operator new(u64 size)
 {
-    return Application::AllocMemory(size);
+    return LinearAllocator::Instance().Allocate(size);
 }

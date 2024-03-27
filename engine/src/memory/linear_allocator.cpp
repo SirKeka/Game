@@ -4,15 +4,13 @@
 
 LinearAllocator::LinearAllocator(u64 TotalSize, void *memory)
 {
-    if (this->TotalSize == 0) {
-        this->TotalSize = TotalSize;
-        this->allocated = 0;
-        this->OwnsMemory = memory == nullptr;
-        if (memory) {
-            this->memory = memory;
-        } else {
-            this->memory = MMemory::Allocate(TotalSize, MEMORY_TAG_LINEAR_ALLOCATOR);
-        }
+    this->TotalSize = TotalSize;
+    this->allocated = 0;
+    this->OwnsMemory = memory == nullptr;
+    if (memory) {
+        this->memory = memory;
+    } else {
+        this->memory = MMemory::Allocate(TotalSize, MEMORY_TAG_LINEAR_ALLOCATOR);
     }
 }
 
@@ -30,10 +28,31 @@ LinearAllocator::~LinearAllocator()
     }
 }
 
+void *LinearAllocator::Allocate(u64 size)
+{
+    if (memory) {
+        if (allocated + size > TotalSize) {
+            u64 remaining = TotalSize - allocated;
+            MERROR("LinearAllocator::AllocateConstruct - Попытка выделить %llu байт, только %llu байт осталось.", size, remaining);
+            return nullptr;
+        }
+        void* block = reinterpret_cast<u8*>(memory) + allocated;
+        allocated += size;
+        return block;
+    }
+    MERROR("Linear Allocator::Allocate - предоставленный распределитель не инициализирован.");
+    return nullptr;
+}
+
 void LinearAllocator::FreeAll()
 {
     if (memory) {
        allocated = 0;
         MMemory::ZeroMem(memory, TotalSize);
     }
+}
+
+void LinearAllocator::Initialize(u64 TotalSize, void *memory)
+{
+    state = LinearAllocator(TotalSize, memory);
 }

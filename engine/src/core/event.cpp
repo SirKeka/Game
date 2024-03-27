@@ -1,6 +1,5 @@
 #include "event.hpp"
-
-#include "core/application.hpp"
+#include "memory/linear_allocator.hpp"
 
 Event* Event::event = nullptr;
 
@@ -108,5 +107,5 @@ Event *Event::GetInstance()
 
 void *Event::operator new(u64 size)
 {
-    return Application::AllocMemory(size);
+    return LinearAllocator::Instance().Allocate(size);
 }

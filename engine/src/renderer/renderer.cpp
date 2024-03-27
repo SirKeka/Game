@@ -116,8 +116,8 @@ bool Renderer::DrawFrame(RenderPacket *packet)
             }
         }
 
-        data.material = this->TestMaterial;
-        ptrRenderer->UpdateObjects(data);
+        //data.material = this->TestMaterial;
+        ptrRenderer->DrawGeometry(data);
 
         // Завершите кадр. Если это не удастся, скорее всего, это будет невозможно восстановить.
         bool result = EndFrame(packet->DeltaTime);
@@ -153,7 +153,7 @@ void Renderer::SetView(Matrix4D view)
 
 void *Renderer::operator new(u64 size)
 {
-    return Application::AllocMemory(size);
+    return LinearAllocator::Instance().Allocate(size);
 }
 
 // TODO: Врменно

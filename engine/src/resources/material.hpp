@@ -21,5 +21,4 @@ public:
     Material() : id(), generation(), InternalId(), name(), DiffuseColour(), DiffuseMap() {}
     //~Material() = delete;
     //void Destroy();
-
 };

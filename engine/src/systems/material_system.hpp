@@ -45,15 +45,20 @@ public:
     MaterialSystem(const MaterialSystem&) = delete;
     MaterialSystem& operator= (const MaterialSystem&) = delete;
 
+    // Методы основного класса
     static MINLINE MaterialSystem* Instance() { /*if(state) */return state; }
     static void SetMaxMaterialCount(u32 value);
+    static Material* GetDefaultMaterial();
 
     bool Initialize();
     void Shutdown();
+    //------------------------------------------------------------------------------------
 
+    // Внутренние методы
     Material* Acquire(const char* name);
     Material* AcquireFromConfig(MaterialConfig config);
     void Release(const char* name);
+    
 
 private:
     bool CreateDefaultMaterial();
