@@ -37,7 +37,7 @@ public:
     void OnResized(u16 width, u16 height);
     bool DrawFrame(RenderPacket* packet);
 
-    static VulkanAPI* GetRendererType();
+    static VulkanAPI* GetRenderer();
     static bool CreateMaterial(class Material* material);
     static void DestroyMaterial(class Material* material);
 

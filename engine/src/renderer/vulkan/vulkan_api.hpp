@@ -9,6 +9,7 @@
 #include "vulkan_renderpass.hpp"
 #include "vulkan_buffer.hpp"
 #include "shaders/vulkan_material_shader.hpp"
+#include "resources/geometry.hpp"
 
 struct VulkanSwapchain 
 {
@@ -91,6 +92,9 @@ public:
     u64 GeometryVertexOffset;
     u64 GeometryIndexOffset;
 
+    // TODO: сделать динамическим
+    Geometry geometries[VULKAN_MAX_GEOMETRY_COUNT];
+
 public:
     VulkanAPI() {}
     ~VulkanAPI();
@@ -103,9 +107,9 @@ public:
     bool EndFrame(f32 DeltaTime) override;
     bool CreateMaterial(class Material* material) override;
     void DestroyMaterial(class Material* material) override;
+    bool CreateGeometry(Geometry* geometry, u32 VertexCount, const Vertex3D& vertices, u32 IndexCount, u32* indices);
 
     void* operator new(u64 size);
-    //void operator delete(void* ptr);
 
     i32 FindMemoryIndex(u32 TypeFilter, VkMemoryPropertyFlags PropertyFlags);
 
@@ -119,6 +123,7 @@ private:
     bool RecreateSwapchain();
     bool CreateBuffers();
 
-    void UploadDataRange(VkCommandPool pool, VkFence fence, VkQueue queue, VulkanBuffer& buffer, u64 offset, u64 size, void* data);
+    void UploadDataRange(VkCommandPool pool, VkFence fence, VkQueue queue, VulkanBuffer& buffer, u64 offset, u64 size, const void* data);
+    void FreeDataRange(VulkanBuffer* buffer, u64 offset, u64 size);
     void DrawGeometry(const GeometryRenderData& data) override;
 };

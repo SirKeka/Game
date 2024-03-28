@@ -248,15 +248,21 @@ void VulkanMaterialShader::UpdateGlobalState(VulkanAPI *VkAPI, f32 DeltaTime)
     vkCmdBindDescriptorSets(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.PipelineLayout, 0, 1, &GlobalDescriptor, 0, 0);
 }
 
-void VulkanMaterialShader::UpdateObject(VulkanAPI *VkAPI, const GeometryRenderData& data)
+void VulkanMaterialShader::SetModel(VulkanAPI *VkAPI, Matrix4D model)
 {
     u32 ImageIndex = VkAPI->ImageIndex;
     VkCommandBuffer CommandBuffer = VkAPI->GraphicsCommandBuffers[ImageIndex].handle;
 
     vkCmdPushConstants(CommandBuffer, pipeline.PipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(Matrix4D), &data.model);
+}
+
+void VulkanMaterialShader::ApplyMaterial(VulkanAPI *VkAPI, Material *material)
+{
+    u32 ImageIndex = VkAPI->ImageIndex;
+    VkCommandBuffer CommandBuffer = VkAPI->GraphicsCommandBuffers[ImageIndex].handle;
 
     // Получить данные о материале.
-    VulkanMaterialShaderInstanceState* ObjectState = &InstanceStates[data.material->InternalId];
+    VulkanMaterialShaderInstanceState* ObjectState = &InstanceStates[material->InternalId];
     VkDescriptorSet ObjectDescriptorSet = ObjectState->DescriptorSets[ImageIndex];
 
     // TODO: если требуется обновление
@@ -266,7 +272,7 @@ void VulkanMaterialShader::UpdateObject(VulkanAPI *VkAPI, const GeometryRenderDa
 
     // Дескриптор 0 - Uniform buffer
     u32 range = sizeof(MaterialUniformObject);
-    u64 offset = sizeof(MaterialUniformObject) * data.material->InternalId;  // а также индекс массива.
+    u64 offset = sizeof(MaterialUniformObject) * material->InternalId;  // а также индекс массива.
     MaterialUniformObject obo;
 
     // TODO: получить рассеянный цвет от материала.
@@ -274,14 +280,14 @@ void VulkanMaterialShader::UpdateObject(VulkanAPI *VkAPI, const GeometryRenderDa
     // accumulator += VkAPI->FrameDeltaTime;
     // f32 s = (Math::sin(accumulator) + 1.0f) / 2.0f;  // масштаб от -1, 1 до 0, 1
     // obo.DiffuseColor = Vector4D<f32>(s, s, s, 1.0f);
-    obo.DiffuseColor = data.material->DiffuseColour;
+    obo.DiffuseColor = material->DiffuseColour;
 
     // Загрузите данные в буфер.
     ObjectUniformBuffer.LoadData(VkAPI, offset, range, 0, &obo);
 
     // Делайте это только в том случае, если дескриптор еще не был обновлен.
     u32* GlobalUBOGeneration = &ObjectState->DescriptorStates[DescriptorIndex].generations[ImageIndex];
-    if (*GlobalUBOGeneration == INVALID_ID || *GlobalUBOGeneration != data.material->generation) {
+    if (*GlobalUBOGeneration == INVALID_ID || *GlobalUBOGeneration != material->generation) {
         VkDescriptorBufferInfo BufferInfo;
         BufferInfo.buffer = this->ObjectUniformBuffer.handle;
         BufferInfo.offset = offset;
@@ -298,7 +304,7 @@ void VulkanMaterialShader::UpdateObject(VulkanAPI *VkAPI, const GeometryRenderDa
         DescriptorCount++;
 
         // Обновите генерацию кадра. В данном случае он нужен только один раз, поскольку это буфер.
-        GlobalUBOGeneration = &data.material->generation;
+        GlobalUBOGeneration = &material->generation;
     }
     DescriptorIndex++;
 
@@ -312,7 +318,7 @@ void VulkanMaterialShader::UpdateObject(VulkanAPI *VkAPI, const GeometryRenderDa
         switch (use)
         {
         case TextureUse::MapDiffuse:
-            t = data.material->DiffuseMap.texture;
+            t = material->DiffuseMap.texture;
             break;
         
         default: MFATAL("Невозможно связать сэмплер с неизвестным использованием.");
@@ -404,6 +410,10 @@ void VulkanMaterialShader::ReleaseResources(VulkanAPI *VkAPI, Material* material
     VulkanMaterialShaderInstanceState* InstanceState = &InstanceStates[material->InternalId];
 
     const u32 DescriptorSetCount = 3;
+
+    // Дождитесь завершения любых ожидающих операций, использующих набор дескрипторов.
+    vkDeviceWaitIdle(VkAPI->Device.LogicalDevice);
+
     // Освободите наборы дескрипторов объектов.
     VkResult result = vkFreeDescriptorSets(VkAPI->Device.LogicalDevice, ObjectDescriptorPool, DescriptorSetCount, InstanceState->DescriptorSets);
     if (result != VK_SUCCESS) {

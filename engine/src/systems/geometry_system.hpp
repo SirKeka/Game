@@ -50,16 +50,15 @@ public:
     bool Initialize();
     void Shutdown(void* state);
 
-    bool CreateDefaultGeometry();
     /// @brief Получает существующую геометрию по идентификатору.
     /// @param id Идентификатор геометрии, по которому необходимо получить данные.
     /// @return Указатель на полученную геометрию или nullptr в случае неудачи.
-    Geometry* AcquireByID(u32 id);
+    Geometry* Acquire(u32 id);
     /// @brief Регистрирует и получает новую геометрию, используя данную конфигурацию.
     /// @param config Конфигурация геометрии.
     /// @param AutoRelease Указывает, должна ли полученная геометрия быть выгружена, когда ее счетчик ссылок достигнет 0.
     /// @return Указатель на полученную геометрию или nullptr в случае неудачи. 
-    Geometry* AcquireFromConfig(GeometryConfig config, bool AutoRelease);
+    Geometry* Acquire(GeometryConfig config, bool AutoRelease);
     /// @brief Освобождает ссылку на предоставленную геометрию.
     /// @param Geometry Геометрия, которую нужно освободить.
     void Release(Geometry* geometry);
@@ -85,7 +84,10 @@ public:
         f32 TileX, f32 TileY, 
         const char* name, 
         const char* MaterialName);
-
+private:
+    bool CreateGeometry(GeometryConfig config, Geometry* g);
+    void DestroyGeometry(Geometry* g);
+    bool CreateDefaultGeometry();
 public:
     void* operator new(u64 size);
 };

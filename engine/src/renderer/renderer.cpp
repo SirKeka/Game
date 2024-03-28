@@ -131,7 +131,7 @@ bool Renderer::DrawFrame(RenderPacket *packet)
     return false;
 }
 
-VulkanAPI *Renderer::GetRendererType()
+VulkanAPI *Renderer::GetRenderer()
 {
     return dynamic_cast<VulkanAPI*>(ptrRenderer);
 }

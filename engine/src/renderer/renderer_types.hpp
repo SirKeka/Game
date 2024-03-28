@@ -44,17 +44,6 @@ struct GeometryRenderData
     class Geometry* geometry;
 };
 
-struct VulkanGeometryData {
-    u32 id;
-    u32 generation;
-    u32 VertexCount;
-    u32 VertexSize;
-    u32 VertexBufferOffset;
-    u32 IndexCount;
-    u32 IndexSize;
-    u32 IndexBufferOffset;
-};
-
 class RendererType
 {
 public:

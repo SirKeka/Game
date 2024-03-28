@@ -15,10 +15,23 @@ private:
     u32 InternalID;
     u32 generation;
     MString name;
-    class Material* material;
-public:
-    Geometry() : id(), InternalID(), generation(), name(GEOMETRY_NAME_MAX_LENGTH), material(nullptr) {}
 
-    bool Create(u32 VertexCount, const Vertex3D& vertices, u32 IndexCount, const u32& indices);
-    void Destroy();
+    u32 VertexCount;
+    u32 VertexSize;
+    u32 VertexBufferOffset;
+    u32 IndexCount;
+    u32 IndexSize;
+    u32 IndexBufferOffset;
+
+    class Material* material;
+
+    friend class GeometrySystem;
+public:
+    Geometry();
+    Geometry(u32 id, u32 InternalID, u32 generation, MString name, u32 VertexCount, u32 VertexSize, u32 VertexBufferOffset, u32 IndexCount, u32 IndexSize, u32 IndexBufferOffset, class Material* material);
+    Geometry(const Geometry& g);
+    Geometry(Geometry&& g);
+
+    /*bool Create(u32 VertexCount, const Vertex3D& vertices, u32 IndexCount, u32* indices);
+    void Destroy();*/
 };

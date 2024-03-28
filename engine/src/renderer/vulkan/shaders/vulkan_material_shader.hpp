@@ -64,7 +64,8 @@ public:
     void DestroyShaderModule(class VulkanAPI* VkAPI);
     void Use(class VulkanAPI* VkAPI);
     void UpdateGlobalState(class VulkanAPI* VkAPI, f32 DeltaTime);
-    void UpdateObject(class VulkanAPI* VkAPI, const GeometryRenderData& data);
+    void SetModel(class VulkanAPI* VkAPI, Matrix4D model);
+    void ApplyMaterial(class VulkanAPI* VkAPI, class Material* material);
     bool AcquireResources(class VulkanAPI* VkAPI, class Material* material);
     void ReleaseResources(class VulkanAPI* VkAPI, class Material* material);
 };
