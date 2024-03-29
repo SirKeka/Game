@@ -146,6 +146,11 @@ void Renderer::DestroyMaterial(Material *material)
     ptrRenderer->DestroyMaterial(material);
 }
 
+bool Renderer::CreateGeometry(Geometry *geometry, u32 VertexCount, const Vertex3D *vertices, u32 IndexCount, const u32 *indices)
+{
+    return geometry->SendToRender(ptrRenderer, VertexCount, vertices, IndexCount, indices);
+}
+
 void Renderer::SetView(Matrix4D view)
 {
     this->view = view;

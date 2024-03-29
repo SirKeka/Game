@@ -3,7 +3,7 @@
 #include "vulkan_swapchain.hpp"
 #include "core/application.hpp"
 #include "vulkan_platform.hpp"
-#include "resources/material.hpp"
+#include "systems/material_system.hpp"
 #include "resources/geometry.hpp"
 
 #include "math/vertex3D.hpp"
@@ -25,21 +25,44 @@ VKAPI_ATTR VkBool32 VKAPI_CALL VkDebugCallback(
 
 void VulkanAPI::DrawGeometry(const GeometryRenderData& data)
 {
-    MaterialShader.UpdateObject(this, data);
+    // Игнорировать незагруженные геометрии.
+    if (data.geometry && data.geometry->InternalID == INVALID_ID) {
+        return;
+    }
+
+    Geometry* BufferData = &this->geometries[data.geometry->InternalID];
+    VulkanCommandBuffer& CommandBuffer = this->GraphicsCommandBuffers[this->ImageIndex];
+
+    // TODO: проверьте, действительно ли это необходимо.
+    MaterialShader.Use(this);
+
+    MaterialShader.SetModel(this, data.model);
+
+    Material* m = nullptr;
+    if (data.geometry->material) {
+        m = data.geometry->material;
+    } else {
+        m = MaterialSystem::Instance()->GetDefaultMaterial();
+    }
+    MaterialShader.ApplyMaterial(this, m);
     
     // TODO: Временный тестовый код
     MaterialShader.Use(this);
 
     // Привязка буфера вершин к смещению.
-    VkDeviceSize offsets[1] = {0};
-    vkCmdBindVertexBuffers(GraphicsCommandBuffers[ImageIndex].handle, 0, 1, &ObjectVertexBuffer.handle, static_cast<VkDeviceSize*>(offsets));
+    VkDeviceSize offsets[1] = {BufferData->VertexBufferOffset};
+    vkCmdBindVertexBuffers(CommandBuffer.handle, 0, 1, &ObjectVertexBuffer.handle, static_cast<VkDeviceSize*>(offsets));
 
-    // Привязка индексного буфер по смещению.
-    vkCmdBindIndexBuffer(GraphicsCommandBuffers[ImageIndex].handle, ObjectIndexBuffer.handle, 0, VK_INDEX_TYPE_UINT32);
+    // Рисовать индексированные или неиндексированные.
+    if (BufferData->IndexCount > 0) {
+        // Привязать индексный буфер по смещению.
+        vkCmdBindIndexBuffer(CommandBuffer.handle, this->ObjectIndexBuffer.handle, BufferData->IndexBufferOffset, VK_INDEX_TYPE_UINT32);
 
-    // Отрисовка.
-    vkCmdDrawIndexed(GraphicsCommandBuffers[ImageIndex].handle, 6, 1, 0, 0, 0);
-    // TODO: конец временного тестового кода
+        // Issue the draw.
+        vkCmdDrawIndexed(CommandBuffer.handle, BufferData->IndexCount, 1, 0, 0, 0);
+    } else {
+        vkCmdDraw(CommandBuffer.handle, BufferData->VertexCount, 1, 0, 0);
+    }
 }
 
 VulkanAPI::~VulkanAPI()
@@ -526,7 +549,7 @@ void VulkanAPI::DestroyMaterial(Material *material)
     }
 }
 
-bool VulkanAPI::CreateGeometry(Geometry *geometry, u32 VertexCount, const Vertex3D &vertices, u32 IndexCount, u32 *indices)
+/*bool VulkanAPI::CreateGeometry(Geometry *geometry, u32 VertexCount, const Vertex3D *vertices, u32 IndexCount, u32 *indices)
 {
     if (!VertexCount || !vertices) {
         MERROR("VulkanAPI::CreateGeometry требует данных вершин, но они не были предоставлены. VertexCount=%d, vertices=%p", VertexCount, vertices);
@@ -537,72 +560,91 @@ bool VulkanAPI::CreateGeometry(Geometry *geometry, u32 VertexCount, const Vertex
     bool IsReupload = geometry->InternalID != INVALID_ID;
     Geometry OldRange;
 
-    Geometry* temp = nullptr;
+    //Geometry* geometry = nullptr;
     if (IsReupload) {
-        temp = &this->geometries[geometry->InternalID];
+        geometry = &this->geometries[geometry->InternalID];
 
         // Скопируйте старый диапазон.
-        old_range.index_buffer_offset = temp->index_buffer_offset;
-        old_range.index_count = temp->index_count;
-        old_range.index_size = temp->index_size;
-        old_range.vertex_buffer_offset = temp->vertex_buffer_offset;
-        old_range.VertexCount = temp->VertexCount;
-        old_range.vertex_size = temp->vertex_size;
+        old_range.index_buffer_offset = geometry->index_buffer_offset;
+        old_range.index_count = geometry->index_count;
+        old_range.index_size = geometry->index_size;
+        old_range.vertex_buffer_offset = geometry->vertex_buffer_offset;
+        old_range.VertexCount = geometry->VertexCount;
+        old_range.vertex_size = geometry->vertex_size;
+        OldRange = geometry;
     } else {
         for (u32 i = 0; i < VULKAN_MAX_GEOMETRY_COUNT; ++i) {
-            if (context.geometries[i].id == INVALID_ID) {
-                // Found a free index.
-                geometry->internal_id = i;
-                context.geometries[i].id = i;
-                temp = &context.geometries[i];
+            if (this->geometries[i].id == INVALID_ID) {
+                // Найден свободный индекс.
+                geometry->InternalID = i;
+                this->geometries[i].id = i;
+                geometry = &this->geometries[i];
                 break;
             }
         }
     }
-    if (!temp) {
-        KFATAL("vulkan_renderer_create_geometry failed to find a free index for a new geometry upload. Adjust config to allow for more.");
+    if (!geometry) {
+        MFATAL("VulkanRenderer::CreateGeometry не удалось найти свободный индекс для загрузки новой геометрии. Настройте конфигурацию, чтобы обеспечить больше.");
         return false;
     }
 
-    VkCommandPool pool = context.device.graphics_command_pool;
-    VkQueue queue = context.device.graphics_queue;
+    VkCommandPool &pool = this->Device.GraphicsCommandPool;
+    VkQueue &queue = this->Device.GraphicsQueue;
 
-    // Vertex data.
-    temp->vertex_buffer_offset = context.geometry_vertex_offset;
-    temp->VertexCount = VertexCount;
-    temp->vertex_size = sizeof(vertex_3d) * VertexCount;
-    upload_data_range(&context, pool, 0, queue, &context.object_vertex_buffer, temp->vertex_buffer_offset, temp->vertex_size, vertices);
-    // TODO: should maintain a free list instead of this.
-    context.geometry_vertex_offset += temp->vertex_size;
+    // Данные вершин.
+    geometry->SetVertexData(VertexCount, sizeof(Vertex3D) * VertexCount, this->GeometryVertexOffset);
 
-    // Index data, if applicable
-    if (index_count && indices) {
-        temp->index_buffer_offset = context.geometry_index_offset;
-        temp->index_count = index_count;
-        temp->index_size = sizeof(u32) * index_count;
-        upload_data_range(&context, pool, 0, queue, &context.object_index_buffer, temp->index_buffer_offset, temp->index_size, indices);
-        // TODO: should maintain a free list instead of this.
-        context.geometry_index_offset += temp->index_size;
+    UploadDataRange(&this, pool, 0, queue, &this->ObjectVertexBuffer, geometry->VertexBufferOffset, geometry->VertexSize, vertices);
+    // TODO: вместо этого следует поддерживать список свободной памяти
+    this->GeometryVertexOffset += geometry->VertexSize;
+
+    // Данные индексов, если применимо
+    if (IndexCount && indices) {
+        geometry->SetIndexData(IndexCount, sizeof(u32) * IndexCount, this->GeometryIndexOffset);
+        UploadDataRange(&this, pool, 0, queue, &this->ObjectIndexBuffer, geometry->IndexBufferOffset, geometry->IndexSize, indices);
+        // TODO: вместо этого следует поддерживать список свободной памяти
+        this->GeometryIndexOffset += sizeof(u32) * IndexCount;
     }
 
-    if (temp->generation == INVALID_ID) {
-        temp->generation = 0;
+    if (geometry->generation == INVALID_ID) {
+        geometry->generation = 0;
     } else {
-        temp->generation++;
+        geometry->generation++;
     }
 
     if (IsReupload) {
-        // Free vertex data
-        free_data_range(&context.object_vertex_buffer, old_range.vertex_buffer_offset, old_range.vertex_size);
+        // Освобождение данных вершин
+        FreeDataRange(&this->ObjectVertexBuffer, OldRange.VertexBufferOffset, OldRange.VertexSize);
 
-        // Free index data, if applicable
-        if (old_range.index_size > 0) {
-            free_data_range(&context.object_index_buffer, old_range.index_buffer_offset, old_range.index_size);
+        // Освобождение данных индексов, если применимо
+        if (OldRange.IndexSize > 0) {
+            FreeDataRange(&this->ObjectIndexBuffer, OldRange.IndexBufferOffset, OldRange.IndexSize);
         }
     }
 
     return true;
-}
+}*/
+
+/*void VulkanAPI::DestroyGeometry(Geometry *geometry)
+{
+    if (geometry && geometry->InternalID != INVALID_ID) {
+        vkDeviceWaitIdle(this->device.logical_device);
+        //vulkan_geometry_data* internal_data = &this->geometries[geometry->internal_id];
+
+        // Освобождение данных вершин
+        FreeDataRange(&this->ObjectVertexBuffer, geometry->VertexBufferOffset, geometry->VertexSize);
+
+        // Освобождение данных индексов, если это применимо
+        if (geometry->IndexSize > 0) {
+            FreeDataRange(&this->ObjectIndexBuffer, geometry->IndexBufferOffset, geometry->IndexSize);
+        }
+
+        // Очистка данных.
+        MMemory::ZeroMem(&this->geometries[geometry->InternalID], sizeof(Geometry));
+        geometry->id = INVALID_ID;
+        geometry->generation = INVALID_ID;
+    }
+}*/
 
 void *VulkanAPI::operator new(u64 size)
 {

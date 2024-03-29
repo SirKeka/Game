@@ -253,7 +253,7 @@ void VulkanMaterialShader::SetModel(VulkanAPI *VkAPI, Matrix4D model)
     u32 ImageIndex = VkAPI->ImageIndex;
     VkCommandBuffer CommandBuffer = VkAPI->GraphicsCommandBuffers[ImageIndex].handle;
 
-    vkCmdPushConstants(CommandBuffer, pipeline.PipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(Matrix4D), &data.model);
+    vkCmdPushConstants(CommandBuffer, pipeline.PipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(Matrix4D), &model);
 }
 
 void VulkanMaterialShader::ApplyMaterial(VulkanAPI *VkAPI, Material *material)

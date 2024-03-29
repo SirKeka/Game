@@ -64,6 +64,7 @@ public:
 	Vector3D& operator /=(const Vector3D& v);
 	Vector3D& operator /=(const T s);
 	Vector3D<f32>& operator-();
+	//explicit operator bool() const;
 
 	Vector3D& Normalize();
 };

@@ -10,6 +10,7 @@
 #include "vulkan_buffer.hpp"
 #include "shaders/vulkan_material_shader.hpp"
 #include "resources/geometry.hpp"
+#include "math/vertex3D.hpp"
 
 struct VulkanSwapchain 
 {
@@ -107,7 +108,9 @@ public:
     bool EndFrame(f32 DeltaTime) override;
     bool CreateMaterial(class Material* material) override;
     void DestroyMaterial(class Material* material) override;
+    // TODO: перенести в класс системы визуализации
     bool CreateGeometry(Geometry* geometry, u32 VertexCount, const Vertex3D& vertices, u32 IndexCount, u32* indices);
+    void DestroyGeometry(Geometry* geometry);
 
     void* operator new(u64 size);
 

@@ -3,6 +3,7 @@
 #include "defines.hpp"
 
 #include "renderer_types.hpp"
+#include "math/vertex3D.hpp"
 
 // TODO: временно
 #include "containers/mstring.hpp"
@@ -11,7 +12,6 @@
 
 struct StaticMeshData;
 struct PlatformState;
-class Texture;
 class VulkanAPI;
 
 class Renderer
@@ -41,13 +41,15 @@ public:
     static bool CreateMaterial(class Material* material);
     static void DestroyMaterial(class Material* material);
 
+    bool CreateGeometry(Geometry* geometry, u32 VertexCount, const Vertex3D* vertices, u32 IndexCount, const u32* indices);
+
     // ВЗЛОМ: это не должно быть выставлено за пределы движка.
     MAPI void SetView(Matrix4D view);
 
     void* operator new(u64 size);
     // void operator delete(void* ptr);
 private:
-    //static void CreateTexture(Texture* t);
+    //static void CreateTexture(class Texture* t);
 
     //TODO: Временно
     static bool EventOnDebugEvent(u16 code, void* sender, void* ListenerInst, EventContext data);

@@ -169,9 +169,9 @@ bool GeometrySystem::CreateGeometry(GeometryConfig config, Geometry *g)
         // Сделайте запись недействительной.
         this->RegisteredGeometries[g->id].ReferenceCount = 0;
         this->RegisteredGeometries[g->id].AutoRelease = false;
-        g->id = INVALID_ID;
-        g->generation = INVALID_ID;
-        g->InternalID = INVALID_ID;
+        // g->id = INVALID_ID;
+        // g->generation = INVALID_ID;
+        // g->InternalID = INVALID_ID;
 
         return false;
     }
@@ -190,16 +190,16 @@ bool GeometrySystem::CreateGeometry(GeometryConfig config, Geometry *g)
 void GeometrySystem::DestroyGeometry(Geometry *g)
 {
     g->Destroy();
-    g->InternalID = INVALID_ID;
-    g->generation = INVALID_ID;
-    g->id = INVALID_ID;
+    // g->InternalID = INVALID_ID;
+    // g->generation = INVALID_ID;
+    // g->id = INVALID_ID;
 
     string_empty(g->name);
 
     // Освободить материал.
     if (g->material && MString::Length(g->material->name) > 0) {
         MaterialSystem::Instance()->Release(g->material->name);
-        g->material = 0;
+        g->material = nullptr;
     }
 }
 
@@ -259,7 +259,7 @@ Geometry *GeometrySystem::Acquire(GeometryConfig config, bool AutoRelease)
     Geometry* g = nullptr;
     for (u32 i = 0; i < this->MaxGeometryCount; ++i) {
         if (this->RegisteredGeometries[i].geometry.id == INVALID_ID) {
-            // Found empty slot.
+            // Поиск пустого слота.
             this->RegisteredGeometries[i].AutoRelease = AutoRelease;
             this->RegisteredGeometries[i].ReferenceCount = 1;
             g = &this->RegisteredGeometries[i].geometry;
