@@ -12,11 +12,11 @@ public:
     bool OwnsMemory{false};
 
     static LinearAllocator state;
-
+private:
     LinearAllocator() : TotalSize(0), allocated(0), memory(nullptr), OwnsMemory(false) {}
     LinearAllocator(u64 TotalSize, void* memory = nullptr);
     LinearAllocator& operator= (const LinearAllocator&) = default;
-    LinearAllocator& operator= (const LinearAllocator&&);
+    //LinearAllocator& operator= (const LinearAllocator&&);
 public:
     ~LinearAllocator();
     LinearAllocator(const LinearAllocator&) = delete;
@@ -25,7 +25,7 @@ public:
     void FreeAll();
 
     void Initialize(u64 TotalSize, void* memory = nullptr);
-    static LinearAllocator& Instance() { return state; }
+    static MINLINE LinearAllocator& Instance() { return state; }
 
     /// @brief 
     /// @tparam T 

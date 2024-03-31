@@ -1,4 +1,5 @@
 #include "application.hpp"
+//#include "memory/linear_allocator.hpp"
 #include "game_types.hpp"
 #include "renderer/renderer.hpp"
 #include "systems/texture_system.hpp"
@@ -20,7 +21,7 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
     AppState->IsSuspended = false;
 
     u64 SystemsAllocatorTotalSize = 64 * 1024 * 1024;  // 64 mb
-    AppState->SystemAllocator.Initialize(SystemsAllocatorTotalSize);
+    LinearAllocator::Instance().Initialize(SystemsAllocatorTotalSize);
 
     AppState->mem = new MMemory();
 

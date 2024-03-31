@@ -1,8 +1,9 @@
 #include "renderer.hpp"
-#include "core/application.hpp"
+#include "memory/linear_allocator.hpp"
 #include "renderer/vulkan/vulkan_api.hpp"
 #include "systems/texture_system.hpp"
 #include "systems/material_system.hpp"
+
 
 RendererType *Renderer::ptrRenderer;
 /*f32 Renderer::NearClip = 0.1f;
@@ -146,9 +147,13 @@ void Renderer::DestroyMaterial(Material *material)
     ptrRenderer->DestroyMaterial(material);
 }
 
-bool Renderer::CreateGeometry(Geometry *geometry, u32 VertexCount, const Vertex3D *vertices, u32 IndexCount, const u32 *indices)
+bool Renderer::Load(GeometryID* gid, u32 VertexCount, const Vertex3D* vertices, u32 IndexCount, const u32* indices)
 {
-    return geometry->SendToRender(ptrRenderer, VertexCount, vertices, IndexCount, indices);
+    return ptrRenderer->Load(gid, VertexCount, vertices, IndexCount, indices);
+}
+
+void Renderer::Unload(GeometryID *gid)
+{
 }
 
 void Renderer::SetView(Matrix4D view)

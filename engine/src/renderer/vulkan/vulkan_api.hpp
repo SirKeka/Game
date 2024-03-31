@@ -93,7 +93,7 @@ public:
     u64 GeometryVertexOffset;
     u64 GeometryIndexOffset;
 
-    // TODO: сделать динамическим
+    // TODO: сделать динамическим, копии геометрий хранятся в системе геометрий, возможно стоит хранить здесь указатели на геометрии
     Geometry geometries[VULKAN_MAX_GEOMETRY_COUNT];
 
 public:
@@ -109,8 +109,8 @@ public:
     bool CreateMaterial(class Material* material) override;
     void DestroyMaterial(class Material* material) override;
     // TODO: перенести в класс системы визуализации
-    bool CreateGeometry(Geometry* geometry, u32 VertexCount, const Vertex3D& vertices, u32 IndexCount, u32* indices);
-    void DestroyGeometry(Geometry* geometry);
+    bool Load(GeometryID* gid, u32 VertexCount, const Vertex3D* vertices, u32 IndexCount, const u32* indices) override;
+    void Unload(GeometryID* gid) override;
 
     void* operator new(u64 size);
 

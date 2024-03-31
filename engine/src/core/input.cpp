@@ -1,5 +1,6 @@
 #include "input.hpp"
-#include "application.hpp"
+#include "event.hpp"
+#include "memory/linear_allocator.hpp"
 
 Input* Input::input = nullptr;
 

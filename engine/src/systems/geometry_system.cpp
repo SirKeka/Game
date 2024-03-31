@@ -1,11 +1,16 @@
 #include "geometry_system.hpp"
 #include "material_system.hpp"
+#include "renderer/renderer.hpp"
+#include "memory/linear_allocator.hpp"
 
 struct GeometryReference {
     u64 ReferenceCount;
-    Geometry geometry;
+    GeometryID gid;
     bool AutoRelease;
 };
+
+u32 GeometrySystem::MaxGeometryCount;
+GeometrySystem* GeometrySystem::state = nullptr;
 
 GeometrySystem::GeometrySystem()
  : 
@@ -13,20 +18,21 @@ GeometrySystem::GeometrySystem()
     vertices(), 
     IndexCount(), 
     indices(nullptr), 
-    name(GEOMETRY_NAME_MAX_LENGTH), 
-    MaterialName(MATERIAL_NAME_MAX_LENGTH), 
+    name(/*GEOMETRY_NAME_MAX_LENGTH*/), 
+    MaterialName(/*MATERIAL_NAME_MAX_LENGTH*/), 
     RegisteredGeometries()
 {
     // Блок массива находится после состояния. Уже выделено, поэтому просто установите указатель.
     void* ArrayBlock = this + sizeof(GeometrySystem);
-    this->RegisteredGeometries = ArrayBlock;
+    this->RegisteredGeometries = reinterpret_cast<GeometryReference*>(ArrayBlock);
 
     // Сделать недействительными все геометрии в массиве.
-    u32 count = this->config.max_geometry_count;
+    u32 count = this->MaxGeometryCount;
     for (u32 i = 0; i < count; ++i) {
-        this->RegisteredGeometries[i].geometry.id = INVALID_ID;
-        this->RegisteredGeometries[i].geometry.InternalID = INVALID_ID;
-        this->RegisteredGeometries[i].geometry.generation = INVALID_ID;
+        // this->RegisteredGeometries[i].geometry.id = INVALID_ID;
+        // this->RegisteredGeometries[i].geometry.InternalID = INVALID_ID;
+        // this->RegisteredGeometries[i].geometry.generation = INVALID_ID;
+        this->RegisteredGeometries[i].gid = GeometryID();
     }
 }
 
@@ -62,36 +68,36 @@ void GeometrySystem::Shutdown(void *state)
 GeometryConfig GeometrySystem::GeneratePlaneConfig(f32 width, f32 height, u32 xSegmentCount, u32 ySegmentCount, f32 TileX, f32 TileY, const char *name, const char *MaterialName)
 {
     if (width == 0) {
-        KWARN("Width must be nonzero. Defaulting to one.");
+        MWARN("Ширина(width) должна быть ненулевой. По умолчанию один.");
         width = 1.0f;
     }
     if (height == 0) {
-        KWARN("Height must be nonzero. Defaulting to one.");
+        MWARN("Высота(height) должна быть ненулевой. По умолчанию один.");
         height = 1.0f;
     }
     if (xSegmentCount < 1) {
-        KWARN("xSegmentCount must be a positive number. Defaulting to one.");
+        MWARN("Число сегментов по оси x(xSegmentCount) должно быть положительным. По умолчанию один.");
         xSegmentCount = 1;
     }
     if (ySegmentCount < 1) {
-        KWARN("ySegmentCount must be a positive number. Defaulting to one.");
+        MWARN("Число сегментов по оси y(ySegmentCount) должно быть положительным. По умолчанию один.");
         ySegmentCount = 1;
     }
 
     if (TileX == 0) {
-        KWARN("TileX must be nonzero. Defaulting to one.");
+        MWARN("TileX не должен быть нулевым. По умолчанию один.");
         TileX = 1.0f;
     }
     if (TileY == 0) {
-        KWARN("TileY must be nonzero. Defaulting to one.");
+        MWARN("TileY не должен быть нулевым. По умолчанию один.");
         TileY = 1.0f;
     }
 
     GeometryConfig config;
     config.VertexCount = xSegmentCount * ySegmentCount * 4;  // 4 вершины на сегмент
-    config.vertices = MMemory::Allocate(sizeof(Vertex3D) * config.VertexCount, MEMORY_TAG_ARRAY);
+    config.vertices = MMemory::TAllocate<Vertex3D>(config.VertexCount, MEMORY_TAG_ARRAY);
     config.IndexCount = xSegmentCount * ySegmentCount * 6;  // 6 индексов на сегмент
-    config.indices = MMemory::Allocate(sizeof(u32) * config.IndexCount, MEMORY_TAG_ARRAY);
+    config.indices = MMemory::TAllocate<u32>(config.IndexCount, MEMORY_TAG_ARRAY);
 
     // TODO: При этом создаются дополнительные вершины, но мы всегда можем дедуплицировать их позже.
     f32 SegWidth = width / xSegmentCount;
@@ -162,13 +168,18 @@ GeometryConfig GeometrySystem::GeneratePlaneConfig(f32 width, f32 height, u32 xS
     return config;
 }
 
-bool GeometrySystem::CreateGeometry(GeometryConfig config, Geometry *g)
+bool GeometrySystem::CreateGeometry(GeometryConfig config, GeometryID *gid)
 {
+    if (!config.VertexCount || !config.vertices) {
+        MERROR("VulkanAPI::CreateGeometry требует данных вершин, но они не были предоставлены. VertexCount=%d, vertices=%p", config.VertexCount, config.vertices);
+        return false;
+    }
+
     // Отправьте геометрию в рендерер для загрузки в графический процессор.
-    if (!g->Create(config.VertexCount, config.vertices, config.IndexCount, config.indices)) {
+    if (!Renderer::Load(gid, config.VertexCount, config.vertices, config.IndexCount, config.indices)) {
         // Сделайте запись недействительной.
-        this->RegisteredGeometries[g->id].ReferenceCount = 0;
-        this->RegisteredGeometries[g->id].AutoRelease = false;
+        this->RegisteredGeometries[gid->id].ReferenceCount = 0;
+        this->RegisteredGeometries[gid->id].AutoRelease = false;
         // g->id = INVALID_ID;
         // g->generation = INVALID_ID;
         // g->InternalID = INVALID_ID;
@@ -178,29 +189,19 @@ bool GeometrySystem::CreateGeometry(GeometryConfig config, Geometry *g)
 
     // Получить материал
     if (MString::Length(config.MaterialName) > 0) {
-        g->material = MaterialSystem::Instance()->Acquire(config.MaterialName);
-        if (!g->material) {
-            g->material = MaterialSystem::Instance()->GetDefaultMaterial();
+        gid->material = MaterialSystem::Instance()->Acquire(config.MaterialName);
+        if (!gid->material) {
+            gid->material = MaterialSystem::Instance()->GetDefaultMaterial();
         }
     }
 
     return true;
 }
 
-void GeometrySystem::DestroyGeometry(Geometry *g)
+void GeometrySystem::DestroyGeometry(GeometryID *gid)
 {
-    g->Destroy();
-    // g->InternalID = INVALID_ID;
-    // g->generation = INVALID_ID;
-    // g->id = INVALID_ID;
-
-    string_empty(g->name);
-
-    // Освободить материал.
-    if (g->material && MString::Length(g->material->name) > 0) {
-        MaterialSystem::Instance()->Release(g->material->name);
-        g->material = nullptr;
-    }
+    Renderer::Unload(gid);
+    gid->Destroy();
 }
 
 bool GeometrySystem::CreateDefaultGeometry()
@@ -231,7 +232,7 @@ bool GeometrySystem::CreateDefaultGeometry()
     u32 indices[6] = {0, 1, 2, 0, 3, 1};
 
     // Отправьте геометрию в рендерер для загрузки в графический процессор.
-    if (!DefaultGeometry.Create(4, verts, 6, indices)) {
+    if (!Renderer::Load(&DefaultGeometry, 4, verts, 6, indices)) {
         MFATAL("Не удалось создать геометрию по умолчанию. Приложение не может быть продолжено.");
         return false;
     }
@@ -242,11 +243,11 @@ bool GeometrySystem::CreateDefaultGeometry()
     return true;
 }
 
-Geometry *GeometrySystem::Acquire(u32 id)
+GeometryID *GeometrySystem::Acquire(u32 id)
 {
-    if (id != INVALID_ID && this->RegisteredGeometries[id].geometry.id != INVALID_ID) {
+    if (id != INVALID_ID && this->RegisteredGeometries[id].gid.id != INVALID_ID) {
         this->RegisteredGeometries[id].ReferenceCount++;
-        return &this->RegisteredGeometries[id].geometry;
+        return &this->RegisteredGeometries[id].gid;
     }
 
     // ПРИМЕЧАНИЕ. Следует ли вместо этого возвращать геометрию по умолчанию?
@@ -254,15 +255,15 @@ Geometry *GeometrySystem::Acquire(u32 id)
     return 0;
 }
 
-Geometry *GeometrySystem::Acquire(GeometryConfig config, bool AutoRelease)
+GeometryID *GeometrySystem::Acquire(GeometryConfig config, bool AutoRelease)
 {
-    Geometry* g = nullptr;
+    GeometryID* g = nullptr;
     for (u32 i = 0; i < this->MaxGeometryCount; ++i) {
-        if (this->RegisteredGeometries[i].geometry.id == INVALID_ID) {
+        if (this->RegisteredGeometries[i].gid.id == INVALID_ID) {
             // Поиск пустого слота.
             this->RegisteredGeometries[i].AutoRelease = AutoRelease;
             this->RegisteredGeometries[i].ReferenceCount = 1;
-            g = &this->RegisteredGeometries[i].geometry;
+            g = &this->RegisteredGeometries[i].gid;
             g->id = i;
             break;
         }
@@ -273,7 +274,7 @@ Geometry *GeometrySystem::Acquire(GeometryConfig config, bool AutoRelease)
         return 0;
     }
 
-    if (!/*CreateGeometry(this, config, g)*/) {
+    if (!CreateGeometry(config, g)) {
         MERROR("Не удалось создать геометрию. Возвращение nullptr.");
         return 0;
     }
@@ -281,21 +282,21 @@ Geometry *GeometrySystem::Acquire(GeometryConfig config, bool AutoRelease)
     return g;
 }
 
-void GeometrySystem::Release(Geometry *geometry)
+void GeometrySystem::Release(GeometryID *gid)
 {
-    if (geometry && geometry->id != INVALID_ID) {
-        GeometryReference* ref = &this->RegisteredGeometries[geometry->id];
+    if (gid && gid->id != INVALID_ID) {
+        GeometryReference* ref = &this->RegisteredGeometries[gid->id];
 
         // Возьмите копию ID;
-        u32 id = geometry->id;
-        if (ref->geometry.id == geometry->id) {
+        u32 id = gid->id;
+        if (ref->gid.id == gid->id) {
             if (ref->ReferenceCount > 0) {
                 ref->ReferenceCount--;
             }
 
             // Также удаляем идентификатор геометрии.
             if (ref->ReferenceCount < 1 && ref->AutoRelease) {
-                destroy_geometry(this, &ref->geometry);
+                DestroyGeometry(&ref->gid);
                 ref->ReferenceCount = 0;
                 ref->AutoRelease = false;
             }
@@ -308,11 +309,11 @@ void GeometrySystem::Release(Geometry *geometry)
     MWARN("GeometrySystem::Acquire не может освободить неверный идентификатор геометрии. Ничего не было сделано.");
 }
 
-Geometry *GeometrySystem::GetDefault()
+GeometryID *GeometrySystem::GetDefault()
 {
-    if (this) {
+    //if (this) {
         return &this->DefaultGeometry;
-    }
+    //}
 
     MFATAL("GeometrySystem::GetDefault вызывается перед инициализацией системы. Возвращение nullptr.");
     return 0;

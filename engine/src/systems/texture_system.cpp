@@ -64,10 +64,10 @@ TextureSystem::~TextureSystem()
         for (u32 i = 0; i < this->MaxTextureCount; ++i) {
             Texture* t = &this->RegisteredTextures[i];
             if (t->generation != INVALID_ID) {
-                t->Destroy(Renderer::GetRendererType());
+                t->Destroy(Renderer::GetRenderer());
             }
         }
-        DefaultTexture.Destroy(Renderer::GetRendererType());
+        DefaultTexture.Destroy(Renderer::GetRenderer());
     }
 }
 
@@ -167,7 +167,7 @@ void TextureSystem::Release(const char* name)
             Texture* t = &RegisteredTextures[ref.handle];
 
             // Уничтожить/ сбросить текстуру.
-            t->Destroy(Renderer::GetRendererType());
+            t->Destroy(Renderer::GetRenderer());
 
             // Сброс ссылки.
             ref.handle = INVALID_ID;
@@ -243,7 +243,7 @@ bool TextureSystem::CreateDefaultTexture()
             }
         }
     }
-    DefaultTexture.Create(DEFAULT_TEXTURE_NAME, TexDimension, TexDimension, 4, pixels, false, Renderer::GetRendererType());
+    DefaultTexture.Create(DEFAULT_TEXTURE_NAME, TexDimension, TexDimension, 4, pixels, false, Renderer::GetRenderer());
 
     // Вручную установите недействительную генерацию текстуры, поскольку это текстура по умолчанию.
     this->DefaultTexture.generation = INVALID_ID;
@@ -253,7 +253,7 @@ bool TextureSystem::CreateDefaultTexture()
 
 void TextureSystem::DestroyDefaultTexture()
 {
-    DefaultTexture.Destroy(Renderer::GetRendererType());
+    DefaultTexture.Destroy(Renderer::GetRenderer());
 }
 
 bool TextureSystem::LoadTexture(const char* TextureName, Texture *t)
@@ -309,7 +309,7 @@ bool TextureSystem::LoadTexture(const char* TextureName, Texture *t)
             TempTexture.ChannelCount,
             data,
             HasTransparency,
-            Renderer::GetRendererType());
+            Renderer::GetRenderer());
 
         // Скопируйте старую текстуру.
         Texture old = *t;
@@ -318,7 +318,7 @@ bool TextureSystem::LoadTexture(const char* TextureName, Texture *t)
         *t = TempTexture;
 
         // Уничтожьте старую текстуру.
-        old.Destroy(Renderer::GetRendererType());
+        old.Destroy(Renderer::GetRenderer());
 
         if (CurrentGeneration == INVALID_ID) {
             t->generation = 0;

@@ -1,7 +1,7 @@
 #include "logger.hpp"
 #include "asserts.hpp"
 #include "platform/platform.hpp"
-#include "application.hpp"
+#include "memory/linear_allocator.hpp"
 
 // TODO: временное
 #include <stdio.h>

@@ -41,7 +41,8 @@ public:
     static bool CreateMaterial(class Material* material);
     static void DestroyMaterial(class Material* material);
 
-    bool CreateGeometry(Geometry* geometry, u32 VertexCount, const Vertex3D* vertices, u32 IndexCount, const u32* indices);
+    static bool Load(GeometryID* gid, u32 VertexCount, const Vertex3D* vertices, u32 IndexCount, const u32* indices);
+    static void Unload(GeometryID* gid);
 
     // ВЗЛОМ: это не должно быть выставлено за пределы движка.
     MAPI void SetView(Matrix4D view);

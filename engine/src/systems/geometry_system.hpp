@@ -31,12 +31,12 @@ private:
     char name[GEOMETRY_NAME_MAX_LENGTH];
     char MaterialName[MATERIAL_NAME_MAX_LENGTH];
 
-    Geometry DefaultGeometry;
+    GeometryID DefaultGeometry;
 
     // Массив зарегистрированных сеток.
     struct GeometryReference* RegisteredGeometries;
 
-    static GeometrySystem state;
+    static GeometrySystem* state;
 
     GeometrySystem();
     ~GeometrySystem();
@@ -53,18 +53,18 @@ public:
     /// @brief Получает существующую геометрию по идентификатору.
     /// @param id Идентификатор геометрии, по которому необходимо получить данные.
     /// @return Указатель на полученную геометрию или nullptr в случае неудачи.
-    Geometry* Acquire(u32 id);
+    GeometryID* Acquire(u32 id);
     /// @brief Регистрирует и получает новую геометрию, используя данную конфигурацию.
     /// @param config Конфигурация геометрии.
     /// @param AutoRelease Указывает, должна ли полученная геометрия быть выгружена, когда ее счетчик ссылок достигнет 0.
     /// @return Указатель на полученную геометрию или nullptr в случае неудачи. 
-    Geometry* Acquire(GeometryConfig config, bool AutoRelease);
+    GeometryID* Acquire(GeometryConfig config, bool AutoRelease);
     /// @brief Освобождает ссылку на предоставленную геометрию.
     /// @param Geometry Геометрия, которую нужно освободить.
-    void Release(Geometry* geometry);
+    void Release(GeometryID *gid);
     /// @brief Получает указатель на геометрию по умолчанию.
     /// @return Указатель на геометрию по умолчанию.
-    Geometry* GetDefault();
+    GeometryID* GetDefault();
     /// @brief Генерирует конфигурацию для геометрии плоскости с учетом предоставленных параметров.
     /// ПРИМЕЧАНИЕ: массивы вершин и индексов распределяются динамически и должны освобождаться при удалении объекта.
     /// Таким образом, это не следует считать производственным кодом.
@@ -85,8 +85,8 @@ public:
         const char* name, 
         const char* MaterialName);
 private:
-    bool CreateGeometry(GeometryConfig config, Geometry* g);
-    void DestroyGeometry(Geometry* g);
+    bool CreateGeometry(GeometryConfig config, GeometryID* gid);
+    void DestroyGeometry(GeometryID* gid);
     bool CreateDefaultGeometry();
 public:
     void* operator new(u64 size);

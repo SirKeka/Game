@@ -2,6 +2,8 @@
 
 #include "core/mmemory.hpp"
 
+LinearAllocator LinearAllocator::state;
+
 LinearAllocator::LinearAllocator(u64 TotalSize, void *memory)
 {
     this->TotalSize = TotalSize;

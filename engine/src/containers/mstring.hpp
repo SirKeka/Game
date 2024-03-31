@@ -143,9 +143,7 @@ public:
     ///@return True, если синтаксический анализ прошел успешно; в противном случае false.
     bool ToBool(char* str, b8* b);
 
-private:
     void Destroy();
-
 };
 
 //MAPI bool operator== (const char*   lhs, const string& rhs);

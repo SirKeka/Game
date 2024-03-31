@@ -26,11 +26,11 @@ VKAPI_ATTR VkBool32 VKAPI_CALL VkDebugCallback(
 void VulkanAPI::DrawGeometry(const GeometryRenderData& data)
 {
     // Игнорировать незагруженные геометрии.
-    if (data.geometry && data.geometry->InternalID == INVALID_ID) {
+    if (data.gid && data.gid->id == INVALID_ID) {
         return;
     }
 
-    Geometry* BufferData = &this->geometries[data.geometry->InternalID];
+    Geometry* BufferData = &this->geometries[data.gid->id];
     VulkanCommandBuffer& CommandBuffer = this->GraphicsCommandBuffers[this->ImageIndex];
 
     // TODO: проверьте, действительно ли это необходимо.
@@ -39,8 +39,8 @@ void VulkanAPI::DrawGeometry(const GeometryRenderData& data)
     MaterialShader.SetModel(this, data.model);
 
     Material* m = nullptr;
-    if (data.geometry->material) {
-        m = data.geometry->material;
+    if (data.gid->material) {
+        m = data.gid->material;
     } else {
         m = MaterialSystem::Instance()->GetDefaultMaterial();
     }
@@ -549,34 +549,29 @@ void VulkanAPI::DestroyMaterial(Material *material)
     }
 }
 
-/*bool VulkanAPI::CreateGeometry(Geometry *geometry, u32 VertexCount, const Vertex3D *vertices, u32 IndexCount, u32 *indices)
+bool VulkanAPI::Load(GeometryID* gid, u32 VertexCount, const Vertex3D* vertices, u32 IndexCount, const u32* indices)
 {
-    if (!VertexCount || !vertices) {
-        MERROR("VulkanAPI::CreateGeometry требует данных вершин, но они не были предоставлены. VertexCount=%d, vertices=%p", VertexCount, vertices);
-        return false;
-    }
-
     // Проверьте, не повторная ли это загрузка. Если это так, необходимо впоследствии освободить старые данные.
-    bool IsReupload = geometry->InternalID != INVALID_ID;
+    bool IsReupload = gid->id != INVALID_ID;
     Geometry OldRange;
 
-    //Geometry* geometry = nullptr;
+    Geometry* geometry = nullptr;
     if (IsReupload) {
-        geometry = &this->geometries[geometry->InternalID];
+        //geometry = &this->geometries[geometry->InternalID];
 
         // Скопируйте старый диапазон.
-        old_range.index_buffer_offset = geometry->index_buffer_offset;
-        old_range.index_count = geometry->index_count;
-        old_range.index_size = geometry->index_size;
-        old_range.vertex_buffer_offset = geometry->vertex_buffer_offset;
-        old_range.VertexCount = geometry->VertexCount;
-        old_range.vertex_size = geometry->vertex_size;
-        OldRange = geometry;
+        /* OldRange.IndexBufferOffset = geometry->IndexBufferOffset;
+        OldRange.IndexCount = geometry->IndexCount;
+        OldRange.IndexSize = geometry->IndexSize;
+        OldRange.VertexBufferOffset = geometry->VertexBufferOffset;
+        OldRange.VertexCount = geometry->VertexCount;
+        OldRange.VertexSize = geometry->VertexSize;*/
+        OldRange = this->geometries[geometry->id];
     } else {
         for (u32 i = 0; i < VULKAN_MAX_GEOMETRY_COUNT; ++i) {
             if (this->geometries[i].id == INVALID_ID) {
                 // Найден свободный индекс.
-                geometry->InternalID = i;
+                gid->id = i;
                 this->geometries[i].id = i;
                 geometry = &this->geometries[i];
                 break;
@@ -584,7 +579,7 @@ void VulkanAPI::DestroyMaterial(Material *material)
         }
     }
     if (!geometry) {
-        MFATAL("VulkanRenderer::CreateGeometry не удалось найти свободный индекс для загрузки новой геометрии. Настройте конфигурацию, чтобы обеспечить больше.");
+        MFATAL("VulkanRenderer::Load не удалось найти свободный индекс для загрузки новой геометрии. Настройте конфигурацию, чтобы обеспечить больше.");
         return false;
     }
 
@@ -592,24 +587,24 @@ void VulkanAPI::DestroyMaterial(Material *material)
     VkQueue &queue = this->Device.GraphicsQueue;
 
     // Данные вершин.
-    geometry->SetVertexData(VertexCount, sizeof(Vertex3D) * VertexCount, this->GeometryVertexOffset);
+    geometry->SetVertexData(VertexCount, this->GeometryVertexOffset);
 
-    UploadDataRange(&this, pool, 0, queue, &this->ObjectVertexBuffer, geometry->VertexBufferOffset, geometry->VertexSize, vertices);
+    UploadDataRange(pool, 0, queue, this->ObjectVertexBuffer, geometry->VertexBufferOffset, geometry->VertexSize, vertices);
     // TODO: вместо этого следует поддерживать список свободной памяти
     this->GeometryVertexOffset += geometry->VertexSize;
 
     // Данные индексов, если применимо
-    if (IndexCount && indices) {
-        geometry->SetIndexData(IndexCount, sizeof(u32) * IndexCount, this->GeometryIndexOffset);
-        UploadDataRange(&this, pool, 0, queue, &this->ObjectIndexBuffer, geometry->IndexBufferOffset, geometry->IndexSize, indices);
+    if (geometry->IndexCount && indices) {
+        geometry->SetIndexData(IndexCount, this->GeometryIndexOffset);
+        UploadDataRange(pool, 0, queue, this->ObjectIndexBuffer, geometry->IndexBufferOffset, geometry->IndexSize, indices);
         // TODO: вместо этого следует поддерживать список свободной памяти
-        this->GeometryIndexOffset += sizeof(u32) * IndexCount;
+        this->GeometryIndexOffset += geometry->IndexSize;
     }
 
-    if (geometry->generation == INVALID_ID) {
-        geometry->generation = 0;
+    if (gid->generation == INVALID_ID) {
+        gid->generation = 0;
     } else {
-        geometry->generation++;
+        gid->generation++;
     }
 
     if (IsReupload) {
@@ -623,28 +618,28 @@ void VulkanAPI::DestroyMaterial(Material *material)
     }
 
     return true;
-}*/
+}
 
-/*void VulkanAPI::DestroyGeometry(Geometry *geometry)
+void VulkanAPI::Unload(GeometryID *gid)
 {
-    if (geometry && geometry->InternalID != INVALID_ID) {
-        vkDeviceWaitIdle(this->device.logical_device);
-        //vulkan_geometry_data* internal_data = &this->geometries[geometry->internal_id];
+    if (gid && gid->id != INVALID_ID) {
+        vkDeviceWaitIdle(this->Device.LogicalDevice);
+        Geometry& vGeometry = this->geometries[gid->id];
 
         // Освобождение данных вершин
-        FreeDataRange(&this->ObjectVertexBuffer, geometry->VertexBufferOffset, geometry->VertexSize);
+        FreeDataRange(&this->ObjectVertexBuffer, vGeometry.VertexBufferOffset, vGeometry.VertexSize);
 
         // Освобождение данных индексов, если это применимо
-        if (geometry->IndexSize > 0) {
-            FreeDataRange(&this->ObjectIndexBuffer, geometry->IndexBufferOffset, geometry->IndexSize);
+        if (vGeometry.IndexSize > 0) {
+            FreeDataRange(&this->ObjectIndexBuffer, vGeometry.IndexBufferOffset, vGeometry.IndexSize);
         }
 
         // Очистка данных.
-        MMemory::ZeroMem(&this->geometries[geometry->InternalID], sizeof(Geometry));
-        geometry->id = INVALID_ID;
-        geometry->generation = INVALID_ID;
+        vGeometry.Destroy(); //MMemory::ZeroMem(&this->geometries[geometry->InternalID], sizeof(Geometry));
+        //geometry->id = INVALID_ID;
+        //geometry->generation = INVALID_ID;
     }
-}*/
+}
 
 void *VulkanAPI::operator new(u64 size)
 {

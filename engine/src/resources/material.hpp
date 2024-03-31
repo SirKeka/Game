@@ -19,7 +19,7 @@ public:
     TextureMap DiffuseMap;
 public:
     Material() : id(), generation(), InternalId(), name(), DiffuseColour(), DiffuseMap() {}
-    Material(const Material& m) : id(m.id), generation(m.generation), InternalId(m.InternalId),/* name(m.name),*/ DiffuseColour(m.DiffuseColour), DiffuseMap(m.DiffuseMap) {MMemory::CopyMem(name, m.name, sizeof(m.name));}
+    Material(const Material& m) : id(m.id), generation(m.generation), InternalId(m.InternalId), /*name(m.name),*/ DiffuseColour(m.DiffuseColour), DiffuseMap(m.DiffuseMap) {MString::Copy(name, m.name);}
     //~Material() = delete;
     //void Destroy();
 };

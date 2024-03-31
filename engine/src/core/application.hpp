@@ -14,7 +14,7 @@ class Renderer;
 //class TextureSystem;
 
 struct ApplicationState {
-    LinearAllocator SystemAllocator;
+    //LinearAllocator SystemAllocator;
     MMemory* mem;
     Logger* logger;
     //Input Inputs;
