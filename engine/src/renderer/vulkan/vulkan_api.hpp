@@ -94,7 +94,7 @@ public:
     u64 GeometryIndexOffset;
 
     // TODO: сделать динамическим, копии геометрий хранятся в системе геометрий, возможно стоит хранить здесь указатели на геометрии
-    Geometry geometries[VULKAN_MAX_GEOMETRY_COUNT];
+    Geometry geometries[VULKAN_MAX_GEOMETRY_COUNT]{};
 
 public:
     VulkanAPI() {}
@@ -111,6 +111,7 @@ public:
     // TODO: перенести в класс системы визуализации
     bool Load(GeometryID* gid, u32 VertexCount, const Vertex3D* vertices, u32 IndexCount, const u32* indices) override;
     void Unload(GeometryID* gid) override;
+    void DrawGeometry(const GeometryRenderData& data) override;
 
     void* operator new(u64 size);
 
@@ -128,5 +129,5 @@ private:
 
     void UploadDataRange(VkCommandPool pool, VkFence fence, VkQueue queue, VulkanBuffer& buffer, u64 offset, u64 size, const void* data);
     void FreeDataRange(VulkanBuffer* buffer, u64 offset, u64 size);
-    void DrawGeometry(const GeometryRenderData& data) override;
+    
 };

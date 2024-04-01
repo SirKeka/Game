@@ -38,6 +38,16 @@ public:
 	/// @brief Инвертирует текущую матрицу
 	/// @return инвертированную матрицу
 	void Inverse();
+
+	/// @brief Создает и возвращает единичную матрицу:
+	/// @return новая единичная матрица
+	static MINLINE Matrix4D MakeIdentity()
+	{
+		return Matrix4D(1.0f, 0.0f, 0.0f, 0.0f,
+						0.0f, 1.0f, 0.0f, 0.0f,
+						0.0f, 0.0f, 1.0f, 0.0f,
+						0.0f, 0.0f, 0.0f, 1.0f);
+	}
 };
 
 	/// @brief Умножение матриц 4x4
@@ -48,15 +58,7 @@ public:
 
 	namespace Matrix4
 	{
-		/// @brief Создает и возвращает единичную матрицу:
-	/// @return новая единичная матрица
-	MINLINE Matrix4D MakeIdentity()
-	{
-		return Matrix4D(1.0f, 0.0f, 0.0f, 0.0f,
-						0.0f, 1.0f, 0.0f, 0.0f,
-						0.0f, 0.0f, 1.0f, 0.0f,
-						0.0f, 0.0f, 0.0f, 1.0f);
-	}
+		
 	/// @brief Создает и возвращает матрицу ортогональной проекции. Обычно используется для рендеринга плоских или 2D-сцен.
 	/// @param left левая сторона усеченного изображения.
 	/// @param right правая сторона усеченного изображения.
@@ -221,7 +223,7 @@ public:
 
 	MINLINE Matrix4D MakeEulerX(f32 AngleRadians)
 	{
-		Matrix4D m = Matrix4::MakeIdentity();
+		Matrix4D m = Matrix4D::MakeIdentity();
 		f32 c = Math::cos(AngleRadians);
     	f32 s = Math::sin(AngleRadians);
 
@@ -238,7 +240,7 @@ public:
 	//12 13 14 15
 	MAPI MINLINE Matrix4D MakeEulerY(f32 AngleRadians)
 	{
-		Matrix4D m = Matrix4::MakeIdentity();
+		Matrix4D m = Matrix4D::MakeIdentity();
 		f32 c = Math::cos(AngleRadians);
     	f32 s = Math::sin(AngleRadians);
 
@@ -252,7 +254,7 @@ public:
 
 	MAPI MINLINE Matrix4D MakeEulerZ(f32 AngleRadians)
 	{
-		Matrix4D m = Matrix4::MakeIdentity();
+		Matrix4D m = Matrix4D::MakeIdentity();
 		f32 c = Math::cos(AngleRadians);
     	f32 s = Math::sin(AngleRadians);
 

@@ -23,9 +23,6 @@ private:
     f32 NearClip;
     f32 FarClip;
 
-    //TODO: временно
-    static Material* TestMaterial; 
-    //TODO: временно
 public:
     Renderer() : projection(), view(), NearClip(0.f), FarClip(0.f) {}
     ~Renderer();
@@ -51,9 +48,5 @@ public:
     // void operator delete(void* ptr);
 private:
     //static void CreateTexture(class Texture* t);
-
-    //TODO: Временно
-    static bool EventOnDebugEvent(u16 code, void* sender, void* ListenerInst, EventContext data);
-    //TODO: Временно
 };
 

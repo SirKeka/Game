@@ -33,6 +33,10 @@ struct ApplicationState {
     Clock clock{};
     f64 LastTime;
 
+    // TODO: временно
+    struct GeometryID* TestGeometry;
+    // TODO: временно
+
 };
 
 class Application
@@ -58,4 +62,7 @@ private:
     static bool OnKey(u16 code, void* sender, void* ListenerInst, EventContext context);
     static bool OnResized(u16 code, void* sender, void* ListenerInst, EventContext context);
 
+    //TODO: временно
+    static bool OnDebugEvent(u16 code, void* sender, void* ListenerInst, EventContext context);
+    //TODO: временно
 };

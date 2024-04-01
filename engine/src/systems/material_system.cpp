@@ -30,9 +30,10 @@ MaterialSystem::MaterialSystem()
     // Сделать недействительными все материалы в массиве.
     u32 count = MaxMaterialCount;
     for (u32 i = 0; i < count; ++i) {
-        this->RegisteredMaterials[i].id = INVALID_ID;
-        this->RegisteredMaterials[i].generation = INVALID_ID;
-        this->RegisteredMaterials[i].InternalId = INVALID_ID;
+        // this->RegisteredMaterials[i].id = INVALID_ID;
+        // this->RegisteredMaterials[i].generation = INVALID_ID;
+        // this->RegisteredMaterials[i].InternalId = INVALID_ID;
+        this->RegisteredMaterials[i] = Material();
     }
 }
 
@@ -52,7 +53,7 @@ bool MaterialSystem::Initialize()
         state = new MaterialSystem();
     }
 
-    if (!state && !CreateDefaultMaterial()) {
+    if (!state->CreateDefaultMaterial()) {
         MFATAL("Не удалось создать материал по умолчанию. Приложение не может быть продолжено.");
         return false;
     }
@@ -206,8 +207,6 @@ Material *MaterialSystem::GetDefaultMaterial()
 bool MaterialSystem::CreateDefaultMaterial()
 {
     this->DefaultMaterial = Material(); //kzero_memory(&this->DefaultMaterial, sizeof(Material));
-    this->DefaultMaterial.id = INVALID_ID;
-    this->DefaultMaterial.generation = INVALID_ID;
     MString::nCopy(this->DefaultMaterial.name, DEFAULT_MATERIAL_NAME, MATERIAL_NAME_MAX_LENGTH);
     this->DefaultMaterial.DiffuseColour = Vector4D<f32>::One();  // белый
     this->DefaultMaterial.DiffuseMap.use = TextureUse::MapDiffuse;
@@ -262,18 +261,19 @@ void MaterialSystem::DestroyMaterial(Material *m)
 
     // Выпустите ссылки на текстуры.
     if (m->DiffuseMap.texture) {
-        TextureSystem::Instance()->Release(m->DiffuseMap.texture->name.c_str());
+        TextureSystem::Instance()->Release(m->DiffuseMap.texture->name);
     }
 
     // Освободите ресурсы средства рендеринга.
     //renderer_destroy_material(m);
 
     // Обнулить это, сделать удостоверения недействительными.
-    MMemory::ZeroMem(m, sizeof(Material));
+    m->Destroy();
+    /*MMemory::ZeroMem(m, sizeof(Material));
     m->id = INVALID_ID;
     m->generation = INVALID_ID;
     m->InternalId = INVALID_ID;
-    m = nullptr;
+    m = nullptr;*/
 }
 
 bool MaterialSystem::LoadConfigurationFile(const char *path, MaterialConfig *OutConfig)

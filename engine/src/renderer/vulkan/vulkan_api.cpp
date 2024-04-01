@@ -557,7 +557,7 @@ bool VulkanAPI::Load(GeometryID* gid, u32 VertexCount, const Vertex3D* vertices,
 
     Geometry* geometry = nullptr;
     if (IsReupload) {
-        //geometry = &this->geometries[geometry->InternalID];
+        geometry = &this->geometries[gid->id];
 
         // Скопируйте старый диапазон.
         /* OldRange.IndexBufferOffset = geometry->IndexBufferOffset;
@@ -566,7 +566,7 @@ bool VulkanAPI::Load(GeometryID* gid, u32 VertexCount, const Vertex3D* vertices,
         OldRange.VertexBufferOffset = geometry->VertexBufferOffset;
         OldRange.VertexCount = geometry->VertexCount;
         OldRange.VertexSize = geometry->VertexSize;*/
-        OldRange = this->geometries[geometry->id];
+        OldRange = geometry;
     } else {
         for (u32 i = 0; i < VULKAN_MAX_GEOMETRY_COUNT; ++i) {
             if (this->geometries[i].id == INVALID_ID) {

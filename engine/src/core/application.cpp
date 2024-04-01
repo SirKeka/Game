@@ -4,6 +4,7 @@
 #include "renderer/renderer.hpp"
 #include "systems/texture_system.hpp"
 #include "systems/material_system.hpp"
+#include "systems/geometry_system.hpp"
 
 ApplicationState* Application::AppState;
 
@@ -47,7 +48,9 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
     Event::GetInstance()->Register(EVENT_CODE_KEY_PRESSED, nullptr, OnKey);
     Event::GetInstance()->Register(EVENT_CODE_KEY_RELEASED, nullptr, OnKey);
     Event::GetInstance()->Register(EVENT_CODE_RESIZED, nullptr, OnResized);
-    
+    //TODO: временно
+    Event::GetInstance()->Register(EVENT_CODE_DEBUG0, nullptr, OnDebugEvent);
+    //TODO: временно
     AppState->Window = new MWindow(GameInst->AppConfig.name,
                         GameInst->AppConfig.StartPosX, 
                         GameInst->AppConfig.StartPosY, 
@@ -74,11 +77,33 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
         return false;
     }
 
+    // Система материалов
     MaterialSystem::SetMaxMaterialCount(4096);
     if (!MaterialSystem::Instance()->Initialize()) {
         MFATAL("Не удалось инициализировать систему материалов. Приложение не может быть продолжено.");
         return false;
     }
+
+    // Система геометрии
+    GeometrySystem::SetMaxGeometryCount(4096);
+    if (!GeometrySystem::Instance()->Initialize()) {
+        MFATAL("Не удалось инициализировать систему геометрии. Приложение не может быть продолжено.");
+        return false;
+    }
+    
+    // TODO: временно
+
+    // Загрузите конфигурацию плоскости и загрузите из нее геометрию.
+    //GeometryConfig gConfig = GeometrySystem::Instance()->GeneratePlaneConfig(10.0f, 5.0f, 5, 5, 5.0f, 2.0f, "test geometry", "test_material");
+    //AppState->TestGeometry = GeometrySystem::Instance()->Acquire(gConfig, true);
+
+    // Очистите места для конфигурации геометрии.
+    //MMemory::Free(gConfig.vertices, sizeof(Vertex3D) * gConfig.VertexCount, MEMORY_TAG_ARRAY);
+    //MMemory::Free(gConfig.indices, sizeof(u32) * gConfig.IndexCount, MEMORY_TAG_ARRAY);
+
+    // Загрузите геометрию по умолчанию.
+    AppState->TestGeometry = GeometrySystem::Instance()->GetDefault();
+    // TODO: временно 
 
     // Инициализируйте игру.
     if (!GameInst->Initialize()) {
@@ -129,6 +154,16 @@ bool Application::ApplicationRun() {
             // TODO: refactor packet creation
             RenderPacket packet;
             packet.DeltaTime = delta;
+
+            // TODO: временно
+            GeometryRenderData TestRender;
+            TestRender.gid = AppState->TestGeometry;
+            TestRender.model = Matrix4D::MakeIdentity();
+
+            packet.GeometryCount = 1;
+            packet.geometries = &TestRender;
+            // TODO: временно
+
             AppState->Render->DrawFrame(&packet);
 
             // Выясните, сколько времени занял кадр и, если ниже
@@ -166,8 +201,12 @@ bool Application::ApplicationRun() {
     Event::GetInstance()->Unregister(EVENT_CODE_KEY_PRESSED, nullptr, OnKey);
     Event::GetInstance()->Unregister(EVENT_CODE_KEY_RELEASED, nullptr, OnKey);
     Event::GetInstance()->Unregister(EVENT_CODE_RESIZED, nullptr, OnResized);
+    //TODO: временно
+    Event::GetInstance()->Unregister(EVENT_CODE_DEBUG0, nullptr, OnDebugEvent);
+    //TODO: временно
     Event::GetInstance()->Shutdown();
     Input::Instance()->Sutdown();
+    GeometrySystem::Instance()->Shutdown();
     MaterialSystem::Instance()->Shutdown();
     TextureSystem::Instance()->Shutdown();
     AppState->Render->Shutdown();
@@ -269,3 +308,34 @@ bool Application::OnResized(u16 code, void *sender, void *ListenerInst, EventCon
 
     return false;
 }
+
+// TODO: временно
+bool Application::OnDebugEvent(u16 code, void *sender, void *ListenerInst, EventContext context)
+{
+    const char* names[3] = {
+        "asphalt",
+        "iris",
+        "uvgrid"};
+    static i8 choice = 2;
+
+    // Сохраните старое имя.
+    MString OldName = names[choice];
+
+    choice++;
+    choice %= 3;
+
+    // Приобретите новую текстуру.
+    if (AppState->TestGeometry) {
+        AppState->TestGeometry->material->DiffuseMap.texture = TextureSystem::Instance()->Acquire(names[choice], true);
+        if (!AppState->TestGeometry->material->DiffuseMap.texture) {
+            MWARN("Event::OnDebugEvent нет текстуры! используется значение по умолчанию");
+            AppState->TestGeometry->material->DiffuseMap.texture = TextureSystem::Instance()->GetDefaultTexture();
+        }
+
+        // Освободите старую текстуру.
+        TextureSystem::Instance()->Release(OldName.c_str());
+    }
+
+    return true;
+}
+//TODO: временно

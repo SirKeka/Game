@@ -24,12 +24,7 @@ private:
     // Принимаем во внимание и другие системы
     static u32 MaxGeometryCount;
 
-    u32 VertexCount;
-    struct Vertex3D* vertices;
-    u32 IndexCount;
-    u32* indices;
-    char name[GEOMETRY_NAME_MAX_LENGTH];
-    char MaterialName[MATERIAL_NAME_MAX_LENGTH];
+    GeometryConfig config;
 
     GeometryID DefaultGeometry;
 
@@ -48,7 +43,7 @@ public:
     static void SetMaxGeometryCount(u32 value);
 
     bool Initialize();
-    void Shutdown(void* state);
+    void Shutdown();
 
     /// @brief Получает существующую геометрию по идентификатору.
     /// @param id Идентификатор геометрии, по которому необходимо получить данные.

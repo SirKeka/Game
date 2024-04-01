@@ -16,9 +16,10 @@ struct GeometryID {
     char name[GEOMETRY_NAME_MAX_LENGTH];
     class Material* material;
 
-    GeometryID() : id(INVALID_ID), generation(INVALID_ID), name() {}
+    GeometryID() : id(INVALID_ID), /*InternalID(INVALID_ID),*/ generation(INVALID_ID), name(), material(nullptr) {}
     void Destroy() {
         id = INVALID_ID; 
+        //InternalID = INVALID_ID;
         generation = INVALID_ID; 
         MMemory::SetMemory(name, 0, GEOMETRY_NAME_MAX_LENGTH);
         if (material && MString::Length(material->name) > 0) {

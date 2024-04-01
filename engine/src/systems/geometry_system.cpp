@@ -14,13 +14,15 @@ GeometrySystem* GeometrySystem::state = nullptr;
 
 GeometrySystem::GeometrySystem()
  : 
-    VertexCount(), 
-    vertices(), 
-    IndexCount(), 
-    indices(nullptr), 
-    name(/*GEOMETRY_NAME_MAX_LENGTH*/), 
-    MaterialName(/*MATERIAL_NAME_MAX_LENGTH*/), 
-    RegisteredGeometries()
+    //VertexCount(), 
+    //vertices(), 
+    //IndexCount(), 
+    //indices(nullptr), 
+    //name(/*GEOMETRY_NAME_MAX_LENGTH*/), 
+    //MaterialName(/*MATERIAL_NAME_MAX_LENGTH*/),
+    config(), 
+    DefaultGeometry(),
+    RegisteredGeometries(nullptr)
 {
     // Блок массива находится после состояния. Уже выделено, поэтому просто установите указатель.
     void* ArrayBlock = this + sizeof(GeometrySystem);
@@ -52,7 +54,7 @@ bool GeometrySystem::Initialize()
         state = new GeometrySystem();
     }
 
-    if (!CreateDefaultGeometry()) {
+    if (!state->CreateDefaultGeometry()) {
         MFATAL("Не удалось создать геометрию по умолчанию. Приложение не может быть продолжено.");
         return false;
     }
@@ -60,9 +62,9 @@ bool GeometrySystem::Initialize()
     return true;
 }
 
-void GeometrySystem::Shutdown(void *state)
+void GeometrySystem::Shutdown()
 {
-    state = nullptr;
+
 }
 
 GeometryConfig GeometrySystem::GeneratePlaneConfig(f32 width, f32 height, u32 xSegmentCount, u32 ySegmentCount, f32 TileX, f32 TileY, const char *name, const char *MaterialName)
@@ -183,6 +185,7 @@ bool GeometrySystem::CreateGeometry(GeometryConfig config, GeometryID *gid)
         // g->id = INVALID_ID;
         // g->generation = INVALID_ID;
         // g->InternalID = INVALID_ID;
+        gid->Destroy();
 
         return false;
     }
@@ -232,7 +235,7 @@ bool GeometrySystem::CreateDefaultGeometry()
     u32 indices[6] = {0, 1, 2, 0, 3, 1};
 
     // Отправьте геометрию в рендерер для загрузки в графический процессор.
-    if (!Renderer::Load(&DefaultGeometry, 4, verts, 6, indices)) {
+    if (!Renderer::Load(&this->DefaultGeometry, 4, verts, 6, indices)) {
         MFATAL("Не удалось создать геометрию по умолчанию. Приложение не может быть продолжено.");
         return false;
     }
@@ -322,6 +325,6 @@ GeometryID *GeometrySystem::GetDefault()
 void *GeometrySystem::operator new(u64 size)
 {
     // Блок памяти будет содержать структуру состояния, затем блок массива, затем блок хеш-таблицы.
-    u64 ArrayRequirement = sizeof(Geometry) * MaxGeometryCount;
+    u64 ArrayRequirement = sizeof(GeometryID) * MaxGeometryCount;
     return LinearAllocator::Instance().Allocate(size + ArrayRequirement);
 }
