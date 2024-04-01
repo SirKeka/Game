@@ -94,15 +94,15 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
     // TODO: временно
 
     // Загрузите конфигурацию плоскости и загрузите из нее геометрию.
-    //GeometryConfig gConfig = GeometrySystem::Instance()->GeneratePlaneConfig(10.0f, 5.0f, 5, 5, 5.0f, 2.0f, "test geometry", "test_material");
-    //AppState->TestGeometry = GeometrySystem::Instance()->Acquire(gConfig, true);
+    GeometryConfig gConfig = GeometrySystem::Instance()->GeneratePlaneConfig(10.0f, 5.0f, 5, 5, 5.0f, 2.0f, "test geometry", "test_material");
+    AppState->TestGeometry = GeometrySystem::Instance()->Acquire(gConfig, true);
 
     // Очистите места для конфигурации геометрии.
-    //MMemory::Free(gConfig.vertices, sizeof(Vertex3D) * gConfig.VertexCount, MEMORY_TAG_ARRAY);
-    //MMemory::Free(gConfig.indices, sizeof(u32) * gConfig.IndexCount, MEMORY_TAG_ARRAY);
+    MMemory::Free(gConfig.vertices, sizeof(Vertex3D) * gConfig.VertexCount, MEMORY_TAG_ARRAY);
+    MMemory::Free(gConfig.indices, sizeof(u32) * gConfig.IndexCount, MEMORY_TAG_ARRAY);
 
     // Загрузите геометрию по умолчанию.
-    AppState->TestGeometry = GeometrySystem::Instance()->GetDefault();
+    // AppState->TestGeometry = GeometrySystem::Instance()->GetDefault();
     // TODO: временно 
 
     // Инициализируйте игру.

@@ -2,12 +2,13 @@
 #include "systems/texture_system.hpp"
 #include "renderer/renderer.hpp"
 
-#include "core/application.hpp"
+#include "memory/linear_allocator.hpp"
+#include <new>
 
 u32 MaterialSystem::MaxMaterialCount = 0;
 MaterialSystem* MaterialSystem::state = nullptr;
 
-MaterialSystem::MaterialSystem()
+MaterialSystem::MaterialSystem()// : name(), AutoRelease(false), DiffuseMapName(), DiffuseColour(), DefaultMaterial(), RegisteredMaterials()
 {
     // Блок массива находится после состояния. Уже выделено, поэтому просто установите указатель.
     u8* ArrayBlock = reinterpret_cast<u8*>(this + sizeof(MaterialSystem));
@@ -28,13 +29,13 @@ MaterialSystem::MaterialSystem()
     RegisteredMaterialTable.Fill(&InvalidRef);
 
     // Сделать недействительными все материалы в массиве.
-    u32 count = MaxMaterialCount;
-    for (u32 i = 0; i < count; ++i) {
+    new (reinterpret_cast<void*>(RegisteredMaterials)) Material[MaxMaterialCount];
+    /*for (u32 i = 0; i < MaxMaterialCount; ++i) {
         // this->RegisteredMaterials[i].id = INVALID_ID;
         // this->RegisteredMaterials[i].generation = INVALID_ID;
         // this->RegisteredMaterials[i].InternalId = INVALID_ID;
-        this->RegisteredMaterials[i] = Material();
-    }
+        // new (reinterpret_cast<void*>(RegisteredMaterials)) Material[MaxMaterialCount];
+    }*/
 }
 
 void MaterialSystem::SetMaxMaterialCount(u32 value)
@@ -64,7 +65,7 @@ void MaterialSystem::Shutdown()
 {
     if (state) {
         // Сделать недействительными все материалы в массиве.
-        for (u32 i = 0; i < MaxMaterialCount; ++i) {
+        for (u32 i = 0; i < MaxMaterialCount; ++i) { MTRACE("%u, %i", state->RegisteredMaterials[i].id, i);
             if (state->RegisteredMaterials[i].id != INVALID_ID) {
                 DestroyMaterial(&state->RegisteredMaterials[i]);
             }
@@ -257,7 +258,7 @@ bool MaterialSystem::LoadMaterial(MaterialConfig config, Material *m)
 
 void MaterialSystem::DestroyMaterial(Material *m)
 {
-    MTRACE("Уничтожение материала '%s'...", m->name);
+    //MTRACE("Уничтожение материала '%s'...", m->name);
 
     // Выпустите ссылки на текстуры.
     if (m->DiffuseMap.texture) {
@@ -265,7 +266,7 @@ void MaterialSystem::DestroyMaterial(Material *m)
     }
 
     // Освободите ресурсы средства рендеринга.
-    //renderer_destroy_material(m);
+    Renderer::DestroyMaterial(m);
 
     // Обнулить это, сделать удостоверения недействительными.
     m->Destroy();
