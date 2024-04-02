@@ -1,7 +1,9 @@
 #include "geometry_system.hpp"
 #include "material_system.hpp"
 #include "renderer/renderer.hpp"
+
 #include "memory/linear_allocator.hpp"
+#include <new>
 
 struct GeometryReference {
     u64 ReferenceCount;
@@ -29,12 +31,11 @@ GeometrySystem::GeometrySystem()
     this->RegisteredGeometries = reinterpret_cast<GeometryReference*>(ArrayBlock);
 
     // Сделать недействительными все геометрии в массиве.
-    u32 count = this->MaxGeometryCount;
-    for (u32 i = 0; i < count; ++i) {
-        // this->RegisteredGeometries[i].geometry.id = INVALID_ID;
-        // this->RegisteredGeometries[i].geometry.InternalID = INVALID_ID;
-        // this->RegisteredGeometries[i].geometry.generation = INVALID_ID;
-        this->RegisteredGeometries[i].gid = GeometryID();
+    //new (reinterpret_cast<void*>(RegisteredGeometries)) GeometryID[MaxGeometryCount];
+    for (u32 i = 0; i < MaxGeometryCount; ++i) {
+        this->RegisteredGeometries[i].gid.id = INVALID_ID;
+        this->RegisteredGeometries[i].gid.InternalID = INVALID_ID;
+        this->RegisteredGeometries[i].gid.generation = INVALID_ID;
     }
 }
 
@@ -182,10 +183,9 @@ bool GeometrySystem::CreateGeometry(GeometryConfig config, GeometryID *gid)
         // Сделайте запись недействительной.
         this->RegisteredGeometries[gid->id].ReferenceCount = 0;
         this->RegisteredGeometries[gid->id].AutoRelease = false;
-        // g->id = INVALID_ID;
-        // g->generation = INVALID_ID;
-        // g->InternalID = INVALID_ID;
-        gid->Destroy();
+        gid->id = INVALID_ID;
+        gid->generation = INVALID_ID;
+        gid->InternalID = INVALID_ID;
 
         return false;
     }
@@ -204,7 +204,15 @@ bool GeometrySystem::CreateGeometry(GeometryConfig config, GeometryID *gid)
 void GeometrySystem::DestroyGeometry(GeometryID *gid)
 {
     Renderer::Unload(gid);
-    gid->Destroy();
+
+    gid->id = INVALID_ID; 
+    gid->InternalID = INVALID_ID;
+    gid->generation = INVALID_ID; 
+    MMemory::SetMemory(gid->name, 0, GEOMETRY_NAME_MAX_LENGTH);
+    if (gid->material && MString::Length(gid->material->name) > 0) {
+    MaterialSystem::Instance()->Release(gid->material->name);
+    gid->material = nullptr;
+    }
 }
 
 bool GeometrySystem::CreateDefaultGeometry()

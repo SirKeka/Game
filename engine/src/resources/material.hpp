@@ -19,20 +19,14 @@ public:
     Vector4D<f32> DiffuseColour;
     TextureMap DiffuseMap;
 public:
-    Material() : id(INVALID_ID), generation(INVALID_ID), InternalId(INVALID_ID), name(), DiffuseColour(), DiffuseMap() {}
-    Material(const Material& m) : id(m.id), generation(m.generation), InternalId(m.InternalId), /*name(m.name),*/ DiffuseColour(m.DiffuseColour), DiffuseMap(m.DiffuseMap) {MString::Copy(name, m.name);}
-    ~Material() {
-        MTRACE("Уничтожение материала '%s'...", name);
-        u32 id = INVALID_ID;
-        u32 generation = INVALID_ID;
-        u32 InternalId = INVALID_ID;
-        MMemory::ZeroMem(name, MATERIAL_NAME_MAX_LENGTH);
-        Vector4D<f32> DiffuseColour = Vector4D<f32>::Zero();
-        MMemory::ZeroMem(&DiffuseMap, sizeof(TextureMap));
-    }
+    Material();
+    Material(const Material& m);
+    Material(const char* name, Vector4D<f32> DiffuseColour, TextureUse use, Texture* texture);
+    ~Material();
 
-    MINLINE void Destroy() {
-        
-        this->~Material();
-    }
+    explicit const bool operator ! (Material& m);
+
+    MINLINE void Destroy() { this->~Material(); }
+    void Set(const char* name, Vector4D<f32> DiffuseColour, TextureUse use, Texture* texture);
+    void SetName(const char* name);
 };

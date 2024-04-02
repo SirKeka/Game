@@ -57,10 +57,14 @@ public:
 
 	/// @brief Нулевой вектор
     /// @return (0, 0, 0, 0)
-    static Vector4D Zero();
+    static MINLINE Vector4D Zero() {
+	    return Vector4D(T(), T(), T(), T());
+	}
     /// @brief Единичный вектор
     /// @return (1, 1, 1, 1)
-    static Vector4D One();
+    static MINLINE Vector4D One() {
+	    return Vector4D(1, 1, 1, 1);
+	}
 
 	//T& operator [](int i);
 	//const T& operator [](int i) const;
@@ -68,21 +72,16 @@ public:
 	Vector4D& operator -=(const Vector4D& v);
 	Vector4D& operator *=(const Vector4D& v);
 	Vector4D& operator /=(const Vector4D& v);
+	explicit operator bool() const {
+		if (*this != Vector4D(0, 0, 0, 0)) return true;
+		return false;
+	}
+	const bool operator !(Vector4D& v) {
+		return !(bool)v;
+	}
 	
 	Vector4D& Normalize();
 };
-
-template <typename T>
-MINLINE Vector4D<T> Vector4D<T>::Zero()
-{
-    return Vector4D<T>(T(), T(), T(), T());
-}
-
-template <typename T>
-MINLINE Vector4D<T> Vector4D<T>::One()
-{
-    return Vector4D<T>(1, 1, 1, 1);
-}
 
 template <typename T>
 MINLINE Vector4D<T> &Vector4D<T>::operator+=(const Vector4D<T> &v)

@@ -26,11 +26,11 @@ VKAPI_ATTR VkBool32 VKAPI_CALL VkDebugCallback(
 void VulkanAPI::DrawGeometry(const GeometryRenderData& data)
 {
     // Игнорировать незагруженные геометрии.
-    if (data.gid && data.gid->id == INVALID_ID) {
+    if (data.gid && data.gid->InternalID == INVALID_ID) {
         return;
     }
 
-    Geometry* BufferData = &this->geometries[data.gid->id];
+    Geometry* BufferData = &this->geometries[data.gid->InternalID];
     VulkanCommandBuffer& CommandBuffer = this->GraphicsCommandBuffers[this->ImageIndex];
 
     // TODO: проверьте, действительно ли это необходимо.
@@ -552,12 +552,12 @@ void VulkanAPI::DestroyMaterial(Material *material)
 bool VulkanAPI::Load(GeometryID* gid, u32 VertexCount, const Vertex3D* vertices, u32 IndexCount, const u32* indices)
 {
     // Проверьте, не повторная ли это загрузка. Если это так, необходимо впоследствии освободить старые данные.
-    bool IsReupload = gid->id != INVALID_ID;
+    bool IsReupload = gid->InternalID != INVALID_ID;
     Geometry OldRange;
 
     Geometry* geometry = nullptr;
     if (IsReupload) {
-        geometry = &this->geometries[gid->id];
+        geometry = &this->geometries[gid->InternalID];
 
         // Скопируйте старый диапазон.
         /* OldRange.IndexBufferOffset = geometry->IndexBufferOffset;
@@ -571,7 +571,7 @@ bool VulkanAPI::Load(GeometryID* gid, u32 VertexCount, const Vertex3D* vertices,
         for (u32 i = 0; i < VULKAN_MAX_GEOMETRY_COUNT; ++i) {
             if (this->geometries[i].id == INVALID_ID) {
                 // Найден свободный индекс.
-                gid->id = i;
+                gid->InternalID = i;
                 this->geometries[i].id = i;
                 geometry = &this->geometries[i];
                 break;
@@ -622,9 +622,9 @@ bool VulkanAPI::Load(GeometryID* gid, u32 VertexCount, const Vertex3D* vertices,
 
 void VulkanAPI::Unload(GeometryID *gid)
 {
-    if (gid && gid->id != INVALID_ID) {
+    if (gid && gid->InternalID != INVALID_ID) {
         vkDeviceWaitIdle(this->Device.LogicalDevice);
-        Geometry& vGeometry = this->geometries[gid->id];
+        Geometry& vGeometry = this->geometries[gid->InternalID];
 
         // Освобождение данных вершин
         FreeDataRange(&this->ObjectVertexBuffer, vGeometry.VertexBufferOffset, vGeometry.VertexSize);

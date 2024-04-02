@@ -3,7 +3,7 @@
 #include "renderer/vulkan/vulkan_utils.hpp"
 
 Texture::Texture() : 
-    id(0), 
+    id(INVALID_ID), 
     width(0), 
     height(0), 
     ChannelCount(0), 

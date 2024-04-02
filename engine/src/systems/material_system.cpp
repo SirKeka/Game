@@ -29,8 +29,8 @@ MaterialSystem::MaterialSystem()// : name(), AutoRelease(false), DiffuseMapName(
     RegisteredMaterialTable.Fill(&InvalidRef);
 
     // Сделать недействительными все материалы в массиве.
-    new (reinterpret_cast<void*>(RegisteredMaterials)) Material[MaxMaterialCount];
-    /*for (u32 i = 0; i < MaxMaterialCount; ++i) {
+    new (reinterpret_cast<void*>(RegisteredMaterials)) Material[MaxMaterialCount]();
+    /*for (u32 i = 0; i < 100; ++i) { MTRACE("id%u, %u", RegisteredMaterials[i].id, i);
         // this->RegisteredMaterials[i].id = INVALID_ID;
         // this->RegisteredMaterials[i].generation = INVALID_ID;
         // this->RegisteredMaterials[i].InternalId = INVALID_ID;
@@ -57,7 +57,7 @@ bool MaterialSystem::Initialize()
     if (!state->CreateDefaultMaterial()) {
         MFATAL("Не удалось создать материал по умолчанию. Приложение не может быть продолжено.");
         return false;
-    }
+    } 
     return true;
 }
 
@@ -65,7 +65,7 @@ void MaterialSystem::Shutdown()
 {
     if (state) {
         // Сделать недействительными все материалы в массиве.
-        for (u32 i = 0; i < MaxMaterialCount; ++i) { MTRACE("%u, %i", state->RegisteredMaterials[i].id, i);
+        for (u32 i = 0; i < MaxMaterialCount; ++i) { //MTRACE("id%u, %u", RegisteredMaterials[i].id, i)
             if (state->RegisteredMaterials[i].id != INVALID_ID) {
                 DestroyMaterial(&state->RegisteredMaterials[i]);
             }
@@ -79,7 +79,7 @@ void MaterialSystem::Shutdown()
 }
 
 Material *MaterialSystem::Acquire(const char *name)
-{
+{ //for (u32 i = 71; i < 73; ++i) { MTRACE("id%u, %u", RegisteredMaterials[i].id, i);}
     // Загрузите данную конфигурацию материала с диска.
     MaterialConfig config;
 
@@ -111,13 +111,12 @@ Material *MaterialSystem::AcquireFromConfig(MaterialConfig config)
         // Это можно изменить только при первой загрузке материала.
         if (ref.ReferenceCount == 0) {
             ref.AutoRelease = config.AutoRelease;
-        }
+        } 
         ref.ReferenceCount++;
         if (ref.handle == INVALID_ID) {
             // Это означает, что здесь нет материала. Сначала найдите бесплатный индекс.
-            u32 count = this->MaxMaterialCount;
             Material* m = nullptr;
-            for (u32 i = 0; i < count; ++i) {
+            for (u32 i = 0; i < MaxMaterialCount; ++i) {
                 if (this->RegisteredMaterials[i].id == INVALID_ID) {
                     // Свободный слот найден. Используйте его индекс в качестве дескриптора.
                     ref.handle = i;
@@ -125,7 +124,7 @@ Material *MaterialSystem::AcquireFromConfig(MaterialConfig config)
                     break;
                 }
             }
-
+            
             // Убедитесь, что пустой слот действительно найден.
             if (!m || ref.handle == INVALID_ID) {
                 MFATAL("MaterialSystem::Acquire — система материалов больше не может содержать материалы. Настройте конфигурацию, чтобы разрешить больше.");
@@ -163,6 +162,7 @@ Material *MaterialSystem::AcquireFromConfig(MaterialConfig config)
 
 void MaterialSystem::Release(const char *name)
 {
+    
     // Игнорируйте запросы на выпуск материала по умолчанию.
     if (StringsEquali(name, DEFAULT_MATERIAL_NAME)) {
         return;
@@ -193,6 +193,7 @@ void MaterialSystem::Release(const char *name)
     } else {
         MERROR("MaterialSystem::Release не удалось выпустить материал '%s'.", name);
     }
+    
 }
 
 Material *MaterialSystem::GetDefaultMaterial()
@@ -206,13 +207,15 @@ Material *MaterialSystem::GetDefaultMaterial()
 }
 
 bool MaterialSystem::CreateDefaultMaterial()
-{
-    this->DefaultMaterial = Material(); //kzero_memory(&this->DefaultMaterial, sizeof(Material));
-    MString::nCopy(this->DefaultMaterial.name, DEFAULT_MATERIAL_NAME, MATERIAL_NAME_MAX_LENGTH);
-    this->DefaultMaterial.DiffuseColour = Vector4D<f32>::One();  // белый
-    this->DefaultMaterial.DiffuseMap.use = TextureUse::MapDiffuse;
-    this->DefaultMaterial.DiffuseMap.texture = TextureSystem::Instance()->GetDefaultTexture();
-
+{ 
+    this->DefaultMaterial.Set(
+        DEFAULT_MATERIAL_NAME,
+        Vector4D<f32>::One(), // белый
+        TextureUse::MapDiffuse,
+        TextureSystem::Instance()->GetDefaultTexture() 
+    );
+    this->DefaultMaterial.InternalId = 0;
+    
     if (!Renderer::CreateMaterial(&this->DefaultMaterial)) {
         MFATAL("Не удалось получить ресурсы средства рендеринга для текстуры по умолчанию. Приложение не может быть продолжено.");
         return false;
@@ -222,7 +225,7 @@ bool MaterialSystem::CreateDefaultMaterial()
 }
 
 bool MaterialSystem::LoadMaterial(MaterialConfig config, Material *m)
-{
+{ 
     MMemory::ZeroMem(m, sizeof(Material));
 
     // имя
@@ -242,7 +245,7 @@ bool MaterialSystem::LoadMaterial(MaterialConfig config, Material *m)
     } else {
         // ПРИМЕЧАНИЕ. Устанавливается только для ясности, поскольку вызов MMemory::ZeroMem выше уже делает это.
         m->DiffuseMap.use = TextureUse::Unknown;
-        m->DiffuseMap.texture = 0;
+        m->DiffuseMap.texture = nullptr;
     }
 
     // TODO: другие карты

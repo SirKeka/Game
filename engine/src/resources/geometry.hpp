@@ -11,22 +11,10 @@
 
 struct GeometryID {
     u32 id;
-    //u32 InternalID;
+    u32 InternalID;
     u32 generation;
     char name[GEOMETRY_NAME_MAX_LENGTH];
     class Material* material;
-
-    GeometryID() : id(INVALID_ID), /*InternalID(INVALID_ID),*/ generation(INVALID_ID), name(), material(nullptr) {}
-    void Destroy() {
-        id = INVALID_ID; 
-        //InternalID = INVALID_ID;
-        generation = INVALID_ID; 
-        MMemory::SetMemory(name, 0, GEOMETRY_NAME_MAX_LENGTH);
-        if (material && MString::Length(material->name) > 0) {
-        MaterialSystem::Instance()->Release(material->name);
-        material = nullptr;
-        }
-    }
 };
 
 /// @brief Представляет фактическую геометрию в мире.
@@ -51,6 +39,7 @@ public:
     Geometry(u32 VertexCount, u32 VertexBufferOffset, u32 IndexCount, u32 IndexBufferOffset);
     Geometry(const Geometry& g);
     Geometry(Geometry&& g);
+    ~Geometry();
 
     Geometry& operator= (const Geometry& g);
     Geometry& operator= (const Geometry* g);

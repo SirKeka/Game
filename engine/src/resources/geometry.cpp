@@ -66,6 +66,18 @@ material(g.material)*/
     g.IndexBufferOffset = 0;
 }
 
+Geometry::~Geometry()
+{
+    id = INVALID_ID;
+    generation = INVALID_ID;
+    VertexCount = 0;
+    VertexSize = 0;
+    VertexBufferOffset = 0;
+    IndexCount = 0;
+    IndexSize = 0;
+    IndexBufferOffset = 0;
+}
+
 Geometry &Geometry::operator=(const Geometry &g)
 {
     VertexCount = g.VertexCount;
@@ -104,13 +116,5 @@ void Geometry::SetIndexData(u32 IndexCount, u32 IndexBufferOffset)
 
 void Geometry::Destroy()
 {
-    id = INVALID_ID;
-    //generation = INVALID_ID;
-    //name.Destroy();
-    VertexCount = 0;
-    VertexSize = 0;
-    VertexBufferOffset = 0;
-    IndexCount = 0;
-    IndexSize = 0;
-    IndexBufferOffset = 0;
+    this->~Geometry();
 }

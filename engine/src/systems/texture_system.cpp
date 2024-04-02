@@ -1,7 +1,9 @@
 #include "texture_system.hpp"
 #include "containers/mstring.hpp"
 #include "renderer/renderer.hpp"
-#include "core/application.hpp"
+
+#include "memory/linear_allocator.hpp"
+#include <new>
 
 // TODO: временно
 #define STB_IMAGE_IMPLEMENTATION
@@ -48,10 +50,11 @@ TextureSystem::TextureSystem() :
 
     // Сделать недействительными все текстуры в массиве.
     u32 count = MaxTextureCount;
-    for (u32 i = 0; i < count; ++i) {
+    new (reinterpret_cast<void*>(RegisteredTextures)) Texture[MaxTextureCount];
+    /*for (u32 i = 0; i < count; ++i) {
         RegisteredTextures[i].id = INVALID_ID;
         RegisteredTextures[i].generation = INVALID_ID;
-    }
+    }*/
 
     // Создайте текстуры по умолчанию для использования в системе.
     CreateDefaultTexture();
