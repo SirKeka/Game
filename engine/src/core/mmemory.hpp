@@ -68,7 +68,7 @@ public:
         TotalAllocated += size * sizeof(T);
         TaggedAllocations[tag] += size * sizeof(T);
 
-        T* ptrRawMem = new T[size];
+        T* ptrRawMem = new T[size]();
 
         return ptrRawMem;
     }

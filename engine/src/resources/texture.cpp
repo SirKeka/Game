@@ -28,12 +28,12 @@ Texture::Texture(const char* name,i32 width, i32 height, i32 ChannelCount, const
 
 Texture::~Texture()
 {
-    id = INVALID_ID; 
+    id = 0; 
     width = 0;
     height = 0; 
     ChannelCount = 0; 
     HasTransparency = false;
-    generation = INVALID_ID; 
+    generation = 0; 
 }
 
 Texture::Texture(const Texture &t) 
@@ -155,7 +155,7 @@ void Texture::Destroy(VulkanAPI *VkAPI)
     MMemory::TFree<VulkanTextureData>(Data, 1, MEMORY_TAG_TEXTURE);
     }
     
-    //MMemory::ZeroMem(Texture, sizeof(Texture));
+    this->~Texture();
 }
 
 Texture::operator bool() const

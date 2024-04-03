@@ -594,7 +594,7 @@ bool VulkanAPI::Load(GeometryID* gid, u32 VertexCount, const Vertex3D* vertices,
     this->GeometryVertexOffset += geometry->VertexSize;
 
     // Данные индексов, если применимо
-    if (geometry->IndexCount && indices) {
+    if (IndexCount && indices) {
         geometry->SetIndexData(IndexCount, this->GeometryIndexOffset);
         UploadDataRange(pool, 0, queue, this->ObjectIndexBuffer, geometry->IndexBufferOffset, geometry->IndexSize, indices);
         // TODO: вместо этого следует поддерживать список свободной памяти

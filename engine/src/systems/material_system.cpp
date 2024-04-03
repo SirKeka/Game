@@ -83,6 +83,8 @@ void MaterialSystem::Shutdown()
 
 Material *MaterialSystem::Acquire(const char *name)
 { 
+    // Отложенная инициализация массива материалов, т.к. после инициализации геометрической системы сбивается инициализация
+    new (reinterpret_cast<void*>(RegisteredMaterials)) Material[MaxMaterialCount](); 
     // Загрузите данную конфигурацию материала с диска.
     MaterialConfig config;
 

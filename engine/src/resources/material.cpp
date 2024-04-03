@@ -29,7 +29,7 @@ Material::~Material()
     MMemory::ZeroMem(&DiffuseMap, sizeof(TextureMap));
 }
 
-const bool Material::operator ! (Material& m)
+/*const bool Material::operator ! (Material& m)
 {
     if ((id != 0 || id != INVALID_ID) && 
     (generation != 0 || generation != INVALID_ID) && 
@@ -40,7 +40,7 @@ const bool Material::operator ! (Material& m)
         return true;
     }
     return false;
-}
+}*/
 
 void Material::Set(const char *name, Vector4D<f32> DiffuseColour, TextureUse use, Texture *texture)
 {

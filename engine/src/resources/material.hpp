@@ -24,8 +24,6 @@ public:
     Material(const char* name, Vector4D<f32> DiffuseColour, TextureUse use, Texture* texture);
     ~Material();
 
-    explicit const bool operator ! (Material& m);
-
     MINLINE void Destroy() { this->~Material(); }
     void Set(const char* name, Vector4D<f32> DiffuseColour, TextureUse use, Texture* texture);
     void SetName(const char* name);

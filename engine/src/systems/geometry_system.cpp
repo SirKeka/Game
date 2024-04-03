@@ -333,6 +333,6 @@ GeometryID *GeometrySystem::GetDefault()
 void *GeometrySystem::operator new(u64 size)
 {
     // Блок памяти будет содержать структуру состояния, затем блок массива, затем блок хеш-таблицы.
-    u64 ArrayRequirement = sizeof(GeometryID) * MaxGeometryCount;
+    u64 ArrayRequirement = sizeof(GeometryReference) * MaxGeometryCount;
     return LinearAllocator::Instance().Allocate(size + ArrayRequirement);
 }
