@@ -29,7 +29,7 @@ GeometrySystem::GeometrySystem()
     // Блок массива находится после состояния. Уже выделено, поэтому просто установите указатель.
     void* ArrayBlock = this + sizeof(GeometrySystem);
     this->RegisteredGeometries = reinterpret_cast<GeometryReference*>(ArrayBlock);
-
+    
     // Сделать недействительными все геометрии в массиве.
     //new (reinterpret_cast<void*>(RegisteredGeometries)) GeometryID[MaxGeometryCount];
     for (u32 i = 0; i < MaxGeometryCount; ++i) {
@@ -194,7 +194,7 @@ bool GeometrySystem::CreateGeometry(GeometryConfig config, GeometryID *gid)
     if (MString::Length(config.MaterialName) > 0) {
         gid->material = MaterialSystem::Instance()->Acquire(config.MaterialName);
         if (!gid->material) {
-            gid->material = MaterialSystem::Instance()->GetDefaultMaterial();
+            gid->material = MaterialSystem::GetDefaultMaterial();
         }
     }
 
@@ -249,7 +249,7 @@ bool GeometrySystem::CreateDefaultGeometry()
     }
 
     // Получите материал по умолчанию.
-    this->DefaultGeometry.material = MaterialSystem::Instance()->GetDefaultMaterial();
+    this->DefaultGeometry.material = MaterialSystem::GetDefaultMaterial();
 
     return true;
 }

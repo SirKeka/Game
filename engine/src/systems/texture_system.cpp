@@ -49,7 +49,7 @@ TextureSystem::TextureSystem() :
     RegisteredTextureTable.Fill(&InvalidRef);
 
     // Сделать недействительными все текстуры в массиве.
-    u32 count = MaxTextureCount;
+    //u32 count = MaxTextureCount;
     new (reinterpret_cast<void*>(RegisteredTextures)) Texture[MaxTextureCount];
     /*for (u32 i = 0; i < count; ++i) {
         RegisteredTextures[i].id = INVALID_ID;

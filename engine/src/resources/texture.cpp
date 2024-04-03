@@ -26,6 +26,16 @@ Texture::Texture(const char* name,i32 width, i32 height, i32 ChannelCount, const
     Create(name, width, height, ChannelCount, pixels, HasTransparency, VkAPI);
 }
 
+Texture::~Texture()
+{
+    id = INVALID_ID; 
+    width = 0;
+    height = 0; 
+    ChannelCount = 0; 
+    HasTransparency = false;
+    generation = INVALID_ID; 
+}
+
 Texture::Texture(const Texture &t) 
 : 
 id(t.id), 

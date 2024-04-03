@@ -39,7 +39,7 @@ public:
         const u8* pixels, 
         bool HasTransparency,
         VulkanAPI* VkAPI);
-    ~Texture() = default;
+    ~Texture();
     Texture(const Texture& t);
     void Create(
         const char* name, 

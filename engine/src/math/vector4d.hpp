@@ -72,12 +72,9 @@ public:
 	Vector4D& operator -=(const Vector4D& v);
 	Vector4D& operator *=(const Vector4D& v);
 	Vector4D& operator /=(const Vector4D& v);
-	explicit operator bool() const {
-		if (*this != Vector4D(0, 0, 0, 0)) return true;
+	explicit operator bool() const noexcept {
+		if ((x != 0) && (y != 0) && (z != 0) && (w != 0)) return true;
 		return false;
-	}
-	const bool operator !(Vector4D& v) {
-		return !(bool)v;
 	}
 	
 	Vector4D& Normalize();

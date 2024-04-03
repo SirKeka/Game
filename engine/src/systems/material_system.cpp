@@ -29,13 +29,15 @@ MaterialSystem::MaterialSystem()// : name(), AutoRelease(false), DiffuseMapName(
     RegisteredMaterialTable.Fill(&InvalidRef);
 
     // Сделать недействительными все материалы в массиве.
-    new (reinterpret_cast<void*>(RegisteredMaterials)) Material[MaxMaterialCount]();
-    /*for (u32 i = 0; i < 100; ++i) { MTRACE("id%u, %u", RegisteredMaterials[i].id, i);
+    //new (reinterpret_cast<void*>(RegisteredMaterials)) Material[MaxMaterialCount]();
+    /*for (u32 i = 0; i < MaxMaterialCount; ++i) { //MTRACE("id%u, %u", RegisteredMaterials[i].id, i);
         // this->RegisteredMaterials[i].id = INVALID_ID;
         // this->RegisteredMaterials[i].generation = INVALID_ID;
         // this->RegisteredMaterials[i].InternalId = INVALID_ID;
-        // new (reinterpret_cast<void*>(RegisteredMaterials)) Material[MaxMaterialCount];
+        //this->RegisteredMaterials[i].Init();
     }*/
+    // TODO: массив объектов материала инициализируется правильно, 
+    // но в последствии появляется не правильно инициализированные объекты
 }
 
 void MaterialSystem::SetMaxMaterialCount(u32 value)
@@ -65,8 +67,9 @@ void MaterialSystem::Shutdown()
 {
     if (state) {
         // Сделать недействительными все материалы в массиве.
-        for (u32 i = 0; i < MaxMaterialCount; ++i) { //MTRACE("id%u, %u", RegisteredMaterials[i].id, i)
+        for (u32 i = 0; i < MaxMaterialCount; ++i) { 
             if (state->RegisteredMaterials[i].id != INVALID_ID) {
+                MTRACE("id%u, %u", RegisteredMaterials[i].id, i);
                 DestroyMaterial(&state->RegisteredMaterials[i]);
             }
         }
@@ -79,7 +82,7 @@ void MaterialSystem::Shutdown()
 }
 
 Material *MaterialSystem::Acquire(const char *name)
-{ //for (u32 i = 71; i < 73; ++i) { MTRACE("id%u, %u", RegisteredMaterials[i].id, i);}
+{ 
     // Загрузите данную конфигурацию материала с диска.
     MaterialConfig config;
 
@@ -281,7 +284,7 @@ void MaterialSystem::DestroyMaterial(Material *m)
 }
 
 bool MaterialSystem::LoadConfigurationFile(const char *path, MaterialConfig *OutConfig)
-{
+{ 
     FileHandle f;
     if (!Filesystem::Open(path, FILE_MODE_READ, false, &f)) {
         MERROR("«LoadConfigurationFile» - невозможно открыть файл материала для чтения: '%s'.", path);

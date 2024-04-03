@@ -49,6 +49,7 @@ public:
     static MINLINE MaterialSystem* Instance() { /*if(state) */return state; }
     static void SetMaxMaterialCount(u32 value);
     static Material* GetDefaultMaterial();
+    static void Check() {for (u32 i = 0; i < 73; ++i) { MTRACE("id%u, %u", state->RegisteredMaterials[i].id, i);}}
 
     bool Initialize();
     void Shutdown();
@@ -58,6 +59,7 @@ public:
     Material* Acquire(const char* name);
     Material* AcquireFromConfig(MaterialConfig config);
     void Release(const char* name);
+    
     
 
 private:
