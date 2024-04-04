@@ -5,11 +5,6 @@
 #include "memory/linear_allocator.hpp"
 #include <new>
 
-// TODO: временно
-#define STB_IMAGE_IMPLEMENTATION
-#include "vendor/stb_image.h"
-// TODO: временно
-
 struct TextureReference {
     u64 ReferenceCount;
     u32 handle;
