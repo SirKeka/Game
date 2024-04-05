@@ -5,6 +5,7 @@
 #include "systems/texture_system.hpp"
 #include "systems/material_system.hpp"
 #include "systems/geometry_system.hpp"
+#include "systems/resource_system.hpp"
 
 ApplicationState* Application::AppState;
 
@@ -68,6 +69,13 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
     if (!AppState->Render->Initialize(AppState->Window, GameInst->AppConfig.name, RENDERER_TYPE_VULKAN)) {
         MFATAL("Не удалось инициализировать средство визуализации. Прерывание приложения.");
         return FALSE;
+    }
+
+    // Система ресурсов
+    ResourceSystem::SetMaxLoaderCount(32);
+    if (!ResourceSystem::Instance()->Initialize()) {
+        MFATAL("Не удалось инициализировать систему ресурсов. Приложение не может быть продолжено.");
+        return false;
     }
 
     // Система текстур.
@@ -209,6 +217,7 @@ bool Application::ApplicationRun() {
     GeometrySystem::Instance()->Shutdown();
     MaterialSystem::Instance()->Shutdown();
     TextureSystem::Instance()->Shutdown();
+    ResourceSystem::Instance()->Shutdown();
     AppState->Render->Shutdown();
 
     AppState->Window->Close();

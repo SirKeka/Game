@@ -4,7 +4,7 @@
 #include "core/mmemory.hpp"
 
 #include <iostream>
-#include <string.h>
+#include <cstring>
 #include <sys/stat.h>
 
 bool Filesystem::Exists(const char *path)
@@ -57,11 +57,22 @@ void Filesystem::Close(FileHandle *handle)
     }
 }
 
+bool Filesystem::Size(FileHandle *handle, u64 *OutSize)
+{
+    if (handle->handle) {
+        fseek(reinterpret_cast<FILE*>(handle->handle), 0, SEEK_END);
+        *OutSize = ftell(reinterpret_cast<FILE*>(handle->handle));
+        rewind(reinterpret_cast<FILE*>(handle->handle));
+        return true;
+    }
+    return false;
+}
+
 bool Filesystem::ReadLine(FileHandle *handle, u64 MaxLength, char** LineBuf, u64* OutLineLength)
 {
     if (handle->handle && LineBuf && OutLineLength && MaxLength > 0) {
         char* buf = *LineBuf;
-        if (fgets(buf, MaxLength, (FILE*)handle->handle) != 0) {
+        if (fgets(buf, MaxLength, reinterpret_cast<FILE*>(handle->handle)) != 0) {
             *OutLineLength = strlen(*LineBuf);
             return true;
         }

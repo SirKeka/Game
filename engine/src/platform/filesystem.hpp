@@ -39,6 +39,12 @@ namespace Filesystem
      */
     MAPI void Close(FileHandle* handle);
 
+    /// @brief Пытается прочитать размер файла, к которому прикреплен дескриптор.
+    /// @param handle Дескриптор файла.
+    /// @param OutSize Указатель на размер файла.
+    /// @return 
+    MAPI bool Size(FileHandle* handle, u64* OutSize);
+
     /** 
      * Считывает до новой строки или EOF. Выделяет *LineBuf, который должен быть освобожден вызывающей стороной.
      * @param handle указатель на структуру FileHandle.

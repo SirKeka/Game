@@ -1,5 +1,6 @@
 #include "resource_system.hpp"
 #include "core/logger.hpp"
+#include "memory/linear_allocator.hpp"
 #include "resources/loader/image_loader.hpp"
 
 u32 ResourceSystem::MaxLoaderCount = 0;
@@ -14,9 +15,9 @@ ResourceSystem::ResourceSystem()  : AssetBasePath(nullptr), RegisteredLoaders(nu
 
     // ПРИМЕЧАНИЕ: Здесь можно автоматически зарегистрировать известные типы загрузчиков.
     RegisterLoader(text_resource_loader_create());
-    RegisterLoader(binary_resource_loader_create());
-    RegisterLoader(image_resource_loader_create());
-    RegisterLoader(material_resource_loader_create());
+    //RegisterLoader(binary_resource_loader_create());
+    //RegisterLoader(image_resource_loader_create());
+    //RegisterLoader(material_resource_loader_create());
 }
 
 bool ResourceSystem::Initialize()
@@ -69,7 +70,7 @@ bool ResourceSystem::Load(const char *name, ResourceType type, Resource *OutReso
         for (u32 i = 0; i < MaxLoaderCount; ++i) {
             ResourceLoader* l = &RegisteredLoaders[i];
             if (l->id != INVALID_ID && l->type == type) {
-                return load(name, l, OutResource);
+                return l->Load(name, OutResource);
             }
         }
     }
@@ -84,9 +85,9 @@ bool ResourceSystem::Load(const char *name, const char *CustomType, Resource *Ou
     if (CustomType && MString::Length(CustomType) > 0) {
         // Выбор загрузчика.
         for (u32 i = 0; i < MaxLoaderCount; ++i) {
-            RegisterLoader* l = &RegisteredLoaders[i];
-            if (l->id != INVALID_ID && l->type == ResourceType::Custom && strings_equali(l->CustomType, CustomType)) {
-                return load(name, l, OutResource);
+            ResourceLoader* l = &RegisteredLoaders[i];
+            if (l->id != INVALID_ID && l->type == ResourceType::Custom && StringsEquali(l->CustomType, CustomType)) {
+                return l->Load(name, OutResource);
             }
         }
     }
@@ -100,9 +101,9 @@ void ResourceSystem::Unload(Resource *resource)
 {
     if (resource) {
         if (resource->LoaderID != INVALID_ID) {
-            RegisterLoader* l = &RegisteredLoaders[resource->LoaderID];
-            if (l->id != INVALID_ID && l->unload) {
-                l->unload(l, resource);
+            ResourceLoader* l = &RegisteredLoaders[resource->LoaderID];
+            if (l->id != INVALID_ID) {
+                l->Unload(resource);
             }
         }
     }
@@ -118,7 +119,7 @@ const char *ResourceSystem::BasePath()
     return "";
 }
 
-ResourceSystem::SetMaxLoaderCount(u32 value)
+void ResourceSystem::SetMaxLoaderCount(u32 value)
 {
     MaxLoaderCount = value;
 }

@@ -7,10 +7,11 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "vendor/stb_image.h"
 
-ImageLoader::ImageLoader() //: type(ResourceType::Image), CustomType(nullptr), TypePath("textures") 
+ImageLoader::ImageLoader()
 {
     type = ResourceType::Image;
-    
+    CustomType = nullptr;
+    TypePath = "texture";
 }
 
 bool ImageLoader::Load(const char *name, Resource *OutResource)

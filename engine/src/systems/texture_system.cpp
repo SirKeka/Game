@@ -1,6 +1,7 @@
 #include "texture_system.hpp"
 #include "containers/mstring.hpp"
 #include "renderer/renderer.hpp"
+#include "systems/resource_system.hpp"
 
 #include "memory/linear_allocator.hpp"
 #include <new>
@@ -256,83 +257,61 @@ void TextureSystem::DestroyDefaultTexture()
 
 bool TextureSystem::LoadTexture(const char* TextureName, Texture *t)
 {
-    // TODO: Должен быть в состоянии находиться в любом месте.
-    const char* FormatStr = "assets/textures/%s.%s";
-    const i32 RequiredChannelCount = 4;
-    stbi_set_flip_vertically_on_load(true);
-    char FullFilePath[512];
+    Resource ImgResource;
+    if (!ResourceSystem::Instance()->Load(TextureName, ResourceType::Image, &ImgResource)) {
+        MERROR("Не удалось загрузить ресурс изображения для текстуры. '%s'", TextureName);
+        return false;
+    }
 
-    // TODO: попробуйте разные расширения
-    MString::Format(FullFilePath, FormatStr, TextureName, "png");
+    ImageResourceData* ResourceData = ImgResource.data;
 
     // Используйте временную текстуру для загрузки.
     Texture TempTexture;
+    TempTexture.width = ResourceData->width;
+    TempTexture.height = ResourceData->height;
+    TempTexture.ChannelCount = ResourceData->ChannelCount;
 
-    u8* data = stbi_load(
-        FullFilePath,
-        (i32*)&TempTexture.width,
-        (i32*)&TempTexture.height,
-        (i32*)&TempTexture.ChannelCount,
-        RequiredChannelCount);
+    u32 CurrentGeneration = t->generation;
+    t->generation = INVALID_ID;
 
-    TempTexture.ChannelCount = RequiredChannelCount;
-
-    if (data) {
-        u32 CurrentGeneration = t->generation;
-        t->generation = INVALID_ID;
-
-        u64 TotalSize = TempTexture.width * TempTexture.height * RequiredChannelCount;
-        // Проверка прозрачности
-        b32 HasTransparency = false;
-        for (u64 i = 0; i < TotalSize; i += RequiredChannelCount) {
-            u8 a = data[i + 3];
-            if (a < 255) {
-                HasTransparency = true;
-                break;
-            }
+    u64 TotalSize = TempTexture.width * TempTexture.height * TempTexture.ChannelCount;
+    // Проверка прозрачности
+    b32 HasTransparency = false;
+    for (u64 i = 0; i < TotalSize; i += TempTexture.ChannelCount) {
+        u8 a = ResourceData->pixels[i + 3];
+        if (a < 255) {
+            HasTransparency = true;
+            break;
         }
-
-        if (stbi_failure_reason()) {
-            MWARN("load_texture() не удалось загрузить файл '%s': %s", FullFilePath, stbi_failure_reason());
-            // Устраните ошибку, чтобы следующая загрузка не завершилась неудачно.
-            stbi__err(0, 0);
-            return false;
-        }
-
-        // Получите внутренние ресурсы текстур и загрузите их в графический процессор.
-        TempTexture = Texture(
-            TextureName,
-            TempTexture.width,
-            TempTexture.height,
-            TempTexture.ChannelCount,
-            data,
-            HasTransparency,
-            Renderer::GetRenderer());
-
-        // Скопируйте старую текстуру.
-        Texture old = *t;
-
-        // Присвойте указателю временную текстуру.
-        *t = TempTexture;
-
-        // Уничтожьте старую текстуру.
-        old.Destroy(Renderer::GetRenderer());
-
-        if (CurrentGeneration == INVALID_ID) {
-            t->generation = 0;
-        } else {
-            t->generation = CurrentGeneration + 1;
-        }
-
-        // Очистите данные.
-        stbi_image_free(data);
-        return true;
-    } else {
-        if (stbi_failure_reason()) {
-            MWARN("load_texture() не удалось загрузить файл '%s': %s", FullFilePath, stbi_failure_reason());
-            // Устраните ошибку, чтобы следующая загрузка не завершилась неудачно.
-            stbi__err(0, 0);
-        }
-        return false;
     }
+
+    // Получите внутренние ресурсы текстур и загрузите их в графический процессор.
+    TempTexture = Texture(
+        TextureName,
+        TempTexture.width,
+        TempTexture.height,
+        TempTexture.ChannelCount,
+        ResourceData->pixels,
+        HasTransparency,
+        Renderer::GetRenderer());
+
+    // Скопируйте старую текстуру.
+    Texture old = *t;
+
+    // Присвойте указателю временную текстуру.
+    *t = TempTexture;
+
+    // Уничтожьте старую текстуру.
+    old.Destroy(Renderer::GetRenderer());
+
+    if (CurrentGeneration == INVALID_ID) {
+        t->generation = 0;
+    } else {
+        t->generation = CurrentGeneration + 1;
+    }
+
+    // Очистите данные.
+    ResourceSystem::Instance()->Unload(&ImgResource);
+    return true;
+
 }

@@ -1,13 +1,6 @@
 #pragma once
 #include "resource_loader.hpp"
 
-struct ImageResourceData {
-    u8 ChannelCount;
-    u32 width;
-    u32 height;
-    u8* pixels;
-};
-
 class ImageLoader : public ResourceLoader
 {
 private:
