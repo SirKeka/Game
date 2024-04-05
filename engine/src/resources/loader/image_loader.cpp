@@ -1,5 +1,5 @@
 #include "image_loader.hpp"
-#include "core/logger.hpp"
+//#include "core/logger.hpp"
 #include "core/mmemory.hpp"
 #include "systems/resource_system.hpp"
 
@@ -7,7 +7,11 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "vendor/stb_image.h"
 
-ImageLoader::ImageLoader() : type(ResourceType::Image), CustomType(nullptr), TypePath("textures") {}
+ImageLoader::ImageLoader() //: type(ResourceType::Image), CustomType(nullptr), TypePath("textures") 
+{
+    type = ResourceType::Image;
+    
+}
 
 bool ImageLoader::Load(const char *name, Resource *OutResource)
 {
@@ -15,13 +19,13 @@ bool ImageLoader::Load(const char *name, Resource *OutResource)
         return false;
     }
 
-    char* FormatStr = "%s/%s/%s%s";
+    const char* FormatStr = "%s/%s/%s%s";
     const i32 RequiredChannelCount = 4;
     stbi_set_flip_vertically_on_load(true);
     char FullFilePath[512];
 
     // TODO: попробуйте разные расширения
-    MString::Format(FullFilePath, FormatStr, resource_system_base_path(), TypePath, name, ".png");
+    MString::Format(FullFilePath, FormatStr, ResourceSystem::Instance()->BasePath(), TypePath, name, ".png");
 
     i32 width;
     i32 height;
@@ -73,20 +77,20 @@ bool ImageLoader::Load(const char *name, Resource *OutResource)
 
 void ImageLoader::Unload(Resource *resource)
 {
-    if (!self || !resource) {
-        MWARN("image_loader_unload called with nullptr for self or resource.");
+    if (!resource) {
+        MWARN("ImageLoader: Выгрузка вызывается со значением nullptr для себя или ресурса.");
         return;
     }
 
-    u32 path_length = string_length(resource->full_path);
-    if (path_length) {
-        kfree(resource->full_path, sizeof(char) * path_length + 1, MEMORY_TAG_STRING);
+    u32 PathLength = MString::Length(resource->FullPath);
+    if (PathLength) {
+        MMemory::Free(resource->FullPath, sizeof(char) * PathLength + 1, MEMORY_TAG_STRING);
     }
 
     if (resource->data) {
-        kfree(resource->data, resource->data_size, MEMORY_TAG_TEXTURE);
+        MMemory::Free(resource->data, resource->DataSize, MEMORY_TAG_TEXTURE);
         resource->data = 0;
-        resource->data_size = 0;
-        resource->loader_id = INVALID_ID;
+        resource->DataSize = 0;
+        resource->LoaderID = INVALID_ID;
     }
 }

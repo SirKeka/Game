@@ -19,7 +19,7 @@ ResourceSystem::ResourceSystem()  : AssetBasePath(nullptr), RegisteredLoaders(nu
     RegisterLoader(material_resource_loader_create());
 }
 
-ResourceSystem::Initialize()
+bool ResourceSystem::Initialize()
 {
     if (MaxLoaderCount == 0) {
         MFATAL("ResourceSystem::Initialize е удалось, поскольку максимальное количество загрузчиков (MaxLoaderCount) = 0.");
@@ -44,7 +44,7 @@ bool ResourceSystem::RegisterLoader(ResourceLoader loader)
             if (l->type == loader.type) {
                 MERROR("ResourceSystem::RegisterLoader — загрузчик типа %d уже существует и не будет зарегистрирован.", loader.type);
                 return false;
-            } else if (loader.CustomType && string_length(loader.CustomType) > 0 && strings_equali(l->CustomType, loader.CustomType)) {
+            } else if (loader.CustomType && MString::Length(loader.CustomType) > 0 && StringsEquali(l->CustomType, loader.CustomType)) {
                 MERROR("ResourceSystem::RegisterLoader — загрузчик пользовательского типа %s уже существует и не будет зарегистрирован.", loader.CustomType);
                 return false;
             }
@@ -67,7 +67,7 @@ bool ResourceSystem::Load(const char *name, ResourceType type, Resource *OutReso
     if (type != ResourceType::Custom) {
         // Выбор загрузчика.
         for (u32 i = 0; i < MaxLoaderCount; ++i) {
-            RegisterLoader* l = &RegisteredLoaders[i];
+            ResourceLoader* l = &RegisteredLoaders[i];
             if (l->id != INVALID_ID && l->type == type) {
                 return load(name, l, OutResource);
             }
@@ -110,8 +110,8 @@ void ResourceSystem::Unload(Resource *resource)
 
 const char *ResourceSystem::BasePath()
 {
-    if (state_ptr) {
-        return state_ptr->config.asset_base_path;
+    if (AssetBasePath) {
+        return AssetBasePath;
     }
 
     MERROR("ResourceSystem::BasePath вызывается перед инициализацией и возвращает пустую строку.");
@@ -127,5 +127,4 @@ void *ResourceSystem::operator new(u64 size)
 {
     return LinearAllocator::Instance().Allocate(size + (sizeof(ResourceLoader) * MaxLoaderCount));
 }
-
 
