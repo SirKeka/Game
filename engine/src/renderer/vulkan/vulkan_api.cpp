@@ -1,5 +1,4 @@
 #include "vulkan_api.hpp"
-#include "vulkan_fence.hpp"
 #include "vulkan_swapchain.hpp"
 #include "core/application.hpp"
 #include "vulkan_platform.hpp"
@@ -92,19 +91,13 @@ VulkanAPI::~VulkanAPI()
                 allocator);
             QueueCompleteSemaphores[i] = 0;
         }
-        VulkanFenceDestroy(this, &InFlightFences[i]);
+        vkDestroyFence(Device.LogicalDevice, InFlightFences[i], allocator);
     }
     ImageAvailableSemaphores.~DArray();
     //ImageAvailableSemaphores = 0;
 
     QueueCompleteSemaphores.~DArray();
     //QueueCompleteSemaphores = 0;
-
-    InFlightFences.~DArray();
-    //InFlightFences = 0;
-
-    ImagesInFlight.~DArray();
-    //ImagesInFlight = 0;
 
     // Буферы команд
     for (u32 i = 0; i < swapchain.ImageCount; ++i) {
@@ -121,10 +114,12 @@ VulkanAPI::~VulkanAPI()
 
     // Уничтожить кадровые буферы.
     for (u32 i = 0; i < swapchain.ImageCount; ++i) {
-        swapchain.framebuffers[i].Destroy(this);
+        vkDestroyFramebuffer(Device.LogicalDevice, WorldFramebuffers[i], allocator);
+        vkDestroyFramebuffer(Device.LogicalDevice, swapchain.framebuffers[i], allocator);
     }
 
     // Проход рендеринга (Renderpass)
+    UI_Renderpass.Destroy(this);
     MainRenderpass.Destroy(this);
 
     // Цепочка подкачки (Swapchain)
@@ -277,16 +272,29 @@ bool VulkanAPI::Initialize(MWindow* window, const char* ApplicationName)
         &swapchain
     );
 
+    // World renderpass 
     MainRenderpass = VulkanRenderPass(
         this,
-        0, 0, this->FramebufferWidth, this->FramebufferHeight,
-        0.0f, 0.0f, 0.2f, 1.0f,
+        Vector4D<f32>(0, 0, this->FramebufferWidth, this->FramebufferHeight),
+        Vector4D<f32>(0.0f, 0.0f, 0.2f, 1.0f),  // Темносиний цвет
         1.0f,
-        0
+        0,
+        static_cast<u8>(RenderpassClearFlag::ColourBufferFlag | RenderpassClearFlag::DepthBufferFlag | RenderpassClearFlag::StencilBufferFlag),
+        false, true
+    );
+
+    //UI renderpass
+    UI_Renderpass = VulkanRenderPass(
+        this,
+        Vector4D<f32>(0, 0, this->FramebufferWidth, this->FramebufferHeight),
+        Vector4D<f32>(0.0f, 0.0f, 0.0f, 0.0f),
+        1.0f,
+        0,
+        static_cast<u8>(RenderpassClearFlag::NoneFlag),
+        true, false
     );
 
     // Буферы кадров цепочки подкачки.
-    swapchain.framebuffers.Resize(swapchain.ImageCount);
     RegenerateFramebuffers();
 
     // Создайте буферы команд.
@@ -295,7 +303,6 @@ bool VulkanAPI::Initialize(MWindow* window, const char* ApplicationName)
     // Создайте объекты синхронизации.
     ImageAvailableSemaphores.Resize(swapchain.MaxFramesInFlight);
     QueueCompleteSemaphores.Resize(swapchain.MaxFramesInFlight);
-    InFlightFences.Resize(swapchain.MaxFramesInFlight);
 
     for (u8 i = 0; i < swapchain.MaxFramesInFlight; ++i) {
         VkSemaphoreCreateInfo SemaphoreCreateInfo = {VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
@@ -305,13 +312,14 @@ bool VulkanAPI::Initialize(MWindow* window, const char* ApplicationName)
         // Создайте ограждение в сигнальном состоянии, указывая, что первый кадр уже «отрисован».
         // Это не позволит приложению бесконечно ждать рендеринга первого кадра, 
         // поскольку он не может быть отрисован до тех пор, пока кадр не будет "отрисован" перед ним.
-        VulkanFenceCreate(this, true, &InFlightFences[i]);
+        VkFenceCreateInfo FenceCreateInfo = {VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
+        FenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+        VK_CHECK(vkCreateFence(Device.LogicalDevice, &FenceCreateInfo, allocator, &InFlightFences[i]));
     }
 
     // На этом этапе ограждений в полете еще не должно быть, поэтому очистите список. 
     // Они хранятся в указателях, поскольку начальное состояние должно быть 0 и будет 0, 
     // когда не используется. Актуальные заборы не входят в этот список.
-    ImagesInFlight.Resize(swapchain.ImageCount);
     for (u32 i = 0; i < swapchain.ImageCount; ++i) {
         ImagesInFlight[i] = 0;
     }
@@ -383,12 +391,9 @@ bool VulkanAPI::BeginFrame(f32 Deltatime)
     }
 
     // Дождитесь завершения выполнения текущего кадра. Поскольку ограждение свободен, он сможет двигаться дальше.
-    if (!VulkanFenceWait(
-            this,
-            &InFlightFences[CurrentFrame],
-            UINT64_MAX)) {
-        MWARN("Ошибка ожидания in-flight fence!");
-        return false;
+    VkResult result = vkWaitForFences(Device.LogicalDevice, 1, &InFlightFences[CurrentFrame], true, UINT64_MAX);
+    if (!VulkanResultIsSuccess(result)) {
+        MERROR("Ошибка ожидания в полете! ошибка: %s", VulkanResultString(result, true));
     }
 
     // Получаем следующее изображение из цепочки обмена. Передайте семафор, который должен сигнализировать, когда это завершится.
@@ -425,13 +430,13 @@ bool VulkanAPI::BeginFrame(f32 Deltatime)
     vkCmdSetViewport(GraphicsCommandBuffers[ImageIndex].handle, 0, 1, &viewport);
     vkCmdSetScissor(GraphicsCommandBuffers[ImageIndex].handle, 0, 1, &scissor);
 
-    MainRenderpass.w = FramebufferWidth;
-    MainRenderpass.h = FramebufferHeight;
+    MainRenderpass.RenderArea.z = FramebufferWidth;
+    MainRenderpass.RenderArea.w = FramebufferHeight;
 
     // Начните этап рендеринга.
     MainRenderpass.Begin(
         &GraphicsCommandBuffers[ImageIndex],
-        swapchain.framebuffers[ImageIndex].handle
+        swapchain.framebuffers[ImageIndex]
     );
 
     return true;
@@ -459,18 +464,16 @@ bool VulkanAPI::EndFrame(f32 DeltaTime)
     VulkanCommandBufferEnd(&GraphicsCommandBuffers[ImageIndex]);
 
     // Убедитесь, что предыдущий кадр не использует это изображение (т.е. его ограждение находится в режиме ожидания).
-    if (ImagesInFlight[ImageIndex] != VK_NULL_HANDLE) {  // был кадр
-        VulkanFenceWait(
-            this,
-            ImagesInFlight[ImageIndex],
-            UINT64_MAX);
-    }
+    VkResult result = vkWaitForFences(Device.LogicalDevice, 1, ImagesInFlight[ImageIndex], true, UINT64_MAX);
+        if (!VulkanResultIsSuccess(result)) {
+            MFATAL("vkWaitForFences ошибка: %s", VulkanResultString(result, true));
+        }
 
     // Отметьте ограждение изображения как используемое этим кадром.
     ImagesInFlight[ImageIndex] = &InFlightFences[CurrentFrame];
 
     // Сбросьте ограждение для использования на следующем кадре
-    VulkanFenceReset(this, &InFlightFences[CurrentFrame]);
+    VK_CHECK(vkResetFences(Device.LogicalDevice, 1, &InFlightFences[CurrentFrame]));
 
     // Отправьте очередь и дождитесь завершения операции.
     // Начать отправку в очередь
@@ -494,11 +497,11 @@ bool VulkanAPI::EndFrame(f32 DeltaTime)
     VkPipelineStageFlags flags[1] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
     SubmitInfo.pWaitDstStageMask = flags;
 
-    VkResult result = vkQueueSubmit(
+    /*VkResult */result = vkQueueSubmit(
         Device.GraphicsQueue,
         1,
         &SubmitInfo,
-        InFlightFences[CurrentFrame].handle);
+        InFlightFences[CurrentFrame]);
     if (result != VK_SUCCESS) {
         MERROR("vkQueueSubmit не дал результата: %s", VulkanResultString(result, true));
         return false;
@@ -712,20 +715,30 @@ void VulkanAPI::CreateCommandBuffers()
 
 void VulkanAPI::RegenerateFramebuffers()
 {
-    for (u32 i = 0; i < swapchain.ImageCount; ++i) {
-        // TODO: сделать это динамическим на основе настроенных в данный момент вложений
-        u32 AttachmentCount = 2;
-        VkImageView attachments[] = {
-            swapchain.views[i],
-            swapchain.DepthAttachment->view};
+    u32& ImageCount = swapchain.ImageCount;
+    for (u32 i = 0; i < ImageCount; ++i) {
+        VkImageView WorldAttachments[2] = {swapchain.views[i], swapchain.DepthAttachment->view};
+        VkFramebufferCreateInfo FramebufferCreateInfo = {VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
+        FramebufferCreateInfo.renderPass = MainRenderpass.handle;
+        FramebufferCreateInfo.attachmentCount = 2;
+        FramebufferCreateInfo.pAttachments = WorldAttachments;
+        FramebufferCreateInfo.width = FramebufferWidth;
+        FramebufferCreateInfo.height = FramebufferHeight;
+        FramebufferCreateInfo.layers = 1;
 
-        swapchain.framebuffers[i] = VulkanFramebuffer(
-            this,
-            &MainRenderpass,
-            FramebufferWidth,
-            FramebufferHeight,
-            AttachmentCount,
-            attachments);
+        VK_CHECK(vkCreateFramebuffer(Device.LogicalDevice, &FramebufferCreateInfo, allocator, &WorldFramebuffers[i]));
+
+        // Кадровые буферы Swapchain (проход пользовательского интерфейса). Выводы в образы swapchain
+        VkImageView UI_Attachments[1] = {swapchain.views[i]};
+        VkFramebufferCreateInfo scFramebufferCreateInfo = {VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
+        scFramebufferCreateInfo.renderPass = UI_Renderpass.handle;
+        scFramebufferCreateInfo.attachmentCount = 1;
+        scFramebufferCreateInfo.pAttachments = UI_Attachments;
+        scFramebufferCreateInfo.width = FramebufferWidth;
+        scFramebufferCreateInfo.height = FramebufferHeight;
+        scFramebufferCreateInfo.layers = 1;
+
+        VK_CHECK(vkCreateFramebuffer(Device.LogicalDevice, &scFramebufferCreateInfo, allocator, &swapchain.framebuffers[i]));
     }
 }
 
@@ -733,6 +746,7 @@ bool VulkanAPI::CreateBuffers()
 {
     VkMemoryPropertyFlagBits MemoryPropertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
+    // Буфер вершин геометрии
     const u64 VertexBufferSize = sizeof(Vertex3D) * 1024 * 1024;
     if (!ObjectVertexBuffer.Create(
             this,
@@ -745,6 +759,7 @@ bool VulkanAPI::CreateBuffers()
     }
     GeometryVertexOffset = 0;
 
+    // Буфер индексов геометрии
     const u64 IndexBufferSize = sizeof(u32) * 1024 * 1024;
     if (!ObjectIndexBuffer.Create(
             this,
@@ -824,8 +839,8 @@ bool VulkanAPI::RecreateSwapchain()
     // Синхронизируйте размер фреймбуфера с кэшированными размерами.
     FramebufferWidth = CachedFramebufferWidth;
     FramebufferHeight = CachedFramebufferHeight;
-    MainRenderpass.w = FramebufferWidth;
-    MainRenderpass.h = FramebufferHeight;
+    MainRenderpass.RenderArea.z = FramebufferWidth;
+    MainRenderpass.RenderArea.w = FramebufferHeight;
     CachedFramebufferWidth = 0;
     CachedFramebufferHeight = 0;
 
@@ -839,14 +854,16 @@ bool VulkanAPI::RecreateSwapchain()
 
     // Буферы кадров.
     for (u32 i = 0; i < swapchain.ImageCount; ++i) {
-        swapchain.framebuffers[i].Destroy(this);
+        vkDestroyFramebuffer(Device.LogicalDevice, WorldFramebuffers[i], allocator);
+        vkDestroyFramebuffer(Device.LogicalDevice, swapchain.framebuffers[i], allocator);
     }
 
-    MainRenderpass.x = 0;
-    MainRenderpass.y = 0;
-    MainRenderpass.w = FramebufferWidth;
-    MainRenderpass.h = FramebufferHeight;
+    MainRenderpass.RenderArea.x = 0;
+    MainRenderpass.RenderArea.y = 0;
+    MainRenderpass.RenderArea.z = FramebufferWidth;
+    MainRenderpass.RenderArea.w = FramebufferHeight;
 
+    // Восстановить цепочку обмена и мировые фреймбуферы
     RegenerateFramebuffers();
 
     CreateCommandBuffers();

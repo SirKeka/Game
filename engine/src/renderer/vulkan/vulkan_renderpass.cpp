@@ -4,46 +4,49 @@
 //#include "core/mmemory.hpp"
 
 VulkanRenderPass::VulkanRenderPass(
-    VulkanAPI *VkAPI, 
-    f32 x, f32 y, 
-    f32 w, f32 h, 
-    f32 r, f32 g, f32 b, f32 a, 
-    f32 depth, u32 stencil)
+    VulkanAPI* VkAPI, 
+    Vector4D<f32> RenderArea,
+    Vector4D<f32> ClearColor,
+    f32 depth,
+    u32 stencil,
+    u8 ClearFlags,
+    bool HasPrevPass,
+    bool HasNextPass)
 {
-    this->x = x;
-    this->y = y;
-    this->w = w;
-    this->h = h;
-
-    this->r = r;
-    this->g = g;
-    this->b = b;
-    this->a = a;
-
+    this->RenderArea = RenderArea;
+    this->ClearColour = ClearColor;
     this->depth = depth;
     this->stencil = stencil;
+    this->ClearFlags = ClearFlags;
+    this->HasPrevPass = HasPrevPass;
+    this->HasNextPass = HasNextPass;
 
     // Главный подпроход
     VkSubpassDescription subpass = {};
     subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 
     // Вложения TODO: сделать это настраиваемым.
-    const u32 AttachmentDescriptionCount = 2;
-    VkAttachmentDescription AttachmentDescriptions[AttachmentDescriptionCount];
+    u32 AttachmentDescriptionCount = 0;
+    VkAttachmentDescription AttachmentDescriptions[2];
 
     // Цветное вложение
+    bool DoClearColour = (this->ClearFlags & RenderpassClearFlag::ColourBufferFlag) != 0;
     VkAttachmentDescription ColorAttachmentcol;
     ColorAttachmentcol.format = VkAPI->swapchain.ImageFormat.format; // TODO: настроить
     ColorAttachmentcol.samples = VK_SAMPLE_COUNT_1_BIT;
-    ColorAttachmentcol.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    ColorAttachmentcol.loadOp = DoClearColour ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
     ColorAttachmentcol.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
     ColorAttachmentcol.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     ColorAttachmentcol.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    ColorAttachmentcol.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;      // Не ожидайте какого-либо конкретного макета до начала этапа рендеринга.
-    ColorAttachmentcol.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;  // Переход после прохождения рендеринга
+    // Если исходит из предыдущего прохода, он уже должен быть VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL. В противном случае неопределенно.
+    ColorAttachmentcol.initialLayout = HasPrevPass ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_UNDEFINED;
+
+    // Если собираетесь на другой проход, используйте VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL. В противном случае VK_IMAGE_LAYOUT_PRESENT_SRC_KHR.
+    ColorAttachmentcol.finalLayout = HasNextPass ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;  // Переход к этапу после рендеринга
     ColorAttachmentcol.flags = 0;
 
-    AttachmentDescriptions[0] = ColorAttachmentcol;
+    AttachmentDescriptions[AttachmentDescriptionCount] = ColorAttachmentcol;
+    AttachmentDescriptionCount++;
 
     VkAttachmentReference ColorAttachmentReference;
     ColorAttachmentReference.attachment = 0;  // Индекс массива описания вложения
@@ -53,28 +56,35 @@ VulkanRenderPass::VulkanRenderPass(
     subpass.pColorAttachments = &ColorAttachmentReference;
 
     // Приставка по глубине, если она есть.
-    VkAttachmentDescription DepthAttachment = {};
-    DepthAttachment.format = VkAPI->Device.DepthFormat;
-    DepthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-    DepthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    DepthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    DepthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    DepthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    DepthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    DepthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    bool DoClearDepth = (this->ClearFlags & RenderpassClearFlag::DepthBufferFlag) != 0;
+    if (DoClearDepth){
+        VkAttachmentDescription DepthAttachment = {};
+        DepthAttachment.format = VkAPI->Device.DepthFormat;
+        DepthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+        DepthAttachment.loadOp = DoClearDepth ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
+        DepthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        DepthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        DepthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        DepthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        DepthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-    AttachmentDescriptions[1] = DepthAttachment;
+        AttachmentDescriptions[AttachmentDescriptionCount] = DepthAttachment;
+        AttachmentDescriptionCount++;
 
-    // Указание глубины
-    VkAttachmentReference DepthAttachmentReference;
-    DepthAttachmentReference.attachment = 1;
-    DepthAttachmentReference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        // Указание глубины
+        VkAttachmentReference DepthAttachmentReference;
+        DepthAttachmentReference.attachment = 1;
+        DepthAttachmentReference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-    // TODO: другие типы вложений (ввод, разрешение, сохранение)
+        // TODO: другие типы вложений (ввод, разрешение, сохранение)
 
-    // Данные трафарета глубины.
-    subpass.pDepthStencilAttachment = &DepthAttachmentReference;
-
+        // Данные трафарета глубины.
+        subpass.pDepthStencilAttachment = &DepthAttachmentReference;
+    } else {
+        MMemory::ZeroMem(&AttachmentDescriptions[AttachmentDescriptionCount], sizeof(VkAttachmentDescription));
+        subpass.pDepthStencilAttachment = 0;
+    }
+    
     // Ввод из шейдера
     subpass.inputAttachmentCount = 0;
     subpass.pInputAttachments = 0;
@@ -127,22 +137,32 @@ void VulkanRenderPass::Begin(VulkanCommandBuffer *CommandBuffer, VkFramebuffer F
     VkRenderPassBeginInfo BeginInfo = {VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
     BeginInfo.renderPass = this->handle;
     BeginInfo.framebuffer = FrameBuffer;
-    BeginInfo.renderArea.offset.x = this->x;
-    BeginInfo.renderArea.offset.y = this->y;
-    BeginInfo.renderArea.extent.width = this->w;
-    BeginInfo.renderArea.extent.height = this->h;
+    BeginInfo.renderArea.offset.x = this->RenderArea.x;
+    BeginInfo.renderArea.offset.y = this->RenderArea.y;
+    BeginInfo.renderArea.extent.width = this->RenderArea.z;
+    BeginInfo.renderArea.extent.height = this->RenderArea.w;
 
-    VkClearValue ClearValues[2]; 
-    MMemory::ZeroMem(ClearValues, sizeof(VkClearValue) * 2);
-    ClearValues[0].color.float32[0] = this->r;
-    ClearValues[0].color.float32[1] = this->g;
-    ClearValues[0].color.float32[2] = this->b;
-    ClearValues[0].color.float32[3] = this->a;
-    ClearValues[1].depthStencil.depth = this->depth;
-    ClearValues[1].depthStencil.stencil = this->stencil;
+    BeginInfo.clearValueCount = 0;
+    BeginInfo.pClearValues = nullptr;
 
-    BeginInfo.clearValueCount = 2;
-    BeginInfo.pClearValues = ClearValues;
+    VkClearValue ClearValues[2]{};
+    bool DoClearColour = (this->ClearFlags & RenderpassClearFlag::ColourBufferFlag) != 0;
+    if (DoClearColour) {
+        MMemory::CopyMem(ClearValues[BeginInfo.clearValueCount].color.float32, this->ClearColour.elements, sizeof(f32) * 4);
+        BeginInfo.clearValueCount++;
+    }
+
+    bool DoClearDepth = (this->ClearFlags & RenderpassClearFlag::DepthBufferFlag) != 0;
+    if (DoClearDepth) {
+        MMemory::CopyMem(ClearValues[BeginInfo.clearValueCount].color.float32, this->ClearColour.elements, sizeof(f32) * 4);
+        ClearValues[BeginInfo.clearValueCount].depthStencil.depth = this->depth;
+
+        bool DoClearStencil = (this->ClearFlags & RenderpassClearFlag::StencilBufferFlag) != 0;
+        ClearValues[BeginInfo.clearValueCount].depthStencil.stencil = DoClearStencil ? this->stencil : 0;
+        BeginInfo.clearValueCount++;
+    }
+
+    BeginInfo.pClearValues = BeginInfo.clearValueCount > 0 ? ClearValues : 0;
 
     vkCmdBeginRenderPass(CommandBuffer->handle, &BeginInfo, VK_SUBPASS_CONTENTS_INLINE);
     CommandBuffer->state = COMMAND_BUFFER_STATE_IN_RENDER_PASS;

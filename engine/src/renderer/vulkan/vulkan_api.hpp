@@ -4,7 +4,6 @@
 
 #include "core/asserts.hpp"
 #include "vulkan_image.hpp"
-#include "vulkan_framebuffer.hpp"
 #include "vulkan_device.hpp"
 #include "vulkan_renderpass.hpp"
 #include "vulkan_buffer.hpp"
@@ -23,13 +22,8 @@ struct VulkanSwapchain
 
     VulkanImage* DepthAttachment;
 
-    // Буферы кадров, используемые для экранного рендеринга.
-    DArray<VulkanFramebuffer> framebuffers;
-};
-
-struct VulkanFence {
-    VkFence handle;
-    bool IsSignaled;
+    // Буферы кадров, используемые для экранного рендеринга, по три на кадр.
+    VkFramebuffer framebuffers[3];
 };
 
 // Проверяет возвращаемое значение данного выражения на соответствие VK_SUCCESS.
@@ -69,6 +63,7 @@ public:
 
     VulkanSwapchain swapchain{};
     VulkanRenderPass MainRenderpass{};
+    VulkanRenderPass UI_Renderpass;
 
     VulkanBuffer ObjectVertexBuffer;
     VulkanBuffer ObjectIndexBuffer;
@@ -78,10 +73,10 @@ public:
     DArray<VkSemaphore> QueueCompleteSemaphores;
 
     u32 InFlightFenceCount;
-    DArray<VulkanFence> InFlightFences;
+    VkFence InFlightFences[2];
 
-    // Содержит указатели на заборы, которые существуют и находятся в собственности в другом месте.
-    DArray<VulkanFence*> ImagesInFlight;
+    // Содержит указатели на заборы, которые существуют и находятся в собственности в другом месте, по одному на кадр.
+    VkFence* ImagesInFlight[3];
 
     u32 ImageIndex{0};
     u32 CurrentFrame{0};
@@ -95,6 +90,9 @@ public:
 
     // TODO: сделать динамическим, копии геометрий хранятся в системе геометрий, возможно стоит хранить здесь указатели на геометрии
     Geometry geometries[VULKAN_MAX_GEOMETRY_COUNT]{};
+
+    // Буферы кадров, используемые для рендеринга мира, по одному на кадр.
+    VkFramebuffer WorldFramebuffers[3];
 
 public:
     VulkanAPI() {}
