@@ -9,6 +9,14 @@ struct TextureMap {
 
 #define MATERIAL_NAME_MAX_LENGTH 256
 
+struct MaterialConfig 
+{
+    char name[MATERIAL_NAME_MAX_LENGTH];
+    bool AutoRelease;
+    char DiffuseMapName[TEXTURE_NAME_MAX_LENGTH];
+    Vector4D<f32> DiffuseColour;
+};
+
 class Material
 {
 public:

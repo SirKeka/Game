@@ -4,14 +4,6 @@
 
 #define DEFAULT_MATERIAL_NAME "default"
 
-struct MaterialConfig 
-{
-    char name[MATERIAL_NAME_MAX_LENGTH];
-    bool AutoRelease;
-    char DiffuseMapName[TEXTURE_NAME_MAX_LENGTH];
-    Vector4D<f32> DiffuseColour;
-};
-
 class MaterialSystem
 {
 private:

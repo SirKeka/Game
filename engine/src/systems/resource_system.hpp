@@ -46,7 +46,8 @@ public:
 
     static void SetMaxLoaderCount(u32 value);
     static ResourceSystem* Instance() {return state;}
-
+private:
+    bool Load(const char* name, ResourceLoader* loader, Resource* OutResource);
 public:
     void* operator new(u64 size);
 };

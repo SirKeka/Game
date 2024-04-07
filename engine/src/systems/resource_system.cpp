@@ -81,7 +81,7 @@ bool ResourceSystem::Load(const char *name, ResourceType type, Resource *OutReso
         for (u32 i = 0; i < MaxLoaderCount; ++i) {
             ResourceLoader* l = &RegisteredLoaders[i];
             if (l->id != INVALID_ID && l->type == type) {
-                return l->Load(name, OutResource);
+                return Load(name, l, OutResource);
             }
         }
     }
@@ -98,7 +98,7 @@ bool ResourceSystem::Load(const char *name, const char *CustomType, Resource *Ou
         for (u32 i = 0; i < MaxLoaderCount; ++i) {
             ResourceLoader* l = &RegisteredLoaders[i];
             if (l->id != INVALID_ID && l->type == ResourceType::Custom && StringsEquali(l->CustomType, CustomType)) {
-                return l->Load(name, OutResource);
+                return Load(name, l, OutResource);
             }
         }
     }
@@ -133,6 +133,17 @@ const char *ResourceSystem::BasePath()
 void ResourceSystem::SetMaxLoaderCount(u32 value)
 {
     MaxLoaderCount = value;
+}
+
+bool ResourceSystem::Load(const char *name, ResourceLoader *loader, Resource *OutResource)
+{
+    if (!name || !loader || !OutResource) {
+        OutResource->LoaderID = INVALID_ID;
+        return false;
+    }
+
+    OutResource->LoaderID = loader->id;
+    return loader->Load(name, OutResource);
 }
 
 void *ResourceSystem::operator new(u64 size)
