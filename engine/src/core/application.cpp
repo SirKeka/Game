@@ -16,7 +16,7 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
         return false;
     }
 
-    GameInst->State->AppState = MMemory::TAllocate<ApplicationState>(1, MEMORY_TAG_APPLICATION);
+    GameInst->State->AppState = MMemory::TAllocate<ApplicationState>(1, MemoryTag::Application);
     AppState = GameInst->State->AppState;
     AppState->GameInst = GameInst;
     AppState->IsRunning = false;
@@ -64,18 +64,18 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
     }
     else AppState->Window->Create();
 
+    // Система ресурсов
+    ResourceSystem::SetMaxLoaderCount(32);
+    if (!ResourceSystem::Instance()->Initialize("../assets")) {
+        MFATAL("Не удалось инициализировать систему ресурсов. Приложение не может быть продолжено.");
+        return false;
+    }
+
     AppState->Render = new Renderer();
     // Запуск рендерера
     if (!AppState->Render->Initialize(AppState->Window, GameInst->AppConfig.name, RENDERER_TYPE_VULKAN)) {
         MFATAL("Не удалось инициализировать средство визуализации. Прерывание приложения.");
         return FALSE;
-    }
-
-    // Система ресурсов
-    ResourceSystem::SetMaxLoaderCount(32);
-    if (!ResourceSystem::Instance()->Initialize()) {
-        MFATAL("Не удалось инициализировать систему ресурсов. Приложение не может быть продолжено.");
-        return false;
     }
 
     // Система текстур.
@@ -106,8 +106,8 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
     AppState->TestGeometry = GeometrySystem::Instance()->Acquire(gConfig, true);
 
     // Очистите места для конфигурации геометрии.
-    MMemory::Free(gConfig.vertices, sizeof(Vertex3D) * gConfig.VertexCount, MEMORY_TAG_ARRAY);
-    MMemory::Free(gConfig.indices, sizeof(u32) * gConfig.IndexCount, MEMORY_TAG_ARRAY);
+    MMemory::Free(gConfig.vertices, sizeof(Vertex3D) * gConfig.VertexCount, MemoryTag::Array);
+    MMemory::Free(gConfig.indices, sizeof(u32) * gConfig.IndexCount, MemoryTag::Array);
 
     // Загрузите геометрию по умолчанию.
     // AppState->TestGeometry = GeometrySystem::Instance()->GetDefault();
@@ -235,12 +235,12 @@ void Application::ApplicationGetFramebufferSize(u32 & width, u32 & height)
 
 void *Application::operator new(u64 size)
 {
-    return MMemory::Allocate(size, MEMORY_TAG_APPLICATION);
+    return MMemory::Allocate(size, MemoryTag::Application);
 }
 
 void Application::operator delete(void *ptr)
 {
-    return MMemory::Free(ptr, sizeof(Application), MEMORY_TAG_APPLICATION);
+    return MMemory::Free(ptr, sizeof(Application), MemoryTag::Application);
 }
 
 bool Application::OnEvent(u16 code, void *sender, void *ListenerInst, EventContext context)

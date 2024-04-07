@@ -5,7 +5,7 @@
 struct Resource {
     u32 LoaderID;
     const char* name;
-    char* FullPath;
+    MString FullPath;
     u64 DataSize;
     void* data;
 };
@@ -17,25 +17,27 @@ struct ImageResourceData {
     u8* pixels;
 };
 
+// TODO: Сделать шаблонной
 class ResourceSystem
 {
 private:
     static u32 MaxLoaderCount;
     // Относительный базовый путь для активов.
-    char* AssetBasePath;
+    const char* AssetBasePath;
 
     class ResourceLoader* RegisteredLoaders;
 
     static ResourceSystem* state;
-    ResourceSystem();
+    ResourceSystem(const char* BasePath);
 public:
-    ~ResourceSystem();
+    ~ResourceSystem() = default;
     ResourceSystem(const ResourceSystem&) = delete;
     ResourceSystem& operator= (const ResourceSystem&) = delete;
 
-    bool Initialize();
-    void Shutdown();
+    bool Initialize(const char* BasePath);
+    void Shutdown() {}
 
+    template<typename T>
     bool RegisterLoader(ResourceLoader loader);
     bool Load(const char* name, ResourceType type, Resource* OutResource);
     bool Load(const char* name, const char* CustomType, Resource* OutResource);

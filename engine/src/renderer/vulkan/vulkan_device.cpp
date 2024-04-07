@@ -133,7 +133,7 @@ void VulkanDevice::Destroy(VulkanAPI *VkAPI)
         MMemory::TFree<VkSurfaceFormatKHR>(
             SwapchainSupport.formats,
             SwapchainSupport.FormatCount,
-            MEMORY_TAG_RENDERER);
+            MemoryTag::Renderer);
         SwapchainSupport.formats = 0;
         SwapchainSupport.FormatCount = 0;
     }
@@ -142,7 +142,7 @@ void VulkanDevice::Destroy(VulkanAPI *VkAPI)
         MMemory::TFree<VkPresentModeKHR>(
             SwapchainSupport.PresentModes,
             SwapchainSupport.PresentModeCount,
-            MEMORY_TAG_RENDERER);
+            MemoryTag::Renderer);
         SwapchainSupport.PresentModes = 0;
         SwapchainSupport.PresentModeCount = 0;
     }
@@ -176,7 +176,7 @@ void VulkanDevice::QuerySwapchainSupport(
 
     if (OutSupportInfo->FormatCount != 0) {
         if (!OutSupportInfo->formats) { // раскоментировать или закоментировать знак ! если будет ошибка
-            OutSupportInfo->formats = MMemory::TAllocate<VkSurfaceFormatKHR>(OutSupportInfo->FormatCount, MEMORY_TAG_RENDERER);
+            OutSupportInfo->formats = MMemory::TAllocate<VkSurfaceFormatKHR>(OutSupportInfo->FormatCount, MemoryTag::Renderer);
         }
         VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(
             PhysicalDevice,
@@ -193,7 +193,7 @@ void VulkanDevice::QuerySwapchainSupport(
         0));
     if (OutSupportInfo->PresentModeCount != 0) {
         if (!OutSupportInfo->PresentModes) { // раскоментировать или закоментировать знак ! если будет ошибка
-            OutSupportInfo->PresentModes = MMemory::TAllocate<VkPresentModeKHR>(OutSupportInfo->PresentModeCount, MEMORY_TAG_RENDERER);
+            OutSupportInfo->PresentModes = MMemory::TAllocate<VkPresentModeKHR>(OutSupportInfo->PresentModeCount, MemoryTag::Renderer);
         }
         VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(
             PhysicalDevice,
@@ -446,10 +446,10 @@ bool VulkanDevice::PhysicalDeviceMeetsRequirements(
         
         if (OutSwapchainSupport->FormatCount < 1 || OutSwapchainSupport->PresentModeCount < 1) {
             if (OutSwapchainSupport->formats) {
-                MMemory::TFree<VkSurfaceFormatKHR>(OutSwapchainSupport->formats, OutSwapchainSupport->FormatCount, MEMORY_TAG_RENDERER);
+                MMemory::TFree<VkSurfaceFormatKHR>(OutSwapchainSupport->formats, OutSwapchainSupport->FormatCount, MemoryTag::Renderer);
             }
             if (OutSwapchainSupport->PresentModes) {
-                MMemory::TFree<VkPresentModeKHR>(OutSwapchainSupport->PresentModes, OutSwapchainSupport->PresentModeCount, MEMORY_TAG_RENDERER);
+                MMemory::TFree<VkPresentModeKHR>(OutSwapchainSupport->PresentModes, OutSwapchainSupport->PresentModeCount, MemoryTag::Renderer);
             }
             MINFO("Требуемая поддержка swapchain отсутствует, устройство пропускается.");
             return false;
@@ -465,7 +465,7 @@ bool VulkanDevice::PhysicalDeviceMeetsRequirements(
                 &AvailableExtensionCount,
                 0));
             if (AvailableExtensionCount != 0) {
-                AvailableExtensions = MMemory::TAllocate<VkExtensionProperties>(AvailableExtensionCount, MEMORY_TAG_RENDERER);
+                AvailableExtensions = MMemory::TAllocate<VkExtensionProperties>(AvailableExtensionCount, MemoryTag::Renderer);
                 VK_CHECK(vkEnumerateDeviceExtensionProperties(
                     device,
                     0,
@@ -484,12 +484,12 @@ bool VulkanDevice::PhysicalDeviceMeetsRequirements(
 
                     if (!found) {
                         MINFO("Требуемое расширение не найдено: '%s', устройство пропускается.", requirements->DeviceExtensionNames[i]);
-                        MMemory::TFree<VkExtensionProperties>(AvailableExtensions, AvailableExtensionCount, MEMORY_TAG_RENDERER);
+                        MMemory::TFree<VkExtensionProperties>(AvailableExtensions, AvailableExtensionCount, MemoryTag::Renderer);
                         return false;
                     }
                 }
             }
-            MMemory::TFree<VkExtensionProperties>(AvailableExtensions, AvailableExtensionCount, MEMORY_TAG_RENDERER);
+            MMemory::TFree<VkExtensionProperties>(AvailableExtensions, AvailableExtensionCount, MemoryTag::Renderer);
         }
 
         // Sampler anisotropy

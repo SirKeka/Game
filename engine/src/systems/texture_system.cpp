@@ -263,7 +263,7 @@ bool TextureSystem::LoadTexture(const char* TextureName, Texture *t)
         return false;
     }
 
-    ImageResourceData* ResourceData = ImgResource.data;
+    ImageResourceData* ResourceData = reinterpret_cast<ImageResourceData*>(ImgResource.data);
 
     // Используйте временную текстуру для загрузки.
     Texture TempTexture;

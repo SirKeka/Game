@@ -6,7 +6,7 @@
 #include <cstring>
 #include <stdio.h>
 
-static const char* MemoryTagStrings[MEMORY_TAG_MAX_TAGS] = {
+static const char* MemoryTagStrings[static_cast<u32>(MemoryTag::MaxTags)] = {
     "UNKNOWN    ",
     "ARRAY      ",
     "LINEAR ALLC",
@@ -27,7 +27,7 @@ static const char* MemoryTagStrings[MEMORY_TAG_MAX_TAGS] = {
     "SCENE      "};
 
 u64 MMemory::TotalAllocated;
-u64 MMemory::TaggedAllocations[MEMORY_TAG_MAX_TAGS];
+u64 MMemory::TaggedAllocations[static_cast<u32>(MemoryTag::MaxTags)];
 u64 MMemory::AllocCount;
 
 MMemory::~MMemory()
@@ -41,12 +41,12 @@ MINLINE void MMemory::Shutdown()
 
 void *MMemory::Allocate(u64 bytes, MemoryTag tag)
 {
-    if (tag == MEMORY_TAG_UNKNOWN) {
-        MWARN("allocate вызывается с использованием MEMORY_TAG_UNKNOWN. Переклассифицировать это распределение.");
+    if (tag == MemoryTag::Unknown) {
+        MWARN("allocate вызывается с использованием MemoryTag::Unknown. Переклассифицировать это распределение.");
     }
 
     TotalAllocated += bytes;
-    TaggedAllocations[tag] += bytes;
+    TaggedAllocations[static_cast<u32>(tag)] += bytes;
     AllocCount++;
 
     u8* ptrRawMem = new u8[bytes];
@@ -57,12 +57,12 @@ void *MMemory::Allocate(u64 bytes, MemoryTag tag)
 void MMemory::Free(void *block, u64 bytes, MemoryTag tag)
 {
     if (block) {
-        if (tag == MEMORY_TAG_UNKNOWN) {
-            MWARN("free вызывается с использованием MEMORY_TAG_UNKNOWN. Переклассифицировать это распределение.");
+        if (tag == MemoryTag::Unknown) {
+            MWARN("free вызывается с использованием MemoryTag::Unknown. Переклассифицировать это распределение.");
         }
 
         TotalAllocated -= bytes;
-        TaggedAllocations[tag] -= bytes;
+        TaggedAllocations[static_cast<u32>(tag)] -= bytes;
         AllocCount--;
 
         u8* ptrRawMem = reinterpret_cast<u8*>(block);
@@ -105,7 +105,7 @@ MString MMemory::GetMemoryUsageStr()
 
     char buffer[8000] = "Использование системной памяти (с тегами):\n";
     u64 offset = strlen(buffer);
-    for (u32 i = 0; i < MEMORY_TAG_MAX_TAGS; ++i) {
+    for (u32 i = 0; i < static_cast<u32>(MemoryTag::MaxTags); ++i) {
         char unit[4] = "XiB";
         float amount = 1.0f;
         if (TaggedAllocations[i] >= gib) {

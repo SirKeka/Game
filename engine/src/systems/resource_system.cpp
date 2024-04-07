@@ -2,25 +2,34 @@
 #include "core/logger.hpp"
 #include "memory/linear_allocator.hpp"
 #include "resources/loader/image_loader.hpp"
+#include "resources/loader/material_loader.hpp"
+#include "resources/loader/binary_loader.hpp"
+#include "resources/loader/text_loader.hpp"
+
+#include "core/mmemory.hpp"
+#include <new>
 
 u32 ResourceSystem::MaxLoaderCount = 0;
 ResourceSystem* ResourceSystem::state = nullptr;
 
-ResourceSystem::ResourceSystem()  : AssetBasePath(nullptr), RegisteredLoaders(nullptr) 
+ResourceSystem::ResourceSystem(const char* BasePath)  : AssetBasePath(BasePath), RegisteredLoaders(nullptr) 
 {
+    //MMemory::CopyMem(AssetBasePath, BasePath, sizeof(BasePath));
+    this->RegisteredLoaders = reinterpret_cast<ResourceLoader*>(this + sizeof(ResourceSystem));
     // Аннулировать все загрузчики
-    for (u32 i = 0; i < MaxLoaderCount; ++i) {
+    new (reinterpret_cast<void*>(RegisteredLoaders)) ResourceLoader[MaxLoaderCount]();
+    /*for (u32 i = 0; i < MaxLoaderCount; ++i) {
         RegisteredLoaders[i].id = INVALID_ID;
-    }
+    }*/
 
     // ПРИМЕЧАНИЕ: Здесь можно автоматически зарегистрировать известные типы загрузчиков.
-    RegisterLoader(text_resource_loader_create());
-    //RegisterLoader(binary_resource_loader_create());
-    //RegisterLoader(image_resource_loader_create());
-    //RegisterLoader(material_resource_loader_create());
+    RegisterLoader<TextLoader>(TextLoader());
+    RegisterLoader<BinaryLoader>(BinaryLoader());
+    RegisterLoader<ImageLoader>(ImageLoader());
+    RegisterLoader<MaterialLoader>(MaterialLoader());
 }
 
-bool ResourceSystem::Initialize()
+bool ResourceSystem::Initialize(const char* BasePath)
 {
     if (MaxLoaderCount == 0) {
         MFATAL("ResourceSystem::Initialize е удалось, поскольку максимальное количество загрузчиков (MaxLoaderCount) = 0.");
@@ -28,14 +37,15 @@ bool ResourceSystem::Initialize()
     }
 
     if (!state) {
-        state = new ResourceSystem();
+        state = new ResourceSystem(BasePath);
     }
 
-    MINFO("Система ресурсов инициализируется с использованием базового пути '%s'.", AssetBasePath);
+    MINFO("Система ресурсов инициализируется с использованием базового пути '%s'.", state->AssetBasePath);
 
     return true;
 }
 
+template<typename T>
 bool ResourceSystem::RegisterLoader(ResourceLoader loader)
 {
     // Убедитесь, что загрузчики данного типа еще не существуют.
@@ -53,7 +63,8 @@ bool ResourceSystem::RegisterLoader(ResourceLoader loader)
     }
     for (u32 i = 0; i < MaxLoaderCount; ++i) {
         if (RegisteredLoaders[i].id == INVALID_ID) {
-            RegisteredLoaders[i] = loader;
+            RegisteredLoaders[i].Destroy();
+            new(reinterpret_cast<void*>(RegisteredLoaders + i)) T();
             RegisteredLoaders[i].id = i;
             MTRACE("Загрузчик зарегистрирован.");
             return true;

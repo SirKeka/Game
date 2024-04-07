@@ -57,7 +57,7 @@ void Texture::Create(const char* name, i32 width, i32 height, i32 ChannelCount, 
 
     // Создание внутренних данных.
     // TODO: Используйте для этого распределитель.
-    Data = reinterpret_cast<VulkanTextureData*>(MMemory::Allocate(sizeof(VulkanTextureData), MEMORY_TAG_TEXTURE));
+    Data = reinterpret_cast<VulkanTextureData*>(MMemory::Allocate(sizeof(VulkanTextureData), MemoryTag::Texture));
     VkDeviceSize ImageSize = width * height * ChannelCount;
 
     // ПРИМЕЧАНИЕ: Предполагается, что на канал приходится 8 бит.
@@ -152,7 +152,7 @@ void Texture::Destroy(VulkanAPI *VkAPI)
         vkDestroySampler(VkAPI->Device.LogicalDevice, Data->sampler, VkAPI->allocator);
         Data->sampler = 0;
 
-    MMemory::TFree<VulkanTextureData>(Data, 1, MEMORY_TAG_TEXTURE);
+    MMemory::TFree<VulkanTextureData>(Data, 1, MemoryTag::Texture);
     }
     
     this->~Texture();
@@ -168,10 +168,10 @@ Texture::operator bool() const
 
 void *Texture::operator new(u64 size)
 {
-    return MMemory::Allocate(size, MEMORY_TAG_TEXTURE);
+    return MMemory::Allocate(size, MemoryTag::Texture);
 }
 
 void Texture::operator delete(void *ptr)
 {
-    MMemory::Free(ptr, sizeof(Texture), MEMORY_TAG_TEXTURE);
+    MMemory::Free(ptr, sizeof(Texture), MemoryTag::Texture);
 }

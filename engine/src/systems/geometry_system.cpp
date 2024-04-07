@@ -98,9 +98,9 @@ GeometryConfig GeometrySystem::GeneratePlaneConfig(f32 width, f32 height, u32 xS
 
     GeometryConfig config;
     config.VertexCount = xSegmentCount * ySegmentCount * 4;  // 4 вершины на сегмент
-    config.vertices = MMemory::TAllocate<Vertex3D>(config.VertexCount, MEMORY_TAG_ARRAY);
+    config.vertices = MMemory::TAllocate<Vertex3D>(config.VertexCount, MemoryTag::Array);
     config.IndexCount = xSegmentCount * ySegmentCount * 6;  // 6 индексов на сегмент
-    config.indices = MMemory::TAllocate<u32>(config.IndexCount, MEMORY_TAG_ARRAY);
+    config.indices = MMemory::TAllocate<u32>(config.IndexCount, MemoryTag::Array);
 
     // TODO: При этом создаются дополнительные вершины, но мы всегда можем дедуплицировать их позже.
     f32 SegWidth = width / xSegmentCount;

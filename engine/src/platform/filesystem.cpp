@@ -24,11 +24,11 @@ bool Filesystem::Open(const char *path, FileModes mode, bool binary, FileHandle 
     OutHandle->handle = 0;
     MString ModeStr;
 
-    if ((mode & FILE_MODE_READ) != 0 && (mode & FILE_MODE_WRITE) != 0) {
+    if ((mode & FileModes::Read) != 0 && (mode & FileModes::Write) != 0) {
         ModeStr = binary ? "w+b" : "w+";
-    } else if ((mode & FILE_MODE_READ) != 0 && (mode & FILE_MODE_WRITE) == 0) {
+    } else if ((mode & FileModes::Read) != 0 && (mode & FileModes::Write) == 0) {
         ModeStr = binary ? "rb" : "r";
-    } else if ((mode & FILE_MODE_READ) == 0 && (mode & FILE_MODE_WRITE) != 0) {
+    } else if ((mode & FileModes::Read) == 0 && (mode & FileModes::Write) != 0) {
         ModeStr = binary ? "wb" : "w";
     } else {
         MERROR("При попытке открыть файл был пройден недопустимый режим: '%s'", path);
@@ -108,20 +108,31 @@ bool Filesystem::Read(FileHandle *handle, u64 DataSize, void *OutData, u64 *OutB
     return false;
 }
 
-bool Filesystem::ReadAllBytes(FileHandle *handle, u8 *&OutBytes, u64 *OutBytesRead)
+bool Filesystem::ReadAllBytes(FileHandle *handle, u8 *OutBytes, u64 *OutBytesRead)
 {
-    if (handle->handle) {
-        // File size
-        fseek(reinterpret_cast<FILE*>(handle->handle), 0, SEEK_END);
-        u64 size = ftell(reinterpret_cast<FILE*>(handle->handle));
-        rewind(reinterpret_cast<FILE*>(handle->handle));
-
-        OutBytes = MMemory::TAllocate<u8>(size, MEMORY_TAG_STRING);
-        *OutBytesRead = fread(OutBytes, 1, size, reinterpret_cast<FILE*>(handle->handle));
-        if (*OutBytesRead != size) {
+    if (handle->handle && OutBytes && OutBytesRead) {
+        // Размер файла
+        u64 size = 0;
+        if(!Filesystem::Size(handle, &size)) {
             return false;
         }
-        return true;
+
+        *OutBytesRead = fread(OutBytes, 1, size, reinterpret_cast<FILE*>(handle->handle));
+        return *OutBytesRead == size;
+    }
+    return false;
+}
+
+bool Filesystem::ReadAllText(FileHandle *handle, char *OutText, u64 *OutBytesRead)
+{
+    if (handle->handle && OutText && OutBytesRead) {
+        // Размер файла
+        u64 size = 0;
+        if(!Filesystem::Size(handle, &size)) {
+            return false;
+        }
+        *OutBytesRead = fread(OutText, 1, size, reinterpret_cast<FILE*>(handle->handle));
+        return *OutBytesRead == size;
     }
     return false;
 }

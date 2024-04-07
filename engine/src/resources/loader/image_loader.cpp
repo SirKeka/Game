@@ -1,5 +1,4 @@
 #include "image_loader.hpp"
-//#include "core/logger.hpp"
 #include "core/mmemory.hpp"
 #include "systems/resource_system.hpp"
 
@@ -11,7 +10,7 @@ ImageLoader::ImageLoader()
 {
     type = ResourceType::Image;
     CustomType = nullptr;
-    TypePath = "texture";
+    TypePath = "textures";
 }
 
 bool ImageLoader::Load(const char *name, Resource *OutResource)
@@ -60,10 +59,10 @@ bool ImageLoader::Load(const char *name, Resource *OutResource)
     }
 
     // TODO: Здесь следует использовать распределитель.
-    MMemory::CopyMem(OutResource->FullPath, FullFilePath, sizeof(FullFilePath)); // OutResource->FullPath = string_duplicate(FullFilePath);
+    OutResource->FullPath = FullFilePath;
 
     // TODO: Здесь следует использовать распределитель.
-    ImageResourceData* ResourceData = MMemory::TAllocate<ImageResourceData>(1, MEMORY_TAG_TEXTURE);
+    ImageResourceData* ResourceData = MMemory::TAllocate<ImageResourceData>(1, MemoryTag::Texture);
     ResourceData->pixels = data;
     ResourceData->width = width;
     ResourceData->height = height;
@@ -83,13 +82,13 @@ void ImageLoader::Unload(Resource *resource)
         return;
     }
 
-    u32 PathLength = MString::Length(resource->FullPath);
+    u32 PathLength = resource->FullPath.Length();
     if (PathLength) {
-        MMemory::Free(resource->FullPath, sizeof(char) * PathLength + 1, MEMORY_TAG_STRING);
+        resource->FullPath.Destroy();
     }
 
     if (resource->data) {
-        MMemory::Free(resource->data, resource->DataSize, MEMORY_TAG_TEXTURE);
+        MMemory::Free(resource->data, resource->DataSize, MemoryTag::Texture);
         resource->data = 0;
         resource->DataSize = 0;
         resource->LoaderID = INVALID_ID;

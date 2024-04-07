@@ -129,12 +129,12 @@ Game::~Game()
 
 void *Game::operator new(u64 size)
 {   
-    return MMemory::Allocate(size, MEMORY_TAG_GAME);
+    return MMemory::Allocate(size, MemoryTag::Game);
 }
 
 void Game::operator delete(void *ptr)
 {
-    MMemory::Free(ptr,sizeof(Game), MEMORY_TAG_GAME);
+    MMemory::Free(ptr,sizeof(Game), MemoryTag::Game);
 }
 
 void Game::RecalculateViewMatrix()

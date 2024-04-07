@@ -18,7 +18,7 @@ Logger::Logger()
 bool Logger::Initialize()
 {
     // Создайте новый/сотрите существующий файл журнала, затем откройте его.
-    if (!Filesystem::Open("console.log", FILE_MODE_WRITE, false, &LogFileHandle)) {
+    if (!Filesystem::Open("console.log", FileModes::Write, false, &LogFileHandle)) {
         PlatformConsoleWriteError("ОШИБКА: Не удается открыть console.log для записи.", LOG_LEVEL_ERROR);
         return false;
     }

@@ -6,29 +6,29 @@
 //#include "containers/darray.hpp"
 
 
-enum MemoryTag 
+enum class MemoryTag 
 {
      // Для временного использования. Должно быть присвоено одно из следующих значений или создан новый тег.
-    MEMORY_TAG_UNKNOWN,
-    MEMORY_TAG_ARRAY,
-    MEMORY_TAG_LINEAR_ALLOCATOR,
-    MEMORY_TAG_DARRAY,
-    MEMORY_TAG_DICT,
-    MEMORY_TAG_RING_QUEUE,
-    MEMORY_TAG_BST,
-    MEMORY_TAG_STRING,
-    MEMORY_TAG_APPLICATION,
-    MEMORY_TAG_JOB,
-    MEMORY_TAG_TEXTURE,
-    MEMORY_TAG_MATERIAL_INSTANCE,
-    MEMORY_TAG_RENDERER,
-    MEMORY_TAG_GAME,
-    MEMORY_TAG_TRANSFORM,
-    MEMORY_TAG_ENTITY,
-    MEMORY_TAG_ENTITY_NODE,
-    MEMORY_TAG_SCENE,
+    Unknown,
+    Array,
+    LinearAllocator,
+    DArray,
+    Dict,
+    RingQueue,
+    BST,
+    String,
+    Application,
+    Job,
+    Texture,
+    MAaterialInstance,
+    Renderer,
+    Game,
+    Transform,
+    Entity,
+    EntityNode,
+    Scene,
 
-    MEMORY_TAG_MAX_TAGS
+    MaxTags
 };
 
 class MAPI MMemory
@@ -44,7 +44,7 @@ private:
     //static DArray<SharPtr> ptr;
     
     static u64 TotalAllocated;
-    static u64 TaggedAllocations[MEMORY_TAG_MAX_TAGS];
+    static u64 TaggedAllocations[static_cast<u32>(MemoryTag::MaxTags)];
     static u64 AllocCount;
     
 public:
@@ -61,12 +61,12 @@ public:
 
     template<typename T>
     static T* TAllocate(u64 size, MemoryTag tag) {
-        if (tag == MEMORY_TAG_UNKNOWN) {
-            MWARN("allocate вызывается с использованием MEMORY_TAG_UNKNOWN. Переклассифицировать это распределение.");
+        if (tag == MemoryTag::Unknown) {
+            MWARN("allocate вызывается с использованием MemoryTag::Unknown. Переклассифицировать это распределение.");
         }
 
         TotalAllocated += size * sizeof(T);
-        TaggedAllocations[tag] += size * sizeof(T);
+        TaggedAllocations[static_cast<u32>(tag)] += size * sizeof(T);
 
         T* ptrRawMem = new T[size]();
 
@@ -86,12 +86,12 @@ public:
     /// @param tag название(тег) для чего использовалась память
     static void TFree(T* block, u64 factor, MemoryTag tag) {
         if (block) {
-            if (tag == MEMORY_TAG_UNKNOWN) {
-                MWARN("free вызывается с использованием MEMORY_TAG_UNKNOWN. Переклассифицировать это распределение.");
+            if (tag == MemoryTag::Unknown) {
+                MWARN("free вызывается с использованием MemoryTag::Unknown. Переклассифицировать это распределение.");
             }
 
             TotalAllocated -= sizeof(T) * factor;
-            TaggedAllocations[tag] -= sizeof(T) * factor;
+            TaggedAllocations[static_cast<u32>(tag)] -= sizeof(T) * factor;
 
             delete[] block;
         }

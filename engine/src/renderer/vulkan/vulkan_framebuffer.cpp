@@ -5,7 +5,7 @@
 VulkanFramebuffer::VulkanFramebuffer(VulkanAPI *VkAPI, VulkanRenderPass *renderpass, u32 width, u32 height, u32 AttachmentCount, VkImageView *attachments)
 {
     // Сделайте копию вложений, renderpass и количество вложений
-    this->attachments = MMemory::TAllocate<VkImageView>(AttachmentCount, MEMORY_TAG_RENDERER);
+    this->attachments = MMemory::TAllocate<VkImageView>(AttachmentCount, MemoryTag::Renderer);
     for (u32 i = 0; i < AttachmentCount; ++i) {
         this->attachments[i] = attachments[i];
     }
@@ -32,7 +32,7 @@ void VulkanFramebuffer::Destroy(VulkanAPI *VkAPI)
 {
     vkDestroyFramebuffer(VkAPI->Device.LogicalDevice, this->handle, VkAPI->allocator);
     if (this->attachments) { 
-        MMemory::Free(this->attachments, sizeof(VkImageView) * this->AttachmentCount, MEMORY_TAG_RENDERER);
+        MMemory::Free(this->attachments, sizeof(VkImageView) * this->AttachmentCount, MemoryTag::Renderer);
         this->attachments = 0;
     }
     this->handle = 0;

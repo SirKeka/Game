@@ -2,7 +2,7 @@
 
 #include "vulkan_api.hpp"
 
-#include "platform/filesystem.hpp"
+#include "systems/resource_system.hpp"
 
 namespace VulkanShadersUtil
 {
@@ -13,52 +13,37 @@ namespace VulkanShadersUtil
                             u32 StageIndex, 
                             VulkanShaderStage *ShaderStages)
     {
-        // Имя файла сборки.
+        // Имя файла сборки, которое также будет использоваться в качестве имени ресурса.
         char FileName[512];
-        MString::Format(FileName, "assets/shaders/%s.%s.spv", name, TypeStr);
+        MString::Format(FileName, "shaders/%s.%s.spv", name, TypeStr);
 
-        MMemory::ZeroMem(&ShaderStages[StageIndex].CreateInfo, sizeof(VkShaderModuleCreateInfo));
-        ShaderStages[StageIndex].CreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-
-        // Получить дескриптор файла.
-        FileHandle handle;
-        if (!Filesystem::Open(FileName, FILE_MODE_READ, true, &handle)) {
+        // Чтение ресурса.
+        Resource BinaryResource;
+        if (!ResourceSystem::Instance()->Load(FileName, ResourceType::Binary, &BinaryResource)) {
             MERROR("Невозможно прочитать шейдерный модуль: %s.", FileName);
             return false;
         }
 
-    // Прочитайте весь файл как двоичный.
-    u64 size = 0;
-    u8* FileBuffer = 0;
-    if (!Filesystem::ReadAllBytes(&handle, FileBuffer, &size)) {
-        MERROR("Невозможно выполнить двоичное чтение модуля шейдера.: %s.", FileName);
-        return false;
-    }
-    ShaderStages[StageIndex].CreateInfo.codeSize = size;
-    ShaderStages[StageIndex].CreateInfo.pCode = (u32*)FileBuffer;
+        MMemory::ZeroMem(&ShaderStages[StageIndex].CreateInfo, sizeof(VkShaderModuleCreateInfo));
+        ShaderStages[StageIndex].CreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+        // Используйте размер и данные ресурса напрямую.
+        ShaderStages[StageIndex].CreateInfo.codeSize = BinaryResource.DataSize;
+        ShaderStages[StageIndex].CreateInfo.pCode = reinterpret_cast<u32*>(BinaryResource.data);
 
-    // Закройте файл.
-    Filesystem::Close(&handle);
+        VK_CHECK(vkCreateShaderModule(
+            VkAPI->Device.LogicalDevice,
+            &ShaderStages[StageIndex].CreateInfo,
+            VkAPI->allocator,
+            &ShaderStages[StageIndex].handle));
 
-    VK_CHECK(vkCreateShaderModule(
-        VkAPI->Device.LogicalDevice,
-        &ShaderStages[StageIndex].CreateInfo,
-        VkAPI->allocator,
-        &ShaderStages[StageIndex].handle));
+        // Информация о стадии шейдера
+        MMemory::ZeroMem(&ShaderStages[StageIndex].ShaderStageCreateInfo, sizeof(VkPipelineShaderStageCreateInfo));
+        ShaderStages[StageIndex].ShaderStageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        ShaderStages[StageIndex].ShaderStageCreateInfo.stage = ShaderStageFlag;
+        ShaderStages[StageIndex].ShaderStageCreateInfo.module = ShaderStages[StageIndex].handle;
+        ShaderStages[StageIndex].ShaderStageCreateInfo.pName = "main";
 
-    // Информация о стадии шейдера
-    MMemory::ZeroMem(&ShaderStages[StageIndex].ShaderStageCreateInfo, sizeof(VkPipelineShaderStageCreateInfo));
-    ShaderStages[StageIndex].ShaderStageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    ShaderStages[StageIndex].ShaderStageCreateInfo.stage = ShaderStageFlag;
-    ShaderStages[StageIndex].ShaderStageCreateInfo.module = ShaderStages[StageIndex].handle;
-    ShaderStages[StageIndex].ShaderStageCreateInfo.pName = "main";
-
-    if (FileBuffer) {
-        MMemory::TFree<u8>(FileBuffer, size, MEMORY_TAG_STRING);
-        FileBuffer = 0;
-    }
-
-    return true;
+        return true;
     }   
 
 } // namespace VulkanShadersUtil

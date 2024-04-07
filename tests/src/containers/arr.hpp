@@ -20,7 +20,7 @@ public:
         if(lenght > 0) {
             this->size = lenght;
             this->capacity = lenght;
-            ptrValue = MMemory::TAllocate<T>(capacity, MEMORY_TAG_DARRAY);
+            ptrValue = MMemory::TAllocate<T>(capacity, MemoryTag::DArray);
             for (u64 i = 0; i < lenght; i++) {
                 ptrValue[i] = value;
             }
@@ -28,7 +28,7 @@ public:
     }
 
     ~DArray() {
-        if(this->capacity != 0) MMemory::Free(reinterpret_cast<void*>(ptrValue), sizeof(T) * capacity, MEMORY_TAG_DARRAY);
+        if(this->capacity != 0) MMemory::Free(reinterpret_cast<void*>(ptrValue), sizeof(T) * capacity, MemoryTag::DArray);
     }
 
     // Конструктор копирования
@@ -73,13 +73,13 @@ public:
     void Reserve(const u64& NewCap) {
         // TODO: добавить std::move()
         if (capacity == 0) {
-            ptrValue = MMemory::TAllocate<T>(NewCap, MEMORY_TAG_DARRAY);
+            ptrValue = MMemory::TAllocate<T>(NewCap, MemoryTag::DArray);
             capacity = NewCap;
         }
         else if (NewCap > capacity) {
-            void* ptrNew = MMemory::Allocate(sizeof(T) * NewCap, MEMORY_TAG_DARRAY);
+            void* ptrNew = MMemory::Allocate(sizeof(T) * NewCap, MemoryTag::DArray);
             MMemory::CopyMem(ptrNew, reinterpret_cast<void*>(ptrValue), sizeof(T) * capacity);
-            MMemory::Free(ptrValue, sizeof(T) * capacity, MEMORY_TAG_DARRAY);
+            MMemory::Free(ptrValue, sizeof(T) * capacity, MemoryTag::DArray);
             ptrValue = reinterpret_cast<T*> (ptrNew);
             capacity = NewCap;
         }

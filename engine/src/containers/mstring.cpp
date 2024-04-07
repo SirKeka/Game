@@ -9,20 +9,20 @@ MString::MString() : str(nullptr), lenght(0){   }
 MString::MString(u64 lenght)
 {
     this->lenght = lenght + 1;
-    this->str = MMemory::TAllocate<char>(lenght, MEMORY_TAG_STRING);
+    this->str = MMemory::TAllocate<char>(lenght, MemoryTag::String);
 }
 
 MString::MString(const char *s)
 {
     lenght = strlen(s) + 1;
-    this->str = MMemory::TAllocate<char>(lenght, MEMORY_TAG_STRING);
+    this->str = MMemory::TAllocate<char>(lenght, MemoryTag::String);
     MMemory::CopyMem(this->str, s, lenght);
 }
 
 MString::MString(const MString &s)
 {
     lenght = s.lenght;
-    this->str = MMemory::TAllocate<char>(lenght, MEMORY_TAG_STRING);
+    this->str = MMemory::TAllocate<char>(lenght, MemoryTag::String);
     MMemory::CopyMem(this->str, s.str, lenght);
 }
 
@@ -34,7 +34,8 @@ MString::MString(MString &&s) : str(s.str), lenght(s.lenght)
 
 MString::~MString()
 {
-    Destroy();
+    MMemory::TFree<char>(str, lenght, MemoryTag::String);
+    lenght = 0;
 }
 
 MString &MString::operator=(const MString &s)
@@ -42,7 +43,7 @@ MString &MString::operator=(const MString &s)
     if (this->lenght < s.lenght) {
         Destroy();
         lenght = s.lenght + 1;
-        this->str = MMemory::TAllocate<char>(lenght, MEMORY_TAG_STRING);
+        this->str = MMemory::TAllocate<char>(lenght, MemoryTag::String);
     }
 
     MMemory::CopyMem(this->str, s.str, lenght);
@@ -55,7 +56,7 @@ MString &MString::operator=(const char *s)
     if (this->lenght < strlen(s)) {
         Destroy();
         lenght = strlen(s) + 1;
-        this->str = MMemory::TAllocate<char>(lenght, MEMORY_TAG_STRING);
+        this->str = MMemory::TAllocate<char>(lenght, MemoryTag::String);
     }
 
     MMemory::CopyMem(this->str, s, lenght);
@@ -371,8 +372,7 @@ bool MString::ToBool(char *str, b8 *b)
 
 void MString::Destroy()
 {
-    MMemory::TFree<char>(str, lenght, MEMORY_TAG_STRING);
-    lenght = 0;
+    this->~MString();
 }
 
 bool StringsEqual(const char *strL, const char *strR)

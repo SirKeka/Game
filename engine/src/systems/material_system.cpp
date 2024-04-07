@@ -1,6 +1,7 @@
 #include "material_system.hpp"
 #include "systems/texture_system.hpp"
 #include "renderer/renderer.hpp"
+#include "systems/resource_system.hpp"
 
 #include "memory/linear_allocator.hpp"
 #include <new>
@@ -83,25 +84,30 @@ void MaterialSystem::Shutdown()
 
 Material *MaterialSystem::Acquire(const char *name)
 { 
-    // Отложенная инициализация массива материалов, т.к. после инициализации геометрической системы сбивается инициализация
-    new (reinterpret_cast<void*>(RegisteredMaterials)) Material[MaxMaterialCount](); 
-    // Загрузите данную конфигурацию материала с диска.
-    MaterialConfig config;
+    
+    // Отложенная инициализация массива материалов, т.к. после инициализации геометрической системы сбивается инициализация некоторых объектов
+    new (reinterpret_cast<void*>(RegisteredMaterials)) Material[MaxMaterialCount]();
 
-    // Загрузить файл с диска
-    // TODO: Должен иметь возможность находиться где угодно.
-    const char* FormatStr = "assets/materials/%s.%s";
-    char FullFilePath[512];
-
-    // TODO: попробуйте разные расширения
-    MString::Format(FullFilePath, FormatStr, name, "mmt");
-    if (!LoadConfigurationFile(FullFilePath, &config)) {
-        MERROR("Не удалось загрузить файл материала: '%s'. Нулевой указатель будет возвращен.", FullFilePath);
-        return 0;
+    // Загрузить конфигурацию материала из ресурса.
+    Resource MaterialResource;
+    if (!ResourceSystem::Instance()->Load(name, ResourceType::Material, &MaterialResource)) {
+        MERROR("Не удалось загрузить ресурс материала, возвращается значение nullptr.");
+        return nullptr;
+    }
+    
+    Material* m;
+    if (MaterialResource.data) {
+        m = AcquireFromConfig(*reinterpret_cast<MaterialConfig*>(MaterialResource.data));
     }
 
-    // Теперь получите из загруженной конфигурации.
-    return AcquireFromConfig(config);
+    // Clean up
+    ResourceSystem::Instance()->Unload(&MaterialResource);
+
+    if (!m) {
+        MERROR("Не удалось загрузить ресурс материала, возвращается значение nullptr.");
+    }
+
+    return m;
 }
 
 Material *MaterialSystem::AcquireFromConfig(MaterialConfig config)
@@ -283,77 +289,6 @@ void MaterialSystem::DestroyMaterial(Material *m)
     m->generation = INVALID_ID;
     m->InternalId = INVALID_ID;
     m = nullptr;*/
-}
-
-bool MaterialSystem::LoadConfigurationFile(const char *path, MaterialConfig *OutConfig)
-{ 
-    FileHandle f;
-    if (!Filesystem::Open(path, FILE_MODE_READ, false, &f)) {
-        MERROR("«LoadConfigurationFile» - невозможно открыть файл материала для чтения: '%s'.", path);
-        return false;
-    }
-
-    // Прочтите каждую строку файла.
-    char LineBuf[512] = "";
-    char* p = &LineBuf[0];
-    u64 LineLength = 0;
-    u32 LineNumber = 1;
-    while (Filesystem::ReadLine(&f, 511, &p, &LineLength)) {
-        // Обрежьте строку.
-        char* trimmed = MString::Trim(LineBuf);
-
-        // Получите обрезанную длину.
-        LineLength = MString::Length(trimmed);
-
-        // Пропускайте пустые строки и комментарии.
-        if (LineLength < 1 || trimmed[0] == '#') {
-            LineNumber++;
-            continue;
-        }
-
-        // Разделить на var/value
-        i32 EqualIndex = MString::IndexOf(trimmed, '=');
-        if (EqualIndex == -1) {
-            MWARN("В файле обнаружена потенциальная проблема с форматированием '%s': '=' токен не найден. Пропуская линию %ui.", path, LineNumber);
-            LineNumber++;
-            continue;
-        }
-
-        // Предположим, что имя переменной содержит не более 64 символов.
-        char RawVarName[64] {};
-        MString::Mid(RawVarName, trimmed, 0, EqualIndex);
-        char* TrimmedVarName = MString::Trim(RawVarName);
-
-        // Предположим, что максимальная длина значения, учитывающего имя переменной и знак «=", составляет 511–65 (446).
-        char RawValue[446] {};
-        MString::Mid(RawValue, trimmed, EqualIndex + 1, -1);  // Прочтите остальную часть строки
-        char* TrimmedValue = MString::Trim(RawValue);
-
-        // Обработайте переменную.
-        if (StringsEquali(TrimmedVarName, "version")) {
-            // TODO: версия
-        } else if (StringsEquali(TrimmedVarName, "name")) {
-            MString::nCopy(OutConfig->name, TrimmedValue, MATERIAL_NAME_MAX_LENGTH);
-        } else if (StringsEquali(TrimmedVarName, "diffuse_map_name")) {
-            MString::nCopy(OutConfig->DiffuseMapName, TrimmedValue, TEXTURE_NAME_MAX_LENGTH);
-        } else if (StringsEquali(TrimmedVarName, "diffuse_colour")) {
-            // Анализ цвета
-            if (!MString::ToVector4D(TrimmedValue, &OutConfig->DiffuseColour)) {
-                MWARN("Ошибка анализа DiffuseColour в файле '%s'. Вместо этого используется белый цвет по умолчанию.", path);
-                OutConfig->DiffuseColour = Vector4D<f32>::One();  // белый
-            }
-        }
-
-        // TODO: больше полей.
-
-        // Очистите буфер строк.
-        MMemory::ZeroMem(LineBuf, sizeof(char) * 512);
-        LineNumber++;
-    }
-
-    Filesystem::Close(&f);
-
-    return true;
 }
 
 void *MaterialSystem::operator new(u64 size)
