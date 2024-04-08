@@ -133,6 +133,7 @@ bool VulkanMaterialShader::Create(VulkanAPI *VkAPI)
     if (!pipeline.Create(
             VkAPI,
             &VkAPI->MainRenderpass,
+            sizeof(Vertex3D),
             ATTRIBUTE_COUNT,
             AttributeDescriptions,
             DescriptorSetLayoutCount,
@@ -141,7 +142,8 @@ bool VulkanMaterialShader::Create(VulkanAPI *VkAPI)
             StageCreateInfos,
             viewport,
             scissor,
-            false)) {
+            false,
+            true)) {
         MERROR("Не удалось загрузить графический конвейер для объектного шейдера.");
         return false;
     }
@@ -150,7 +152,7 @@ bool VulkanMaterialShader::Create(VulkanAPI *VkAPI)
     u32 DeviceLocalBits = VkAPI->Device.SupportsDeviceLocalHostVisible ? VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT : 0;
     if (!GlobalUniformBuffer.Create(
             VkAPI,
-            sizeof(GlobalUniformObject),
+            sizeof(VulkanMaterialShaderGlobalUniformObject),
             static_cast<VkBufferUsageFlagBits>(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT),
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, // | DeviceLocalBits,
             true)) {
@@ -173,7 +175,7 @@ bool VulkanMaterialShader::Create(VulkanAPI *VkAPI)
     // Создание object uniform buffer.
     if (!ObjectUniformBuffer.Create(
             VkAPI,
-            sizeof(MaterialUniformObject) * VULKAN_MAX_MATERIAL_COUNT,
+            sizeof(VulkanMaterialShaderInstanceUniformObject) * VULKAN_MAX_MATERIAL_COUNT,
             static_cast<VkBufferUsageFlagBits>(VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
             true)) {
@@ -222,7 +224,7 @@ void VulkanMaterialShader::UpdateGlobalState(VulkanAPI *VkAPI, f32 DeltaTime)
     VkDescriptorSet GlobalDescriptor = GlobalDescriptorSets[ImageIndex];
 
     // Сконфигурируйте дескрипторы для данного индекса.
-    u32 range = sizeof(GlobalUniformObject);
+    u32 range = sizeof(VulkanMaterialShaderGlobalUniformObject);
     u64 offset = 0;
 
     // Копирование данных в буфер
@@ -271,19 +273,15 @@ void VulkanMaterialShader::ApplyMaterial(VulkanAPI *VkAPI, Material *material)
     u32 DescriptorIndex = 0;
 
     // Дескриптор 0 - Uniform buffer
-    u32 range = sizeof(MaterialUniformObject);
-    u64 offset = sizeof(MaterialUniformObject) * material->InternalId;  // а также индекс массива.
-    MaterialUniformObject obo;
+    u32 range = sizeof(VulkanMaterialShaderInstanceUniformObject);
+    u64 offset = sizeof(VulkanMaterialShaderInstanceUniformObject) * material->InternalId;  // а также индекс массива.
+    VulkanMaterialShaderInstanceUniformObject InstanceUbo;
 
-    // TODO: получить рассеянный цвет от материала.
-    // static f32 accumulator = 0.0f;
-    // accumulator += VkAPI->FrameDeltaTime;
-    // f32 s = (Math::sin(accumulator) + 1.0f) / 2.0f;  // масштаб от -1, 1 до 0, 1
-    // obo.DiffuseColor = Vector4D<f32>(s, s, s, 1.0f);
-    obo.DiffuseColor = material->DiffuseColour;
+    // Получить рассеянный цвет от материала.
+    InstanceUbo.DiffuseColor = material->DiffuseColour;
 
     // Загрузите данные в буфер.
-    ObjectUniformBuffer.LoadData(VkAPI, offset, range, 0, &obo);
+    ObjectUniformBuffer.LoadData(VkAPI, offset, range, 0, &InstanceUbo);
 
     // Делайте это только в том случае, если дескриптор еще не был обновлен.
     u32* GlobalUBOGeneration = &ObjectState->DescriptorStates[DescriptorIndex].generations[ImageIndex];

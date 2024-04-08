@@ -5,7 +5,7 @@
 #include "systems/material_system.hpp"
 #include "resources/geometry.hpp"
 
-#include "math/vertex3D.hpp"
+#include "math/vertex.hpp"
 //#include "math/matrix4d.hpp"
 
 #include "vulkan_utils.hpp"
@@ -523,6 +523,65 @@ bool VulkanAPI::EndFrame(f32 DeltaTime)
     return true;
 }
 
+bool VulkanAPI::BeginRenderpass(u8 RenderpassID)
+{
+    VulkanRenderPass* renderpass = nullptr;
+    VkFramebuffer framebuffer = 0;
+    VulkanCommandBuffer* CommandBuffer = &GraphicsCommandBuffers[ImageIndex];
+
+    // Выберите рендерпасс на основе идентификатора.
+    switch (RenderpassID) {
+        case static_cast<u8>(BuiltinRenderpass::World):
+            renderpass = &MainRenderpass;
+            framebuffer = WorldFramebuffers[ImageIndex];
+            break;
+        case static_cast<u8>(BuiltinRenderpass::UI):
+            renderpass = &UI_Renderpass;
+            framebuffer = swapchain.framebuffers[ImageIndex];
+            break;
+        default:
+            MERROR("VulkanRenderer::BeginRenderpass called on unrecognized renderpass id: %#02x", RenderpassID);
+            return false;
+    }
+
+    // Начните этап рендеринга.
+    renderpass->Begin(CommandBuffer, framebuffer);
+
+    // Используйте соответствующий шейдер.
+    switch (RenderpassID) {
+        case static_cast<u8>(BuiltinRenderpass::World):
+            MaterialShader.Use(this);
+            break;
+        case static_cast<u8>(BuiltinRenderpass::UI):
+            UI_Shader.Use(this);
+            break;
+    }
+
+    return true;
+}
+
+bool VulkanAPI::EndRenderpass(u8 RenderpassID)
+{
+    VulkanRenderPass* renderpass = nullptr;
+    VulkanCommandBuffer* CommandBuffer = &GraphicsCommandBuffers[ImageIndex];
+
+    // Choose a renderpass based on ID.
+    switch (RenderpassID) {
+        case static_cast<u8>(BuiltinRenderpass::World):
+            renderpass = &MainRenderpass;
+            break;
+        case static_cast<u8>(BuiltinRenderpass::UI):
+            renderpass = &UI_Renderpass;
+            break;
+        default:
+            MERROR("VulkanRenderer::EndRenderpass вызывается по неизвестному идентификатору renderpass:  %#02x", RenderpassID);
+            return false;
+    }
+
+    renderpass->End(CommandBuffer);
+    return true;
+}
+
 bool VulkanAPI::CreateMaterial(Material *material)
 {
     if (material) {
@@ -552,7 +611,7 @@ void VulkanAPI::DestroyMaterial(Material *material)
     }
 }
 
-bool VulkanAPI::Load(GeometryID* gid, u32 VertexCount, const Vertex3D* vertices, u32 IndexCount, const u32* indices)
+bool VulkanAPI::Load(GeometryID *gid, u32 VertexCount, const Vertex3D *vertices, u32 IndexCount, const u32 *indices)
 {
     // Проверьте, не повторная ли это загрузка. Если это так, необходимо впоследствии освободить старые данные.
     bool IsReupload = gid->InternalID != INVALID_ID;
