@@ -3,7 +3,7 @@
 #include "defines.hpp"
 
 #include "renderer_types.hpp"
-#include "math/vertex3D.hpp"
+#include "math/vertex.hpp"
 
 // TODO: временно
 #include "containers/mstring.hpp"

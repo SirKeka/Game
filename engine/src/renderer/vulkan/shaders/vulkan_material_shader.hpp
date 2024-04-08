@@ -41,7 +41,7 @@ public:
     VkDescriptorPool GlobalDescriptorPool;
     VkDescriptorSetLayout GlobalDescriptorSetLayout;
     VkDescriptorSet GlobalDescriptorSets[3]; // Один набор дескрипторов на кадр - максимум 3 для тройной буферизации.
-    GlobalUniformObject GlobalUObj;
+    VulkanMaterialShaderGlobalUniformObject GlobalUObj;
     VulkanBuffer GlobalUniformBuffer;
     VkDescriptorPool ObjectDescriptorPool;
     VkDescriptorSetLayout ObjectDescriptorSetLayout;

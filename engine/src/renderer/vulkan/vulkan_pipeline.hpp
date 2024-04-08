@@ -3,9 +3,6 @@
 #include "defines.hpp"
 #include "vulkan_renderpass.hpp"
 
-class VulkanAPI;
-class VulkanCommandBuffer;
-
 class VulkanPipeline
 {
 public:
@@ -16,8 +13,9 @@ public:
     ~VulkanPipeline() = default;
 
     bool Create(
-    VulkanAPI* VkAPI,
+    class VulkanAPI* VkAPI,
     VulkanRenderPass* renderpass,
+    u32 stride,
     u32 AttributeCount,
     VkVertexInputAttributeDescription* attributes,
     u32 DescriptorSetLayoutCount,
@@ -26,9 +24,10 @@ public:
     VkPipelineShaderStageCreateInfo* stages,
     VkViewport viewport,
     VkRect2D scissor,
-    bool IsWireframe);
+    bool IsWireframe,
+    bool DepthTest);
 
-    void Destroy(VulkanAPI* VkAPI);
+    void Destroy(class VulkanAPI* VkAPI);
 
-    void Bind(VulkanCommandBuffer* CommandBuffer, VkPipelineBindPoint BindPoint);
+    void Bind(class VulkanCommandBuffer* CommandBuffer, VkPipelineBindPoint BindPoint);
 };

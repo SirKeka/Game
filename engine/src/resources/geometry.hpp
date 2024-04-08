@@ -1,6 +1,6 @@
 #pragma once
 #include "containers/mstring.hpp"
-#include "math/vertex3D.hpp"
+#include "math/vertex.hpp"
 #include "systems/material_system.hpp"
 
 #define GEOMETRY_NAME_MAX_LENGTH 256

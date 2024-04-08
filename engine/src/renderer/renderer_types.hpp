@@ -3,7 +3,7 @@
 #include "defines.hpp"
 #include "math/matrix4d.hpp"
 #include "math/vector4d.hpp"
-#include "math/vertex3D.hpp"
+#include "math/vertex.hpp"
 
 struct StaticMeshData;
 
@@ -23,7 +23,7 @@ struct RenderPacket
 };
 
 /*размер данной струтуры для карт Nvidia должен быть равен 256 байт*/
-struct GlobalUniformObject
+struct VulkanMaterialShaderGlobalUniformObject
 {
     Matrix4D projection;  // 64 байта
     Matrix4D view;        // 64 байта
@@ -31,7 +31,7 @@ struct GlobalUniformObject
     Matrix4D mReserved1;  // 64 байта, зарезервированные для будущего использования
 };
 
-struct MaterialUniformObject 
+struct VulkanMaterialShaderInstanceUniformObject 
 {
     Vector4D<f32> DiffuseColor; // 16 байт
     Vector4D<f32> vReserved0;   // 16 байт, зарезервировано для будущего использования.

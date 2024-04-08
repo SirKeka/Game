@@ -48,6 +48,11 @@ operator|(RenderpassClearFlag x, RenderpassClearFlag y)
     (static_cast<u8>(x) | static_cast<u8>(y));
 }
 
+enum class BuiltinRenderpass : u8 {
+    World = 0x01,
+    UI = 0x02
+};
+
 class VulkanRenderPass
 {
 public:

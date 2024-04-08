@@ -1,21 +1,22 @@
 #include "vulkan_pipeline.hpp"
 
 #include "vulkan_device.hpp"
-#include "math/vertex3D.hpp"
 #include "vulkan_utils.hpp"
 
 bool VulkanPipeline::Create(
-    VulkanAPI *VkAPI, 
-    VulkanRenderPass *renderpass, 
-    u32 AttributeCount, 
-    VkVertexInputAttributeDescription *attributes, 
-    u32 DescriptorSetLayoutCount, 
-    VkDescriptorSetLayout *DescriptorSetLayouts, 
-    u32 StageCount, VkPipelineShaderStageCreateInfo *stages, 
-    VkViewport viewport, 
-    VkRect2D scissor, 
-    bool IsWireframe/*, 
-    VulkanPipeline *OutPipeline*/)
+    VulkanAPI* VkAPI,
+    VulkanRenderPass* renderpass,
+    u32 stride,
+    u32 AttributeCount,
+    VkVertexInputAttributeDescription* attributes,
+    u32 DescriptorSetLayoutCount,
+    VkDescriptorSetLayout* DescriptorSetLayouts,
+    u32 StageCount,
+    VkPipelineShaderStageCreateInfo* stages,
+    VkViewport viewport,
+    VkRect2D scissor,
+    bool DepthTest,
+    bool IsWireframe)
 {
     // Состояние видового экрана
     VkPipelineViewportStateCreateInfo ViewportState = {VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO};
@@ -48,11 +49,13 @@ bool VulkanPipeline::Create(
 
     // Проверка глубины и трафарета.
     VkPipelineDepthStencilStateCreateInfo DepthStencil = {VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO};
-    DepthStencil.depthTestEnable = VK_TRUE;
-    DepthStencil.depthWriteEnable = VK_TRUE;
-    DepthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
-    DepthStencil.depthBoundsTestEnable = VK_FALSE;
-    DepthStencil.stencilTestEnable = VK_FALSE;
+    if (DepthTest) {
+        DepthStencil.depthTestEnable = VK_TRUE;
+        DepthStencil.depthWriteEnable = VK_TRUE;
+        DepthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
+        DepthStencil.depthBoundsTestEnable = VK_FALSE;
+        DepthStencil.stencilTestEnable = VK_FALSE;
+    }
 
     VkPipelineColorBlendAttachmentState ColorBlendAttachmentState;
     MMemory::ZeroMem(&ColorBlendAttachmentState, sizeof(VkPipelineColorBlendAttachmentState));
@@ -87,7 +90,7 @@ bool VulkanPipeline::Create(
     // Вершинный ввод
     VkVertexInputBindingDescription BindingDescription;
     BindingDescription.binding = 0;  // Индекс привязки
-    BindingDescription.stride = sizeof(Vertex3D);
+    BindingDescription.stride = stride;
     BindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;  // Переходите к следующему вводу данных для каждой вершины.
 
     // Атрибуты
@@ -134,7 +137,7 @@ bool VulkanPipeline::Create(
     PipelineCreateInfo.pViewportState = &ViewportState;
     PipelineCreateInfo.pRasterizationState = &RasterizerCreateInfo;
     PipelineCreateInfo.pMultisampleState = &MultisamplingCreateInfo;
-    PipelineCreateInfo.pDepthStencilState = &DepthStencil;
+    PipelineCreateInfo.pDepthStencilState = DepthTest ? &DepthStencil : nullptr;
     PipelineCreateInfo.pColorBlendState = &ColorBlendStateCreateInfo;
     PipelineCreateInfo.pDynamicState = &DynamicStateCreateInfo;
     PipelineCreateInfo.pTessellationState = 0;
