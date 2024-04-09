@@ -30,7 +30,7 @@ bool Renderer::Initialize(MWindow* window, const char *ApplicationName, ERendere
 
         break;
     }*/
-    if(type == RENDERER_TYPE_VULKAN) {
+    if(type == ERendererType::VULKAN) {
         //ptrRenderer = dynamic_cast<VulkanAPI*> (ptrRenderer);
 
         ptrRenderer = new VulkanAPI();

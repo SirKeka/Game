@@ -4,6 +4,7 @@
 #include "vulkan_platform.hpp"
 #include "systems/material_system.hpp"
 #include "resources/geometry.hpp"
+#include "renderer/vulkan/shaders/vulkan_ui_shader.hpp"
 
 #include "math/vertex.hpp"
 //#include "math/matrix4d.hpp"

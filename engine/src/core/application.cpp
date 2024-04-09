@@ -73,7 +73,7 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
 
     AppState->Render = new Renderer();
     // Запуск рендерера
-    if (!AppState->Render->Initialize(AppState->Window, GameInst->AppConfig.name, RENDERER_TYPE_VULKAN)) {
+    if (!AppState->Render->Initialize(AppState->Window, GameInst->AppConfig.name, ERendererType::VULKAN)) {
         MFATAL("Не удалось инициализировать средство визуализации. Прерывание приложения.");
         return FALSE;
     }

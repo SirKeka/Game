@@ -7,11 +7,11 @@
 
 struct StaticMeshData;
 
-enum ERendererType 
+enum class ERendererType 
 {
-    RENDERER_TYPE_VULKAN,
-    RENDERER_TYPE_OPENGL,
-    RENDERER_TYPE_DIRECTX
+    VULKAN,
+    OPENGL,
+    DIRECTX
 };
 
 struct RenderPacket
@@ -37,6 +37,22 @@ struct VulkanMaterialShaderInstanceUniformObject
     Vector4D<f32> vReserved0;   // 16 байт, зарезервировано для будущего использования.
     Vector4D<f32> vReserved1;   // 16 байт, зарезервировано для будущего использования.
     Vector4D<f32> vReserved2;   // 16 байт, зарезервировано для будущего использования.
+};
+
+/// @brief 
+struct VulkanUI_ShaderGlobalUbo {
+    Matrix4D projection;  // 64 bytes
+    Matrix4D view;        // 64 bytes
+    Matrix4D mReserved0;  // 64 bytes, зарезервировано для будущего использования.
+    Matrix4D mReserved1;  // 64 bytes, зарезервировано для будущего использования.
+};
+
+/// @brief Объект универсального буфера экземпляра материала пользовательского интерфейса, специфичный для Vulkan, для шейдера пользовательского интерфейса.
+struct VulkanUI_ShaderInstanceUbo {
+    Vector4D<f32> DiffuseColor; // 16 bytes
+    Vector4D<f32> vReserved0;   // 16 bytes, зарезервировано для будущего использования.
+    Vector4D<f32> vReserved1;   // 16 bytes, зарезервировано для будущего использования.
+    Vector4D<f32> vReserved2;   // 16 bytes, зарезервировано для будущего использования.
 };
 
 struct GeometryRenderData 
