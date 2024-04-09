@@ -330,6 +330,10 @@ bool VulkanAPI::Initialize(MWindow* window, const char* ApplicationName)
         MERROR("Ошибка загрузки встроенного шейдера базового цвета (BasicLighting).");
         return false;
     }
+    if (!UI_Shader.Create(this)) {
+        MERROR("Ошибка загрузки встроенного шейдера пользовательского интерфейса.");
+        return false;
+    }
 
     CreateBuffers();
 
@@ -443,7 +447,7 @@ bool VulkanAPI::BeginFrame(f32 Deltatime)
     return true;
 }
 
-    void VulkanAPI::UpdateGlobalState(const Matrix4D& projection, const Matrix4D& view, const Vector3D<f32>& ViewPosition, const Vector4D<f32>& AmbientColour, i32 mode)
+    void VulkanAPI::UpdateGlobalWorldState(const Matrix4D& projection, const Matrix4D& view, const Vector3D<f32>& ViewPosition, const Vector4D<f32>& AmbientColour, i32 mode)
 {
     //VulkanCommandBuffer* CommandBuffer = &GraphicsCommandBuffers[ImageIndex];
 
@@ -455,6 +459,20 @@ bool VulkanAPI::BeginFrame(f32 Deltatime)
     // TODO: другие свойства ubo
 
     MaterialShader.UpdateGlobalState(this, FrameDeltaTime);
+}
+
+void VulkanAPI::UpdateGlobalUIState(const Matrix4D &projection, const Matrix4D &view, i32 mode)
+{
+    VulkanCommandBuffer& CommandBuffer = GraphicsCommandBuffers[ImageIndex];
+
+    UI_Shader.Use(this);
+
+    UI_Shader.GlobalUbo.projection = projection;
+    UI_Shader.GlobalUbo.view = view;
+
+    // TODO: other ubo properties
+
+    UI_Shader.UpdateGlobalState(this, FrameDeltaTime);
 }
 
 bool VulkanAPI::EndFrame(f32 DeltaTime)

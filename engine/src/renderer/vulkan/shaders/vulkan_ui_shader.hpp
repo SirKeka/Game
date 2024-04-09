@@ -21,6 +21,7 @@ struct VulkanUI_ShaderInstanceState {
 
 class VulkanUI_Shader
 {
+friend class VulkanAPI;
 private:
     // вершина, фрагмент
     VulkanShaderStage stages[UI_SHADER_STAGE_COUNT];

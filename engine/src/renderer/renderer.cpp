@@ -78,7 +78,7 @@ bool Renderer::DrawFrame(RenderPacket *packet)
 {
     // Если начальный кадр возвращается успешно, операции в середине кадра могут продолжаться.
     if (BeginFrame(packet->DeltaTime)) {
-        ptrRenderer->UpdateGlobalState(projection, view, Vector3D<f32>::Zero(), Vector4D<f32>::Zero(), 0);
+        ptrRenderer->UpdateGlobalWorldState(projection, view, Vector3D<f32>::Zero(), Vector4D<f32>::Zero(), 0);
 
         u32 count = packet->GeometryCount;
         for (u32 i = 0; i < count; ++i) {

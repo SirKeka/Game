@@ -8,6 +8,7 @@
 #include "vulkan_renderpass.hpp"
 #include "vulkan_buffer.hpp"
 #include "shaders/vulkan_material_shader.hpp"
+#include "shaders/vulkan_ui_shader.hpp"
 #include "resources/geometry.hpp"
 #include "math/vertex.hpp"
 
@@ -84,6 +85,7 @@ public:
     bool RecreatingSwapchain{false};
 
     VulkanMaterialShader MaterialShader;
+    VulkanUI_Shader UI_Shader;
 
     u64 GeometryVertexOffset;
     u64 GeometryIndexOffset;
@@ -102,7 +104,8 @@ public:
     void ShutDown() override;
     void Resized(u16 width, u16 height) override;
     bool BeginFrame(f32 Deltatime) override;
-    void UpdateGlobalState(const Matrix4D& projection, const Matrix4D& view, const Vector3D<f32>& ViewPosition, const Vector4D<f32>& AmbientColour, i32 mode) override;
+    void UpdateGlobalWorldState(const Matrix4D& projection, const Matrix4D& view, const Vector3D<f32>& ViewPosition, const Vector4D<f32>& AmbientColour, i32 mode) override;
+    void UpdateGlobalUIState(const Matrix4D& projection, const Matrix4D& view, i32 mode);
     bool EndFrame(f32 DeltaTime) override;
     bool BeginRenderpass(u8 RenderpassID);
     bool EndRenderpass(u8 RenderpassID);
