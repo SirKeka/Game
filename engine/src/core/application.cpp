@@ -170,6 +170,8 @@ bool Application::ApplicationRun() {
 
             packet.GeometryCount = 1;
             packet.geometries = &TestRender;
+            packet.UI_Geometries = 0;
+            packet.UI_GeometryCount = 0;
             // TODO: временно
 
             AppState->Render->DrawFrame(&packet);

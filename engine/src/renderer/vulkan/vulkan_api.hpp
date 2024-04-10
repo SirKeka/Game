@@ -105,10 +105,10 @@ public:
     void Resized(u16 width, u16 height) override;
     bool BeginFrame(f32 Deltatime) override;
     void UpdateGlobalWorldState(const Matrix4D& projection, const Matrix4D& view, const Vector3D<f32>& ViewPosition, const Vector4D<f32>& AmbientColour, i32 mode) override;
-    void UpdateGlobalUIState(const Matrix4D& projection, const Matrix4D& view, i32 mode);
+    void UpdateGlobalUIState(const Matrix4D& projection, const Matrix4D& view, i32 mode) override;
     bool EndFrame(f32 DeltaTime) override;
-    bool BeginRenderpass(u8 RenderpassID);
-    bool EndRenderpass(u8 RenderpassID);
+    bool BeginRenderpass(u8 RenderpassID) override;
+    bool EndRenderpass(u8 RenderpassID) override;
     bool CreateMaterial(class Material* material) override;
     void DestroyMaterial(class Material* material) override;
     // TODO: перенести в класс системы визуализации

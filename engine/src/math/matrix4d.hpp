@@ -34,6 +34,7 @@ public:
 	const f32& operator ()(int i) const;
 	Vector4D<f32>& operator [](int j);
 	const Vector4D<f32>& operator [](int j) const;
+	Matrix4D& operator=(const Matrix4D& m);
 
 	/// @brief Инвертирует текущую матрицу
 	/// @return инвертированную матрицу
@@ -48,17 +49,6 @@ public:
 						0.0f, 0.0f, 1.0f, 0.0f,
 						0.0f, 0.0f, 0.0f, 1.0f);
 	}
-};
-
-	/// @brief Умножение матриц 4x4
-	/// @param a матрица 4x4
-	/// @param b матрица 4x4
-	/// @return результат умножения матрицы а на матрицу b
-	MAPI Matrix4D operator*(Matrix4D& a, Matrix4D& b);
-
-	namespace Matrix4
-	{
-		
 	/// @brief Создает и возвращает матрицу ортогональной проекции. Обычно используется для рендеринга плоских или 2D-сцен.
 	/// @param left левая сторона усеченного изображения.
 	/// @param right правая сторона усеченного изображения.
@@ -67,7 +57,7 @@ public:
 	/// @param NearClip расстояние до ближней плоскости отсечения.
 	/// @param FarClip дальнее расстояние от плоскости отсечения.
 	/// @return новая матрица ортогональной проекции.
-	MINLINE Matrix4D MakeOrthographicProjection(f32 left, f32 right, f32 bottom, f32 top, f32 NearClip, f32 FarClip)
+	static MINLINE Matrix4D MakeOrthographicProjection(f32 left, f32 right, f32 bottom, f32 top, f32 NearClip, f32 FarClip)
 	{
 		Matrix4D m {};
 
@@ -84,6 +74,16 @@ public:
     	m(3, 2) = (FarClip + NearClip) * nf;
     	return m;
 	}
+};
+
+	/// @brief Умножение матриц 4x4
+	/// @param a матрица 4x4
+	/// @param b матрица 4x4
+	/// @return результат умножения матрицы а на матрицу b
+	MAPI Matrix4D operator*(Matrix4D& a, Matrix4D& b);
+
+	namespace Matrix4
+	{
 	/// @brief Создает матрицу 4х4, которая представляет перспективную проекцию для усеченной видимости
 	/// @param fovy вертикальное поле зрения в радианах.
 	/// @param s соотношение сторон области просмотра.

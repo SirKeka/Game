@@ -102,6 +102,15 @@ const Vector4D<f32>& Matrix4D::operator[](int j) const
 	return *reinterpret_cast<const Vector4D<f32>*>(n[j]);
 }
 
+Matrix4D &Matrix4D::operator=(const Matrix4D &m)
+{
+	for (u64 i = 0; i < 16; i++) {
+		data[i] = m.data[i];
+	}
+	
+    return *this;
+}
+
 /*MINLINE Matrix4D Matrix4D::MakeIdentity()
 {
     return Matrix4D(1.0f, 0.0f, 0.0f, 0.0f,

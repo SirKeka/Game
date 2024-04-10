@@ -20,6 +20,8 @@ private:
     static RendererType* ptrRenderer;
     Matrix4D projection;
     Matrix4D view;
+    Matrix4D UI_Projection;
+    Matrix4D UI_View;
     f32 NearClip;
     f32 FarClip;
 
@@ -29,8 +31,6 @@ public:
 
     bool Initialize(MWindow* window, const char *ApplicationName, ERendererType type);
     void Shutdown();
-    bool BeginFrame(f32 DeltaTime);
-    bool EndFrame(f32 DeltaTime);
     void OnResized(u16 width, u16 height);
     bool DrawFrame(RenderPacket* packet);
 
