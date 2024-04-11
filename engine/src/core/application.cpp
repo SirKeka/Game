@@ -58,11 +58,9 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
                         GameInst->AppConfig.StartHeight, 
                         GameInst->AppConfig.StartWidth);
 
-    if (!AppState->Window)
-    {
+    if (!AppState->Window) {
         return false;
-    }
-    else AppState->Window->Create();
+    } else AppState->Window->Create();
 
     // Система ресурсов
     ResourceSystem::SetMaxLoaderCount(32);

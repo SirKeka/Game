@@ -68,7 +68,7 @@ public:
 
     VulkanRenderPassState state;
 public:
-    VulkanRenderPass() = default;
+    VulkanRenderPass() : handle(), RenderArea(), ClearColour(), depth(), stencil(), ClearFlags(), HasPrevPass(), HasNextPass() {}
     VulkanRenderPass(
         VulkanAPI* VkAPI, 
         Vector4D<f32> RenderArea,
@@ -80,6 +80,15 @@ public:
         bool HasNextPass);
     ~VulkanRenderPass() = default;
 
+    void Create(
+        VulkanAPI* VkAPI, 
+        Vector4D<f32> RenderArea,
+        Vector4D<f32> ClearColor,
+        f32 depth,
+        u32 stencil,
+        u8 ClearFlags,
+        bool HasPrevPass,
+        bool HasNextPass);
     void Destroy(VulkanAPI* VkAPI);
 
     void Begin(

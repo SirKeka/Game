@@ -65,13 +65,13 @@ public:
     	f32 bt = 1.0f / (bottom - top);
     	f32 nf = 1.0f / (NearClip - FarClip);
 
-    	m(0, 0) = -2.0f * lr;
-    	m(1, 1) = -2.0f * bt;
-    	m(2, 2) =  2.0f * nf;
+    	m(1, 1) = -2.0f * lr;
+    	m(2, 2) = -2.0f * bt;
+    	m(3, 3) =  2.0f * nf;
 
-    	m(3, 0) = (left + right) * lr;
-    	m(3, 1) = (top + bottom) * bt;
-    	m(3, 2) = (FarClip + NearClip) * nf;
+    	m(4, 1) = (left + right) * lr;
+    	m(4, 2) = (top + bottom) * bt;
+    	m(4, 3) = (FarClip + NearClip) * nf;
     	return m;
 	}
 };

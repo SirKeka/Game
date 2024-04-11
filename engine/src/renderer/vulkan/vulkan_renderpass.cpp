@@ -13,6 +13,11 @@ VulkanRenderPass::VulkanRenderPass(
     bool HasPrevPass,
     bool HasNextPass)
 {
+    Create(VkAPI, RenderArea, ClearColor, depth, stencil, ClearFlags, HasPrevPass, HasNextPass);
+}
+
+void VulkanRenderPass::Create(VulkanAPI *VkAPI, Vector4D<f32> RenderArea, Vector4D<f32> ClearColor, f32 depth, u32 stencil, u8 ClearFlags, bool HasPrevPass, bool HasNextPass)
+{
     this->RenderArea = RenderArea;
     this->ClearColour = ClearColor;
     this->depth = depth;

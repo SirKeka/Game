@@ -52,8 +52,8 @@ public:
     // При обновлении установите значение FramebufferSizeGeneration.
     u64 FramebufferSizeLastGeneration{0};
 
-    static VkInstance instance;
-    static VkAllocationCallbacks* allocator;
+    VkInstance instance;
+    VkAllocationCallbacks* allocator;
     VkSurfaceKHR surface{};
 
 #if defined(_DEBUG)
@@ -96,8 +96,12 @@ public:
     // Буферы кадров, используемые для рендеринга мира, по одному на кадр.
     VkFramebuffer WorldFramebuffers[3];
 
+private:
+    u32 CachedFramebufferWidth;
+    u32 CachedFramebufferHeight;
+
 public:
-    VulkanAPI() {}
+    VulkanAPI() = default;
     ~VulkanAPI();
     
     bool Initialize(MWindow* window, const char* ApplicationName) override;
@@ -116,13 +120,9 @@ public:
     void Unload(GeometryID* gid) override;
     void DrawGeometry(const GeometryRenderData& data) override;
 
-    void* operator new(u64 size);
+    // void* operator new(u64 size);
 
     i32 FindMemoryIndex(u32 TypeFilter, VkMemoryPropertyFlags PropertyFlags);
-
-private:
-    static u32 CachedFramebufferWidth;
-    static u32 CachedFramebufferHeight;
 
 private:
     void CreateCommandBuffers();

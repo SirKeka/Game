@@ -7,14 +7,8 @@
 #include "renderer/vulkan/shaders/vulkan_ui_shader.hpp"
 
 #include "math/vertex.hpp"
-//#include "math/matrix4d.hpp"
 
 #include "vulkan_utils.hpp"
-
-VkInstance VulkanAPI::instance;
-VkAllocationCallbacks* VulkanAPI::allocator;
-u32 VulkanAPI::CachedFramebufferWidth = 0;
-u32 VulkanAPI::CachedFramebufferHeight = 0;
 
 VKAPI_ATTR VkBool32 VKAPI_CALL VkDebugCallback(
     VkDebugUtilsMessageSeverityFlagBitsEXT MessageSeverity,
@@ -274,7 +268,7 @@ bool VulkanAPI::Initialize(MWindow* window, const char* ApplicationName)
     );
 
     // World renderpass 
-    MainRenderpass = VulkanRenderPass(
+    MainRenderpass.Create(
         this,
         Vector4D<f32>(0, 0, this->FramebufferWidth, this->FramebufferHeight),
         Vector4D<f32>(0.0f, 0.0f, 0.2f, 1.0f),  // Темносиний цвет
@@ -285,7 +279,7 @@ bool VulkanAPI::Initialize(MWindow* window, const char* ApplicationName)
     );
 
     //UI renderpass
-    UI_Renderpass = VulkanRenderPass(
+    UI_Renderpass.Create(
         this,
         Vector4D<f32>(0, 0, this->FramebufferWidth, this->FramebufferHeight),
         Vector4D<f32>(0.0f, 0.0f, 0.0f, 0.0f),
@@ -438,12 +432,6 @@ bool VulkanAPI::BeginFrame(f32 Deltatime)
     MainRenderpass.RenderArea.z = FramebufferWidth;
     MainRenderpass.RenderArea.w = FramebufferHeight;
 
-    // Начните этап рендеринга.
-    MainRenderpass.Begin(
-        &GraphicsCommandBuffers[ImageIndex],
-        swapchain.framebuffers[ImageIndex]
-    );
-
     return true;
 }
 
@@ -477,16 +465,15 @@ void VulkanAPI::UpdateGlobalUIState(const Matrix4D &projection, const Matrix4D &
 
 bool VulkanAPI::EndFrame(f32 DeltaTime)
 {
-    // Конечный проход рендеринга
-    MainRenderpass.End(&GraphicsCommandBuffers[ImageIndex]);
-
     VulkanCommandBufferEnd(&GraphicsCommandBuffers[ImageIndex]);
 
     // Убедитесь, что предыдущий кадр не использует это изображение (т.е. его ограждение находится в режиме ожидания).
-    VkResult result = vkWaitForFences(Device.LogicalDevice, 1, ImagesInFlight[ImageIndex], true, UINT64_MAX);
+    if (ImagesInFlight[ImageIndex] != VK_NULL_HANDLE) { // был кадр
+        VkResult result = vkWaitForFences(Device.LogicalDevice, 1, ImagesInFlight[ImageIndex], true, UINT64_MAX);
         if (!VulkanResultIsSuccess(result)) {
             MFATAL("vkWaitForFences ошибка: %s", VulkanResultString(result, true));
         }
+    }
 
     // Отметьте ограждение изображения как используемое этим кадром.
     ImagesInFlight[ImageIndex] = &InFlightFences[CurrentFrame];
@@ -516,7 +503,7 @@ bool VulkanAPI::EndFrame(f32 DeltaTime)
     VkPipelineStageFlags flags[1] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
     SubmitInfo.pWaitDstStageMask = flags;
 
-    /*VkResult */result = vkQueueSubmit(
+    VkResult result = vkQueueSubmit(
         Device.GraphicsQueue,
         1,
         &SubmitInfo,
@@ -720,11 +707,6 @@ void VulkanAPI::Unload(GeometryID *gid)
         //geometry->id = INVALID_ID;
         //geometry->generation = INVALID_ID;
     }
-}
-
-void *VulkanAPI::operator new(u64 size)
-{
-    return LinearAllocator::Instance().Allocate(size);
 }
 
 VKAPI_ATTR VkBool32 VKAPI_CALL VkDebugCallback(
@@ -951,3 +933,8 @@ bool VulkanAPI::RecreateSwapchain()
 
     return true;
 }
+
+/*void *VulkanAPI::operator new(u64 size)
+{
+    return LinearAllocator::Instance().Allocate(size);
+}*/

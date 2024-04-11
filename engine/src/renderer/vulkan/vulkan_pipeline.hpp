@@ -6,7 +6,7 @@
 class VulkanPipeline
 {
 public:
-    VkPipeline handle;
+    VkPipeline handle{};
     VkPipelineLayout PipelineLayout;
 public:
     VulkanPipeline() = default;

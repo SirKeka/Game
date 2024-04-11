@@ -70,7 +70,7 @@ public:
     u64 FrameNumber;
 
     // Указатель на текстуру по умолчанию.
-    class Texture* DefaultDiffuse;
+    //class Texture* DefaultDiffuse;
 public:
     //RendererType();
     virtual ~RendererType() = default;

@@ -33,7 +33,7 @@ bool Renderer::Initialize(MWindow* window, const char *ApplicationName, ERendere
     if(type == ERendererType::VULKAN) {
         //ptrRenderer = dynamic_cast<VulkanAPI*> (ptrRenderer);
 
-        ptrRenderer = new VulkanAPI();
+        ptrRenderer = new VulkanAPI(); // При выделении памяти линейным аллокатором происходит сбой
         // Возьмите указатель на текстуры по умолчанию для использования в серверной части.
         ptrRenderer->Initialize(window, ApplicationName);
 

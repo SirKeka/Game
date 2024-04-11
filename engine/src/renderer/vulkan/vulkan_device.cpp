@@ -49,6 +49,7 @@ bool VulkanDevice::Create(VulkanAPI* VkAPI)
     // TODO: должно управляться конфигурацией
     VkPhysicalDeviceFeatures DeviceFeatures = {};
     DeviceFeatures.samplerAnisotropy = VK_TRUE;  // Запросить анизотропию
+    DeviceFeatures.fillModeNonSolid = VK_TRUE;
 
     VkDeviceCreateInfo DeviceCreateInfo = {VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO};
     DeviceCreateInfo.queueCreateInfoCount = IndexCount;

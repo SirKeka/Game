@@ -15,8 +15,8 @@ bool VulkanPipeline::Create(
     VkPipelineShaderStageCreateInfo* stages,
     VkViewport viewport,
     VkRect2D scissor,
-    bool DepthTest,
-    bool IsWireframe)
+    bool IsWireframe,
+    bool DepthTest)
 {
     // Состояние видового экрана
     VkPipelineViewportStateCreateInfo ViewportState = {VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO};
@@ -68,7 +68,7 @@ bool VulkanPipeline::Create(
     ColorBlendAttachmentState.alphaBlendOp = VK_BLEND_OP_ADD;
 
     ColorBlendAttachmentState.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-                                                  VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+                                               VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 
     VkPipelineColorBlendStateCreateInfo ColorBlendStateCreateInfo = {VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO};
     ColorBlendStateCreateInfo.logicOpEnable = VK_FALSE;
@@ -140,7 +140,7 @@ bool VulkanPipeline::Create(
     PipelineCreateInfo.pDepthStencilState = DepthTest ? &DepthStencil : nullptr;
     PipelineCreateInfo.pColorBlendState = &ColorBlendStateCreateInfo;
     PipelineCreateInfo.pDynamicState = &DynamicStateCreateInfo;
-    PipelineCreateInfo.pTessellationState = 0;
+    PipelineCreateInfo.pTessellationState = nullptr;
 
     PipelineCreateInfo.layout = PipelineLayout;
 
