@@ -15,6 +15,7 @@ struct GeometryID {
     u32 generation;
     char name[GEOMETRY_NAME_MAX_LENGTH];
     class Material* material;
+    GeometryID(const char* name) : id(INVALID_ID), InternalID(INVALID_ID), generation(INVALID_ID), material(nullptr) {MMemory::CopyMem(this->name, name, sizeof(name));}
 };
 
 /// @brief Представляет фактическую геометрию в мире.
@@ -26,10 +27,10 @@ private:
     //char name[GEOMETRY_NAME_MAX_LENGTH];
 
     u32 VertexCount;
-    u32 VertexSize;
+    u32 VertexElementSize;
     u32 VertexBufferOffset;
     u32 IndexCount;
-    u32 IndexSize;
+    u32 IndexElementSize;
     u32 IndexBufferOffset;
 
     //friend class GeometrySystem;
@@ -44,7 +45,7 @@ public:
     Geometry& operator= (const Geometry& g);
     Geometry& operator= (const Geometry* g);
 
-    void SetVertexData(u32 VertexCount, u32 VertexBufferOffset);
+    void SetVertexData(u32 VertexCount, u32 ElementSize, u32 VertexBufferOffset);
     void SetIndexData(u32 IndexCount, u32 IndexBufferOffset);
 
     void Destroy();

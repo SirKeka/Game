@@ -5,10 +5,12 @@
 #include "resources/material.hpp"
 
 struct GeometryConfig {
+    u32 VertexSize;
     u32 VertexCount;
-    struct Vertex3D* vertices;
+    void* vertices;
+    u32 IndexSize;
     u32 IndexCount;
-    u32* indices;
+    void* indices;
     char name[GEOMETRY_NAME_MAX_LENGTH];
     char MaterialName[MATERIAL_NAME_MAX_LENGTH];
 };
@@ -27,6 +29,7 @@ private:
     GeometryConfig config;
 
     GeometryID DefaultGeometry;
+    GeometryID Default2dGeometry;
 
     // Массив зарегистрированных сеток.
     struct GeometryReference* RegisteredGeometries;
@@ -60,6 +63,9 @@ public:
     /// @brief Получает указатель на геометрию по умолчанию.
     /// @return Указатель на геометрию по умолчанию.
     GeometryID* GetDefault();
+    /// @brief Получает указатель на геометрию по умолчанию.
+    /// @return Указатель на геометрию по умолчанию.
+    GeometryID* GetDefault2D();
     /// @brief Генерирует конфигурацию для геометрии плоскости с учетом предоставленных параметров.
     /// ПРИМЕЧАНИЕ: массивы вершин и индексов распределяются динамически и должны освобождаться при удалении объекта.
     /// Таким образом, это не следует считать производственным кодом.
@@ -82,7 +88,7 @@ public:
 private:
     bool CreateGeometry(GeometryConfig config, GeometryID* gid);
     void DestroyGeometry(GeometryID* gid);
-    bool CreateDefaultGeometry();
+    bool CreateDefaultGeometries();
 public:
     void* operator new(u64 size);
 };

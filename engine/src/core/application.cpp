@@ -104,8 +104,47 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
     AppState->TestGeometry = GeometrySystem::Instance()->Acquire(gConfig, true);
 
     // Очистите места для конфигурации геометрии.
-    MMemory::Free(gConfig.vertices, sizeof(Vertex3D) * gConfig.VertexCount, MemoryTag::Array);
-    MMemory::Free(gConfig.indices, sizeof(u32) * gConfig.IndexCount, MemoryTag::Array);
+    MMemory::Free(gConfig.vertices, gConfig.VertexCount, MemoryTag::Array);
+    MMemory::Free(gConfig.indices, gConfig.IndexCount, MemoryTag::Array);
+
+    // Загрузите тестовую геометрию пользовательского интерфейса.
+    GeometryConfig UI_Config;
+    UI_Config.VertexSize = sizeof(Vertex2D);
+    UI_Config.VertexCount = 4;
+    UI_Config.IndexSize = sizeof(u32);
+    UI_Config.IndexCount = 6;
+    MMemory::CopyMem(UI_Config.MaterialName, "test_ui_material", MATERIAL_NAME_MAX_LENGTH);
+    MMemory::CopyMem(UI_Config.name, "test_ui_geometry", GEOMETRY_NAME_MAX_LENGTH);
+
+    const f32 f = 512.0f;
+    Vertex2D uiverts [4];
+    uiverts[0].position.x = 0.0f;  // 0    3
+    uiverts[0].position.y = 0.0f;  //
+    uiverts[0].texcoord.x = 0.0f;  //
+    uiverts[0].texcoord.y = 0.0f;  // 2    1
+
+    uiverts[1].position.y = f;
+    uiverts[1].position.x = f;
+    uiverts[1].texcoord.x = 1.0f;
+    uiverts[1].texcoord.y = 1.0f;
+
+    uiverts[2].position.x = 0.0f;
+    uiverts[2].position.y = f;
+    uiverts[2].texcoord.x = 0.0f;
+    uiverts[2].texcoord.y = 1.0f;
+
+    uiverts[3].position.x = f;
+    uiverts[3].position.y = 0.0;
+    uiverts[3].texcoord.x = 1.0f;
+    uiverts[3].texcoord.y = 0.0f;
+    UI_Config.vertices = uiverts;
+
+    // Индексы - против часовой стрелки
+    u32 uiindices[6] = {2, 1, 0, 3, 0, 1};
+    UI_Config.indices = uiindices;
+
+    // Получите геометрию пользовательского интерфейса из конфигурации.
+    AppState->TestUI_Geometry = GeometrySystem::Instance()->Acquire(UI_Config, true);
 
     // Загрузите геометрию по умолчанию.
     // AppState->TestGeometry = GeometrySystem::Instance()->GetDefault();
@@ -168,8 +207,12 @@ bool Application::ApplicationRun() {
 
             packet.GeometryCount = 1;
             packet.geometries = &TestRender;
-            packet.UI_Geometries = 0;
-            packet.UI_GeometryCount = 0;
+
+            GeometryRenderData TestUI_Render;
+            TestUI_Render.gid = AppState->TestUI_Geometry;
+            TestUI_Render.model = Matrix4D::MakeTranslation(Vector3D<f32>{0, 0, 0});
+            packet.UI_GeometryCount = 1;
+            packet.UI_Geometries = &TestUI_Render;
             // TODO: временно
 
             AppState->Render->DrawFrame(&packet);

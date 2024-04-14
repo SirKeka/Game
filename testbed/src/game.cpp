@@ -22,7 +22,7 @@ bool Game::Initialize()
     CameraPosition = Vector3D<f32> (0, 0, 30.f);
     CameraEuler = Vector3D<f32>::Zero();
 
-    view = Matrix4::MakeTranslation(CameraPosition);
+    view = Matrix4D::MakeTranslation(CameraPosition);
     view.Inverse();
     CameraViewDirty = true;
     
@@ -141,7 +141,7 @@ void Game::RecalculateViewMatrix()
 {
     if(CameraViewDirty) {
         Matrix4D rotation = Matrix4::MakeEulerXYZ(CameraEuler);
-        Matrix4D translation = Matrix4::MakeTranslation(CameraPosition);
+        Matrix4D translation = Matrix4D::MakeTranslation(CameraPosition);
 
         view = rotation * translation;
         view.Inverse();

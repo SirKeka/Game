@@ -40,9 +40,9 @@ bool Renderer::Initialize(MWindow* window, const char *ApplicationName, ERendere
         // Проекция мира/вид
         NearClip = 0.1f;
         FarClip = 1000.f;
-        projection = Matrix4::MakeFrustumProjection(Math::DegToRad(45.0f), 1280 / 720.0f, NearClip, FarClip);
+        projection = Matrix4D::MakeFrustumProjection(Math::DegToRad(45.0f), 1280 / 720.0f, NearClip, FarClip);
         // TODO: настраиваемое начальное положение камеры.
-        view = Matrix4::MakeTranslation(Vector3D<f32>{0, 0, -30.f});
+        view = Matrix4D::MakeTranslation(Vector3D<f32>{0, 0, -30.f});
         view.Inverse();
         // Проекция пользовательского интерфейса/вид
         UI_Projection = Matrix4D::MakeOrthographicProjection(0, 1280.0f, 720.0f, 0, -100.f, 100.0f); // Намеренно перевернуто по оси Y.
@@ -62,7 +62,7 @@ void Renderer::Shutdown()
 void Renderer::OnResized(u16 width, u16 height)
 {
     if (ptrRenderer) {
-        projection = Matrix4::MakeFrustumProjection(Math::DegToRad(45.0f), width / height, NearClip, FarClip);
+        projection = Matrix4D::MakeFrustumProjection(Math::DegToRad(45.0f), width / height, NearClip, FarClip);
         UI_Projection = Matrix4D::MakeOrthographicProjection(0, width, height, 0, -100.f, 100.0f);
         ptrRenderer->Resized(width, height);
     } else {
@@ -143,9 +143,9 @@ void Renderer::DestroyMaterial(Material *material)
     ptrRenderer->DestroyMaterial(material);
 }
 
-bool Renderer::Load(GeometryID* gid, u32 VertexCount, const Vertex3D* vertices, u32 IndexCount, const u32* indices)
+bool Renderer::Load(GeometryID *gid, u32 VertexSize, u32 VertexCount, const void *vertices, u32 IndexSize, u32 IndexCount, const void *indices)
 {
-    return ptrRenderer->Load(gid, VertexCount, vertices, IndexCount, indices);
+    return ptrRenderer->Load(gid, VertexSize, VertexCount, vertices, IndexSize, IndexCount, indices);
 }
 
 void Renderer::Unload(GeometryID *gid)

@@ -13,7 +13,11 @@ enum class ERendererType
     OPENGL,
     DIRECTX
 };
-
+/* f32 DeltaTime
+ * u32 GeometryCount
+ * struct GeometryRenderData* geometries
+ * u32 UI_GeometryCount
+ * struct GeometryRenderData* UI_Geometries*/
 struct RenderPacket
 {
     f32 DeltaTime;
@@ -87,6 +91,6 @@ public:
     virtual void DrawGeometry(const GeometryRenderData& data) = 0;
     virtual bool CreateMaterial(class Material* material) = 0;
     virtual void DestroyMaterial(class Material* material) = 0;
-    virtual bool Load(struct GeometryID* gid, u32 VertexCount, const Vertex3D* vertices, u32 IndexCount, const u32* indices) = 0;
+    virtual bool Load(struct GeometryID* gid, u32 VertexSize, u32 VertexCount, const void* vertices, u32 IndexSize, u32 IndexCount, const void* indices) = 0;
     virtual void Unload(struct GeometryID* gid) = 0;
 };

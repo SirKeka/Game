@@ -35,6 +35,7 @@ struct ApplicationState {
 
     // TODO: временно
     struct GeometryID* TestGeometry;
+    struct GeometryID* TestUI_Geometry;
     // TODO: временно
 
 };

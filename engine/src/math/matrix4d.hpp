@@ -42,8 +42,7 @@ public:
 
 	/// @brief Создает и возвращает единичную матрицу:
 	/// @return новая единичная матрица
-	static MINLINE Matrix4D MakeIdentity()
-	{
+	static MINLINE Matrix4D MakeIdentity() {
 		return Matrix4D(1.0f, 0.0f, 0.0f, 0.0f,
 						0.0f, 1.0f, 0.0f, 0.0f,
 						0.0f, 0.0f, 1.0f, 0.0f,
@@ -57,8 +56,7 @@ public:
 	/// @param NearClip расстояние до ближней плоскости отсечения.
 	/// @param FarClip дальнее расстояние от плоскости отсечения.
 	/// @return новая матрица ортогональной проекции.
-	static MINLINE Matrix4D MakeOrthographicProjection(f32 left, f32 right, f32 bottom, f32 top, f32 NearClip, f32 FarClip)
-	{
+	static MINLINE Matrix4D MakeOrthographicProjection(f32 left, f32 right, f32 bottom, f32 top, f32 NearClip, f32 FarClip) {
 		Matrix4D m {};
 
     	f32 lr = 1.0f / (left - right);
@@ -74,24 +72,13 @@ public:
     	m(4, 3) = (FarClip + NearClip) * nf;
     	return m;
 	}
-};
-
-	/// @brief Умножение матриц 4x4
-	/// @param a матрица 4x4
-	/// @param b матрица 4x4
-	/// @return результат умножения матрицы а на матрицу b
-	MAPI Matrix4D operator*(Matrix4D& a, Matrix4D& b);
-
-	namespace Matrix4
-	{
 	/// @brief Создает матрицу 4х4, которая представляет перспективную проекцию для усеченной видимости
 	/// @param fovy вертикальное поле зрения в радианах.
 	/// @param s соотношение сторон области просмотра.
 	/// @param n расстояние до ближней плоскости отсечения.
 	/// @param f расстояние до дальней плоскости отсечения.
 	/// @return класс Matrix4D
-	MINLINE Matrix4D MakeFrustumProjection(f32 fovy, f32 s, f32 n, f32 f)
-	{
+	static MINLINE Matrix4D MakeFrustumProjection(f32 fovy, f32 s, f32 n, f32 f) {
 		f32 g = 1.0F / Math::tan(fovy * 0.5F);
 		f32 k = f / (f - n);
 
@@ -106,8 +93,7 @@ public:
 	/// @param n расстояние до ближней плоскости отсечения.
 	/// @param f расстояние до дальней плоскости отсечения.
 	/// @return структура данных Matrix4D
-	MINLINE Matrix4D MakeRevFrustumProjection(f32 fovy, f32 s, f32 n, f32 f)
-	{
+	static MINLINE Matrix4D MakeRevFrustumProjection(f32 fovy, f32 s, f32 n, f32 f) {
 		f32 g = 1.0F / Math::tan(fovy * 0.5F);
 		f32 k = n / (n - f);
 
@@ -130,8 +116,7 @@ public:
 	/// @param n расстояние до ближней плоскости
 	/// @param e 
 	/// @return структура данных Matrix4D
-	MINLINE Matrix4D MakeInfiniteProjection(f32 fovy, f32 s, f32 n, f32 e)
-	{
+	static MINLINE Matrix4D MakeInfiniteProjection(f32 fovy, f32 s, f32 n, f32 e) {
 		f32 g = 1.0f / Math::tan(fovy * 0.5f);
 		e = 1.0F - e;
 
@@ -151,8 +136,7 @@ public:
 	/// @param n 
 	/// @param f 
 	/// @return 
-	MINLINE Matrix4D MakeRevInfiniteProjection(f32 fovy, f32 s, f32 n, f32 e)
-	{
+	static MINLINE Matrix4D MakeRevInfiniteProjection(f32 fovy, f32 s, f32 n, f32 e) {
 		f32 g = 1.0F / Math::tan(fovy * 0.5F);
 
 		return (Matrix4D(g / s, 0.0F, 0.0F,    0.0F,
@@ -165,12 +149,11 @@ public:
 	/// @param target позиция, на которую нужно "смотреть".
 	/// @param up восходящий вектор.
 	/// @return Матрица, рассматривающая цель с точки зрения позиции.
-	MINLINE Matrix4D MakeLookAt(const Vector3D<f32>& position, const Vector3D<f32>& target, const Vector3D<f32>& up);
+	static MINLINE Matrix4D MakeLookAt(const Vector3D<f32>& position, const Vector3D<f32>& target, const Vector3D<f32>& up);
 	/// @brief Создает и возвращает значение, обратное предоставленной матрице.
 	/// @param m матрица, подлежащая инвертированию
 	/// @return перевернутая копия предоставленной матрицы.
-	MAPI MINLINE Matrix4D MakeInverse(const Matrix4D& m)
-	{
+	static MINLINE Matrix4D MakeInverse(const Matrix4D& m) {
 		const Vector3D<f32>& a = reinterpret_cast<const Vector3D<f32>&>(m[0]);
 		const Vector3D<f32>& b = reinterpret_cast<const Vector3D<f32>&>(m[1]);
 		const Vector3D<f32>& c = reinterpret_cast<const Vector3D<f32>&>(m[2]);
@@ -205,17 +188,26 @@ public:
 	/// @brief Заменяет строки матрицы на столбцы.
 	/// @param m матрица, подлежащая транспонированию
 	/// @return копию транспонированной матрицы
-	MINLINE Matrix4D MakeTransposed(const Matrix4D& m);
+	static MINLINE Matrix4D MakeTransposed(const Matrix4D& m);
 	/// @brief 
 	/// @param position 
 	/// @return 
-	MINLINE Matrix4D MakeTranslation(const Vector3D<f32>& position)
-	{
+	static MINLINE Matrix4D MakeTranslation(const Vector3D<f32>& position) {
 		return Matrix4D(	1.0f, 		0.0f, 	   0.0f,    0.0f,
 							0.0f, 		1.0f, 	   0.0f,    0.0f,
 							0.0f, 		0.0f, 	   1.0f,    0.0f,
 	   					position.x, position.y, position.z, 1.0f);
 	}
+};
+
+	/// @brief Умножение матриц 4x4
+	/// @param a матрица 4x4
+	/// @param b матрица 4x4
+	/// @return результат умножения матрицы а на матрицу b
+	MAPI Matrix4D operator*(Matrix4D& a, Matrix4D& b);
+
+	namespace Matrix4
+	{
 	/// @brief Возвращает матрицу масштаба, используя предоставленный масштаб.
 	/// @param scale 
 	/// @return 

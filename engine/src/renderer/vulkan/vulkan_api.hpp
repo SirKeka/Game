@@ -116,11 +116,11 @@ public:
     bool CreateMaterial(class Material* material) override;
     void DestroyMaterial(class Material* material) override;
     // TODO: перенести в класс системы визуализации
-    bool Load(GeometryID* gid, u32 VertexCount, const Vertex3D* vertices, u32 IndexCount, const u32* indices) override;
+    bool Load(GeometryID* gid, u32 VertexSize, u32 VertexCount, const void* vertices, u32 IndexSize, u32 IndexCount, const void* indices) override;
     void Unload(GeometryID* gid) override;
     void DrawGeometry(const GeometryRenderData& data) override;
 
-    // void* operator new(u64 size);
+    void* operator new(u64 size);
 
     i32 FindMemoryIndex(u32 TypeFilter, VkMemoryPropertyFlags PropertyFlags);
 

@@ -54,7 +54,7 @@ public:
     // TODO: сделать динамическим
     VulkanMaterialShaderInstanceState InstanceStates[VULKAN_MAX_MATERIAL_COUNT];
 
-    VulkanPipeline pipeline{};
+    VulkanPipeline pipeline;
     
 public:
     VulkanMaterialShader() = default;

@@ -23,10 +23,6 @@ public:
     ResourceLoader() : id(INVALID_ID), type(), CustomType(nullptr), TypePath(nullptr) {}
     virtual ~ResourceLoader() {
         id = INVALID_ID;
-        delete CustomType;
-        CustomType = nullptr;
-        delete TypePath;
-        TypePath = nullptr;
     };
     MINLINE void Destroy() {this->~ResourceLoader();}
 

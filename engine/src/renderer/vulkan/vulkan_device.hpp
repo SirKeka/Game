@@ -19,7 +19,7 @@ class VulkanDevice
 public:
     VkPhysicalDevice PhysicalDevice;
     VkDevice LogicalDevice;
-    VulkanSwapchainSupportInfo SwapchainSupport{};
+    VulkanSwapchainSupportInfo SwapchainSupport;
     i32 GraphicsQueueIndex;
     i32 PresentQueueIndex;
     i32 TransferQueueIndex;
@@ -37,7 +37,8 @@ public:
 
     VkFormat DepthFormat;
 public:
-    VulkanDevice() = default;
+    VulkanDevice() : PhysicalDevice(), LogicalDevice(), SwapchainSupport(), GraphicsQueueIndex(), PresentQueueIndex(), TransferQueueIndex(), SupportsDeviceLocalHostVisible(), 
+    GraphicsQueue(), PresentQueue(), TransferQueue(), GraphicsCommandPool(), properties(), features(), memory(), DepthFormat() {}
     ~VulkanDevice() = default;
 
     bool Create(VulkanAPI* VkAPI);

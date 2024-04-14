@@ -12,8 +12,10 @@ private:
     // Конфигурация материала
     char name[MATERIAL_NAME_MAX_LENGTH];
     bool AutoRelease;
+    bool init = false; // TODO: временно
     char DiffuseMapName[TEXTURE_NAME_MAX_LENGTH];
     Vector4D<f32> DiffuseColour;
+
 
     Material DefaultMaterial;
 

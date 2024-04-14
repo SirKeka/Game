@@ -1,6 +1,6 @@
 #include "text_loader.hpp"
 #include "systems/resource_system.hpp"
-#include "core/mmemory.hpp"
+#include "loader_utils.hpp"
 
 TextLoader::TextLoader()
 {
@@ -55,20 +55,8 @@ bool TextLoader::Load(const char *name, Resource *OutResource)
 
 void TextLoader::Unload(Resource *resource)
 {
-    if (!resource) {
+    if (!LoaderUtils::ResourceUnload(this, resource, MemoryTag::Array)) {
         MWARN("TextLoader::Unload вызывается с nullptr для ресурса.");
         return;
-    }
-
-    u32 PathLength = resource->FullPath.Length();
-    if (PathLength) {
-        resource->FullPath.Destroy();
-    }
-
-    if (resource->data) {
-        MMemory::Free(resource->data, resource->DataSize, MemoryTag::Array);
-        resource->data = nullptr;
-        resource->DataSize = 0;
-        resource->LoaderID = INVALID_ID;
     }
 }

@@ -15,8 +15,8 @@ public:
     i32 MemoryIndex;
     u32 MemoryPropertyFlags;
 public:
-    VulkanBuffer() = default;
-    ~VulkanBuffer() = default;
+    VulkanBuffer() : TotalSize(), handle(), usage(), IsLocked(), memory(), MemoryIndex(), MemoryPropertyFlags() {}
+    ~VulkanBuffer() {};
 
     bool Create(
         VulkanAPI* VkAPI,

@@ -41,7 +41,7 @@ private:
     VkDescriptorPool ObjectDescriptorPool;
     VkDescriptorSetLayout ObjectDescriptorSetLayout;
     // Object uniform buffers.
-    VulkanBuffer ObjectUniformBuffer;
+    VulkanBuffer ObjectUniformBuffer{};
     // TODO: вместо этого использовать список свободной памяти.
     u32 ObjectUniformBufferIndex;
 

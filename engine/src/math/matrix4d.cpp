@@ -156,7 +156,7 @@ Matrix4D &Matrix4D::operator=(const Matrix4D &m)
 	                  0.0F, 0.0F, 1.0F,    0.0F));
 }*/
 
-MINLINE Matrix4D Matrix4::MakeLookAt(const Vector3D<f32> &position, const Vector3D<f32> &target, const Vector3D<f32> &up)
+MINLINE Matrix4D Matrix4D::MakeLookAt(const Vector3D<f32> &position, const Vector3D<f32> &target, const Vector3D<f32> &up)
 {
     Vector3D<f32> Z_Axis;
 	Z_Axis = target - position;
@@ -171,7 +171,7 @@ MINLINE Matrix4D Matrix4::MakeLookAt(const Vector3D<f32> &position, const Vector
 					-Dot(X_Axis, position), -Dot(Y_Axis, position), Dot(Z_Axis, position), 1.0f);
 }
 
-MINLINE Matrix4D Matrix4::MakeTransposed(const Matrix4D &m)
+MINLINE Matrix4D Matrix4D::MakeTransposed(const Matrix4D &m)
 {
     return Matrix4D(m(0, 0), m(1, 0), m(2, 0), m(3, 0),
 					m(0, 1), m(1, 1), m(2, 1), m(3, 1),
@@ -207,7 +207,7 @@ MINLINE Vector3D<f32> Matrix4::Down(const Matrix4D& m)
 
 void Matrix4D::Inverse()
 {
-	*this = Matrix4::MakeInverse(*this);
+	*this = Matrix4D::MakeInverse(*this);
 }
 
 Matrix4D operator*(Matrix4D &a, Matrix4D &b)

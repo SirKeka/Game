@@ -1,18 +1,14 @@
 #include "material_loader.hpp"
-#include "core/mmemory.hpp"
 #include "platform/filesystem.hpp"
 #include "resources/material.hpp"
 #include "systems/resource_system.hpp"
+#include "loader_utils.hpp"
 
 MaterialLoader::MaterialLoader()
 {
     type = ResourceType::Material;
     CustomType = nullptr;
     TypePath = "materials";
-}
-
-MaterialLoader::~MaterialLoader()
-{
 }
 
 bool MaterialLoader::Load(const char *name, Resource *OutResource)
@@ -25,9 +21,6 @@ bool MaterialLoader::Load(const char *name, Resource *OutResource)
     char FullFilePath[512];
     MString::Format(FullFilePath, FormatStr, ResourceSystem::Instance()->BasePath(), TypePath, name, ".mmt");
 
-    // TODO: Здесь следует использовать распределитель.
-    OutResource->FullPath = FullFilePath;
-
     FileHandle f;
     if (!Filesystem::Open(FullFilePath, FileModes::Read, false, &f)) {
         MERROR("MaterialLoader::Load - невозможно открыть файл материала для чтения: '%s'.", FullFilePath);
@@ -35,8 +28,12 @@ bool MaterialLoader::Load(const char *name, Resource *OutResource)
     }
 
     // TODO: Здесь следует использовать распределитель.
+    OutResource->FullPath = FullFilePath;
+
+    // TODO: Здесь следует использовать распределитель.
     MaterialConfig* ResourceData = MMemory::TAllocate<MaterialConfig>(1, MemoryTag::MAaterialInstance);
     // Установите некоторые значения по умолчанию.
+    ResourceData->type = MaterialType::World;
     ResourceData->AutoRelease = true;
     ResourceData->DiffuseColour = Vector4D<f32>::One() ;  // белый.
     ResourceData->DiffuseMapName[0] = 0;
@@ -90,7 +87,12 @@ bool MaterialLoader::Load(const char *name, Resource *OutResource)
             if (!MString::ToVector4D(TrimmedValue, &ResourceData->DiffuseColour)) {
                 MWARN("Ошибка анализа диффузного цвета (diffuse_color) в файле «%s». Вместо этого используется белый цвет по умолчанию.", FullFilePath);
                 // ПРИМЕЧАНИЕ. Уже назначено выше, его здесь нет необходимости.
-            }
+            } 
+        } else if (StringsEquali(TrimmedVarName, "type")) {
+            // TODO: другие типы материалов.
+            if (StringsEquali(TrimmedValue, "ui")) {
+                ResourceData->type = MaterialType::UI;
+                 }
         }
 
         // TODO: больше полей.
@@ -111,20 +113,8 @@ bool MaterialLoader::Load(const char *name, Resource *OutResource)
 
 void MaterialLoader::Unload(Resource *resource)
 {
-    if (!resource) {
+    if (!LoaderUtils::ResourceUnload(this, resource, MemoryTag::MAaterialInstance)) {
         MWARN("MaterialLoader::Unload вызывается с nullptr для себя или ресурса.");
         return;
-    }
-
-    u32 PathLength = resource->FullPath.Length();
-    if (PathLength) {
-        resource->FullPath.Destroy();
-    }
-
-    if (resource->data) {
-        MMemory::Free(resource->data, resource->DataSize, MemoryTag::MAaterialInstance);
-        resource->data = nullptr;
-        resource->DataSize = 0;
-        resource->LoaderID = INVALID_ID;
     }
 }

@@ -9,7 +9,7 @@
 u32 MaterialSystem::MaxMaterialCount = 0;
 MaterialSystem* MaterialSystem::state = nullptr;
 
-MaterialSystem::MaterialSystem()// : name(), AutoRelease(false), DiffuseMapName(), DiffuseColour(), DefaultMaterial(), RegisteredMaterials()
+MaterialSystem::MaterialSystem()
 {
     // Блок массива находится после состояния. Уже выделено, поэтому просто установите указатель.
     u8* ArrayBlock = reinterpret_cast<u8*>(this + sizeof(MaterialSystem));
@@ -25,7 +25,7 @@ MaterialSystem::MaterialSystem()// : name(), AutoRelease(false), DiffuseMapName(
     // Заполните хеш-таблицу недопустимыми ссылками, чтобы использовать ее по умолчанию.
     MaterialReference InvalidRef;
     InvalidRef.AutoRelease = false;
-    InvalidRef.handle = INVALID_ID;  // Primary reason for needing default values.
+    InvalidRef.handle = INVALID_ID;  // Основная причина необходимости использования значений по умолчанию.
     InvalidRef.ReferenceCount = 0;
     RegisteredMaterialTable.Fill(&InvalidRef);
 
@@ -70,7 +70,7 @@ void MaterialSystem::Shutdown()
         // Сделать недействительными все материалы в массиве.
         for (u32 i = 0; i < MaxMaterialCount; ++i) { 
             if (state->RegisteredMaterials[i].id != INVALID_ID) {
-                MTRACE("id%u, %u", RegisteredMaterials[i].id, i);
+                MTRACE("id%u, generation%u, InternalId%u, %u", RegisteredMaterials[i].id, RegisteredMaterials[i].generation, RegisteredMaterials[i].InternalId, i);
                 DestroyMaterial(&state->RegisteredMaterials[i]);
             }
         }
@@ -86,7 +86,10 @@ Material *MaterialSystem::Acquire(const char *name)
 { 
     
     // Отложенная инициализация массива материалов, т.к. после инициализации геометрической системы сбивается инициализация некоторых объектов
-    new (reinterpret_cast<void*>(RegisteredMaterials)) Material[MaxMaterialCount]();
+    if (!init) {
+        new (reinterpret_cast<void*>(RegisteredMaterials)) Material[MaxMaterialCount]();
+        init = true;
+    }
 
     // Загрузить конфигурацию материала из ресурса.
     Resource MaterialResource;
@@ -228,7 +231,7 @@ bool MaterialSystem::CreateDefaultMaterial()
     this->DefaultMaterial.InternalId = 0;
     
     if (!Renderer::CreateMaterial(&this->DefaultMaterial)) {
-        MFATAL("Не удалось получить ресурсы средства рендеринга для текстуры по умолчанию. Приложение не может быть продолжено.");
+        MFATAL("Не удалось получить ресурсы средства рендеринга для материала по умолчанию. Приложение не может быть продолжено.");
         return false;
     }
 
@@ -241,6 +244,9 @@ bool MaterialSystem::LoadMaterial(MaterialConfig config, Material *m)
 
     // имя
     MString::nCopy(m->name, config.name, MATERIAL_NAME_MAX_LENGTH);
+
+    // Тип
+    m->type = config.type;
 
     // Рассеянный цвет
     m->DiffuseColour = config.DiffuseColour;

@@ -1,6 +1,6 @@
 #include "image_loader.hpp"
-#include "core/mmemory.hpp"
 #include "systems/resource_system.hpp"
+#include "loader_utils.hpp"
 
 // TODO: загрузчик ресурсов.
 #define STB_IMAGE_IMPLEMENTATION
@@ -77,20 +77,8 @@ bool ImageLoader::Load(const char *name, Resource *OutResource)
 
 void ImageLoader::Unload(Resource *resource)
 {
-    if (!resource) {
+    if (!LoaderUtils::ResourceUnload(this, resource, MemoryTag::Texture)) {
         MWARN("ImageLoader: Выгрузка вызывается со значением nullptr для себя или ресурса.");
         return;
-    }
-
-    u32 PathLength = resource->FullPath.Length();
-    if (PathLength) {
-        resource->FullPath.Destroy();
-    }
-
-    if (resource->data) {
-        MMemory::Free(resource->data, resource->DataSize, MemoryTag::Texture);
-        resource->data = 0;
-        resource->DataSize = 0;
-        resource->LoaderID = INVALID_ID;
     }
 }

@@ -38,7 +38,7 @@ public:
     static bool CreateMaterial(class Material* material);
     static void DestroyMaterial(class Material* material);
 
-    static bool Load(GeometryID* gid, u32 VertexCount, const Vertex3D* vertices, u32 IndexCount, const u32* indices);
+    static bool Load(GeometryID* gid, u32 VertexSize, u32 VertexCount, const void* vertices, u32 IndexSize, u32 IndexCount, const void* indices);
     static void Unload(GeometryID* gid);
 
     // ВЗЛОМ: это не должно быть выставлено за пределы движка.

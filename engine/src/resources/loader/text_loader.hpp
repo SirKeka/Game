@@ -7,7 +7,7 @@ private:
     /* data */
 public:
     TextLoader();
-    ~TextLoader() = default;
+    //~TextLoader() {};
 private:
     bool Load(const char* name, struct Resource* OutResource) override;
     void Unload(struct Resource* resource) override;
