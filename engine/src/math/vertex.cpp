@@ -1,4 +1,4 @@
-#include "vertex3D.hpp"
+#include "vertex.hpp"
 
 /*Vertex3D &Vertex3D::operator=(const Vector3D &v)
 {

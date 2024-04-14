@@ -3,7 +3,7 @@
 #include "defines.hpp"
 #include "math/matrix4d.hpp"
 #include "math/vector4d.hpp"
-#include "math/vertex3D.hpp"
+#include "math/vertex.hpp"
 
 struct StaticMeshData;
 
@@ -63,8 +63,8 @@ public:
     virtual void UpdateGlobalState(const Matrix4D& projection, const Matrix4D& view, const Vector3D<f32>& ViewPosition, const Vector4D<f32>& AmbientColour, i32 mode) = 0;
     virtual bool EndFrame(f32 DeltaTime) = 0;
     virtual void DrawGeometry(const GeometryRenderData& data) = 0;
-    virtual bool CreateMaterial(class Material* material) = 0;
-    virtual void DestroyMaterial(class Material* material) = 0;
-    virtual bool Load(struct GeometryID* gid, u32 VertexCount, const Vertex3D* vertices, u32 IndexCount, const u32* indices) = 0;
+    virtual bool Load(class Material* material) = 0;
+    virtual void Unload(class Material* material) = 0;
+    virtual bool Load(struct GeometryID* gid, u32 VertexSize, u32 VertexCount, const void* vertices, u32 IndexSize, u32 IndexCount, const void* indices) = 0;
     virtual void Unload(struct GeometryID* gid) = 0;
 };

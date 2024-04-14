@@ -1,6 +1,6 @@
 #pragma once
 #include "containers/mstring.hpp"
-#include "math/vertex3D.hpp"
+#include "math/vertex.hpp"
 #include "systems/material_system.hpp"
 
 #define GEOMETRY_NAME_MAX_LENGTH 256
@@ -26,10 +26,10 @@ private:
     //char name[GEOMETRY_NAME_MAX_LENGTH];
 
     u32 VertexCount;
-    u32 VertexSize;
+    u32 VertexElementSize;
     u32 VertexBufferOffset;
     u32 IndexCount;
-    u32 IndexSize;
+    u32 IndexElementSize;
     u32 IndexBufferOffset;
 
     //friend class GeometrySystem;

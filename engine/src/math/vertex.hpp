@@ -8,6 +8,11 @@ struct Vertex3D
     Vector2D<f32> texcoord;
 };
 
+struct Vertex2D
+{
+    Vector2D<f32> position;
+    Vector2D<f32> texcoord;
+};
 
 /*class Vertex3D : public Vector3D<f32>
 {

@@ -228,7 +228,7 @@ bool MaterialSystem::CreateDefaultMaterial()
     this->DefaultMaterial.InternalId = 0;
     
     if (!Renderer::CreateMaterial(&this->DefaultMaterial)) {
-        MFATAL("Не удалось получить ресурсы средства рендеринга для текстуры по умолчанию. Приложение не может быть продолжено.");
+        MFATAL("Не удалось получить ресурсы средства рендеринга для материала по умолчанию. Приложение не может быть продолжено.");
         return false;
     }
 
@@ -241,6 +241,9 @@ bool MaterialSystem::LoadMaterial(MaterialConfig config, Material *m)
 
     // имя
     MString::nCopy(m->name, config.name, MATERIAL_NAME_MAX_LENGTH);
+
+    // тип
+    m->type = config.type;
 
     // Рассеянный цвет
     m->DiffuseColour = config.DiffuseColour;

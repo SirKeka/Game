@@ -1,7 +1,7 @@
 #include "vulkan_pipeline.hpp"
 
 #include "vulkan_device.hpp"
-#include "math/vertex3D.hpp"
+#include "math/vertex.hpp"
 #include "vulkan_utils.hpp"
 
 bool VulkanPipeline::Create(

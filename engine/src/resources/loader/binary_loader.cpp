@@ -1,6 +1,5 @@
 #include "binary_loader.hpp"
-#include "core/mmemory.hpp"
-#include "systems/resource_system.hpp"
+#include "loader_utils.hpp"
 
 BinaryLoader::BinaryLoader()
 {
@@ -19,14 +18,14 @@ bool BinaryLoader::Load(const char *name, Resource *OutResource)
     char FullFilePath[512];
     MString::Format(FullFilePath, FormatStr, ResourceSystem::Instance()->BasePath(), TypePath, name, "");
 
-    // TODO: Здесь следует использовать распределитель.
-    OutResource->FullPath = FullFilePath;
-
     FileHandle f;
     if (!Filesystem::Open(FullFilePath, FileModes::Read, true, &f)) {
         MERROR("BinaryLoader::Load - невозможно открыть файл для бинарного чтения: '%s'.", FullFilePath);
         return false;
     }
+
+    // TODO: Здесь следует использовать распределитель.
+    OutResource->FullPath = FullFilePath;
 
     u64 FileSize = 0;
     if (!Filesystem::Size(&f, &FileSize)) {
@@ -55,20 +54,7 @@ bool BinaryLoader::Load(const char *name, Resource *OutResource)
 
 void BinaryLoader::Unload(Resource *resource)
 {
-    if (!resource) {
-        MWARN("binary_loader_unload called with nullptr for self or resource.");
-        return;
-    }
-
-    u32 PathLength = resource->FullPath.Length();
-    if (PathLength) {
-        resource->FullPath.Destroy();
-    }
-
-    if (resource->data) {
-        MMemory::Free(resource->data, resource->DataSize, MemoryTag::Array);
-        resource->data = nullptr;
-        resource->DataSize = 0;
-        resource->LoaderID = INVALID_ID;
+    if (!LoaderUtils::ResourceUnload(this, resource, MemoryTag::Array)) {
+        MWARN("BinaryLoader::Unload вызывается с нулевым указателем для себя или ресурса.")
     }
 }

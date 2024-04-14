@@ -6,7 +6,7 @@
 #include "systems/material_system.hpp"
 #include "resources/geometry.hpp"
 
-#include "math/vertex3D.hpp"
+#include "math/vertex.hpp"
 //#include "math/matrix4d.hpp"
 
 #include "vulkan_utils.hpp"
@@ -34,9 +34,9 @@ void VulkanAPI::DrawGeometry(const GeometryRenderData& data)
     VulkanCommandBuffer& CommandBuffer = this->GraphicsCommandBuffers[this->ImageIndex];
 
     // TODO: проверьте, действительно ли это необходимо.
-    MaterialShader.Use(this);
+    //MaterialShader.Use(this);
 
-    MaterialShader.SetModel(this, data.model);
+    //MaterialShader.SetModel(this, data.model);
 
     Material* m = nullptr;
     if (data.gid->material) {
@@ -44,14 +44,27 @@ void VulkanAPI::DrawGeometry(const GeometryRenderData& data)
     } else {
         m = MaterialSystem::Instance()->GetDefaultMaterial();
     }
-    MaterialShader.ApplyMaterial(this, m);
+
+    switch (m->type) {
+    case MaterialType::World:
+        MaterialShader.SetModel(this, data.model);
+        MaterialShader.ApplyMaterial(this, m);
+        break;
+    case: MaterialType::UI:
+        UI_Shader.SetModel(this, data.model);
+        UI_Shader.ApplyMaterial(this, m);
+    default:
+        MERROR("VulkanRenderer::DrawGeometry - неопознаный тип материала: %i", m->type);
+        return;
+    }
+    //MaterialShader.ApplyMaterial(this, m);
     
     // TODO: Временный тестовый код
-    MaterialShader.Use(this);
+    //MaterialShader.Use(this);
 
     // Привязка буфера вершин к смещению.
     VkDeviceSize offsets[1] = {BufferData->VertexBufferOffset};
-    vkCmdBindVertexBuffers(CommandBuffer.handle, 0, 1, &ObjectVertexBuffer.handle, static_cast<VkDeviceSize*>(offsets));
+    vkCmdBindVertexBuffers(CommandBuffer.handle, 0, 1, &ObjectVertexBuffer.handle, reinterpret_cast<VkDeviceSize*>(offsets));
 
     // Рисовать индексированные или неиндексированные.
     if (BufferData->IndexCount > 0) {
@@ -520,12 +533,24 @@ bool VulkanAPI::EndFrame(f32 DeltaTime)
     return true;
 }
 
-bool VulkanAPI::CreateMaterial(Material *material)
+bool VulkanAPI::Load(Material *material)
 {
     if (material) {
-        if (!MaterialShader.AcquireResources(this, material)) {
-            MERROR("VulkanRenderer::CreateMaterial — не удалось получить ресурсы шейдера.");
-            return false;
+        switch (material->type) {
+        case MaterialType::World:
+            if (!MaterialShader.AcquireResources(this, material)) {
+                MERROR("VulkanRenderer::Load — не удалось получить ресурсы шейдера.");
+                return false;
+            }
+            break;
+        case: MaterialType::UI:
+            if (UI_Shader.AcquireResources(this, material)) {
+                MERROR("VulkanRenderer::Load — не удалось получить ресурсы шейдера полльзовательского интерыейса.");
+                return false;
+            }
+        default:
+            MERROR("VulkanRenderer::Load - неопознаный тип материал.")
+            break;
         }
 
         MTRACE("Средство визуализации: материал создан.");
@@ -536,20 +561,29 @@ bool VulkanAPI::CreateMaterial(Material *material)
     return false;
 }
 
-void VulkanAPI::DestroyMaterial(Material *material)
+void VulkanAPI::Unload(Material *material)
 {
     if (material) {
         if (material->InternalId != INVALID_ID) {
-            MaterialShader.ReleaseResources(this, material);
+            switch (material->type) {
+                case MaterialType::World:
+                    MaterialShader.ReleaseResources(this, material);
+                    break;
+                case: MaterialType::UI:
+                    UI_Shader.ReleaseResources(this, material);
+                default:
+                    MERROR("VulkanRenderer::Load - неопознаный тип материал.")
+                    break;
+            } 
         } else {
-            MWARN("VulkanRenderer::DestroyMaterial вызывается с InternalId = INVALID_ID. Ничего не было сделано.");
-        }
+        MWARN("VulkanRenderer::DestroyMaterial вызывается с InternalId = INVALID_ID. Ничего не было сделано.");
+        } 
     } else {
         MWARN("VulkanRenderer::DestroyMaterial вызывается с nullptr. Ничего не было сделано.");
     }
 }
 
-bool VulkanAPI::Load(GeometryID* gid, u32 VertexCount, const Vertex3D* vertices, u32 IndexCount, const u32* indices)
+bool VulkanAPI::Load(GeometryID* gid, u32 VertexSize, u32 VertexCount, const void* vertices, u32 IndexSize, u32 IndexCount, const void* indices)
 {
     // Проверьте, не повторная ли это загрузка. Если это так, необходимо впоследствии освободить старые данные.
     bool IsReupload = gid->InternalID != INVALID_ID;
@@ -588,17 +622,18 @@ bool VulkanAPI::Load(GeometryID* gid, u32 VertexCount, const Vertex3D* vertices,
 
     // Данные вершин.
     geometry->SetVertexData(VertexCount, this->GeometryVertexOffset);
-
-    UploadDataRange(pool, 0, queue, this->ObjectVertexBuffer, geometry->VertexBufferOffset, geometry->VertexSize, vertices);
+    u32 TotalSize = VertexCount * VertexSize;
+    UploadDataRange(pool, 0, queue, this->ObjectVertexBuffer, geometry->VertexBufferOffset, TotalSize, vertices);
     // TODO: вместо этого следует поддерживать список свободной памяти
-    this->GeometryVertexOffset += geometry->VertexSize;
+    this->GeometryVertexOffset += TotalSize;
 
     // Данные индексов, если применимо
     if (IndexCount && indices) {
         geometry->SetIndexData(IndexCount, this->GeometryIndexOffset);
-        UploadDataRange(pool, 0, queue, this->ObjectIndexBuffer, geometry->IndexBufferOffset, geometry->IndexSize, indices);
+        TotalSize = IndexCount * IndexSize;
+        UploadDataRange(pool, 0, queue, this->ObjectIndexBuffer, geometry->IndexBufferOffset, TotalSize, indices);
         // TODO: вместо этого следует поддерживать список свободной памяти
-        this->GeometryIndexOffset += geometry->IndexSize;
+        this->GeometryIndexOffset += TotalSize;
     }
 
     if (gid->generation == INVALID_ID) {
@@ -609,11 +644,11 @@ bool VulkanAPI::Load(GeometryID* gid, u32 VertexCount, const Vertex3D* vertices,
 
     if (IsReupload) {
         // Освобождение данных вершин
-        FreeDataRange(&this->ObjectVertexBuffer, OldRange.VertexBufferOffset, OldRange.VertexSize);
+        FreeDataRange(&this->ObjectVertexBuffer, OldRange.VertexBufferOffset, OldRange.VertexElementSize * OldRange.VertexCount);
 
         // Освобождение данных индексов, если применимо
         if (OldRange.IndexSize > 0) {
-            FreeDataRange(&this->ObjectIndexBuffer, OldRange.IndexBufferOffset, OldRange.IndexSize);
+            FreeDataRange(&this->ObjectIndexBuffer, OldRange.IndexBufferOffset, OldRange.IndexSize * OldRange.IndexCount);
         }
     }
 
@@ -627,11 +662,11 @@ void VulkanAPI::Unload(GeometryID *gid)
         Geometry& vGeometry = this->geometries[gid->InternalID];
 
         // Освобождение данных вершин
-        FreeDataRange(&this->ObjectVertexBuffer, vGeometry.VertexBufferOffset, vGeometry.VertexSize);
+        FreeDataRange(&this->ObjectVertexBuffer, vGeometry.VertexBufferOffset, vGeometry.VertexElementSize * vGeometry.VertexCount);
 
         // Освобождение данных индексов, если это применимо
         if (vGeometry.IndexSize > 0) {
-            FreeDataRange(&this->ObjectIndexBuffer, vGeometry.IndexBufferOffset, vGeometry.IndexSize);
+            FreeDataRange(&this->ObjectIndexBuffer, vGeometry.IndexBufferOffset, vGeometry.IndexSize * vGeometry.IndexCount);
         }
 
         // Очистка данных.

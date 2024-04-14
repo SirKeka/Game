@@ -104,17 +104,17 @@ VulkanAPI *Renderer::GetRenderer()
 
 bool Renderer::CreateMaterial(Material *material)
 {
-    return ptrRenderer->CreateMaterial(material);
+    return ptrRenderer->Load(material);
 }
 
 void Renderer::DestroyMaterial(Material *material)
 {
-    ptrRenderer->DestroyMaterial(material);
+    ptrRenderer->Unload(material);
 }
 
-bool Renderer::Load(GeometryID* gid, u32 VertexCount, const Vertex3D* vertices, u32 IndexCount, const u32* indices)
+bool Renderer::Load(GeometryID* gid, u32 VertexSize, u32 VertexCount, const void* vertices, u32 IndexSize, u32 IndexCount, const void* indices)
 {
-    return ptrRenderer->Load(gid, VertexCount, vertices, IndexCount, indices);
+    return ptrRenderer->Load(gid, VertexSize, VertexCount, vertices, IndexSize, IndexCount, indices);
 }
 
 void Renderer::Unload(GeometryID *gid)
