@@ -101,10 +101,10 @@ GeometryConfig GeometrySystem::GeneratePlaneConfig(f32 width, f32 height, u32 xS
     GeometryConfig config;
     config.VertexSize = sizeof(Vertex3D);
     config.VertexCount = xSegmentCount * ySegmentCount * 4;  // 4 вершины на сегмент
-    config.vertices = MMemory::Allocate(config.VertexCount, MemoryTag::Array);
+    config.vertices = MMemory::Allocate(config.VertexCount * sizeof(Vertex3D), MemoryTag::Array);
     config.IndexSize = sizeof(u32);
     config.IndexCount = xSegmentCount * ySegmentCount * 6;  // 6 индексов на сегмент
-    config.indices = MMemory::Allocate(config.IndexCount, MemoryTag::Array);
+    config.indices = MMemory::Allocate(config.IndexCount * sizeof(u32), MemoryTag::Array);
 
     // TODO: При этом создаются дополнительные вершины, но мы всегда можем дедуплицировать их позже.
     f32 SegWidth = width / xSegmentCount;

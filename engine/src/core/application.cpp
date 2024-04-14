@@ -104,8 +104,8 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
     AppState->TestGeometry = GeometrySystem::Instance()->Acquire(gConfig, true);
 
     // Очистите места для конфигурации геометрии.
-    MMemory::Free(gConfig.vertices, gConfig.VertexCount, MemoryTag::Array);
-    MMemory::Free(gConfig.indices, gConfig.IndexCount, MemoryTag::Array);
+    MMemory::Free(gConfig.vertices, gConfig.VertexCount * sizeof(Vertex3D), MemoryTag::Array);
+    MMemory::Free(gConfig.indices, gConfig.IndexCount * sizeof(u32), MemoryTag::Array);
 
     // Загрузите тестовую геометрию пользовательского интерфейса.
     GeometryConfig UI_Config;
