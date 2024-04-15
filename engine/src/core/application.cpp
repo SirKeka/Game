@@ -108,13 +108,13 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
     MMemory::Free(gConfig.indices, gConfig.IndexCount * sizeof(u32), MemoryTag::Array);
 
     // Загрузите тестовую геометрию пользовательского интерфейса.
-    GeometryConfig UI_Config;
-    UI_Config.VertexSize = sizeof(Vertex2D);
-    UI_Config.VertexCount = 4;
-    UI_Config.IndexSize = sizeof(u32);
-    UI_Config.IndexCount = 6;
-    MMemory::CopyMem(UI_Config.MaterialName, "test_ui_material", MATERIAL_NAME_MAX_LENGTH);
-    MMemory::CopyMem(UI_Config.name, "test_ui_geometry", GEOMETRY_NAME_MAX_LENGTH);
+    // GeometryConfig UI_Config {sizeof(Vertex2D), 4, sizeof(u32), 6, "test_ui_material", "test_ui_geometry"};
+    // UI_Config.VertexSize = sizeof(Vertex2D);
+    // UI_Config.VertexCount = 4;
+    // UI_Config.IndexSize = sizeof(u32);
+    // UI_Config.IndexCount = 6;
+    // MMemory::CopyMem(UI_Config.MaterialName, "test_ui_material", MATERIAL_NAME_MAX_LENGTH);
+    // MMemory::CopyMem(UI_Config.name, "test_ui_geometry", GEOMETRY_NAME_MAX_LENGTH);
 
     const f32 f = 512.0f;
     Vertex2D uiverts [4];
@@ -137,11 +137,12 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
     uiverts[3].position.y = 0.0;
     uiverts[3].texcoord.x = 1.0f;
     uiverts[3].texcoord.y = 0.0f;
-    UI_Config.vertices = uiverts;
+    //UI_Config.vertices = uiverts;
 
     // Индексы - против часовой стрелки
     u32 uiindices[6] = {2, 1, 0, 3, 0, 1};
-    UI_Config.indices = uiindices;
+    //UI_Config.indices = uiindices;
+    GeometryConfig UI_Config {sizeof(Vertex2D), 4, uiverts, sizeof(u32), 6, uiindices, "test_ui_material", "test_ui_geometry"};
 
     // Получите геометрию пользовательского интерфейса из конфигурации.
     AppState->TestUI_Geometry = GeometrySystem::Instance()->Acquire(UI_Config, true);

@@ -44,7 +44,7 @@ Material::~Material()
 
 void Material::Set(const char *name, Vector4D<f32> DiffuseColour, TextureUse use, Texture *texture)
 {
-    MMemory::CopyMem(this->name, name, sizeof(name));
+    MMemory::CopyMem(this->name, name, MATERIAL_NAME_MAX_LENGTH);
     this->DiffuseColour = DiffuseColour;
     this->DiffuseMap.use = use;
     this->DiffuseMap.texture = texture;
@@ -52,5 +52,5 @@ void Material::Set(const char *name, Vector4D<f32> DiffuseColour, TextureUse use
 
 void Material::SetName(const char *name)
 {
-    MMemory::CopyMem(this->name, name, sizeof(name));
+    MMemory::CopyMem(this->name, name, MATERIAL_NAME_MAX_LENGTH);
 }

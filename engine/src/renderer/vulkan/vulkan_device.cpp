@@ -252,6 +252,8 @@ bool VulkanDevice::SelectPhysicalDevice(VulkanAPI *VkAPI)
         VkPhysicalDeviceMemoryProperties memory;
         vkGetPhysicalDeviceMemoryProperties(device, &memory);
 
+        MINFO("Оценка устройства: '%s'.", properties.deviceName)
+
         // Проверьте, поддерживает ли устройство комбинацию «видимый локальный/хост».
         bool SupportsDeviceLocalHostVisible = false;
         for (u32 i = 0; i < memory.memoryTypeCount; ++i) {

@@ -15,7 +15,8 @@ struct GeometryID {
     u32 generation;
     char name[GEOMETRY_NAME_MAX_LENGTH];
     class Material* material;
-    GeometryID(const char* name) : id(INVALID_ID), InternalID(INVALID_ID), generation(INVALID_ID), material(nullptr) {MMemory::CopyMem(this->name, name, sizeof(name));}
+    GeometryID(u32 id, u32 InternalID, u32 generation) : id(id), InternalID(InternalID), generation(generation), name(), material(nullptr) {}
+    GeometryID(const char* name) : id(INVALID_ID), InternalID(INVALID_ID), generation(INVALID_ID), material(nullptr) {MMemory::CopyMem(this->name, name, GEOMETRY_NAME_MAX_LENGTH);}
 };
 
 /// @brief Представляет фактическую геометрию в мире.

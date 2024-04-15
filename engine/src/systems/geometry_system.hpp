@@ -13,6 +13,14 @@ struct GeometryConfig {
     void* indices;
     char name[GEOMETRY_NAME_MAX_LENGTH];
     char MaterialName[MATERIAL_NAME_MAX_LENGTH];
+
+    GeometryConfig() : VertexSize(), VertexCount(), vertices(nullptr), IndexSize(), IndexCount(), indices(nullptr), name(), MaterialName() {}
+
+    GeometryConfig(u32 VertexSize, u32 VertexCount, void* vertices, u32 IndexSize, u32 IndexCount, void* indices, const char* name, const char* MaterialName)
+    : VertexSize(VertexSize), VertexCount(VertexCount), vertices(vertices), IndexSize(IndexSize), IndexCount(IndexCount), indices(indices) {
+        MMemory::CopyMem(this->name, name, GEOMETRY_NAME_MAX_LENGTH);
+        MMemory::CopyMem(this->MaterialName, MaterialName, GEOMETRY_NAME_MAX_LENGTH);
+    }
 };
 
 #define DEFAULT_GEOMETRY_NAME "default"
@@ -28,8 +36,8 @@ private:
 
     GeometryConfig config;
 
-    GeometryID DefaultGeometry;
-    GeometryID Default2dGeometry;
+    GeometryID DefaultGeometry{0, 0, 0};
+    GeometryID Default2dGeometry{0, 0, 0};
 
     // Массив зарегистрированных сеток.
     struct GeometryReference* RegisteredGeometries;

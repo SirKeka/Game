@@ -73,6 +73,7 @@ void VulkanSwapchainPresent(
     if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
         // Swapchain устарел, неоптимален или произошло изменение размера фреймбуфера. Запустите восстановление swapchain.
         VulkanSwapchainRecreate(VkAPI, VkAPI->FramebufferWidth, VkAPI->FramebufferHeight, swapchain);
+        MDEBUG("Цепочка обмена воссоздана, поскольку цепочка обмена вернулась устаревшая или неоптимальная.")
     } else if (result != VK_SUCCESS) {
         MFATAL("Не удалось представить изображение цепочки подкачки!");
     }

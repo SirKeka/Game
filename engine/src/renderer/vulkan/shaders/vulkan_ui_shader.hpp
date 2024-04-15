@@ -33,7 +33,7 @@ private:
     VkDescriptorSet GlobalDescriptorSets[3];
 
     // Global uniform object.
-    VulkanMaterialShaderGlobalUniformObject GlobalUbo;
+    VulkanUI_ShaderGlobalUniformObject GlobalUbo;
 
     // Global uniform buffer.
     VulkanBuffer GlobalUniformBuffer;
@@ -52,8 +52,8 @@ private:
 
     VulkanPipeline pipeline;
 public:
-    VulkanUI_Shader();
-    ~VulkanUI_Shader();
+    VulkanUI_Shader() {};
+    ~VulkanUI_Shader() {};
     
     bool Create(VulkanAPI* VkAPI);
 

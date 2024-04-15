@@ -4,14 +4,6 @@
 
 #define BUILTIN_SHADER_NAME_UI "Builtin.UIShader"
 
-VulkanUI_Shader::VulkanUI_Shader()
-{
-}
-
-VulkanUI_Shader::~VulkanUI_Shader()
-{
-}
-
 bool VulkanUI_Shader::Create(VulkanAPI *VkAPI)
 {
     // Инициализация шейдерного модуля для каждого этапа.
@@ -57,7 +49,7 @@ bool VulkanUI_Shader::Create(VulkanAPI *VkAPI)
         VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,          // Binding 0 - uniform buffer
         VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,  // Binding 1 - Diffuse sampler layout.
     };
-    VkDescriptorSetLayoutBinding bindings[VULKAN_UI_SHADER_DESCRIPTOR_COUNT]{};
+    VkDescriptorSetLayoutBinding bindings[VULKAN_UI_SHADER_DESCRIPTOR_COUNT] {};
     for (u32 i = 0; i < VULKAN_UI_SHADER_DESCRIPTOR_COUNT; ++i) {
         bindings[i].binding = i;
         bindings[i].descriptorCount = 1;
@@ -91,9 +83,9 @@ bool VulkanUI_Shader::Create(VulkanAPI *VkAPI)
     // Создание конвейера
     VkViewport viewport;
     viewport.x = 0.0f;
-    viewport.y = VkAPI->FramebufferHeight;
-    viewport.width = VkAPI->FramebufferWidth;
-    viewport.height = -VkAPI->FramebufferHeight;
+    viewport.y = static_cast<f32>(VkAPI->FramebufferHeight);
+    viewport.width = static_cast<f32>(VkAPI->FramebufferWidth);
+    viewport.height = -(static_cast<f32>(VkAPI->FramebufferHeight));
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
 
@@ -159,7 +151,7 @@ bool VulkanUI_Shader::Create(VulkanAPI *VkAPI)
             VkAPI,
             sizeof(VulkanUI_ShaderGlobalUniformObject),
             static_cast<VkBufferUsageFlagBits>(VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
-            /*VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | */VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
             true)) {
         MERROR("Не удалось создать буфер Vulkan для шейдера объекта.");
         return false;
@@ -230,9 +222,6 @@ void VulkanUI_Shader::UpdateGlobalState(VulkanAPI *VkAPI, f32 DeltaTime)
     VkCommandBuffer& CommandBuffer = VkAPI->GraphicsCommandBuffers[ImageIndex].handle;
     VkDescriptorSet& GlobalDescriptor = this->GlobalDescriptorSets[ImageIndex];
 
-    // Привяжите набор глобальных дескрипторов для обновления.
-    vkCmdBindDescriptorSets(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, this->pipeline.PipelineLayout, 0, 1, &GlobalDescriptor, 0, 0);
-
     // Настройте дескрипторы для данного индекса.
     u32 range = sizeof(VulkanUI_ShaderGlobalUniformObject);
     u64 offset = 0;
@@ -255,6 +244,9 @@ void VulkanUI_Shader::UpdateGlobalState(VulkanAPI *VkAPI, f32 DeltaTime)
     DescriptorWrite.pBufferInfo = &bufferInfo;
 
     vkUpdateDescriptorSets(VkAPI->Device.LogicalDevice, 1, &DescriptorWrite, 0, 0);
+
+    // Привяжите набор глобальных дескрипторов для обновления.
+    vkCmdBindDescriptorSets(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, this->pipeline.PipelineLayout, 0, 1, &GlobalDescriptor, 0, 0);
 }
 
 void VulkanUI_Shader::SetModel(VulkanAPI *VkAPI, Matrix4D model)
