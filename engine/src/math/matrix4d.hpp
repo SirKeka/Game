@@ -16,7 +16,7 @@ public:
 	};
 
 public:
-	Matrix4D() = default;
+	Matrix4D() : data() {}
 	Matrix4D(f32 n11, f32 n12, f32 n13, f32 n14,
 			 f32 n21, f32 n22, f32 n23, f32 n24,
 			 f32 n31, f32 n32, f32 n33, f32 n34,
@@ -39,6 +39,34 @@ public:
 	/// @brief Инвертирует текущую матрицу
 	/// @return инвертированную матрицу
 	void Inverse();
+	/// @brief Создает и возвращает единичную матрицу:
+	/// @return новая единичная матрица
+	void Identity();
+	/// @brief Создает и возвращает матрицу ортогональной проекции. Обычно используется для рендеринга плоских или 2D-сцен.
+	/// @param left левая сторона усеченного изображения.
+	/// @param right правая сторона усеченного изображения.
+	/// @param bottom нижняя сторона усеченного вида.
+	/// @param top верхняя сторона усеченного вида.
+	/// @param NearClip расстояние до ближней плоскости отсечения.
+	/// @param FarClip дальнее расстояние от плоскости отсечения.
+	/// @return новая матрица ортогональной проекции.
+	void OrthographicProjection(f32 left, f32 right, f32 bottom, f32 top, f32 NearClip, f32 FarClip) {
+		Matrix4D m;
+
+    	f32 lr = 1.0f / (left - right);
+    	f32 bt = 1.0f / (bottom - top);
+    	f32 nf = 1.0f / (NearClip - FarClip);
+
+    	m(1, 1) = -2.0f * lr;
+    	m(2, 2) = -2.0f * bt;
+    	m(3, 3) =  2.0f * nf;
+
+    	m(4, 1) = (left + right) * lr;
+    	m(4, 2) = (top + bottom) * bt;
+    	m(4, 3) = (FarClip + NearClip) * nf;
+		m(4, 4) = 1.0f;
+    	return m;
+	}
 
 	/// @brief Создает и возвращает единичную матрицу:
 	/// @return новая единичная матрица
@@ -57,7 +85,7 @@ public:
 	/// @param FarClip дальнее расстояние от плоскости отсечения.
 	/// @return новая матрица ортогональной проекции.
 	static MINLINE Matrix4D MakeOrthographicProjection(f32 left, f32 right, f32 bottom, f32 top, f32 NearClip, f32 FarClip) {
-		Matrix4D m {};
+		Matrix4D m;
 
     	f32 lr = 1.0f / (left - right);
     	f32 bt = 1.0f / (bottom - top);
@@ -70,6 +98,7 @@ public:
     	m(4, 1) = (left + right) * lr;
     	m(4, 2) = (top + bottom) * bt;
     	m(4, 3) = (FarClip + NearClip) * nf;
+		m(4, 4) = 1.0f;
     	return m;
 	}
 	/// @brief Создает матрицу 4х4, которая представляет перспективную проекцию для усеченной видимости

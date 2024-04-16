@@ -210,6 +210,11 @@ void Matrix4D::Inverse()
 	*this = Matrix4D::MakeInverse(*this);
 }
 
+void Matrix4D::Identity()
+{
+	data[0] = data[5] = data[10] = data[15] = 1.f;
+}
+
 Matrix4D operator*(Matrix4D &a, Matrix4D &b)
 {
 	Matrix4D c {};
