@@ -65,7 +65,6 @@ public:
     	m(4, 2) = (top + bottom) * bt;
     	m(4, 3) = (FarClip + NearClip) * nf;
 		m(4, 4) = 1.0f;
-    	return m;
 	}
 
 	/// @brief Создает и возвращает единичную матрицу:

@@ -80,5 +80,25 @@
         "files.encoding"
     ],
     //"cmake.configureOnOpen": true,
-    "C_Cpp.errorSquiggles": "disabled"
+    "C_Cpp.errorSquiggles": "disabled",
+    "todohighlight.keywords": [
+        {
+            "text": "СДЕЛАТЬ:",
+            "color": "red",
+            "backgroundColor": "rgba(0,0,0,0)",
+            "overviewRulerColor": "rgba(0,0,0,0)"
+        },
+        {
+            "text": "HACK:",
+            "color": "#ff6600",
+            "backgroundColor": "rgba(0,0,0,0)",
+            "overviewRulerColor": "rgba(0,0,0,0)"
+        },
+        {
+            "text": "ПРИМЕЧАНИЕ:",
+            "color": "green",
+            "backgroundColor": "rgba(0,0,0,0)",
+            "overviewRulerColor": "rgba(0,0,0,0)"
+        }
+    ]
 }
