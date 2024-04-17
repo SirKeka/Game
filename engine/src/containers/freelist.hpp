@@ -8,6 +8,7 @@ class MAPI FreeList
 {
 private:
     void* memory; // Внутреннее состояние свободного списка
+
 public:
     FreeList() : memory(nullptr) {}
     /// @brief Создает новый свободный список или получает требуемую для него память. 
@@ -16,7 +17,7 @@ public:
     /// @param TotalSize общий размер в байтах, который должен отслеживать список свободных мест.
     /// @param MemoryRequirement указатель на хранение требуемой памяти для самого списка свободных мест.
     /// @param memory nullptr или предварительно выделенный блок памяти для использования списком свободных.
-    FreeList(u32 TotalSize, u64& MemoryRequirement, void* memory);
+    FreeList(u64 TotalSize, u64& MemoryRequirement, void* memory);
     /// @brief Уничтожает список
     ~FreeList();
 
