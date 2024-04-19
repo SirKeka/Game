@@ -7,12 +7,12 @@ u8 FreelistShouldCreateAndDestroy() {
     // ПРИМЕЧАНИЕ: Создание списка небольшого размера, который вызовет предупреждение.
     MDEBUG("Следующее предупреждающее сообщение является преднамеренным.");
 
-    //FreeList list;
+    FreeList list;
 
-    // Get the memory requirement
+    // Получение требуемой памяти
     u64 MemoryRequirement = 0;
     u64 TotalSize = 40;
-    FreeList list{TotalSize, MemoryRequirement, nullptr};
+    list{TotalSize, MemoryRequirement, nullptr};
 
     // Выделите и создайте FreeList.
     void* block = MMemory::Allocate(MemoryRequirement, MemoryTag::Application);

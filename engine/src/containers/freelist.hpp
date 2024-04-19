@@ -7,20 +7,35 @@
 class MAPI FreeList
 {
 private:
-    void* memory; // Внутреннее состояние свободного списка
+    struct InternalState {
+        u32 TotalSize;
+        u32 MaxEntries;
+        struct FreelistNode* head;
+        struct FreelistNode* nodes;
+    }state;
+
+    //void* memory; // Внутреннее состояние свободного списка
 
 public:
     FreeList() : memory(nullptr) {}
     /// @brief Создает новый свободный список или получает требуемую для него память. 
-    /// Позвоните дважды; один раз передача 0 в память для получения требуемой памяти, 
+    /// Вызов дважды; один раз передача 0 в память для получения требуемой памяти, 
     /// а второй раз передача выделенного блока в память.
     /// @param TotalSize общий размер в байтах, который должен отслеживать список свободных мест.
-    /// @param MemoryRequirement указатель на хранение требуемой памяти для самого списка свободных мест.
+    /// @param MemoryRequirement ссылка на переменную, которая хранит значение требуемой памяти для самого списка свободных мест.
     /// @param memory nullptr или предварительно выделенный блок памяти для использования списком свободных.
-    FreeList(u64 TotalSize, u64& MemoryRequirement, void* memory);
+    //FreeList(u64 TotalSize, u64& MemoryRequirement, void* memory);
     /// @brief Уничтожает список
     ~FreeList();
 
+    /// @brief Присваивает значению MemoryRequirement 
+    /// @param TotalSize общий размер в байтах, который должен отслеживать список свободных мест.
+    /// @param MemoryRequirement ссылка на переменную, которая хранит значение требуемой памяти для самого списка свободных мест.
+    void GetMemoryRequirement(u64 TotalSize, u64& MemoryRequirement);
+
+    /// @brief Создает новый свободный список. 
+    /// @param memory nullptr или предварительно выделенный блок памяти для использования списком свободных мест.
+    void Create(void* memory);
     /// @brief Пытается найти свободный блок памяти заданного размера.
     /// @param size размер для выделения.
     /// @param OutOffset указатель для хранения смещения выделенной памяти.
