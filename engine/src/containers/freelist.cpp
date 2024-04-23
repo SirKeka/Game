@@ -10,19 +10,19 @@ struct FreelistNode {
 
 FreeList::~FreeList()
 {
-    if (this->memory) {
+    if (state) {
         // Просто обнулите память, прежде чем вернуть ее.
-        InternalState* state = reinterpret_cast<InternalState*>(this->memory);
-        MMemory::ZeroMem(this->memory, sizeof(InternalState) + sizeof(FreelistNode) * state->MaxEntries);
-        this->memory = nullptr;
+        //InternalState* state = reinterpret_cast<InternalState*>(this->memory);
+        MMemory::ZeroMem(state, sizeof(InternalState) + sizeof(FreelistNode) * state->MaxEntries);
+        state = nullptr;
     }
 }
 
 void FreeList::GetMemoryRequirement(u64 TotalSize, u64 &MemoryRequirement)
 {
     // Достаточно места для хранения состояния плюс массив для всех узлов.
-    state->MaxEntries = (TotalSize / sizeof(void*));  // ПРИМЕЧАНИЕ: Может быть остаток, но это нормально.
-    MemoryRequirement = sizeof(InternalState) + (sizeof(FreelistNode) * state->MaxEntries);
+    u32 MaxEntries = (TotalSize / (sizeof(void*) * sizeof(FreelistNode)));  // ПРИМЕЧАНИЕ: Может быть остаток, но это нормально.
+    MemoryRequirement = sizeof(InternalState) + (sizeof(FreelistNode) * MaxEntries);
 
     // Если требуемая память слишком мала, следует предупредить о нерациональном использовании.
     u64 MemMin = (sizeof(InternalState) + sizeof(FreelistNode)) * 8;
@@ -33,12 +33,13 @@ void FreeList::GetMemoryRequirement(u64 TotalSize, u64 &MemoryRequirement)
     }
 }
 
-void FreeList::Create(void *memory)
+void FreeList::Create(u64 TotalSize, void *memory)
 {
+    u32 MaxEntries = (TotalSize / (sizeof(void*) * sizeof(FreelistNode)));
     // Компоновка блока начинается с головы*, затем массива доступных узлов.
-    MMemory::ZeroMem(this->memory, sizeof(InternalState) + (sizeof(FreelistNode) * MaxEntries));
-    InternalState* state = reinterpret_cast<InternalState*>(memory);
-    state->nodes = reinterpret_cast<FreelistNode*>(reinterpret_cast<InternalState*>(this->memory) + sizeof(InternalState));
+    MMemory::ZeroMem(memory, sizeof(InternalState) + (sizeof(FreelistNode) * MaxEntries));
+    state = reinterpret_cast<InternalState*>(memory);
+    state->nodes = reinterpret_cast<FreelistNode*>(state + sizeof(InternalState));
     state->MaxEntries = MaxEntries;
     state->TotalSize = TotalSize;
 
@@ -57,10 +58,10 @@ void FreeList::Create(void *memory)
 
 bool FreeList::AllocateBlock(u32 size, u32 &OutOffset)
 {
-    if (!OutOffset || !this->memory) {
+    if (!OutOffset || !state) {
         return false;
     }
-    InternalState* state = reinterpret_cast<InternalState*>(this->memory);
+    //InternalState* state = reinterpret_cast<InternalState*>(this->memory);
     FreelistNode* node = state->head;
     FreelistNode* previous = 0;
     while (node) {
@@ -98,10 +99,10 @@ bool FreeList::AllocateBlock(u32 size, u32 &OutOffset)
 
 bool FreeList::FreeBlock(u32 size, u32 offset)
 {
-    if (!this->memory || !size) {
+    if (!state || !size) {
         return false;
     }
-    InternalState* state = reinterpret_cast<InternalState*>(this->memory);
+    //InternalState* state = reinterpret_cast<InternalState*>(this->memory);
     FreelistNode* node = state->head;
     FreelistNode* previous = nullptr;
     while (node) {
@@ -163,11 +164,11 @@ bool FreeList::FreeBlock(u32 size, u32 offset)
 
 void FreeList::Clear()
 {
-    if (!this->memory) {
+    if (!state) {
         return;
     }
 
-    InternalState* state = reinterpret_cast<InternalState*>(this->memory);
+    //InternalState* state = reinterpret_cast<InternalState*>(this->memory);
     // Сделайте недействительными смещение и размер для всех узлов, кроме первого. 
     // Недопустимое значение будет проверяться при поиске нового узла из списка.
     for (u32 i = 1; i < state->MaxEntries; ++i) {
@@ -183,12 +184,12 @@ void FreeList::Clear()
 
 u64 FreeList::FreeSpace()
 {
-    if (!this->memory) {
+    if (!state) {
         return 0;
     }
 
     u64 RunningTotal = 0;
-    InternalState* state = reinterpret_cast<InternalState*>(this->memory);
+    //InternalState* state = reinterpret_cast<InternalState*>(this->memory);
     FreelistNode* node = state->head;
     while (node) {
         RunningTotal += node->size;
@@ -200,7 +201,7 @@ u64 FreeList::FreeSpace()
 
 FreelistNode *FreeList::GetNode()
 {
-    InternalState* state = reinterpret_cast<InternalState*>(this->memory);
+    //InternalState* state = reinterpret_cast<InternalState*>(this->memory);
     for (u32 i = 1; i < state->MaxEntries; ++i) {
         if (state->nodes[i].offset == INVALID_ID) {
             return &state->nodes[i];
@@ -208,7 +209,7 @@ FreelistNode *FreeList::GetNode()
     }
 
     // Ничего не возвращайте, если узлы недоступны.
-    return 0;
+    return nullptr;
 }
 
 void FreeList::ReturnNode(FreelistNode *node)

@@ -1,4 +1,6 @@
 #include "freelist_test.hpp"
+#include "../test_manager.hpp"
+#include "../expect.hpp"
 
 #include <containers/freelist.hpp>
 #include <core/mmemory.hpp>
@@ -12,281 +14,281 @@ u8 FreelistShouldCreateAndDestroy() {
     // Получение требуемой памяти
     u64 MemoryRequirement = 0;
     u64 TotalSize = 40;
-    list{TotalSize, MemoryRequirement, nullptr};
+    list.GetMemoryRequirement(TotalSize, MemoryRequirement);
 
     // Выделите и создайте FreeList.
     void* block = MMemory::Allocate(MemoryRequirement, MemoryTag::Application);
-    list{TotalSize, MemoryRequirement, block};
+    list.Create(TotalSize, block);
 
-    // Verify that the memory was assigned.
-    expect_should_not_be(0, list.memory);
-    // Verify that the entire block is free.
-    u64 free_space = freelist_free_space(&list);
-    expect_should_be(TotalSize, free_space);
+    // Убедитесь, что память назначена.
+    ExpectShouldNotBe(nullptr, list.state);
+    // Убедитесь, что весь блок свободен.
+    u64 FreeSpace = list.FreeSpace();
+    ExpectShouldBe(TotalSize, FreeSpace);
 
-    // Destroy and verify that the memory was unassigned.
-    freelist_destroy(&list);
-    expect_should_be(0, list.memory);
-    kfree(block, MemoryRequirement, MemoryTag::Application);
+    // Уничтожьте и убедитесь, что память не назначена.
+    list.~FreeList();
+    ExpectShouldBe(nullptr, list.state);
+    MMemory::Free(block, MemoryRequirement, MemoryTag::Application);
 
     return true;
 }
 
-u8 freelist_should_allocate_one_and_free_one() {
+u8 FreelistShouldAllocateOneAndFreeOne() {
     FreeList list;
 
-    // Get the memory requirement
-    u64 memory_requirement = 0;
-    u64 total_size = 512;
-    freelist_create(total_size, &memory_requirement, 0, 0);
+    // Получение требуемой памяти
+    u64 MemoryRequirement = 0;
+    u64 TotalSize = 512;
+    list.GetMemoryRequirement(TotalSize, MemoryRequirement);
 
-    // Allocate and create the FreeList.
-    void* block = MMemory::Allocate(memory_requirement, MemoryTag::Application);
-    freelist_create(total_size, &memory_requirement, block, &list);
+    // Выделите и создайте FreeList.
+    void* block = MMemory::Allocate(MemoryRequirement, MemoryTag::Application);
+    list.Create(TotalSize, block);
+
+    // Выделите немного места.
+    u32 offset = INVALID_ID;  // Начните с неверного идентификатора, что является хорошим вариантом по умолчанию, поскольку такого никогда не должно произойти.
+    bool result = list.AllocateBlock(64, offset);
+    // Убедитесь, что результат верен, смещение должно быть установлено на 0.
+    ExpectToBeTrue(result);
+    ExpectShouldBe(0, offset);
+
+    // Убедитесь, что правильное количество свободного места.
+    u64 FreeSpace = list.FreeSpace();
+    ExpectShouldBe(TotalSize - 64, FreeSpace);
+
+    // Теперь освободите блок.
+    result = list.FreeBlock(64, offset);
+    // Убедитесь, что результат верен
+    ExpectToBeTrue(result);
+
+    // Убедитесь, что весь блок свободен.
+    FreeSpace = list.FreeSpace();
+    ExpectShouldBe(TotalSize, FreeSpace);
+
+    // Уничтожьте и убедитесь, что память не назначена.
+    list.~FreeList();
+    ExpectShouldBe(nullptr, list.state);
+    MMemory::Free(block, MemoryRequirement, MemoryTag::Application);
+
+    return true;
+}
+
+u8 FreelistShouldAllocateOneAndFreeMulti() {
+    FreeList list;
+
+    // Получите требования к памяти
+    u64 MemoryRequirement = 0;
+    u64 TotalSize = 512;
+    list.GetMemoryRequirement(TotalSize, MemoryRequirement);
+
+    // Выделите и создайте FreeList.
+    void* block = MMemory::Allocate(MemoryRequirement, MemoryTag::Application);
+    list.Create(TotalSize, block);
+
+    // Выделите немного места.
+    u32 offset = INVALID_ID;  // Начните с неверного идентификатора, что является хорошим вариантом по умолчанию, поскольку такого никогда не должно произойти.
+    bool result = list.AllocateBlock(64, offset);
+    // Убедитесь, что результат верен, смещение должно быть установлено на 0.
+    ExpectToBeTrue(result);
+    ExpectShouldBe(0, offset);
+
+    // Выделите еще немного места.
+    u32 offset2 = INVALID_ID;  // Начните с неверного идентификатора, что является хорошим вариантом по умолчанию, поскольку такого никогда не должно произойти.
+    result = list.AllocateBlock(64, offset2);
+    // Убедитесь, что результат верен, смещение должно быть установлено в размере предыдущего выделения.
+    ExpectToBeTrue(result);
+    ExpectShouldBe(64, offset2);
+
+    // Выделите еще одно место.
+    u32 offset3 = INVALID_ID;  // Начните с неверного идентификатора, что является хорошим вариантом по умолчанию, поскольку такого никогда не должно произойти.
+    result = list.AllocateBlock(64, offset3);
+    // Убедитесь, что результат верен, смещение должно быть установлено равным смещению + размеру предыдущего выделения.
+    ExpectToBeTrue(result);
+    ExpectShouldBe(128, offset3);
+
+    // Убедитесь, что правильное количество свободного места.
+    u64 FreeSpace = list.FreeSpace();
+    ExpectShouldBe(TotalSize - 192, FreeSpace);
+
+    // Теперь освободите средний блок.
+    result = list.FreeBlock(64, offset2);
+    // Убедитесь, что результат верен
+    ExpectToBeTrue(result);
+
+    // Убедитесь, что правильная сумма является бесплатной.
+    FreeSpace = list.FreeSpace();
+    ExpectShouldBe(TotalSize - 128, FreeSpace);
+
+    // Выделите еще немного места, это должно снова заполнить средний блок.
+    u32 offset4 = INVALID_ID;  // Начните с неверного идентификатора, что является хорошим вариантом по умолчанию, поскольку такого никогда не должно произойти.
+    result = list.AllocateBlock(64, offset4);
+    // Убедитесь, что результат верен, смещение должно быть установлено в размере предыдущего выделения.
+    ExpectToBeTrue(result);
+    ExpectShouldBe(offset2, offset4);  // Смещение должно быть таким же, как 2, поскольку оно занимает то же пространство.
+
+    // Убедитесь, что правильное количество свободного места.
+    FreeSpace = list.FreeSpace();
+    ExpectShouldBe(TotalSize - 192, FreeSpace);
+
+    // Освободите первый блок и проверьте место.
+    result = list.FreeBlock(64, offset);
+    ExpectToBeTrue(result);
+    FreeSpace = list.FreeSpace();
+    ExpectShouldBe(TotalSize - 128, FreeSpace);
+
+    // Освободите последний блок и проверьте место.
+    result = list.FreeBlock(64, offset3);
+    ExpectToBeTrue(result);
+    FreeSpace = list.FreeSpace();
+    ExpectShouldBe(TotalSize - 64, FreeSpace);
+
+    // Освободите средний блок и проверьте место.
+    result = list.FreeBlock(64, offset4);
+    ExpectToBeTrue(result);
+    FreeSpace = list.FreeSpace();
+    ExpectShouldBe(TotalSize, FreeSpace);
+
+    // Уничтожьте и убедитесь, что память не назначена.
+    list.~FreeList();
+    ExpectShouldBe(nullptr, list.state);
+    MMemory::Free(block, MemoryRequirement, MemoryTag::Application);
+
+    return true;
+}
+
+u8 FreelistShouldAllocateOneAndFreeMultiVaryingSizes() {
+    FreeList list;
+
+    // Получите требования к памяти
+    u64 MemoryRequirement = 0;
+    u64 TotalSize = 512;
+    list.GetMemoryRequirement(TotalSize, MemoryRequirement);
+
+    // Выделите и создайте FreeList.
+    void* block = MMemory::Allocate(MemoryRequirement, MemoryTag::Application);
+    list.Create(TotalSize, block);
 
     // Allocate some space.
-    u32 offset = INVALID_ID;  // Start with invalid id, which is a good default since it should never happen.
-    b8 result = freelist_allocate_block(&list, 64, &offset);
-    // Verify that result is true, offset should be set to 0.
-    expect_to_be_true(result);
-    expect_should_be(0, offset);
+    u32 offset = INVALID_ID;  // Начните с неверного идентификатора, что является хорошим вариантом по умолчанию, поскольку такого никогда не должно произойти.
+    bool result = list.AllocateBlock(64, offset);
+    // Убедитесь, что результат верен, смещение должно быть установлено на 0.
+    ExpectToBeTrue(result);
+    ExpectShouldBe(0, offset);
 
-    // Verify that the correct amount of space is free.
-    u64 free_space = freelist_free_space(&list);
-    expect_should_be(total_size - 64, free_space);
+    // Выделите еще немного места.
+    u32 offset2 = INVALID_ID;  // Начните с неверного идентификатора, что является хорошим вариантом по умолчанию, поскольку такого никогда не должно произойти.
+    result = list.AllocateBlock(32, offset2);
+    // Убедитесь, что результат верен, смещение должно быть установлено в размере предыдущего выделения.
+    ExpectToBeTrue(result);
+    ExpectShouldBe(64, offset2);
 
-    // Now free the block.
-    result = freelist_free_block(&list, 64, offset);
-    // Verify that result is true
-    expect_to_be_true(result);
+    // Выделите еще одно место.
+    u32 offset3 = INVALID_ID;  // Начните с неверного идентификатора, что является хорошим вариантом по умолчанию, поскольку такого никогда не должно произойти.
+    result = list.AllocateBlock(64, offset3);
+    // Убедитесь, что результат верен, смещение должно быть установлено равным смещению + размеру предыдущего выделения.
+    ExpectToBeTrue(result);
+    ExpectShouldBe(96, offset3);
 
-    // Verify the entire block is free.
-    free_space = freelist_free_space(&list);
-    expect_should_be(total_size, free_space);
+    // Убедитесь, что правильное количество свободного места.
+    u64 FreeSpace = list.FreeSpace();
+    ExpectShouldBe(TotalSize - 160, FreeSpace);
 
-    // Destroy and verify that the memory was unassigned.
-    freelist_destroy(&list);
-    expect_should_be(0, list.memory);
-    kfree(block, memory_requirement, MemoryTag::Application);
+    // Теперь освободите средний блок.
+    result = list.FreeBlock(32, offset2);
+    // Убедитесь, что результат верен
+    ExpectToBeTrue(result);
 
-    return true;
-}
+    // Убедитесь, что правильная сумма является бесплатной.
+    FreeSpace = list.FreeSpace();
+    ExpectShouldBe(TotalSize - 128, FreeSpace);
 
-u8 freelist_should_allocate_one_and_free_multi() {
-    FreeList list;
+    // Выделите еще немного места, на этот раз больше, чем старый средний блок. 
+    // В конце списка должно быть новое смещение.
+    u32 offset4 = INVALID_ID;  // Начните с неверного идентификатора, что является хорошим вариантом по умолчанию, поскольку такого никогда не должно произойти.
+    result = list.AllocateBlock(64, offset4);
+    // Убедитесь, что результат верен, смещение должно быть установлено в размере предыдущего выделения.
+    ExpectToBeTrue(result);
+    ExpectShouldBe(160, offset4);  // Смещение должно быть концом, поскольку оно занимает больше места, чем старый средний блок.
 
-    // Get the memory requirement
-    u64 memory_requirement = 0;
-    u64 total_size = 512;
-    freelist_create(total_size, &memory_requirement, 0, 0);
+    // Убедитесь, что правильное количество свободного места.
+    FreeSpace = list.FreeSpace();
+    ExpectShouldBe(TotalSize - 192, FreeSpace);
 
-    // Allocate and create the FreeList.
-    void* block = MMemory::Allocate(memory_requirement, MemoryTag::Application);
-    freelist_create(total_size, &memory_requirement, block, &list);
+    // Освободите первый блок и проверьте место.
+    result = list.FreeBlock(64, offset);
+    ExpectToBeTrue(result);
+    FreeSpace = list.FreeSpace();
+    ExpectShouldBe(TotalSize - 128, FreeSpace);
 
-    // Allocate some space.
-    u32 offset = INVALID_ID;  // Start with invalid id, which is a good default since it should never happen.
-    b8 result = freelist_allocate_block(&list, 64, &offset);
-    // Verify that result is true, offset should be set to 0.
-    expect_to_be_true(result);
-    expect_should_be(0, offset);
+    // Освободите последний блок и проверьте место.
+    result = list.FreeBlock(64, offset3);
+    ExpectToBeTrue(result);
+    FreeSpace = list.FreeSpace();
+    ExpectShouldBe(TotalSize - 64, FreeSpace);
 
-    // Allocate some more space.
-    u32 offset2 = INVALID_ID;  // Start with invalid id, which is a good default since it should never happen.
-    result = freelist_allocate_block(&list, 64, &offset2);
-    // Verify that result is true, offset should be set to the size of the previous allocation.
-    expect_to_be_true(result);
-    expect_should_be(64, offset2);
+    // Освободите средний (теперь конечный) блок и проверьте место.
+    result = list.FreeBlock(64, offset4);
+    ExpectToBeTrue(result);
+    FreeSpace = list.FreeSpace();
+    ExpectShouldBe(TotalSize, FreeSpace);
 
-    // Allocate one more space.
-    u32 offset3 = INVALID_ID;  // Start with invalid id, which is a good default since it should never happen.
-    result = freelist_allocate_block(&list, 64, &offset3);
-    // Verify that result is true, offset should be set to the offset+size of the previous allocation.
-    expect_to_be_true(result);
-    expect_should_be(128, offset3);
-
-    // Verify that the correct amount of space is free.
-    u64 free_space = freelist_free_space(&list);
-    expect_should_be(total_size - 192, free_space);
-
-    // Now free the middle block.
-    result = freelist_free_block(&list, 64, offset2);
-    // Verify that result is true
-    expect_to_be_true(result);
-
-    // Verify the correct amount is free.
-    free_space = freelist_free_space(&list);
-    expect_should_be(total_size - 128, free_space);
-
-    // Allocate some more space, this should fill the middle block back in.
-    u32 offset4 = INVALID_ID;  // Start with invalid id, which is a good default since it should never happen.
-    result = freelist_allocate_block(&list, 64, &offset4);
-    // Verify that result is true, offset should be set to the size of the previous allocation.
-    expect_to_be_true(result);
-    expect_should_be(offset2, offset4);  // Offset should be the same as 2 since it occupies the same space
-
-    // Verify that the correct amount of space is free.
-    free_space = freelist_free_space(&list);
-    expect_should_be(total_size - 192, free_space);
-
-    // Free the first block and verify space.
-    result = freelist_free_block(&list, 64, offset);
-    expect_to_be_true(result);
-    free_space = freelist_free_space(&list);
-    expect_should_be(total_size - 128, free_space);
-
-    // Free the last block and verify space.
-    result = freelist_free_block(&list, 64, offset3);
-    expect_to_be_true(result);
-    free_space = freelist_free_space(&list);
-    expect_should_be(total_size - 64, free_space);
-
-    // Free the middle block and verify space.
-    result = freelist_free_block(&list, 64, offset4);
-    expect_to_be_true(result);
-    free_space = freelist_free_space(&list);
-    expect_should_be(total_size, free_space);
-
-    // Destroy and verify that the memory was unassigned.
-    freelist_destroy(&list);
-    expect_should_be(0, list.memory);
-    kfree(block, memory_requirement, MemoryTag::Application);
+    // Уничтожьте и убедитесь, что память не назначена.
+    list.~FreeList();
+    ExpectShouldBe(nullptr, list.state);
+    MMemory::Free(block, MemoryRequirement, MemoryTag::Application);
 
     return true;
 }
 
-u8 freelist_should_allocate_one_and_free_multi_varying_sizes() {
+u8 FreelistShouldAllocateToFullAndFailToAllocateMore() {
     FreeList list;
 
-    // Get the memory requirement
-    u64 memory_requirement = 0;
-    u64 total_size = 512;
-    freelist_create(total_size, &memory_requirement, 0, 0);
+    // Получите требования к памяти
+    u64 MemoryRequirement = 0;
+    u64 TotalSize = 512;
+    list.GetMemoryRequirement(TotalSize, MemoryRequirement);
 
-    // Allocate and create the FreeList.
-    void* block = MMemory::Allocate(memory_requirement, MemoryTag::Application);
-    freelist_create(total_size, &memory_requirement, block, &list);
+    // Выделите и создайте FreeList.
+    void* block = MMemory::Allocate(MemoryRequirement, MemoryTag::Application);
+    list.Create(TotalSize, block);
 
-    // Allocate some space.
-    u32 offset = INVALID_ID;  // Start with invalid id, which is a good default since it should never happen.
-    b8 result = freelist_allocate_block(&list, 64, &offset);
-    // Verify that result is true, offset should be set to 0.
-    expect_to_be_true(result);
-    expect_should_be(0, offset);
+    // Выделите все пространство.
+    u32 offset = INVALID_ID;  // Начните с неверного идентификатора, что является хорошим вариантом по умолчанию, поскольку такого никогда не должно произойти.
+    bool result = list.AllocateBlock(512, offset);
+    // Убедитесь, что результат верен, смещение должно быть установлено на 0.
+    ExpectToBeTrue(result);
+    ExpectShouldBe(0, offset);
 
-    // Allocate some more space.
-    u32 offset2 = INVALID_ID;  // Start with invalid id, which is a good default since it should never happen.
-    result = freelist_allocate_block(&list, 32, &offset2);
-    // Verify that result is true, offset should be set to the size of the previous allocation.
-    expect_to_be_true(result);
-    expect_should_be(64, offset2);
+    // Убедитесь, что правильное количество свободного места.
+    u64 FreeSpace = list.FreeSpace();
+    ExpectShouldBe(0, FreeSpace);
 
-    // Allocate one more space.
-    u32 offset3 = INVALID_ID;  // Start with invalid id, which is a good default since it should never happen.
-    result = freelist_allocate_block(&list, 64, &offset3);
-    // Verify that result is true, offset should be set to the offset+size of the previous allocation.
-    expect_to_be_true(result);
-    expect_should_be(96, offset3);
-
-    // Verify that the correct amount of space is free.
-    u64 free_space = freelist_free_space(&list);
-    expect_should_be(total_size - 160, free_space);
-
-    // Now free the middle block.
-    result = freelist_free_block(&list, 32, offset2);
-    // Verify that result is true
-    expect_to_be_true(result);
-
-    // Verify the correct amount is free.
-    free_space = freelist_free_space(&list);
-    expect_should_be(total_size - 128, free_space);
-
-    // Allocate some more space, this time larger than the old middle block. This should have a new offset
-    // at the end of the list.
-    u32 offset4 = INVALID_ID;  // Start with invalid id, which is a good default since it should never happen.
-    result = freelist_allocate_block(&list, 64, &offset4);
-    // Verify that result is true, offset should be set to the size of the previous allocation.
-    expect_to_be_true(result);
-    expect_should_be(160, offset4);  // Offset should be the end since it occupies more space than the old middle block.
-
-    // Verify that the correct amount of space is free.
-    free_space = freelist_free_space(&list);
-    expect_should_be(total_size - 192, free_space);
-
-    // Free the first block and verify space.
-    result = freelist_free_block(&list, 64, offset);
-    expect_to_be_true(result);
-    free_space = freelist_free_space(&list);
-    expect_should_be(total_size - 128, free_space);
-
-    // Free the last block and verify space.
-    result = freelist_free_block(&list, 64, offset3);
-    expect_to_be_true(result);
-    free_space = freelist_free_space(&list);
-    expect_should_be(total_size - 64, free_space);
-
-    // Free the middle (now end) block and verify space.
-    result = freelist_free_block(&list, 64, offset4);
-    expect_to_be_true(result);
-    free_space = freelist_free_space(&list);
-    expect_should_be(total_size, free_space);
-
-    // Destroy and verify that the memory was unassigned.
-    freelist_destroy(&list);
-    expect_should_be(0, list.memory);
-    kfree(block, memory_requirement, MemoryTag::Application);
-
-    return true;
-}
-
-u8 freelist_should_allocate_to_full_and_fail_to_allocate_more() {
-    FreeList list;
-
-    // Get the memory requirement
-    u64 memory_requirement = 0;
-    u64 total_size = 512;
-    freelist_create(total_size, &memory_requirement, 0, 0);
-
-    // Allocate and create the FreeList.
-    void* block = MMemory::Allocate(memory_requirement, MemoryTag::Application);
-    freelist_create(total_size, &memory_requirement, block, &list);
-
-    // Allocate all space.
-    u32 offset = INVALID_ID;  // Start with invalid id, which is a good default since it should never happen.
-    b8 result = freelist_allocate_block(&list, 512, &offset);
-    // Verify that result is true, offset should be set to 0.
-    expect_to_be_true(result);
-    expect_should_be(0, offset);
-
-    // Verify that the correct amount of space is free.
-    u64 free_space = freelist_free_space(&list);
-    expect_should_be(0, free_space);
-
-    // Now try allocating some more
-    u32 offset2 = INVALID_ID;  // Start with invalid id, which is a good default since it should never happen.
-    MDEBUG("The following warning message is intentional.");
-    result = freelist_allocate_block(&list, 64, &offset2);
-    // Verify that result is false
-    expect_to_be_false(result);
+    // Теперь попробуйте выделить еще немного
+    u32 offset2 = INVALID_ID;  // Начните с неверного идентификатора, что является хорошим вариантом по умолчанию, поскольку такого никогда не должно произойти.
+    MDEBUG("Следующее предупреждающее сообщение является преднамеренным.");
+    result = list.AllocateBlock(64, offset2);
+    // Убедитесь, что результат неверен
+    ExpectToBeFalse(result);
 
 
-    // Verify that the correct amount of space is free.
-    free_space = freelist_free_space(&list);
-    expect_should_be(0, free_space);
+    // Убедитесь, что правильное количество свободного места.
+    FreeSpace = list.FreeSpace();
+    ExpectShouldBe(0, FreeSpace);
 
-    // Destroy and verify that the memory was unassigned.
-    freelist_destroy(&list);
-    expect_should_be(0, list.memory);
-    kfree(block, memory_requirement, MemoryTag::Application);
+    // Уничтожьте и убедитесь, что память не назначена.
+    list.~FreeList();
+    ExpectShouldBe(nullptr, list.state);
+    MMemory::Free(block, MemoryRequirement, MemoryTag::Application);
 
     return true;
 }
 
 void FreelistRegisterTests()
 {
-    test_manager_register_test(FreelistShouldCreateAndDestroy, "Freelist should create and destroy");
-    test_manager_register_test(freelist_should_allocate_one_and_free_one, "Freelist allocate and free one entry.");
-    test_manager_register_test(freelist_should_allocate_one_and_free_multi, "Freelist allocate and free multiple entries.");
-    test_manager_register_test(freelist_should_allocate_one_and_free_multi_varying_sizes, "Freelist allocate and free multiple entries of varying sizes.");
-    test_manager_register_test(freelist_should_allocate_to_full_and_fail_to_allocate_more, "Freelist allocate to full and fail when trying to allocate more.");
+    TestManagerRegisterTest(FreelistShouldCreateAndDestroy, "Freelist должен создавать и уничтожать");
+    TestManagerRegisterTest(FreelistShouldAllocateOneAndFreeOne, "Выделите Freelist и освободите одну запись.");
+    TestManagerRegisterTest(FreelistShouldAllocateOneAndFreeMulti, "Freelist выделяет и освобождает несколько записей.");
+    TestManagerRegisterTest(FreelistShouldAllocateOneAndFreeMultiVaryingSizes, "Freelist выделяет и освобождает несколько записей разного размера.");
+    TestManagerRegisterTest(FreelistShouldAllocateToFullAndFailToAllocateMore, "Freelist выделяет полностью и терпит неудачу при попытке выделить больше.");
 }
