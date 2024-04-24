@@ -137,7 +137,7 @@ u8 hashtable_should_set_and_get_ptr_nonexistant() {
     testval1->b_value = true;
     testval1->u_value = 63;
     testval1->f_value = 3.1415f;
-    bool result = table.Set("test1", reinterpret_cast<ht_test_struct**>(testval1));
+    bool result = table.pSet("test1", reinterpret_cast<ht_test_struct**>(testval1));
     ExpectToBeTrue(result);
 
     ht_test_struct* get_testval_1 = 0;
@@ -172,7 +172,7 @@ u8 hashtable_should_set_and_unset_ptr() {
     testval1->u_value = 63;
     testval1->f_value = 3.1415f;
     // Set it
-    bool result = table.Set("test1", reinterpret_cast<ht_test_struct**>(&testval1));
+    bool result = table.pSet("test1", reinterpret_cast<ht_test_struct**>(&testval1));
     ExpectToBeTrue(result);
 
     // Убедитесь, что он существует и верен.
@@ -182,7 +182,7 @@ u8 hashtable_should_set_and_unset_ptr() {
     ExpectShouldBe(testval1->u_value, get_testval_1->u_value);
 
     // Удалить настройки
-    result = table.Set("test1", 0);
+    result = table.pSet("test1", 0);
     ExpectToBeTrue(result);
 
     // Should no longer be found.

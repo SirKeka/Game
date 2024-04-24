@@ -2,6 +2,7 @@
 
 #include "memory/linear_allocator_tests.hpp"
 #include "containers/hashtable_tests.hpp"
+#include "containers/freelist_test.hpp"
 
 #include <core/logger.hpp>
 #include <stdlib.h>
@@ -14,7 +15,9 @@ int main() {
     // TODO: добавьте сюда тестовые регистрации.
     LinearAllocatorRegisterTests();
 
-    hashtable_register_tests();
+    //hashtable_register_tests();
+
+    FreelistRegisterTests();
 
     MDEBUG("Запуск тестов...");
 
