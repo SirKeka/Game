@@ -3,8 +3,8 @@
 #include "core/mmemory.hpp"
 
 struct FreelistNode {
-    u32 offset;
-    u32 size;
+    u64 offset;
+    u64 size;
     FreelistNode* next;
 };
 
@@ -21,7 +21,7 @@ FreeList::~FreeList()
 void FreeList::GetMemoryRequirement(u64 TotalSize, u64 &MemoryRequirement)
 {
     // Достаточно места для хранения состояния плюс массив для всех узлов.
-    u32 MaxEntries = (TotalSize / (sizeof(void*) * sizeof(FreelistNode)));  // ПРИМЕЧАНИЕ: Может быть остаток, но это нормально.
+    u64 MaxEntries = (TotalSize / (sizeof(void*) * sizeof(FreelistNode)));  // ПРИМЕЧАНИЕ: Может быть остаток, но это нормально.
     MemoryRequirement = sizeof(InternalState) + (sizeof(FreelistNode) * MaxEntries);
 
     // Если требуемая память слишком мала, следует предупредить о нерациональном использовании.
@@ -35,7 +35,7 @@ void FreeList::GetMemoryRequirement(u64 TotalSize, u64 &MemoryRequirement)
 
 void FreeList::Create(u64 TotalSize, void *memory)
 {
-    u32 MaxEntries = (TotalSize / (sizeof(void*) * sizeof(FreelistNode)));
+    u64 MaxEntries = (TotalSize / (sizeof(void*) * sizeof(FreelistNode)));
     // Компоновка блока начинается с головы*, затем массива доступных узлов.
     MMemory::ZeroMem(memory, sizeof(InternalState) + (sizeof(FreelistNode) * MaxEntries));
     state = reinterpret_cast<InternalState*>(memory);
@@ -50,13 +50,13 @@ void FreeList::Create(u64 TotalSize, void *memory)
 
     // Сделайте недействительными смещение и размер для всех узлов, кроме первого. 
     // Недопустимое значение будет проверяться при поиске нового узла из списка.
-    for (u32 i = 1; i < state->MaxEntries; ++i) {
+    for (u64 i = 1; i < state->MaxEntries; ++i) {
         state->nodes[i].offset = INVALID_ID;
         state->nodes[i].size = INVALID_ID;
     }
 }
 
-bool FreeList::AllocateBlock(u32 size, u32 &OutOffset)
+bool FreeList::AllocateBlock(u64 size, u64 &OutOffset)
 {
     if (!OutOffset || !state) {
         return false;
@@ -97,7 +97,7 @@ bool FreeList::AllocateBlock(u32 size, u32 &OutOffset)
     return false;
 }
 
-bool FreeList::FreeBlock(u32 size, u32 offset)
+bool FreeList::FreeBlock(u64 size, u64 offset)
 {
     if (!state || !size) {
         return false;
@@ -171,7 +171,7 @@ void FreeList::Clear()
     //InternalState* state = reinterpret_cast<InternalState*>(this->memory);
     // Сделайте недействительными смещение и размер для всех узлов, кроме первого. 
     // Недопустимое значение будет проверяться при поиске нового узла из списка.
-    for (u32 i = 1; i < state->MaxEntries; ++i) {
+    for (u64 i = 1; i < state->MaxEntries; ++i) {
         state->nodes[i].offset = INVALID_ID;
         state->nodes[i].size = INVALID_ID;
     }
@@ -202,7 +202,7 @@ u64 FreeList::FreeSpace()
 FreelistNode *FreeList::GetNode()
 {
     //InternalState* state = reinterpret_cast<InternalState*>(this->memory);
-    for (u32 i = 1; i < state->MaxEntries; ++i) {
+    for (u64 i = 1; i < state->MaxEntries; ++i) {
         if (state->nodes[i].offset == INVALID_ID) {
             return &state->nodes[i];
         }

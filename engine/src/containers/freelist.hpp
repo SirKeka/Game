@@ -8,8 +8,8 @@ class MAPI FreeList
 {
 public://private:
     struct InternalState {
-        u32 TotalSize;
-        u32 MaxEntries;
+        u64 TotalSize;
+        u64 MaxEntries;
         struct FreelistNode* head;
         struct FreelistNode* nodes;
     } *state;
@@ -40,12 +40,12 @@ public:
     /// @param size размер для выделения.
     /// @param OutOffset указатель для хранения смещения выделенной памяти.
     /// @return истинно(true), если блок памяти был найден и выделен; в противном случае ложь(false).
-    bool AllocateBlock(u32 size, u32& OutOffset);
+    bool AllocateBlock(u64 size, u64& OutOffset);
     /// @brief Пытается освободить блок памяти по заданному смещению и заданному размеру. Может произойти сбой, если переданы неверные данные.
     /// @param size размер, который нужно освободить.
     /// @param offset смещение
     /// @return true в случае успеха; в противном случае ложь. Значение False следует рассматривать как ошибку.
-    bool FreeBlock(u32 size, u32 offset);
+    bool FreeBlock(u64 size, u64 offset);
     /// @brief Очищает свободный список.
     void Clear();
     /// @brief Возвращает объем свободного места в этом списке. ПРИМЕЧАНИЕ: 

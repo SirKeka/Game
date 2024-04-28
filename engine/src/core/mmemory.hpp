@@ -1,14 +1,27 @@
+/// @file mmemory.hpp
+/// @author 
+/// @brief Этот файл содержит структуры и функции системы памяти.
+/// Он отвечает за взаимодействие памяти с уровнем платформы, 
+/// такое как выделение/освобождение и маркировка выделенной памяти.
+/// @note Обратите внимание, что на это, скорее всего, будут полагаться только основные системы, 
+/// поскольку элементы, использующие распределения напрямую, будут использовать распределители по мере их добавления в систему.
+/// @version 1.0
+/// @date 
+/// 
+/// @copyright 
+/// 
 #pragma once
 
 #include "defines.hpp"
 #include "core/logger.hpp"
 #include "containers/mstring.hpp"
-//#include "containers/darray.hpp"
+#include "memory/dynamic_allocator.hpp"
 
 
+/// @brief Теги, указывающие на использование выделенной памяти в этой системе.
 enum class MemoryTag 
 {
-     // Для временного использования. Должно быть присвоено одно из следующих значений или создан новый тег.
+    // Для временного использования. Должно быть присвоено одно из следующих значений или создан новый тег.
     Unknown,
     Array,
     LinearAllocator,
@@ -42,16 +55,22 @@ private:
     };*/
 
     //static DArray<SharPtr> ptr;
-    
-    static u64 TotalAllocated;
-    static u64 TaggedAllocations[static_cast<u32>(MemoryTag::MaxTags)];
-    static u64 AllocCount;
+    static struct State {
+        u64 TotalAllocSize; // Общий размер памяти в байтах, используемый внутренним распределителем для этой системы.
+        u64 TotalAllocated;
+        u64 TaggedAllocations[static_cast<u32>(MemoryTag::MaxTags)];
+        u64 AllocCount;
+        u64 AllocatorMemoryRequirement;
+        DynamicAllocator allocator;
+        void* AllocatorBlock;
+    }* state;
     
 public:
-    //MMemory() = default;
-    //MMemory(const MMemory&) = delete;
-    //MMemory& operator=(MMemory&) = delete;
+    // MMemory() = default;
+    // MMemory(const MMemory&) = delete;
+    // MMemory& operator=(MMemory&) = delete;
     ~MMemory(); /*noexcept*/ //= default;
+    bool Initialize(u64 TotalAllocSize);
     void Shutdown();
     /// @brief Функция выделяет память
     /// @param bytes размер выделяемой памяти в байтах
@@ -65,8 +84,8 @@ public:
             MWARN("allocate вызывается с использованием MemoryTag::Unknown. Переклассифицировать это распределение.");
         }
 
-        TotalAllocated += size * sizeof(T);
-        TaggedAllocations[static_cast<u32>(tag)] += size * sizeof(T);
+        state->TotalAllocated += size * sizeof(T);
+        state->TaggedAllocations[static_cast<u32>(tag)] += size * sizeof(T);
 
         T* ptrRawMem = new T[size]();
 
@@ -90,8 +109,8 @@ public:
                 MWARN("free вызывается с использованием MemoryTag::Unknown. Переклассифицировать это распределение.");
             }
 
-            TotalAllocated -= sizeof(T) * factor;
-            TaggedAllocations[static_cast<u32>(tag)] -= sizeof(T) * factor;
+            state->TotalAllocated -= sizeof(T) * factor;
+            state->TaggedAllocations[static_cast<u32>(tag)] -= sizeof(T) * factor;
 
             delete[] block;
         }
