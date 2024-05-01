@@ -16,11 +16,13 @@ public:
 
     bool GetMemoryRequirement(u64 TotalSize, u64 &MemoryRequirement);
     bool Create(u64 TotalSize, u64 &MemoryRequirement, void *memory);
-    void Create(void *memory);
+    bool Create(void *memory);
     bool Destroy();
     void *Allocate(u64 size);
     void Free(void *block, u64 size);
     u64 FreeSpace();
+
+    operator bool() const;
 private:
     u64 GetFreeListRequirement();
 };

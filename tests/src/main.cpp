@@ -3,6 +3,7 @@
 #include "memory/linear_allocator_tests.hpp"
 #include "containers/hashtable_tests.hpp"
 #include "containers/freelist_test.hpp"
+#include "memory/dynamic_allocator_tests.hpp"
 
 #include <core/logger.hpp>
 #include <stdlib.h>
@@ -13,11 +14,13 @@ int main() {
     TestManagerInit();
 
     // TODO: добавьте сюда тестовые регистрации.
-    LinearAllocatorRegisterTests();
+    //LinearAllocatorRegisterTests();
 
     //hashtable_register_tests();
 
-    FreelistRegisterTests();
+    //FreelistRegisterTests();
+
+    DynamicAllocatorRegisterTests();
 
     MDEBUG("Запуск тестов...");
 

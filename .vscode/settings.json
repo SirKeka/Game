@@ -72,7 +72,9 @@
         "xlocnum": "cpp",
         "xloctime": "cpp",
         "xmemory": "cpp",
-        "xstddef": "cpp"
+        "xstddef": "cpp",
+        "expected": "cpp",
+        "functional": "cpp"
     },
 
     "files.encoding": "utf8",

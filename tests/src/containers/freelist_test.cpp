@@ -21,14 +21,14 @@ u8 FreelistShouldCreateAndDestroy() {
     list.Create(TotalSize, block);
 
     // Убедитесь, что память назначена.
-    ExpectShouldNotBe(nullptr, list.state);
+    ExpectShouldNotBe(0, (bool)list);
     // Убедитесь, что весь блок свободен.
     u64 FreeSpace = list.FreeSpace();
     ExpectShouldBe(TotalSize, FreeSpace);
 
     // Уничтожьте и убедитесь, что память не назначена.
     list.~FreeList();
-    ExpectShouldBe(nullptr, list.state);
+    ExpectShouldBe(0, (bool)list);
     MMemory::Free(block, MemoryRequirement, MemoryTag::Application);
 
     return true;
@@ -68,7 +68,7 @@ u8 FreelistShouldAllocateOneAndFreeOne() {
 
     // Уничтожьте и убедитесь, что память не назначена.
     list.~FreeList();
-    ExpectShouldBe(nullptr, list.state);
+    ExpectShouldBe(0, (bool)list);
     MMemory::Free(block, MemoryRequirement, MemoryTag::Application);
 
     return true;
@@ -151,7 +151,7 @@ u8 FreelistShouldAllocateOneAndFreeMulti() {
 
     // Уничтожьте и убедитесь, что память не назначена.
     list.~FreeList();
-    ExpectShouldBe(nullptr, list.state);
+    ExpectShouldBe(0, (bool)list);
     MMemory::Free(block, MemoryRequirement, MemoryTag::Application);
 
     return true;
@@ -235,7 +235,7 @@ u8 FreelistShouldAllocateOneAndFreeMultiVaryingSizes() {
 
     // Уничтожьте и убедитесь, что память не назначена.
     list.~FreeList();
-    ExpectShouldBe(nullptr, list.state);
+    ExpectShouldBe(0, (bool)list);
     MMemory::Free(block, MemoryRequirement, MemoryTag::Application);
 
     return true;
@@ -278,7 +278,7 @@ u8 FreelistShouldAllocateToFullAndFailToAllocateMore() {
 
     // Уничтожьте и убедитесь, что память не назначена.
     list.~FreeList();
-    ExpectShouldBe(nullptr, list.state);
+    ExpectShouldBe(0, (bool)list);
     MMemory::Free(block, MemoryRequirement, MemoryTag::Application);
 
     return true;

@@ -4,11 +4,24 @@
 #include "vulkan_device.hpp"
 #include "vulkan_command_buffer.hpp"
 
+VulkanBuffer::VulkanBuffer() 
+    : 
+    TotalSize(), 
+    handle(), 
+    usage(), 
+    IsLocked(false), 
+    memory(), 
+    MemoryIndex(), 
+    MemoryPropertyFlags(), 
+    FreeListMemoryRequirement(), 
+    FreeListBlock(nullptr), 
+    BufferFreeList() {}
+
 bool VulkanBuffer::Create(
-    VulkanAPI *VkAPI, 
-    u64 size, 
-    VkBufferUsageFlagBits usage, 
-    u32 MemoryPropertyFlags, 
+    VulkanAPI *VkAPI,
+    u64 size,
+    VkBufferUsageFlagBits usage,
+    u32 MemoryPropertyFlags,
     bool BindOnCreate)
 {
     // MMemory::ZeroMem(out_buffer, sizeof(vulkan_buffer));
@@ -141,6 +154,11 @@ void *VulkanBuffer::LockMemory(VulkanAPI *VkAPI, u64 offset, u64 size, u32 flags
 void VulkanBuffer::UnlockMemory(VulkanAPI *VkAPI)
 {
     vkUnmapMemory(VkAPI->Device.LogicalDevice, this->memory);
+}
+
+bool VulkanBuffer::Allocate(u64 size, u64 &OutOffset)
+{
+    return false;
 }
 
 void VulkanBuffer::LoadData(VulkanAPI *VkAPI, u64 offset, u64 size, u32 flags, const void *data)

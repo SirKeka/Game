@@ -4,16 +4,16 @@
 
 DynamicAllocator::~DynamicAllocator()
 {
+    //DynamicAllocatorState* state = allocator->memory;
+    list.~FreeList();
+    MMemory::ZeroMem(this->MemoryBlock, this->TotalSize);
+    this->TotalSize = 0;
 }
 
 bool DynamicAllocator::GetMemoryRequirement(u64 TotalSize, u64 &MemoryRequirement)
 {
     if (TotalSize < 1) {
-        MERROR("DynamicAllocator::Create не может иметь значение TotalSize, равное 0. Создание не удалось.");
-        return false;
-    }
-    if (!MemoryRequirement) {
-        MERROR("DynamicAllocator::create требует наличия MemoryRequirement. Создать не удалось.");
+        MERROR("DynamicAllocator::GetMemoryRequirement не может иметь значение TotalSize, равное 0. Создание не удалось.");
         return false;
     }
 
@@ -25,37 +25,42 @@ bool DynamicAllocator::GetMemoryRequirement(u64 TotalSize, u64 &MemoryRequiremen
 
 bool DynamicAllocator::Create(u64 TotalSize, u64 &MemoryRequirement, void *memory)
 {
+    if (GetMemoryRequirement(TotalSize, MemoryRequirement)) {
+        Create(memory);
+        return true;
+    }
+    
     return false;
 }
 
-void DynamicAllocator::Create(void *memory)
+bool DynamicAllocator::Create(void *memory)
 {
+    if (memory) {
+        // Memory layout:
+        // state
+        // freelist block
+        // memory block
+        this->FreelistBlock = reinterpret_cast<u8*>(memory) + sizeof(DynamicAllocator);
+        this->MemoryBlock = reinterpret_cast<u8*>(this->FreelistBlock) + GetFreeListRequirement();
 
-    // Memory layout:
-    // state
-    // freelist block
-    // memory block
-    //this->memory = memory;
-    //DynamicAllocatorState* state = this->memory;
-    this->FreelistBlock = reinterpret_cast<u8*>(memory) + sizeof(DynamicAllocator);
-    this->MemoryBlock = reinterpret_cast<u8*>(this->FreelistBlock) + GetFreeListRequirement();
+        MMemory::ZeroMem(this->MemoryBlock, TotalSize);
 
-    // Собственно создайте свободный список
-    list.Create(TotalSize, this->FreelistBlock);
-
-    MMemory::ZeroMem(this->MemoryBlock, TotalSize);
+        // Собственно создайте свободный список
+        list.Create(TotalSize, this->FreelistBlock);
+        return true;
+    }
+    
+    MERROR("DynamicAllocator::Create должен принимать не нулевой указатель. Не удалось создать.")
+    return false;
 }
 
 bool DynamicAllocator::Destroy()
 {
     if (this->MemoryBlock) {
-        //DynamicAllocatorState* state = allocator->memory;
-        list.~FreeList();
-        MMemory::ZeroMem(this->MemoryBlock, this->TotalSize);
-        this->TotalSize = 0;
+        this->~DynamicAllocator();
         return true;
     }
-
+    
     MWARN("DynamicAllocator::Destroy блок памяти не распределен. Уничтожить не удалось.");
     return false;
 }
@@ -105,6 +110,14 @@ void DynamicAllocator::Free(void *block, u64 size)
 u64 DynamicAllocator::FreeSpace()
 {
     return list.FreeSpace();
+}
+
+DynamicAllocator::operator bool() const
+{
+    if (TotalSize != 0 && (bool)list && FreelistBlock && MemoryBlock) {
+        return true;
+    }
+    return false;
 }
 
 u64 DynamicAllocator::GetFreeListRequirement()

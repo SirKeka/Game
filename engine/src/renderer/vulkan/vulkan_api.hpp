@@ -36,59 +36,36 @@ struct VulkanSwapchain
 class VulkanAPI : public RendererType
 {
 public:
-    f32 FrameDeltaTime;
-
-    // Текущая ширина фреймбуфера.
-    u32 FramebufferWidth{0};
-
-    // Текущая высота фреймбуфера.
-    u32 FramebufferHeight{0};
-
-    // Текущее поколение размера кадрового буфера. Если он не соответствует 
-    // FramebufferSizeLastGeneration, необходимо создать новый.
-    u64 FramebufferSizeGeneration{0};
-
-    // Генерация кадрового буфера при его последнем создании. 
-    // При обновлении установите значение FramebufferSizeGeneration.
-    u64 FramebufferSizeLastGeneration{0};
-
-    VkInstance instance;
-    VkAllocationCallbacks* allocator;
-    VkSurfaceKHR surface{};
+    f32 FrameDeltaTime;                                 // Время в секундах с момента последнего кадра.
+    u32 FramebufferWidth{0};                            // Текущая ширина фреймбуфера.
+    u32 FramebufferHeight{0};                           // Текущая высота фреймбуфера.
+    u64 FramebufferSizeGeneration{0};                   // Текущее поколение размера кадрового буфера. Если он не соответствует FramebufferSizeLastGeneration, необходимо создать новый.
+    u64 FramebufferSizeLastGeneration{0};               // Генерация кадрового буфера при его последнем создании. При обновлении установите значение FramebufferSizeGeneration.
+    VkInstance instance;                                // Дескриптор внутреннего экземпляра Vulkan.
+    VkAllocationCallbacks* allocator;                   // Внутренний распределитель Vulkan.
+    VkSurfaceKHR surface{};                             // Внутренняя поверхность Vulkan, на которой будет отображаться окно.
 
 #if defined(_DEBUG)
-    VkDebugUtilsMessengerEXT DebugMessenger;
+    VkDebugUtilsMessengerEXT DebugMessenger;            // Мессенджер отладки, если он активен.
 #endif
 
-    VulkanDevice Device{};
-
-    VulkanSwapchain swapchain{};
-    VulkanRenderPass MainRenderpass{};
-    VulkanRenderPass UI_Renderpass;
-
-    VulkanBuffer ObjectVertexBuffer;
-    VulkanBuffer ObjectIndexBuffer;
-
-    DArray<VulkanCommandBuffer> GraphicsCommandBuffers;
-    DArray<VkSemaphore> ImageAvailableSemaphores;
-    DArray<VkSemaphore> QueueCompleteSemaphores;
-
-    u32 InFlightFenceCount;
-    VkFence InFlightFences[2];
-
-    // Содержит указатели на заборы, которые существуют и находятся в собственности в другом месте, по одному на кадр.
-    VkFence* ImagesInFlight[3];
-
-    u32 ImageIndex{0};
-    u32 CurrentFrame{0};
-
-    bool RecreatingSwapchain{false};
-
-    VulkanMaterialShader MaterialShader;
-    VulkanUI_Shader UI_Shader;
-
-    u64 GeometryVertexOffset;
-    u64 GeometryIndexOffset;
+    VulkanDevice Device{};                              // Устройство Vulkan.
+    VulkanSwapchain swapchain{};                        // Цепочка подкачки
+    VulkanRenderPass MainRenderpass{};                  // Основной проход рендеринга мира.
+    VulkanRenderPass UI_Renderpass{};                   // Проход рендеринга пользовательского интерфейса.
+    VulkanBuffer ObjectVertexBuffer;                    // Буфер вершин объекта, используемый для хранения вершин геометрии.
+    VulkanBuffer ObjectIndexBuffer;                     // Буфер индекса объекта, используемый для хранения индексов геометрии.
+    DArray<VulkanCommandBuffer> GraphicsCommandBuffers; // Буферы графических команд, по одному на кадр.
+    DArray<VkSemaphore> ImageAvailableSemaphores;       // Семафоры, используемые для обозначения доступности изображения, по одному на кадр.
+    DArray<VkSemaphore> QueueCompleteSemaphores;        // Семафоры, используемые для обозначения доступности очереди, по одному на кадр.
+    u32 InFlightFenceCount;                             // Текущее количество бортовых ограждений.
+    VkFence InFlightFences[2];                          // Бортовые ограждения, используемые для указания приложению, когда кадр занят/готов.
+    VkFence* ImagesInFlight[3];                         // Содержит указатели на заборы, которые существуют и находятся в собственности в другом месте, по одному на кадр.
+    u32 ImageIndex{0};                                  //
+    u32 CurrentFrame{0};                                //
+    bool RecreatingSwapchain{false};                    //
+    VulkanMaterialShader MaterialShader;                //
+    VulkanUI_Shader UI_Shader;                          //
 
     // TODO: сделать динамическим, копии геометрий хранятся в системе геометрий, возможно стоит хранить здесь указатели на геометрии
     Geometry geometries[VULKAN_MAX_GEOMETRY_COUNT]{};

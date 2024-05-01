@@ -29,16 +29,16 @@ private:
 
     u32 VertexCount;
     u32 VertexElementSize;
-    u32 VertexBufferOffset;
+    u64 VertexBufferOffset;
     u32 IndexCount;
     u32 IndexElementSize;
-    u32 IndexBufferOffset;
+    u64 IndexBufferOffset;
 
     //friend class GeometrySystem;
     friend class VulkanAPI;
 public:
     Geometry();
-    Geometry(u32 VertexCount, u32 VertexBufferOffset, u32 IndexCount, u32 IndexBufferOffset);
+    Geometry(u32 VertexCount, u64 VertexBufferOffset, u32 IndexCount, u64 IndexBufferOffset);
     Geometry(const Geometry& g);
     Geometry(Geometry&& g);
     ~Geometry();
@@ -46,8 +46,8 @@ public:
     Geometry& operator= (const Geometry& g);
     Geometry& operator= (const Geometry* g);
 
-    void SetVertexData(u32 VertexCount, u32 ElementSize, u32 VertexBufferOffset);
-    void SetIndexData(u32 IndexCount, u32 IndexBufferOffset);
+    void SetVertexData(u32 VertexCount, u32 ElementSize, u64 VertexBufferOffset);
+    void SetIndexData(u32 IndexCount, u64 IndexBufferOffset);
 
     void Destroy();
 };

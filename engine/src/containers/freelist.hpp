@@ -6,18 +6,14 @@
 /// для динамического распределения памяти. Отслеживает свободные области памяти.
 class MAPI FreeList
 {
-public://private:
-    struct InternalState {
-        u64 TotalSize;
-        u64 MaxEntries;
-        struct FreelistNode* head;
-        struct FreelistNode* nodes;
-    } *state;
-
-    //void* memory; // Внутреннее состояние свободного списка
+private:
+    u64 TotalSize;
+    u64 MaxEntries;
+    struct FreelistNode* head;
+    struct FreelistNode* nodes;
 
 public:
-    FreeList() : state(nullptr) {}
+    FreeList() : TotalSize(), MaxEntries(), head(nullptr), nodes(nullptr) {}
     /// @brief Создает новый свободный список или получает требуемую для него память. 
     /// Вызов дважды; один раз передача 0 в память для получения требуемой памяти, 
     /// а второй раз передача выделенного блока в память.
@@ -28,7 +24,7 @@ public:
     /// @brief Уничтожает список
     ~FreeList();
 
-    /// @brief Присваивает значению MemoryRequirement 
+    /// @brief Присваивает значению MemoryRequirement новое
     /// @param TotalSize общий размер в байтах, который должен отслеживать список свободных мест.
     /// @param MemoryRequirement ссылка на переменную, которая хранит значение требуемой памяти для самого списка свободных мест.
     void GetMemoryRequirement(u64 TotalSize, u64& MemoryRequirement);
@@ -53,6 +49,8 @@ public:
     /// эта операция может оказаться дорогостоящей. Используйте экономно.
     /// @return объем свободного места в байтах.
     u64 FreeSpace();
+
+    operator bool() const;
 private:
     struct FreelistNode* GetNode();
     void ReturnNode(struct FreelistNode* node);
