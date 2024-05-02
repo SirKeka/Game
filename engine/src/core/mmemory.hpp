@@ -55,14 +55,14 @@ private:
     };*/
 
     //static DArray<SharPtr> ptr;
-    static struct State {
+    static struct MemoryState {
         u64 TotalAllocSize; // Общий размер памяти в байтах, используемый внутренним распределителем для этой системы.
         u64 TotalAllocated;
         u64 TaggedAllocations[static_cast<u32>(MemoryTag::MaxTags)];
         u64 AllocCount;
         u64 AllocatorMemoryRequirement;
-        //DynamicAllocator allocator;
-        //void* AllocatorBlock;
+        DynamicAllocator allocator;
+        void* AllocatorBlock;
     } state;
     
 public:
@@ -70,7 +70,11 @@ public:
     // MMemory(const MMemory&) = delete;
     // MMemory& operator=(MMemory&) = delete;
     ~MMemory(); /*noexcept*/ //= default;
+    /// @brief Инициализирует систему памяти.
+    /// @param TotalAllocSize общий размер распределителя
+    /// @return true если инициализация успеша, иначе false
     bool Initialize(u64 TotalAllocSize);
+    /// @brief Выключает систему памяти.
     void Shutdown();
     /// @brief Функция выделяет память
     /// @param bytes размер выделяемой памяти в байтах

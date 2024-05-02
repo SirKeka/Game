@@ -35,7 +35,7 @@ MMemory::~MMemory()
 bool MMemory::Initialize(u64 TotalAllocSize)
 {
     // Сумма, необходимая состоянию системы.
-    u64 StateMemoryRequirement = sizeof(State);
+    u64 StateMemoryRequirement = sizeof(MemoryState);
 
     // Выясните, сколько места нужно динамическому распределителю.
     u64 AllocRequirement = 0;

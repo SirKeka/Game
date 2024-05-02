@@ -10,24 +10,20 @@ struct FreelistNode {
 
 FreeList::~FreeList()
 {
-    if (TotalSize > 0) {
+    if (state) {
         // Просто обнулите память, прежде чем вернуть ее.
-        
-        //MMemory::ZeroMem(head, sizeof(FreelistNode));
-        MMemory::ZeroMem(nodes, sizeof(FreelistNode) * MaxEntries);
-        TotalSize = 0;
-        MaxEntries = 0;
+        MMemory::ZeroMem(state, sizeof(FreeListState) + (sizeof(FreelistNode) * state->MaxNodes));
     }
 }
 
 void FreeList::GetMemoryRequirement(u64 TotalSize, u64 &MemoryRequirement)
 {
     // Достаточно места для хранения состояния плюс массив для всех узлов.
-    u64 MaxEntries = TotalSize / (sizeof(void*) * sizeof(FreelistNode));  // ПРИМЕЧАНИЕ: Может быть остаток, но это нормально.
-    MemoryRequirement = sizeof(FreeList) + (sizeof(FreelistNode) * MaxEntries);
+    u64 MaxNodes = TotalSize / (sizeof(void*) * sizeof(FreelistNode));  // ПРИМЕЧАНИЕ: Может быть остаток, но это нормально.
+    MemoryRequirement = sizeof(FreeListState) + (sizeof(FreelistNode) * MaxNodes);
 
     // Если требуемая память слишком мала, следует предупредить о нерациональном использовании.
-    u64 MemMin = (sizeof(FreeList) + sizeof(FreelistNode)) * 8;
+    u64 MemMin = (sizeof(FreeListState) + sizeof(FreelistNode)) * 8;
     if (TotalSize < MemMin) {
         MWARN(
             "Списки свободной памяти очень неэффективны при объеме памяти менее %iбайт; в этом случае рекомендуется не использовать данную структуру.",
@@ -37,33 +33,30 @@ void FreeList::GetMemoryRequirement(u64 TotalSize, u64 &MemoryRequirement)
 
 void FreeList::Create(u64 TotalSize, void *memory)
 {
-    u64 MaxEntries = TotalSize / (sizeof(void*) * sizeof(FreelistNode));  // ПРИМЕЧАНИЕ: Может быть остаток, но это нормально.
+    u64 MaxNodes = TotalSize / (sizeof(void*) * sizeof(FreelistNode));  // ПРИМЕЧАНИЕ: Может быть остаток, но это нормально.
     // Компоновка блока начинается с головы*, затем массива доступных узлов.
-    MMemory::ZeroMem(memory, sizeof(FreeList) + (sizeof(FreelistNode) * MaxEntries));
-    this->nodes = reinterpret_cast<FreelistNode*>(this + sizeof(FreeList));
-    this->MaxEntries = MaxEntries;
-    this->TotalSize = TotalSize;
+    MMemory::ZeroMem(memory, sizeof(FreeListState) + (sizeof(FreelistNode) * MaxNodes));
+    state = reinterpret_cast<FreeListState*>(memory);
+    state->nodes = reinterpret_cast<FreelistNode*>(state + sizeof(FreeListState));
+    state->MaxNodes = MaxNodes;
+    state->TotalSize = TotalSize;
 
-    this->head = &this->nodes[0];
-    this->head->offset = 0;
-    this->head->size = TotalSize;
-    this->head->next = nullptr;
+    state->head = &state->nodes[0];
+    state->head->offset = 0;
+    state->head->size = TotalSize;
+    state->head->next = nullptr;
 
     // Сделайте недействительными смещение и размер для всех узлов, кроме первого. 
     // Недопустимое значение будет проверяться при поиске нового узла из списка.
-    for (u64 i = 1; i < this->MaxEntries; ++i) {
-        this->nodes[i].offset = INVALID_ID;
-        this->nodes[i].size = INVALID_ID;
+    for (u64 i = 1; i < state->MaxNodes; ++i) {
+        state->nodes[i].offset = INVALID_ID;
+        state->nodes[i].size = INVALID_ID;
     }
 }
 
 bool FreeList::AllocateBlock(u64 size, u64 &OutOffset)
 {
-    // if (!this) {
-    //     return false;
-    // }
-
-    FreelistNode* node = this->head;
+    FreelistNode* node = state->head;
     FreelistNode* previous = nullptr;
     while (node) {
         if (node->size == size) {
@@ -76,8 +69,8 @@ bool FreeList::AllocateBlock(u64 size, u64 &OutOffset)
             } else {
                 // Этот узел является заголовком списка. Переназначьте 
                 // заголовок и верните предыдущий заголовочный узел.
-                NodeToReturn = this->head;
-                this->head = node->next;
+                NodeToReturn = state->head;
+                state->head = node->next;
             }
             ReturnNode(NodeToReturn);
             return true;
@@ -100,11 +93,7 @@ bool FreeList::AllocateBlock(u64 size, u64 &OutOffset)
 
 bool FreeList::FreeBlock(u64 size, u64 offset)
 {
-    // if (!this || !size) {
-    //     return false;
-    // }
-
-    FreelistNode* node = this->head;
+    FreelistNode* node = state->head;
     FreelistNode* previous = nullptr;
     if (!node) {
         // Проверка случая, когда выделено все.
@@ -113,7 +102,7 @@ bool FreeList::FreeBlock(u64 size, u64 offset)
         NewNode->offset = offset;
         NewNode->size = size;
         NewNode->next = nullptr;
-        this->head = NewNode;
+        state->head = NewNode;
         return true;
     } else {
         while (node) {
@@ -143,7 +132,7 @@ bool FreeList::FreeBlock(u64 size, u64 offset)
                 } else {
                     // В противном случае новый узел становится заголовочным.
                     NewNode->next = node;
-                    this->head = NewNode;
+                    state->head = NewNode;
                 }
 
                 // Дважды проверьте следующий узел, чтобы узнать, можно ли к нему присоединиться.
@@ -174,34 +163,115 @@ bool FreeList::FreeBlock(u64 size, u64 offset)
     return false;
 }
 
-void FreeList::Clear()
+bool FreeList::Resize(void *NewMemory, u64 NewSize, void **OutOldMemory)
 {
-    // if (!this) {
-    //     return;
-    // }
+    if (state->TotalSize > NewSize) {
+        MERROR("Новый размерд должен быть больше старого.");
+        return false;
+    }
+
+    // Назначьте старый указатель памяти, чтобы его можно было освободить.
+    *OutOldMemory = reinterpret_cast<void*>(state);
+
+    // Скопируйте старое состояние в новое.
+    FreeListState* OldState = state;
+    u64 SizeDiff = NewSize - state->TotalSize;
+
+    // Настройте новую память
+    state = reinterpret_cast<FreeListState*>(NewMemory);
+
+    // Компоновка блока начинается с заголовка*, затем массива доступных узлов.
+    u64 MaxNodes = NewSize / (sizeof(void*) * sizeof(FreelistNode));
+    MMemory::ZeroMem(NewMemory, NewSize);
+
+    // Настройте новое состояние.
+    state->nodes = reinterpret_cast<FreelistNode*>(state + sizeof(FreeListState));
+    state->MaxNodes = MaxNodes;
+    state->TotalSize = NewSize;
 
     // Сделайте недействительными смещение и размер для всех узлов, кроме первого. 
     // Недопустимое значение будет проверяться при поиске нового узла из списка.
-    for (u64 i = 1; i < this->MaxEntries; ++i) {
-        this->nodes[i].offset = INVALID_ID;
-        this->nodes[i].size = INVALID_ID;
+    for (u64 i = 1; i < state->MaxNodes; ++i) {
+        state->nodes[i].offset = INVALID_ID;
+        state->nodes[i].size = INVALID_ID;
+    }
+
+    state->head = &state->nodes[0];
+
+    // Скопируйте узлы.
+    FreelistNode* NewListNode = state->head;
+    FreelistNode* OldNode = OldState->head;
+    if (!OldNode) {
+        // Если заголовка нет, то выделяется весь список. 
+        // В этом случае заголовок должен быть установлен 
+        // на разнице доступного сейчас пространства и в конце списка.
+        state->head->offset = OldState->TotalSize;
+        state->head->size = SizeDiff;
+        state->head->next = nullptr;
+    } else {
+        // Перебрать старые узлы.
+        while (OldNode) {
+            // Получите новый узел, скопируйте смещение/размер и установите рядом с ним.
+            FreelistNode* NewNode = GetNode();
+            NewNode->offset = OldNode->offset;
+            NewNode->size = OldNode->size;
+            NewNode->next = nullptr;
+            NewListNode->next = NewNode;
+            // Перейти к следующей записи.
+            NewListNode = NewListNode->next;
+
+            if (OldNode->next) {
+                // Если есть еще один узел, идем дальше.
+                OldNode = OldNode->next;
+            } else {
+                // Достигнут конец списка. Проверьте, доходит ли он до конца блока. 
+                // Если да, просто добавьте к размеру. В противном случае создайте новый узел и присоединитесь к нему.
+                if (OldNode->offset + OldNode->size == OldState->TotalSize) {
+                    NewNode->size += SizeDiff;
+                } else {
+                    FreelistNode* NewNodeEnd = GetNode();
+                    NewNodeEnd->offset = OldState->TotalSize;
+                    NewNodeEnd->size = SizeDiff;
+                    NewNodeEnd->next = nullptr;
+                    NewNode->next = NewNodeEnd;
+                }
+                break;
+            }
+        }
+    }
+
+    return true;
+}
+
+void FreeList::Clear()
+{
+    if (!state) {
+        MERROR("Список свободных мест не создан.");
+        return;
+    }
+
+    // Сделайте недействительными смещение и размер для всех узлов, кроме первого. 
+    // Недопустимое значение будет проверяться при поиске нового узла из списка.
+    for (u64 i = 1; i < state->MaxNodes; ++i) {
+        state->nodes[i].offset = INVALID_ID;
+        state->nodes[i].size = INVALID_ID;
     }
 
     // Сбросьте настройки заголовка, чтобы занять всю вещь.
-    this->head->offset = 0;
-    this->head->size = this->TotalSize;
-    this->head->next = nullptr;
+    state->head->offset = 0;
+    state->head->size = state->TotalSize;
+    state->head->next = nullptr;
 }
 
 u64 FreeList::FreeSpace()
 {
-    // if (!this) {
-    //     return 0;
-    // }
+    if (!state) {
+        MERROR("Список свободных мест не создан.");
+        return 0;
+    }
 
     u64 RunningTotal = 0;
-    //InternalState* this = reinterpret_cast<InternalState*>(this->memory);
-    FreelistNode* node = this->head;
+    FreelistNode* node = state->head;
     while (node) {
         RunningTotal += node->size;
         node = node->next;
@@ -212,7 +282,7 @@ u64 FreeList::FreeSpace()
 
 FreeList::operator bool() const
 {
-    if (TotalSize != 0 && MaxEntries != 0 && head && nodes) {
+    if (state) {
         return true;
     }
     return false;
@@ -220,10 +290,10 @@ FreeList::operator bool() const
 
 FreelistNode *FreeList::GetNode()
 {
-    //InternalState* this = reinterpret_cast<InternalState*>(this->memory);
-    for (u64 i = 1; i < this->MaxEntries; ++i) {
-        if (this->nodes[i].offset == INVALID_ID) {
-            return &this->nodes[i];
+    //InternalState* state = reinterpret_cast<InternalState*>(state->memory);
+    for (u64 i = 1; i < state->MaxNodes; ++i) {
+        if (state->nodes[i].offset == INVALID_ID) {
+            return &state->nodes[i];
         }
     }
 

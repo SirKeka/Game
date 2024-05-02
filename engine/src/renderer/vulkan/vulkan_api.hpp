@@ -61,17 +61,13 @@ public:
     u32 InFlightFenceCount;                             // Текущее количество бортовых ограждений.
     VkFence InFlightFences[2];                          // Бортовые ограждения, используемые для указания приложению, когда кадр занят/готов.
     VkFence* ImagesInFlight[3];                         // Содержит указатели на заборы, которые существуют и находятся в собственности в другом месте, по одному на кадр.
-    u32 ImageIndex{0};                                  //
-    u32 CurrentFrame{0};                                //
-    bool RecreatingSwapchain{false};                    //
-    VulkanMaterialShader MaterialShader;                //
-    VulkanUI_Shader UI_Shader;                          //
-
-    // TODO: сделать динамическим, копии геометрий хранятся в системе геометрий, возможно стоит хранить здесь указатели на геометрии
-    Geometry geometries[VULKAN_MAX_GEOMETRY_COUNT]{};
-
-    // Буферы кадров, используемые для рендеринга мира, по одному на кадр.
-    VkFramebuffer WorldFramebuffers[3];
+    u32 ImageIndex{0};                                  // Индекс текущего изображения.
+    u32 CurrentFrame{0};                                // Текущий кадр.
+    bool RecreatingSwapchain{false};                    // Указывает, воссоздается ли в данный момент цепочка обмена.
+    VulkanMaterialShader MaterialShader;                // Шейдер материала.
+    VulkanUI_Shader UI_Shader;                          // Шейдер пользовательского интерфейса.
+    Geometry geometries[VULKAN_MAX_GEOMETRY_COUNT]{};   // СДЕЛАТЬ: динамическим, копии геометрий хранятся в системе геометрий, возможно стоит хранить здесь указатели на геометрии
+    VkFramebuffer WorldFramebuffers[3];                 // Буферы кадров, используемые для рендеринга мира, по одному на кадр.
 
 private:
     u32 CachedFramebufferWidth;
@@ -98,7 +94,10 @@ public:
     void DrawGeometry(const GeometryRenderData& data) override;
 
     void* operator new(u64 size);
-
+    /// @brief Функция поиска индекса памяти заданного типа и с заданными свойствами.
+    /// @param TypeFilter типы памяти для поиска.
+    /// @param PropertyFlags обязательные свойства, которые должны присутствовать.
+    /// @return Индекс найденного типа памяти. Возвращает -1, если не найден.
     i32 FindMemoryIndex(u32 TypeFilter, VkMemoryPropertyFlags PropertyFlags);
 
 private:

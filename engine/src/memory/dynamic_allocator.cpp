@@ -4,10 +4,12 @@
 
 DynamicAllocator::~DynamicAllocator()
 {
-    //DynamicAllocatorState* state = allocator->memory;
-    list.~FreeList();
-    MMemory::ZeroMem(this->MemoryBlock, this->TotalSize);
-    this->TotalSize = 0;
+    if (state) {
+        state->list.~FreeList();
+        MMemory::ZeroMem(state->MemoryBlock, state->TotalSize);
+        state->TotalSize = 0;
+        state = nullptr;
+    }
 }
 
 bool DynamicAllocator::GetMemoryRequirement(u64 TotalSize, u64 &MemoryRequirement)
@@ -16,37 +18,45 @@ bool DynamicAllocator::GetMemoryRequirement(u64 TotalSize, u64 &MemoryRequiremen
         MERROR("DynamicAllocator::GetMemoryRequirement не может иметь значение TotalSize, равное 0. Создание не удалось.");
         return false;
     }
-
-    this->TotalSize = TotalSize;
-    MemoryRequirement = GetFreeListRequirement() + sizeof(DynamicAllocator) + TotalSize;
+    if (state) {
+        state->TotalSize = TotalSize;
+    }
+    
+    MemoryRequirement = GetFreeListRequirement(TotalSize) + sizeof(DynamicAllocatorState) + TotalSize;
 
     return true;
 }
 
 bool DynamicAllocator::Create(u64 TotalSize, u64 &MemoryRequirement, void *memory)
 {
+    if (!memory) {
+        return false;
+    }
+    
     if (GetMemoryRequirement(TotalSize, MemoryRequirement)) {
-        Create(memory);
+        Create(MemoryRequirement, memory);
         return true;
     }
     
     return false;
 }
 
-bool DynamicAllocator::Create(void *memory)
+bool DynamicAllocator::Create(u64 MemoryRequirement, void *memory)
 {
     if (memory) {
         // Memory layout:
         // state
         // freelist block
         // memory block
-        this->FreelistBlock = reinterpret_cast<u8*>(memory) + sizeof(DynamicAllocator);
-        this->MemoryBlock = reinterpret_cast<u8*>(this->FreelistBlock) + GetFreeListRequirement();
+        state = reinterpret_cast<DynamicAllocatorState*>(memory);
+        state->TotalSize = MemoryRequirement;
+        state->FreelistBlock = reinterpret_cast<u8*>(memory) + sizeof(DynamicAllocatorState);
+        state->MemoryBlock = reinterpret_cast<u8*>(state->FreelistBlock) + GetFreeListRequirement(MemoryRequirement);
 
-        MMemory::ZeroMem(this->MemoryBlock, TotalSize);
+        MMemory::ZeroMem(state->MemoryBlock, state->TotalSize);
 
         // Собственно создайте свободный список
-        list.Create(TotalSize, this->FreelistBlock);
+        state->list.Create(state->TotalSize, state->FreelistBlock);
         return true;
     }
     
@@ -56,7 +66,7 @@ bool DynamicAllocator::Create(void *memory)
 
 bool DynamicAllocator::Destroy()
 {
-    if (this->MemoryBlock) {
+    if (state) {
         this->~DynamicAllocator();
         return true;
     }
@@ -67,17 +77,17 @@ bool DynamicAllocator::Destroy()
 
 void *DynamicAllocator::Allocate(u64 size)
 {
-    if (MemoryBlock && size) {
+    if (state->MemoryBlock && size) {
         // DynamicAllocatorState* state = allocator->memory;
         u64 offset = 0;
         // Попытайтесь выделить из свободного списка.
-        if (list.AllocateBlock(size, offset)) {
+        if (state->list.AllocateBlock(size, offset)) {
             // Используйте это смещение относительно блока базовой памяти, чтобы получить блок.
-            void* block = reinterpret_cast<u8*>(this->MemoryBlock) + offset;
+            void* block = reinterpret_cast<u8*>(state->MemoryBlock) + offset;
             return block;
         } else {
             MERROR("DynamicAllocator::Allocate нет блоков памяти, достаточно больших для выделения.");
-            u64 available = list.FreeSpace();
+            u64 available = state->list.FreeSpace();
             MERROR("Запрошенный размер: %llu, общее доступное пространство: %llu", size, available);
             // СДЕЛАТЬ: Report fragmentation?
             return nullptr;
@@ -95,13 +105,13 @@ void DynamicAllocator::Free(void *block, u64 size)
     }
 
     // DynamicAllocatorState* state = allocator->memory;
-    if (block < this->MemoryBlock || block > reinterpret_cast<u8*>(this->MemoryBlock) + this->TotalSize) {
-        void* EndOfBlock = reinterpret_cast<u8*>(this->MemoryBlock) + this->TotalSize;
-        MERROR("DynamicAllocator::Free попытка освободить блок (0x%p) за пределами диапазона распределителя (0x%p)-(0x%p).", block, this->MemoryBlock, EndOfBlock);
+    if (block < state->MemoryBlock || block > reinterpret_cast<u8*>(state->MemoryBlock) + state->TotalSize) {
+        void* EndOfBlock = reinterpret_cast<u8*>(state->MemoryBlock) + state->TotalSize;
+        MERROR("DynamicAllocator::Free попытка освободить блок (0x%p) за пределами диапазона распределителя (0x%p)-(0x%p).", block, state->MemoryBlock, EndOfBlock);
         return;
     }
-    u64 offset = reinterpret_cast<u8*>(block) - reinterpret_cast<u8*>(this->MemoryBlock);
-    if (!list.FreeBlock(size, offset)) {
+    u64 offset = reinterpret_cast<u8*>(block) - reinterpret_cast<u8*>(state->MemoryBlock);
+    if (!state->list.FreeBlock(size, offset)) {
         MERROR("DynamicAllocator::Free failed.");
         return;
     }
@@ -109,21 +119,21 @@ void DynamicAllocator::Free(void *block, u64 size)
 
 u64 DynamicAllocator::FreeSpace()
 {
-    return list.FreeSpace();
+    return state->list.FreeSpace();
 }
 
 DynamicAllocator::operator bool() const
 {
-    if (TotalSize != 0 && (bool)list && FreelistBlock && MemoryBlock) {
+    if (state) { // TotalSize != 0 && (bool)state->list && FreelistBlock && MemoryBlock
         return true;
     }
     return false;
 }
 
-u64 DynamicAllocator::GetFreeListRequirement()
+u64 DynamicAllocator::GetFreeListRequirement(u64 TotalSize)
 {
     u64 FreelistRequirement = 0;
     // Сначала узнайте объем памяти, необходимый для списка свободных мест.
-    list.GetMemoryRequirement(this->TotalSize, FreelistRequirement);
+    FreeList::GetMemoryRequirement(TotalSize, FreelistRequirement);
     return FreelistRequirement;
 }

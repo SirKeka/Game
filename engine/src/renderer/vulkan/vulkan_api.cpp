@@ -683,7 +683,7 @@ bool VulkanAPI::Load(GeometryID *gid, u32 VertexSize, u32 VertexCount, const voi
     VkQueue &queue = this->Device.GraphicsQueue;
 
     // Данные вершин.
-    geometry->SetVertexData(VertexCount, sizeof(Vertex3D), this->GeometryVertexOffset);
+    /*geometry->SetVertexData(VertexCount, sizeof(Vertex3D), this->GeometryVertexOffset);
     u32 TotalSize = VertexCount * VertexSize;
     UploadDataRange(
         pool, 
@@ -710,7 +710,7 @@ bool VulkanAPI::Load(GeometryID *gid, u32 VertexSize, u32 VertexCount, const voi
             indices);
         // TODO: вместо этого следует поддерживать список свободной памяти
         this->GeometryIndexOffset += TotalSize;
-    }
+    }*/
 
     if (gid->generation == INVALID_ID) {
         gid->generation = 0;
@@ -860,7 +860,7 @@ bool VulkanAPI::CreateBuffers()
         MERROR("Ошибка создания вершинного буфера.");
         return false;
     }
-    GeometryVertexOffset = 0;
+    //GeometryVertexOffset = 0;
 
     // Буфер индексов геометрии
     const u64 IndexBufferSize = sizeof(u32) * 1024 * 1024;
@@ -873,7 +873,7 @@ bool VulkanAPI::CreateBuffers()
         MERROR("Ошибка создания вершинного буфера.");
         return false;
     }
-    GeometryVertexOffset = 0; 
+    //GeometryVertexOffset = 0; 
     
     return true;
 }

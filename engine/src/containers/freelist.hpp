@@ -7,13 +7,15 @@
 class MAPI FreeList
 {
 private:
-    u64 TotalSize;
-    u64 MaxEntries;
-    struct FreelistNode* head;
-    struct FreelistNode* nodes;
+    struct FreeListState {
+        u64 TotalSize;
+        u64 MaxNodes;
+        struct FreelistNode* head;
+        struct FreelistNode* nodes;
+    }* state;
 
 public:
-    FreeList() : TotalSize(), MaxEntries(), head(nullptr), nodes(nullptr) {}
+    FreeList() : state(nullptr) {}
     /// @brief Создает новый свободный список или получает требуемую для него память. 
     /// Вызов дважды; один раз передача 0 в память для получения требуемой памяти, 
     /// а второй раз передача выделенного блока в память.
@@ -27,8 +29,7 @@ public:
     /// @brief Присваивает значению MemoryRequirement новое
     /// @param TotalSize общий размер в байтах, который должен отслеживать список свободных мест.
     /// @param MemoryRequirement ссылка на переменную, которая хранит значение требуемой памяти для самого списка свободных мест.
-    void GetMemoryRequirement(u64 TotalSize, u64& MemoryRequirement);
-
+    static void GetMemoryRequirement(u64 TotalSize, u64& MemoryRequirement);
     /// @brief Создает новый свободный список. 
     /// @param memory nullptr или предварительно выделенный блок памяти для использования списком свободных мест.
     void Create(u64 TotalSize, void* memory);
@@ -42,6 +43,15 @@ public:
     /// @param offset смещение
     /// @return true в случае успеха; в противном случае ложь. Значение False следует рассматривать как ошибку.
     bool FreeBlock(u64 size, u64 offset);
+    /// @brief Пытается изменить размер предоставленного свободного списка до заданного размера. 
+    /// Внутренние данные копируются в новый блок памяти. После этого вызова старый блок должен быть освобожден.
+    /// ПРИМЕЧАНИЕ: Новый размер должен быть _больше_ существующего размера данного списка.
+    /// ПРИМЕЧАНИЕ: Перед вызовом нужно запросить требуемую память через функцию GetMemoryRequirement.
+    /// @param NewMemory новый блок памяти состояний.
+    /// @param NewSize новый размер должен быть больше размера предоставленного списка.
+    /// @param OutOldMemory указатель на старый блок памяти, чтобы его можно было освободить после этого вызова.
+    /// @return true в случае успеха; иначе false.
+    bool Resize(void* NewMemory, u64 NewSize, void** OutOldMemory);
     /// @brief Очищает свободный список.
     void Clear();
     /// @brief Возвращает объем свободного места в этом списке. ПРИМЕЧАНИЕ: 
