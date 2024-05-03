@@ -63,7 +63,7 @@ private:
         u64 AllocatorMemoryRequirement;
         DynamicAllocator allocator;
         void* AllocatorBlock;
-    } state;
+    }* state;
     
 public:
     // MMemory() = default;
@@ -88,8 +88,8 @@ public:
             MWARN("allocate вызывается с использованием MemoryTag::Unknown. Переклассифицировать это распределение.");
         }
 
-        state.TotalAllocated += size * sizeof(T);
-        state.TaggedAllocations[static_cast<u32>(tag)] += size * sizeof(T);
+        state->TotalAllocated += size * sizeof(T);
+        state->TaggedAllocations[static_cast<u32>(tag)] += size * sizeof(T);
 
         T* ptrRawMem = new T[size]();
 
@@ -113,8 +113,8 @@ public:
                 MWARN("free вызывается с использованием MemoryTag::Unknown. Переклассифицировать это распределение.");
             }
 
-            state.TotalAllocated -= sizeof(T) * factor;
-            state.TaggedAllocations[static_cast<u32>(tag)] -= sizeof(T) * factor;
+            state->TotalAllocated -= sizeof(T) * factor;
+            state->TaggedAllocations[static_cast<u32>(tag)] -= sizeof(T) * factor;
 
             delete[] block;
         }

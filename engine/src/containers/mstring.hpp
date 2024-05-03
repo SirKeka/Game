@@ -141,7 +141,7 @@ public:
     ///@param str Строка для анализа. «true» или «1» считаются true; все остальное false.
     ///@param b A pointer to the boolean to write to.
     ///@return True, если синтаксический анализ прошел успешно; в противном случае false.
-    bool ToBool(char* str, b8* b);
+    bool ToBool(char* str, bool* b);
 
     void Destroy();
 };

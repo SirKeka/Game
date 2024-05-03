@@ -120,7 +120,7 @@ bool Input::WasButtonDown(Buttons button)
     if (!input) {
         return false;
     }
-    return MousePrevious.Buttons[button] == TRUE;
+    return MousePrevious.Buttons[button] == true;
 }
 
 bool Input::WasButtonUp(Buttons button)

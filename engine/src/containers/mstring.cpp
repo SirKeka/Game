@@ -361,7 +361,7 @@ bool MString::ToUInt(char *str, u64 *u)
     return result != -1;
 }
 
-bool MString::ToBool(char *str, b8 *b)
+bool MString::ToBool(char *str, bool *b)
 {
     if (!str) {
         return false;

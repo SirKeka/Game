@@ -6,11 +6,13 @@
 class Game : public GameTypes
 {
 private:
-    f32 DeltaTime;
-    Matrix4D view;
-    Vector3D<f32> CameraPosition;
-    Vector3D<f32> CameraEuler;
-    bool CameraViewDirty;
+    struct GameState{
+        f32 DeltaTime;
+        Matrix4D view;
+        Vector3D<f32> CameraPosition;
+        Vector3D<f32> CameraEuler;
+        bool CameraViewDirty;
+    }* state;
     
 public:
     Game(i16 StartPosX, i16 StartPosY, i16 StartWidth, i16 StartHeight, const char* name);

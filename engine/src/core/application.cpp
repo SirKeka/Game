@@ -16,6 +16,13 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
         return false;
     }
 
+    // Система памяти должна быть установлена в первую очередь. 
+    AppState->mem = new MMemory();
+    if (!AppState->mem->Initialize(GIBIBYTES(1))) {
+        MERROR("Не удалось инициализировать систему памяти; Выключение.");
+        return false;
+    }
+
     GameInst->State->AppState = MMemory::TAllocate<ApplicationState>(1, MemoryTag::Application);
     AppState = GameInst->State->AppState;
     AppState->GameInst = GameInst;
@@ -24,8 +31,6 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
 
     u64 SystemsAllocatorTotalSize = 64 * 1024 * 1024;  // 64 mb
     LinearAllocator::Instance().Initialize(SystemsAllocatorTotalSize);
-
-    AppState->mem = new MMemory();
 
     // Инициализируйте подсистемы.
     AppState->logger = new Logger();
@@ -73,7 +78,7 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
     // Запуск рендерера
     if (!AppState->Render->Initialize(AppState->Window, GameInst->AppConfig.name, ERendererType::VULKAN)) {
         MFATAL("Не удалось инициализировать средство визуализации. Прерывание приложения.");
-        return FALSE;
+        return false;
     }
 
     // Система текстур.

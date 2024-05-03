@@ -8,25 +8,19 @@
 #include <stdlib.h>
 
 // Внешне определенная функция для создания игры.
-extern bool CreateGame(GameTypes*& OutGame);
+extern bool CreateGame(GameTypes& OutGame);
 
 // Основная точка входа в приложение.Основная точка входа в приложение.
 int main(void) {
     system("chcp 65001 > nul"); // для отображения русских символов в консоли
 
     // Запросите экземпляр игры из приложения.
-    GameTypes* GameInst;
+    GameTypes GameInst;
     
     if (!CreateGame(GameInst)) {
         MFATAL("Не удалось создать игру!");
         return -1;
     }
-
-    /*// Ensure the function pointers exist.
-    if (!GameInst.Render || !GameInst.Update || !GameInst.Initialize || !GameInst.on_resize) {
-        MFATAL("The game's function pointers must be assigned!");
-        return -2;
-    }*/
     
     // Инициализация.
     if (!GameInst->State->ApplicationCreate(GameInst)) {
