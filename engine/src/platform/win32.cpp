@@ -24,6 +24,7 @@ struct PlatformState
     VkSurfaceKHR surface;
 
     PlatformState() : HInstance(0), hwnd(0), surface(0) { };
+    void* operator new(u64 size) { return LinearAllocator::Instance().Allocate(size); }
 };
 
 // Прототип функции обратного вызова для обработки сообщений
@@ -54,7 +55,7 @@ bool MWindow::Create()
     PlatformState *state = reinterpret_cast<PlatformState*>(InternalState);
     state->HInstance = GetModuleHandleA(0);
 
-// Настройка и регистрация класса окна.
+    // Настройка и регистрация класса окна.
     HICON icon = LoadIcon(state->HInstance, IDI_APPLICATION);
     WNDCLASSA wc;
     memset(&wc, 0, sizeof(wc));
@@ -112,7 +113,7 @@ bool MWindow::Create()
     MessageBoxA(NULL, "Не удалось создать окно!", "Ошибка!", MB_ICONEXCLAMATION | MB_OK);
 
     MFATAL("Не удалось создать окно!");
-    return FALSE;
+    return false;
     } else {
     state->hwnd = handle;
     }

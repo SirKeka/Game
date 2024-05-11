@@ -9,21 +9,18 @@
 #include "input.hpp"
 #include "clock.hpp"
 
-class GameTypes;
-class Renderer;
-//class TextureSystem;
 
 struct ApplicationState {
     //LinearAllocator SystemAllocator;
-    MMemory* mem;
+    //MMemory* mem;
     Logger* logger;
     //Input Inputs;
     //Event Events;
     bool IsRunning;
     bool IsSuspended;
     MWindow* Window;
-    Renderer* Render;
-    GameTypes* GameInst;
+    class Renderer* Render;
+    class GameTypes* GameInst;
 
     //Системы
     //TextureSystem* TexSys;
@@ -43,7 +40,7 @@ struct ApplicationState {
 class Application
 {
 public:
-    MAPI static ApplicationState* AppState; //TODO: убрать MAPI 
+    MAPI static ApplicationState* State; //TODO: убрать MAPI 
 public:
     Application() = default;
     ~Application();

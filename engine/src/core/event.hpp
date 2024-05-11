@@ -45,7 +45,7 @@ class MAPI Event
 {
 private:
     // Таблица поиска кодов событий.
-    EventCodeEntry registered[MAX_MESSAGE_CODES] {};
+    EventCodeEntry registered[MAX_MESSAGE_CODES];
 
     static Event* event;
     Event() : registered() {};

@@ -45,7 +45,7 @@ bool MMemory::Initialize(u64 TotalAllocSize)
 
     // Выясните, сколько места нужно динамическому распределителю.
     u64 AllocRequirement = 0;
-    state->allocator.GetMemoryRequirement(TotalAllocSize, AllocRequirement);
+    DynamicAllocator::MemoryRequirement(TotalAllocSize, AllocRequirement);
 
     // Вызовите распределитель платформы, чтобы получить память для всей системы, включая состояние.
     // СДЕЛАТЬ: выравнивание памяти
@@ -58,7 +58,7 @@ bool MMemory::Initialize(u64 TotalAllocSize)
     // Состояние находится в первой части массивного блока памяти.
     state = reinterpret_cast<MemoryState*>(block);
     state->TotalAllocSize = TotalAllocSize;
-    state->AllocCount = 0;
+    //state->AllocCount = 0;
     state->AllocatorMemoryRequirement = AllocRequirement;
     // Блок распределителя находится в том же блоке памяти, но после состояния.
     state->AllocatorBlock = reinterpret_cast<void*>(block + StateMemoryRequirement);
@@ -74,7 +74,12 @@ bool MMemory::Initialize(u64 TotalAllocSize)
 
 MINLINE void MMemory::Shutdown()
 {
-    this->~MMemory();
+    if (state) {
+        state->allocator.Destroy();
+        // Освободите целый блок.
+        //platform_free(state_ptr, state_ptr->allocator_memory_requirement + sizeof(memory_system_state));
+        delete[] state;
+    }
 }
 
 void *MMemory::Allocate(u64 bytes, MemoryTag tag)
@@ -84,13 +89,13 @@ void *MMemory::Allocate(u64 bytes, MemoryTag tag)
     }
 
     // Либо выделяйте из системного распределителя, либо из ОС. Последнее никогда не должно произойти.
-    void* block = nullptr;
+    u8* block = nullptr;
 
     if (state) {
         state->TotalAllocated += bytes;
         state->TaggedAllocations[static_cast<u32>(tag)] += bytes;
         state->AllocCount++;
-        block = state->allocator.Allocate(bytes);
+        block = reinterpret_cast<u8*>(state->allocator.Allocate(bytes));
     } else {
         // Если система еще не запустилась, предупредите об этом, но дайте пока память.
         MWARN("Memory::Allocate вызывается перед инициализацией системы памяти.");
@@ -189,7 +194,7 @@ MString MMemory::GetMemoryUsageStr()
     return Out;
 }
 
-void * MMemory::operator new(u64 size)
+/*void * MMemory::operator new(u64 size)
 {
     return LinearAllocator::Instance().Allocate(size);
-}
+}*/

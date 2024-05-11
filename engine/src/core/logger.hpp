@@ -36,6 +36,7 @@ public:
     void Shutdown();
     
     MAPI static void Output(LogLevel level, MString message, ...);
+    MAPI static void Output(LogLevel level, const char* message, ...);
 
     MAPI void* operator new(u64 size);
     //MAPI void operator delete(void* ptr);

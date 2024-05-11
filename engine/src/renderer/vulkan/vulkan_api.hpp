@@ -41,8 +41,8 @@ public:
     u32 FramebufferHeight{0};                           // Текущая высота фреймбуфера.
     u64 FramebufferSizeGeneration{0};                   // Текущее поколение размера кадрового буфера. Если он не соответствует FramebufferSizeLastGeneration, необходимо создать новый.
     u64 FramebufferSizeLastGeneration{0};               // Генерация кадрового буфера при его последнем создании. При обновлении установите значение FramebufferSizeGeneration.
-    VkInstance instance;                                // Дескриптор внутреннего экземпляра Vulkan.
-    VkAllocationCallbacks* allocator;                   // Внутренний распределитель Vulkan.
+    VkInstance instance{};                              // Дескриптор внутреннего экземпляра Vulkan.
+    VkAllocationCallbacks* allocator{nullptr};          // Внутренний распределитель Vulkan.
     VkSurfaceKHR surface{};                             // Внутренняя поверхность Vulkan, на которой будет отображаться окно.
 
 #if defined(_DEBUG)
@@ -53,25 +53,25 @@ public:
     VulkanSwapchain swapchain{};                        // Цепочка подкачки
     VulkanRenderPass MainRenderpass{};                  // Основной проход рендеринга мира.
     VulkanRenderPass UI_Renderpass{};                   // Проход рендеринга пользовательского интерфейса.
-    VulkanBuffer ObjectVertexBuffer;                    // Буфер вершин объекта, используемый для хранения вершин геометрии.
-    VulkanBuffer ObjectIndexBuffer;                     // Буфер индекса объекта, используемый для хранения индексов геометрии.
+    VulkanBuffer ObjectVertexBuffer{};                  // Буфер вершин объекта, используемый для хранения вершин геометрии.
+    VulkanBuffer ObjectIndexBuffer{};                   // Буфер индекса объекта, используемый для хранения индексов геометрии.
     DArray<VulkanCommandBuffer> GraphicsCommandBuffers; // Буферы графических команд, по одному на кадр.
     DArray<VkSemaphore> ImageAvailableSemaphores;       // Семафоры, используемые для обозначения доступности изображения, по одному на кадр.
     DArray<VkSemaphore> QueueCompleteSemaphores;        // Семафоры, используемые для обозначения доступности очереди, по одному на кадр.
-    u32 InFlightFenceCount;                             // Текущее количество бортовых ограждений.
-    VkFence InFlightFences[2];                          // Бортовые ограждения, используемые для указания приложению, когда кадр занят/готов.
-    VkFence* ImagesInFlight[3];                         // Содержит указатели на заборы, которые существуют и находятся в собственности в другом месте, по одному на кадр.
+    u32 InFlightFenceCount{};                           // Текущее количество бортовых ограждений.
+    VkFence InFlightFences[2]{};                        // Бортовые ограждения, используемые для указания приложению, когда кадр занят/готов.
+    VkFence* ImagesInFlight[3]{};                       // Содержит указатели на заборы, которые существуют и находятся в собственности в другом месте, по одному на кадр.
     u32 ImageIndex{0};                                  // Индекс текущего изображения.
     u32 CurrentFrame{0};                                // Текущий кадр.
     bool RecreatingSwapchain{false};                    // Указывает, воссоздается ли в данный момент цепочка обмена.
-    VulkanMaterialShader MaterialShader;                // Шейдер материала.
-    VulkanUI_Shader UI_Shader;                          // Шейдер пользовательского интерфейса.
+    VulkanMaterialShader MaterialShader{};              // Шейдер материала.
+    VulkanUI_Shader UI_Shader{};                        // Шейдер пользовательского интерфейса.
     Geometry geometries[VULKAN_MAX_GEOMETRY_COUNT]{};   // СДЕЛАТЬ: динамическим, копии геометрий хранятся в системе геометрий, возможно стоит хранить здесь указатели на геометрии
-    VkFramebuffer WorldFramebuffers[3];                 // Буферы кадров, используемые для рендеринга мира, по одному на кадр.
+    VkFramebuffer WorldFramebuffers[3]{};               // Буферы кадров, используемые для рендеринга мира, по одному на кадр.
 
 private:
-    u32 CachedFramebufferWidth;
-    u32 CachedFramebufferHeight;
+    u32 CachedFramebufferWidth{};
+    u32 CachedFramebufferHeight{};
 
 public:
     VulkanAPI() = default;
@@ -106,7 +106,7 @@ private:
     bool RecreateSwapchain();
     bool CreateBuffers();
 
-    void UploadDataRange(VkCommandPool pool, VkFence fence, VkQueue queue, VulkanBuffer& buffer, u64 offset, u64 size, const void* data);
+    bool UploadDataRange(VkCommandPool pool, VkFence fence, VkQueue queue, VulkanBuffer& buffer, u64& OutOffset, u64 size, const void* data);
     void FreeDataRange(VulkanBuffer* buffer, u64 offset, u64 size);
     
 };

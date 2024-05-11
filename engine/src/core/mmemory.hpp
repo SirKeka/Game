@@ -66,16 +66,16 @@ private:
     }* state;
     
 public:
-    // MMemory() = default;
+    MMemory() = default;
     // MMemory(const MMemory&) = delete;
     // MMemory& operator=(MMemory&) = delete;
     ~MMemory(); /*noexcept*/ //= default;
     /// @brief Инициализирует систему памяти.
     /// @param TotalAllocSize общий размер распределителя
     /// @return true если инициализация успеша, иначе false
-    bool Initialize(u64 TotalAllocSize);
+    static bool Initialize(u64 TotalAllocSize);
     /// @brief Выключает систему памяти.
-    void Shutdown();
+    static void Shutdown();
     /// @brief Функция выделяет память
     /// @param bytes размер выделяемой памяти в байтах
     /// @param tag название(тег) для каких нужд используется память
@@ -88,12 +88,28 @@ public:
             MWARN("allocate вызывается с использованием MemoryTag::Unknown. Переклассифицировать это распределение.");
         }
 
-        state->TotalAllocated += size * sizeof(T);
-        state->TaggedAllocations[static_cast<u32>(tag)] += size * sizeof(T);
+        // Либо выделяйте из системного распределителя, либо из ОС. Последнее никогда не должно произойти.
+        void* block = nullptr;
 
-        T* ptrRawMem = new T[size]();
+        if (state) {
+            state->TotalAllocated += size;
+            state->TaggedAllocations[static_cast<u32>(tag)] += size;
+            state->AllocCount++;
+            block = state->allocator.Allocate(size);
+        } else {
+            // Если система еще не запустилась, предупредите об этом, но дайте пока память.
+            MWARN("Memory::Allocate вызывается перед инициализацией системы памяти.");
+            // СДЕЛАТЬ: Выравнивание памяти
+            block = new u8[size](); //platform_allocate(size, false);
+        }
 
-        return ptrRawMem;
+        if (block) {
+            return (reinterpret_cast<T*>(block));
+        }
+    
+        MFATAL("MMemory::Allocate не удалось успешно распределить.");
+        return nullptr;
+
     }
 
     /// @brief Функция освобождает память
@@ -152,5 +168,5 @@ public:
 
     static MString GetMemoryUsageStr();
 
-    void* operator new(u64 size);
+    //void* operator new(u64 size);
 };

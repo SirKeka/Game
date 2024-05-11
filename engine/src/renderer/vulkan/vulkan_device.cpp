@@ -131,20 +131,14 @@ void VulkanDevice::Destroy(VulkanAPI *VkAPI)
     PhysicalDevice = 0;
 
     if (SwapchainSupport.formats) {
-        MMemory::TFree<VkSurfaceFormatKHR>(
-            SwapchainSupport.formats,
-            SwapchainSupport.FormatCount,
-            MemoryTag::Renderer);
-        SwapchainSupport.formats = 0;
+        MMemory::Free(SwapchainSupport.formats, sizeof(VkSurfaceFormatKHR) * SwapchainSupport.FormatCount, MemoryTag::Renderer);
+        SwapchainSupport.formats = nullptr;
         SwapchainSupport.FormatCount = 0;
     }
 
     if (SwapchainSupport.PresentModes) {
-        MMemory::TFree<VkPresentModeKHR>(
-            SwapchainSupport.PresentModes,
-            SwapchainSupport.PresentModeCount,
-            MemoryTag::Renderer);
-        SwapchainSupport.PresentModes = 0;
+        MMemory::Free(SwapchainSupport.PresentModes, sizeof(VkPresentModeKHR) * SwapchainSupport.PresentModeCount, MemoryTag::Renderer);
+        SwapchainSupport.PresentModes = nullptr;
         SwapchainSupport.PresentModeCount = 0;
     }
 
@@ -477,7 +471,7 @@ bool VulkanDevice::PhysicalDeviceMeetsRequirements(
 
                 u32 RequiredExtensionCount = requirements->DeviceExtensionNames.Lenght();
                 for (u32 i = 0; i < RequiredExtensionCount; ++i) {
-                    b8 found = FALSE;
+                    bool found = false;
                     for (u32 j = 0; j < AvailableExtensionCount; ++j) {
                         if (StringsEqual(requirements->DeviceExtensionNames[i], AvailableExtensions[j].extensionName)) {
                             found = true;

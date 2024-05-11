@@ -4,12 +4,13 @@
 #include <string>
 #include <stdarg.h>
 
-MString::MString() : str(nullptr), lenght(0){   }
+MString::MString() : str(nullptr), lenght() {}
 
 MString::MString(u64 lenght)
 {
     this->lenght = lenght + 1;
     this->str = MMemory::TAllocate<char>(lenght, MemoryTag::String);
+    this->str[lenght] = '\0';
 }
 
 MString::MString(const char *s)
@@ -34,17 +35,19 @@ MString::MString(MString &&s) : str(s.str), lenght(s.lenght)
 
 MString::~MString()
 {
-    MMemory::TFree<char>(str, lenght, MemoryTag::String);
-    lenght = 0;
+    if (str) {
+        MMemory::Free(str, lenght, MemoryTag::String);
+        lenght = 0;
+    }
 }
 
 MString &MString::operator=(const MString &s)
 {
-    if (this->lenght < s.lenght) {
+    if (str) {
         Destroy();
-        lenght = s.lenght + 1;
-        this->str = MMemory::TAllocate<char>(lenght, MemoryTag::String);
     }
+    lenght = s.lenght + 1;
+    this->str = MMemory::TAllocate<char>(lenght, MemoryTag::String);
 
     MMemory::CopyMem(this->str, s.str, lenght);
     
@@ -53,11 +56,12 @@ MString &MString::operator=(const MString &s)
 
 MString &MString::operator=(const char *s)
 {
-    if (this->lenght < strlen(s)) {
+    if(str) {
         Destroy();
-        lenght = strlen(s) + 1;
-        this->str = MMemory::TAllocate<char>(lenght, MemoryTag::String);
     }
+    lenght = strlen(s) + 1;
+    str = reinterpret_cast<char*>(MMemory::Allocate(lenght, MemoryTag::String));
+    //this->str = MMemory::TAllocate<char>(lenght, MemoryTag::String);
 
     MMemory::CopyMem(this->str, s, lenght);
     

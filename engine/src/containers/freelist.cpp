@@ -16,8 +16,25 @@ FreeList::~FreeList()
     }
 }
 
+u64 FreeList::GetMemoryRequirement(u64 TotalSize)
+{
+    // Если требуемая память слишком мала, следует предупредить о нерациональном использовании.
+    u64 MemMin = (sizeof(FreeListState) + sizeof(FreelistNode)) * 8;
+    if (TotalSize < MemMin) {
+        MWARN("Списки свободной памяти очень неэффективны при объеме памяти менее %iбайт; в этом случае рекомендуется не использовать данную структуру.", MemMin);
+    }
+    // Достаточно места для хранения состояния плюс массив для всех узлов.
+    u64 MaxNodes = TotalSize / (sizeof(void*) * sizeof(FreelistNode));  // ПРИМЕЧАНИЕ: Может быть остаток, но это нормально.
+    return (sizeof(FreeListState) + (sizeof(FreelistNode) * MaxNodes));
+}
+
 void FreeList::GetMemoryRequirement(u64 TotalSize, u64 &MemoryRequirement)
 {
+    if (state && state->TotalSize > TotalSize) {
+        MERROR("Новый размер должен быть больше старого.")
+        return;
+    }
+    
     // Достаточно места для хранения состояния плюс массив для всех узлов.
     u64 MaxNodes = TotalSize / (sizeof(void*) * sizeof(FreelistNode));  // ПРИМЕЧАНИЕ: Может быть остаток, но это нормально.
     MemoryRequirement = sizeof(FreeListState) + (sizeof(FreelistNode) * MaxNodes);
@@ -25,9 +42,7 @@ void FreeList::GetMemoryRequirement(u64 TotalSize, u64 &MemoryRequirement)
     // Если требуемая память слишком мала, следует предупредить о нерациональном использовании.
     u64 MemMin = (sizeof(FreeListState) + sizeof(FreelistNode)) * 8;
     if (TotalSize < MemMin) {
-        MWARN(
-            "Списки свободной памяти очень неэффективны при объеме памяти менее %iбайт; в этом случае рекомендуется не использовать данную структуру.",
-            MemMin);
+        MWARN("Списки свободной памяти очень неэффективны при объеме памяти менее %iбайт; в этом случае рекомендуется не использовать данную структуру.", MemMin);
     }
 }
 

@@ -878,8 +878,14 @@ bool VulkanAPI::CreateBuffers()
     return true;
 }
 
-void VulkanAPI::UploadDataRange(VkCommandPool pool, VkFence fence, VkQueue queue, VulkanBuffer &buffer, u64 offset, u64 size, const void *data)
+bool VulkanAPI::UploadDataRange(VkCommandPool pool, VkFence fence, VkQueue queue, VulkanBuffer &buffer, u64 &OutOffset, u64 size, const void *data)
 {
+    // Выделить место в буфере.
+    if (!buffer.Allocate(size, OutOffset)) {
+        MERROR("VulkanAPI::UploadDataRange не удалось выделить данные из данного буфера!");
+        return false;
+    }
+
     // Создание промежуточного буфера, видимого хосту, для загрузки. Отметьте его как источник передачи.
     VkBufferUsageFlags flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
     VulkanBuffer staging;
@@ -889,16 +895,19 @@ void VulkanAPI::UploadDataRange(VkCommandPool pool, VkFence fence, VkQueue queue
     staging.LoadData(this, 0, size, 0, data);
 
     // Копирование из промежуточного хранилища в локальный буфер устройства.
-    staging.CopyTo(this, pool, fence, queue, 0, buffer.handle, offset, size);
+    staging.CopyTo(this, pool, fence, queue, 0, buffer.handle, OutOffset, size);
 
     // Очистка промежуточного буфера.
     staging.Destroy(this);
+
+    return true;
 }
 
 void VulkanAPI::FreeDataRange(VulkanBuffer *buffer, u64 offset, u64 size)
 {
-    // TODO: Освободить это в буфере.
-    // TODO: обновить список свободной памяти, чтобы этот диапазон был свободным.
+    if (buffer) {
+        buffer->Free(size, offset);
+    }
 }
 
 bool VulkanAPI::RecreateSwapchain()

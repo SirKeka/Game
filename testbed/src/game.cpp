@@ -12,19 +12,23 @@ Game::Game(i16 StartPosX, i16 StartPosY, i16 StartWidth, i16 StartHeight, const 
     AppConfig.StartHeight = StartHeight;
     AppConfig.name = name;
 
-    State = nullptr;
+    StateMemoryRequirement = sizeof(GameState);
+    state = nullptr;
+    application = nullptr;
 }
 
 bool Game::Initialize()
 {
-    MDEBUG("game_initialize() called!");
-    
-    CameraPosition = Vector3D<f32> (0, 0, 30.f);
-    CameraEuler = Vector3D<f32>::Zero();
+    MDEBUG("Game::Initialize вызван!");
 
-    view = Matrix4D::MakeTranslation(CameraPosition);
-    view.Inverse();
-    CameraViewDirty = true;
+    gameState = reinterpret_cast<GameState*>(state);
+    
+    gameState->CameraPosition = Vector3D<f32> (0, 0, 30.f);
+    gameState->CameraEuler = Vector3D<f32>::Zero();
+
+    gameState->view = Matrix4D::MakeTranslation(gameState->CameraPosition);
+    gameState->view.Inverse();
+    gameState->CameraViewDirty = true;
     
     return true;
 }
@@ -68,23 +72,23 @@ bool Game::Update(f32 DeltaTime)
 
     //Не работает
     if (Input::Instance()->IsKeyDown(KEY_W)) {
-        Vector3D<f32> forward = Matrix4::Forward(view);
+        Vector3D<f32> forward = Matrix4::Forward(gameState->view);
         velocity += forward;
     }
 
     //Не работает
     if (Input::Instance()->IsKeyDown(KEY_S)) {
-        Vector3D<f32> backward = Matrix4::Backward(view);
+        Vector3D<f32> backward = Matrix4::Backward(gameState->view);
         velocity += backward;
     }
 
     if (Input::Instance()->IsKeyDown(KEY_Q)) {
-        Vector3D<f32> left = Matrix4::Left(view);
+        Vector3D<f32> left = Matrix4::Left(gameState->view);
         velocity += left;
     }
 
     if (Input::Instance()->IsKeyDown(KEY_E)) {
-        Vector3D<f32> right = Matrix4::Right(view);
+        Vector3D<f32> right = Matrix4::Right(gameState->view);
         velocity += right;
     }
 
@@ -100,15 +104,15 @@ bool Game::Update(f32 DeltaTime)
     if (!Compare(z, velocity, 0.0002f)) {
         // Обязательно нормализуйте скорость перед применением.
         velocity.Normalize();
-        CameraPosition.x += velocity.x * TempMoveSpeed * DeltaTime;
-        CameraPosition.y += velocity.y * TempMoveSpeed * DeltaTime;
-        CameraPosition.z += velocity.z * TempMoveSpeed * DeltaTime;
-        CameraViewDirty = true;
+        gameState->CameraPosition.x += velocity.x * TempMoveSpeed * DeltaTime;
+        gameState->CameraPosition.y += velocity.y * TempMoveSpeed * DeltaTime;
+        gameState->CameraPosition.z += velocity.z * TempMoveSpeed * DeltaTime;
+        gameState->CameraViewDirty = true;
     }
 
     RecalculateViewMatrix();
 
-    State->AppState->Render->SetView(view);
+    application->State->Render->SetView(gameState->view);
 
     return true;
 }
@@ -127,7 +131,7 @@ Game::~Game()
 {
 }
 
-void *Game::operator new(u64 size)
+/*void *Game::operator new(u64 size)
 {   
     return MMemory::Allocate(size, MemoryTag::Game);
 }
@@ -135,34 +139,34 @@ void *Game::operator new(u64 size)
 void Game::operator delete(void *ptr)
 {
     MMemory::Free(ptr,sizeof(Game), MemoryTag::Game);
-}
+}*/
 
 void Game::RecalculateViewMatrix()
 {
-    if(CameraViewDirty) {
-        Matrix4D rotation = Matrix4::MakeEulerXYZ(CameraEuler);
-        Matrix4D translation = Matrix4D::MakeTranslation(CameraPosition);
+    if(gameState->CameraViewDirty) {
+        Matrix4D rotation = Matrix4::MakeEulerXYZ(gameState->CameraEuler);
+        Matrix4D translation = Matrix4D::MakeTranslation(gameState->CameraPosition);
 
-        view = rotation * translation;
-        view.Inverse();
+        gameState->view = rotation * translation;
+        gameState->view.Inverse();
 
-        CameraViewDirty = false;
+        gameState->CameraViewDirty = false;
     }
 }
 
 void Game::CameraYaw(f32 amount)
 {
-    CameraEuler.y += amount;
-    CameraViewDirty = true;
+    gameState->CameraEuler.y += amount;
+    gameState->CameraViewDirty = true;
 }
 
 void Game::CameraPitch(f32 amount)
 {
-    CameraEuler.x += amount;
+    gameState->CameraEuler.x += amount;
 
     // Зажмите, чтобы избежать блокировки Gimball.
     f32 limit = Math::DegToRad(89.0f);
-    CameraEuler.x = MCLAMP(CameraEuler.x, -limit, limit);
+    gameState->CameraEuler.x = MCLAMP(gameState->CameraEuler.x, -limit, limit);
 
-    CameraViewDirty = true;
+    gameState->CameraViewDirty = true;
 }

@@ -7,42 +7,43 @@
 #include "systems/geometry_system.hpp"
 #include "systems/resource_system.hpp"
 
-ApplicationState* Application::AppState;
+ApplicationState* Application::State = nullptr;
 
 bool Application::ApplicationCreate(GameTypes *GameInst)
 {
-    if (GameInst->State) {
+    if (GameInst->application) {
         MERROR("ApplicationCreate вызывался более одного раза.");
         return false;
     }
 
     // Система памяти должна быть установлена в первую очередь. 
-    AppState->mem = new MMemory();
-    if (!AppState->mem->Initialize(GIBIBYTES(1))) {
+    //State->mem = new MMemory();
+    if (!MMemory::Initialize(GIBIBYTES(1))) {
         MERROR("Не удалось инициализировать систему памяти; Выключение.");
         return false;
     }
 
-    GameInst->State->AppState = MMemory::TAllocate<ApplicationState>(1, MemoryTag::Application);
-    AppState = GameInst->State->AppState;
-    AppState->GameInst = GameInst;
-    AppState->IsRunning = false;
-    AppState->IsSuspended = false;
+    GameInst->state = MMemory::Allocate(GameInst->StateMemoryRequirement, MemoryTag::Application);
+    GameInst->application->State = MMemory::TAllocate<ApplicationState>(1, MemoryTag::Application);
+    State = GameInst->application->State;
+    State->GameInst = GameInst;
+    State->IsRunning = false;
+    State->IsSuspended = false;
 
     u64 SystemsAllocatorTotalSize = 64 * 1024 * 1024;  // 64 mb
     LinearAllocator::Instance().Initialize(SystemsAllocatorTotalSize);
 
     // Инициализируйте подсистемы.
-    AppState->logger = new Logger();
-    if (!AppState->logger->Initialize()) { // AppState->logger->Initialize();
+    State->logger = new Logger();
+    if (!State->logger->Initialize()) { // AppState->logger->Initialize();
         MERROR("Не удалось инициализировать систему ведения журнала; завершение работы.");
         return false;
     }
 
     Input::Instance()->Initialize();
 
-    AppState->IsRunning = true;
-    AppState->IsSuspended = false;
+    State->IsRunning = true;
+    State->IsSuspended = false;
 
     //AppState->Events = new Event();
     if (!Event::GetInstance()->Initialize()) {
@@ -57,15 +58,15 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
     //TODO: временно
     Event::GetInstance()->Register(EVENT_CODE_DEBUG0, nullptr, OnDebugEvent);
     //TODO: временно
-    AppState->Window = new MWindow(GameInst->AppConfig.name,
+    State->Window = new MWindow(GameInst->AppConfig.name,
                         GameInst->AppConfig.StartPosX, 
                         GameInst->AppConfig.StartPosY, 
                         GameInst->AppConfig.StartHeight, 
                         GameInst->AppConfig.StartWidth);
 
-    if (!AppState->Window) {
+    if (!State->Window) {
         return false;
-    } else AppState->Window->Create();
+    } else State->Window->Create();
 
     // Система ресурсов
     ResourceSystem::SetMaxLoaderCount(32);
@@ -74,9 +75,9 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
         return false;
     }
 
-    AppState->Render = new Renderer();
+    State->Render = new Renderer();
     // Запуск рендерера
-    if (!AppState->Render->Initialize(AppState->Window, GameInst->AppConfig.name, ERendererType::VULKAN)) {
+    if (!State->Render->Initialize(State->Window, GameInst->AppConfig.name, ERendererType::VULKAN)) {
         MFATAL("Не удалось инициализировать средство визуализации. Прерывание приложения.");
         return false;
     }
@@ -106,7 +107,7 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
 
     // Загрузите конфигурацию плоскости и загрузите из нее геометрию.
     GeometryConfig gConfig = GeometrySystem::Instance()->GeneratePlaneConfig(10.0f, 5.0f, 5, 5, 5.0f, 2.0f, "test geometry", "test_material");
-    AppState->TestGeometry = GeometrySystem::Instance()->Acquire(gConfig, true);
+    State->TestGeometry = GeometrySystem::Instance()->Acquire(gConfig, true);
 
     // Очистите места для конфигурации геометрии.
     MMemory::Free(gConfig.vertices, gConfig.VertexCount * sizeof(Vertex3D), MemoryTag::Array);
@@ -150,7 +151,7 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
     GeometryConfig UI_Config {sizeof(Vertex2D), 4, uiverts, sizeof(u32), 6, uiindices, "test_ui_material", "test_ui_geometry"};
 
     // Получите геометрию пользовательского интерфейса из конфигурации.
-    AppState->TestUI_Geometry = GeometrySystem::Instance()->Acquire(UI_Config, true);
+    State->TestUI_Geometry = GeometrySystem::Instance()->Acquire(UI_Config, true);
 
     // Загрузите геометрию по умолчанию.
     // AppState->TestGeometry = GeometrySystem::Instance()->GetDefault();
@@ -162,43 +163,43 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
         return false;
     }
 
-    GameInst->OnResize(AppState->width, AppState->height);
+    GameInst->OnResize(State->width, State->height);
 
     return true;
 }
 
 bool Application::ApplicationRun() {
-    AppState->clock.Start();
-    AppState->clock.Update();
-    AppState->LastTime = AppState->clock.elapsed;
+    State->clock.Start();
+    State->clock.Update();
+    State->LastTime = State->clock.elapsed;
     f64 RunningTime = 0;
     u8 FrameCount = 0;
     f64 TargetFrameSeconds = 1.0f / 60;
 
     MINFO(MMemory::GetMemoryUsageStr());
 
-    while (AppState->IsRunning) {
-        if(!AppState->Window->Messages()) {
-            AppState->IsRunning = false;
+    while (State->IsRunning) {
+        if(!State->Window->Messages()) {
+            State->IsRunning = false;
         }
 
-        if(!AppState->IsSuspended) {
+        if(!State->IsSuspended) {
             // Обновите часы и получите разницу во времени.
-                AppState->clock.Update();
-                f64 CurrentTime = AppState->clock.elapsed;
-                f64 delta = (CurrentTime - AppState->LastTime);
+                State->clock.Update();
+                f64 CurrentTime = State->clock.elapsed;
+                f64 delta = (CurrentTime - State->LastTime);
                 f64 FrameStartTime = MWindow::PlatformGetAbsoluteTime();
 
-            if (!AppState->GameInst->Update(delta)) {
+            if (!State->GameInst->Update(delta)) {
                 MFATAL("Ошибка обновления игры, выключение.");
-                AppState->IsRunning = false;
+                State->IsRunning = false;
                 break;
             }
 
             // Вызовите процедуру рендеринга игры.
-            if (!AppState->GameInst->Render(delta)) {
+            if (!State->GameInst->Render(delta)) {
                 MFATAL("Ошибка рендеринга игры, выключение.");
-                AppState->IsRunning = false;
+                State->IsRunning = false;
                 break;
             }
 
@@ -208,20 +209,20 @@ bool Application::ApplicationRun() {
 
             // TODO: временно
             GeometryRenderData TestRender;
-            TestRender.gid = AppState->TestGeometry;
+            TestRender.gid = State->TestGeometry;
             TestRender.model = Matrix4D::MakeIdentity();
 
             packet.GeometryCount = 1;
             packet.geometries = &TestRender;
 
             GeometryRenderData TestUI_Render;
-            TestUI_Render.gid = AppState->TestUI_Geometry;
+            TestUI_Render.gid = State->TestUI_Geometry;
             TestUI_Render.model = Matrix4D::MakeTranslation(Vector3D<f32>{0, 0, 0});
             packet.UI_GeometryCount = 1;
             packet.UI_Geometries = &TestUI_Render;
             // TODO: временно
 
-            AppState->Render->DrawFrame(&packet);
+            State->Render->DrawFrame(&packet);
 
             // Выясните, сколько времени занял кадр и, если ниже
             f64 FrameEndTime = MWindow::PlatformGetAbsoluteTime();
@@ -247,11 +248,11 @@ bool Application::ApplicationRun() {
             Input::Instance()->Update(delta);
 
             // Update last time
-            AppState->LastTime = CurrentTime;
+            State->LastTime = CurrentTime;
         }
     }
 
-    AppState->IsRunning = false;
+    State->IsRunning = false;
 
     // Отключение системы событий.
     Event::GetInstance()->Unregister(EVENT_CODE_APPLICATION_QUIT, nullptr, OnEvent);
@@ -267,19 +268,19 @@ bool Application::ApplicationRun() {
     MaterialSystem::Instance()->Shutdown();
     TextureSystem::Instance()->Shutdown();
     ResourceSystem::Instance()->Shutdown();
-    AppState->Render->Shutdown();
+    State->Render->Shutdown();
 
-    AppState->Window->Close();
-    AppState->logger->Shutdown();
-    AppState->mem->Shutdown();
+    State->Window->Close();
+    State->logger->Shutdown();
+    MMemory::Shutdown();
 
     return true;
 }
 
 void Application::ApplicationGetFramebufferSize(u32 & width, u32 & height)
 {
-    width = AppState->width;
-    height = AppState->height;
+    width = State->width;
+    height = State->height;
 }
 
 void *Application::operator new(u64 size)
@@ -297,7 +298,7 @@ bool Application::OnEvent(u16 code, void *sender, void *ListenerInst, EventConte
     switch (code) {
         case EVENT_CODE_APPLICATION_QUIT: {
             MINFO("Получено событие EVENT_CODE_APPLICATION_QUIT, завершение работы.\n");
-            AppState->IsRunning = false;
+            State->IsRunning = false;
             return true;
         }
     }
@@ -342,24 +343,24 @@ bool Application::OnResized(u16 code, void *sender, void *ListenerInst, EventCon
         u16 height = context.data.u16[1];
 
         // Проверьте, отличается ли это. Если да, запустите событие изменения размера.
-        if (width != AppState->width || height != AppState->height) {
-            AppState->width = width;
-            AppState->height = height;
+        if (width != State->width || height != State->height) {
+            State->width = width;
+            State->height = height;
 
             MDEBUG("Изменение размера окна: %i, %i", width, height);
 
             // Обработка сворачивания
             if (width == 0 || height == 0) {
                 MINFO("Окно свернуто, приложение приостанавливается.");
-                AppState->IsSuspended = true;
+                State->IsSuspended = true;
                 return true;
             } else {
-                if (AppState->IsSuspended) {
+                if (State->IsSuspended) {
                     MINFO("Окно восстановлено, возобновляется приложение.");
-                    AppState->IsSuspended = false;
+                    State->IsSuspended = false;
                 }
-                AppState->GameInst->OnResize(width, height);
-                AppState->Render->OnResized(width, height);
+                State->GameInst->OnResize(width, height);
+                State->Render->OnResized(width, height);
             }
         }
     }
@@ -383,11 +384,11 @@ bool Application::OnDebugEvent(u16 code, void *sender, void *ListenerInst, Event
     choice %= 3;
 
     // Приобретите новую текстуру.
-    if (AppState->TestGeometry) {
-        AppState->TestGeometry->material->DiffuseMap.texture = TextureSystem::Instance()->Acquire(names[choice], true);
-        if (!AppState->TestGeometry->material->DiffuseMap.texture) {
+    if (State->TestGeometry) {
+        State->TestGeometry->material->DiffuseMap.texture = TextureSystem::Instance()->Acquire(names[choice], true);
+        if (!State->TestGeometry->material->DiffuseMap.texture) {
             MWARN("Event::OnDebugEvent нет текстуры! используется значение по умолчанию");
-            AppState->TestGeometry->material->DiffuseMap.texture = TextureSystem::Instance()->GetDefaultTexture();
+            State->TestGeometry->material->DiffuseMap.texture = TextureSystem::Instance()->GetDefaultTexture();
         }
 
         // Освободите старую текстуру.

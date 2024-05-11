@@ -26,10 +26,14 @@ public:
     /// @brief Уничтожает список
     ~FreeList();
 
+    /// @brief Рассчитывает значение памяти нужное для списка свободных мест
+    /// @param TotalSize общий размер в байтах, который должен отслеживать список свободных мест.
+    /// @return значение требуемой памяти для списка свободных мест.
+    static u64 GetMemoryRequirement(u64 TotalSize);
     /// @brief Присваивает значению MemoryRequirement новое
     /// @param TotalSize общий размер в байтах, который должен отслеживать список свободных мест.
     /// @param MemoryRequirement ссылка на переменную, которая хранит значение требуемой памяти для самого списка свободных мест.
-    static void GetMemoryRequirement(u64 TotalSize, u64& MemoryRequirement);
+    void GetMemoryRequirement(u64 TotalSize, u64& MemoryRequirement);
     /// @brief Создает новый свободный список. 
     /// @param memory nullptr или предварительно выделенный блок памяти для использования списком свободных мест.
     void Create(u64 TotalSize, void* memory);

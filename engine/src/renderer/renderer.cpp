@@ -121,7 +121,7 @@ bool Renderer::DrawFrame(RenderPacket *packet)
 
         if (!result) {
             MERROR("Ошибка EndFrame. Приложение закрывается...");
-            return FALSE;
+            return false;
         }
     }
 

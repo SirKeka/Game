@@ -4,6 +4,7 @@
 #include "vulkan_device.hpp"
 #include "vulkan_command_buffer.hpp"
 
+
 VulkanBuffer::VulkanBuffer() 
     : 
     TotalSize(), 
@@ -17,6 +18,17 @@ VulkanBuffer::VulkanBuffer()
     FreeListBlock(nullptr), 
     BufferFreeList() {}
 
+VulkanBuffer::~VulkanBuffer()
+{
+    if (FreeListBlock) {
+        // Обязательно уничтожьте свободный список.
+        CleanupFreelist();
+    }
+    TotalSize = 0;
+    usage = {};
+    IsLocked = false;
+}
+
 bool VulkanBuffer::Create(
     VulkanAPI *VkAPI,
     u64 size,
@@ -24,10 +36,14 @@ bool VulkanBuffer::Create(
     u32 MemoryPropertyFlags,
     bool BindOnCreate)
 {
-    // MMemory::ZeroMem(out_buffer, sizeof(vulkan_buffer));
     this->TotalSize = size;
     this->usage = usage;
     this->MemoryPropertyFlags = MemoryPropertyFlags;
+
+    // Создание свободного списка
+    BufferFreeList.GetMemoryRequirement(size, FreeListMemoryRequirement);
+    FreeListBlock = MMemory::Allocate(FreeListMemoryRequirement, MemoryTag::Renderer);
+    BufferFreeList.Create(size, FreeListBlock);
 
     VkBufferCreateInfo BufferInfo = {VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
     BufferInfo.size = size;
@@ -42,6 +58,8 @@ bool VulkanBuffer::Create(
     this->MemoryIndex = VkAPI->FindMemoryIndex(requirements.memoryTypeBits, this->MemoryPropertyFlags);
     if (this->MemoryIndex == -1) {
         MERROR("Не удалось создать буфер vulkan, поскольку не был найден индекс требуемого типа памяти.");
+        // Обязательно уничтожьте свободный список.
+        CleanupFreelist();
         return false;
     }
 
@@ -59,6 +77,8 @@ bool VulkanBuffer::Create(
 
     if (result != VK_SUCCESS) {
         MERROR("Не удалось создать буфер vulkan из-за сбоя выделения требуемой памяти. Ошибка: %i", result);
+        // Обязательно уничтожьте свободный список.
+        CleanupFreelist();
         return false;
     }
 
@@ -71,6 +91,7 @@ bool VulkanBuffer::Create(
 
 void VulkanBuffer::Destroy(VulkanAPI *VkAPI)
 {
+    this->~VulkanBuffer();
     if (memory) {
         vkFreeMemory(VkAPI->Device.LogicalDevice, memory, VkAPI->allocator);
         memory = 0;
@@ -79,13 +100,32 @@ void VulkanBuffer::Destroy(VulkanAPI *VkAPI)
         vkDestroyBuffer(VkAPI->Device.LogicalDevice, handle, VkAPI->allocator);
         handle = 0;
     }
-    TotalSize = 0;
-    usage = {};
-    IsLocked = false;
 }
 
 bool VulkanBuffer::Resize(VulkanAPI *VkAPI, u64 NewSize, VkQueue queue, VkCommandPool pool)
 {
+    // Sanity check.
+    if (NewSize < TotalSize) {
+        MERROR("VulkanBuffer::Resize требует, чтобы новый размер был больше старого. Невыполнение этого требования может привести к потере данных.");
+        return false;
+    }
+
+    // Сначала измените размер свободного списка.
+    u64 NewMemoryRequirement = 0;
+    BufferFreeList.GetMemoryRequirement(NewSize, NewMemoryRequirement);
+    void* NewBlock = MMemory::Allocate(NewMemoryRequirement, MemoryTag::Renderer);
+    void* OldBlock = nullptr;
+    if (!BufferFreeList.Resize(NewBlock, NewSize, &OldBlock)) {
+        MERROR("VulkanBuffer::Resize не удалось изменить размер внутреннего списка свободных мест.");
+        MMemory::Free(NewBlock, NewMemoryRequirement, MemoryTag::Renderer);
+        return false;
+    }
+    // Очистите старую память, затем назначьте новые свойства.
+    MMemory::Free(OldBlock, FreeListMemoryRequirement, MemoryTag::Renderer);
+    FreeListMemoryRequirement = NewMemoryRequirement;
+    FreeListBlock = NewBlock;
+    TotalSize = NewSize;
+
     // Создайте новый буфер.
     VkBufferCreateInfo BufferInfo = {VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
     BufferInfo.size = NewSize;
@@ -158,7 +198,22 @@ void VulkanBuffer::UnlockMemory(VulkanAPI *VkAPI)
 
 bool VulkanBuffer::Allocate(u64 size, u64 &OutOffset)
 {
-    return false;
+    if (!size) {
+        MERROR("VulkanBuffer::Allocate требуется ненулевой размер.");
+        return false;
+    }
+
+    return BufferFreeList.AllocateBlock(size, OutOffset);
+}
+
+bool VulkanBuffer::Free(u64 size, u64 offset)
+{
+    if (!size) {
+        MERROR("VulkanBuffer::Free требуется ненулевой размер.");
+        return false;
+    }
+
+    return BufferFreeList.FreeBlock(size, offset);
 }
 
 void VulkanBuffer::LoadData(VulkanAPI *VkAPI, u64 offset, u64 size, u32 flags, const void *data)
@@ -193,4 +248,12 @@ void VulkanBuffer::CopyTo(
 
     // Отправьте буфер на выполнение и дождитесь его завершения.
     VulkanCommandBufferEndSingleUse(VkAPI, pool, &TempCommandBuffer, queue);
+}
+
+void VulkanBuffer::CleanupFreelist()
+{
+    BufferFreeList.~FreeList();
+    MMemory::Free(FreeListBlock, FreeListMemoryRequirement, MemoryTag::Renderer);
+    FreeListMemoryRequirement = 0;
+    FreeListBlock = nullptr;
 }

@@ -361,7 +361,7 @@ MINLINE const bool Compare(const Vector3D<T> &v1, const Vector3D<T> &v2, f32 tol
     }
 
     if (Math::abs(v1.y - v2.y) > tolerance) {
-        return FALSE;
+        return false;
     }
 
     if (Math::abs(v1.z - v2.z) > tolerance) {

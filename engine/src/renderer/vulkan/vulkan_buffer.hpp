@@ -28,7 +28,7 @@ public:
     FreeList BufferFreeList;        // Свободный список для отслеживания выделений.
 public:
     VulkanBuffer();
-    ~VulkanBuffer() {};
+    ~VulkanBuffer();
 
     /// @brief Создает новый буфер Vulkan.
     /// @param VkAPI указатель на класс отрисовщика Vulkan.
@@ -102,4 +102,6 @@ public:
                 VkBuffer dest,
                 u64 DestOffset,
                 u64 size);
+private:
+    void CleanupFreelist();
 };

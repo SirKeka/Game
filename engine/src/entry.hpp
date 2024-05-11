@@ -8,14 +8,14 @@
 #include <stdlib.h>
 
 // Внешне определенная функция для создания игры.
-extern bool CreateGame(GameTypes& OutGame);
+extern bool CreateGame(GameTypes*& OutGame);
 
 // Основная точка входа в приложение.Основная точка входа в приложение.
 int main(void) {
     system("chcp 65001 > nul"); // для отображения русских символов в консоли
 
     // Запросите экземпляр игры из приложения.
-    GameTypes GameInst;
+    GameTypes* GameInst;
     
     if (!CreateGame(GameInst)) {
         MFATAL("Не удалось создать игру!");
@@ -23,13 +23,13 @@ int main(void) {
     }
     
     // Инициализация.
-    if (!GameInst->State->ApplicationCreate(GameInst)) {
+    if (!GameInst->application->ApplicationCreate(GameInst)) {
         MINFO("Приложение не удалось создать!");
         return 1;
     }
 
     // Начать игровой цикл.
-    if(!GameInst->State->ApplicationRun()) {
+    if(!GameInst->application->ApplicationRun()) {
         MINFO("Приложение не завершило работу корректно.");
         return 2;
     }

@@ -31,9 +31,8 @@ bool Event::Register(u16 code, void *listener, PFN_OnEvent OnEvent)
         return false;
     }
 
-    DArray<u64> RegisteredCount;
-    u64 registered_count = registered[code].events.Lenght();
-    for(u64 i = 0; i < registered_count; ++i) {
+    u64 RegisteredCount = registered[code].events.Lenght();
+    for(u64 i = 0; i < RegisteredCount; ++i) {
         if(registered[code].events[i].listener == listener) {
             // TODO: warn
             return false;
