@@ -152,7 +152,7 @@ void Texture::Destroy(VulkanAPI *VkAPI)
         vkDestroySampler(VkAPI->Device.LogicalDevice, Data->sampler, VkAPI->allocator);
         Data->sampler = 0;
 
-    MMemory::TFree<VulkanTextureData>(Data, 1, MemoryTag::Texture);
+    MMemory::Free(Data, sizeof(VulkanTextureData), MemoryTag::Texture);
     }
     
     this->~Texture();

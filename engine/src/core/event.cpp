@@ -82,20 +82,20 @@ bool Event::Fire(u16 code, void *sender, EventContext context)
     }
 
     // Если для кода ничего не зарегистрировано, выйдите из системы.
-    if(registered[code].events.Capacity() == 0) {
+    if(registered[code].events.Lenght() == 0) {
         return false;
     }
 
     u64 RegisteredCount = registered[code].events.Lenght();
     for(u64 i = 0; i < RegisteredCount; ++i) {
-        RegisteredEvent e = registered[code].events[i];
+        RegisteredEvent& e = registered[code].events[i];
         if(e.callback(code, sender, e.listener, context)) {
             // Сообщение обработано, не отправляйте его другим слушателям.
             return true;
         }
     }
 
-    // Not found.
+    // Не найдено.
     return false;
 }
 

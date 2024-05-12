@@ -27,8 +27,6 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
     GameInst->application->State = MMemory::TAllocate<ApplicationState>(1, MemoryTag::Application);
     State = GameInst->application->State;
     State->GameInst = GameInst;
-    State->IsRunning = false;
-    State->IsSuspended = false;
 
     u64 SystemsAllocatorTotalSize = 64 * 1024 * 1024;  // 64 mb
     LinearAllocator::Instance().Initialize(SystemsAllocatorTotalSize);
@@ -364,7 +362,7 @@ bool Application::OnResized(u16 code, void *sender, void *ListenerInst, EventCon
             }
         }
     }
-
+    // Событие намеренно не обрабатывается, чтобы другие слушатели могли его получить.
     return false;
 }
 

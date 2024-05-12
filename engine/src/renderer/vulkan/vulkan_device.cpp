@@ -443,10 +443,10 @@ bool VulkanDevice::PhysicalDeviceMeetsRequirements(
         
         if (OutSwapchainSupport->FormatCount < 1 || OutSwapchainSupport->PresentModeCount < 1) {
             if (OutSwapchainSupport->formats) {
-                MMemory::TFree<VkSurfaceFormatKHR>(OutSwapchainSupport->formats, OutSwapchainSupport->FormatCount, MemoryTag::Renderer);
+                MMemory::Free(OutSwapchainSupport->formats, OutSwapchainSupport->FormatCount * sizeof(VkSurfaceFormatKHR), MemoryTag::Renderer);
             }
             if (OutSwapchainSupport->PresentModes) {
-                MMemory::TFree<VkPresentModeKHR>(OutSwapchainSupport->PresentModes, OutSwapchainSupport->PresentModeCount, MemoryTag::Renderer);
+                MMemory::Free(OutSwapchainSupport->PresentModes, OutSwapchainSupport->PresentModeCount * sizeof(VkPresentModeKHR), MemoryTag::Renderer);
             }
             MINFO("Требуемая поддержка swapchain отсутствует, устройство пропускается.");
             return false;
@@ -481,12 +481,12 @@ bool VulkanDevice::PhysicalDeviceMeetsRequirements(
 
                     if (!found) {
                         MINFO("Требуемое расширение не найдено: '%s', устройство пропускается.", requirements->DeviceExtensionNames[i]);
-                        MMemory::TFree<VkExtensionProperties>(AvailableExtensions, AvailableExtensionCount, MemoryTag::Renderer);
+                        MMemory::Free(AvailableExtensions, AvailableExtensionCount * sizeof(VkExtensionProperties), MemoryTag::Renderer);
                         return false;
                     }
                 }
             }
-            MMemory::TFree<VkExtensionProperties>(AvailableExtensions, AvailableExtensionCount, MemoryTag::Renderer);
+            MMemory::Free(AvailableExtensions, AvailableExtensionCount * sizeof(VkExtensionProperties), MemoryTag::Renderer);
         }
 
         // Sampler anisotropy

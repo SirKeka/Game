@@ -87,23 +87,25 @@ public:
         if (tag == MemoryTag::Unknown) {
             MWARN("allocate вызывается с использованием MemoryTag::Unknown. Переклассифицировать это распределение.");
         }
+        u64 byte = size * sizeof(T);
 
         // Либо выделяйте из системного распределителя, либо из ОС. Последнее никогда не должно произойти.
-        void* block = nullptr;
+        u8* block = nullptr;
 
         if (state) {
-            state->TotalAllocated += size;
-            state->TaggedAllocations[static_cast<u32>(tag)] += size;
+            state->TotalAllocated += byte;
+            state->TaggedAllocations[static_cast<u32>(tag)] += byte;
             state->AllocCount++;
-            block = state->allocator.Allocate(size);
+            block = reinterpret_cast<u8*>(state->allocator.Allocate(byte));
         } else {
             // Если система еще не запустилась, предупредите об этом, но дайте пока память.
             MWARN("Memory::Allocate вызывается перед инициализацией системы памяти.");
             // СДЕЛАТЬ: Выравнивание памяти
-            block = new u8[size](); //platform_allocate(size, false);
+            block = new u8[byte](); //platform_allocate(byte, false);
         }
 
         if (block) {
+            MMemory::ZeroMem(block, byte);
             return (reinterpret_cast<T*>(block));
         }
     
@@ -111,31 +113,11 @@ public:
         return nullptr;
 
     }
-
     /// @brief Функция освобождает память
     /// @param block указатель на блок памяти, который нужно освободить
     /// @param bytes размер блока памяти в байтах
     /// @param tag название(тег) для чего использовалась память
     static void Free(void* block, u64 bytes, MemoryTag tag);
-
-    template<typename T>
-    /// @brief Функция освобождает память
-    /// @param block указатель на блок памяти, который нужно освободить
-    /// @param factor количество элементов Т в массиве блока памяти
-    /// @param tag название(тег) для чего использовалась память
-    static void TFree(T* block, u64 factor, MemoryTag tag) {
-        if (block) {
-            if (tag == MemoryTag::Unknown) {
-                MWARN("free вызывается с использованием MemoryTag::Unknown. Переклассифицировать это распределение.");
-            }
-
-            state->TotalAllocated -= sizeof(T) * factor;
-            state->TaggedAllocations[static_cast<u32>(tag)] -= sizeof(T) * factor;
-
-            delete[] block;
-        }
-    }
-
     /// @brief Функция зануляет выделенный блок памяти
     /// @param block указатель на блок памяти, который нужно обнулить
     /// @param bytes размер блока памяти в байтах
