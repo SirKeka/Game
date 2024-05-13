@@ -434,8 +434,12 @@ bool VulkanAPI::BeginFrame(f32 Deltatime)
     vkCmdSetViewport(GraphicsCommandBuffers[ImageIndex].handle, 0, 1, &viewport);
     vkCmdSetScissor(GraphicsCommandBuffers[ImageIndex].handle, 0, 1, &scissor);
 
+    // Обновляем размеры основного/мирового прохода рендеринга.
     MainRenderpass.RenderArea.z = FramebufferWidth;
     MainRenderpass.RenderArea.w = FramebufferHeight;
+    // Также обновите размеры проход рендеринга пользовательского интерфейса.
+    UI_Renderpass.RenderArea.z = FramebufferWidth;
+    UI_Renderpass.RenderArea.w = FramebufferHeight;
 
     return true;
 }
@@ -474,14 +478,14 @@ bool VulkanAPI::EndFrame(f32 DeltaTime)
 
     // Убедитесь, что предыдущий кадр не использует это изображение (т.е. его ограждение находится в режиме ожидания).
     if (ImagesInFlight[ImageIndex] != VK_NULL_HANDLE) { // был кадр
-        VkResult result = vkWaitForFences(Device.LogicalDevice, 1, ImagesInFlight[ImageIndex], true, UINT64_MAX);
+        VkResult result = vkWaitForFences(Device.LogicalDevice, 1, &ImagesInFlight[ImageIndex], true, UINT64_MAX);
         if (!VulkanResultIsSuccess(result)) {
             MFATAL("vkWaitForFences ошибка: %s", VulkanResultString(result, true));
         }
     }
 
     // Отметьте ограждение изображения как используемое этим кадром.
-    ImagesInFlight[ImageIndex] = &InFlightFences[CurrentFrame];
+    ImagesInFlight[ImageIndex] = InFlightFences[CurrentFrame];
 
     // Сбросьте ограждение для использования на следующем кадре
     VK_CHECK(vkResetFences(Device.LogicalDevice, 1, &InFlightFences[CurrentFrame]));

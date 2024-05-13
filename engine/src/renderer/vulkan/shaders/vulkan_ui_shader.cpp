@@ -165,7 +165,7 @@ bool VulkanUI_Shader::Create(VulkanAPI *VkAPI)
 
     VkDescriptorSetAllocateInfo AllocInfo = {VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
     AllocInfo.descriptorPool = this->GlobalDescriptorPool;
-    AllocInfo.descriptorSetCount = 3;
+    AllocInfo.descriptorSetCount = VkAPI->swapchain.ImageCount;
     AllocInfo.pSetLayouts = GlobalLayouts;
     VK_CHECK(vkAllocateDescriptorSets(VkAPI->Device.LogicalDevice, &AllocInfo, this->GlobalDescriptorSets));
 
@@ -393,7 +393,7 @@ bool VulkanUI_Shader::AcquireResources(VulkanAPI *VkAPI, Material *material)
 
     VkDescriptorSetAllocateInfo AllocInfo = {VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
     AllocInfo.descriptorPool = this->ObjectDescriptorPool;
-    AllocInfo.descriptorSetCount = 3;  // один на кадр
+    AllocInfo.descriptorSetCount = VkAPI->swapchain.ImageCount;  // один на кадр
     AllocInfo.pSetLayouts = layouts;
     VkResult result = vkAllocateDescriptorSets(VkAPI->Device.LogicalDevice, &AllocInfo, ObjectState->DescriptorSets);
     if (result != VK_SUCCESS) {
@@ -408,7 +408,7 @@ void VulkanUI_Shader::ReleaseResources(VulkanAPI *VkAPI, Material *material)
 {
     VulkanUI_ShaderInstanceState& InstanceState = this->InstanceStates[material->InternalId];
 
-    const u32 DescriptorSetCount = 3;
+    const u32 DescriptorSetCount = VkAPI->swapchain.ImageCount;
 
     // Дождитесь завершения любых ожидающих операций, использующих набор дескрипторов.
     vkDeviceWaitIdle(VkAPI->Device.LogicalDevice);

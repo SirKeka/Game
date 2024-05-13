@@ -387,9 +387,17 @@ bool VulkanDevice::PhysicalDeviceMeetsRequirements(
         u8 CurrentTransferScore = 0;
 
         // Графическая очередь?
-        if (QueueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+        if (OutQueueFamilyInfo->GraphicsFamilyIndex == -1 && QueueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
             OutQueueFamilyInfo->GraphicsFamilyIndex = i;
             ++CurrentTransferScore;
+
+            // Если также имеется очередь, приоритет отдается группировке из 2.
+            VkBool32 SupportsPresent = VK_FALSE;
+            VK_CHECK(vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &SupportsPresent));
+            if (SupportsPresent) {
+                OutQueueFamilyInfo->PresentFamilyIndex = i;
+                ++CurrentTransferScore;
+            }
         }
 
         // Очередь вычислений?
@@ -408,11 +416,22 @@ bool VulkanDevice::PhysicalDeviceMeetsRequirements(
             }
         }
 
-        // Существующая очередь?
-        VkBool32 SupportsPresent = VK_FALSE;
-        VK_CHECK(vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &SupportsPresent));
-        if (SupportsPresent) {
-            OutQueueFamilyInfo->PresentFamilyIndex = i;
+        // Если текущая очередь не найдена, повторите итерацию и выберите первую. 
+        // Это должно произойти только в том случае, если существует очередь, 
+        // которая поддерживает графику, но НЕ присутствует.
+        if (OutQueueFamilyInfo->PresentFamilyIndex == -1) {
+            for (u32 i = 0; i < QueueFamilyCount; ++i) {
+                VkBool32 SupportsPresent = VK_FALSE;
+                VK_CHECK(vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &SupportsPresent));
+                if (SupportsPresent) {
+                    OutQueueFamilyInfo->PresentFamilyIndex = i;
+                    // Если они расходятся, сообщайте об этом и идите дальше. Это здесь только для устранения неполадок.
+                    if (OutQueueFamilyInfo->PresentFamilyIndex != OutQueueFamilyInfo->GraphicsFamilyIndex) {
+                        MWARN("Предупреждение: для текущей и графической используется другой индекс очереди: %u.", i);
+                    }
+                    break;
+                }
+            }
         }
     }
 

@@ -149,7 +149,7 @@ bool VulkanMaterialShader::Create(VulkanAPI *VkAPI)
     }
 
     // Создание единого буфер.
-    u32 DeviceLocalBits = VkAPI->Device.SupportsDeviceLocalHostVisible ? VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT : 0;
+    //u32 DeviceLocalBits = VkAPI->Device.SupportsDeviceLocalHostVisible ? VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT : 0;
     if (!GlobalUniformBuffer.Create(
             VkAPI,
             sizeof(VulkanMaterialShaderGlobalUniformObject),

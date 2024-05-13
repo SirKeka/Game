@@ -146,7 +146,7 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
     // Индексы - против часовой стрелки
     u32 uiindices[6] = {2, 1, 0, 3, 0, 1};
     //UI_Config.indices = uiindices;
-    GeometryConfig UI_Config {sizeof(Vertex2D), 4, uiverts, sizeof(u32), 6, uiindices, "test_ui_material", "test_ui_geometry"};
+    GeometryConfig UI_Config {sizeof(Vertex2D), 4, uiverts, sizeof(u32), 6, uiindices, "test_ui_geometry", "test_ui_material"};
 
     // Получите геометрию пользовательского интерфейса из конфигурации.
     State->TestUI_Geometry = GeometrySystem::Instance()->Acquire(UI_Config, true);

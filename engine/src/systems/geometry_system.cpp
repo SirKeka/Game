@@ -321,7 +321,7 @@ GeometryID *GeometrySystem::Acquire(GeometryConfig config, bool AutoRelease)
 
     if (!g) {
         MERROR("Невозможно получить свободный слот для геометрии. Измените конфигурацию, чтобы освободить больше места. Возвращение nullptr.");
-        return 0;
+        return nullptr;
     }
 
     if (!CreateGeometry(config, g)) {
