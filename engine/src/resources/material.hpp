@@ -7,7 +7,7 @@ struct TextureMap {
     TextureUse use;
 };
 
-#define MATERIAL_NAME_MAX_LENGTH 256
+constexpr int MATERIAL_NAME_MAX_LENGTH = 256;
 
 enum class MaterialType {
     World,

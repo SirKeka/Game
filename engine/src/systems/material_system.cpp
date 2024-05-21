@@ -25,16 +25,16 @@ MaterialSystem::MaterialSystem()
     // Заполните хеш-таблицу недопустимыми ссылками, чтобы использовать ее по умолчанию.
     MaterialReference InvalidRef;
     InvalidRef.AutoRelease = false;
-    InvalidRef.handle = INVALID_ID;  // Основная причина необходимости использования значений по умолчанию.
+    InvalidRef.handle = INVALID::ID;  // Основная причина необходимости использования значений по умолчанию.
     InvalidRef.ReferenceCount = 0;
-    RegisteredMaterialTable.Fill(&InvalidRef);
+    RegisteredMaterialTable.Fill(InvalidRef);
 
     // Сделать недействительными все материалы в массиве.
     //new (reinterpret_cast<void*>(RegisteredMaterials)) Material[MaxMaterialCount]();
     /*for (u32 i = 0; i < MaxMaterialCount; ++i) { //MTRACE("id%u, %u", RegisteredMaterials[i].id, i);
-        // this->RegisteredMaterials[i].id = INVALID_ID;
-        // this->RegisteredMaterials[i].generation = INVALID_ID;
-        // this->RegisteredMaterials[i].InternalId = INVALID_ID;
+        // this->RegisteredMaterials[i].id = INVALID::U32ID;
+        // this->RegisteredMaterials[i].generation = INVALID::U32ID;
+        // this->RegisteredMaterials[i].InternalId = INVALID::U32ID;
         //this->RegisteredMaterials[i].Init();
     }*/
     // TODO: массив объектов материала инициализируется правильно, 
@@ -69,7 +69,7 @@ void MaterialSystem::Shutdown()
     if (state) {
         // Сделать недействительными все материалы в массиве.
         for (u32 i = 0; i < MaxMaterialCount; ++i) { 
-            if (state->RegisteredMaterials[i].id != INVALID_ID) {
+            if (state->RegisteredMaterials[i].id != INVALID::ID) {
                 MTRACE("id%u, generation%u, InternalId%u, %u", RegisteredMaterials[i].id, RegisteredMaterials[i].generation, RegisteredMaterials[i].InternalId, i);
                 DestroyMaterial(&state->RegisteredMaterials[i]);
             }
@@ -127,11 +127,11 @@ Material *MaterialSystem::AcquireFromConfig(MaterialConfig config)
             ref.AutoRelease = config.AutoRelease;
         } 
         ref.ReferenceCount++;
-        if (ref.handle == INVALID_ID) {
+        if (ref.handle == INVALID::ID) {
             // Это означает, что здесь нет материала. Сначала найдите бесплатный индекс.
             Material* m = nullptr;
             for (u32 i = 0; i < MaxMaterialCount; ++i) {
-                if (this->RegisteredMaterials[i].id == INVALID_ID) {
+                if (this->RegisteredMaterials[i].id == INVALID::ID) {
                     // Свободный слот найден. Используйте его индекс в качестве дескриптора.
                     ref.handle = i;
                     m = &this->RegisteredMaterials[i];
@@ -140,7 +140,7 @@ Material *MaterialSystem::AcquireFromConfig(MaterialConfig config)
             }
             
             // Убедитесь, что пустой слот действительно найден.
-            if (!m || ref.handle == INVALID_ID) {
+            if (!m || ref.handle == INVALID::ID) {
                 MFATAL("MaterialSystem::Acquire — система материалов больше не может содержать материалы. Настройте конфигурацию, чтобы разрешить больше.");
                 return 0;
             }
@@ -151,7 +151,7 @@ Material *MaterialSystem::AcquireFromConfig(MaterialConfig config)
                 return 0;
             }
 
-            if (m->generation == INVALID_ID) {
+            if (m->generation == INVALID::ID) {
                 m->generation = 0;
             } else {
                 m->generation++;
@@ -171,12 +171,11 @@ Material *MaterialSystem::AcquireFromConfig(MaterialConfig config)
 
     // ПРИМЕЧАНИЕ. Это произойдет только в том случае, если что-то пойдет не так с состоянием.
     MERROR("MaterialSystem::AcquireFromConfig не удалось получить материал '%s'. Нулевой указатель будет возвращен.", config.name);
-    return 0;
+    return nullptr;
 }
 
 void MaterialSystem::Release(const char *name)
 {
-    
     // Игнорируйте запросы на выпуск материала по умолчанию.
     if (StringsEquali(name, DEFAULT_MATERIAL_NAME)) {
         return;
@@ -195,7 +194,7 @@ void MaterialSystem::Release(const char *name)
             DestroyMaterial(m);
 
             // Сбросьте ссылку.
-            ref.handle = INVALID_ID;
+            ref.handle = INVALID::ID;
             ref.AutoRelease = false;
             MTRACE("Выпущенный материал '%s'., Материал выгружен, поскольку количество ссылок = 0 и AutoRelease = true.", name);
         } else {
@@ -291,9 +290,9 @@ void MaterialSystem::DestroyMaterial(Material *m)
     // Обнулить это, сделать удостоверения недействительными.
     m->Destroy();
     /*MMemory::ZeroMem(m, sizeof(Material));
-    m->id = INVALID_ID;
-    m->generation = INVALID_ID;
-    m->InternalId = INVALID_ID;
+    m->id = INVALID::U32ID;
+    m->generation = INVALID::U32ID;
+    m->InternalId = INVALID::U32ID;
     m = nullptr;*/
 }
 

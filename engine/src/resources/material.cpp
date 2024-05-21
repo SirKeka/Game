@@ -1,6 +1,6 @@
 #include "material.hpp"
 
-Material::Material() : id(INVALID_ID), generation(INVALID_ID), InternalId(INVALID_ID), name(), DiffuseColour(), DiffuseMap() {}
+Material::Material() : id(INVALID::ID), generation(INVALID::ID), InternalId(INVALID::ID), name(), DiffuseColour(), DiffuseMap() {}
 
 Material::Material(const Material &m) 
 {
@@ -13,7 +13,7 @@ Material::Material(const Material &m)
 }
 
 Material::Material(const char *name, Vector4D<f32> DiffuseColour, TextureUse use, Texture *texture)
-: id(INVALID_ID), generation(INVALID_ID), InternalId(INVALID_ID)
+: id(INVALID::ID), generation(INVALID::ID), InternalId(INVALID::ID)
 {
    Set(name, DiffuseColour, use, texture);
 }
@@ -21,9 +21,9 @@ Material::Material(const char *name, Vector4D<f32> DiffuseColour, TextureUse use
 Material::~Material()
 {
     MTRACE("Уничтожение материала '%s'...", name);
-    u32 id = INVALID_ID;
-    u32 generation = INVALID_ID;
-    u32 InternalId = INVALID_ID;
+    u32 id = INVALID::ID;
+    u32 generation = INVALID::ID;
+    u32 InternalId = INVALID::ID;
     MMemory::ZeroMem(name, MATERIAL_NAME_MAX_LENGTH);
     Vector4D<f32> DiffuseColour = Vector4D<f32>::Zero();
     MMemory::ZeroMem(&DiffuseMap, sizeof(TextureMap));
@@ -31,9 +31,9 @@ Material::~Material()
 
 /*const bool Material::operator ! (Material& m)
 {
-    if ((id != 0 || id != INVALID_ID) && 
-    (generation != 0 || generation != INVALID_ID) && 
-    (InternalId != 0 || InternalId != INVALID_ID) && 
+    if ((id != 0 || id != INVALID::U32ID) && 
+    (generation != 0 || generation != INVALID::U32ID) && 
+    (InternalId != 0 || InternalId != INVALID::U32ID) && 
     (name[0] == '0' || name[0] == '/') && 
     (bool)DiffuseColour && DiffuseMap.use != TextureUse::Unknown &&
     DiffuseMap.texture != nullptr) {

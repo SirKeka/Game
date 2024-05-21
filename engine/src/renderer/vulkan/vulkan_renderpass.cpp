@@ -3,7 +3,7 @@
 
 //#include "core/mmemory.hpp"
 
-VulkanRenderPass::VulkanRenderPass(
+VulkanRenderpass::VulkanRenderpass(
     VulkanAPI* VkAPI, 
     Vector4D<f32> RenderArea,
     Vector4D<f32> ClearColor,
@@ -16,7 +16,7 @@ VulkanRenderPass::VulkanRenderPass(
     Create(VkAPI, RenderArea, ClearColor, depth, stencil, ClearFlags, HasPrevPass, HasNextPass);
 }
 
-void VulkanRenderPass::Create(VulkanAPI *VkAPI, Vector4D<f32> RenderArea, Vector4D<f32> ClearColor, f32 depth, u32 stencil, u8 ClearFlags, bool HasPrevPass, bool HasNextPass)
+void VulkanRenderpass::Create(VulkanAPI *VkAPI, Vector4D<f32> RenderArea, Vector4D<f32> ClearColor, f32 depth, u32 stencil, u8 ClearFlags, bool HasPrevPass, bool HasNextPass)
 {
     this->RenderArea = RenderArea;
     this->ClearColour = ClearColor;
@@ -129,7 +129,7 @@ void VulkanRenderPass::Create(VulkanAPI *VkAPI, Vector4D<f32> RenderArea, Vector
         &this->handle));
 }
 
-void VulkanRenderPass::Destroy(VulkanAPI *VkAPI)
+void VulkanRenderpass::Destroy(VulkanAPI *VkAPI)
 {
     if (this->handle) {
         vkDestroyRenderPass(VkAPI->Device.LogicalDevice, this->handle, VkAPI->allocator);
@@ -137,7 +137,7 @@ void VulkanRenderPass::Destroy(VulkanAPI *VkAPI)
     }
 }
 
-void VulkanRenderPass::Begin(VulkanCommandBuffer *CommandBuffer, VkFramebuffer FrameBuffer)
+void VulkanRenderpass::Begin(VulkanCommandBuffer *CommandBuffer, VkFramebuffer FrameBuffer)
 {
     VkRenderPassBeginInfo BeginInfo = {VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
     BeginInfo.renderPass = this->handle;
@@ -173,7 +173,7 @@ void VulkanRenderPass::Begin(VulkanCommandBuffer *CommandBuffer, VkFramebuffer F
     CommandBuffer->state = COMMAND_BUFFER_STATE_IN_RENDER_PASS;
 }
 
-void VulkanRenderPass::End(VulkanCommandBuffer* CommandBuffer) {
+void VulkanRenderpass::End(VulkanCommandBuffer* CommandBuffer) {
     vkCmdEndRenderPass(CommandBuffer->handle);
     CommandBuffer->state = COMMAND_BUFFER_STATE_RECORDING;
 }

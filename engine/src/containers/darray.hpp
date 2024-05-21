@@ -42,29 +42,34 @@ public:
         //arr.mem = nullptr;
         arr.ptrValue = nullptr;
     }
+    // Доступ к элементу------------------------------------------------------------------------
 
+    MINLINE T& operator [] (u64 index) {
+        if(index < 0 || index >= size) {
+            MERROR("Индекс за пределами этого массива! Длина: %i, индекс: %index", size, index);
+        }
+        return ptrValue[index];
+    }
     // Доступ к элементу
-
-    T& operator [] (u64 index) {
-        if(index < 0 || index >= size) MERROR("Индекс за пределами этого массива! Длина: %i, индекс: %index", size, index);
+    MINLINE const T& operator [] (u64 index) const {
+        if(index < 0 || index >= size) {
+            MERROR("Индекс за пределами этого массива! Длина: %i, индекс: %index", size, index);
+        }
         return ptrValue[index];
     }
+    // ------------------------------------------------------------------------Доступ к элементу
 
-    const T& operator [] (u64 index) const{
-        if(index < 0 || index >= size) MERROR("Индекс за пределами этого массива! Длина: %i, индекс: %index", size, index);
-        return ptrValue[index];
-    }
-
-    /// @return Возвращает указатель на базовый массив, служащий хранилищем элементов.
-    T* Data() {
+    /// @brief Возвращает указатель на базовый массив, служащий хранилищем элементов.
+    /// @return Указатель на базовый массив, служащий хранилищем элементов.
+    MINLINE T* Data() {
         return ptrValue;
     }
-
-    const T* Data() const {
+    /// @brief Возвращает указатель на базовый массив, служащий хранилищем элементов.
+    /// @return Указатель на базовый массив.
+    MINLINE const T* Data() const {
         return ptrValue;
     }
-
-    // Емкость
+    // Емкость----------------------------------------------------------------------------------
 
     /// @brief Увеличьте емкость вектора (общее количество элементов, 
     /// которые вектор может содержать без необходимости перераспределения) до значения, 
@@ -84,24 +89,26 @@ public:
             capacity = NewCap;
         }
     }
-
     /// @return количество элементов контейнера
     constexpr u64 Lenght() const noexcept {
         return  this->size;
     }
-
     /// @return количество зарезервированных ячеек памяти типа Т
     u64 Capacity() {
         return this->capacity;
     }
-
-    // Модифицирующие методы
+    //-----------------------------------------------------------------------------------Емкость
+    // Модифицирующие методы--------------------------------------------------------------------
 
     /// @brief Добавляет заданное значение элемента в конец контейнера.
     /// @param value элемент который нужно поместить в конец контейнера.
     void PushBack(const T& value) {
-        if(size == 0) Reserve(2);
-        if(size == capacity) Reserve(capacity * 2);
+        if(size == 0) {
+            Reserve(2);
+        }
+        if(size == capacity) {
+            Reserve(capacity * 2);
+        }
         ptrValue[size] = value;
         size++;
     }
@@ -116,8 +123,12 @@ public:
     /// @param value элемент, который нужно ставить.
     /// @param index индекс элемента в контейнере.
     void Insert(const T& value, u64 index) {
-        if (index >= size) MERROR("Индекс за пределами этого массива! Длина: %i, индекс: %index", size, index);
-        if(index > size) Resize(size + 1, value);
+        if (index >= size) {
+            MERROR("Индекс за пределами этого массива! Длина: %i, индекс: %index", size, index);
+        }
+        if(index > size) {
+            Resize(size + 1, value);
+        }
         // Если не последний элемент, скопируйте остальное наружу.
         if (index != size - 1) {
             MMemory::CopyMem(

@@ -52,7 +52,7 @@ void Logger::AppendToLogFile(MString message)
         u64 length = message.Length();
         u64 written = 0;
         if (!Filesystem::Write(&LogFileHandle, length, message.c_str(), &written)) {
-            PlatformConsoleWriteError("ОШИБКА записи в console.log.", LOG_LEVEL_ERROR);
+            PlatformConsoleWriteError("ОШИБКА записи в console.log.", LogLevel::Error);
         }
     }
 }

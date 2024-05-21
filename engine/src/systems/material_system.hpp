@@ -2,7 +2,7 @@
 #include "resources/material.hpp"
 #include "containers/hashtable.hpp"
 
-#define DEFAULT_MATERIAL_NAME "default"
+constexpr const char* DEFAULT_MATERIAL_NAME = "default";
 
 class MaterialSystem
 {
@@ -15,7 +15,6 @@ private:
     bool init = false; // TODO: временно
     char DiffuseMapName[TEXTURE_NAME_MAX_LENGTH];
     Vector4D<f32> DiffuseColour;
-
 
     Material DefaultMaterial;
 
@@ -53,8 +52,6 @@ public:
     Material* Acquire(const char* name);
     Material* AcquireFromConfig(MaterialConfig config);
     void Release(const char* name);
-    
-    
 
 private:
     bool CreateDefaultMaterial();

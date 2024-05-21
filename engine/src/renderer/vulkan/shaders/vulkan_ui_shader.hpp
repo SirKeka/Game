@@ -3,13 +3,13 @@
 #include "vulkan_material_shader.hpp"
 #include "resources/texture.hpp"
 
-#define UI_SHADER_STAGE_COUNT 2
-#define VULKAN_UI_SHADER_DESCRIPTOR_COUNT 2
-#define VULKAN_UI_SHADER_SAMPLER_COUNT 1
+constexpr int UI_SHADER_STAGE_COUNT = 2;
+constexpr int VULKAN_UI_SHADER_DESCRIPTOR_COUNT = 2;
+constexpr int VULKAN_UI_SHADER_SAMPLER_COUNT = 1;
 
 // Max number of ui control instances
 // TODO: make configurable
-#define VULKAN_MAX_UI_COUNT 1024
+constexpr int VULKAN_MAX_UI_COUNT = 1024;
 
 struct VulkanUI_ShaderInstanceState {
     // Для каждого кадра кадр

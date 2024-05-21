@@ -35,9 +35,9 @@ GeometrySystem::GeometrySystem()
     // Сделать недействительными все геометрии в массиве.
     // new (reinterpret_cast<void*>(RegisteredGeometries)) GeometryReference[MaxGeometryCount]();
     for (u32 i = 0; i < MaxGeometryCount; ++i) {
-        this->RegisteredGeometries[i].gid.id = INVALID_ID;
-        this->RegisteredGeometries[i].gid.InternalID = INVALID_ID;
-        this->RegisteredGeometries[i].gid.generation = INVALID_ID;
+        this->RegisteredGeometries[i].gid.id = INVALID::ID;
+        this->RegisteredGeometries[i].gid.InternalID = INVALID::ID;
+        this->RegisteredGeometries[i].gid.generation = INVALID::ID;
     }
 }
 
@@ -187,9 +187,9 @@ bool GeometrySystem::CreateGeometry(GeometryConfig config, GeometryID *gid)
         // Сделайте запись недействительной.
         this->RegisteredGeometries[gid->id].ReferenceCount = 0;
         this->RegisteredGeometries[gid->id].AutoRelease = false;
-        gid->id = INVALID_ID;
-        gid->generation = INVALID_ID;
-        gid->InternalID = INVALID_ID;
+        gid->id = INVALID::ID;
+        gid->generation = INVALID::ID;
+        gid->InternalID = INVALID::ID;
 
         return false;
     }
@@ -209,9 +209,9 @@ void GeometrySystem::DestroyGeometry(GeometryID *gid)
 {
     Renderer::Unload(gid);
 
-    gid->id = INVALID_ID; 
-    gid->InternalID = INVALID_ID;
-    gid->generation = INVALID_ID; 
+    gid->id = INVALID::ID; 
+    gid->InternalID = INVALID::ID;
+    gid->generation = INVALID::ID; 
     MMemory::SetMemory(gid->name, 0, GEOMETRY_NAME_MAX_LENGTH);
     if (gid->material && MString::Length(gid->material->name) > 0) {
     MaterialSystem::Instance()->Release(gid->material->name);
@@ -294,7 +294,7 @@ bool GeometrySystem::CreateDefaultGeometries()
 
 GeometryID *GeometrySystem::Acquire(u32 id)
 {
-    if (id != INVALID_ID && this->RegisteredGeometries[id].gid.id != INVALID_ID) {
+    if (id != INVALID::ID && this->RegisteredGeometries[id].gid.id != INVALID::ID) {
         this->RegisteredGeometries[id].ReferenceCount++;
         return &this->RegisteredGeometries[id].gid;
     }
@@ -309,7 +309,7 @@ GeometryID *GeometrySystem::Acquire(GeometryConfig config, bool AutoRelease)
     GeometryID* g = nullptr;
     GeometryReference* buf = this->RegisteredGeometries; // После функции CreateGeometries слетает указатель RegisteredGeometries по этому мы адрес на который он указывает сохраняем в буфере
     for (u32 i = 0; i < this->MaxGeometryCount; ++i) {
-        if (this->RegisteredGeometries[i].gid.id == INVALID_ID) {
+        if (this->RegisteredGeometries[i].gid.id == INVALID::ID) {
             // Поиск пустого слота.
             this->RegisteredGeometries[i].AutoRelease = AutoRelease;
             this->RegisteredGeometries[i].ReferenceCount = 1;
@@ -334,7 +334,7 @@ GeometryID *GeometrySystem::Acquire(GeometryConfig config, bool AutoRelease)
 
 void GeometrySystem::Release(GeometryID *gid)
 {
-    if (gid && gid->id != INVALID_ID) {
+    if (gid && gid->id != INVALID::ID) {
         GeometryReference* ref = &this->RegisteredGeometries[gid->id];
 
         // Возьмите копию ID;

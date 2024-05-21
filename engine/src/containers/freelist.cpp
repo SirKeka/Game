@@ -64,8 +64,8 @@ void FreeList::Create(u64 TotalSize, void *memory)
     // Сделайте недействительными смещение и размер для всех узлов, кроме первого. 
     // Недопустимое значение будет проверяться при поиске нового узла из списка.
     for (u64 i = 1; i < state->MaxNodes; ++i) {
-        state->nodes[i].offset = INVALID_ID;
-        state->nodes[i].size = INVALID_ID;
+        state->nodes[i].offset = INVALID::ID;
+        state->nodes[i].size = INVALID::ID;
     }
 }
 
@@ -207,8 +207,8 @@ bool FreeList::Resize(void *NewMemory, u64 NewSize, void **OutOldMemory)
     // Сделайте недействительными смещение и размер для всех узлов, кроме первого. 
     // Недопустимое значение будет проверяться при поиске нового узла из списка.
     for (u64 i = 1; i < state->MaxNodes; ++i) {
-        state->nodes[i].offset = INVALID_ID;
-        state->nodes[i].size = INVALID_ID;
+        state->nodes[i].offset = INVALID::ID;
+        state->nodes[i].size = INVALID::ID;
     }
 
     state->head = &state->nodes[0];
@@ -268,8 +268,8 @@ void FreeList::Clear()
     // Сделайте недействительными смещение и размер для всех узлов, кроме первого. 
     // Недопустимое значение будет проверяться при поиске нового узла из списка.
     for (u64 i = 1; i < state->MaxNodes; ++i) {
-        state->nodes[i].offset = INVALID_ID;
-        state->nodes[i].size = INVALID_ID;
+        state->nodes[i].offset = INVALID::ID;
+        state->nodes[i].size = INVALID::ID;
     }
 
     // Сбросьте настройки заголовка, чтобы занять всю вещь.
@@ -307,7 +307,7 @@ FreelistNode *FreeList::GetNode()
 {
     //InternalState* state = reinterpret_cast<InternalState*>(state->memory);
     for (u64 i = 1; i < state->MaxNodes; ++i) {
-        if (state->nodes[i].offset == INVALID_ID) {
+        if (state->nodes[i].offset == INVALID::ID) {
             return &state->nodes[i];
         }
     }
@@ -318,7 +318,7 @@ FreelistNode *FreeList::GetNode()
 
 void FreeList::ReturnNode(FreelistNode *node)
 {
-    node->offset = INVALID_ID;
-    node->size = INVALID_ID;
+    node->offset = INVALID::ID;
+    node->size = INVALID::ID;
     node->next = nullptr;
 }

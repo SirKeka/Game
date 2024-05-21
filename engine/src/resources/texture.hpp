@@ -4,7 +4,7 @@
 #include "renderer/vulkan/vulkan_image.hpp"
 #include "containers/mstring.hpp"
 
-#define TEXTURE_NAME_MAX_LENGTH 512
+constexpr int TEXTURE_NAME_MAX_LENGTH = 512;
 
 class VulkanAPI;
 

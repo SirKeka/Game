@@ -20,9 +20,9 @@ protected:
     const char* CustomType;
     const char* TypePath;
 public:
-    ResourceLoader() : id(INVALID_ID), type(), CustomType(nullptr), TypePath(nullptr) {}
+    ResourceLoader() : id(INVALID::ID), type(), CustomType(nullptr), TypePath(nullptr) {}
     virtual ~ResourceLoader() {
-        id = INVALID_ID;
+        id = INVALID::ID;
     };
     MINLINE void Destroy() {this->~ResourceLoader();}
 

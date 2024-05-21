@@ -20,7 +20,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL VkDebugCallback(
 void VulkanAPI::DrawGeometry(const GeometryRenderData& data)
 {
     // Игнорировать незагруженные геометрии.
-    if (data.gid && data.gid->InternalID == INVALID_ID) {
+    if (data.gid && data.gid->InternalID == INVALID::ID) {
         return;
     }
 
@@ -62,6 +62,128 @@ void VulkanAPI::DrawGeometry(const GeometryRenderData& data)
     } else {
         vkCmdDraw(CommandBuffer.handle, BufferData.VertexCount, 1, 0, 0);
     }
+}
+
+bool VulkanAPI::Load(Shader *shader, u8 RenderpassID, u8 StageCount, const char **StageFilenames, ShaderStage stages)
+{
+    //shader->internal_data = kallocate(sizeof(vulkan_shader), MEMORY_TAG_RENDERER);
+
+    // СДЕЛАТЬ: динамические проходы рендеринга
+    VulkanRenderpass& renderpass = RenderpassID == 1 ? MainRenderpass : UI_Renderpass;
+
+    // Этапы перевода
+    VkShaderStageFlags VkStages[VulkanShader_MAX_STAGES];
+    for (u8 i = 0; i < stage_count; ++i) {
+        switch (stages[i]) {
+            case SHADER_STAGE_FRAGMENT:
+                VkStages[i] = VK_SHADER_STAGE_FRAGMENT_BIT;
+                break;
+            case SHADER_STAGE_VERTEX:
+                VkStages[i] = VK_SHADER_STAGE_VERTEX_BIT;
+                break;
+            case SHADER_STAGE_GEOMETRY:
+                KWARN("vulkan_renderer_shader_create: VK_SHADER_STAGE_GEOMETRY_BIT is set but not yet supported.");
+                VkStages[i] = VK_SHADER_STAGE_GEOMETRY_BIT;
+                break;
+            case SHADER_STAGE_COMPUTE:
+                KWARN("vulkan_renderer_shader_create: SHADER_STAGE_COMPUTE is set but not yet supported.");
+                VkStages[i] = VK_SHADER_STAGE_COMPUTE_BIT;
+                break;
+            default:
+                KERROR("Unsupported stage type: %d", stages[i]);
+                break;
+        }
+    }
+
+    // TODO: configurable max descriptor allocate count.
+
+    u32 max_descriptor_allocate_count = 1024;
+
+    // Take a copy of the pointer to the context.
+    vulkan_shader* out_shader = (vulkan_shader*)shader->internal_data;
+
+    out_shader->renderpass = renderpass;
+
+    // Build out the configuration.
+    out_shader->config.max_descriptor_set_count = max_descriptor_allocate_count;
+
+    // Shader stages. Parse out the flags.
+    kzero_memory(out_shader->config.stages, sizeof(vulkan_shader_stage_config) * VULKAN_SHADER_MAX_STAGES);
+    out_shader->config.stage_count = 0;
+    // Iterate provided stages.
+    for (u32 i = 0; i < stage_count; i++) {
+        // Make sure there is room enough to add the stage.
+        if (out_shader->config.stage_count + 1 > VULKAN_SHADER_MAX_STAGES) {
+            KERROR("Shaders may have a maximum of %d stages", VULKAN_SHADER_MAX_STAGES);
+            return false;
+        }
+
+        // Make sure the stage is a supported one.
+        VkShaderStageFlagBits stage_flag;
+        switch (stages[i]) {
+            case SHADER_STAGE_VERTEX:
+                stage_flag = VK_SHADER_STAGE_VERTEX_BIT;
+                break;
+            case SHADER_STAGE_FRAGMENT:
+                stage_flag = VK_SHADER_STAGE_FRAGMENT_BIT;
+                break;
+            default:
+                // Go to the next type.
+                KERROR("vulkan_shader_create: Unsupported shader stage flagged: %d. Stage ignored.", stages[i]);
+                continue;
+        }
+
+        // Set the stage and bump the counter.
+        out_shader->config.stages[out_shader->config.stage_count].stage = stage_flag;
+        string_ncopy(out_shader->config.stages[out_shader->config.stage_count].file_name, stage_filenames[i], 255);
+        out_shader->config.stage_count++;
+    }
+
+    // Zero out arrays and counts.
+    kzero_memory(out_shader->config.descriptor_sets, sizeof(vulkan_descriptor_set_config) * 2);
+
+    // Attributes array.
+    kzero_memory(out_shader->config.attributes, sizeof(VkVertexInputAttributeDescription) * VULKAN_SHADER_MAX_ATTRIBUTES);
+
+    // For now, shaders will only ever have these 2 types of descriptor pools.
+    out_shader->config.pool_sizes[0] = (VkDescriptorPoolSize){VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1024};          // HACK: max number of ubo descriptor sets.
+    out_shader->config.pool_sizes[1] = (VkDescriptorPoolSize){VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4096};  // HACK: max number of image sampler descriptor sets.
+
+    // Global descriptor set config.
+    vulkan_descriptor_set_config global_descriptor_set_config = {};
+
+    // UBO is always available and first.
+    global_descriptor_set_config.bindings[BINDING_INDEX_UBO].binding = BINDING_INDEX_UBO;
+    global_descriptor_set_config.bindings[BINDING_INDEX_UBO].descriptorCount = 1;
+    global_descriptor_set_config.bindings[BINDING_INDEX_UBO].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    global_descriptor_set_config.bindings[BINDING_INDEX_UBO].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+    global_descriptor_set_config.binding_count++;
+
+    out_shader->config.descriptor_sets[DESC_SET_INDEX_GLOBAL] = global_descriptor_set_config;
+    out_shader->config.descriptor_set_count++;
+    if (shader->use_instances) {
+        // If using instances, add a second descriptor set.
+        vulkan_descriptor_set_config instance_descriptor_set_config = {};
+
+        // Add a UBO to it, as instances should always have one available.
+        // NOTE: Might be a good idea to only add this if it is going to be used...
+        instance_descriptor_set_config.bindings[BINDING_INDEX_UBO].binding = BINDING_INDEX_UBO;
+        instance_descriptor_set_config.bindings[BINDING_INDEX_UBO].descriptorCount = 1;
+        instance_descriptor_set_config.bindings[BINDING_INDEX_UBO].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        instance_descriptor_set_config.bindings[BINDING_INDEX_UBO].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+        instance_descriptor_set_config.binding_count++;
+
+        out_shader->config.descriptor_sets[DESC_SET_INDEX_INSTANCE] = instance_descriptor_set_config;
+        out_shader->config.descriptor_set_count++;
+    }
+
+    // Invalidate all instance states.
+    // TODO: dynamic
+    for (u32 i = 0; i < 1024; ++i) {
+        out_shader->instance_states[i].id = INVALID_ID;
+    }
+
+    return true;
 }
 
 VulkanAPI::~VulkanAPI()
@@ -338,7 +460,7 @@ bool VulkanAPI::Initialize(MWindow* window, const char* ApplicationName)
 
     // Отметить все геометрии как недействительные
     for (u32 i = 0; i < VULKAN_MAX_GEOMETRY_COUNT; ++i) {
-        geometries[i].id = INVALID_ID;
+        geometries[i].id = INVALID::ID;
     }
 
     MINFO("Средство визуализации Vulkan успешно инициализировано.");
@@ -536,7 +658,7 @@ bool VulkanAPI::EndFrame(f32 DeltaTime)
 
 bool VulkanAPI::BeginRenderpass(u8 RenderpassID)
 {
-    VulkanRenderPass* renderpass = nullptr;
+    VulkanRenderpass* renderpass = nullptr;
     VkFramebuffer framebuffer = 0;
     VulkanCommandBuffer* CommandBuffer = &GraphicsCommandBuffers[ImageIndex];
 
@@ -573,7 +695,7 @@ bool VulkanAPI::BeginRenderpass(u8 RenderpassID)
 
 bool VulkanAPI::EndRenderpass(u8 RenderpassID)
 {
-    VulkanRenderPass* renderpass = nullptr;
+    VulkanRenderpass* renderpass = nullptr;
     VulkanCommandBuffer* CommandBuffer = &GraphicsCommandBuffers[ImageIndex];
 
     // Choose a renderpass based on ID.
@@ -625,7 +747,7 @@ bool VulkanAPI::CreateMaterial(Material *material)
 void VulkanAPI::DestroyMaterial(Material *material)
 {
     if (material) {
-        if (material->InternalId != INVALID_ID) {
+        if (material->InternalId != INVALID::ID) {
             switch (material->type) {
                 case MaterialType::World:
                     MaterialShader.ReleaseResources(this, material);
@@ -638,7 +760,7 @@ void VulkanAPI::DestroyMaterial(Material *material)
                     break;
             }
         } else {
-            MWARN("VulkanRenderer::DestroyMaterial вызывается с InternalId = INVALID_ID. Ничего не было сделано.");
+            MWARN("VulkanRenderer::DestroyMaterial вызывается с InternalId = INVALID::U32ID. Ничего не было сделано.");
         }
     } else {
         MWARN("VulkanRenderer::DestroyMaterial вызывается с nullptr. Ничего не было сделано.");
@@ -648,7 +770,7 @@ void VulkanAPI::DestroyMaterial(Material *material)
 bool VulkanAPI::Load(GeometryID *gid, u32 VertexSize, u32 VertexCount, const void* vertices, u32 IndexSize, u32 IndexCount, const void* indices)
 {
     // Проверьте, не повторная ли это загрузка. Если это так, необходимо впоследствии освободить старые данные.
-    bool IsReupload = gid->InternalID != INVALID_ID;
+    bool IsReupload = gid->InternalID != INVALID::ID;
     Geometry OldRange;
 
     Geometry* geometry = nullptr;
@@ -665,7 +787,7 @@ bool VulkanAPI::Load(GeometryID *gid, u32 VertexSize, u32 VertexCount, const voi
         OldRange = geometry;
     } else {
         for (u32 i = 0; i < VULKAN_MAX_GEOMETRY_COUNT; ++i) {
-            if (this->geometries[i].id == INVALID_ID) {
+            if (this->geometries[i].id == INVALID::ID) {
                 // Найден свободный индекс.
                 gid->InternalID = i;
                 this->geometries[i].id = i;
@@ -712,7 +834,7 @@ bool VulkanAPI::Load(GeometryID *gid, u32 VertexSize, u32 VertexCount, const voi
         this->GeometryIndexOffset += TotalSize;
     }*/
 
-    if (gid->generation == INVALID_ID) {
+    if (gid->generation == INVALID::ID) {
         gid->generation = 0;
     } else {
         gid->generation++;
@@ -733,7 +855,7 @@ bool VulkanAPI::Load(GeometryID *gid, u32 VertexSize, u32 VertexCount, const voi
 
 void VulkanAPI::Unload(GeometryID *gid)
 {
-    if (gid && gid->InternalID != INVALID_ID) {
+    if (gid && gid->InternalID != INVALID::ID) {
         vkDeviceWaitIdle(this->Device.LogicalDevice);
         Geometry& vGeometry = this->geometries[gid->InternalID];
 
@@ -747,8 +869,8 @@ void VulkanAPI::Unload(GeometryID *gid)
 
         // Очистка данных.
         vGeometry.Destroy(); //MMemory::ZeroMem(&this->geometries[geometry->InternalID], sizeof(Geometry));
-        //geometry->id = INVALID_ID;
-        //geometry->generation = INVALID_ID;
+        //geometry->id = INVALID::U32ID;
+        //geometry->generation = INVALID::U32ID;
     }
 }
 

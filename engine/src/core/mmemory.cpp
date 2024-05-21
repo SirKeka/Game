@@ -24,7 +24,8 @@ static const char* MemoryTagStrings[static_cast<u32>(MemoryTag::MaxTags)] = {
     "TRANSFORM  ",
     "ENTITY     ",
     "ENTITY NODE",
-    "SCENE      "};
+    "SCENE      ",
+    "HASHTABLE  "};
 
 MMemory::MemoryState* MMemory::state = nullptr;
 

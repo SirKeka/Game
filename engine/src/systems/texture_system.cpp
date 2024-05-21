@@ -40,16 +40,16 @@ TextureSystem::TextureSystem() :
     // Заполнение хеш-таблицы недействительными ссылками, чтобы использовать их по умолчанию.
     TextureReference InvalidRef;
     InvalidRef.AutoRelease = false;
-    InvalidRef.handle = INVALID_ID;  // Основная причина необходимости использования значений по умолчанию.
+    InvalidRef.handle = INVALID::ID;  // Основная причина необходимости использования значений по умолчанию.
     InvalidRef.ReferenceCount = 0;
-    RegisteredTextureTable.Fill(&InvalidRef);
+    RegisteredTextureTable.Fill(InvalidRef);
 
     // Сделать недействительными все текстуры в массиве.
     //u32 count = MaxTextureCount;
     new (reinterpret_cast<void*>(RegisteredTextures)) Texture[MaxTextureCount];
     /*for (u32 i = 0; i < count; ++i) {
-        RegisteredTextures[i].id = INVALID_ID;
-        RegisteredTextures[i].generation = INVALID_ID;
+        RegisteredTextures[i].id = INVALID::U32ID;
+        RegisteredTextures[i].generation = INVALID::U32ID;
     }*/
 
     // Создайте текстуры по умолчанию для использования в системе.
@@ -62,7 +62,7 @@ TextureSystem::~TextureSystem()
         // Уничтожить все загруженные текстуры.
         for (u32 i = 0; i < this->MaxTextureCount; ++i) {
             Texture* t = &this->RegisteredTextures[i];
-            if (t->generation != INVALID_ID) {
+            if (t->generation != INVALID::ID) {
                 t->Destroy(Renderer::GetRenderer());
             }
         }
@@ -101,12 +101,12 @@ Texture *TextureSystem::Acquire(const char* name, bool AutoRelease)
             ref.AutoRelease = AutoRelease;
         }
         ref.ReferenceCount++;
-        if (ref.handle == INVALID_ID) {
+        if (ref.handle == INVALID::ID) {
             // Это означает, что здесь нет текстуры. Сначала найдите свободный индекс.
             u32 count = MaxTextureCount;
             Texture* t = nullptr;
             for (u32 i = 0; i < count; ++i) {
-                if (RegisteredTextures[i].id == INVALID_ID) {
+                if (RegisteredTextures[i].id == INVALID::ID) {
                     // Свободный слот найден. Используйте его индекс в качестве дескриптора.
                     ref.handle = i;
                     t = &RegisteredTextures[i];
@@ -115,7 +115,7 @@ Texture *TextureSystem::Acquire(const char* name, bool AutoRelease)
             }
 
             // Убедитесь, что пустой слот действительно найден.
-            if (!t || ref.handle == INVALID_ID) {
+            if (!t || ref.handle == INVALID::ID) {
                 MFATAL("TextureSystem::Acquire — Система текстур больше не может содержать текстуры. Настройте конфигурацию, чтобы разрешить больше.");
                 return nullptr;
             }
@@ -169,7 +169,7 @@ void TextureSystem::Release(const char* name)
             t->Destroy(Renderer::GetRenderer());
 
             // Сброс ссылки.
-            ref.handle = INVALID_ID;
+            ref.handle = INVALID::ID;
             ref.AutoRelease = false;
             MTRACE("Released texture '%s'., Текстура выгружена, поскольку количество ссылок = 0 и AutoRelease = true.", NameCopy.c_str());
         } else {
@@ -245,7 +245,7 @@ bool TextureSystem::CreateDefaultTexture()
     DefaultTexture.Create(DEFAULT_TEXTURE_NAME, TexDimension, TexDimension, 4, pixels, false, Renderer::GetRenderer());
 
     // Вручную установите недействительную генерацию текстуры, поскольку это текстура по умолчанию.
-    this->DefaultTexture.generation = INVALID_ID;
+    this->DefaultTexture.generation = INVALID::ID;
 
     return true;
 }
@@ -272,7 +272,7 @@ bool TextureSystem::LoadTexture(const char* TextureName, Texture *t)
     TempTexture.ChannelCount = ResourceData->ChannelCount;
 
     u32 CurrentGeneration = t->generation;
-    t->generation = INVALID_ID;
+    t->generation = INVALID::ID;
 
     u64 TotalSize = TempTexture.width * TempTexture.height * TempTexture.ChannelCount;
     // Проверка прозрачности
@@ -304,7 +304,7 @@ bool TextureSystem::LoadTexture(const char* TextureName, Texture *t)
     // Уничтожьте старую текстуру.
     old.Destroy(Renderer::GetRenderer());
 
-    if (CurrentGeneration == INVALID_ID) {
+    if (CurrentGeneration == INVALID::ID) {
         t->generation = 0;
     } else {
         t->generation = CurrentGeneration + 1;

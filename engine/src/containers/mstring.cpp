@@ -371,7 +371,7 @@ bool MString::ToBool(char *str, bool *b)
         return false;
     }
 
-    return StringsEqual(str, "1") || StringsEqual(str, "true");
+    return MString::Equal(str, "1") || MString::Equali(str, "true");
 }
 
 void MString::Destroy()
@@ -379,12 +379,12 @@ void MString::Destroy()
     this->~MString();
 }
 
-bool StringsEqual(const char *strL, const char *strR)
+bool MString::Equal(const char *strL, const char *strR)
 {
     return strcmp(strL, strR);
 }
 
-bool StringsEquali(const char *str0, const char *str1)
+bool MString::Equali(const char *str0, const char *str1)
 {
 #if defined(__GNUC__)
     return strcasecmp(str0, str1) == 0;

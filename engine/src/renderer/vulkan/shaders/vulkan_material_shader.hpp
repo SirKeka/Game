@@ -12,8 +12,8 @@ struct VulkanShaderStage
     VkPipelineShaderStageCreateInfo ShaderStageCreateInfo;
 };
 
-#define MATERIAL_SHADER_STAGE_COUNT 2
-#define VULKAN_MATERIAL_SHADER_SAMPLER_COUNT 1
+constexpr int MATERIAL_SHADER_STAGE_COUNT = 2;
+constexpr int VULKAN_MATERIAL_SHADER_SAMPLER_COUNT = 1;
 
 struct VulkanDescriptorState {
     // По одному на кадр
@@ -21,7 +21,7 @@ struct VulkanDescriptorState {
     u32 ids[3];
 };
 
-#define VULKAN_MATERIAL_SHADER_DESCRIPTOR_COUNT 2
+constexpr int VULKAN_MATERIAL_SHADER_DESCRIPTOR_COUNT = 2;
 struct VulkanMaterialShaderInstanceState {
     // За кадр
     VkDescriptorSet DescriptorSets[3];
@@ -32,7 +32,7 @@ struct VulkanMaterialShaderInstanceState {
 
 // Максимальное количество экземпляров материала
 // TODO: сделать настраиваемым
-#define VULKAN_MAX_MATERIAL_COUNT 1024
+constexpr int VULKAN_MAX_MATERIAL_COUNT = 1024;
 
 class VulkanMaterialShader
 {
