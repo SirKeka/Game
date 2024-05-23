@@ -40,6 +40,7 @@ enum class MemoryTag
     Entity,
     EntityNode,
     Scene,
+    HashTable,
 
     MaxTags
 };

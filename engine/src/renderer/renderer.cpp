@@ -150,6 +150,78 @@ bool Renderer::Load(GeometryID *gid, u32 VertexSize, u32 VertexCount, const void
 
 void Renderer::Unload(GeometryID *gid)
 {
+    return ptrRenderer->Unload(gid);
+}
+
+bool Renderer::RenderpassID(const char *name, u8 &OutRenderpassID)
+{
+    // СДЕЛАТЬ: HACK: Нужны динамические проходы рендеринга(renderpass) вместо их жесткого кодирования.
+    if (MString::Equali("Renderpass.Builtin.World", name)) {
+        OutRenderpassID = BuiltinRenderpass::World;
+        return true;
+    } else if (MString::Equali("Renderpass.Builtin.UI", name)) {
+        OutRenderpassID = BuiltinRenderpass::UI;
+        return true;
+    }
+
+    MERROR("Renderer::RenderpassID: Renderpass не указан '%s'.", name);
+    OutRenderpassID = INVALID::U8ID;
+    return false;
+}
+
+bool Renderer::Load(Shader *shader, u8 RenderpassID, u8 StageCount, const char **StageFilenames, ShaderStage stages)
+{
+    return ptrRenderer->Load(shader, RenderpassID, StageCount, StageFilenames, stages);
+}
+
+void Renderer::Unload(Shader *shader)
+{
+    return ptrRenderer->Unload(shader);
+}
+
+bool Renderer::ShaderInitialize(Shader *shader)
+{
+    return ptrRenderer->ShaderInitialize(shader);
+}
+
+bool Renderer::ShaderUse(Shader *shader)
+{
+    return ptrRenderer->ShaderUse(shader);
+}
+
+bool Renderer::ShaderBindGlobals(Shader *shader)
+{
+    return ptrRenderer->ShaderBindGlobals(shader);
+}
+
+bool Renderer::ShaderBindInstance(Shader *shader, u32 InstanceID)
+{
+    return ptrRenderer->ShaderBindInstance(shader, InstanceID);
+}
+
+bool Renderer::ShaderApplyGlobals(Shader *shader)
+{
+    return ptrRenderer->ShaderApplyGlobals(shader);
+}
+
+bool Renderer::ShaderApplyInstance(Shader *shader)
+{
+    return ptrRenderer->ShaderApplyInstance(shader);
+}
+
+bool Renderer::ShaderAcquireInstanceResources(Shader *shader, u32 &OutInstanceID)
+{
+    return ptrRenderer->ShaderAcquireInstanceResources(shader, OutInstanceID);
+}
+
+bool Renderer::ShaderReleaseInstanceResources(Shader *shader, u32 InstanceID)
+{
+    return ptrRenderer->ShaderReleaseInstanceResources(shader, InstanceID);
+}
+
+bool Renderer::SetUniform(Shader *shader, ShaderUniform *uniform, const void *value)
+{
+    return ptrRenderer->SetUniform(shader, uniform, value);
 }
 
 void Renderer::SetView(Matrix4D view)

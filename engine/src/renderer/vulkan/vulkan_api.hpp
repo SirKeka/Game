@@ -51,8 +51,8 @@ public:
 
     VulkanDevice Device{};                              // Устройство Vulkan.
     VulkanSwapchain swapchain{};                        // Цепочка подкачки
-    VulkanRenderPass MainRenderpass{};                  // Основной проход рендеринга мира.
-    VulkanRenderPass UI_Renderpass{};                   // Проход рендеринга пользовательского интерфейса.
+    VulkanRenderpass MainRenderpass{};                  // Основной проход рендеринга мира.
+    VulkanRenderpass UI_Renderpass{};                   // Проход рендеринга пользовательского интерфейса.
     VulkanBuffer ObjectVertexBuffer{};                  // Буфер вершин объекта, используемый для хранения вершин геометрии.
     VulkanBuffer ObjectIndexBuffer{};                   // Буфер индекса объекта, используемый для хранения индексов геометрии.
     DArray<VulkanCommandBuffer> GraphicsCommandBuffers; // Буферы графических команд, по одному на кадр.
@@ -92,6 +92,62 @@ public:
     bool Load(GeometryID* gid, u32 VertexSize, u32 VertexCount, const void* vertices, u32 IndexSize, u32 IndexCount, const void* indices) override;
     void Unload(GeometryID* gid) override;
     void DrawGeometry(const GeometryRenderData& data) override;
+
+    // Методы относящиеся к шейдерам---------------------------------------------------------------------------------------------------------------------------------------------
+    
+    /// @brief Создает внутренние ресурсы шейдера, используя предоставленные параметры.
+    /// @param shader указатель на шейдер.
+    /// @param RenderpassID идентификатор прохода рендеринга, который будет связан с шейдером.
+    /// @param StageCount общее количество этапов.
+    /// @param StageFilenames массив имен файлов этапов шейдера, которые будут загружены. Должно соответствовать массиву этапов.
+    /// @param stages массив этапов шейдера(ShaderStage), указывающий, какие этапы рендеринга (вершина, фрагмент и т. д.) используются в этом шейдере.
+    /// @return true в случае успеха, иначе false.
+    bool Load(Shader* shader, u8 RenderpassID, u8 StageCount, const char** StageFilenames, ShaderStage stages) override;
+    /// @brief Уничтожает данный шейдер и освобождает все имеющиеся в нем ресурсы.--------------------------------------------------------------------
+    /// @param shader указатель на шейдер, который нужно уничтожить.
+    void Unload(Shader* shader) override;
+    /// @brief Инициализирует настроенный шейдер. Будет автоматически уничтожен, если этот шаг не удастся.--------------------------------------------
+    /// Должен быть вызван после Shader::Create().
+    /// @param shader указатель на шейдер, который необходимо инициализировать.
+    /// @return true в случае успеха, иначе false.
+    bool ShaderInitialize(Shader* shader) override;
+    /// @brief Использует заданный шейдер, активируя его для обновления атрибутов, униформы и т. д., а также для использования в вызовах отрисовки.---
+    /// @param shader указатель на используемый шейдер.
+    /// @return true в случае успеха, иначе false.
+    bool ShaderUse(Shader* shader) override;
+    /// @brief Связывает глобальные ресурсы для использования и обновления.---------------------------------------------------------------------------
+    /// @param shader указатель на шейдер, глобальные значения которого должны быть связаны.
+    /// @return true в случае успеха, иначе false.
+    bool ShaderBindGlobals(Shader* shader) override;
+    /// @brief Связывает ресурсы экземпляра для использования и обновления.---------------------------------------------------------------------------
+    /// @param shader указатель на шейдер, ресурсы экземпляра которого должны быть связаны.
+    /// @param InstanceID идентификатор экземпляра, который необходимо привязать.
+    /// @return true в случае успеха, иначе false.
+    bool ShaderBindInstance(Shader* shader, u32 InstanceID) override;
+    /// @brief Применяет глобальные данные к универсальному буферу.-----------------------------------------------------------------------------------
+    /// @param shader указатель на шейдер, к которому нужно применить глобальные данные.
+    /// @return true в случае успеха, иначе false.
+    bool ShaderApplyGlobals(Shader* shader) override;
+    /// @brief Применяет данные для текущего привязанного экземпляра.---------------------------------------------------------------------------------
+    /// @param shader указатель на шейдер, глобальные значения которого должны быть связаны.
+    /// @return true в случае успеха, иначе false.
+    bool ShaderApplyInstance(Shader* shader) override;
+    /// @brief Получает внутренние ресурсы уровня экземпляра и предоставляет идентификатор экземпляра.------------------------------------------------
+    /// @param shader указатель на шейдер, к которому нужно применить данные экземпляра.
+    /// @param OutInstanceID ссылка для хранения нового идентификатора экземпляра.
+    /// @return true в случае успеха, иначе false.
+    bool ShaderAcquireInstanceResources(Shader* shader, u32& OutInstanceID) override;
+    /// @brief Освобождает внутренние ресурсы уровня экземпляра для данного идентификатора экземпляра.------------------------------------------------
+    /// @param shader указатель на шейдер, из которого необходимо освободить ресурсы.
+    /// @param InstanceID идентификатор экземпляра, ресурсы которого должны быть освобождены.
+    /// @return true в случае успеха, иначе false.
+    bool ShaderReleaseInstanceResources(Shader* shader, u32 InstanceID) override;
+    /// @brief Устанавливает униформу данного шейдера на указанное значение.--------------------------------------------------------------------------
+    /// @param shader указатель на шейдер.
+    /// @param uniform постоянный указатель на униформу.
+    /// @param value указатель на значение, которое необходимо установить.
+    /// @return true в случае успеха, иначе false.
+    bool SetUniform(Shader* shader, struct ShaderUniform* uniform, const void* value) override;
 
     void* operator new(u64 size);
     /// @brief Функция поиска индекса памяти заданного типа и с заданными свойствами.

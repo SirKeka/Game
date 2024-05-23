@@ -19,7 +19,7 @@ ResourceSystem::ResourceSystem(const char* BasePath)  : AssetBasePath(BasePath),
     // Аннулировать все загрузчики
     new (reinterpret_cast<void*>(RegisteredLoaders)) ResourceLoader[MaxLoaderCount]();
     /*for (u32 i = 0; i < MaxLoaderCount; ++i) {
-        RegisteredLoaders[i].id = INVALID_ID;
+        RegisteredLoaders[i].id = INVALID::U32ID;
     }*/
 
     // ПРИМЕЧАНИЕ: Здесь можно автоматически зарегистрировать известные типы загрузчиков.
@@ -51,7 +51,7 @@ bool ResourceSystem::RegisterLoader(ResourceLoader loader)
     // Убедитесь, что загрузчики данного типа еще не существуют.
     for (u32 i = 0; i < MaxLoaderCount; ++i) {
         ResourceLoader* l = &RegisteredLoaders[i];
-        if (l->id != INVALID_ID) {
+        if (l->id != INVALID::ID) {
             if (l->type == loader.type) {
                 MERROR("ResourceSystem::RegisterLoader — загрузчик типа %d уже существует и не будет зарегистрирован.", loader.type);
                 return false;
@@ -62,7 +62,7 @@ bool ResourceSystem::RegisterLoader(ResourceLoader loader)
         }
     }
     for (u32 i = 0; i < MaxLoaderCount; ++i) {
-        if (RegisteredLoaders[i].id == INVALID_ID) {
+        if (RegisteredLoaders[i].id == INVALID::ID) {
             RegisteredLoaders[i].Destroy();
             new(reinterpret_cast<void*>(RegisteredLoaders + i)) T();
             RegisteredLoaders[i].id = i;
@@ -80,13 +80,13 @@ bool ResourceSystem::Load(const char *name, ResourceType type, Resource *OutReso
         // Выбор загрузчика.
         for (u32 i = 0; i < MaxLoaderCount; ++i) {
             ResourceLoader* l = &RegisteredLoaders[i];
-            if (l->id != INVALID_ID && l->type == type) {
+            if (l->id != INVALID::ID && l->type == type) {
                 return Load(name, l, OutResource);
             }
         }
     }
 
-    OutResource->LoaderID = INVALID_ID;
+    OutResource->LoaderID = INVALID::ID;
     MERROR("ResourceSystem::Load — загрузчик для типа %d не найден.", type);
     return false;
 }
@@ -97,13 +97,13 @@ bool ResourceSystem::Load(const char *name, const char *CustomType, Resource *Ou
         // Выбор загрузчика.
         for (u32 i = 0; i < MaxLoaderCount; ++i) {
             ResourceLoader* l = &RegisteredLoaders[i];
-            if (l->id != INVALID_ID && l->type == ResourceType::Custom && StringsEquali(l->CustomType, CustomType)) {
+            if (l->id != INVALID::ID && l->type == ResourceType::Custom && StringsEquali(l->CustomType, CustomType)) {
                 return Load(name, l, OutResource);
             }
         }
     }
 
-    OutResource->LoaderID = INVALID_ID;
+    OutResource->LoaderID = INVALID::ID;
     MERROR("ResourceSystem::LoadCustom — загрузчик для типа %s не найден.", CustomType);
     return false;
 }
@@ -111,9 +111,9 @@ bool ResourceSystem::Load(const char *name, const char *CustomType, Resource *Ou
 void ResourceSystem::Unload(Resource *resource)
 {
     if (resource) {
-        if (resource->LoaderID != INVALID_ID) {
+        if (resource->LoaderID != INVALID::ID) {
             ResourceLoader* l = &RegisteredLoaders[resource->LoaderID];
-            if (l->id != INVALID_ID) {
+            if (l->id != INVALID::ID) {
                 l->Unload(resource);
             }
         }
@@ -138,7 +138,7 @@ void ResourceSystem::SetMaxLoaderCount(u32 value)
 bool ResourceSystem::Load(const char *name, ResourceLoader *loader, Resource *OutResource)
 {
     if (!name || !loader || !OutResource) {
-        OutResource->LoaderID = INVALID_ID;
+        OutResource->LoaderID = INVALID::ID;
         return false;
     }
 

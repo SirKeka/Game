@@ -143,14 +143,19 @@ public:
     ///@return True, если синтаксический анализ прошел успешно; в противном случае false.
     bool ToBool(char* str, bool* b);
 
+    /// @brief Сравнение строк с учетом регистра. True, если совпадает, в противном случае false.
+    /// @param strL 
+    /// @param strR 
+    /// @return
+    static bool Equal(const char* strL, const char* strR);
+    /// @brief Сравнение строк без учета регистра. True, если совпадает, в противном случае false.
+    /// @param str0 
+    /// @param str1 
+    /// @return 
+    static bool Equali(const char* str0, const char* str1);
+
     void Destroy();
 };
 
 //MAPI bool operator== (const char*   lhs, const string& rhs);
 //MAPI bool operator== (const string& lhs, const char*   rhs);
-
-// Сравнение строк с учетом регистра. True, если совпадает, в противном случае false.
-MAPI bool StringsEqual(const char* strL, const char* strR);
-
-// Сравнение строк без учета регистра. True, если совпадает, в противном случае false.
-MAPI bool StringsEquali(const char* str0, const char* str1);

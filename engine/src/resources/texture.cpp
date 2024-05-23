@@ -3,23 +3,14 @@
 #include "renderer/vulkan/vulkan_utils.hpp"
 
 Texture::Texture() : 
-    id(INVALID_ID), 
+    id(INVALID::ID), 
     width(0), 
     height(0), 
     ChannelCount(0), 
     HasTransparency(false), 
-    generation(INVALID_ID), 
-    name(/*TEXTURE_NAME_MAX_LENGTH*/),
-    Data(nullptr) 
-    {
-        /*id = 0;
-        width = 0;
-        height = 0;
-        ChannelCount = 0;
-        HasTransparency = 0;
-        generation = INVALID_ID;
-        Data = nullptr;*/
-    }
+    generation(INVALID::ID), 
+    name(),
+    Data(nullptr) {}
 
 Texture::Texture(const char* name,i32 width, i32 height, i32 ChannelCount, const u8 *pixels, bool HasTransparency, VulkanAPI *VkAPI)
 {
@@ -52,7 +43,7 @@ void Texture::Create(const char* name, i32 width, i32 height, i32 ChannelCount, 
     this->width = width;
     this->height = height;
     this->ChannelCount = ChannelCount;
-    this->generation = INVALID_ID;
+    this->generation = INVALID::ID;
     MMemory::CopyMem(this->name, name, TEXTURE_NAME_MAX_LENGTH); // this->name = name;
 
     // Создание внутренних данных.

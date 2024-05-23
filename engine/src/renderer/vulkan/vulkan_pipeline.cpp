@@ -5,7 +5,7 @@
 
 bool VulkanPipeline::Create(
     VulkanAPI* VkAPI,
-    VulkanRenderPass* renderpass,
+    VulkanRenderpass* renderpass,
     u32 stride,
     u32 AttributeCount,
     VkVertexInputAttributeDescription* attributes,

@@ -14,7 +14,7 @@
 class VulkanAPI;
 class VulkanCommandBuffer;
 
-enum class VulkanRenderPassState 
+enum class VulkanRenderpassState 
 {
     Ready,
     Recording,
@@ -53,7 +53,7 @@ enum class BuiltinRenderpass : u8 {
     UI = 0x02
 };
 
-class VulkanRenderPass
+class VulkanRenderpass
 {
 public:
     VkRenderPass handle;
@@ -66,10 +66,10 @@ public:
     bool HasPrevPass;
     bool HasNextPass;
 
-    VulkanRenderPassState state;
+    VulkanRenderpassState state;
 public:
-    VulkanRenderPass() : handle(), RenderArea(), ClearColour(), depth(), stencil(), ClearFlags(), HasPrevPass(), HasNextPass() {}
-    VulkanRenderPass(
+    VulkanRenderpass() : handle(), RenderArea(), ClearColour(), depth(), stencil(), ClearFlags(), HasPrevPass(), HasNextPass() {}
+    VulkanRenderpass(
         VulkanAPI* VkAPI, 
         Vector4D<f32> RenderArea,
         Vector4D<f32> ClearColor,
@@ -78,7 +78,7 @@ public:
         u8 ClearFlags,
         bool HasPrevPass,
         bool HasNextPass);
-    ~VulkanRenderPass() = default;
+    ~VulkanRenderpass() = default;
 
     void Create(
         VulkanAPI* VkAPI, 

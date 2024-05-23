@@ -6,6 +6,7 @@
 #include "math/vertex.hpp"
 
 struct StaticMeshData;
+class Shader;
 
 enum class ERendererType 
 {
@@ -91,6 +92,62 @@ public:
     virtual void DrawGeometry(const GeometryRenderData& data) = 0;
     virtual bool CreateMaterial(class Material* material) = 0;
     virtual void DestroyMaterial(class Material* material) = 0;
+
     virtual bool Load(struct GeometryID* gid, u32 VertexSize, u32 VertexCount, const void* vertices, u32 IndexSize, u32 IndexCount, const void* indices) = 0;
     virtual void Unload(struct GeometryID* gid) = 0;
+    // Методы относящиеся к шейдерам---------------------------------------------------------------------------------------------------------------------------------------------
+
+    /// @brief Создает внутренние ресурсы шейдера, используя предоставленные параметры.
+    /// @param shader указатель на шейдер.
+    /// @param RenderpassID идентификатор прохода рендеринга, который будет связан с шейдером.
+    /// @param StageCount общее количество этапов.
+    /// @param StageFilenames массив имен файлов этапов шейдера, которые будут загружены. Должно соответствовать массиву этапов.
+    /// @param stages массив этапов шейдера(ShaderStage), указывающий, какие этапы рендеринга (вершина, фрагмент и т. д.) используются в этом шейдере.
+    /// @return true в случае успеха, иначе false.
+    virtual bool Load(Shader* shader, u8 RenderpassID, u8 StageCount, const char** StageFilenames, ShaderStage stages) = 0;
+    /// @brief Уничтожает данный шейдер и освобождает все имеющиеся в нем ресурсы.--------------------------------------------------------------------
+    /// @param shader указатель на шейдер, который нужно уничтожить.
+    virtual void Unload(Shader* shader) = 0;
+    /// @brief Инициализирует настроенный шейдер. Будет автоматически уничтожен, если этот шаг не удастся.--------------------------------------------
+    /// Должен быть вызван после Shader::Create().
+    /// @param shader указатель на шейдер, который необходимо инициализировать.
+    /// @return true в случае успеха, иначе false.
+    virtual bool ShaderInitialize(Shader* shader) = 0;
+    /// @brief Использует заданный шейдер, активируя его для обновления атрибутов, униформы и т. д., а также для использования в вызовах отрисовки.---
+    /// @param shader указатель на используемый шейдер.
+    /// @return true в случае успеха, иначе false.
+    virtual bool ShaderUse(Shader* shader) = 0;
+    /// @brief Связывает глобальные ресурсы для использования и обновления.---------------------------------------------------------------------------
+    /// @param shader указатель на шейдер, глобальные значения которого должны быть связаны.
+    /// @return true в случае успеха, иначе false.
+    virtual bool ShaderBindGlobals(Shader* shader) = 0;
+    /// @brief Связывает ресурсы экземпляра для использования и обновления.---------------------------------------------------------------------------
+    /// @param shader указатель на шейдер, ресурсы экземпляра которого должны быть связаны.
+    /// @param InstanceID идентификатор экземпляра, который необходимо привязать.
+    /// @return true в случае успеха, иначе false.
+    virtual bool ShaderBindInstance(Shader* shader, u32 InstanceID) = 0;
+    /// @brief Применяет глобальные данные к универсальному буферу.-----------------------------------------------------------------------------------
+    /// @param shader указатель на шейдер, к которому нужно применить глобальные данные.
+    /// @return true в случае успеха, иначе false.
+    virtual bool ShaderApplyGlobals(Shader* shader) = 0;
+    /// @brief Применяет данные для текущего привязанного экземпляра.---------------------------------------------------------------------------------
+    /// @param shader указатель на шейдер, глобальные значения которого должны быть связаны.
+    /// @return true в случае успеха, иначе false.
+    virtual bool ShaderApplyInstance(Shader* shader) = 0;
+    /// @brief Получает внутренние ресурсы уровня экземпляра и предоставляет идентификатор экземпляра.------------------------------------------------
+    /// @param shader указатель на шейдер, к которому нужно применить данные экземпляра.
+    /// @param OutInstanceID ссылка для хранения нового идентификатора экземпляра.
+    /// @return true в случае успеха, иначе false.
+    virtual bool ShaderAcquireInstanceResources(Shader* shader, u32& OutInstanceID) = 0;
+    /// @brief Освобождает внутренние ресурсы уровня экземпляра для данного идентификатора экземпляра.------------------------------------------------
+    /// @param shader указатель на шейдер, из которого необходимо освободить ресурсы.
+    /// @param InstanceID идентификатор экземпляра, ресурсы которого должны быть освобождены.
+    /// @return true в случае успеха, иначе false.
+    virtual bool ShaderReleaseInstanceResources(Shader* shader, u32 InstanceID) = 0;
+    /// @brief Устанавливает униформу данного шейдера на указанное значение.--------------------------------------------------------------------------
+    /// @param shader указатель на шейдер.
+    /// @param uniform постоянный указатель на униформу.
+    /// @param value указатель на значение, которое необходимо установить.
+    /// @return true в случае успеха, иначе false.
+    virtual bool SetUniform(Shader* shader, struct ShaderUniform* uniform, const void* value) = 0;
 };

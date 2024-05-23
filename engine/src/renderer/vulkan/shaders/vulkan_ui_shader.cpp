@@ -287,7 +287,7 @@ void VulkanUI_Shader::ApplyMaterial(VulkanAPI *VkAPI, Material *material)
 
         // Делайте это только в том случае, если дескриптор еще не был обновлен.
         u32& GlobalUniformObjectGeneration = ObjectState->DescriptorStates[DescriptorIndex].generations[ImageIndex];
-        if (GlobalUniformObjectGeneration == INVALID_ID || GlobalUniformObjectGeneration != material->generation) {
+        if (GlobalUniformObjectGeneration == INVALID::ID || GlobalUniformObjectGeneration != material->generation) {
             VkDescriptorBufferInfo BufferInfo;
             BufferInfo.buffer = this->ObjectUniformBuffer.handle;
             BufferInfo.offset = offset;
@@ -327,15 +327,15 @@ void VulkanUI_Shader::ApplyMaterial(VulkanAPI *VkAPI, Material *material)
             u32& DescriptorID = ObjectState->DescriptorStates[DescriptorIndex].ids[ImageIndex];
 
             // Если текстура еще не загружена, используйте значение по умолчанию.
-            if (!t || t->generation == INVALID_ID) {
+            if (!t || t->generation == INVALID::ID) {
                 t = TextureSystem::Instance()->GetDefaultTexture();
 
                 // Сбросьте генерацию дескриптора, если используете текстуру по умолчанию.
-                DescriptorGeneration = INVALID_ID;
+                DescriptorGeneration = INVALID::ID;
             }
 
             // Сначала проверьте, нуждается ли дескриптор в обновлении.
-            if (t && (DescriptorID != t->id || DescriptorGeneration != t->generation || DescriptorGeneration == INVALID_ID)) {
+            if (t && (DescriptorID != t->id || DescriptorGeneration != t->generation || DescriptorGeneration == INVALID::ID)) {
                 VulkanTextureData* InternalData = reinterpret_cast<VulkanTextureData*>(t->Data);
 
                 // Назначьте представление и сэмплер.
@@ -354,7 +354,7 @@ void VulkanUI_Shader::ApplyMaterial(VulkanAPI *VkAPI, Material *material)
                 DescriptorCount++;
 
                 // Синхронизировать генерацию кадров, если не используется текстура по умолчанию.
-                if (t->generation != INVALID_ID) {
+                if (t->generation != INVALID::ID) {
                     DescriptorGeneration = t->generation;
                     DescriptorID = t->id;
                 }
@@ -380,8 +380,8 @@ bool VulkanUI_Shader::AcquireResources(VulkanAPI *VkAPI, Material *material)
     VulkanUI_ShaderInstanceState* ObjectState = &this->InstanceStates[material->InternalId];
     for (u32 i = 0; i < VULKAN_UI_SHADER_DESCRIPTOR_COUNT; ++i) {
         for (u32 j = 0; j < 3; ++j) {
-            ObjectState->DescriptorStates[i].generations[j] = INVALID_ID;
-            ObjectState->DescriptorStates[i].ids[j] = INVALID_ID;
+            ObjectState->DescriptorStates[i].generations[j] = INVALID::ID;
+            ObjectState->DescriptorStates[i].ids[j] = INVALID::ID;
         }
     }
 
@@ -421,12 +421,12 @@ void VulkanUI_Shader::ReleaseResources(VulkanAPI *VkAPI, Material *material)
 
     for (u32 i = 0; i < VULKAN_UI_SHADER_DESCRIPTOR_COUNT; ++i) {
         for (u32 j = 0; j < 3; ++j) {
-            InstanceState.DescriptorStates[i].generations[j] = INVALID_ID;
-            InstanceState.DescriptorStates[i].ids[j] = INVALID_ID;
+            InstanceState.DescriptorStates[i].generations[j] = INVALID::ID;
+            InstanceState.DescriptorStates[i].ids[j] = INVALID::ID;
         }
     }
 
-    material->InternalId = INVALID_ID;
+    material->InternalId = INVALID::ID;
 
     // TODO: add the object_id to the free list
 }

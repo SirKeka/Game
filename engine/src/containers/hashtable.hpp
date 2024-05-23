@@ -18,34 +18,40 @@ public:
 private:
     static const u64 multiplier;
 public:
-    HashTable() = default;
+    HashTable() : ElementCount(), IsPointerType(false), memory(nullptr) {}
     /// @brief Создает хеш-таблицу
     /// @param ElementSize размер каждого элемента в байтах.
     /// @param ElementCount максимальное количество элементов. Размер не может быть изменен.
     /// @param IsPointerType блок памяти, который будет использоваться. Должен быть равен по размеру ElementSize * ElementCount;
     /// @param memory указывает, будет ли эта хэш-таблица содержать типы указателей.
-    HashTable(u32 ElementCount, bool IsPointerType, T* memory) {
+    void Create(u32 ElementCount, bool IsPointerType, T* memory){
         if (!memory) {
-        MERROR("Создать не получилось! Требуется указатель на память");
-        return;
+            MERROR("Создать не получилось! Требуется указатель на память");
+            return;
+        }
+        if (!ElementCount) {
+            MERROR("ElementCount должен быть положительным значением, отличным от нуля.");
+            return;
+        }
+
+        // TODO: Возможно, вам понадобится распределитель и вместо этого выделите эту память.
+        this->memory = memory;
+        this->ElementCount = ElementCount;
+        //this->ElementSize = ElementSize;
+        this->IsPointerType = IsPointerType;
+        MMemory::ZeroMem(this->memory, sizeof(T) * ElementCount);
     }
-    if (!ElementCount) {
-        MERROR("ElementCount должен быть положительным значением, отличным от нуля.");
-        return;
+        HashTable(u32 ElementCount, bool IsPointerType, T* memory) {
+            Create(ElementCount, IsPointerType, memory);
     }
 
-    // TODO: Возможно, вам понадобится распределитель и вместо этого выделите эту память.
-    this->memory = memory;
-    this->ElementCount = ElementCount;
-    //this->ElementSize = ElementSize;
-    this->IsPointerType = IsPointerType;
-    MMemory::TZeroMem<T>(this->memory, sizeof(T) * ElementCount);
-    }
-
-    /// @brief Уничтожает предоставленную хэш-таблицу. Не освобождает память для типов указателей.
     ~HashTable() {
         memory = nullptr;
         ElementCount = 0;}
+    /// @brief Уничтожает предоставленную хэш-таблицу. Не освобождает память для типов указателей.
+    void Destroy() {
+        this->~HashTable();
+    }
 
     /// @brief Сохраняет копию данных в виде значения в предоставленной хэш-таблице.
     /// Используйте только для таблиц, которые были *НЕ* созданы с IsPointerType = true.
@@ -115,18 +121,19 @@ public:
     /// Не следует использовать с типами таблиц указателей.
     /// @param value Значение, которое должно быть заполнено. Обязательно.
     /// @return true в случае успеха; в противном случае false.
-    bool Fill(T* value) {
-        if (!value) {
+    bool Fill(T& value) {
+        /*if (!value) {
             MWARN("«Fill» требует, чтобы это значение существовало.");
             return false;
-        }
+        }*/
         if (this->IsPointerType) {
             MERROR("«Fill» не следует использовать с таблицами, имеющими типы указателей.");
             return false;
         }
 
         for (u32 i = 0; i < this->ElementCount; ++i) {
-            MMemory::CopyMem(this->memory + (sizeof(T) *i), value, sizeof(T));
+            //MMemory::CopyMem(this->memory + (sizeof(T) * i), value, sizeof(T));
+            value = *(this->memory + (sizeof(T) * i));
         }
 
         return true;
