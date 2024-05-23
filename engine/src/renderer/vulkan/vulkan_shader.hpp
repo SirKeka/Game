@@ -7,7 +7,7 @@ constexpr int VULKAN_MAX_UI_COUNT = 1024;
 
 /// @brief Установите некоторые жесткие ограничения на количество поддерживаемых текстур, атрибутов, 
 // униформ и т.д. Это необходимо для сохранения локальности памяти и предотвращения динамического распределения.
-namespace VulkanShader
+namespace VulkanShaderConstants
 {
     constexpr int MaxStages = 8;            // Максимально допустимое количество этапов (таких как вершина, фрагмент, вычисление и т. д.).
     constexpr int MaxGlobalTextures = 31;   // Максимальное количество текстур, разрешенное на глобальном уровне.
@@ -27,101 +27,61 @@ struct VulkanShaderStageConfig {
 /// @brief Конфигурация набора дескрипторов.
 struct VulkanDescriptorSetConfig {
     u8 BindingCount;                                                    // Количество привязок в этом наборе.
-    VkDescriptorSetLayoutBinding bindings[VulkanShader::MaxBindings];   // Массив макетов привязки для этого набора.
+    VkDescriptorSetLayoutBinding bindings[VulkanShaderConstants::MaxBindings];   // Массив макетов привязки для этого набора.
 };
 
 /// @brief Конфигурация внутреннего шейдера, созданная с помощью VulkanShader:Create().
 struct VulkanShaderConfig {
     u8 StageCount;                                                              // Количество этапов в этом шейдере.
-    VulkanShaderStageConfig stages[VulkanShader::MaxStages];                    // Конфигурация для каждого этапа этого шейдера.
+    VulkanShaderStageConfig stages[VulkanShaderConstants::MaxStages];                    // Конфигурация для каждого этапа этого шейдера.
     VkDescriptorPoolSize PoolSizes[2];                                          // Массив размеров пула дескрипторов.
     u16 MaxDescriptorSetCount;                                                  // Максимальное количество наборов дескрипторов, которые можно выделить из этого шейдера. Обычно должно быть достаточно большое число.
     u8 DescriptorSetCount;                                                      // Общее количество наборов дескрипторов, настроенных для этого шейдера. Имеет значение 1, если используются только глобальные униформы/сэмплеры; иначе 2.
     VulkanDescriptorSetConfig DescriptorSets[2];                                // Наборы дескрипторов, максимум 2. Индекс 0 = глобальный, 1 = экземпляр.
-    VkVertexInputAttributeDescription attributes[VulkanShader::MaxAttributes];  // Массив описаний атрибутов для этого шейдера.
+    VkVertexInputAttributeDescription attributes[VulkanShaderConstants::MaxAttributes];  // Массив описаний атрибутов для этого шейдера.
 
 };
+ 
+/// @brief Представляет состояние данного дескриптора. 
+/// Это используется для определения того, когда дескриптор нуждается в обновлении. 
+/// Для каждого кадра существует состояние (максимум 3).
+struct VulkanDescriptorState {
+    u8 generations[3];  // Генерация дескриптора для каждого кадра.
+    u32 ids[3];         // Идентификатор для каждого кадра. Обычно используется для идентификаторов текстур.
+};
 
-/**
- * @brief Represents a state for a given descriptor. This is used
- * to determine when a descriptor needs updating. There is a state
- * per frame (with a max of 3).
- */
-typedef struct vulkan_descriptor_state {
-    /** @brief The descriptor generation, per frame. */
-    u8 generations[3];
-    /** @brief The identifier, per frame. Typically used for texture ids. */
-    u32 ids[3];
-} vulkan_descriptor_state;
+/// @brief Представляет состояние набора дескрипторов. 
+/// Это используется для отслеживания поколений и обновлений, возможно, 
+/// для оптимизации путем пропуска наборов, которые не требуют обновления.
+struct VulkanShaderDescriptorSetState {
+    VkDescriptorSet DescriptorSets[3];                                  // Дескриптор устанавливает для этого экземпляра по одному на кадр.
+    VulkanDescriptorState DescriptorStates[VulkanShaderConstants::MaxBindings];  // Состояние дескриптора для каждого дескриптора, который, в свою очередь, обрабатывает кадры. Подсчет управляется в конфигурации шейдера.
+};
 
-/**
- * @brief Represents the state for a descriptor set. This is used to track
- * generations and updates, potentially for optimization via skipping
- * sets which do not need updating.
- */
-typedef struct vulkan_shader_descriptor_set_state {
-    /** @brief The descriptor sets for this instance, one per frame. */
-    VkDescriptorSet descriptor_sets[3];
+/// @brief Состояние экземпляра шейдера.
+struct VulkanShaderInstanceState {
+    u32 id;                                             // Идентификатор экземпляра. INVALID::ID, если не используется.
+    u64 offset;                                         // Смещение в байтах в универсальном буфере экземпляра. 
+    VulkanShaderDescriptorSetState DescriptorSetState;  //  Состояние набора дескрипторов. 
+    class Texture** InstanceTextures;                   // Указатели экземпляров текстур, которые используются во время рендеринга. Они устанавливаются вызовами SetSampler.
+};
+ 
+/// @brief Представляет универсальный шейдер Vulkan. 
+/// При этом используется набор входных данных и параметров, а также программы шейдеров, 
+/// содержащиеся в файлах SPIR-V, для создания шейдера для использования при рендеринге.
+struct VulkanShader {
+    
+    void* MappedUniformBufferBlock;                                     // Блок памяти, сопоставленный с универсальным буфером.
+    u32 id;                                                             // Идентификатор шейдера.
+    VulkanShaderConfig config;                                          // Конфигурация шейдера, созданная функцией VulkanCreateShader().
+    VulkanRenderpass* renderpass;                                       // Указатель на проход рендеринга, который будет использоваться с этим шейдером.
+    VulkanShaderStage stages[VulkanShaderConstants::MaxStages];         // Массив этапов (таких как вершина и фрагмент) для этого шейдера. Количество находится в config.
+    VkDescriptorPool DescriptorPool;                                    // Пул дескрипторов, используемый для этого шейдера.
+    VkDescriptorSetLayout DescriptorSetLayouts[2];                      // Макеты набора дескрипторов, максимум 2. Индекс 0 = глобальный, 1 = экземпляр.
+    VkDescriptorSet GlobalDescriptorSets[3];                            // Наборы глобальных дескрипторов, по одному на кадр.
+    VulkanBuffer UniformBuffer;                                         // Универсальный буфер, используемый этим шейдером.
+    VulkanPipeline pipeline;                                            // Конвейер, связанный с этим шейдером.
+    u32 InstanceCount;                                                  // Экземпляр состояния для всех экземпляров. СДЕЛАТЬ: динамичным */
+    VulkanShaderInstanceState InstanceStates[VULKAN_MAX_MATERIAL_COUNT];
 
-    /** @brief A descriptor state per descriptor, which in turn handles frames. Count is managed in shader config. */
-    vulkan_descriptor_state descriptor_states[VULKAN_SHADER_MAX_BINDINGS];
-} vulkan_shader_descriptor_set_state;
-
-/**
- * @brief The instance-level state for a shader.
- */
-typedef struct vulkan_shader_instance_state {
-    /** @brief The instance id. INVALID_ID if not used. */
-    u32 id;
-    /** @brief The offset in bytes in the instance uniform buffer. */
-    u64 offset;
-
-    /** @brief  A state for the descriptor set. */
-    vulkan_shader_descriptor_set_state descriptor_set_state;
-
-    /**
-     * @brief Instance texture pointers, which are used during rendering. These
-     * are set by calls to set_sampler.
-     */
-    struct texture** instance_textures;
-} vulkan_shader_instance_state;
-
-/**
- * @brief Represents a generic Vulkan shader. This uses a set of inputs
- * and parameters, as well as the shader programs contained in SPIR-V
- * files to construct a shader for use in rendering.
- */
-typedef struct vulkan_shader {
-    /** @brief The block of memory mapped to the uniform buffer. */
-    void* mapped_uniform_buffer_block;
-
-    /** @brief The shader identifier. */
-    u32 id;
-
-    /** @brief The configuration of the shader generated by vulkan_create_shader(). */
-    vulkan_shader_config config;
-
-    /** @brief A pointer to the renderpass to be used with this shader. */
-    vulkan_renderpass* renderpass;
-
-    /** @brief An array of stages (such as vertex and fragment) for this shader. Count is located in config.*/
-    vulkan_shader_stage stages[VULKAN_SHADER_MAX_STAGES];
-
-    /** @brief The descriptor pool used for this shader. */
-    VkDescriptorPool descriptor_pool;
-
-    /** @brief Descriptor set layouts, max of 2. Index 0=global, 1=instance. */
-    VkDescriptorSetLayout descriptor_set_layouts[2];
-    /** @brief Global descriptor sets, one per frame. */
-    VkDescriptorSet global_descriptor_sets[3];
-    /** @brief The uniform buffer used by this shader. */
-    vulkan_buffer uniform_buffer;
-
-    /** @brief The pipeline associated with this shader. */
-    vulkan_pipeline pipeline;
-
-    /** @brief The instance states for all instances. @todo TODO: make dynamic */
-    u32 instance_count;
-    vulkan_shader_instance_state instance_states[VULKAN_MAX_MATERIAL_COUNT];
-
-} vulkan_shader;
+};

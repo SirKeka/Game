@@ -19,7 +19,7 @@ bool Logger::Initialize()
 {
     // Создайте новый/сотрите существующий файл журнала, затем откройте его.
     if (!Filesystem::Open("console.log", FileModes::Write, false, &LogFileHandle)) {
-        PlatformConsoleWriteError("ОШИБКА: Не удается открыть console.log для записи.", LOG_LEVEL_ERROR);
+        PlatformConsoleWriteError("ОШИБКА: Не удается открыть console.log для записи.", LogLevel::Error);
         return false;
     }
 
@@ -63,7 +63,7 @@ void Logger::Output(LogLevel level, MString message, ...)
     // итоге это необходимо переместить в другой поток вместе с записью файла, 
     // чтобы избежать замедления процесса во время попытки запуска движка.
     const char* LevelStrings[6] = {"[FATAL]: ", "[ОШИБКА]: ", "[ПРЕДУПРЕЖДЕНИЕ]:  ", "[ИНФО]:  ", "[ОТЛАДКА]: ", "[TRACE]: "};
-    bool IsError = LOG_LEVEL_WARN;
+    bool IsError = LogLevel::Warn;
 
     // Технически накладывает ограничение на длину одной записи журнала в 32 тыс. символов, но...
     // НЕ ДЕЛАЙТЕ ЭТОГО!

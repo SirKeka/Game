@@ -15,7 +15,7 @@
 #define LOG_TRACE_ENABLED 0
 #endif
 
-enum class LogLevel {
+enum class LogLevel : u8 {
     Fatal = 0,
     Error = 1,
     Warn = 2,

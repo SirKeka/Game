@@ -4,9 +4,10 @@
 #include "math/matrix4d.hpp"
 #include "math/vector4d.hpp"
 #include "math/vertex.hpp"
+#include "resources/shader.hpp"
 
 struct StaticMeshData;
-class Shader;
+// class Shader;
 
 enum class ERendererType 
 {
@@ -33,10 +34,10 @@ struct RenderPacket
 /*размер данной струтуры для карт Nvidia должен быть равен 256 байт*/
 struct VulkanMaterialShaderGlobalUniformObject
 {
-    Matrix4D projection;  // 64 байта
-    Matrix4D view;        // 64 байта
-    Matrix4D mReserved0;  // 64 байта, зарезервированные для будущего использования
-    Matrix4D mReserved1;  // 64 байта, зарезервированные для будущего использования
+    Matrix4D projection;        // 64 байта
+    Matrix4D view;              // 64 байта
+    Matrix4D mReserved0;        // 64 байта, зарезервированные для будущего использования
+    Matrix4D mReserved1;        // 64 байта, зарезервированные для будущего использования
 };
 
 struct VulkanMaterialShaderInstanceUniformObject 
@@ -49,10 +50,10 @@ struct VulkanMaterialShaderInstanceUniformObject
 
 /// @brief 
 struct VulkanUI_ShaderGlobalUniformObject {
-    Matrix4D projection;  // 64 bytes
-    Matrix4D view;        // 64 bytes
-    Matrix4D mReserved0;  // 64 bytes, зарезервировано для будущего использования.
-    Matrix4D mReserved1;  // 64 bytes, зарезервировано для будущего использования.
+    Matrix4D projection;        // 64 bytes
+    Matrix4D view;              // 64 bytes
+    Matrix4D mReserved0;        // 64 bytes, зарезервировано для будущего использования.
+    Matrix4D mReserved1;        // 64 bytes, зарезервировано для будущего использования.
 };
 
 /// @brief Объект универсального буфера экземпляра материала пользовательского интерфейса, специфичный для Vulkan, для шейдера пользовательского интерфейса.

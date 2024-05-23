@@ -5,6 +5,7 @@
 #include "systems/material_system.hpp"
 #include "resources/geometry.hpp"
 #include "renderer/vulkan/shaders/vulkan_ui_shader.hpp"
+#include "vulkan_shader.hpp"
 
 #include "math/vertex.hpp"
 
@@ -72,13 +73,13 @@ bool VulkanAPI::Load(Shader *shader, u8 RenderpassID, u8 StageCount, const char 
     VulkanRenderpass& renderpass = RenderpassID == 1 ? MainRenderpass : UI_Renderpass;
 
     // Этапы перевода
-    VkShaderStageFlags VkStages[VulkanShader_MAX_STAGES];
-    for (u8 i = 0; i < stage_count; ++i) {
+    VkShaderStageFlags VkStages[VulkanShaderConstants::MaxStages];
+    for (u8 i = 0; i < StageCount; ++i) {
         switch (stages[i]) {
-            case SHADER_STAGE_FRAGMENT:
+            case ShaderStage::Fragment:
                 VkStages[i] = VK_SHADER_STAGE_FRAGMENT_BIT;
                 break;
-            case SHADER_STAGE_VERTEX:
+            case ShaderStage::Vertex:
                 VkStages[i] = VK_SHADER_STAGE_VERTEX_BIT;
                 break;
             case SHADER_STAGE_GEOMETRY:
