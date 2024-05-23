@@ -76,21 +76,21 @@ bool MaterialLoader::Load(const char *name, Resource *OutResource)
         char* TrimmedValue = MString::Trim(RawValue);
 
         // Обработайте переменную.
-        if (StringsEquali(TrimmedVarName, "version")) {
+        if (MString::Equali(TrimmedVarName, "version")) {
             // TODO: version
-        } else if (StringsEquali(TrimmedVarName, "name")) {
+        } else if (MString::Equali(TrimmedVarName, "name")) {
             MMemory::CopyMem(ResourceData->name, TrimmedValue, MATERIAL_NAME_MAX_LENGTH);
-        } else if (StringsEquali(TrimmedVarName, "diffuse_map_name")) {
+        } else if (MString::Equali(TrimmedVarName, "diffuse_map_name")) {
             MMemory::CopyMem(ResourceData->DiffuseMapName, TrimmedValue, TEXTURE_NAME_MAX_LENGTH);
-        } else if (StringsEquali(TrimmedVarName, "diffuse_colour")) {
+        } else if (MString::Equali(TrimmedVarName, "diffuse_colour")) {
             // Разобрать цвет
             if (!MString::ToVector4D(TrimmedValue, &ResourceData->DiffuseColour)) {
                 MWARN("Ошибка анализа диффузного цвета (diffuse_color) в файле «%s». Вместо этого используется белый цвет по умолчанию.", FullFilePath);
                 // ПРИМЕЧАНИЕ. Уже назначено выше, его здесь нет необходимости.
             } 
-        } else if (StringsEquali(TrimmedVarName, "type")) {
+        } else if (MString::Equali(TrimmedVarName, "type")) {
             // TODO: другие типы материалов.
-            if (StringsEquali(TrimmedValue, "ui")) {
+            if (MString::Equali(TrimmedValue, "ui")) {
                 ResourceData->type = MaterialType::UI;
                  }
         }

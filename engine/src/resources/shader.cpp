@@ -1,4 +1,5 @@
 #include "shader.hpp"
+#include "renderer/renderer.hpp"
 
 Shader::Shader()
     :
@@ -27,7 +28,7 @@ Shader::Shader()
     PushConstantRangeCount(), 
     PushConstantRanges(), 
     AttributeStride(), 
-    InternalData(nullptr) 
+    ShaderData(nullptr) 
 {}
 
 Shader::Shader(u32 id, const ShaderConfig &config) 
@@ -57,7 +58,7 @@ Shader::Shader(u32 id, const ShaderConfig &config)
     PushConstantRangeCount(), 
     PushConstantRanges(), 
     AttributeStride(), 
-    InternalData(nullptr)
+    ShaderData(nullptr)
 {
     if (this->id == INVALID::ID) {
         MERROR("Невозможно найти свободный слот для создания нового шейдера. Прерывание.");

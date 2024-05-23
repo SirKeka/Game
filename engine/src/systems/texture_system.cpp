@@ -89,8 +89,8 @@ void TextureSystem::Shutdown()
 Texture *TextureSystem::Acquire(const char* name, bool AutoRelease)
 {
     // Вернуть текстуру по умолчанию, но предупредить об этом, поскольку она должна быть возвращена через GetDefaultTexture();
-    if (StringsEquali(name, DEFAULT_TEXTURE_NAME)) {
-        MWARN("TextureSystem::Acquire вызывает текстуру по умолчанию. Используйте TextureSystem::GetDefaultTexture для текстуры «по умолчанию».");
+    if (MString::Equali(name, DEFAULT_TEXTURE_NAME)) {
+        MWARN("TextureSystem::Acquire: вызывает текстуру по умолчанию. Используйте TextureSystem::GetDefaultTexture для текстуры «по умолчанию».");
         return &DefaultTexture;
     }
 
@@ -146,7 +146,7 @@ Texture *TextureSystem::Acquire(const char* name, bool AutoRelease)
 void TextureSystem::Release(const char* name)
 {
     // Игнорируйте запросы на выпуск текстуры по умолчанию.
-    if (StringsEquali(name, DEFAULT_TEXTURE_NAME)) {
+    if (MString::Equali(name, DEFAULT_TEXTURE_NAME)) {
         return;
     }
     TextureReference ref;

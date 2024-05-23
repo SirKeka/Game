@@ -116,7 +116,7 @@ Material *MaterialSystem::Acquire(const char *name)
 Material *MaterialSystem::AcquireFromConfig(MaterialConfig config)
 {
     // Вернуть материал по умолчанию.
-    if (StringsEquali(config.name, DEFAULT_MATERIAL_NAME)) {
+    if (MString::Equali(config.name, DEFAULT_MATERIAL_NAME)) {
         return &DefaultMaterial;
     }
 
@@ -177,7 +177,7 @@ Material *MaterialSystem::AcquireFromConfig(MaterialConfig config)
 void MaterialSystem::Release(const char *name)
 {
     // Игнорируйте запросы на выпуск материала по умолчанию.
-    if (StringsEquali(name, DEFAULT_MATERIAL_NAME)) {
+    if (MString::Equali(name, DEFAULT_MATERIAL_NAME)) {
         return;
     }
     MaterialReference ref;

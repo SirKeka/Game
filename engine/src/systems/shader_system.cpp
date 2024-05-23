@@ -1,6 +1,7 @@
 #include "shader_system.hpp"
 #include "memory/linear_allocator.hpp"
 #include "systems/texture_system.hpp"
+#include "renderer/renderer.hpp"
 #include <new>
 
 ShaderSystem* ShaderSystem::state = nullptr;
@@ -102,12 +103,12 @@ bool ShaderSystem::Create(const ShaderConfig &config)
     new(reinterpret_cast<void*>(OutShader)) Shader(id, config);
 
     u8 RenderpassID = INVALID::U8ID;
-    if (!renderer_renderpass_id(config.RenderpassName, &RenderpassID)) {
+    if (!Renderer::RenderpassID(config.RenderpassName, RenderpassID)) {
         MERROR("Не удалось найти рендерпасс '%s'", config.RenderpassName);
         return false;
     }
 
-    if (!renderer_shader_create(OutShader, RenderpassID, config.StageCount, /*(const char**)*/config.StageFilenames, config.stages)) {
+    if (!Renderer::Load(OutShader, RenderpassID, config.StageCount, config.StageFilenames, config.stages.Data())) {
         MERROR("Ошибка создания шейдера.");
         return false;
     }
@@ -130,7 +131,7 @@ bool ShaderSystem::Create(const ShaderConfig &config)
     }
 
     // Инициализируйте шейдер.
-    if (!renderer_shader_initialize(OutShader)) {
+    if (!Renderer::ShaderInitialize(OutShader)) {
         MERROR("ShaderSystem::Create: не удалось инициализировать шейдер '%s'.", config.name);
         // ПРИМЕЧАНИЕ: Initialize автоматически уничтожает шейдер в случае сбоя.
         return false;
@@ -139,7 +140,7 @@ bool ShaderSystem::Create(const ShaderConfig &config)
     // На этом этапе создание прошло успешно, поэтому сохраните идентификатор шейдера в хеш-таблице, чтобы позже можно было найти его по имени.
     if (!state->lookup.Set(config.name, &OutShader->id)) {
         // Черт возьми, мы зашли так далеко... ну что ж, взрываем шейдер и загружаемся. (Черт возьми, мы зашли так далеко... Что ж, удалите шейдер и перезапустите.)
-        renderer_shader_destroy(OutShader);
+        Renderer::Unload(OutShader);
         return false;
     }
 
@@ -184,11 +185,11 @@ bool ShaderSystem::Use(u32 ShaderID)
     if (state->CurrentShaderID != ShaderID) {
         Shader* NextShader = GetShader(ShaderID);
         state->CurrentShaderID = ShaderID;
-        if (!renderer_shader_use(NextShader)) {
+        if (!Renderer::ShaderUse(NextShader)) {
             MERROR("Не удалось использовать шейдер '%s'.", NextShader->name.c_str());
             return false;
         }
-        if (!renderer_shader_bind_globals(NextShader)) {
+        if (!Renderer::ShaderBindGlobals(NextShader)) {
             MERROR("Не удалось привязать глобальные переменные для шейдера. '%s'.", NextShader->name.c_str());
             return false;
         }
@@ -218,15 +219,15 @@ bool ShaderSystem::UniformSet(u16 index, const void *value)
     ShaderUniform* uniform = &shader->uniforms[index];
     if (shader->BoundScope != uniform->scope) {
         if (uniform->scope == ShaderScope::Global) {
-            renderer_shader_bind_globals(shader);
+            Renderer::ShaderBindGlobals(shader);
         } else if (uniform->scope == ShaderScope::Instance) {
-            renderer_shader_bind_instance(shader, shader->BoundInstanceID);
+            Renderer::ShaderBindInstance(shader, shader->BoundInstanceID);
         } else {
             // ПРИМЕЧАНИЕ: Больше здесь делать нечего, просто установите униформу.
         }
         shader->BoundScope = uniform->scope;
     }
-    return renderer_set_uniform(shader, uniform, value);
+    return Renderer::SetUniform(shader, uniform, value);
 }
 
 bool ShaderSystem::SamplerSet(const char *SamplerName, const Texture *texture)
@@ -241,12 +242,12 @@ bool ShaderSystem::SamplerSet(u16 index, const Texture *texture)
 
 bool ShaderSystem::ApplyGlobal()
 {
-    return renderer_shader_apply_globals(&state->shaders[state->CurrentShaderID]);
+    return Renderer::ShaderApplyGlobals(&state->shaders[state->CurrentShaderID]);
 }
 
 bool ShaderSystem::ApplyInstance()
 {
-    return renderer_shader_apply_instance(&state->shaders[state->CurrentShaderID]);
+    return Renderer::ShaderApplyInstance(&state->shaders[state->CurrentShaderID]);
 }
 
 bool ShaderSystem::AddSampler(Shader* shader, const ShaderUniformConfig &config)

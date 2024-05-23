@@ -65,9 +65,14 @@ void VulkanAPI::DrawGeometry(const GeometryRenderData& data)
     }
 }
 
-bool VulkanAPI::Load(Shader *shader, u8 RenderpassID, u8 StageCount, const char **StageFilenames, ShaderStage stages)
+const u32 DESC_SET_INDEX_GLOBAL   = 0;  // Индекс набора глобальных дескрипторов.
+const u32 DESC_SET_INDEX_INSTANCE = 1;  // Индекс набора дескрипторов экземпляра.
+const u32 BINDING_INDEX_UBO       = 0;  // Индекс привязки УБО.
+const u32 BINDING_INDEX_SAMPLER   = 1;  // Индекс привязки сэмплера изображения.
+
+bool VulkanAPI::Load(Shader *shader, u8 RenderpassID, u8 StageCount, DArray<char*> StageFilenames, const ShaderStage *stages)
 {
-    //shader->internal_data = kallocate(sizeof(vulkan_shader), MEMORY_TAG_RENDERER);
+    shader->ShaderData = MMemory::Allocate(sizeof(VulkanShader), MemoryTag::Renderer);
 
     // СДЕЛАТЬ: динамические проходы рендеринга
     VulkanRenderpass& renderpass = RenderpassID == 1 ? MainRenderpass : UI_Renderpass;
@@ -82,106 +87,106 @@ bool VulkanAPI::Load(Shader *shader, u8 RenderpassID, u8 StageCount, const char 
             case ShaderStage::Vertex:
                 VkStages[i] = VK_SHADER_STAGE_VERTEX_BIT;
                 break;
-            case SHADER_STAGE_GEOMETRY:
-                KWARN("vulkan_renderer_shader_create: VK_SHADER_STAGE_GEOMETRY_BIT is set but not yet supported.");
+            case ShaderStage::Geometry:
+                MWARN("VulkanAPI::LoadShader: VK_SHADER_STAGE_GEOMETRY_BIT установлен, но еще не поддерживается.");
                 VkStages[i] = VK_SHADER_STAGE_GEOMETRY_BIT;
                 break;
-            case SHADER_STAGE_COMPUTE:
-                KWARN("vulkan_renderer_shader_create: SHADER_STAGE_COMPUTE is set but not yet supported.");
+            case ShaderStage::Compute:
+                MWARN("VulkanAPI::LoadShader: SHADER_STAGE_COMPUTE установлен, но еще не поддерживается.");
                 VkStages[i] = VK_SHADER_STAGE_COMPUTE_BIT;
                 break;
             default:
-                KERROR("Unsupported stage type: %d", stages[i]);
+                MERROR("Неподдерживаемый тип этапа: %d", stages[i]);
                 break;
         }
     }
 
-    // TODO: configurable max descriptor allocate count.
+    // СДЕЛАТЬ: настраиваемый максимальный счетчик выделения дескриптора.
 
-    u32 max_descriptor_allocate_count = 1024;
+    u32 MaxDescriptorAllocateCount = 1024;
 
-    // Take a copy of the pointer to the context.
-    vulkan_shader* out_shader = (vulkan_shader*)shader->internal_data;
+    // Скопируйте указатель на контекст.
+    VulkanShader* OutShader = reinterpret_cast<VulkanShader*>(shader->ShaderData);
 
-    out_shader->renderpass = renderpass;
+    OutShader->renderpass = renderpass;
 
-    // Build out the configuration.
-    out_shader->config.max_descriptor_set_count = max_descriptor_allocate_count;
+    // Создайте конфигурацию.
+    OutShader->config.MaxDescriptorSetCount = MaxDescriptorAllocateCount;
 
-    // Shader stages. Parse out the flags.
-    kzero_memory(out_shader->config.stages, sizeof(vulkan_shader_stage_config) * VULKAN_SHADER_MAX_STAGES);
-    out_shader->config.stage_count = 0;
-    // Iterate provided stages.
-    for (u32 i = 0; i < stage_count; i++) {
-        // Make sure there is room enough to add the stage.
-        if (out_shader->config.stage_count + 1 > VULKAN_SHADER_MAX_STAGES) {
-            KERROR("Shaders may have a maximum of %d stages", VULKAN_SHADER_MAX_STAGES);
+    // Этапы шейдера. Разбираем флаги.
+    MMemory::ZeroMem(OutShader->config.stages, sizeof(VulkanShaderStageConfig) * VulkanShaderConstants::MaxStages);
+    OutShader->StageCount = 0;
+    // Перебрать предоставленные этапы.
+    for (u32 i = 0; i < StageCount; i++) {
+        // Убедитесь, что достаточно места для добавления сцены.
+        if (OutShader->config.stage_count + 1 >  VulkanShaderConstants::MaxStages) {
+            MERROR("Шейдеры могут иметь максимум %d стадий.", VulkanShaderConstants::MaxStages);
             return false;
         }
 
-        // Make sure the stage is a supported one.
-        VkShaderStageFlagBits stage_flag;
+        // Убедитесь, что сцена поддерживается.
+        VkShaderStageFlagBits StageFlag;
         switch (stages[i]) {
-            case SHADER_STAGE_VERTEX:
-                stage_flag = VK_SHADER_STAGE_VERTEX_BIT;
+            case ShaderStage::Vertex:
+                StageFlag = VK_SHADER_STAGE_VERTEX_BIT;
                 break;
-            case SHADER_STAGE_FRAGMENT:
-                stage_flag = VK_SHADER_STAGE_FRAGMENT_BIT;
+            case ShaderStage::Fragment:
+                StageFlag = VK_SHADER_STAGE_FRAGMENT_BIT;
                 break;
             default:
-                // Go to the next type.
-                KERROR("vulkan_shader_create: Unsupported shader stage flagged: %d. Stage ignored.", stages[i]);
+                // Перейти к следующему типу.
+                MERROR("VulkanAPI::LoadShader: Отмечена неподдерживаемая стадия шейдера: %d. Стадия проигнорирована.", stages[i]);
                 continue;
         }
 
-        // Set the stage and bump the counter.
-        out_shader->config.stages[out_shader->config.stage_count].stage = stage_flag;
-        string_ncopy(out_shader->config.stages[out_shader->config.stage_count].file_name, stage_filenames[i], 255);
-        out_shader->config.stage_count++;
+        // Подготовьте сцену и ударьте по счетчику.
+        OutShader->config.stages[OutShader->config.StageCount].stage = StageFlag;
+        MString::nCopy(OutShader->config.stages[OutShader->config.StageCount].FileName, StageFilenames[i], 255);
+        OutShader->config.StageCount++;
     }
 
-    // Zero out arrays and counts.
-    kzero_memory(out_shader->config.descriptor_sets, sizeof(vulkan_descriptor_set_config) * 2);
+    // Обнуляем массивы и подсчитываем.
+    MMemory::ZeroMem(OutShader->config.DescriptorSets, sizeof(VulkanDescriptorSetConfig) * 2);
 
-    // Attributes array.
-    kzero_memory(out_shader->config.attributes, sizeof(VkVertexInputAttributeDescription) * VULKAN_SHADER_MAX_ATTRIBUTES);
+    // Массив атрибутов.
+    MMemory::ZeroMem(OutShader->config.attributes, sizeof(VkVertexInputAttributeDescription) * VulkanShaderConstants::MaxAttributes);
 
-    // For now, shaders will only ever have these 2 types of descriptor pools.
-    out_shader->config.pool_sizes[0] = (VkDescriptorPoolSize){VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1024};          // HACK: max number of ubo descriptor sets.
-    out_shader->config.pool_sizes[1] = (VkDescriptorPoolSize){VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4096};  // HACK: max number of image sampler descriptor sets.
+    // На данный момент шейдеры будут иметь только эти два типа пулов дескрипторов.
+    OutShader->config.PoolSizes[0] = VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1024};          // HACK: максимальное количество наборов дескрипторов ubo.
+    OutShader->config.PoolSizes[1] = VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4096};  // HACK: максимальное количество наборов дескрипторов сэмплера изображений.
 
-    // Global descriptor set config.
-    vulkan_descriptor_set_config global_descriptor_set_config = {};
+    // Конфигурация глобального набора дескрипторов.
+    VulkanDescriptorSetConfig GlobalDescriptorSetConfig = {};
 
-    // UBO is always available and first.
-    global_descriptor_set_config.bindings[BINDING_INDEX_UBO].binding = BINDING_INDEX_UBO;
-    global_descriptor_set_config.bindings[BINDING_INDEX_UBO].descriptorCount = 1;
-    global_descriptor_set_config.bindings[BINDING_INDEX_UBO].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    global_descriptor_set_config.bindings[BINDING_INDEX_UBO].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-    global_descriptor_set_config.binding_count++;
+    // УБО всегда доступен и первый.
+    GlobalDescriptorSetConfig.bindings[BINDING_INDEX_UBO].binding = BINDING_INDEX_UBO;
+    GlobalDescriptorSetConfig.bindings[BINDING_INDEX_UBO].descriptorCount = 1;
+    GlobalDescriptorSetConfig.bindings[BINDING_INDEX_UBO].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    GlobalDescriptorSetConfig.bindings[BINDING_INDEX_UBO].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+    GlobalDescriptorSetConfig.binding_count++;
 
-    out_shader->config.descriptor_sets[DESC_SET_INDEX_GLOBAL] = global_descriptor_set_config;
-    out_shader->config.descriptor_set_count++;
+    OutShader->config.DescriptorSets[DESC_SET_INDEX_GLOBAL] = GlobalDescriptorSetConfig;
+    OutShader->config.DescriptorSetCount++;
     if (shader->use_instances) {
-        // If using instances, add a second descriptor set.
-        vulkan_descriptor_set_config instance_descriptor_set_config = {};
+        // Если вы используете экземпляры, добавьте второй набор дескрипторов.
+        VulkanDescriptorSetConfig InstanceDescriptorSetConfig = {};
 
-        // Add a UBO to it, as instances should always have one available.
-        // NOTE: Might be a good idea to only add this if it is going to be used...
-        instance_descriptor_set_config.bindings[BINDING_INDEX_UBO].binding = BINDING_INDEX_UBO;
-        instance_descriptor_set_config.bindings[BINDING_INDEX_UBO].descriptorCount = 1;
-        instance_descriptor_set_config.bindings[BINDING_INDEX_UBO].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        instance_descriptor_set_config.bindings[BINDING_INDEX_UBO].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-        instance_descriptor_set_config.binding_count++;
+        // Добавьте к нему UBO, так как в экземплярах он всегда должен быть доступен.
+        // ПРИМЕЧАНИЕ: Возможно, будет хорошей идеей добавить это только в том случае, если оно будет использоваться...
+        InstanceDescriptorSetConfig.bindings[BINDING_INDEX_UBO].binding = BINDING_INDEX_UBO;
+        InstanceDescriptorSetConfig.bindings[BINDING_INDEX_UBO].descriptorCount = 1;
+        InstanceDescriptorSetConfig.bindings[BINDING_INDEX_UBO].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        InstanceDescriptorSetConfig.bindings[BINDING_INDEX_UBO].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+        InstanceDescriptorSetConfig.BindingCount++;
 
-        out_shader->config.descriptor_sets[DESC_SET_INDEX_INSTANCE] = instance_descriptor_set_config;
-        out_shader->config.descriptor_set_count++;
+        OutShader->config.DescriptorSets[DESC_SET_INDEX_INSTANCE] = InstanceDescriptorSetConfig;
+        OutShader->config.DescriptorSetCount++;
     }
 
     // Invalidate all instance states.
     // TODO: dynamic
     for (u32 i = 0; i < 1024; ++i) {
-        out_shader->instance_states[i].id = INVALID_ID;
+        OutShader->InstanceStates[i].id = INVALID::ID;
     }
 
     return true;

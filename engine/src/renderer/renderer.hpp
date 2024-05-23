@@ -13,11 +13,6 @@
 #include "renderer_types.hpp"
 #include "math/vertex.hpp"
 
-// TODO: временно
-#include "containers/mstring.hpp"
-#include "core/event.hpp"
-// TODO: временно
-
 struct StaticMeshData;
 struct PlatformState;
 class VulkanAPI;
@@ -35,7 +30,7 @@ private:
     f32 FarClip;
 
 public:
-    Renderer() : projection(), view(), NearClip(0.f), FarClip(0.f) {}
+    Renderer() : projection(), view(), UI_Projection(), UI_View(), NearClip(0.f), FarClip(0.f) {}
     ~Renderer();
 
     /// @brief Инициализирует интерфейс/систему рендеринга.
@@ -79,7 +74,7 @@ public:
     /// @param name имя средства рендеринга, идентификатор которого требуется получить.
     /// @param OutRenderpassID указатель для хранения идентификатора renderpass.
     /// @return true если найден, иначе false.
-    bool RenderpassID(const char* name, u8& OutRenderpassID);
+    static bool RenderpassID(const char* name, u8& OutRenderpassID);
     /// @brief Создает внутренние ресурсы шейдера, используя предоставленные параметры.---------------------------------------------------------------
     /// @param shader указатель на шейдер.
     /// @param RenderpassID идентификатор прохода рендеринга, который будет связан с шейдером.
@@ -87,7 +82,7 @@ public:
     /// @param StageFilenames массив имен файлов этапов шейдера, которые будут загружены. Должно соответствовать массиву этапов.
     /// @param stages массив этапов шейдера(ShaderStage), указывающий, какие этапы рендеринга (вершина, фрагмент и т. д.) используются в этом шейдере.
     /// @return true в случае успеха, иначе false.
-    static bool Load(Shader* shader, u8 RenderpassID, u8 StageCount, const char** StageFilenames, ShaderStage stages);
+    static bool Load(Shader* shader, u8 RenderpassID, u8 StageCount, DArray<char*> StageFilenames, const ShaderStage* stages);
     /// @brief Уничтожает данный шейдер и освобождает все имеющиеся в нем ресурсы.--------------------------------------------------------------------
     /// @param shader указатель на шейдер, который нужно уничтожить.
     static void Unload(Shader* shader);
@@ -95,28 +90,28 @@ public:
     /// Должен быть вызван после Shader::Create().
     /// @param shader указатель на шейдер, который необходимо инициализировать.
     /// @return true в случае успеха, иначе false.
-    bool ShaderInitialize(Shader* shader);
+    static bool ShaderInitialize(Shader* shader);
     /// @brief Использует заданный шейдер, активируя его для обновления атрибутов, униформы и т. д., а также для использования в вызовах отрисовки.---
     /// @param shader указатель на используемый шейдер.
     /// @return true в случае успеха, иначе false.
-    bool ShaderUse(Shader* shader);
+    static bool ShaderUse(Shader* shader);
     /// @brief Связывает глобальные ресурсы для использования и обновления.---------------------------------------------------------------------------
     /// @param shader указатель на шейдер, глобальные значения которого должны быть связаны.
     /// @return true в случае успеха, иначе false.
-    bool ShaderBindGlobals(Shader* shader);
+    static bool ShaderBindGlobals(Shader* shader);
     /// @brief Связывает ресурсы экземпляра для использования и обновления.---------------------------------------------------------------------------
     /// @param shader указатель на шейдер, ресурсы экземпляра которого должны быть связаны.
     /// @param InstanceID идентификатор экземпляра, который необходимо привязать.
     /// @return true в случае успеха, иначе false.
-    bool ShaderBindInstance(Shader* shader, u32 InstanceID);
+    static bool ShaderBindInstance(Shader* shader, u32 InstanceID);
     /// @brief Применяет глобальные данные к универсальному буферу.-----------------------------------------------------------------------------------
     /// @param shader указатель на шейдер, к которому нужно применить глобальные данные.
     /// @return true в случае успеха, иначе false.
-    bool ShaderApplyGlobals(Shader* shader);
+    static bool ShaderApplyGlobals(Shader* shader);
     /// @brief Применяет данные для текущего привязанного экземпляра.---------------------------------------------------------------------------------
     /// @param shader указатель на шейдер, глобальные значения которого должны быть связаны.
     /// @return true в случае успеха, иначе false.
-    bool ShaderApplyInstance(Shader* shader);
+    static bool ShaderApplyInstance(Shader* shader);
     /// @brief Получает внутренние ресурсы уровня экземпляра и предоставляет идентификатор экземпляра.------------------------------------------------
     /// @param shader указатель на шейдер, к которому нужно применить данные экземпляра.
     /// @param OutInstanceID ссылка для хранения нового идентификатора экземпляра.
@@ -132,7 +127,7 @@ public:
     /// @param uniform постоянный указатель на униформу.
     /// @param value указатель на значение, которое необходимо установить.
     /// @return true в случае успеха, иначе false.
-    bool SetUniform(Shader* shader, struct ShaderUniform* uniform, const void* value);
+    static bool SetUniform(Shader* shader, struct ShaderUniform* uniform, const void* value);
 
     /// @brief Устанавливает матрицу представления в средстве визуализации. ПРИМЕЧАНИЕ: Доступен общедоступному API.
     /// @deprecated ВЗЛОМ: это не должно быть выставлено за пределы движка.

@@ -78,7 +78,6 @@ public:
     // Указатель на текстуру по умолчанию.
     //class Texture* DefaultDiffuse;
 public:
-    //RendererType();
     virtual ~RendererType() = default;
 
     virtual bool Initialize(class MWindow* window, const char* ApplicationName) = 0;
@@ -105,7 +104,7 @@ public:
     /// @param StageFilenames массив имен файлов этапов шейдера, которые будут загружены. Должно соответствовать массиву этапов.
     /// @param stages массив этапов шейдера(ShaderStage), указывающий, какие этапы рендеринга (вершина, фрагмент и т. д.) используются в этом шейдере.
     /// @return true в случае успеха, иначе false.
-    virtual bool Load(Shader* shader, u8 RenderpassID, u8 StageCount, const char** StageFilenames, ShaderStage stages) = 0;
+    virtual bool Load(Shader* shader, u8 RenderpassID, u8 StageCount, DArray<char*> StageFilenames, const ShaderStage* stages) = 0;
     /// @brief Уничтожает данный шейдер и освобождает все имеющиеся в нем ресурсы.--------------------------------------------------------------------
     /// @param shader указатель на шейдер, который нужно уничтожить.
     virtual void Unload(Shader* shader) = 0;

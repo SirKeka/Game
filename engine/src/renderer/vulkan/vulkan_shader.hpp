@@ -26,19 +26,19 @@ struct VulkanShaderStageConfig {
  
 /// @brief Конфигурация набора дескрипторов.
 struct VulkanDescriptorSetConfig {
-    u8 BindingCount;                                                    // Количество привязок в этом наборе.
-    VkDescriptorSetLayoutBinding bindings[VulkanShaderConstants::MaxBindings];   // Массив макетов привязки для этого набора.
+    u8 BindingCount;                                                                    // Количество привязок в этом наборе.
+    VkDescriptorSetLayoutBinding bindings[VulkanShaderConstants::MaxBindings];          // Массив макетов привязки для этого набора.
 };
 
 /// @brief Конфигурация внутреннего шейдера, созданная с помощью VulkanShader:Create().
 struct VulkanShaderConfig {
-    u8 StageCount;                                                              // Количество этапов в этом шейдере.
-    VulkanShaderStageConfig stages[VulkanShaderConstants::MaxStages];                    // Конфигурация для каждого этапа этого шейдера.
-    VkDescriptorPoolSize PoolSizes[2];                                          // Массив размеров пула дескрипторов.
-    u16 MaxDescriptorSetCount;                                                  // Максимальное количество наборов дескрипторов, которые можно выделить из этого шейдера. Обычно должно быть достаточно большое число.
-    u8 DescriptorSetCount;                                                      // Общее количество наборов дескрипторов, настроенных для этого шейдера. Имеет значение 1, если используются только глобальные униформы/сэмплеры; иначе 2.
-    VulkanDescriptorSetConfig DescriptorSets[2];                                // Наборы дескрипторов, максимум 2. Индекс 0 = глобальный, 1 = экземпляр.
-    VkVertexInputAttributeDescription attributes[VulkanShaderConstants::MaxAttributes];  // Массив описаний атрибутов для этого шейдера.
+    u8 StageCount;                                                                      // Количество этапов в этом шейдере.
+    VulkanShaderStageConfig stages[VulkanShaderConstants::MaxStages];                   // Конфигурация для каждого этапа этого шейдера.
+    VkDescriptorPoolSize PoolSizes[2];                                                  // Массив размеров пула дескрипторов.
+    u16 MaxDescriptorSetCount;                                                          // Максимальное количество наборов дескрипторов, которые можно выделить из этого шейдера. Обычно должно быть достаточно большое число.
+    u8 DescriptorSetCount;                                                              // Общее количество наборов дескрипторов, настроенных для этого шейдера. Имеет значение 1, если используются только глобальные униформы/сэмплеры; иначе 2.
+    VulkanDescriptorSetConfig DescriptorSets[2];                                        // Наборы дескрипторов, максимум 2. Индекс 0 = глобальный, 1 = экземпляр.
+    VkVertexInputAttributeDescription attributes[VulkanShaderConstants::MaxAttributes]; // Массив описаний атрибутов для этого шейдера.
 
 };
  
@@ -54,8 +54,8 @@ struct VulkanDescriptorState {
 /// Это используется для отслеживания поколений и обновлений, возможно, 
 /// для оптимизации путем пропуска наборов, которые не требуют обновления.
 struct VulkanShaderDescriptorSetState {
-    VkDescriptorSet DescriptorSets[3];                                  // Дескриптор устанавливает для этого экземпляра по одному на кадр.
-    VulkanDescriptorState DescriptorStates[VulkanShaderConstants::MaxBindings];  // Состояние дескриптора для каждого дескриптора, который, в свою очередь, обрабатывает кадры. Подсчет управляется в конфигурации шейдера.
+    VkDescriptorSet DescriptorSets[3];                                          // Дескриптор устанавливает для этого экземпляра по одному на кадр.
+    VulkanDescriptorState DescriptorStates[VulkanShaderConstants::MaxBindings]; // Состояние дескриптора для каждого дескриптора, который, в свою очередь, обрабатывает кадры. Подсчет управляется в конфигурации шейдера.
 };
 
 /// @brief Состояние экземпляра шейдера.
