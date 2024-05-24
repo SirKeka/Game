@@ -1,9 +1,10 @@
 #pragma once
 #include "defines.hpp"
+#include "vulkan_pipeline.hpp"
 
-/// @brief Максимальное количество экземпляров элемента управления пользовательского интерфейса
 /// @todo СДЕЛАТЬ: сделать настраиваемым
-constexpr int VULKAN_MAX_UI_COUNT = 1024;
+constexpr int VULKAN_MAX_UI_COUNT = 1024;       // Максимальное количество экземпляров элемента управления пользовательского интерфейса
+constexpr int VULKAN_MAX_MATERIAL_COUNT = 1024; // Максимальное число экземпляров материала.
 
 /// @brief Установите некоторые жесткие ограничения на количество поддерживаемых текстур, атрибутов, 
 // униформ и т.д. Это необходимо для сохранения локальности памяти и предотвращения динамического распределения.
@@ -22,6 +23,13 @@ namespace VulkanShaderConstants
 struct VulkanShaderStageConfig {
     VkShaderStageFlagBits stage;            // Битовый флаг этапа шейдера.
     char FileName[255];                     // Имя файла шейдера.
+};
+
+/// @brief Представляет один этап шейдера.
+struct VulkanShaderStage {
+    VkShaderModuleCreateInfo CreateInfo;                    // Информация о создании шейдерного модуля.
+    VkShaderModule handle;                                  // Дескриптор внутреннего шейдерного модуля.
+    VkPipelineShaderStageCreateInfo ShaderStageCreateInfo;  // Информация о создании этапа шейдера конвейера.
 };
  
 /// @brief Конфигурация набора дескрипторов.

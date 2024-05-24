@@ -15,14 +15,7 @@
 #define LOG_TRACE_ENABLED 0
 #endif
 
-enum class LogLevel : u8 {
-    Fatal = 0,
-    Error = 1,
-    Warn = 2,
-    Info = 3,
-    Debug = 4,
-    Trace = 5
-};
+enum class LogLevel : u8 { Fatal = 1, Error, Warn, Info, Debug, Trace };
 
 class Logger
 {

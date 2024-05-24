@@ -16,7 +16,8 @@ VulkanBuffer::VulkanBuffer()
     MemoryPropertyFlags(), 
     FreeListMemoryRequirement(), 
     FreeListBlock(nullptr), 
-    BufferFreeList() {}
+    BufferFreeList(),
+    HasFreelist(false) {}
 
 VulkanBuffer::~VulkanBuffer()
 {
@@ -34,16 +35,20 @@ bool VulkanBuffer::Create(
     u64 size,
     VkBufferUsageFlagBits usage,
     u32 MemoryPropertyFlags,
-    bool BindOnCreate)
+    bool BindOnCreate,
+    bool UseFreelist)
 {
     this->TotalSize = size;
     this->usage = usage;
     this->MemoryPropertyFlags = MemoryPropertyFlags;
+    this->HasFreelist = UseFreelist;
 
-    // Создание свободного списка
-    BufferFreeList.GetMemoryRequirement(size, FreeListMemoryRequirement);
-    FreeListBlock = MMemory::Allocate(FreeListMemoryRequirement, MemoryTag::Renderer);
-    BufferFreeList.Create(size, FreeListBlock);
+    // Создание свободного списка, если нужно
+    if (UseFreelist) {
+        BufferFreeList.GetMemoryRequirement(size, FreeListMemoryRequirement);
+        FreeListBlock = MMemory::Allocate(FreeListMemoryRequirement, MemoryTag::Renderer);
+        BufferFreeList.Create(size, FreeListBlock);
+    }
 
     VkBufferCreateInfo BufferInfo = {VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
     BufferInfo.size = size;
@@ -110,22 +115,24 @@ bool VulkanBuffer::Resize(VulkanAPI *VkAPI, u64 NewSize, VkQueue queue, VkComman
         return false;
     }
 
-    // Сначала измените размер свободного списка.
-    u64 NewMemoryRequirement = 0;
-    BufferFreeList.GetMemoryRequirement(NewSize, NewMemoryRequirement);
-    void* NewBlock = MMemory::Allocate(NewMemoryRequirement, MemoryTag::Renderer);
-    void* OldBlock = nullptr;
-    if (!BufferFreeList.Resize(NewBlock, NewSize, &OldBlock)) {
-        MERROR("VulkanBuffer::Resize не удалось изменить размер внутреннего списка свободных мест.");
-        MMemory::Free(NewBlock, NewMemoryRequirement, MemoryTag::Renderer);
-        return false;
+    // Сначала измените размер свободного списка, если он используется.
+    if (HasFreelist) {
+        u64 NewMemoryRequirement = 0;
+        BufferFreeList.GetMemoryRequirement(NewSize, NewMemoryRequirement);
+        void* NewBlock = MMemory::Allocate(NewMemoryRequirement, MemoryTag::Renderer);
+        void* OldBlock = nullptr;
+        if (!BufferFreeList.Resize(NewBlock, NewSize, &OldBlock)) {
+            MERROR("VulkanBuffer::Resize не удалось изменить размер внутреннего списка свободных мест.");
+            MMemory::Free(NewBlock, NewMemoryRequirement, MemoryTag::Renderer);
+            return false;
+        }
+        // Очистите старую память, затем назначьте новые свойства.
+        MMemory::Free(OldBlock, FreeListMemoryRequirement, MemoryTag::Renderer);
+        FreeListMemoryRequirement = NewMemoryRequirement;
+        FreeListBlock = NewBlock;
+        TotalSize = NewSize;
     }
-    // Очистите старую память, затем назначьте новые свойства.
-    MMemory::Free(OldBlock, FreeListMemoryRequirement, MemoryTag::Renderer);
-    FreeListMemoryRequirement = NewMemoryRequirement;
-    FreeListBlock = NewBlock;
-    TotalSize = NewSize;
-
+    
     // Создайте новый буфер.
     VkBufferCreateInfo BufferInfo = {VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
     BufferInfo.size = NewSize;
@@ -171,7 +178,7 @@ bool VulkanBuffer::Resize(VulkanAPI *VkAPI, u64 NewSize, VkQueue queue, VkComman
         this->handle = 0;
     }
 
-    // Set new properties
+    // Установить новые свойства
     this->TotalSize = NewSize;
     this->memory = NewMemory;
     this->handle = NewBuffer;
@@ -202,6 +209,11 @@ bool VulkanBuffer::Allocate(u64 size, u64 &OutOffset)
         MERROR("VulkanBuffer::Allocate требуется ненулевой размер.");
         return false;
     }
+    if (!HasFreelist) {
+        MWARN("VulkanBuffer::Allocate вызывается для буфера, не использующего свободные списки. Смещение не будет действительным. Вместо этого вызовите VulkanBuffer::LoadData.");
+        OutOffset = 0;
+        return true;
+    }
 
     return BufferFreeList.AllocateBlock(size, OutOffset);
 }
@@ -211,6 +223,10 @@ bool VulkanBuffer::Free(u64 size, u64 offset)
     if (!size) {
         MERROR("VulkanBuffer::Free требуется ненулевой размер.");
         return false;
+    }
+    if (!HasFreelist) {
+        MWARN("VulkanBuffer::Free вызывается в буфере, не использующем свободные списки. Ничего не было сделано.");
+        return true;
     }
 
     return BufferFreeList.FreeBlock(size, offset);
@@ -252,8 +268,11 @@ void VulkanBuffer::CopyTo(
 
 void VulkanBuffer::CleanupFreelist()
 {
-    BufferFreeList.~FreeList();
-    MMemory::Free(FreeListBlock, FreeListMemoryRequirement, MemoryTag::Renderer);
-    FreeListMemoryRequirement = 0;
-    FreeListBlock = nullptr;
+    if(HasFreelist)
+    {
+        BufferFreeList.~FreeList();
+        MMemory::Free(FreeListBlock, FreeListMemoryRequirement, MemoryTag::Renderer);
+        FreeListMemoryRequirement = 0;
+        FreeListBlock = nullptr;
+        }
 }

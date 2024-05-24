@@ -84,14 +84,10 @@ public:
     virtual void ShutDown() = 0;
     virtual void Resized(u16 width, u16 height) = 0;
     virtual bool BeginFrame(f32 Deltatime) = 0;
-    virtual void UpdateGlobalWorldState(const Matrix4D& projection, const Matrix4D& view, const Vector3D<f32>& ViewPosition, const Vector4D<f32>& AmbientColour, i32 mode) = 0;
-    virtual void UpdateGlobalUIState(const Matrix4D& projection, const Matrix4D& view, i32 mode) = 0;
     virtual bool EndFrame(f32 DeltaTime) = 0;
     virtual bool BeginRenderpass(u8 RenderpassID) = 0;
     virtual bool EndRenderpass(u8 RenderpassID) = 0;
     virtual void DrawGeometry(const GeometryRenderData& data) = 0;
-    virtual bool CreateMaterial(class Material* material) = 0;
-    virtual void DestroyMaterial(class Material* material) = 0;
 
     virtual bool Load(struct GeometryID* gid, u32 VertexSize, u32 VertexCount, const void* vertices, u32 IndexSize, u32 IndexCount, const void* indices) = 0;
     virtual void Unload(struct GeometryID* gid) = 0;

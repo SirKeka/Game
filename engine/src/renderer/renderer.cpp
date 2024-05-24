@@ -80,8 +80,6 @@ bool Renderer::DrawFrame(RenderPacket *packet)
             return false;
         }
 
-        ptrRenderer->UpdateGlobalWorldState(projection, view, Vector3D<f32>::Zero(), Vector4D<f32>::Zero(), 0);
-
         // Отрисовка геометрии
         u32 count = packet->GeometryCount;
         for (u32 i = 0; i < count; ++i) {
@@ -99,9 +97,6 @@ bool Renderer::DrawFrame(RenderPacket *packet)
             MERROR("Ошибка Renderer::BeginRenderpass -> BuiltinRenderpass::UI. Приложение закрывается...");
             return false;
         }
-
-        // Обновить глобальное состояние пользовательского интерфейса
-        ptrRenderer->UpdateGlobalUIState(UI_Projection, UI_View, 0);
 
         // Нарисуйте геометрию пользовательского интерфейса.
         count = packet->UI_GeometryCount;
@@ -133,16 +128,6 @@ VulkanAPI *Renderer::GetRenderer()
     return dynamic_cast<VulkanAPI*>(ptrRenderer);
 }
 
-bool Renderer::CreateMaterial(Material *material)
-{
-    return ptrRenderer->CreateMaterial(material);
-}
-
-void Renderer::DestroyMaterial(Material *material)
-{
-    ptrRenderer->DestroyMaterial(material);
-}
-
 bool Renderer::Load(GeometryID *gid, u32 VertexSize, u32 VertexCount, const void *vertices, u32 IndexSize, u32 IndexCount, const void *indices)
 {
     return ptrRenderer->Load(gid, VertexSize, VertexCount, vertices, IndexSize, IndexCount, indices);
@@ -157,10 +142,10 @@ bool Renderer::RenderpassID(const char *name, u8 &OutRenderpassID)
 {
     // СДЕЛАТЬ: HACK: Нужны динамические проходы рендеринга(renderpass) вместо их жесткого кодирования.
     if (MString::Equali("Renderpass.Builtin.World", name)) {
-        OutRenderpassID = BuiltinRenderpass::World;
+        OutRenderpassID = static_cast<u8>(BuiltinRenderpass::World);
         return true;
     } else if (MString::Equali("Renderpass.Builtin.UI", name)) {
-        OutRenderpassID = BuiltinRenderpass::UI;
+        OutRenderpassID = static_cast<u8>(BuiltinRenderpass::UI);
         return true;
     }
 

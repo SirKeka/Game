@@ -19,7 +19,7 @@ bool Logger::Initialize()
 {
     // Создайте новый/сотрите существующий файл журнала, затем откройте его.
     if (!Filesystem::Open("console.log", FileModes::Write, false, &LogFileHandle)) {
-        PlatformConsoleWriteError("ОШИБКА: Не удается открыть console.log для записи.", LogLevel::Error);
+        PlatformConsoleWriteError("ОШИБКА: Не удается открыть console.log для записи.", static_cast<u8>(LogLevel::Error));
         return false;
     }
 
@@ -52,7 +52,7 @@ void Logger::AppendToLogFile(MString message)
         u64 length = message.Length();
         u64 written = 0;
         if (!Filesystem::Write(&LogFileHandle, length, message.c_str(), &written)) {
-            PlatformConsoleWriteError("ОШИБКА записи в console.log.", LogLevel::Error);
+            PlatformConsoleWriteError("ОШИБКА записи в console.log.", static_cast<u8>(LogLevel::Error));
         }
     }
 }
@@ -63,7 +63,7 @@ void Logger::Output(LogLevel level, MString message, ...)
     // итоге это необходимо переместить в другой поток вместе с записью файла, 
     // чтобы избежать замедления процесса во время попытки запуска движка.
     const char* LevelStrings[6] = {"[FATAL]: ", "[ОШИБКА]: ", "[ПРЕДУПРЕЖДЕНИЕ]:  ", "[ИНФО]:  ", "[ОТЛАДКА]: ", "[TRACE]: "};
-    bool IsError = LogLevel::Warn;
+    bool IsError = static_cast<bool>(LogLevel::Warn);
 
     // Технически накладывает ограничение на длину одной записи журнала в 32 тыс. символов, но...
     // НЕ ДЕЛАЙТЕ ЭТОГО!
@@ -75,13 +75,14 @@ void Logger::Output(LogLevel level, MString message, ...)
     MString::FormatV(OutMessage, message.c_str(), arg_ptr);
     va_end(arg_ptr);
 
+    const u8& lvl = static_cast<u8>(level);
     // Добавить уровень журнала к сообщению.
-    MString::Format(OutMessage, "%s%s\n", LevelStrings[level], OutMessage);
+    MString::Format(OutMessage, "%s%s\n", LevelStrings[lvl], OutMessage);
 
     if (IsError) {
-        PlatformConsoleWriteError(OutMessage, level);
+        PlatformConsoleWriteError(OutMessage, lvl);
     } else {
-        PlatformConsoleWrite(OutMessage, level);
+        PlatformConsoleWrite(OutMessage, lvl);
     }
 
     // Поставьте копию в очередь для записи в файл журнала.
@@ -94,7 +95,7 @@ void Logger::Output(LogLevel level, const char *message, ...)
     // итоге это необходимо переместить в другой поток вместе с записью файла, 
     // чтобы избежать замедления процесса во время попытки запуска движка.
     const char* LevelStrings[6] = {"[FATAL]: ", "[ОШИБКА]: ", "[ПРЕДУПРЕЖДЕНИЕ]:  ", "[ИНФО]:  ", "[ОТЛАДКА]: ", "[TRACE]: "};
-    bool IsError = LOG_LEVEL_WARN;
+    bool IsError = static_cast<bool>(LogLevel::Warn);
 
     // Технически накладывает ограничение на длину одной записи журнала в 32 тыс. символов, но...
     // НЕ ДЕЛАЙТЕ ЭТОГО!
@@ -106,13 +107,14 @@ void Logger::Output(LogLevel level, const char *message, ...)
     MString::FormatV(OutMessage, message, arg_ptr);
     va_end(arg_ptr);
 
+    const u8& lvl = static_cast<u8>(level);
     // Добавить уровень журнала к сообщению.
-    MString::Format(OutMessage, "%s%s\n", LevelStrings[level], OutMessage);
+    MString::Format(OutMessage, "%s%s\n", LevelStrings[lvl], OutMessage);
 
     if (IsError) {
-        PlatformConsoleWriteError(OutMessage, level);
+        PlatformConsoleWriteError(OutMessage, lvl);
     } else {
-        PlatformConsoleWrite(OutMessage, level);
+        PlatformConsoleWrite(OutMessage, lvl);
     }
 
     // Поставьте копию в очередь для записи в файл журнала.
@@ -121,5 +123,5 @@ void Logger::Output(LogLevel level, const char *message, ...)
 
 void ReportAssertionFailure(const char* expression, const char* message, const char* file, i32 line) 
 {
-    Logger::Output(LOG_LEVEL_FATAL, "Ошибка утверждения: %s, сообщение: '%s', в файле: %s, строка: %d\n", expression, message, file, line);
+    Logger::Output(LogLevel::Fatal, "Ошибка утверждения: %s, сообщение: '%s', в файле: %s, строка: %d\n", expression, message, file, line);
 }

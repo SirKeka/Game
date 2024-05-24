@@ -26,6 +26,7 @@ public:
     u64 FreeListMemoryRequirement;  // Объем памяти, необходимый для свободного списка.
     void* FreeListBlock;            // Блок памяти, используемый внутренним списком свободной памяти.
     FreeList BufferFreeList;        // Свободный список для отслеживания выделений.
+    bool HasFreelist;
 public:
     VulkanBuffer();
     ~VulkanBuffer();
@@ -36,8 +37,9 @@ public:
     /// @param usage флаги использования буфера (VkBufferUsageFlagBits)
     /// @param MemoryPropertyFlags Флаги свойства памяти.
     /// @param BindOnCreate указывает, должен ли этот буфер привязываться при создании.
+    /// @param UseFreelist Указывает, следует ли использовать список свободных ресурсов. В противном случае функции выделения/освобождения также не следует использовать.
     /// @return true в случае успеха; в противном случае false.
-    bool Create(VulkanAPI* VkAPI, u64 size, VkBufferUsageFlagBits usage, u32 MemoryPropertyFlags, bool BindOnCreate);
+    bool Create(VulkanAPI* VkAPI, u64 size, VkBufferUsageFlagBits usage, u32 MemoryPropertyFlags, bool BindOnCreate, bool UseFreelist);
     /// @brief Уничтожает заданный буфер.
     /// @param VkAPI указатель на класс отрисовщика Vulkan.
     void Destroy(VulkanAPI* VkAPI);

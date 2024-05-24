@@ -7,8 +7,9 @@
 #include "vulkan_device.hpp"
 #include "vulkan_renderpass.hpp"
 #include "vulkan_buffer.hpp"
-#include "shaders/vulkan_material_shader.hpp"
-#include "shaders/vulkan_ui_shader.hpp"
+#include "vulkan_shader.hpp"
+//#include "shaders/vulkan_material_shader.hpp"
+//#include "shaders/vulkan_ui_shader.hpp"
 #include "resources/geometry.hpp"
 #include "math/vertex.hpp"
 
@@ -64,8 +65,6 @@ public:
     u32 ImageIndex{0};                                  // Индекс текущего изображения.
     u32 CurrentFrame{0};                                // Текущий кадр.
     bool RecreatingSwapchain{false};                    // Указывает, воссоздается ли в данный момент цепочка обмена.
-    VulkanMaterialShader MaterialShader{};              // Шейдер материала.
-    VulkanUI_Shader UI_Shader{};                        // Шейдер пользовательского интерфейса.
     Geometry geometries[VULKAN_MAX_GEOMETRY_COUNT]{};   // СДЕЛАТЬ: динамическим, копии геометрий хранятся в системе геометрий, возможно стоит хранить здесь указатели на геометрии
     VkFramebuffer WorldFramebuffers[3]{};               // Буферы кадров, используемые для рендеринга мира, по одному на кадр.
 
@@ -81,13 +80,10 @@ public:
     void ShutDown() override;
     void Resized(u16 width, u16 height) override;
     bool BeginFrame(f32 Deltatime) override;
-    void UpdateGlobalWorldState(const Matrix4D& projection, const Matrix4D& view, const Vector3D<f32>& ViewPosition, const Vector4D<f32>& AmbientColour, i32 mode) override;
-    void UpdateGlobalUIState(const Matrix4D& projection, const Matrix4D& view, i32 mode) override;
     bool EndFrame(f32 DeltaTime) override;
     bool BeginRenderpass(u8 RenderpassID) override;
     bool EndRenderpass(u8 RenderpassID) override;
-    bool CreateMaterial(class Material* material) override;
-    void DestroyMaterial(class Material* material) override;
+
     // TODO: перенести в класс системы визуализации
     bool Load(GeometryID* gid, u32 VertexSize, u32 VertexCount, const void* vertices, u32 IndexSize, u32 IndexCount, const void* indices) override;
     void Unload(GeometryID* gid) override;
@@ -161,6 +157,7 @@ private:
     void RegenerateFramebuffers();
     bool RecreateSwapchain();
     bool CreateBuffers();
+    bool CreateModule(VulkanShader* shader, VulkanShaderStageConfig config, VulkanShaderStage* ShaderStage);
 
     bool UploadDataRange(VkCommandPool pool, VkFence fence, VkQueue queue, VulkanBuffer& buffer, u64& OutOffset, u64 size, const void* data);
     void FreeDataRange(VulkanBuffer* buffer, u64 offset, u64 size);
