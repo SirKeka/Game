@@ -8,6 +8,7 @@ enum class ResourceType {
     Image,
     Material,
     Mesh,
+    Shader,
     Custom
 };
 
@@ -21,6 +22,7 @@ protected:
     const char* TypePath;
 public:
     ResourceLoader() : id(INVALID::ID), type(), CustomType(nullptr), TypePath(nullptr) {}
+    ResourceLoader(ResourceType type, const char* CustomType, const char* TypePath) : id(INVALID::ID), type(type), CustomType(CustomType), TypePath(TypePath) {}
     virtual ~ResourceLoader() {
         id = INVALID::ID;
     };

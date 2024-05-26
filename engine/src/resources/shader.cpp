@@ -1,5 +1,6 @@
 #include "shader.hpp"
 #include "renderer/renderer.hpp"
+#include "renderer/vulkan/vulkan_shader.hpp"
 
 Shader::Shader()
     :
@@ -117,9 +118,8 @@ bool Shader::Create(u32 id, const ShaderConfig &config)
     this->UboSize = 0;
     // ПРИМЕЧАНИЕ: Требования к выравниванию UBO установлены в серверной части средства рендеринга.
 
-    // This is hard-coded because the Vulkan spec only guarantees that a _minimum_ 128 bytes of space are available,
-    // and it's up to the driver to determine how much is available. Therefore, to avoid complexity, only the
-    // lowest common denominator of 128B will be used.
+    // Это жестко запрограммировано, поскольку спецификация Vulkan гарантирует, что доступно только _минимум_ 128 байтов пространства, 
+    // и драйвер должен определить, сколько доступно. Поэтому, чтобы избежать сложности, будет использоваться только наименьший общий знаменатель 128B.
     this->PushConstantStride = 128;
     this->PushConstantSize = 0;
     return true;
@@ -175,6 +175,20 @@ bool Shader::AddUniform(const ShaderUniformConfig &config)
         return false;
     }
     return UniformAdd(config.name, config.size, config.type, config.scope, 0, false);
+}
+
+bool Shader::BindGlobals()
+{
+    // Глобальный UBO всегда находится в начале, но все равно используйте его.
+    BoundUboOffset = GlobalUboOffset;
+    return true;
+}
+
+bool Shader::BindInstance(u32 InstanceID)
+{
+    BoundInstanceID = InstanceID;
+    BoundUboOffset = ShaderData->InstanceStates[InstanceID].offset;
+    return true;
 }
 
 bool Shader::UniformAdd(const char *UniformName, u32 size, ShaderUniformType type, ShaderScope scope, u32 SetLocation, bool IsSampler)

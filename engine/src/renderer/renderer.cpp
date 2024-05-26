@@ -174,16 +174,6 @@ bool Renderer::ShaderUse(Shader *shader)
     return ptrRenderer->ShaderUse(shader);
 }
 
-bool Renderer::ShaderBindGlobals(Shader *shader)
-{
-    return ptrRenderer->ShaderBindGlobals(shader);
-}
-
-bool Renderer::ShaderBindInstance(Shader *shader, u32 InstanceID)
-{
-    return ptrRenderer->ShaderBindInstance(shader, InstanceID);
-}
-
 bool Renderer::ShaderApplyGlobals(Shader *shader)
 {
     return ptrRenderer->ShaderApplyGlobals(shader);

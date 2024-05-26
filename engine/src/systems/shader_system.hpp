@@ -13,6 +13,9 @@
 #include "resources/shader.hpp"
 #include "resources/texture.hpp"
 
+constexpr const char* BUILTIN_SHADER_NAME_MATERIAL = "Shader.Builtin.Material";
+constexpr const char* BUILTIN_SHADER_NAME_UI = "Shader.Builtin.UI";
+
 //struct Shader;
 
 class ShaderSystem
@@ -50,7 +53,7 @@ public:
     /// @brief Получает идентификатор шейдера по имени.
     /// @param ShaderName имя шейдера.
     /// @return Идентификатор шейдера, если он найден; в противном случае INVALID::ID.
-    MAPI u32 GetID(const char* ShaderName);
+    MAPI u32 GetID(MString ShaderName);
     /// @brief Возвращает указатель на шейдер с заданным идентификатором.
     /// @param ShaderID идентификатор шейдера.
     /// @return Указатель на шейдер, если он найден; иначе nullptr.
@@ -58,7 +61,7 @@ public:
     /// @brief Возвращает указатель на шейдер с заданным идентификатором.
     /// @param ShaderName имя шейдера.
     /// @return Идентификатор шейдера, если он найден; в противном случае INVALID::ID.
-    MAPI Shader* GetShader(const char* ShaderName);
+    MAPI Shader* GetShader(const MString& ShaderName);
     /// @brief Использует шейдер с заданным именем.
     /// @param ShaderName имя шейдера.
     /// @return true в случае успеха; в противном случае false.
@@ -109,7 +112,7 @@ private:
     /// @param config конфигурация униформы.
     /// @return True в случае успеха; в противном случае ложь.
     bool AddSampler(Shader* shader, const ShaderUniformConfig& config);
-    u32 GetShaderID(const char* ShaderName);
+    u32 GetShaderID(const MString& ShaderName);
     u32 NewShaderID();
     bool UniformAdd(Shader* shader, const char* UniformName, u32 size, ShaderUniformType type, ShaderScope scope, u32 SetLocation, bool IsSampler);
 public:

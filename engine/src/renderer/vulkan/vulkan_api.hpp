@@ -8,8 +8,6 @@
 #include "vulkan_renderpass.hpp"
 #include "vulkan_buffer.hpp"
 #include "vulkan_shader.hpp"
-//#include "shaders/vulkan_material_shader.hpp"
-//#include "shaders/vulkan_ui_shader.hpp"
 #include "resources/geometry.hpp"
 #include "math/vertex.hpp"
 
@@ -111,15 +109,6 @@ public:
     /// @param shader указатель на используемый шейдер.
     /// @return true в случае успеха, иначе false.
     bool ShaderUse(Shader* shader) override;
-    /// @brief Связывает глобальные ресурсы для использования и обновления.---------------------------------------------------------------------------
-    /// @param shader указатель на шейдер, глобальные значения которого должны быть связаны.
-    /// @return true в случае успеха, иначе false.
-    bool ShaderBindGlobals(Shader* shader) override;
-    /// @brief Связывает ресурсы экземпляра для использования и обновления.---------------------------------------------------------------------------
-    /// @param shader указатель на шейдер, ресурсы экземпляра которого должны быть связаны.
-    /// @param InstanceID идентификатор экземпляра, который необходимо привязать.
-    /// @return true в случае успеха, иначе false.
-    bool ShaderBindInstance(Shader* shader, u32 InstanceID) override;
     /// @brief Применяет глобальные данные к универсальному буферу.-----------------------------------------------------------------------------------
     /// @param shader указатель на шейдер, к которому нужно применить глобальные данные.
     /// @return true в случае успеха, иначе false.

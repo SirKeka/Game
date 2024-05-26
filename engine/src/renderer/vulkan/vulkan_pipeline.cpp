@@ -2,6 +2,7 @@
 
 #include "vulkan_device.hpp"
 #include "vulkan_utils.hpp"
+#include "vulkan_renderpass.hpp"
 
 bool VulkanPipeline::Create(
     VulkanAPI* VkAPI,
@@ -16,7 +17,9 @@ bool VulkanPipeline::Create(
     VkViewport viewport,
     VkRect2D scissor,
     bool IsWireframe,
-    bool DepthTest)
+    bool DepthTest,
+    u32 PushConstantRangeCount,
+    Range* PushConstantRanges)
 {
     // Состояние видового экрана
     VkPipelineViewportStateCreateInfo ViewportState = {VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO};
@@ -109,12 +112,26 @@ bool VulkanPipeline::Create(
     VkPipelineLayoutCreateInfo PipelineLayoutCreateInfo = {VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
 
     // Push-константы
-    VkPushConstantRange PushConstant;
-    PushConstant.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-    PushConstant.offset = sizeof(Matrix4D) * 0;
-    PushConstant.size = sizeof(Matrix4D) * 2;
-    PipelineLayoutCreateInfo.pushConstantRangeCount = 1;
-    PipelineLayoutCreateInfo.pPushConstantRanges = &PushConstant;
+    if (PushConstantRangeCount > 0) {
+        if (PushConstantRangeCount > 32) {
+            MERROR("VulkanPipeline::Create — не может иметь более 32 диапазонов push-констант. Пройдено количество: %i", PushConstantRangeCount);
+            return false;
+        }
+
+        // ПРИМЕЧАНИЕ: 32 — это максимальное количество диапазонов, которое мы можем когда-либо иметь, поскольку спецификация гарантирует только 128 байтов с 4-байтовым выравниванием.
+        VkPushConstantRange ranges[32];
+        MMemory::ZeroMem(ranges, sizeof(VkPushConstantRange) * 32);
+        for (u32 i = 0; i < PushConstantRangeCount; ++i) {
+            ranges[i].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+            ranges[i].offset = PushConstantRanges[i].offset;
+            ranges[i].size = PushConstantRanges[i].size;
+        }
+        PipelineLayoutCreateInfo.pushConstantRangeCount = PushConstantRangeCount;
+        PipelineLayoutCreateInfo.pPushConstantRanges = ranges;
+    } else {
+        PipelineLayoutCreateInfo.pushConstantRangeCount = 0;
+        PipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
+    }
 
     // Макеты набора дескрипторов
     PipelineLayoutCreateInfo.setLayoutCount = DescriptorSetLayoutCount;
@@ -167,7 +184,7 @@ bool VulkanPipeline::Create(
     return false;
 }
 
-void VulkanPipeline::Destroy(VulkanAPI *VkAPI/*, VulkanPipeline pipeline*/)
+void VulkanPipeline::Destroy(VulkanAPI *VkAPI)
 {
     // Уничтожить конвейер
     if (handle) {
@@ -181,7 +198,7 @@ void VulkanPipeline::Destroy(VulkanAPI *VkAPI/*, VulkanPipeline pipeline*/)
     }
 }
 
-void VulkanPipeline::Bind(VulkanCommandBuffer *CommandBuffer, VkPipelineBindPoint BindPoint)
+void VulkanPipeline::Bind(VulkanCommandBuffer &CommandBuffer, VkPipelineBindPoint BindPoint)
 {
-    vkCmdBindPipeline(CommandBuffer->handle, BindPoint, handle);
+    vkCmdBindPipeline(CommandBuffer.handle, BindPoint, handle);
 }

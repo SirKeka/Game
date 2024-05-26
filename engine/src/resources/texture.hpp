@@ -4,7 +4,7 @@
 #include "renderer/vulkan/vulkan_image.hpp"
 #include "containers/mstring.hpp"
 
-constexpr int TEXTURE_NAME_MAX_LENGTH = 512;
+constexpr u32 TEXTURE_NAME_MAX_LENGTH = 512;
 
 class VulkanAPI;
 
@@ -21,14 +21,16 @@ enum class TextureUse {
 class Texture
 {
 public:
-    u32 id;
-    u32 width;
-    u32 height;
-    u8 ChannelCount;
-    bool HasTransparency;
-    u32 generation;
-    char name[TEXTURE_NAME_MAX_LENGTH];
-    VulkanTextureData* Data;
+    u32 id;                             // Уникальный идентификатор текстуры.
+    u32 width;                          // Ширина текстуры.
+    u32 height;                         // Высота текстуры.
+    u8 ChannelCount;                    // Количество каналов в текстуре.
+    bool HasTransparency;               // Указывает, имеет ли текстура прозрачность.
+    u32 generation;                     // Генерация текстур. Увеличивается каждый раз при перезагрузке данных.
+    char name[TEXTURE_NAME_MAX_LENGTH]; // Имя текстуры.
+
+    // СДЕЛАТЬ: Пока нет реализации DirectX храним указатель текстуры Vulkan.
+    VulkanTextureData* Data;            // Необработанные данные текстуры (пиксели).
 public:
     Texture();
     Texture(

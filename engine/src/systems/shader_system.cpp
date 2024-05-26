@@ -147,7 +147,7 @@ bool ShaderSystem::Create(const ShaderConfig &config)
     return true;
 }
 
-u32 ShaderSystem::GetID(const char *ShaderName)
+u32 ShaderSystem::GetID(MString ShaderName)
 {
     return GetShaderID(ShaderName);
 }
@@ -160,7 +160,7 @@ Shader *ShaderSystem::GetShader(u32 ShaderID)
     return &state->shaders[ShaderID];
 }
 
-Shader *ShaderSystem::GetShader(const char *ShaderName)
+Shader *ShaderSystem::GetShader(const MString &ShaderName)
 {
     u32 ShaderID = GetShaderID(ShaderName);
     if (ShaderID != INVALID::ID) {
@@ -189,7 +189,7 @@ bool ShaderSystem::Use(u32 ShaderID)
             MERROR("Не удалось использовать шейдер '%s'.", NextShader->name.c_str());
             return false;
         }
-        if (!Renderer::ShaderBindGlobals(NextShader)) {
+        if (!NextShader->BindGlobals()) {
             MERROR("Не удалось привязать глобальные переменные для шейдера. '%s'.", NextShader->name.c_str());
             return false;
         }
@@ -219,9 +219,9 @@ bool ShaderSystem::UniformSet(u16 index, const void *value)
     ShaderUniform* uniform = &shader->uniforms[index];
     if (shader->BoundScope != uniform->scope) {
         if (uniform->scope == ShaderScope::Global) {
-            Renderer::ShaderBindGlobals(shader);
+            shader->BindGlobals();
         } else if (uniform->scope == ShaderScope::Instance) {
-            Renderer::ShaderBindInstance(shader, shader->BoundInstanceID);
+            shader->BindInstance(shader->BoundInstanceID);
         } else {
             // ПРИМЕЧАНИЕ: Больше здесь делать нечего, просто установите униформу.
         }
@@ -300,11 +300,11 @@ bool ShaderSystem::AddSampler(Shader* shader, const ShaderUniformConfig &config)
     return true;
 }
 
-u32 ShaderSystem::GetShaderID(const char *ShaderName)
+u32 ShaderSystem::GetShaderID(const MString &ShaderName)
 {
     u32 ShaderID = INVALID::ID;
     if (!state->lookup.Get(ShaderName, &ShaderID)) {
-        MERROR("Не зарегистрирован ни один шейдер с именем '%s'.", ShaderName);
+        MERROR("Не зарегистрирован ни один шейдер с именем '%s'.", ShaderName.c_str());
         return INVALID::ID;
     }
     return ShaderID;

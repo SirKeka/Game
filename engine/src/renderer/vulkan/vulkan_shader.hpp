@@ -1,6 +1,7 @@
 #pragma once
 #include "defines.hpp"
 #include "vulkan_pipeline.hpp"
+#include "vulkan_buffer.hpp"
 
 /// @todo СДЕЛАТЬ: сделать настраиваемым
 constexpr int VULKAN_MAX_UI_COUNT = 1024;       // Максимальное количество экземпляров элемента управления пользовательского интерфейса
@@ -78,7 +79,6 @@ struct VulkanShaderInstanceState {
 /// При этом используется набор входных данных и параметров, а также программы шейдеров, 
 /// содержащиеся в файлах SPIR-V, для создания шейдера для использования при рендеринге.
 struct VulkanShader {
-    
     void* MappedUniformBufferBlock;                                     // Блок памяти, сопоставленный с универсальным буфером.
     u32 id;                                                             // Идентификатор шейдера.
     VulkanShaderConfig config;                                          // Конфигурация шейдера, созданная функцией VulkanCreateShader().
@@ -92,4 +92,8 @@ struct VulkanShader {
     u32 InstanceCount;                                                  // Экземпляр состояния для всех экземпляров. СДЕЛАТЬ: динамичным */
     VulkanShaderInstanceState InstanceStates[VULKAN_MAX_MATERIAL_COUNT];
 
+    VulkanShader();
+    ~VulkanShader();
+
+    void* operator new(u64 size);
 };

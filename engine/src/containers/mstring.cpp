@@ -91,6 +91,21 @@ bool MString::operator==(const MString &rhs)
     return true;
 }
 
+bool MString::operator==(const char *s)
+{
+    if (lenght != strlen(s)) {
+        return false;
+    }
+    for (u64 i = 0; i < lenght; i++) {
+        if (str[i] != s[i]) {
+            return false;
+        }
+        
+    }
+    
+    return true;
+}
+
 u64 MString::Length()
 {
     return lenght;

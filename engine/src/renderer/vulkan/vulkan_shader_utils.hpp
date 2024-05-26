@@ -1,11 +1,11 @@
 #pragma once
 
-#include "shaders/vulkan_material_shader.hpp"
+#include "vulkan_shader.hpp"
 
 namespace VulkanShadersUtil
 {
     bool CreateShaderModule(
-    VulkanAPI* VkAPI,
+    class VulkanAPI* VkAPI,
     const char* name,
     const char* TypeStr,
     VkShaderStageFlagBits ShaderStageFlag,

@@ -492,7 +492,7 @@ bool VulkanDevice::PhysicalDeviceMeetsRequirements(
                 for (u32 i = 0; i < RequiredExtensionCount; ++i) {
                     bool found = false;
                     for (u32 j = 0; j < AvailableExtensionCount; ++j) {
-                        if (StringsEqual(requirements->DeviceExtensionNames[i], AvailableExtensions[j].extensionName)) {
+                        if (MString::Equal(requirements->DeviceExtensionNames[i], AvailableExtensions[j].extensionName)) {
                             found = true;
                             break;
                         }

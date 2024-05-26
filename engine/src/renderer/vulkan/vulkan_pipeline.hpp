@@ -1,7 +1,7 @@
 #pragma once
 
 #include "defines.hpp"
-#include "vulkan_renderpass.hpp"
+#include "vulkan_command_buffer.hpp"
 
 class VulkanPipeline
 {
@@ -14,7 +14,7 @@ public:
 
     bool Create(
     class VulkanAPI* VkAPI,
-    VulkanRenderpass* renderpass,
+    class VulkanRenderpass* renderpass,
     u32 stride,
     u32 AttributeCount,
     VkVertexInputAttributeDescription* attributes,
@@ -25,9 +25,11 @@ public:
     VkViewport viewport,
     VkRect2D scissor,
     bool IsWireframe,
-    bool DepthTest);
+    bool DepthTest,
+    u32 PushConstantRangeCount,
+    Range* PushConstantRanges);
 
     void Destroy(class VulkanAPI* VkAPI);
 
-    void Bind(class VulkanCommandBuffer* CommandBuffer, VkPipelineBindPoint BindPoint);
+    void Bind(VulkanCommandBuffer& CommandBuffer, VkPipelineBindPoint BindPoint);
 };

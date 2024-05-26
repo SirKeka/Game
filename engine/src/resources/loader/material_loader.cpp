@@ -4,12 +4,7 @@
 #include "systems/resource_system.hpp"
 #include "loader_utils.hpp"
 
-MaterialLoader::MaterialLoader()
-{
-    type = ResourceType::Material;
-    CustomType = nullptr;
-    TypePath = "materials";
-}
+MaterialLoader::MaterialLoader() : ResourceLoader(ResourceType::Material, nullptr, "materials") {}
 
 bool MaterialLoader::Load(const char *name, Resource *OutResource)
 {
@@ -33,7 +28,7 @@ bool MaterialLoader::Load(const char *name, Resource *OutResource)
     // TODO: Здесь следует использовать распределитель.
     MaterialConfig* ResourceData = MMemory::TAllocate<MaterialConfig>(1, MemoryTag::MAaterialInstance);
     // Установите некоторые значения по умолчанию.
-    ResourceData->type = MaterialType::World;
+    ResourceData->ShaderName = "Builtin.Material"; // Материал поумолчанию.
     ResourceData->AutoRelease = true;
     ResourceData->DiffuseColour = Vector4D<f32>::One() ;  // белый.
     ResourceData->DiffuseMapName[0] = 0;
@@ -88,10 +83,10 @@ bool MaterialLoader::Load(const char *name, Resource *OutResource)
                 MWARN("Ошибка анализа диффузного цвета (diffuse_color) в файле «%s». Вместо этого используется белый цвет по умолчанию.", FullFilePath);
                 // ПРИМЕЧАНИЕ. Уже назначено выше, его здесь нет необходимости.
             } 
-        } else if (MString::Equali(TrimmedVarName, "type")) {
-            // TODO: другие типы материалов.
+        } else if (MString::Equali(TrimmedVarName, "Shader")) {
+            // Возьмите копию названия материала.
             if (MString::Equali(TrimmedValue, "ui")) {
-                ResourceData->type = MaterialType::UI;
+                ResourceData->ShaderName = TrimmedValue;
                  }
         }
 

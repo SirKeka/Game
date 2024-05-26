@@ -29,7 +29,7 @@ GeometrySystem::GeometrySystem()
     RegisteredGeometries(nullptr)
 {
     // Блок массива находится после состояния. Уже выделено, поэтому просто установите указатель.
-    void* ArrayBlock = this + sizeof(GeometrySystem);
+    void* ArrayBlock = reinterpret_cast<u8*>(this) + sizeof(GeometrySystem);
     this->RegisteredGeometries = reinterpret_cast<GeometryReference*>(ArrayBlock);
     
     // Сделать недействительными все геометрии в массиве.
@@ -301,7 +301,7 @@ GeometryID *GeometrySystem::Acquire(u32 id)
 
     // ПРИМЕЧАНИЕ. Следует ли вместо этого возвращать геометрию по умолчанию?
     MERROR("GeometrySystem::Acquire не может загрузить неверный идентификатор геометрии. Возвращение nullptr.");
-    return 0;
+    return nullptr;
 }
 
 GeometryID *GeometrySystem::Acquire(GeometryConfig config, bool AutoRelease)
@@ -366,7 +366,7 @@ GeometryID *GeometrySystem::GetDefault()
     //}
 
     MFATAL("GeometrySystem::GetDefault вызывается перед инициализацией системы. Возвращение nullptr.");
-    return 0;
+    return nullptr;
 }
 
 GeometryID *GeometrySystem::GetDefault2D()

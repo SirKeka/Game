@@ -13,10 +13,8 @@ Material::Material(const Material &m)
 }
 
 Material::Material(const char *name, Vector4D<f32> DiffuseColour, TextureUse use, Texture *texture)
-: id(INVALID::ID), generation(INVALID::ID), InternalId(INVALID::ID)
-{
-   Set(name, DiffuseColour, use, texture);
-}
+: id(INVALID::ID), generation(INVALID::ID), InternalId(), ShaderID(), DiffuseColour(DiffuseColour), DiffuseMap(texture, use)
+{}
 
 Material::~Material()
 {

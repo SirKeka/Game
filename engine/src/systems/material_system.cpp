@@ -2,6 +2,7 @@
 #include "systems/texture_system.hpp"
 #include "renderer/renderer.hpp"
 #include "systems/resource_system.hpp"
+#include "systems/shader_system.hpp"
 
 #include "memory/linear_allocator.hpp"
 #include <new>
@@ -9,10 +10,21 @@
 u32 MaterialSystem::MaxMaterialCount = 0;
 MaterialSystem* MaterialSystem::state = nullptr;
 
-MaterialSystem::MaterialSystem()
+MaterialSystem::MaterialSystem() 
+: 
+name(), 
+AutoRelease(false), 
+init(false), 
+DiffuseMapName(), 
+DiffuseColour(), 
+DefaultMaterial(DEFAULT_MATERIAL_NAME, Vector4D<f32>::One(), TextureUse::MapDiffuse, TextureSystem::Instance()->GetDefaultTexture()), 
+// RegisteredMaterials(reinterpret_cast<Material*>(reinterpret_cast<u8*>(this + sizeof(MaterialSystem)))),
+// RegisteredMaterialTable(MaxMaterialCount, false, HashtableBlock), 
+MaterialShaderID(INVALID::ID), 
+UI_ShaderID(INVALID::ID)
 {
     // Блок массива находится после состояния. Уже выделено, поэтому просто установите указатель.
-    u8* ArrayBlock = reinterpret_cast<u8*>(this + sizeof(MaterialSystem));
+    u8* ArrayBlock = reinterpret_cast<u8*>(this) + sizeof(MaterialSystem);
     RegisteredMaterials = reinterpret_cast<Material*>(ArrayBlock);
 
     // Блок хеш-таблицы находится после массива.
@@ -39,6 +51,12 @@ MaterialSystem::MaterialSystem()
     }*/
     // TODO: массив объектов материала инициализируется правильно, 
     // но в последствии появляется не правильно инициализированные объекты
+
+    MaterialLocations.DiffuseColour = INVALID::U16ID;
+    MaterialLocations.DiffuseTexture = INVALID::U16ID;
+
+    UI_Locations.DiffuseColour = INVALID::U16ID;
+    UI_Locations.DiffuseTexture = INVALID::U16ID;
 }
 
 void MaterialSystem::SetMaxMaterialCount(u32 value)
@@ -100,7 +118,7 @@ Material *MaterialSystem::Acquire(const char *name)
     
     Material* m;
     if (MaterialResource.data) {
-        m = AcquireFromConfig(*reinterpret_cast<MaterialConfig*>(MaterialResource.data));
+        m = Acquire(*reinterpret_cast<MaterialConfig*>(MaterialResource.data));
     }
 
     // Clean up
@@ -113,7 +131,7 @@ Material *MaterialSystem::Acquire(const char *name)
     return m;
 }
 
-Material *MaterialSystem::AcquireFromConfig(MaterialConfig config)
+Material *MaterialSystem::Acquire(MaterialConfig config)
 {
     // Вернуть материал по умолчанию.
     if (MString::Equali(config.name, DEFAULT_MATERIAL_NAME)) {
@@ -142,13 +160,32 @@ Material *MaterialSystem::AcquireFromConfig(MaterialConfig config)
             // Убедитесь, что пустой слот действительно найден.
             if (!m || ref.handle == INVALID::ID) {
                 MFATAL("MaterialSystem::Acquire — система материалов больше не может содержать материалы. Настройте конфигурацию, чтобы разрешить больше.");
-                return 0;
+                return nullptr;
             }
 
             // Создайте новый материал.
             if (!LoadMaterial(config, m)) {
                 MERROR("Не удалось загрузить материал '%s'.", config.name);
-                return 0;
+                return nullptr;
+            }
+
+            // Получите единые индексы.
+            Shader* s = ShaderSystem::GetInstance()->GetShader(m->ShaderID);
+            // Сохраните местоположения известных типов для быстрого поиска.
+            if (MaterialShaderID == INVALID::ID && config.ShaderName == BUILTIN_SHADER_NAME_MATERIAL) {
+                MaterialShaderID = s->id;
+                MaterialLocations.projection = ShaderSystem::GetInstance()->UniformIndex(s, "projection");
+                MaterialLocations.view = ShaderSystem::GetInstance()->UniformIndex(s, "view");
+                MaterialLocations.DiffuseColour = ShaderSystem::GetInstance()->UniformIndex(s, "diffuse_colour");
+                MaterialLocations.DiffuseTexture = ShaderSystem::GetInstance()->UniformIndex(s, "diffuse_texture");
+                MaterialLocations.model = ShaderSystem::GetInstance()->UniformIndex(s, "model");
+            } else if (UI_ShaderID == INVALID::ID && config.ShaderName == BUILTIN_SHADER_NAME_UI) {
+                UI_ShaderID = s->id;
+                UI_Locations.projection = ShaderSystem::GetInstance()->UniformIndex(s, "projection");
+                UI_Locations.view = ShaderSystem::GetInstance()->UniformIndex(s, "view");
+                UI_Locations.DiffuseColour = ShaderSystem::GetInstance()->UniformIndex(s, "diffuse_colour");
+                UI_Locations.DiffuseTexture = ShaderSystem::GetInstance()->UniformIndex(s, "diffuse_texture");
+                UI_Locations.model = ShaderSystem::GetInstance()->UniformIndex(s, "model");
             }
 
             if (m->generation == INVALID::ID) {
@@ -170,7 +207,7 @@ Material *MaterialSystem::AcquireFromConfig(MaterialConfig config)
     }
 
     // ПРИМЕЧАНИЕ. Это произойдет только в том случае, если что-то пойдет не так с состоянием.
-    MERROR("MaterialSystem::AcquireFromConfig не удалось получить материал '%s'. Нулевой указатель будет возвращен.", config.name);
+    MERROR("MaterialSystem::Acquire не удалось получить материал '%s'. Нулевой указатель будет возвращен.", config.name);
     return nullptr;
 }
 
@@ -209,6 +246,11 @@ void MaterialSystem::Release(const char *name)
     
 }
 
+bool MaterialSystem::ApplyGlobal(u32 ShaderID, const Matrix4D &projection, const Matrix4D &view)
+{
+    return false;
+}
+
 Material *MaterialSystem::GetDefaultMaterial()
 {
      if (state) {
@@ -227,9 +269,9 @@ bool MaterialSystem::CreateDefaultMaterial()
         TextureUse::MapDiffuse,
         TextureSystem::Instance()->GetDefaultTexture() 
     );
-    this->DefaultMaterial.InternalId = 0;
-    
-    if (!Renderer::CreateMaterial(&this->DefaultMaterial)) {
+
+    Shader* s = ShaderSystem::GetInstance()->GetShader(BUILTIN_SHADER_NAME_MATERIAL);
+    if (!Renderer::ShaderAcquireInstanceResources(s, DefaultMaterial.InternalId)) {
         MFATAL("Не удалось получить ресурсы средства рендеринга для материала по умолчанию. Приложение не может быть продолжено.");
         return false;
     }
@@ -244,8 +286,7 @@ bool MaterialSystem::LoadMaterial(MaterialConfig config, Material *m)
     // имя
     MString::nCopy(m->name, config.name, MATERIAL_NAME_MAX_LENGTH);
 
-    // Тип
-    m->type = config.type;
+    m->ShaderID = ShaderSystem::GetInstance()->GetID(config.ShaderName);
 
     // Рассеянный цвет
     m->DiffuseColour = config.DiffuseColour;
@@ -267,7 +308,12 @@ bool MaterialSystem::LoadMaterial(MaterialConfig config, Material *m)
     // TODO: другие карты
 
     // Отправьте его рендереру для получения ресурсов.
-    if (!Renderer::CreateMaterial(m)) {
+    Shader* s = ShaderSystem::GetInstance()->GetShader(config.ShaderName);
+    if (!s) {
+        MERROR("Невозможно загрузить материал, поскольку его шейдер не найден: «%s». Вероятно, это проблема с ассетом материала.", config.ShaderName.c_str());
+        return false;
+    }
+    if(Renderer::ShaderAcquireInstanceResources(s, m->InternalId)) {
         MERROR("Не удалось получить ресурсы средства визуализации для материала '%s'.", m->name);
         return false;
     }
@@ -285,7 +331,10 @@ void MaterialSystem::DestroyMaterial(Material *m)
     }
 
     // Освободите ресурсы средства рендеринга.
-    Renderer::DestroyMaterial(m);
+    if (m->ShaderID != INVALID::ID && m->InternalId != INVALID::ID) {
+        Renderer::ShaderReleaseInstanceResources(ShaderSystem::GetInstance()->GetShader(m->ShaderID), m->InternalId);
+        m->ShaderID = INVALID::ID;
+    }
 
     // Обнулить это, сделать удостоверения недействительными.
     m->Destroy();

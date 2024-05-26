@@ -2,36 +2,38 @@
 #include "texture.hpp"
 #include "core/mmemory.hpp"
 
+/// @brief Структура, которая отображает текстуру, использование и другие свойства.
 struct TextureMap {
-    Texture* texture;
-    TextureUse use;
+    Texture* texture;                               // Указатель на текстуру.
+    TextureUse use;                                 // Использование текстуры.
+    TextureMap() : texture(nullptr), use() {}
+    TextureMap(Texture* texture, TextureUse use) : texture(texture), use(use) {}
 };
 
-constexpr int MATERIAL_NAME_MAX_LENGTH = 256;
+constexpr int MATERIAL_NAME_MAX_LENGTH = 256;       // Максимальная длина имени материала.
 
-enum class MaterialType {
-    World,
-    UI
-};
-
+/// @brief Конфигурация материала обычно загружается из файла или создается в коде для загрузки материала.
 struct MaterialConfig {
-    char name[MATERIAL_NAME_MAX_LENGTH];
-    MaterialType type;
-    bool AutoRelease;
-    char DiffuseMapName[TEXTURE_NAME_MAX_LENGTH];
-    Vector4D<f32> DiffuseColour;
+    char name[MATERIAL_NAME_MAX_LENGTH];            // Название материала.
+    MString ShaderName;                             // Имя шейдера материала.
+    bool AutoRelease;                               // Указывает, должен ли материал автоматически выпускаться, если на него не осталось ссылок.
+    char DiffuseMapName[TEXTURE_NAME_MAX_LENGTH];   // Рассеяный цвет материала.
+    Vector4D<f32> DiffuseColour;                    // Имя диффузной карты.
 };
 
+/// @brief Материал, который отражает различные свойства поверхности в мире, такие как текстура, цвет, неровности, блеск и многое другое.
 class Material
 {
+    //friend class MaterialSystem;
+    //friend class GeometrySystem;
 public:
-    u32 id;
-    u32 generation;
-    u32 InternalId;
-    MaterialType type;
-    char name[MATERIAL_NAME_MAX_LENGTH];
-    Vector4D<f32> DiffuseColour;
-    TextureMap DiffuseMap;
+    u32 id;                                         // Идентификатор материала.
+    u32 generation;                                 // Поколение материала. Увеличивается при каждом изменении материала.
+    u32 InternalId;                                 // Внутренний идентификатор материала. Используется серверной частью рендеринга для сопоставления с внутренними ресурсами.
+    u32 ShaderID;                                   // Индентификатор шейдера.
+    char name[MATERIAL_NAME_MAX_LENGTH];            // Название материала.
+    Vector4D<f32> DiffuseColour;                    // Рассеянный(Diffuse) цвет.
+    TextureMap DiffuseMap;                          // Карта диффузной текстуры.
 public:
     Material();
     Material(const Material& m);

@@ -26,6 +26,7 @@ public:
     explicit operator bool() const;
 
     bool operator== (const MString& rhs);
+    bool operator== (const char* s);
 
     /// @param str константная строка
     /// @return длину(количество символов в строке)

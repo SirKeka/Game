@@ -58,7 +58,7 @@ void Texture::Create(const char* name, i32 width, i32 height, i32 ChannelCount, 
     //VkBufferUsageFlagsBits usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
     VkMemoryPropertyFlags MemoryPropFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
     VulkanBuffer staging {};
-    staging.Create(VkAPI, ImageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, MemoryPropFlags, true);
+    staging.Create(VkAPI, ImageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, MemoryPropFlags, true, false);
 
     staging.LoadData(VkAPI, 0, ImageSize, 0, pixels);
 
@@ -151,7 +151,7 @@ void Texture::Destroy(VulkanAPI *VkAPI)
 
 Texture::operator bool() const
 {
-    if (id     != 0 && width  != 0 && height != 0 && ChannelCount != 0 && HasTransparency != 0 && generation != 0 && Data != nullptr) {
+    if (id != 0 && width  != 0 && height != 0 && ChannelCount != 0 && HasTransparency != 0 && generation != 0 && Data != nullptr) {
         return true;
     }
     return false;

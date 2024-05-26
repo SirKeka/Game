@@ -2,12 +2,13 @@
 #include "defines.hpp"
 #include "resources/loader/resource_loader.hpp"
 
+/// @brief Общая структура ресурса. Все загрузчики ресурсов загружают в них данные.
 struct Resource {
-    u32 LoaderID;
-    const char* name;
-    MString FullPath;
-    u64 DataSize;
-    void* data;
+    u32 LoaderID;       // Идентификатор загрузчика, обрабатывающего этот ресурс.
+    const char* name;   // Название ресурса.
+    MString FullPath;   // Полный путь к файлу ресурса.
+    u64 DataSize;       // Размер данных ресурса в байтах.
+    void* data;         // Данные ресурса.
 };
 
 struct ImageResourceData {

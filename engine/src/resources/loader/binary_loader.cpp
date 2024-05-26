@@ -2,12 +2,7 @@
 #include "systems/resource_system.hpp"
 #include "loader_utils.hpp"
 
-BinaryLoader::BinaryLoader()
-{
-    type = ResourceType::Binary;
-    CustomType = nullptr;
-    TypePath = "";
-}
+BinaryLoader::BinaryLoader() : ResourceLoader(ResourceType::Binary, nullptr, "") {}
 
 bool BinaryLoader::Load(const char *name, Resource *OutResource)
 {

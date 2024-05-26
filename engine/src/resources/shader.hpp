@@ -120,6 +120,7 @@ struct ShaderAttribute {
 class Shader {
     friend class ShaderSystem;                  // Система шейдеров является дружественным класом для шейдера
     friend class VulkanAPI;                     // Указание рендера в качестве друга для доступа к переменным класса.
+    friend class MaterialSystem;
     u32 id;                                     // Идентификатор шейдера
     MString name;                               // Имя шейдера
     bool UseInstances;                          // Указывает, использует ли шейдер экземпляры. В противном случае предполагается, что используются только глобальные униформы и сэмплеры.
@@ -146,8 +147,8 @@ class Shader {
     Range PushConstantRanges[32];               // Массив диапазонов push-констант.
     u16 AttributeStride;                        // Размер всех атрибутов вместе взятых, то есть размер вершины.
 
-    // СДЕЛАТЬ: заменить сырой указатель на шаблон.
-    void* ShaderData;                           // Непрозрачный указатель для хранения конкретных данных API средства рендеринга. Рендерер несет ответственность за создание и уничтожение этого.
+    // СДЕЛАТЬ: Пока нет реализации DirectX храним указатель шейдера Vulkan.
+    class VulkanShader* ShaderData;                   // Непрозрачный указатель для хранения конкретных данных API средства рендеринга. Рендерер несет ответственность за создание и уничтожение этого.
 public:
     Shader();
     Shader(u32 id, const ShaderConfig& config);
@@ -162,9 +163,18 @@ public:
     /// @param config конфигурация униформы.
     /// @return True в случае успеха; в противном случае ложь.
     bool AddUniform(const ShaderUniformConfig& config);
+    /// @brief Связывает глобальные ресурсы для использования и обновления.
+    /// @return true в случае успеха, иначе false.
+    bool BindGlobals();
+    /// @brief Связывает ресурсы экземпляра для использования и обновления.
+    /// @param InstanceID идентификатор экземпляра, который необходимо привязать.
+    /// @return true в случае успеха, иначе false.
+    bool BindInstance(u32 InstanceID);
     bool UniformAdd(const char* UniformName, u32 size, ShaderUniformType type, ShaderScope scope, u32 SetLocation, bool IsSampler);
     bool UniformNameValid(const char* UniformName);
     bool UniformAddStateValid();
     u16  UniformIndex(const char* UniformName);
     void Destroy();
+    
+    
 };
