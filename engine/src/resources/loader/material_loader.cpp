@@ -26,7 +26,7 @@ bool MaterialLoader::Load(const char *name, Resource *OutResource)
     OutResource->FullPath = FullFilePath;
 
     // TODO: Здесь следует использовать распределитель.
-    MaterialConfig* ResourceData = MMemory::TAllocate<MaterialConfig>(1, MemoryTag::MAaterialInstance);
+    MaterialConfig* ResourceData = MMemory::TAllocate<MaterialConfig>(1, MemoryTag::MaterialInstance);
     // Установите некоторые значения по умолчанию.
     ResourceData->ShaderName = "Builtin.Material"; // Материал поумолчанию.
     ResourceData->AutoRelease = true;
@@ -108,7 +108,7 @@ bool MaterialLoader::Load(const char *name, Resource *OutResource)
 
 void MaterialLoader::Unload(Resource *resource)
 {
-    if (!LoaderUtils::ResourceUnload(this, resource, MemoryTag::MAaterialInstance)) {
+    if (!LoaderUtils::ResourceUnload(this, resource, MemoryTag::MaterialInstance)) {
         MWARN("MaterialLoader::Unload вызывается с nullptr для себя или ресурса.");
         return;
     }

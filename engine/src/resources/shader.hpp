@@ -89,6 +89,9 @@ struct ShaderConfig {
     DArray<ShaderStage> stages;                 // Сборник этапов.
     DArray<char*> StageNames;                   // Коллекция сценических имен. Должно соответствовать массиву этапов.
     DArray<char*> StageFilenames;               // Коллекция имен файлов этапов, которые необходимо загрузить (по одному на этап). Должно соответствовать массиву этапов.
+
+    ShaderConfig() : name(), UseInstances(false), UseLocal(false), AttributeCount(), attributes(), UniformCount(), uniforms(), RenderpassName(nullptr), StageCount(), stages(), StageNames(), StageFilenames() {}
+    void* operator new(u64 size) {return MMemory::Allocate(size, MemoryTag::Resource);}
 };
 
 /// @brief Представляет текущее состояние данного шейдера.

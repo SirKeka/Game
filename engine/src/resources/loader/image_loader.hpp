@@ -4,9 +4,12 @@
 class ImageLoader : public ResourceLoader
 {
 private:
-    /* data */
+    /* u32 id;                 *
+     * ResourceType type;      *
+     * const char* CustomType; *
+     * const char* TypePath;   */
 public:
-    ImageLoader(); //: id(INVALID_ID), type(), CustomType(), TypePath() {}
+    ImageLoader();
     //~ImageLoader() {};
 private:
     bool Load(const char* name, struct Resource* OutResource) override;

@@ -13,7 +13,10 @@
 class ShaderLoader : public ResourceLoader
 {
 private:
-    /* data */
+    /* u32 id;                 *
+     * ResourceType type;      *
+     * const char* CustomType; *
+     * const char* TypePath;   */
 public:
     ShaderLoader();
     // ~ShaderLoader();

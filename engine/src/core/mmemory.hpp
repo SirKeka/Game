@@ -33,7 +33,7 @@ enum class MemoryTag
     Application,
     Job,
     Texture,
-    MAaterialInstance,
+    MaterialInstance,
     Renderer,
     Game,
     Transform,
@@ -41,6 +41,7 @@ enum class MemoryTag
     EntityNode,
     Scene,
     HashTable,
+    Resource,
 
     MaxTags
 };

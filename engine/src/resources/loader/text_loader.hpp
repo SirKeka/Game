@@ -4,7 +4,10 @@
 class TextLoader : public ResourceLoader
 {
 private:
-    /* data */
+    /* u32 id;                 *
+     * ResourceType type;      *
+     * const char* CustomType; *
+     * const char* TypePath;   */ 
 public:
     TextLoader();
     //~TextLoader() {};
