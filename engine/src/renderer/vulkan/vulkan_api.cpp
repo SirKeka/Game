@@ -1102,7 +1102,7 @@ bool VulkanAPI::EndRenderpass(u8 RenderpassID)
     VulkanRenderpass* renderpass = nullptr;
     VulkanCommandBuffer& CommandBuffer = GraphicsCommandBuffers[ImageIndex];
 
-    // Choose a renderpass based on ID.
+    // Выберите рендерпасс на основе идентификатора.
     switch (RenderpassID) {
         case static_cast<u8>(BuiltinRenderpass::World):
             renderpass = &MainRenderpass;

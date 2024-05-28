@@ -39,7 +39,7 @@ bool MaterialLoader::Load(const char *name, Resource *OutResource)
     char* p = &LineBuf[0];
     u64 LineLength = 0;
     u32 LineNumber = 1;
-    while (Filesystem::ReadLine(&f, 511, &p, &LineLength)) {
+    while (Filesystem::ReadLine(&f, 511, &p, LineLength)) {
         // Обрезаем строку.
         char* trimmed = MString::Trim(LineBuf);
 

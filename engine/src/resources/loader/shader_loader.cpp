@@ -23,111 +23,104 @@ bool ShaderLoader::Load(const char *name, Resource *OutResource)
 
     OutResource->FullPath = FullFilePath;
 
-    ShaderConfig* ResourceData = MMemory::TAllocate<ShaderConfig>(1, MemoryTag::Resource);
+    ShaderConfig* ResourceData = new ShaderConfig(); //MMemory::TAllocate<ShaderConfig>(1, MemoryTag::Resource);
     // Установите некоторые значения по умолчанию, создайте массивы.
-    ResourceData->AttributeCount = 0;
-    ResourceData->attributes = darray_create(shader_attribute_config);
-    ResourceData->UniformCount = 0;
-    ResourceData->uniforms = darray_create(shader_uniform_config);
-    ResourceData->stage_count = 0;
-    ResourceData->stages = darray_create(shader_stage);
-    ResourceData->use_instances = false;
-    ResourceData->use_local = false;
-    ResourceData->stage_count = 0;
-    ResourceData->stage_names = darray_create(char*);
-    ResourceData->stage_filenames = darray_create(char*);
-    ResourceData->renderpass_name = 0;
+    // ResourceData->AttributeCount = 0;
+    // ResourceData->UniformCount = 0;
+    // ResourceData->StageCount = 0;
+    // ResourceData->UseInstances = false;
+    // ResourceData->UseLocal = false;
+    // ResourceData->StageCount = 0;
+    // ResourceData->RenderpassName = 0;
 
-    ResourceData->name = 0;
+    // ResourceData->name = 0;
 
-    // Read each line of the file.
-    char line_buf[512] = "";
-    char* p = &line_buf[0];
-    u64 line_length = 0;
-    u32 line_number = 1;
-    while (filesystem_read_line(&f, 511, &p, &line_length)) {
-        // Trim the string.
-        char* trimmed = string_trim(line_buf);
+    // Прочтите каждую строку файла.
+    char LineBuf[512] = "";
+    char* p = &LineBuf[0];
+    u64 LineLength = 0;
+    u32 LineNumber = 1;
+    while (Filesystem::ReadLine(&f, 511, &p, LineLength)) {
+        // Обрежьте строку.
+        char* trimmed = MString::Trim(LineBuf);
 
-        // Get the trimmed length.
-        line_length = string_length(trimmed);
+        // Получите обрезанную длину.
+        LineLength = MString::Length(trimmed);
 
-        // Skip blank lines and comments.
-        if (line_length < 1 || trimmed[0] == '#') {
-            line_number++;
+        // Пропускайте пустые строки и комментарии.
+        if (LineLength < 1 || trimmed[0] == '#') {
+            LineNumber++;
             continue;
         }
 
-        // Split into var/value
-        i32 equal_index = string_index_of(trimmed, '=');
-        if (equal_index == -1) {
-            KWARN("Potential formatting issue found in file '%s': '=' token not found. Skipping line %ui.", FullFilePath, line_number);
-            line_number++;
+        // Разделить на var/value
+        i32 EqualIndex = MString::IndexOf(trimmed, '=');
+        if (EqualIndex == -1) {
+            MWARN("В файле «%s» обнаружена потенциальная проблема с форматированием: токен «=» не найден. Пропуск строки %ui.", FullFilePath, LineNumber);
+            LineNumber++;
             continue;
         }
 
-        // Assume a max of 64 characters for the variable name.
-        char raw_var_name[64];
-        kzero_memory(raw_var_name, sizeof(char) * 64);
-        string_mid(raw_var_name, trimmed, 0, equal_index);
-        char* trimmed_var_name = string_trim(raw_var_name);
+        // Предположим, что имя переменной содержит не более 64 символов.
+        char RawVarName[64]{};
+        MString::Mid(RawVarName, trimmed, 0, EqualIndex);
+        char* TrimmedVarName = MString::Trim(RawVarName);
 
-        // Assume a max of 511-65 (446) for the max length of the value to account for the variable name and the '='.
-        char raw_value[446];
-        kzero_memory(raw_value, sizeof(char) * 446);
-        string_mid(raw_value, trimmed, equal_index + 1, -1);  // Read the rest of the line
-        char* trimmed_value = string_trim(raw_value);
+        // Предположим, что максимальная длина значения, учитывающего имя переменной и знак «=», составляет 511–65 (446).
+        char RawValue[446]{};
+        MString::Mid(RawValue, trimmed, EqualIndex + 1, -1);  // Прочтите остальную часть строки
+        char* TrimmedValue = MString::Trim(RawValue);
 
-        // Process the variable.
-        if (strings_equali(trimmed_var_name, "version")) {
-            // TODO: version
-        } else if (strings_equali(trimmed_var_name, "name")) {
-            ResourceData->name = string_duplicate(trimmed_value);
-        } else if (strings_equali(trimmed_var_name, "renderpass")) {
-            ResourceData->renderpass_name = string_duplicate(trimmed_value);
-        } else if (strings_equali(trimmed_var_name, "stages")) {
-            // Parse the stages
-            char** stage_names = darray_create(char*);
-            u32 count = string_split(trimmed_value, ',', &stage_names, true, true);
-            ResourceData->stage_names = stage_names;
-            // Ensure stage name and stage file name count are the same, as they should align.
-            if (ResourceData->stage_count == 0) {
-                ResourceData->stage_count = count;
-            } else if (ResourceData->stage_count != count) {
-                KERROR("shader_loader_load: Invalid file layout. Count mismatch between stage names and stage filenames.");
+        // Обработайте переменную.
+        if (MString::Equali(TrimmedVarName, "version")) {
+            // СДЕЛАТЬ: version
+        } else if (MString::Equali(TrimmedVarName, "name")) {
+            ResourceData->name = string_duplicate(TrimmedValue);
+        } else if (MString::Equali(TrimmedVarName, "renderpass")) {
+            ResourceData->RenderpassName = string_duplicate(TrimmedValue);
+        } else if (MString::Equali(TrimmedVarName, "stages")) {
+            // Разбор этапов
+            char** StageNames = darray_create(char*);
+            u32 count = string_split(TrimmedValue, ',', &StageNames, true, true);
+            ResourceData->StageNames.Data() = StageNames;
+            // Убедитесь, что имя этапа и количество имен файлов этапа одинаковы, поскольку они должны совпадать.
+            if (ResourceData->StageCount == 0) {
+                ResourceData->StageCount = count;
+            } else if (ResourceData->StageCount != count) {
+                MERROR("ShaderLoader::Load: Недопустимый макет файла. Подсчитайте несоответствие между именами этапов и именами файлов этапов.");
             }
             // Parse each stage and add the right type to the array.
             for (u8 i = 0; i < ResourceData->stage_count; ++i) {
-                if (strings_equali(stage_names[i], "frag") || strings_equali(stage_names[i], "fragment")) {
+                if (strings_equali(StageNames[i], "frag") || strings_equali(StageNames[i], "fragment")) {
                     darray_push(ResourceData->stages, SHADER_STAGE_FRAGMENT);
-                } else if (strings_equali(stage_names[i], "vert") || strings_equali(stage_names[i], "vertex")) {
+                } else if (strings_equali(StageNames[i], "vert") || strings_equali(StageNames[i], "vertex")) {
                     darray_push(ResourceData->stages, SHADER_STAGE_VERTEX);
-                } else if (strings_equali(stage_names[i], "geom") || strings_equali(stage_names[i], "geometry")) {
+                } else if (strings_equali(StageNames[i], "geom") || strings_equali(StageNames[i], "geometry")) {
                     darray_push(ResourceData->stages, SHADER_STAGE_GEOMETRY);
-                } else if (strings_equali(stage_names[i], "comp") || strings_equali(stage_names[i], "compute")) {
+                } else if (strings_equali(StageNames[i], "comp") || strings_equali(StageNames[i], "compute")) {
                     darray_push(ResourceData->stages, SHADER_STAGE_COMPUTE);
                 } else {
-                    KERROR("shader_loader_load: Invalid file layout. Unrecognized stage '%s'", stage_names[i]);
+                    KERROR("shader_loader_load: Invalid file layout. Unrecognized stage '%s'", StageNames[i]);
                 }
             }
-        } else if (strings_equali(trimmed_var_name, "stagefiles")) {
+        } else if (strings_equali(TrimmedVarName, "stagefiles")) {
             // Parse the stage file names
             ResourceData->stage_filenames = darray_create(char*);
-            u32 count = string_split(trimmed_value, ',', &ResourceData->stage_filenames, true, true);
+            u32 count = string_split(TrimmedValue, ',', &ResourceData->stage_filenames, true, true);
             // Ensure stage name and stage file name count are the same, as they should align.
             if (ResourceData->stage_count == 0) {
                 ResourceData->stage_count = count;
             } else if (ResourceData->stage_count != count) {
                 KERROR("shader_loader_load: Invalid file layout. Count mismatch between stage names and stage filenames.");
             }
-        } else if (strings_equali(trimmed_var_name, "use_instance")) {
-            string_to_bool(trimmed_value, &ResourceData->use_instances);
-        } else if (strings_equali(trimmed_var_name, "use_local")) {
-            string_to_bool(trimmed_value, &ResourceData->use_local);
-        } else if (strings_equali(trimmed_var_name, "attribute")) {
+        } else if (strings_equali(TrimmedVarName, "use_instance")) {
+            string_to_bool(TrimmedValue, &ResourceData->use_instances);
+        } else if (strings_equali(TrimmedVarName, "use_local")) {
+            string_to_bool(TrimmedValue, &ResourceData->use_local);
+        } else if (strings_equali(TrimmedVarName, "attribute")) {
             // Parse attribute.
             char** fields = darray_create(char*);
-            u32 field_count = string_split(trimmed_value, ',', &fields, true, true);
+            u32 field_count = string_split(TrimmedValue, ',', &fields, true, true);
             if (field_count != 2) {
                 KERROR("shader_loader_load: Invalid file layout. Attribute fields must be 'type,name'. Skipping.");
             } else {
@@ -181,10 +174,10 @@ bool ShaderLoader::Load(const char *name, Resource *OutResource)
 
             string_cleanup_split_array(fields);
             darray_destroy(fields);
-        } else if (strings_equali(trimmed_var_name, "uniform")) {
+        } else if (strings_equali(TrimmedVarName, "uniform")) {
             // Parse uniform.
             char** fields = darray_create(char*);
-            u32 field_count = string_split(trimmed_value, ',', &fields, true, true);
+            u32 field_count = string_split(TrimmedValue, ',', &fields, true, true);
             if (field_count != 3) {
                 KERROR("shader_loader_load: Invalid file layout. Uniform fields must be 'type,scope,name'. Skipping.");
             } else {
@@ -262,8 +255,8 @@ bool ShaderLoader::Load(const char *name, Resource *OutResource)
         // TODO: more fields.
 
         // Clear the line buffer.
-        kzero_memory(line_buf, sizeof(char) * 512);
-        line_number++;
+        kzero_memory(LineBuf, sizeof(char) * 512);
+        LineNumber++;
     }
 
     filesystem_close(&f);
