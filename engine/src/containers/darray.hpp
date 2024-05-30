@@ -1,7 +1,7 @@
 #pragma once
 #include "defines.hpp"
 #include "core/mmemory.hpp"
-#include "core/logger.hpp"
+//#include "core/logger.hpp"
 
 template<typename T>
 class MAPI DArray
@@ -14,9 +14,9 @@ private:
 
 // Функции
 public:
-    DArray() : size(0), capacity(0), ptrValue(nullptr) {}
+    constexpr DArray() : size(0), capacity(0), ptrValue(nullptr) {}
 
-    DArray(u64 lenght, const T& value = T{}) {
+    constexpr DArray(u64 lenght, const T& value = T{}) {
         if(lenght > 0) {
             this->size = lenght;
             this->capacity = lenght;

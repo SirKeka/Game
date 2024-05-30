@@ -36,7 +36,7 @@ bool ShaderLoader::Load(const char *name, Resource *OutResource)
     // ResourceData->name = 0;
 
     // Прочтите каждую строку файла.
-    char LineBuf[512] = "";
+    MString LineBuf{512};//char LineBuf[512] = "";
     char* p = &LineBuf[0];
     u64 LineLength = 0;
     u32 LineNumber = 1;
@@ -75,13 +75,13 @@ bool ShaderLoader::Load(const char *name, Resource *OutResource)
         if (MString::Equali(TrimmedVarName, "version")) {
             // СДЕЛАТЬ: version
         } else if (MString::Equali(TrimmedVarName, "name")) {
-            ResourceData->name = string_duplicate(TrimmedValue);
+            ResourceData->name = TrimmedValue;
         } else if (MString::Equali(TrimmedVarName, "renderpass")) {
-            ResourceData->RenderpassName = string_duplicate(TrimmedValue);
+            ResourceData->RenderpassName = TrimmedValue;
         } else if (MString::Equali(TrimmedVarName, "stages")) {
             // Разбор этапов
             char** StageNames = darray_create(char*);
-            u32 count = string_split(TrimmedValue, ',', &StageNames, true, true);
+            u32 count = MString::split(TrimmedValue, ',', &StageNames, true, true);
             ResourceData->StageNames.Data() = StageNames;
             // Убедитесь, что имя этапа и количество имен файлов этапа одинаковы, поскольку они должны совпадать.
             if (ResourceData->StageCount == 0) {

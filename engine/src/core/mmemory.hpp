@@ -68,7 +68,7 @@ private:
     }* state;
     
 public:
-    MMemory() = default;
+    constexpr MMemory() = default;
     // MMemory(const MMemory&) = delete;
     // MMemory& operator=(MMemory&) = delete;
     ~MMemory(); /*noexcept*/ //= default;

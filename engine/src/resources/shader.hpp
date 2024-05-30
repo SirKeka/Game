@@ -77,14 +77,14 @@ struct ShaderUniformConfig {
 /// @brief Конфигурация шейдера. Обычно создается и уничтожается загрузчиком
 /// ресурсов шейдера и задается свойствами, найденными в файле ресурсов .shadercfg.
 struct ShaderConfig {
-    char* name;                                 // Имя создаваемого шейдера.
+    MString name;                               // Имя создаваемого шейдера.
     bool UseInstances;                          // Указывает, использует ли шейдер униформы уровня экземпляра.
     bool UseLocal;                              // Указывает, использует ли шейдер униформы локального уровня.
     u8 AttributeCount;                          // Количество атрибутов.
     DArray<ShaderAttributeConfig> attributes;   // Коллекция атрибутов.
     u8 UniformCount;                            // Учёт униформы.
     DArray<ShaderUniformConfig> uniforms;       // Коллекция униформы.
-    char* RenderpassName;                       // Имя прохода рендеринга, используемого этим шейдером.
+    MString RenderpassName;                     // Имя прохода рендеринга, используемого этим шейдером.
     u8 StageCount;                              // Количество этапов, присутствующих в шейдере.
     DArray<ShaderStage> stages;                 // Сборник этапов.
     DArray<char*> StageNames;                   // Коллекция сценических имен. Должно соответствовать массиву этапов.
