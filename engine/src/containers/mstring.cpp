@@ -1,5 +1,6 @@
 #include "mstring.hpp"
 #include "core/mmemory.hpp"
+#include "darray.hpp"
 
 #include <string>
 #include <stdarg.h>
@@ -131,7 +132,7 @@ bool MString::operator==(const char *s)
     return true;
 }
 
-u64 MString::Length()
+const u64 MString::Length() const
 {
     return lenght;
 }
@@ -177,7 +178,17 @@ char *MString::Copy(char *dest, const char *source)
     return strcpy(dest, source);
 }
 
-char *MString::nCopy(char *dest, const char *source, i64 length)
+void MString::nCopy(MString source, u64 Length)
+{
+    MMemory::CopyMem(str, source.str, lenght);
+}
+
+void MString::nCopy(const char *source, u64 Length)
+{
+    MMemory::CopyMem(str, source, Length);
+}
+
+char *MString::nCopy(char *dest, const char *source, u64 length)
 {
     return strncpy(dest, source, length);
 }
@@ -432,18 +443,16 @@ u32 MString::Split(const char *str, char delimiter, DArray<MString> &darray, boo
             // Добавить новую запись
             if (TrimmedLength > 0 || IncludeEmpty) {
                 MString entry{TrimmedLength + 1};
-                if (TrimmedLength == 0) {
-                    entry[0] = 0;
-                } else {
-                    string_ncopy(entry, result, TrimmedLength);
-                    entry[TrimmedLength] = 0;
+                if (TrimmedLength > 0) {
+                    entry.nCopy(result, TrimmedLength);
+                    entry.str[TrimmedLength] = '\0';
                 }
                 darray.PushBack(entry);
                 EntryCount++;
             }
 
-            // Clear the buffer.
-            kzero_memory(buffer, sizeof(char) * 16384);
+            // Очистка буфера.
+            MMemory::ZeroMem(buffer, sizeof(char) * 16384);
             CurrentLength = 0;
             continue;
         }
@@ -452,17 +461,17 @@ u32 MString::Split(const char *str, char delimiter, DArray<MString> &darray, boo
         CurrentLength++;
     }
 
-    // At the end of the string. If any chars are queued up, read them.
+    // В конце строки. Если какие-либо символы поставлены в очередь, прочитайте их.
     result = buffer;
     TrimmedLength = CurrentLength;
-    // Trim if applicable
+    // Обрезать, если применимо
     if (TrimEntries && CurrentLength > 0) {
-        result = string_trim(result);
-        TrimmedLength = string_length(result);
+        result.Trim();
+        TrimmedLength = result.Length();
     }
-    // Add new entry
+    // Добавить новую запись
     if (TrimmedLength > 0 || IncludeEmpty) {
-        char* entry = kallocate(sizeof(char) * (TrimmedLength + 1), MEMORY_TAG_STRING);
+        MString entry{TrimmedLength + 1} // char* entry = kallocate(sizeof(char) * (TrimmedLength + 1), MemoryTag::String);
         if (TrimmedLength == 0) {
             entry[0] = 0;
         } else {

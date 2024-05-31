@@ -35,7 +35,7 @@ public:
 
     /// @brief Получает длину заданной строки.
     /// @return Длину(количество символов в строке)
-    u64 Length();
+    const u64 Length() const;
     static u64 Length(const char* s);
     //char* Copy(const char* s);
 
@@ -52,7 +52,9 @@ public:
     static i32 FormatV(char* dest, const char* format, char* va_list);
 
     static char* Copy(char* dest, const char* source);
-    static char* nCopy(char* dest, const char* source, i64 length);
+    void nCopy(MString source, u64 Length);
+    void nCopy(const char* source, u64 Length);
+    static char* nCopy(char* dest, const char* source, u64 length);
 
     void Trim();
     static char* Trim(char* s);
