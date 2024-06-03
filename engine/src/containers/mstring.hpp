@@ -19,10 +19,10 @@ public:
    constexpr MString(const MString& s);
    constexpr MString(MString&& s);
     ~MString();
-
+/*
     char operator[] (u64 i);
     const char operator[] (u64 i) const;
-
+*/
     MString& operator= (const MString& s);
     MString& operator= (const char* s);
     //MString& operator= (char c);
@@ -36,11 +36,19 @@ public:
     /// @brief Получает длину заданной строки.
     /// @return Длину(количество символов в строке)
     const u64 Length() const;
-    static u64 Length(const char* s);
+    /// @brief Получает длину заданной строки.
+    /// @param s строка в стиле си
+    /// @return Длину(количество символов в строке)
+    static const u64 Length(const char* s);
     //char* Copy(const char* s);
 
     /// @return строку типа си
     const char* c_str() const noexcept;
+
+    /// @brief Срвавнивает строки между собой без учета регистра.
+    /// @param string строка в стиле си с которой нужно сравнить
+    /// @return true, если строки равны и false, если нет 
+    bool Cmpi(MString string);
 
     // Выполняет форматирование строки для определения заданной строки формата и параметров.
     static i32 Format(char* dest, const char* format, ...);

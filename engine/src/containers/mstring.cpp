@@ -9,15 +9,15 @@ constexpr MString::MString() : str(nullptr), lenght() {}
 
 constexpr MString::MString(u64 lenght) 
 :
-    lenght(lenght + 1),
-    str(MMemory::TAllocate<char>(lenght, MemoryTag::String))
+    lenght(lenght),
+    str(MMemory::TAllocate<char>(lenght + 1, MemoryTag::String))
 {
-    this->str[lenght] = '\0';
+    //this->str[lenght] = '\0';
 }
 
 MString::MString(const char *s)
 :
-    lenght(strlen(s) + 1),
+    lenght(Length(s) + 1),
     str(MMemory::TAllocate<char>(lenght, MemoryTag::String))
 {
     MMemory::CopyMem(this->str, s, lenght);
@@ -44,7 +44,7 @@ MString::~MString()
         lenght = 0;
     }
 }
-
+/*
 char MString::operator[](u64 i)
 {
     if (!str || i >= lenght) {
@@ -66,7 +66,7 @@ const char MString::operator[](u64 i) const
         return str[i];
     }
 }
-
+*/
 MString &MString::operator=(const MString &s)
 {
     if (str) {
@@ -85,7 +85,7 @@ MString &MString::operator=(const char *s)
     if(str) {
         Destroy();
     }
-    lenght = strlen(s) + 1;
+    lenght = Length(s) + 1;
     str = reinterpret_cast<char*>(MMemory::Allocate(lenght, MemoryTag::String));
     //this->str = MMemory::TAllocate<char>(lenght, MemoryTag::String);
 
@@ -119,7 +119,7 @@ bool MString::operator==(const MString &rhs)
 
 bool MString::operator==(const char *s)
 {
-    if (lenght != strlen(s)) {
+    if (lenght - 1 != Length(s)) {
         return false;
     }
     for (u64 i = 0; i < lenght; i++) {
@@ -134,17 +134,28 @@ bool MString::operator==(const char *s)
 
 const u64 MString::Length() const
 {
-    return lenght;
+    return lenght - 1;
 }
 
-u64 MString::Length(const char *s)
+const u64 MString::Length(const char *s)
 {
-    return strlen(s);
+    u64 length = 0;
+    while (*s) {
+        length++;
+        s++;
+    }
+    
+    return length;
 }
 
 const char *MString::c_str() const noexcept
 {
     return str;
+}
+
+bool MString::Cmpi(MString string)
+{
+    return MString::Equali(str, string.str);
 }
 
 i32 MString::Format(char *dest, const char *format, ...)
@@ -432,7 +443,7 @@ u32 MString::Split(const char *str, char delimiter, DArray<MString> &darray, boo
 
         // Найден разделитель, финализируйте строку.
         if (c == delimiter) {
-            buffer[CurrentLength] = 0;
+            buffer[CurrentLength] = '\0';
             result = buffer;
             TrimmedLength = CurrentLength;
             // Обрезать, если применимо
@@ -442,10 +453,9 @@ u32 MString::Split(const char *str, char delimiter, DArray<MString> &darray, boo
             }
             // Добавить новую запись
             if (TrimmedLength > 0 || IncludeEmpty) {
-                MString entry{TrimmedLength + 1};
+                MString entry;
                 if (TrimmedLength > 0) {
-                    entry.nCopy(result, TrimmedLength);
-                    entry.str[TrimmedLength] = '\0';
+                    MString entry = result;
                 }
                 darray.PushBack(entry);
                 EntryCount++;
@@ -471,16 +481,11 @@ u32 MString::Split(const char *str, char delimiter, DArray<MString> &darray, boo
     }
     // Добавить новую запись
     if (TrimmedLength > 0 || IncludeEmpty) {
-        MString entry{TrimmedLength + 1} // char* entry = kallocate(sizeof(char) * (TrimmedLength + 1), MemoryTag::String);
-        if (TrimmedLength == 0) {
-            entry[0] = 0;
-        } else {
-            string_ncopy(entry, result, TrimmedLength);
-            entry[TrimmedLength] = 0;
+        MString entry; // char* entry = kallocate(sizeof(char) * (TrimmedLength + 1), MemoryTag::String);
+        if (TrimmedLength > 0) {
+            entry = result;
         }
-        char** a = *str_darray;
-        darray_push(a, entry);
-        *str_darray = a;
+        darray.PushBack(entry);
         EntryCount++;
     }
 

@@ -36,7 +36,7 @@ bool ShaderLoader::Load(const char *name, Resource *OutResource)
     // ResourceData->name = 0;
 
     // Прочтите каждую строку файла.
-    MString LineBuf{512};//char LineBuf[512] = "";
+    char LineBuf[512] = "";
     char* p = &LineBuf[0];
     u64 LineLength = 0;
     u32 LineNumber = 1;
@@ -80,44 +80,43 @@ bool ShaderLoader::Load(const char *name, Resource *OutResource)
             ResourceData->RenderpassName = TrimmedValue;
         } else if (MString::Equali(TrimmedVarName, "stages")) {
             // Разбор этапов
-            char** StageNames = darray_create(char*);
-            u32 count = MString::split(TrimmedValue, ',', &StageNames, true, true);
-            ResourceData->StageNames.Data() = StageNames;
+            // char** StageNames = darray_create(char*);
+            u32 count = MString::Split(TrimmedValue, ',', ResourceData->StageNames, true, true);
             // Убедитесь, что имя этапа и количество имен файлов этапа одинаковы, поскольку они должны совпадать.
             if (ResourceData->StageCount == 0) {
                 ResourceData->StageCount = count;
             } else if (ResourceData->StageCount != count) {
                 MERROR("ShaderLoader::Load: Недопустимый макет файла. Подсчитайте несоответствие между именами этапов и именами файлов этапов.");
             }
-            // Parse each stage and add the right type to the array.
-            for (u8 i = 0; i < ResourceData->stage_count; ++i) {
-                if (strings_equali(StageNames[i], "frag") || strings_equali(StageNames[i], "fragment")) {
-                    darray_push(ResourceData->stages, SHADER_STAGE_FRAGMENT);
-                } else if (strings_equali(StageNames[i], "vert") || strings_equali(StageNames[i], "vertex")) {
-                    darray_push(ResourceData->stages, SHADER_STAGE_VERTEX);
-                } else if (strings_equali(StageNames[i], "geom") || strings_equali(StageNames[i], "geometry")) {
-                    darray_push(ResourceData->stages, SHADER_STAGE_GEOMETRY);
-                } else if (strings_equali(StageNames[i], "comp") || strings_equali(StageNames[i], "compute")) {
-                    darray_push(ResourceData->stages, SHADER_STAGE_COMPUTE);
+            // Разберите каждый этап и добавьте в массив нужный тип.
+            for (u8 i = 0; i < ResourceData->StageCount; ++i) {
+                if (ResourceData->StageNames[i].Cmpi("frag") || ResourceData->StageNames[i].Cmpi("fragment")) {
+                    ResourceData->stages.PushBack(ShaderStage::Fragment);
+                } else if (ResourceData->StageNames[i].Cmpi("vert") || ResourceData->StageNames[i].Cmpi("vertex")) {
+                    ResourceData->stages.PushBack(ShaderStage::Vertex);
+                } else if (ResourceData->StageNames[i].Cmpi("geom") || ResourceData->StageNames[i].Cmpi("geometry")) {
+                    ResourceData->stages.PushBack(ShaderStage::Geometry);
+                } else if (ResourceData->StageNames[i].Cmpi("comp") || ResourceData->StageNames[i].Cmpi("compute")) {
+                    ResourceData->stages.PushBack(ShaderStage::Compute);
                 } else {
-                    KERROR("shader_loader_load: Invalid file layout. Unrecognized stage '%s'", StageNames[i]);
+                    MERROR("ShaderLoader::Load: Неверный макет файла. Неопознанная стадия '%s'", ResourceData->StageNames[i].c_str());
                 }
             }
-        } else if (strings_equali(TrimmedVarName, "stagefiles")) {
-            // Parse the stage file names
-            ResourceData->stage_filenames = darray_create(char*);
+        } else if (MString::Equali(TrimmedVarName, "stagefiles")) {
+            // Разобрать имена файлов сцены
+            // ResourceData->stage_filenames = darray_create(char*);
             u32 count = string_split(TrimmedValue, ',', &ResourceData->stage_filenames, true, true);
-            // Ensure stage name and stage file name count are the same, as they should align.
-            if (ResourceData->stage_count == 0) {
-                ResourceData->stage_count = count;
-            } else if (ResourceData->stage_count != count) {
-                KERROR("shader_loader_load: Invalid file layout. Count mismatch between stage names and stage filenames.");
+            // Убедитесь, что имя этапа и количество имен файлов этапа одинаковы, поскольку они должны совпадать.
+            if (ResourceData->StageCount == 0) {
+                ResourceData->StageCount = count;
+            } else if (ResourceData->StageCount != count) {
+                MERROR("ShaderLoader::Load: Неверный макет файла. Подсчитайте несоответствие между именами этапов и именами файлов этапов.");
             }
-        } else if (strings_equali(TrimmedVarName, "use_instance")) {
-            string_to_bool(TrimmedValue, &ResourceData->use_instances);
-        } else if (strings_equali(TrimmedVarName, "use_local")) {
-            string_to_bool(TrimmedValue, &ResourceData->use_local);
-        } else if (strings_equali(TrimmedVarName, "attribute")) {
+        } else if (MString::Equali(TrimmedVarName, "use_instance")) {
+            string_to_bool(TrimmedValue, &ResourceData->UseInstances);
+        } else if (MString::Equali(TrimmedVarName, "use_local")) {
+            string_to_bool(TrimmedValue, &ResourceData->UseLocal);
+        } else if (MString::Equali(TrimmedVarName, "attribute")) {
             // Parse attribute.
             char** fields = darray_create(char*);
             u32 field_count = string_split(TrimmedValue, ',', &fields, true, true);
