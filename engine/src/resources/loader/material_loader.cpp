@@ -44,7 +44,7 @@ bool MaterialLoader::Load(const char *name, Resource *OutResource)
         char* trimmed = MString::Trim(LineBuf);
 
         // Получите обрезанную длину.
-        LineLength = MString::Length(trimmed);
+        LineLength = MString::Lenght(trimmed);
 
         // Пропускайте пустые строки и комментарии.
         if (LineLength < 1 || trimmed[0] == '#') {
@@ -79,7 +79,7 @@ bool MaterialLoader::Load(const char *name, Resource *OutResource)
             MMemory::CopyMem(ResourceData->DiffuseMapName, TrimmedValue, TEXTURE_NAME_MAX_LENGTH);
         } else if (MString::Equali(TrimmedVarName, "diffuse_colour")) {
             // Разобрать цвет
-            if (!MString::ToVector4D(TrimmedValue, &ResourceData->DiffuseColour)) {
+            if (!MString::ToVector4D(TrimmedValue, ResourceData->DiffuseColour)) {
                 MWARN("Ошибка анализа диффузного цвета (diffuse_color) в файле «%s». Вместо этого используется белый цвет по умолчанию.", FullFilePath);
                 // ПРИМЕЧАНИЕ. Уже назначено выше, его здесь нет необходимости.
             } 

@@ -107,8 +107,7 @@ namespace INVALID
 #endif
 #endif
 
-#define MCLAMP(value, min, max) (value <= min) ? min : (value >= max) ? max \
-                                                                      : value;
+#define MCLAMP(value, min, max) (value <= min) ? min : (value >= max) ? max : value;
 
 // Встраивание
 #ifdef _MSC_VER
@@ -126,6 +125,9 @@ namespace INVALID
 #define GIGABYTES(amount) amount * 1000 * 1000 * 1000   // Получает количество байтов из количества гигабайт    (GB) (1000*1000*1000)
 #define MEGABYTES(amount) amount * 1000 * 1000          // Получает количество байтов из количества мегабайт    (MB) (1000*1000)
 #define KILOBYTES(amount) amount * 1000                 // Получает количество байтов из количества килобайт    (KB) (1000)
+
+#define VARIABLE_TO_STRING(Variable) (void(Variable),#Variable)   // Проверяет существует ли переменная, если да, то преобразует в строку.
+#define TYPE_TO_STRING(Type) (void(sizeof(Type)),#Type)           // Проверяет существует ли тип, если да, то преобразует в строку.
 
 //СДЕЛАТЬ: возможно здесь этому не место
 /// @brief Диапазон, обычной памяти

@@ -1,8 +1,15 @@
 #pragma once
 #include "defines.hpp"
 #include "core/mmemory.hpp"
+#include <type_traits>
 //#include "core/logger.hpp"
+/*
+template <typename T, typename = void_t<>>
+struct IsClass : std::false_type { };
 
+template <typename T>
+struct IsClass<T, void_t<int T::*>> : std::true_type { };
+*/
 template<typename T>
 class MAPI DArray
 {
@@ -14,33 +21,41 @@ private:
 
 // Функции
 public:
-    constexpr DArray() : size(0), capacity(0), ptrValue(nullptr) {}
+    constexpr DArray() : size(), capacity(), ptrValue(nullptr) {}
 
-    constexpr DArray(u64 lenght, const T& value = T{}) {
-        if(lenght > 0) {
-            this->size = lenght;
-            this->capacity = lenght;
+    constexpr DArray(u64 size, const T& value = T{}) {
+        if(size > 0) {
+            this->size = size;
+            this->capacity = size;
             ptrValue = MMemory::TAllocate<T>(capacity, MemoryTag::DArray);
-            for (u64 i = 0; i < lenght; i++) {
+            for (u64 i = 0; i < size; i++) {
                 ptrValue[i] = value;
             }
         }
     }
 
     ~DArray() {
-        if(this->capacity != 0) MMemory::Free(reinterpret_cast<void*>(ptrValue), sizeof(T) * capacity, MemoryTag::DArray);
+        if(this->capacity != 0) {
+            Clear();
+            MMemory::Free(reinterpret_cast<void*>(ptrValue), sizeof(T) * capacity, MemoryTag::DArray);
+        }
     }
 
     // Конструктор копирования
-    DArray(const DArray& arr) : size(arr.size), capacity(arr.capacity), ptrValue(arr.ptrValue) {}
+    constexpr DArray(const DArray& arr) : size(arr.size), capacity(arr.capacity), ptrValue(arr.ptrValue) {}
 
     // Конструктор перемещения
-    DArray(DArray&& arr) :  size(arr.size), capacity(arr.capacity), ptrValue(arr.ptrValue)
+    constexpr DArray(DArray&& arr) :  size(arr.size), capacity(arr.capacity), ptrValue(arr.ptrValue)
     {
         arr.size = 0;
         arr.capacity = 0;
         //arr.mem = nullptr;
         arr.ptrValue = nullptr;
+    }
+
+    /// @brief Уничтожает динамический массив
+    MINLINE void Destroy() {
+        this->~DArray();
     }
     // Доступ к элементу------------------------------------------------------------------------
 
@@ -83,7 +98,7 @@ public:
         }
         else if (NewCap > capacity) {
             void* ptrNew = MMemory::Allocate(sizeof(T) * NewCap, MemoryTag::DArray);
-            MMemory::CopyMem(ptrNew, reinterpret_cast<void*>(ptrValue), sizeof(T) * capacity);
+            MMemory::CopyMem(ptrNew, ptrValue, sizeof(T) * capacity);
             MMemory::Free(ptrValue, sizeof(T) * capacity, MemoryTag::DArray);
             ptrValue = reinterpret_cast<T*> (ptrNew);
             capacity = NewCap;
@@ -100,6 +115,16 @@ public:
     //-----------------------------------------------------------------------------------Емкость
     // Модифицирующие методы--------------------------------------------------------------------
 
+    /// @brief Очищает массив. Емкость остается прежней.
+    void Clear() {
+        if (ptrValue && size){
+            for (u64 i = 0; i < size; i++) {
+                ptrValue[i].~T();
+            }
+            
+            size = 0;
+        }
+    }
     /// @brief Добавляет заданное значение элемента в конец контейнера.
     /// @param value элемент который нужно поместить в конец контейнера.
     void PushBack(const T& value) {
@@ -116,7 +141,10 @@ public:
     //void PushBack(T&& value);
     /// @brief Удаляет последний элемент контейнера.
     void PopBack() {
-        if(size > 0) size--;
+        if(size > 0) {
+            size--;
+            ptrValue[size].~T();
+        }
     }
 
     /// @brief Вставляет value в позицию index.
@@ -131,10 +159,7 @@ public:
         }
         // Если не последний элемент, скопируйте остальное наружу.
         if (index != size - 1) {
-            MMemory::CopyMem(
-                reinterpret_cast<void*>(ptrValue + (index* sizeof(T))),
-                reinterpret_cast<void*>(ptrValue + (index + 1 * sizeof(T))),
-                size - 1);
+            MMemory::CopyMem((ptrValue + index), (ptrValue + index + 1), size - 1);
         }
         size++;
     }
@@ -145,10 +170,7 @@ public:
 
         // Если не последний элемент, вырезаем запись и копируем остальное внутрь. TODO: оптимизироваать
         if (index != size - 1) {
-            MMemory::CopyMem(
-                reinterpret_cast<void*>(ptrValue + (index * sizeof(T))),
-                reinterpret_cast<void*>(ptrValue + (index + 1 * sizeof(T))),
-                size - 1);
+            MMemory::CopyMem(ptrValue + index, ptrValue + index + 1, size - 1);
         }
         size--;
     }

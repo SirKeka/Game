@@ -249,7 +249,7 @@ bool Shader::UniformAdd(const char *UniformName, u32 size, ShaderUniformType typ
 
 bool Shader::UniformNameValid(const char *UniformName)
 {
-    if (!UniformName || !MString::Length(UniformName)) {
+    if (!UniformName || !MString::Lenght(UniformName)) {
         MERROR("Единое имя должно существовать.");
         return false;
     }

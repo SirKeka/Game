@@ -17,7 +17,7 @@ constexpr MString::MString(u64 lenght)
 
 MString::MString(const char *s)
 :
-    lenght(Length(s) + 1),
+    lenght(Lenght(s) + 1),
     str(MMemory::TAllocate<char>(lenght, MemoryTag::String))
 {
     MMemory::CopyMem(this->str, s, lenght);
@@ -49,24 +49,20 @@ char MString::operator[](u64 i)
 {
     if (!str || i >= lenght) {
         return '\0';
-    }
-    
-    if (i < lenght) {
-        return str[i];
-    }
-}
-
-const char MString::operator[](u64 i) const
-{
-    if (!str || i >= lenght) {
-        return '\0';
-    }
-    
-    if (i < lenght) {
+    } else {
         return str[i];
     }
 }
 */
+const char MString::operator[](u64 i) const
+{
+    if (!str || i >= lenght) {
+        return '\0';
+    } else {
+        return str[i];
+    }
+}
+
 MString &MString::operator=(const MString &s)
 {
     if (str) {
@@ -85,7 +81,7 @@ MString &MString::operator=(const char *s)
     if(str) {
         Destroy();
     }
-    lenght = Length(s) + 1;
+    lenght = Lenght(s) + 1;
     str = reinterpret_cast<char*>(MMemory::Allocate(lenght, MemoryTag::String));
     //this->str = MMemory::TAllocate<char>(lenght, MemoryTag::String);
 
@@ -96,7 +92,7 @@ MString &MString::operator=(const char *s)
 
 MString::operator bool() const
 {
-    if (this->str != nullptr && this->lenght != 0) {
+    if (str != nullptr && lenght != 0) {
         return true;
     }
     return false;
@@ -119,7 +115,7 @@ bool MString::operator==(const MString &rhs)
 
 bool MString::operator==(const char *s)
 {
-    if (lenght - 1 != Length(s)) {
+    if (lenght - 1 != Lenght(s)) {
         return false;
     }
     for (u64 i = 0; i < lenght; i++) {
@@ -132,12 +128,12 @@ bool MString::operator==(const char *s)
     return true;
 }
 
-const u64 MString::Length() const
+const u64 MString::Lenght() const
 {
     return lenght - 1;
 }
 
-const u64 MString::Length(const char *s)
+const u64 MString::Lenght(const char *s)
 {
     u64 length = 0;
     while (*s) {
@@ -231,28 +227,28 @@ char *MString::Trim(char *s)
     return s;
 }
 
-void MString::Mid(char *dest, const char *source, i32 start, i32 length)
+void MString::Mid(char *dest, MString source, i32 start, i32 length)
 {
     if (length == 0) {
         return;
     }
-    u64 srcLength = strlen(source);
+    const u64& srcLength = source.Lenght();
     if (start >= srcLength) {
-        dest[0] = 0;
+        dest[0] = '\0';
         return;
     }
     if (length > 0) {
         for (u64 i = start, j = 0; j < length && source[i]; ++i, ++j) {
             dest[j] = source[i];
         }
-        dest[start + length] = 0;
+        dest[start + length] = '\0';
     } else {
         // Если передано отрицательное значение, перейдите к концу строки.
         u64 j = 0;
         for (u64 i = start; source[i]; ++i, ++j) {
             dest[j] = source[i];
         }
-        dest[start + j] = 0;
+        dest[start + j] = '\0';
     }
 }
 
@@ -273,156 +269,159 @@ i32 MString::IndexOf(char *str, char c)
     return -1;
 }
 
-bool MString::ToVector4D(char *s, Vector4D<f32> *OutVector)
+i32 MString::IndexOf(char c)
+{
+    return MString::IndexOf(str, c);
+}
+
+bool MString::ToVector4D(char *s, Vector4D<f32> &OutVector)
 {
     if (!s) {
         return false;
     }
 
-    MMemory::ZeroMem(OutVector, sizeof(Vector4D<f32>));
-    i32 result = sscanf(s, "%f %f %f %f", &OutVector->x, &OutVector->y, &OutVector->z, &OutVector->w);
+    i32 result = sscanf(s, "%f %f %f %f", &OutVector.x, &OutVector.y, &OutVector.z, &OutVector.w);
     return result != -1;
 }
 
-bool MString::ToVector3D(char *str, Vector3D<f32> *OutVector)
+bool MString::ToVector3D(char *str, Vector3D<f32> &OutVector)
 {
     if (!str) {
         return false;
     }
 
-    MMemory::ZeroMem(OutVector, sizeof(Vector3D<f32>));
-    i32 result = sscanf(str, "%f %f %f", &OutVector->x, &OutVector->y, &OutVector->z);
+    i32 result = sscanf(str, "%f %f %f", &OutVector.x, &OutVector.y, &OutVector.z);
     return result != -1;
 }
 
-bool MString::ToVector2D(char *str, Vector2D<f32> *OutVector)
+bool MString::ToVector2D(char *str, Vector2D<f32> &OutVector)
 {
     if (!str) {
         return false;
     }
 
-    MMemory::ZeroMem(OutVector, sizeof(Vector2D<f32>));
-    i32 result = sscanf(str, "%f %f", &OutVector->x, &OutVector->y);
+    i32 result = sscanf(str, "%f %f", &OutVector.x, &OutVector.y);
     return result != -1;
 }
 
-bool MString::ToFloat(char *str, f32 *f)
+bool MString::ToFloat(char *str, f32 &f)
 {
     if (!str) {
         return false;
     }
 
-    *f = 0;
-    i32 result = sscanf(str, "%f", f);
+    f = 0;
+    i32 result = sscanf(str, "%f", &f);
     return result != -1;
 }
 
-bool MString::ToFloat(char *str, f64 *f)
+bool MString::ToFloat(char *str, f64 &f)
 {
     if (!str) {
         return false;
     }
 
-    *f = 0;
-    i32 result = sscanf(str, "%lf", f);
+    f = 0;
+    i32 result = sscanf(str, "%lf", &f);
     return result != -1;
 }
 
-bool MString::ToInt(char *str, i8 *i)
+bool MString::ToInt(char *str, i8 &i)
 {
     if (!str) {
         return false;
     }
 
-    *i = 0;
-    i32 result = sscanf(str, "%hhi", i);
+    i = 0;
+    i32 result = sscanf(str, "%hhi", &i);
     return result != -1;
 }
 
-bool MString::ToInt(char *str, i16 *i)
+bool MString::ToInt(char *str, i16 &i)
 {
     if (!str) {
         return false;
     }
 
-    *i = 0;
-    i32 result = sscanf(str, "%hi", i);
+    i = 0;
+    i32 result = sscanf(str, "%hi", &i);
     return result != -1;
 }
 
-bool MString::ToInt(char *str, i32 *i)
+bool MString::ToInt(char *str, i32 &i)
 {
     if (!str) {
         return false;
     }
 
-    *i = 0;
-    i32 result = sscanf(str, "%i", i);
+    i = 0;
+    i32 result = sscanf(str, "%i", &i);
     return result != -1;
 }
 
-bool MString::ToInt(char *str, i64 *i)
+bool MString::ToInt(char *str, i64 &i)
 {
     if (!str) {
         return false;
     }
 
-    *i = 0;
-    i32 result = sscanf(str, "%lli", i);
+    i = 0;
+    i32 result = sscanf(str, "%lli", &i);
     return result != -1;
 }
 
-bool MString::ToUInt(char *str, u8 *u)
+bool MString::ToUInt(char *str, u8 &u)
 {
     if (!str) {
         return false;
     }
 
-    *u = 0;
-    i32 result = sscanf(str, "%hhu", u);
+    u = 0;
+    i32 result = sscanf(str, "%hhu", &u);
     return result != -1;
 }
 
-bool MString::ToUInt(char *str, u16 *u)
+bool MString::ToUInt(char *str, u16 &u)
 {
     if (!str) {
         return false;
     }
 
-    *u = 0;
-    i32 result = sscanf(str, "%hu", u);
+    u = 0;
+    i32 result = sscanf(str, "%hu", &u);
     return result != -1;
 }
 
-bool MString::ToUInt(char *str, u32 *u)
+bool MString::ToUInt(char *str, u32 &u)
 {
     if (!str) {
         return false;
     }
 
-    *u = 0;
-    i32 result = sscanf(str, "%u", u);
+    u = 0;
+    i32 result = sscanf(str, "%u", &u);
     return result != -1;
 }
 
-bool MString::ToUInt(char *str, u64 *u)
+bool MString::ToUInt(char *str, u64 &u)
 {
     if (!str) {
         return false;
     }
 
-    *u = 0;
-    i32 result = sscanf(str, "%llu", u);
+    u = 0;
+    i32 result = sscanf(str, "%llu", &u);
     return result != -1;
 }
 
-bool MString::ToBool(char *str, bool *b)
+bool MString::ToBool(/*char *str, */bool &b)
 {
     if (!str) {
+        MERROR("MString::ToBool: нулевая строка")
         return false;
     }
-
-    return MString::Equal(str, "1") || MString::Equali(str, "true");
+    b = MString::Equal(str, "1") || MString::Equali(str, "true");
+    return true;
 }
 
 u32 MString::Split(const char *str, char delimiter, DArray<MString> &darray, bool TrimEntries, bool IncludeEmpty)
@@ -449,17 +448,18 @@ u32 MString::Split(const char *str, char delimiter, DArray<MString> &darray, boo
             // Обрезать, если применимо
             if (TrimEntries && CurrentLength > 0) {
                 result.Trim();
-                TrimmedLength = result.Length();
+                TrimmedLength = result.Lenght();
             }
             // Добавить новую запись
-            if (TrimmedLength > 0 || IncludeEmpty) {
-                MString entry;
-                if (TrimmedLength > 0) {
-                    MString entry = result;
+            if (IncludeEmpty || result) {
+                if (!result) {
+                    darray.PushBack(MString());
+                } else {
+                    MString entry{result};
+                    darray.PushBack(entry);
                 }
-                darray.PushBack(entry);
                 EntryCount++;
-            }
+            } 
 
             // Очистка буфера.
             MMemory::ZeroMem(buffer, sizeof(char) * 16384);
@@ -477,19 +477,25 @@ u32 MString::Split(const char *str, char delimiter, DArray<MString> &darray, boo
     // Обрезать, если применимо
     if (TrimEntries && CurrentLength > 0) {
         result.Trim();
-        TrimmedLength = result.Length();
+        TrimmedLength = result.Lenght();
     }
     // Добавить новую запись
-    if (TrimmedLength > 0 || IncludeEmpty) {
-        MString entry; // char* entry = kallocate(sizeof(char) * (TrimmedLength + 1), MemoryTag::String);
-        if (TrimmedLength > 0) {
-            entry = result;
+    if (IncludeEmpty || result) {
+        if (!result) {
+            darray.PushBack(MString());
+        } else {
+            MString entry{result};
+            darray.PushBack(entry);
         }
-        darray.PushBack(entry);
         EntryCount++;
     }
 
     return EntryCount;
+}
+
+u32 MString::Split(char delimiter, DArray<MString> &darray, bool TrimEntries, bool IncludeEmpty)
+{
+    return MString::Split(str, delimiter, darray, TrimEntries, IncludeEmpty);
 }
 
 void MString::Destroy()

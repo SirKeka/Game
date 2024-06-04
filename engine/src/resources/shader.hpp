@@ -59,7 +59,7 @@ enum class ShaderScope {
 /// @brief Конфигурация атрибута.
 struct ShaderAttributeConfig {
     u8 NameLength;                              // Длина имени.
-    char* name;                                 // Имя атрибута.
+    MString name;                               // Имя атрибута.
     u8 size;                                    // Размер атрибута.
     ShaderAttributeType type;                   // Тип атрибута.
 };

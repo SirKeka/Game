@@ -42,19 +42,19 @@ bool ShaderLoader::Load(const char *name, Resource *OutResource)
     u32 LineNumber = 1;
     while (Filesystem::ReadLine(&f, 511, &p, LineLength)) {
         // Обрежьте строку.
-        char* trimmed = MString::Trim(LineBuf);
+        MString trimmed{MString::Trim(LineBuf)};
 
         // Получите обрезанную длину.
-        LineLength = MString::Length(trimmed);
+        // LineLength = MString::Length(trimmed);
 
         // Пропускайте пустые строки и комментарии.
-        if (LineLength < 1 || trimmed[0] == '#') {
+        if (trimmed.Lenght() < 1 || trimmed[0] == '#') {
             LineNumber++;
             continue;
         }
 
         // Разделить на var/value
-        i32 EqualIndex = MString::IndexOf(trimmed, '=');
+        i32 EqualIndex = trimmed.IndexOf('=');
         if (EqualIndex == -1) {
             MWARN("В файле «%s» обнаружена потенциальная проблема с форматированием: токен «=» не найден. Пропуск строки %ui.", FullFilePath, LineNumber);
             LineNumber++;
@@ -64,24 +64,24 @@ bool ShaderLoader::Load(const char *name, Resource *OutResource)
         // Предположим, что имя переменной содержит не более 64 символов.
         char RawVarName[64]{};
         MString::Mid(RawVarName, trimmed, 0, EqualIndex);
-        char* TrimmedVarName = MString::Trim(RawVarName);
+        MString TrimmedVarName = MString::Trim(RawVarName);
 
         // Предположим, что максимальная длина значения, учитывающего имя переменной и знак «=», составляет 511–65 (446).
         char RawValue[446]{};
         MString::Mid(RawValue, trimmed, EqualIndex + 1, -1);  // Прочтите остальную часть строки
-        char* TrimmedValue = MString::Trim(RawValue);
+        MString TrimmedValue{MString::Trim(RawValue)};
 
         // Обработайте переменную.
-        if (MString::Equali(TrimmedVarName, "version")) {
+        if (TrimmedVarName.Cmpi("version")) {
             // СДЕЛАТЬ: version
-        } else if (MString::Equali(TrimmedVarName, "name")) {
+        } else if (TrimmedVarName.Cmpi("name")) {
             ResourceData->name = TrimmedValue;
-        } else if (MString::Equali(TrimmedVarName, "renderpass")) {
+        } else if (TrimmedVarName.Cmpi("renderpass")) {
             ResourceData->RenderpassName = TrimmedValue;
-        } else if (MString::Equali(TrimmedVarName, "stages")) {
+        } else if (TrimmedVarName.Cmpi("stages")) {
             // Разбор этапов
             // char** StageNames = darray_create(char*);
-            u32 count = MString::Split(TrimmedValue, ',', ResourceData->StageNames, true, true);
+            u32 count = TrimmedValue.Split(',', ResourceData->StageNames, true, true);
             // Убедитесь, что имя этапа и количество имен файлов этапа одинаковы, поскольку они должны совпадать.
             if (ResourceData->StageCount == 0) {
                 ResourceData->StageCount = count;
@@ -102,79 +102,79 @@ bool ShaderLoader::Load(const char *name, Resource *OutResource)
                     MERROR("ShaderLoader::Load: Неверный макет файла. Неопознанная стадия '%s'", ResourceData->StageNames[i].c_str());
                 }
             }
-        } else if (MString::Equali(TrimmedVarName, "stagefiles")) {
+        } else if (TrimmedVarName.Cmpi("stagefiles")) {
             // Разобрать имена файлов сцены
             // ResourceData->stage_filenames = darray_create(char*);
-            u32 count = string_split(TrimmedValue, ',', &ResourceData->stage_filenames, true, true);
+            u32 count = TrimmedValue.Split(',', ResourceData->StageFilenames, true, true);
             // Убедитесь, что имя этапа и количество имен файлов этапа одинаковы, поскольку они должны совпадать.
             if (ResourceData->StageCount == 0) {
                 ResourceData->StageCount = count;
             } else if (ResourceData->StageCount != count) {
                 MERROR("ShaderLoader::Load: Неверный макет файла. Подсчитайте несоответствие между именами этапов и именами файлов этапов.");
             }
-        } else if (MString::Equali(TrimmedVarName, "use_instance")) {
-            string_to_bool(TrimmedValue, &ResourceData->UseInstances);
-        } else if (MString::Equali(TrimmedVarName, "use_local")) {
-            string_to_bool(TrimmedValue, &ResourceData->UseLocal);
-        } else if (MString::Equali(TrimmedVarName, "attribute")) {
-            // Parse attribute.
-            char** fields = darray_create(char*);
-            u32 field_count = string_split(TrimmedValue, ',', &fields, true, true);
-            if (field_count != 2) {
-                KERROR("shader_loader_load: Invalid file layout. Attribute fields must be 'type,name'. Skipping.");
+        } else if (TrimmedVarName.Cmpi("use_instance")) {
+            TrimmedValue.ToBool(ResourceData->UseInstances);
+        } else if (TrimmedVarName.Cmpi("use_local")) {
+            TrimmedValue.ToBool(ResourceData->UseLocal);
+        } else if (TrimmedVarName.Cmpi("attribute")) {
+            // Анализ атрибута.
+            DArray<MString>fields;
+            u32 FieldCount = TrimmedValue.Split(',', fields, true, true);
+            if (FieldCount != 2) {
+                MERROR("ShaderLoader::Load: Недопустимый макет файла. Поля атрибутов должны иметь формат «тип, имя». Пропуск.");
             } else {
-                shader_attribute_config attribute;
-                // Parse field type
-                if (strings_equali(fields[0], "f32")) {
-                    attribute.type = SHADER_ATTRIB_TYPE_FLOAT32;
+                ShaderAttributeConfig attribute;
+                // Анализ field type
+                if (fields[0].Cmpi("f32")) {
+                    attribute.type = ShaderAttributeType::Float32;
                     attribute.size = 4;
-                } else if (strings_equali(fields[0], "vec2")) {
-                    attribute.type = SHADER_ATTRIB_TYPE_FLOAT32_2;
+                } else if (fields[0].Cmpi("vec2")) {
+                    attribute.type = ShaderAttributeType::Float32_2;
                     attribute.size = 8;
-                } else if (strings_equali(fields[0], "vec3")) {
-                    attribute.type = SHADER_ATTRIB_TYPE_FLOAT32_3;
+                } else if (fields[0].Cmpi("vec3")) {
+                    attribute.type = ShaderAttributeType::Float32_3;
                     attribute.size = 12;
-                } else if (strings_equali(fields[0], "vec4")) {
-                    attribute.type = SHADER_ATTRIB_TYPE_FLOAT32_4;
+                } else if (fields[0].Cmpi("vec4")) {
+                    attribute.type = ShaderAttributeType::Float32_4;
                     attribute.size = 16;
-                } else if (strings_equali(fields[0], "u8")) {
-                    attribute.type = SHADER_ATTRIB_TYPE_UINT8;
+                } else if (fields[0].Cmpi("u8")) {
+                    attribute.type = ShaderAttributeType::UInt8;
                     attribute.size = 1;
-                } else if (strings_equali(fields[0], "u16")) {
-                    attribute.type = SHADER_ATTRIB_TYPE_UINT16;
+                } else if (fields[0].Cmpi("u16")) {
+                    attribute.type = ShaderAttributeType::UInt16;
                     attribute.size = 2;
-                } else if (strings_equali(fields[0], "u32")) {
-                    attribute.type = SHADER_ATTRIB_TYPE_UINT32;
+                } else if (fields[0].Cmpi("u32")) {
+                    attribute.type = ShaderAttributeType::UInt32;
                     attribute.size = 4;
-                } else if (strings_equali(fields[0], "i8")) {
-                    attribute.type = SHADER_ATTRIB_TYPE_INT8;
+                } else if (fields[0].Cmpi("i8")) {
+                    attribute.type = ShaderAttributeType::Int8;
                     attribute.size = 1;
-                } else if (strings_equali(fields[0], "i16")) {
-                    attribute.type = SHADER_ATTRIB_TYPE_INT16;
+                } else if (fields[0].Cmpi("i16")) {
+                    attribute.type = ShaderAttributeType::Int16;
                     attribute.size = 2;
-                } else if (strings_equali(fields[0], "i32")) {
-                    attribute.type = SHADER_ATTRIB_TYPE_INT32;
+                } else if (fields[0].Cmpi("i32")) {
+                    attribute.type = ShaderAttributeType::Int32;
                     attribute.size = 4;
                 } else {
-                    KERROR("shader_loader_load: Invalid file layout. Attribute type must be f32, vec2, vec3, vec4, i8, i16, i32, u8, u16, or u32.");
-                    KWARN("Defaulting to f32.");
-                    attribute.type = SHADER_ATTRIB_TYPE_FLOAT32;
+                    MERROR("ShaderLoader::Load: Недопустимый макет файла. Тип атрибута должен быть f32, Vector2D, Vector3D, Vector4D, i8, i16, i32, u8, u16 или u32.");
+                    MWARN("По умолчанию f32.");
+                    attribute.type = ShaderAttributeType::Float32;
                     attribute.size = 4;
                 }
 
-                // Take a copy of the attribute name.
-                attribute.name_length = string_length(fields[1]);
-                attribute.name = string_duplicate(fields[1]);
+                // Возьмите копию имени атрибута.
+                attribute.NameLength = fields[1].Lenght();
+                attribute.name = fields[1];
 
-                // Add the attribute.
-                darray_push(ResourceData->attributes, attribute);
-                ResourceData->attribute_count++;
+                // Добавьте атрибут.
+                ResourceData->attributes.PushBack(attribute);
+                ResourceData->AttributeCount++;
             }
 
-            string_cleanup_split_array(fields);
-            darray_destroy(fields);
+            // string_cleanup_split_array(fields);
+            fields.Destroy();
         } else if (strings_equali(TrimmedVarName, "uniform")) {
-            // Parse uniform.
+            // Анализ униформы.
             char** fields = darray_create(char*);
             u32 field_count = string_split(TrimmedValue, ',', &fields, true, true);
             if (field_count != 3) {

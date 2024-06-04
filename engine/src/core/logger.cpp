@@ -49,7 +49,7 @@ void Logger::AppendToLogFile(MString message)
 {
     if (LogFileHandle.IsValid) {
         // Поскольку сообщение уже содержит '\n', просто запишите байты напрямую.
-        u64 length = message.Length();
+        u64 length = message.Lenght();
         u64 written = 0;
         if (!Filesystem::Write(&LogFileHandle, length, message.c_str(), written)) {
             PlatformConsoleWriteError("ОШИБКА записи в console.log.", static_cast<u8>(LogLevel::Error));

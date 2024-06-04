@@ -55,7 +55,7 @@ bool ResourceSystem::RegisterLoader(ResourceLoader loader)
             if (l->type == loader.type) {
                 MERROR("ResourceSystem::RegisterLoader — загрузчик типа %d уже существует и не будет зарегистрирован.", loader.type);
                 return false;
-            } else if (loader.CustomType && MString::Length(loader.CustomType) > 0 && MString::Equali(l->CustomType, loader.CustomType)) {
+            } else if (loader.CustomType && MString::Lenght(loader.CustomType) > 0 && MString::Equali(l->CustomType, loader.CustomType)) {
                 MERROR("ResourceSystem::RegisterLoader — загрузчик пользовательского типа %s уже существует и не будет зарегистрирован.", loader.CustomType);
                 return false;
             }
@@ -93,7 +93,7 @@ bool ResourceSystem::Load(const char *name, ResourceType type, Resource *OutReso
 
 bool ResourceSystem::Load(const char *name, const char *CustomType, Resource *OutResource)
 {
-    if (CustomType && MString::Length(CustomType) > 0) {
+    if (CustomType && MString::Lenght(CustomType) > 0) {
         // Выбор загрузчика.
         for (u32 i = 0; i < MaxLoaderCount; ++i) {
             ResourceLoader* l = &RegisteredLoaders[i];
