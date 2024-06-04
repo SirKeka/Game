@@ -36,8 +36,8 @@ private:
 
     GeometryConfig config;
 
-    GeometryID DefaultGeometry{0, 0, 0};
-    GeometryID Default2dGeometry{0, 0, 0};
+    GeometryID DefaultGeometry{0, 0};
+    GeometryID Default2dGeometry{0, 0};
 
     // Массив зарегистрированных сеток.
     struct GeometryReference* RegisteredGeometries;

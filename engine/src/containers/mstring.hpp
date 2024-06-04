@@ -44,11 +44,10 @@ public:
 
     /// @return строку типа си
     const char* c_str() const noexcept;
-
     /// @brief Срвавнивает строки между собой без учета регистра.
     /// @param string строка в стиле си с которой нужно сравнить
     /// @return true, если строки равны и false, если нет 
-    bool Cmpi(MString string);
+    const bool Cmpi(MString string) const;
 
     // Выполняет форматирование строки для определения заданной строки формата и параметров.
     static i32 Format(char* dest, const char* format, ...);
@@ -62,7 +61,7 @@ public:
     static char* Copy(char* dest, const char* source);
     void nCopy(MString source, u64 Length);
     void nCopy(const char* source, u64 Length);
-    static char* nCopy(char* dest, const char* source, u64 length);
+    static char* nCopy(char* dest, MString source, u64 length);
 
     void Trim();
     static char* Trim(char* s);

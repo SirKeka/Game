@@ -62,12 +62,14 @@ struct ShaderAttributeConfig {
     MString name;                               // Имя атрибута.
     u8 size;                                    // Размер атрибута.
     ShaderAttributeType type;                   // Тип атрибута.
+    
+    
 };
 
 /// @brief Конфигурация униформы.
 struct ShaderUniformConfig {
     u8 NameLength;                              // Длина имени.
-    char* name;                                 // Название униформы.
+    MString name;                               // Название униформы.
     u8 size;                                    // Размер униформы.
     u32 location;                               // Расположение униформы.
     ShaderUniformType type;                     // Тип униформы.
@@ -91,6 +93,7 @@ struct ShaderConfig {
     DArray<MString> StageFilenames;             // Коллекция имен файлов этапов, которые необходимо загрузить (по одному на этап). Должно соответствовать массиву этапов.
 
     ShaderConfig() : name(), UseInstances(false), UseLocal(false), AttributeCount(), attributes(), UniformCount(), uniforms(), RenderpassName(nullptr), StageCount(), stages(), StageNames(), StageFilenames() {}
+    //~ShaderConfig() {}
     void* operator new(u64 size) {return MMemory::Allocate(size, MemoryTag::Resource);}
     void operator delete(void* ptr) {MMemory::Free(ptr, sizeof(ShaderConfig), MemoryTag::Resource);}
 };
@@ -174,8 +177,8 @@ public:
     /// @param InstanceID идентификатор экземпляра, который необходимо привязать.
     /// @return true в случае успеха, иначе false.
     bool BindInstance(u32 InstanceID);
-    bool UniformAdd(const char* UniformName, u32 size, ShaderUniformType type, ShaderScope scope, u32 SetLocation, bool IsSampler);
-    bool UniformNameValid(const char* UniformName);
+    bool UniformAdd(const MString& UniformName, u32 size, ShaderUniformType type, ShaderScope scope, u32 SetLocation, bool IsSampler);
+    bool UniformNameValid(const MString& UniformName);
     bool UniformAddStateValid();
     u16  UniformIndex(const char* UniformName);
     void Destroy();

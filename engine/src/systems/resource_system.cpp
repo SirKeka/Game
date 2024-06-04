@@ -5,6 +5,7 @@
 #include "resources/loader/material_loader.hpp"
 #include "resources/loader/binary_loader.hpp"
 #include "resources/loader/text_loader.hpp"
+#include "resources/loader/shader_loader.hpp"
 
 #include "core/mmemory.hpp"
 #include <new>
@@ -14,7 +15,6 @@ ResourceSystem* ResourceSystem::state = nullptr;
 
 ResourceSystem::ResourceSystem(const char* BasePath)  : AssetBasePath(BasePath), RegisteredLoaders(nullptr) 
 {
-    //MMemory::CopyMem(AssetBasePath, BasePath, sizeof(BasePath));
     this->RegisteredLoaders = reinterpret_cast<ResourceLoader*>(this + sizeof(ResourceSystem));
     // Аннулировать все загрузчики
     new (reinterpret_cast<void*>(RegisteredLoaders)) ResourceLoader[MaxLoaderCount]();
@@ -27,6 +27,7 @@ ResourceSystem::ResourceSystem(const char* BasePath)  : AssetBasePath(BasePath),
     RegisterLoader<BinaryLoader>(BinaryLoader());
     RegisterLoader<ImageLoader>(ImageLoader());
     RegisterLoader<MaterialLoader>(MaterialLoader());
+    RegisterLoader<ShaderLoader>(ShaderLoader());
 }
 
 bool ResourceSystem::Initialize(const char* BasePath)

@@ -49,7 +49,7 @@ const u32 DESC_SET_INDEX_INSTANCE = 1;  // Индекс набора дескр�
 const u32 BINDING_INDEX_UBO       = 0;  // Индекс привязки УБО.
 const u32 BINDING_INDEX_SAMPLER   = 1;  // Индекс привязки сэмплера изображения.
 
-bool VulkanAPI::Load(Shader *shader, u8 RenderpassID, u8 StageCount, DArray<char*> StageFilenames, const ShaderStage *stages)
+bool VulkanAPI::Load(Shader *shader, u8 RenderpassID, u8 StageCount, DArray<MString> StageFilenames, const ShaderStage *stages)
 {
     shader->ShaderData = new VulkanShader();
 

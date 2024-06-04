@@ -6,7 +6,7 @@
 constexpr int GEOMETRY_NAME_MAX_LENGTH = 256;
 
 // Максимальное количество одновременно загружаемых геометрий
-// TODO: сделать настраиваемым
+// СДЕЛАТЬ: сделать настраиваемым
 constexpr int VULKAN_MAX_GEOMETRY_COUNT = 4096;
 
 struct GeometryID {
@@ -15,7 +15,7 @@ struct GeometryID {
     u32 generation;
     char name[GEOMETRY_NAME_MAX_LENGTH];
     class Material* material;
-    GeometryID(u32 id, u32 InternalID, u32 generation) : id(id), InternalID(InternalID), generation(generation), name(), material(nullptr) {}
+    GeometryID(u32 id, u32 generation) : id(id), InternalID(INVALID::ID), generation(generation), name(), material(nullptr) {}
     GeometryID(const char* name) : id(INVALID::ID), InternalID(INVALID::ID), generation(INVALID::ID), material(nullptr) {MMemory::CopyMem(this->name, name, GEOMETRY_NAME_MAX_LENGTH);}
 };
 

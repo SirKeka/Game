@@ -15,7 +15,7 @@
 #define LOG_TRACE_ENABLED 0
 #endif
 
-enum class LogLevel : u8 { Fatal = 1, Error, Warn, Info, Debug, Trace };
+enum class LogLevel : u8 { Fatal, Error, Warn, Info, Debug, Trace };
 
 class Logger
 {
@@ -29,7 +29,7 @@ public:
     void Shutdown();
     
     MAPI static void Output(LogLevel level, MString message, ...);
-    MAPI static void Output(LogLevel level, const char* message, ...);
+    // MAPI static void Output(LogLevel level, const char* message, ...);
 
     MAPI void* operator new(u64 size);
     //MAPI void operator delete(void* ptr);

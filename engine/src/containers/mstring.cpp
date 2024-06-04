@@ -149,7 +149,7 @@ const char *MString::c_str() const noexcept
     return str;
 }
 
-bool MString::Cmpi(MString string)
+const bool MString::Cmpi(MString string) const
 {
     return MString::Equali(str, string.str);
 }
@@ -170,9 +170,9 @@ i32 MString::FormatV(char *dest, const char *format, char *va_list)
 {
     if (dest) {
         // Большой, но может поместиться в стопке.
-        char buffer[32000];
+        char buffer[32000]{};
         i32 written = vsnprintf(buffer, 32000, format, va_list);
-        buffer[written] = 0;
+        buffer[written] = '\0';
         MMemory::CopyMem(dest, buffer, written + 1);
 
         return written;
@@ -195,9 +195,9 @@ void MString::nCopy(const char *source, u64 Length)
     MMemory::CopyMem(str, source, Length);
 }
 
-char *MString::nCopy(char *dest, const char *source, u64 length)
+char *MString::nCopy(char *dest, MString source, u64 length)
 {
-    return strncpy(dest, source, length);
+    return strncpy(dest, source.str, length);
 }
 
 void MString::Trim()
@@ -205,7 +205,6 @@ void MString::Trim()
     if (str) {
         str = MString::Trim(str);
     }
-    
 }
 
 char *MString::Trim(char *s)

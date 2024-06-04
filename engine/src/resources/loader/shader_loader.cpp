@@ -2,6 +2,7 @@
 #include "systems/resource_system.hpp"
 #include "resources/shader.hpp"
 #include "core/mmemory.hpp"
+#include "loader_utils.hpp"
 
 ShaderLoader::ShaderLoader() : ResourceLoader(ResourceType::Shader, nullptr, "shaders") {}
 
@@ -45,10 +46,10 @@ bool ShaderLoader::Load(const char *name, Resource *OutResource)
         MString trimmed{MString::Trim(LineBuf)};
 
         // Получите обрезанную длину.
-        // LineLength = MString::Length(trimmed);
+        LineLength = trimmed.Lenght();
 
         // Пропускайте пустые строки и комментарии.
-        if (trimmed.Lenght() < 1 || trimmed[0] == '#') {
+        if (LineLength < 1 || trimmed[0] == '#') {
             LineNumber++;
             continue;
         }
@@ -173,99 +174,123 @@ bool ShaderLoader::Load(const char *name, Resource *OutResource)
 
             // string_cleanup_split_array(fields);
             fields.Destroy();
-        } else if (strings_equali(TrimmedVarName, "uniform")) {
+        } else if (TrimmedVarName.Cmpi("uniform")) {
             // Анализ униформы.
-            char** fields = darray_create(char*);
-            u32 field_count = string_split(TrimmedValue, ',', &fields, true, true);
+            DArray<MString>fields;
+            u32 field_count = TrimmedValue.Split(',', fields, true, true);
             if (field_count != 3) {
-                KERROR("shader_loader_load: Invalid file layout. Uniform fields must be 'type,scope,name'. Skipping.");
+                MERROR("ShaderLoader::Load: Недопустимый макет файла. Унифицированные поля должны иметь следующий вид: «тип, область действия, имя». Пропуск.");
             } else {
-                shader_uniform_config uniform;
-                // Parse field type
-                if (strings_equali(fields[0], "f32")) {
-                    uniform.type = SHADER_UNIFORM_TYPE_FLOAT32;
+                ShaderUniformConfig uniform;
+                // Анализ field type
+                if (fields[0].Cmpi("f32")) {
+                    uniform.type = ShaderUniformType::Float32;
                     uniform.size = 4;
-                } else if (strings_equali(fields[0], "vec2")) {
-                    uniform.type = SHADER_UNIFORM_TYPE_FLOAT32_2;
+                } else if (fields[0].Cmpi("vec2")) {
+                    uniform.type = ShaderUniformType::Float32_2;
                     uniform.size = 8;
-                } else if (strings_equali(fields[0], "vec3")) {
-                    uniform.type = SHADER_UNIFORM_TYPE_FLOAT32_3;
+                } else if (fields[0].Cmpi("vec3")) {
+                    uniform.type = ShaderUniformType::Float32_3;
                     uniform.size = 12;
-                } else if (strings_equali(fields[0], "vec4")) {
-                    uniform.type = SHADER_UNIFORM_TYPE_FLOAT32_4;
+                } else if (fields[0].Cmpi("vec4")) {
+                    uniform.type = ShaderUniformType::Float32_4;
                     uniform.size = 16;
-                } else if (strings_equali(fields[0], "u8")) {
-                    uniform.type = SHADER_UNIFORM_TYPE_UINT8;
+                } else if (fields[0].Cmpi("u8")) {
+                    uniform.type = ShaderUniformType::UInt8;
                     uniform.size = 1;
-                } else if (strings_equali(fields[0], "u16")) {
-                    uniform.type = SHADER_UNIFORM_TYPE_UINT16;
+                } else if (fields[0].Cmpi("u16")) {
+                    uniform.type = ShaderUniformType::UInt16;
                     uniform.size = 2;
-                } else if (strings_equali(fields[0], "u32")) {
-                    uniform.type = SHADER_UNIFORM_TYPE_UINT32;
+                } else if (fields[0].Cmpi("u32")) {
+                    uniform.type = ShaderUniformType::UInt32;
                     uniform.size = 4;
-                } else if (strings_equali(fields[0], "i8")) {
-                    uniform.type = SHADER_UNIFORM_TYPE_INT8;
+                } else if (fields[0].Cmpi("i8")) {
+                    uniform.type = ShaderUniformType::Int8;
                     uniform.size = 1;
-                } else if (strings_equali(fields[0], "i16")) {
-                    uniform.type = SHADER_UNIFORM_TYPE_INT16;
+                } else if (fields[0].Cmpi("i16")) {
+                    uniform.type = ShaderUniformType::Int16;
                     uniform.size = 2;
-                } else if (strings_equali(fields[0], "i32")) {
-                    uniform.type = SHADER_UNIFORM_TYPE_INT32;
+                } else if (fields[0].Cmpi("i32")) {
+                    uniform.type = ShaderUniformType::Int32;
                     uniform.size = 4;
-                } else if (strings_equali(fields[0], "mat4")) {
-                    uniform.type = SHADER_UNIFORM_TYPE_MATRIX_4;
+                } else if (fields[0].Cmpi("mat4")) {
+                    uniform.type = ShaderUniformType::Matrix4;
                     uniform.size = 64;
-                } else if (strings_equali(fields[0], "samp") || strings_equali(fields[0], "sampler")) {
-                    uniform.type = SHADER_UNIFORM_TYPE_SAMPLER;
-                    uniform.size = 0;  // Samplers don't have a size.
+                } else if (fields[0].Cmpi("samp") || fields[0].Cmpi("sampler")) {
+                    uniform.type = ShaderUniformType::Sampler;
+                    uniform.size = 0;  // У сэмплеров нет размера.
                 } else {
-                    KERROR("shader_loader_load: Invalid file layout. Uniform type must be f32, vec2, vec3, vec4, i8, i16, i32, u8, u16, u32 or mat4.");
-                    KWARN("Defaulting to f32.");
-                    uniform.type = SHADER_UNIFORM_TYPE_FLOAT32;
+                    MERROR("ShaderLoader::Load: Недопустимый макет файла. Унифицированный тип должен быть f32, vec2, vec3, vec4, i8, i16, i32, u8, u16, u32 или mat4.");
+                    MWARN("По умолчанию f32.");
+                    uniform.type = ShaderUniformType::Float32;
                     uniform.size = 4;
                 }
 
-                // Parse the scope
-                if (strings_equal(fields[1], "0")) {
-                    uniform.scope = SHADER_SCOPE_GLOBAL;
-                } else if (strings_equal(fields[1], "1")) {
-                    uniform.scope = SHADER_SCOPE_INSTANCE;
-                } else if (strings_equal(fields[1], "2")) {
-                    uniform.scope = SHADER_SCOPE_LOCAL;
+                // Анализ области действия
+                if (fields[1].Cmpi("0")) {
+                    uniform.scope = ShaderScope::Global;
+                } else if (fields[1].Cmpi("1")) {
+                    uniform.scope = ShaderScope::Instance;
+                } else if (fields[1].Cmpi("2")) {
+                    uniform.scope = ShaderScope::Local;
                 } else {
-                    KERROR("shader_loader_load: Invalid file layout: Uniform scope must be 0 for global, 1 for instance or 2 for local.");
-                    KWARN("Defaulting to global.");
-                    uniform.scope = SHADER_SCOPE_GLOBAL;
+                    MERROR("ShaderLoader::Load: Недопустимый макет файла: универсальная область должна быть равна 0 для глобального, 1 для экземпляра или 2 для локального.");
+                    MWARN("По умолчанию глобальный.");
+                    uniform.scope = ShaderScope::Global;
                 }
 
-                // Take a copy of the attribute name.
-                uniform.name_length = string_length(fields[2]);
-                uniform.name = string_duplicate(fields[2]);
+                // Возьмите копию имени атрибута.
+                uniform.NameLength = fields[2].Lenght();
+                uniform.name = fields[2];
 
-                // Add the attribute.
-                darray_push(ResourceData->uniforms, uniform);
-                ResourceData->uniform_count++;
+                // Добавьте атрибут.
+                ResourceData->uniforms.PushBack(uniform);
+                ResourceData->UniformCount++;
             }
 
-            string_cleanup_split_array(fields);
-            darray_destroy(fields);
+            //string_cleanup_split_array(fields);
+            fields.Destroy();
         }
 
-        // TODO: more fields.
+        // СДЕЛАТЬ: больше полей.
 
-        // Clear the line buffer.
-        kzero_memory(LineBuf, sizeof(char) * 512);
+        // Очистите буфер строки.
+        MMemory::ZeroMem(LineBuf, sizeof(char) * 512);
         LineNumber++;
     }
 
-    filesystem_close(&f);
+    Filesystem::Close(&f);
 
-    out_resource->data = ResourceData;
-    out_resource->data_size = sizeof(shader_config);
+    OutResource->data = ResourceData;
+    OutResource->DataSize = sizeof(ShaderConfig);
 
     return true;
 }
 
 void ShaderLoader::Unload(Resource *resource)
 {
+    ShaderConfig* data = reinterpret_cast<ShaderConfig*>(resource->data);
+    delete data;
+
+    // string_cleanup_split_array(data->StageFilenames);
+    // data->StageFilenames.Destroy();
+
+    // string_cleanup_split_array(data->StageNames);
+    // data->StageNames.Destroy();
+
+    // data->stages.Destroy();
+
+    // Очистите атрибуты.
+    // data->attributes.Destroy();
+
+    // Почистите униформу.
+    // data->uniforms.Destroy();
+
+    // data->RenderpassName.Destroy();
+    // data->name.Destroy();
+    //kzero_memory(data, sizeof(shader_config));
+
+    if (!LoaderUtils::ResourceUnload(this, resource, MemoryTag::Resource)) {
+        MWARN("ShaderLoader::Unload вызывается с nullptr для себя или ресурса.");
+    }
 }

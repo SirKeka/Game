@@ -246,9 +246,47 @@ void MaterialSystem::Release(const char *name)
     
 }
 
+#define MATERIAL_APPLY_OR_FAIL(expr)                        \
+    if (!expr) {                                            \
+        MERROR("Не удалось применить материал: %s", expr);  \
+        return false;                                       \
+    }
+
 bool MaterialSystem::ApplyGlobal(u32 ShaderID, const Matrix4D &projection, const Matrix4D &view)
 {
-    return false;
+    if (ShaderID == state->MaterialShaderID) {
+        MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->UniformSet(state->MaterialLocations.projection, &projection));
+        MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->UniformSet(state->MaterialLocations.view, &view));
+    } else if (ShaderID == state->UI_ShaderID) {
+        MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->UniformSet(state->UI_Locations.projection, &projection));
+        MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->UniformSet(state->UI_Locations.view, &view));
+    } else {
+        MERROR("MaterialSystem::ApplyGlobal(): Неизвестный идентификатор шейдера '%d' ", ShaderID);
+        return false;
+    }
+    MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->ApplyGlobal());
+    return true;
+}
+
+bool MaterialSystem::ApplyInstance(Material *material)
+{
+    // Примените униформу на уровне экземпляра.
+    MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->BindInstance(material->InternalId));
+    if (material->ShaderID == state->MaterialShaderID) {
+        // Шейдер материала
+        MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->UniformSet(state->MaterialLocations.DiffuseColour, &material->DiffuseColour));
+        MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->UniformSet(state->MaterialLocations.DiffuseTexture, material->DiffuseMap.texture));
+    } else if (material->ShaderID == state->UI_ShaderID) {
+        // шейдер пользовательского интерфейса
+        MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->UniformSet(state->UI_Locations.DiffuseColour, &material->DiffuseColour));
+        MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->UniformSet(state->UI_Locations.DiffuseTexture, material->DiffuseMap.texture));
+    } else {
+        MERROR("MaterialSystem::ApplyInstance(): Нераспознанный идентификатор шейдера «%d» в шейдере «%s».", material->ShaderID, material->name);
+        return false;
+    }
+    MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->ApplyInstance());
+
+    return true;
 }
 
 Material *MaterialSystem::GetDefaultMaterial()
@@ -259,6 +297,18 @@ Material *MaterialSystem::GetDefaultMaterial()
 
     MFATAL("MaterialSystem::GetDefaultMaterial вызывается перед инициализацией системы.");
     return nullptr;
+}
+
+bool MaterialSystem::ApplyLocal(Material *material, const Matrix4D &model)
+{
+    if (material->ShaderID == state->MaterialShaderID) {
+        return ShaderSystem::GetInstance()->UniformSet(state->MaterialLocations.model, &model);
+    } else if (material->ShaderID == state->UI_ShaderID) {
+        return ShaderSystem::GetInstance()->UniformSet(state->UI_Locations.model, &model);
+    }
+
+    MERROR("Неизвестный идентификатор шейдера «%d»", material->ShaderID);
+    return false;
 }
 
 bool MaterialSystem::CreateDefaultMaterial()

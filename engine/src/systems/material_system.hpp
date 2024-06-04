@@ -18,11 +18,11 @@ constexpr const char* DEFAULT_MATERIAL_NAME = "default";    // Имя матер
 class MaterialSystem
 {
 private:
-    static u32 MaxMaterialCount;                            // Максимальное количество загружаемых материалов.
+    u32 MaxMaterialCount;                                   // Максимальное количество загружаемых материалов.
     
     char name[MATERIAL_NAME_MAX_LENGTH];                    // Конфигурация материала
     bool AutoRelease;
-    bool init = false; // TODO: временно
+    bool init = false; // СДЕЛАТЬ: временно
     char DiffuseMapName[TEXTURE_NAME_MAX_LENGTH];
     Vector4D<f32> DiffuseColour;
     Material DefaultMaterial;
@@ -71,10 +71,10 @@ public:
     static MINLINE MaterialSystem* Instance() { /*if(state) */return state; }
     static void SetMaxMaterialCount(u32 value);
     static Material* GetDefaultMaterial();
-    static void Check() {for (u32 i = 0; i < 73; ++i) { MTRACE("id%u, %u", state->RegisteredMaterials[i].id, i);}} // TODO: временно
+    static void Check() {for (u32 i = 0; i < 73; ++i) { MTRACE("id%u, %u", state->RegisteredMaterials[i].id, i);}} // СДЕЛАТЬ: временно
 
-    bool Initialize();
-    void Shutdown();
+    static bool Initialize();
+    static void Shutdown();
     //-------------------------------------------------------------------------------------------------------------------------------
 
     // Внутренние методы-------------------------------------------------------------------------------------------------------------

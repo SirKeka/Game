@@ -138,23 +138,23 @@ void Renderer::Unload(GeometryID *gid)
     return ptrRenderer->Unload(gid);
 }
 
-bool Renderer::RenderpassID(const char *name, u8 &OutRenderpassID)
+bool Renderer::RenderpassID(const MString &name, u8 &OutRenderpassID)
 {
     // СДЕЛАТЬ: HACK: Нужны динамические проходы рендеринга(renderpass) вместо их жесткого кодирования.
-    if (MString::Equali("Renderpass.Builtin.World", name)) {
+    if (name.Cmpi("Renderpass.Builtin.World")) {
         OutRenderpassID = static_cast<u8>(BuiltinRenderpass::World);
         return true;
-    } else if (MString::Equali("Renderpass.Builtin.UI", name)) {
+    } else if (name.Cmpi("Renderpass.Builtin.UI")) {
         OutRenderpassID = static_cast<u8>(BuiltinRenderpass::UI);
         return true;
     }
 
-    MERROR("Renderer::RenderpassID: Renderpass не указан '%s'.", name);
+    MERROR("Renderer::RenderpassID: Renderpass не указан '%s'.", name.c_str());
     OutRenderpassID = INVALID::U8ID;
     return false;
 }
 
-bool Renderer::Load(Shader *shader, u8 RenderpassID, u8 StageCount, DArray<char*> StageFilenames, const ShaderStage *stages)
+bool Renderer::Load(Shader *shader, u8 RenderpassID, u8 StageCount, DArray<MString> StageFilenames, const ShaderStage *stages)
 {
     return ptrRenderer->Load(shader, RenderpassID, StageCount, StageFilenames, stages);
 }

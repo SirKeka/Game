@@ -5,15 +5,20 @@
 LinearAllocator LinearAllocator::state;
 
 LinearAllocator::LinearAllocator(u64 TotalSize, void *memory)
+:
+    TotalSize(TotalSize),
+    allocated(),
+    memory(memory ? memory : MMemory::Allocate(TotalSize, MemoryTag::LinearAllocator)),
+    OwnsMemory(memory == nullptr)
 {
-    this->TotalSize = TotalSize;
+    /*this->TotalSize = TotalSize;
     this->allocated = 0;
     this->OwnsMemory = memory == nullptr;
     if (memory) {
         this->memory = memory;
     } else {
         this->memory = MMemory::Allocate(TotalSize, MemoryTag::LinearAllocator);
-    }
+    }*/
 }
 
 LinearAllocator::~LinearAllocator()

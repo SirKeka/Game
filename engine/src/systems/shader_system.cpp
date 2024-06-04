@@ -104,7 +104,7 @@ bool ShaderSystem::Create(const ShaderConfig &config)
 
     u8 RenderpassID = INVALID::U8ID;
     if (!Renderer::RenderpassID(config.RenderpassName, RenderpassID)) {
-        MERROR("Не удалось найти рендерпасс '%s'", config.RenderpassName);
+        MERROR("Не удалось найти рендерпасс '%s'", config.RenderpassName.c_str());
         return false;
     }
 
@@ -132,7 +132,7 @@ bool ShaderSystem::Create(const ShaderConfig &config)
 
     // Инициализируйте шейдер.
     if (!Renderer::ShaderInitialize(OutShader)) {
-        MERROR("ShaderSystem::Create: не удалось инициализировать шейдер '%s'.", config.name);
+        MERROR("ShaderSystem::Create: не удалось инициализировать шейдер '%s'.", config.name.c_str());
         // ПРИМЕЧАНИЕ: Initialize автоматически уничтожает шейдер в случае сбоя.
         return false;
     }
@@ -250,7 +250,14 @@ bool ShaderSystem::ApplyInstance()
     return Renderer::ShaderApplyInstance(&state->shaders[state->CurrentShaderID]);
 }
 
-bool ShaderSystem::AddSampler(Shader* shader, const ShaderUniformConfig &config)
+bool ShaderSystem::BindInstance(u32 InstanceID)
+{
+    Shader* s = &state->shaders[state->CurrentShaderID];
+    s->BoundInstanceID = InstanceID;
+    return s->BindInstance(InstanceID);
+}
+
+bool ShaderSystem::AddSampler(Shader *shader, const ShaderUniformConfig &config)
 {
     if (config.scope == ShaderScope::Instance && !shader->UseInstances) {
         MERROR("Shader::AddSampler невозможно добавить сэмплер экземпляра для шейдера, который не использует экземпляры.");

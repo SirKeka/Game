@@ -6,6 +6,7 @@
 #include "systems/material_system.hpp"
 #include "systems/geometry_system.hpp"
 #include "systems/resource_system.hpp"
+#include "systems/shader_system.hpp"
 
 ApplicationState* Application::State = nullptr;
 
@@ -53,9 +54,9 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
     Event::GetInstance()->Register(EVENT_CODE_KEY_PRESSED, nullptr, OnKey);
     Event::GetInstance()->Register(EVENT_CODE_KEY_RELEASED, nullptr, OnKey);
     Event::GetInstance()->Register(EVENT_CODE_RESIZED, nullptr, OnResized);
-    //TODO: временно
+    //СДЕЛАТЬ: временно
     Event::GetInstance()->Register(EVENT_CODE_DEBUG0, nullptr, OnDebugEvent);
-    //TODO: временно
+    //СДЕЛАТЬ: временно
     State->Window = new MWindow(GameInst->AppConfig.name,
                         GameInst->AppConfig.StartPosX, 
                         GameInst->AppConfig.StartPosY, 
@@ -70,6 +71,12 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
     ResourceSystem::SetMaxLoaderCount(32);
     if (!ResourceSystem::Instance()->Initialize("../assets")) {
         MFATAL("Не удалось инициализировать систему ресурсов. Приложение не может быть продолжено.");
+        return false;
+    }
+
+    // Система шейдеров
+    if(!ShaderSystem::Initialize(1024, 128, 31, 31)) {
+        MFATAL("Не удалось инициализировать шейдерную систему. Прерывание приложения.");
         return false;
     }
 
@@ -101,7 +108,7 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
         return false;
     }
     
-    // TODO: временно
+    // СДЕЛАТЬ: временно
 
     // Загрузите конфигурацию плоскости и загрузите из нее геометрию.
     GeometryConfig gConfig = GeometrySystem::Instance()->GeneratePlaneConfig(10.0f, 5.0f, 5, 5, 5.0f, 2.0f, "test geometry", "test_material");
@@ -153,7 +160,7 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
 
     // Загрузите геометрию по умолчанию.
     // AppState->TestGeometry = GeometrySystem::Instance()->GetDefault();
-    // TODO: временно 
+    // СДЕЛАТЬ: временно 
 
     // Инициализируйте игру.
     if (!GameInst->Initialize()) {
@@ -201,11 +208,11 @@ bool Application::ApplicationRun() {
                 break;
             }
 
-            // TODO: refactor packet creation
+            // СДЕЛАТЬ: refactor packet creation
             RenderPacket packet;
             packet.DeltaTime = delta;
 
-            // TODO: временно
+            // СДЕЛАТЬ: временно
             GeometryRenderData TestRender;
             TestRender.gid = State->TestGeometry;
             TestRender.model = Matrix4D::MakeIdentity();
@@ -218,7 +225,7 @@ bool Application::ApplicationRun() {
             TestUI_Render.model = Matrix4D::MakeTranslation(Vector3D<f32>{0, 0, 0});
             packet.UI_GeometryCount = 1;
             packet.UI_Geometries = &TestUI_Render;
-            // TODO: временно
+            // СДЕЛАТЬ: временно
 
             State->Render->DrawFrame(&packet);
 
@@ -257,14 +264,15 @@ bool Application::ApplicationRun() {
     Event::GetInstance()->Unregister(EVENT_CODE_KEY_PRESSED, nullptr, OnKey);
     Event::GetInstance()->Unregister(EVENT_CODE_KEY_RELEASED, nullptr, OnKey);
     Event::GetInstance()->Unregister(EVENT_CODE_RESIZED, nullptr, OnResized);
-    //TODO: временно
+    //СДЕЛАТЬ: временно
     Event::GetInstance()->Unregister(EVENT_CODE_DEBUG0, nullptr, OnDebugEvent);
-    //TODO: временно
+    //СДЕЛАТЬ: временно
     Event::GetInstance()->Shutdown();
     Input::Instance()->Sutdown();
     GeometrySystem::Instance()->Shutdown();
     MaterialSystem::Instance()->Shutdown();
     TextureSystem::Instance()->Shutdown();
+    ShaderSystem::Shutdown();
     ResourceSystem::Instance()->Shutdown();
     State->Render->Shutdown();
 

@@ -88,7 +88,7 @@ void Logger::Output(LogLevel level, MString message, ...)
     // Поставьте копию в очередь для записи в файл журнала.
     AppendToLogFile(OutMessage);
 }
-
+/*
 void Logger::Output(LogLevel level, const char *message, ...)
 {
     // TODO: Все эти строковые операции выполняются довольно медленно. В конечном 
@@ -120,7 +120,7 @@ void Logger::Output(LogLevel level, const char *message, ...)
     // Поставьте копию в очередь для записи в файл журнала.
     AppendToLogFile(OutMessage);
 }
-
+*/
 void ReportAssertionFailure(const char* expression, const char* message, const char* file, i32 line) 
 {
     Logger::Output(LogLevel::Fatal, "Ошибка утверждения: %s, сообщение: '%s', в файле: %s, строка: %d\n", expression, message, file, line);

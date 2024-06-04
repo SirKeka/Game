@@ -191,7 +191,7 @@ bool Shader::BindInstance(u32 InstanceID)
     return true;
 }
 
-bool Shader::UniformAdd(const char *UniformName, u32 size, ShaderUniformType type, ShaderScope scope, u32 SetLocation, bool IsSampler)
+bool Shader::UniformAdd(const MString &UniformName, u32 size, ShaderUniformType type, ShaderScope scope, u32 SetLocation, bool IsSampler)
 {
     ShaderUniform entry;
     entry.index = uniforms.Lenght();  // Индекс сохраняется в хеш-таблице для поиска.
@@ -247,15 +247,15 @@ bool Shader::UniformAdd(const char *UniformName, u32 size, ShaderUniformType typ
     return true;
 }
 
-bool Shader::UniformNameValid(const char *UniformName)
+bool Shader::UniformNameValid(const MString &UniformName)
 {
-    if (!UniformName || !MString::Lenght(UniformName)) {
+    if (!UniformName || !UniformName.Lenght()) {
         MERROR("Единое имя должно существовать.");
         return false;
     }
     u16 location;
     if (UniformLookup.Get(UniformName, &location) && location != INVALID::U16ID) {
-        MERROR("Униформа с именем «%s» уже существует в шейдере «%s».", UniformName, name.c_str());
+        MERROR("Униформа с именем «%s» уже существует в шейдере «%s».", UniformName.c_str(), name.c_str());
         return false;
     }
     return true;

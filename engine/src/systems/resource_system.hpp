@@ -9,6 +9,7 @@ struct Resource {
     MString FullPath;   // Полный путь к файлу ресурса.
     u64 DataSize;       // Размер данных ресурса в байтах.
     void* data;         // Данные ресурса.
+    
 };
 
 struct ImageResourceData {
