@@ -95,8 +95,7 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
     }
 
     // Система материалов
-    MaterialSystem::SetMaxMaterialCount(4096);
-    if (!MaterialSystem::Instance()->Initialize()) {
+    if (!MaterialSystem::Initialize(4096)) {
         MFATAL("Не удалось инициализировать систему материалов. Приложение не может быть продолжено.");
         return false;
     }

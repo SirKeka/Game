@@ -18,49 +18,47 @@ constexpr const char* DEFAULT_MATERIAL_NAME = "default";    // Имя матер
 class MaterialSystem
 {
 private:
+    // Конфигурация материала---------------------------------------------------------------------------------
     u32 MaxMaterialCount;                                   // Максимальное количество загружаемых материалов.
-    
-    char name[MATERIAL_NAME_MAX_LENGTH];                    // Конфигурация материала
-    bool AutoRelease;
-    bool init = false; // СДЕЛАТЬ: временно
-    char DiffuseMapName[TEXTURE_NAME_MAX_LENGTH];
-    Vector4D<f32> DiffuseColour;
-    Material DefaultMaterial;
-    
+    //--------------------------------------------------------------------------------------------------------
+    // bool init = false; // СДЕЛАТЬ: временно
+    Material DefaultMaterial;                               // Стандартный материал.
     Material* RegisteredMaterials;                          // Массив зарегистрированных материалов.
 
     struct MaterialReference {
         u64 ReferenceCount;
         u32 handle;
         bool AutoRelease;
+        constexpr MaterialReference() : ReferenceCount(), handle(), AutoRelease(false) {}
+        constexpr MaterialReference(u64 ReferenceCount, u32 handle, bool AutoRelease) : ReferenceCount(ReferenceCount), handle(handle), AutoRelease(AutoRelease) {}
     };
     
     HashTable<MaterialReference> RegisteredMaterialTable;   // Хэш-таблица для поиска материалов.
 
     struct MaterialShaderUniformLocations {
-        u16 projection;
-        u16 view;
-        u16 DiffuseColour;
-        u16 DiffuseTexture;
-        u16 model;
+        u16 projection{};
+        u16 view{};
+        u16 DiffuseColour{INVALID::U16ID};
+        u16 DiffuseTexture{INVALID::U16ID};
+        u16 model{};
     } MaterialLocations;                                    // Известные местоположения шейдера материала.
     u32 MaterialShaderID;
 
     struct UI_ShaderUniformLocations {
-        u16 projection;
-        u16 view;
-        u16 DiffuseColour;
-        u16 DiffuseTexture;
-        u16 model;
+        u16 projection{};
+        u16 view{};
+        u16 DiffuseColour{INVALID::U16ID};
+        u16 DiffuseTexture{INVALID::U16ID};
+        u16 model{};
     } UI_Locations;
     u32 UI_ShaderID;
 
     static MaterialSystem* state;                           // Экземпляр системы материалов (синглтон)
 
     /// @brief Инициализирует систему материалов при создании объекта.
-    MaterialSystem();
+    MaterialSystem(u32 MaxMaterialCount);
 public:
-    ~MaterialSystem() = default;
+    ~MaterialSystem();
     MaterialSystem(const MaterialSystem&) = delete;
     MaterialSystem& operator= (const MaterialSystem&) = delete;
 
@@ -69,11 +67,13 @@ public:
     /// @brief Предоставляет доступ к экземпляру объекта системы материалов.
     /// @return Указатель на систему материалов.
     static MINLINE MaterialSystem* Instance() { /*if(state) */return state; }
-    static void SetMaxMaterialCount(u32 value);
     static Material* GetDefaultMaterial();
     static void Check() {for (u32 i = 0; i < 73; ++i) { MTRACE("id%u, %u", state->RegisteredMaterials[i].id, i);}} // СДЕЛАТЬ: временно
 
-    static bool Initialize();
+    /// @brief Функция создает объект класса и инициализирует его
+    /// @param MaxMaterialCount максимальное количество загружаемых материалов.
+    /// @return true если инициализаця прошла успешно или false если нет
+    static bool Initialize(u32 MaxMaterialCount);
     static void Shutdown();
     //-------------------------------------------------------------------------------------------------------------------------------
 
@@ -112,5 +112,5 @@ private:
     void DestroyMaterial(Material* m);
 
 public:
-    void* operator new(u64 size);
+    // void* operator new(u64 size);
 };

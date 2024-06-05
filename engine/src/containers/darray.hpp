@@ -137,8 +137,12 @@ public:
         ptrValue[size] = value;
         size++;
     }
+/*
+    void PushBack(T&& value)
+    {
 
-    //void PushBack(T&& value);
+    }
+*/
     /// @brief Удаляет последний элемент контейнера.
     void PopBack() {
         if(size > 0) {

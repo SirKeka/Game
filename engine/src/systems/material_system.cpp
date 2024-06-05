@@ -7,42 +7,39 @@
 #include "memory/linear_allocator.hpp"
 #include <new>
 
-u32 MaterialSystem::MaxMaterialCount = 0;
 MaterialSystem* MaterialSystem::state = nullptr;
 
-MaterialSystem::MaterialSystem() 
+MaterialSystem::MaterialSystem(u32 MaxMaterialCount) 
 : 
-name(), 
+MaxMaterialCount(MaxMaterialCount),
+/*name(), 
 AutoRelease(false), 
 init(false), 
 DiffuseMapName(), 
-DiffuseColour(), 
+DiffuseColour(), */
 DefaultMaterial(DEFAULT_MATERIAL_NAME, Vector4D<f32>::One(), TextureUse::MapDiffuse, TextureSystem::Instance()->GetDefaultTexture()), 
-// RegisteredMaterials(reinterpret_cast<Material*>(reinterpret_cast<u8*>(this + sizeof(MaterialSystem)))),
-// RegisteredMaterialTable(MaxMaterialCount, false, HashtableBlock), 
+RegisteredMaterials(new((reinterpret_cast<u8*>(this) + sizeof(MaterialSystem))) Material[MaxMaterialCount]()),
+RegisteredMaterialTable(MaxMaterialCount, false, reinterpret_cast<MaterialReference*>(reinterpret_cast<u8*>(RegisteredMaterials) + sizeof(Material) * MaxMaterialCount)), 
 MaterialShaderID(INVALID::ID), 
 UI_ShaderID(INVALID::ID)
 {
     // Блок массива находится после состояния. Уже выделено, поэтому просто установите указатель.
-    u8* ArrayBlock = reinterpret_cast<u8*>(this) + sizeof(MaterialSystem);
-    RegisteredMaterials = reinterpret_cast<Material*>(ArrayBlock);
+    // u8* ArrayBlock = reinterpret_cast<u8*>(this) + sizeof(MaterialSystem);
+    // RegisteredMaterials = reinterpret_cast<Material*>(ArrayBlock);
 
     // Блок хеш-таблицы находится после массива.
-    u64 ArrayRequirement = sizeof(Material) * MaxMaterialCount;
-    MaterialReference* HashtableBlock = reinterpret_cast<MaterialReference*>(ArrayBlock + ArrayRequirement);
+    // u64 ArrayRequirement = sizeof(Material) * MaxMaterialCount;
+    // MaterialReference* HashtableBlock = reinterpret_cast<MaterialReference*>(ArrayBlock + ArrayRequirement);
 
     // Создайте хеш-таблицу для поиска материалов.
-    RegisteredMaterialTable = HashTable<MaterialReference>(MaxMaterialCount, false, HashtableBlock);
+    // RegisteredMaterialTable = HashTable<MaterialReference>(MaxMaterialCount, false, HashtableBlock);
 
     // Заполните хеш-таблицу недопустимыми ссылками, чтобы использовать ее по умолчанию.
-    MaterialReference InvalidRef;
-    InvalidRef.AutoRelease = false;
-    InvalidRef.handle = INVALID::ID;  // Основная причина необходимости использования значений по умолчанию.
-    InvalidRef.ReferenceCount = 0;
-    RegisteredMaterialTable.Fill(InvalidRef);
+    // MaterialReference InvalidRef{0, INVALID::ID, false}; // InvalidRef.handle = INVALID::ID; Основная причина необходимости использования значений по умолчанию.
+    RegisteredMaterialTable.Fill(MaterialReference(0, INVALID::ID, false));
 
     // Сделать недействительными все материалы в массиве.
-    //new (reinterpret_cast<void*>(RegisteredMaterials)) Material[MaxMaterialCount]();
+    // new (RegisteredMaterials) Material[MaxMaterialCount]();
     /*for (u32 i = 0; i < MaxMaterialCount; ++i) { //MTRACE("id%u, %u", RegisteredMaterials[i].id, i);
         // this->RegisteredMaterials[i].id = INVALID::U32ID;
         // this->RegisteredMaterials[i].generation = INVALID::U32ID;
@@ -52,19 +49,28 @@ UI_ShaderID(INVALID::ID)
     // TODO: массив объектов материала инициализируется правильно, 
     // но в последствии появляется не правильно инициализированные объекты
 
-    MaterialLocations.DiffuseColour = INVALID::U16ID;
+    /*MaterialLocations.DiffuseColour = INVALID::U16ID;
     MaterialLocations.DiffuseTexture = INVALID::U16ID;
 
     UI_Locations.DiffuseColour = INVALID::U16ID;
-    UI_Locations.DiffuseTexture = INVALID::U16ID;
+    UI_Locations.DiffuseTexture = INVALID::U16ID;*/
 }
 
-void MaterialSystem::SetMaxMaterialCount(u32 value)
+MaterialSystem::~MaterialSystem()
 {
-    MaxMaterialCount = value;
+    // Сделать недействительными все материалы в массиве.
+    for (u32 i = 0; i < MaxMaterialCount; ++i) { 
+        if (state->RegisteredMaterials[i].id != INVALID::ID) {
+            MTRACE("id%u, generation%u, InternalId%u, %u", RegisteredMaterials[i].id, RegisteredMaterials[i].generation, RegisteredMaterials[i].InternalId, i);
+            DestroyMaterial(&state->RegisteredMaterials[i]);
+        }
+    }
+
+    // Уничтожьте материал по умолчанию.
+    DestroyMaterial(&state->DefaultMaterial);
 }
 
-bool MaterialSystem::Initialize()
+bool MaterialSystem::Initialize(u32 MaxMaterialCount)
 {
     if (MaxMaterialCount == 0) {
         MFATAL("MaterialSystem::Initialize — MaxMaterialCount должен быть > 0.");
@@ -72,7 +78,13 @@ bool MaterialSystem::Initialize()
     }
 
     if (!state) {
-        state = new MaterialSystem();
+        // Блок памяти будет содержать структуру состояния, затем блок массива, затем блок хеш-таблицы.
+        u64 StructRequirement = sizeof(MaterialSystem);
+        u64 ArrayRequirement = sizeof(Material) * MaxMaterialCount;
+        u64 HashtableRequirement = sizeof(MaterialReference) * MaxMaterialCount;
+        u64 MemoryRequirement = StructRequirement + ArrayRequirement + HashtableRequirement;
+        void* ptrMatSys = LinearAllocator::Instance().Allocate(MemoryRequirement);
+        state = new(ptrMatSys) MaterialSystem(MaxMaterialCount);
     }
 
     if (!state->CreateDefaultMaterial()) {
@@ -85,29 +97,18 @@ bool MaterialSystem::Initialize()
 void MaterialSystem::Shutdown()
 {
     if (state) {
-        // Сделать недействительными все материалы в массиве.
-        for (u32 i = 0; i < MaxMaterialCount; ++i) { 
-            if (state->RegisteredMaterials[i].id != INVALID::ID) {
-                MTRACE("id%u, generation%u, InternalId%u, %u", RegisteredMaterials[i].id, RegisteredMaterials[i].generation, RegisteredMaterials[i].InternalId, i);
-                DestroyMaterial(&state->RegisteredMaterials[i]);
-            }
-        }
-
-        // Уничтожьте материал по умолчанию.
-        DestroyMaterial(&state->DefaultMaterial);
+        delete state;
     }
-
-    //delete state;
 }
 
 Material *MaterialSystem::Acquire(const char *name)
 { 
     
-    // Отложенная инициализация массива материалов, т.к. после инициализации геометрической системы сбивается инициализация некоторых объектов
+    /* Отложенная инициализация массива материалов, т.к. после инициализации геометрической системы сбивается инициализация некоторых объектов
     if (!init) {
         new (reinterpret_cast<void*>(RegisteredMaterials)) Material[MaxMaterialCount]();
         init = true;
-    }
+    }*/
 
     // Загрузить конфигурацию материала из ресурса.
     Resource MaterialResource;
@@ -313,12 +314,12 @@ bool MaterialSystem::ApplyLocal(Material *material, const Matrix4D &model)
 
 bool MaterialSystem::CreateDefaultMaterial()
 { 
-    this->DefaultMaterial.Set(
-        DEFAULT_MATERIAL_NAME,
-        Vector4D<f32>::One(), // белый
-        TextureUse::MapDiffuse,
-        TextureSystem::Instance()->GetDefaultTexture() 
-    );
+    // this->DefaultMaterial.Set(
+    //     DEFAULT_MATERIAL_NAME,
+    //     Vector4D<f32>::One(), // белый
+    //     TextureUse::MapDiffuse,
+    //     TextureSystem::Instance()->GetDefaultTexture() 
+    // );
 
     Shader* s = ShaderSystem::GetInstance()->GetShader(BUILTIN_SHADER_NAME_MATERIAL);
     if (!Renderer::ShaderAcquireInstanceResources(s, DefaultMaterial.InternalId)) {
@@ -394,7 +395,7 @@ void MaterialSystem::DestroyMaterial(Material *m)
     m->InternalId = INVALID::U32ID;
     m = nullptr;*/
 }
-
+/*
 void *MaterialSystem::operator new(u64 size)
 {
     // Блок памяти будет содержать структуру состояния, затем блок массива, затем блок хеш-таблицы.
@@ -402,3 +403,4 @@ void *MaterialSystem::operator new(u64 size)
     u64 HashtableRequirement = sizeof(MaterialReference) * MaxMaterialCount;
     return LinearAllocator::Instance().Allocate(size + ArrayRequirement + HashtableRequirement);
 }
+*/

@@ -58,7 +58,7 @@ public:
     /// @param name имя записи, которую нужно задать. Обязательно.
     /// @param value значение, которое необходимо установить. Обязательно.
     /// @return true или false, если передается нулевой указатель.
-    bool Set(MString name, T* value) {
+    bool Set(const MString& name, T* value) {
         if (!name || !value) {
             MERROR("«HashTable::Set» требует существования имени и значения.");
             return false;
@@ -69,7 +69,7 @@ public:
         }
 
         u64 hash = Name(name, ElementCount);
-        MMemory::CopyMem(memory + (sizeof(T) * hash), value, sizeof(T));
+        MMemory::CopyMem(memory + hash, value, sizeof(T));
         return true;
     }
 
@@ -79,7 +79,7 @@ public:
     /// @param name имя устанавливаемой записи. Необходимый.
     /// @param value значение указателя, которое нужно установить. Можно передать 0, чтобы «сбросить» запись.
     /// @return true; или false, если передается нулевой указатель или если запись равна 0.
-    bool pSet(MString name, T* value) {
+    bool pSet(const MString& name, T* value) {
         if (!name) {
             MWARN("«HashTable::pSet» требует наличия имени.");
             return false;
@@ -99,7 +99,7 @@ public:
     /// @param name имя извлекаемой записи. Обязательно.
     /// @param OutValue указатель для хранения полученного значения. Обязательно.
     /// @return true или false, если передается нулевой указатель.
-    bool Get(MString name, T* OutValue) {
+    bool Get(const MString& name, T* OutValue) {
         if(!IsPointerType) {
             if (!name || !OutValue) {
                 MWARN("«Get» требует существования имени и OutValue.");
@@ -112,7 +112,7 @@ public:
             *OutValue = this->memory[hash];
             return *((void**)(OutValue)) != 0;
             }
-        else MMemory::CopyMem(OutValue, this->memory + (sizeof(T) * hash), sizeof(T));
+        else MMemory::CopyMem(OutValue, this->memory + hash, sizeof(T));
         return true;
     }
 
@@ -121,26 +121,22 @@ public:
     /// Не следует использовать с типами таблиц указателей.
     /// @param value Значение, которое должно быть заполнено. Обязательно.
     /// @return true в случае успеха; в противном случае false.
-    bool Fill(T& value) {
-        /*if (!value) {
-            MWARN("«Fill» требует, чтобы это значение существовало.");
-            return false;
-        }*/
+    bool Fill(const T& value) {
         if (this->IsPointerType) {
             MERROR("«Fill» не следует использовать с таблицами, имеющими типы указателей.");
             return false;
         }
 
         for (u32 i = 0; i < this->ElementCount; ++i) {
-            //MMemory::CopyMem(this->memory + (sizeof(T) * i), value, sizeof(T));
-            value = *(this->memory + (sizeof(T) * i));
+            // MMemory::CopyMem(this->memory + (sizeof(T) * i), &value, sizeof(T));
+            *(this->memory + i) = value;
         }
 
         return true;
     }
 
 private:
-    u64 Name(MString name, u32 ElementCount) {
+    u64 Name(const MString& name, u32 ElementCount) {
         unsigned const char* us;
         u64 hash = 0;
 

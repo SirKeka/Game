@@ -12,21 +12,19 @@ MaxShaderCount(MaxShaderCount),
 MaxUniformCount(MaxUniformCount),
 MaxGlobalTextures(MaxGlobalTextures),
 MaxInstanceTextures(MaxInstanceTextures),
-lookup(MaxShaderCount, false, reinterpret_cast<u32*>(LookupMemory)),
 LookupMemory(LookupMemory),
+lookup(MaxShaderCount, false, reinterpret_cast<u32*>(LookupMemory)),
+CurrentShaderID(INVALID::ID),
 shaders(shaders) 
 {
-    // Делаем недействительными все идентификаторы шейдеров.
-    for (u32 i = 0; i < MaxShaderCount; ++i) {
-        this->shaders[i].id = INVALID::ID;
-    }
     // Заполняем таблицу недопустимыми идентификаторами.
     u32 InvalidFillID = INVALID::ID;
     if (!lookup.Fill(InvalidFillID)) {
         MERROR("Hashtable::Fill не удалось.");
         return;
     }
-    for (u32 i = 0; i < this->MaxShaderCount; ++i) {
+    // Делаем недействительными все идентификаторы шейдеров.
+    for (u32 i = 0; i < MaxShaderCount; ++i) {
         this->shaders[i].id = INVALID::ID;
     }
 }
@@ -60,17 +58,17 @@ bool ShaderSystem::Initialize(u16 MaxShaderCount, u8 MaxUniformCount, u8 MaxGlob
     if (!state) {
         // Выясняем, какой размер хеш-таблицы необходим.
         // Блок памяти будет содержать структуру состояния, а затем блок хеш-таблицы.
-        u64 StructRequirement = sizeof(MaxShaderCount) + sizeof(MaxUniformCount) + sizeof(MaxGlobalTextures) + sizeof(MaxInstanceTextures);
+        u64 ClassRequirement = sizeof(ShaderSystem);
         u64 HashtableRequirement = sizeof(u32) * MaxShaderCount;
         u64 ShaderArrayRequirement = sizeof(Shader) * MaxShaderCount;
-        u64 MemoryRequirement = StructRequirement + HashtableRequirement + ShaderArrayRequirement;
+        u64 MemoryRequirement = ClassRequirement + HashtableRequirement + ShaderArrayRequirement;
         void* ptrShaderSystem = LinearAllocator::Instance().Allocate(MemoryRequirement);
         // Настраиваем указатель состояния, блок памяти, массив шейдеров, затем создаем хеш-таблицу.
         u8* addres = reinterpret_cast<u8*>(ptrShaderSystem);
         state = new(ptrShaderSystem) ShaderSystem(
-            MaxShaderCount, MaxUniformCount, MaxGlobalTextures, MaxInstanceTextures, 
-            reinterpret_cast<void*>(addres + HashtableRequirement), 
-            reinterpret_cast<Shader*>(addres + HashtableRequirement));
+            MaxShaderCount, MaxUniformCount, MaxGlobalTextures, MaxInstanceTextures,
+            (addres + ClassRequirement), 
+            reinterpret_cast<Shader*>(addres + ClassRequirement + HashtableRequirement));
     }
     if (!state){
         MERROR("ShaderSystem::Initialize — Неудалось инициализировать систему шейдеров.");
@@ -335,3 +333,9 @@ bool ShaderSystem::UniformAdd(Shader* shader, const char *UniformName, u32 size,
     }
     return shader->UniformAdd(UniformName, size, type, scope, SetLocation, IsSampler);
 }
+/*
+void *ShaderSystem::operator new(u64 size)
+{
+    return LinearAllocator::Instance().Allocate(size);
+}
+*/
