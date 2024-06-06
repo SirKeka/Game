@@ -163,7 +163,7 @@ bool ShaderLoader::Load(const char *name, Resource &OutResource)
             }
 
             // string_cleanup_split_array(fields);
-            fields.Clear();
+            //fields.Destroy();
         } else if (TrimmedVarName.Cmpi("uniform")) {
             // Анализ униформы.
             DArray<MString>fields;
@@ -239,7 +239,7 @@ bool ShaderLoader::Load(const char *name, Resource &OutResource)
             }
 
             //string_cleanup_split_array(fields);
-            fields.Clear();
+            // fields.Destroy();
         }
 
         // СДЕЛАТЬ: больше полей.

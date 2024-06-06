@@ -106,7 +106,7 @@ void *MMemory::Allocate(u64 bytes, MemoryTag tag)
     }
 
     if (block) {
-        // MMemory::ZeroMem(block, bytes);
+        MMemory::ZeroMem(block, bytes);
         return block;
     }
     

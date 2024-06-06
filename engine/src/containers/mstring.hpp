@@ -58,7 +58,7 @@ public:
     /// @return размер записываемых данных.
     static i32 FormatV(char* dest, const char* format, char* va_list);
 
-    static char* Copy(char* dest, const char* source);
+    static void Copy(char* dest, const char* source);
     void nCopy(MString source, u64 Length);
     void nCopy(const char* source, u64 Length);
     static char* nCopy(char* dest, MString source, u64 length);

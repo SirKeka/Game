@@ -2,7 +2,7 @@
 
 Material::Material() : id(INVALID::ID), generation(INVALID::ID), InternalId(INVALID::ID), name(), DiffuseColour(), DiffuseMap() {}
 
-Material::Material(const Material &m) 
+Material::Material(const Material &m) : id(m.id), generation(m.generation), InternalId(m.InternalId)
 {
     id = m.id;
     generation = m.generation;

@@ -21,7 +21,7 @@ MString::MString(const char *s)
     str(MMemory::TAllocate<char>(lenght, MemoryTag::String))
 {
     if(s) {
-        MMemory::CopyMem(this->str, s, lenght);
+        Copy(this->str, s);
     }
 }
 
@@ -31,7 +31,7 @@ constexpr MString::MString(const MString &s)
     str(lenght ? MMemory::TAllocate<char>(lenght, MemoryTag::String) : nullptr)
 {
     if (lenght) {
-        MMemory::CopyMem(this->str, s.str, lenght);
+        Copy(this->str, s.str);
     }
 }
 
@@ -72,10 +72,10 @@ MString &MString::operator=(const MString &s)
     if (str) {
         Destroy();
     }
-    lenght = s.lenght + 1;
+    lenght = s.lenght;
     this->str = MMemory::TAllocate<char>(lenght, MemoryTag::String);
 
-    MMemory::CopyMem(this->str, s.str, lenght);
+    Copy(this->str, s.str);
     
     return *this;
 }
@@ -89,7 +89,7 @@ MString &MString::operator=(const char *s)
     str = reinterpret_cast<char*>(MMemory::Allocate(lenght, MemoryTag::String));
     //this->str = MMemory::TAllocate<char>(lenght, MemoryTag::String);
 
-    MMemory::CopyMem(this->str, s, lenght);
+    Copy(this->str, s);
     
     return *this;
 }
@@ -126,7 +126,6 @@ bool MString::operator==(const char *s)
         if (str[i] != s[i]) {
             return false;
         }
-        
     }
     
     return true;
@@ -188,9 +187,16 @@ i32 MString::FormatV(char *dest, const char *format, char *va_list)
     return -1;
 }
 
-char *MString::Copy(char *dest, const char *source)
+void MString::Copy(char *dest, const char *source)
 {
-    return strcpy(dest, source);
+    if(dest && source) {
+        while (*source) {
+            *dest = *source;
+            dest++;
+            source++;
+        }
+        *dest = '\0';
+    }
 }
 
 void MString::nCopy(MString source, u64 Length)
@@ -264,7 +270,7 @@ i32 MString::IndexOf(char *str, char c)
     if (!str) {
         return -1;
     }
-    u32 length = strlen(str);
+    u32 length = Lenght(str);
     if (length > 0) {
         for (u32 i = 0; i < length; ++i) {
             if (str[i] == c) {
@@ -437,10 +443,10 @@ u32 MString::Split(const char *str, char delimiter, DArray<MString> &darray, boo
         return 0;
     }
 
-    MString result; // char* result = nullptr;
-    u32 TrimmedLength = 0;
+    MString result;
+    //u32 TrimmedLength = 0;
     u32 EntryCount = 0;
-    u32 length = strlen(str);
+    u32 length = Lenght(str);
     char buffer[16384];  // Если одна запись выходит за рамки этого, что ж... просто не делайте этого.
     u32 CurrentLength = 0;
     // Повторяйте каждый символ, пока не будет достигнут разделитель.
@@ -451,19 +457,19 @@ u32 MString::Split(const char *str, char delimiter, DArray<MString> &darray, boo
         if (c == delimiter) {
             buffer[CurrentLength] = '\0';
             result = buffer;
-            TrimmedLength = CurrentLength;
+            //TrimmedLength = CurrentLength;
             // Обрезать, если применимо
-            if (TrimEntries && CurrentLength > 0) {
+            /*if (TrimEntries && CurrentLength > 0) {
                 result.Trim();
                 TrimmedLength = result.Lenght();
-            }
+            }*/
             // Добавить новую запись
             if (IncludeEmpty || result) {
                 if (!result) {
                     darray.PushBack(MString());
                 } else {
-                    MString entry{result};
-                    darray.PushBack(entry);
+                    // MString entry{result};
+                    darray.PushBack(result);
                 }
                 EntryCount++;
             } 
@@ -480,19 +486,19 @@ u32 MString::Split(const char *str, char delimiter, DArray<MString> &darray, boo
 
     // В конце строки. Если какие-либо символы поставлены в очередь, прочитайте их.
     result = buffer;
-    TrimmedLength = CurrentLength;
+    //TrimmedLength = CurrentLength;
     // Обрезать, если применимо
-    if (TrimEntries && CurrentLength > 0) {
+    /*if (TrimEntries && CurrentLength > 0) {
         result.Trim();
         TrimmedLength = result.Lenght();
-    }
+    }*/
     // Добавить новую запись
     if (IncludeEmpty || result) {
         if (!result) {
             darray.PushBack(MString());
         } else {
-            MString entry{result};
-            darray.PushBack(entry);
+            //MString entry{result};
+            darray.PushBack(result);
         }
         EntryCount++;
     }

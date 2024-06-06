@@ -35,7 +35,7 @@ public:
     }
 
     ~DArray() {
-        if(this->capacity != 0) {
+        if(this->ptrValue) {
             Clear();
             MMemory::Free(reinterpret_cast<void*>(ptrValue), sizeof(T) * capacity, MemoryTag::DArray);
         }
@@ -97,10 +97,10 @@ public:
             capacity = NewCap;
         }
         else if (NewCap > capacity) {
-            void* ptrNew = MMemory::Allocate(sizeof(T) * NewCap, MemoryTag::DArray);
+            T* ptrNew = MMemory::TAllocate<T>(NewCap, MemoryTag::DArray);
             MMemory::CopyMem(ptrNew, ptrValue, sizeof(T) * capacity);
             MMemory::Free(ptrValue, sizeof(T) * capacity, MemoryTag::DArray);
-            ptrValue = reinterpret_cast<T*> (ptrNew);
+            ptrValue = ptrNew;
             capacity = NewCap;
         }
     }
