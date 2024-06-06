@@ -93,20 +93,20 @@ ShaderSystem *ShaderSystem::GetInstance()
     return state;
 }
 
-bool ShaderSystem::Create(const ShaderConfig &config)
+bool ShaderSystem::Create(const ShaderConfig *config)
 {
     u32 id = NewShaderID();
     Shader* OutShader = &state->shaders[id];
     //MMemory::ZeroMem(OutShader, sizeof(Shader));
-    new(reinterpret_cast<void*>(OutShader)) Shader(id, config);
+    new(OutShader) Shader(id, config);
 
     u8 RenderpassID = INVALID::U8ID;
-    if (!Renderer::RenderpassID(config.RenderpassName, RenderpassID)) {
-        MERROR("Не удалось найти рендерпасс '%s'", config.RenderpassName.c_str());
+    if (!Renderer::RenderpassID(config->RenderpassName, RenderpassID)) {
+        MERROR("Не удалось найти рендерпасс '%s'", config->RenderpassName.c_str());
         return false;
     }
 
-    if (!Renderer::Load(OutShader, RenderpassID, config.StageCount, config.StageFilenames, config.stages.Data())) {
+    if (!Renderer::Load(OutShader, RenderpassID, config->StageCount, config->StageFilenames, config->stages.Data())) {
         MERROR("Ошибка создания шейдера.");
         return false;
     }
@@ -115,28 +115,28 @@ bool ShaderSystem::Create(const ShaderConfig &config)
     OutShader->state = ShaderState::Uninitialized;
 
     // Атрибуты процесса
-    for (u32 i = 0; i < config.AttributeCount; ++i) {
-        OutShader->AddAttribute(config.attributes[i]);
+    for (u32 i = 0; i < config->AttributeCount; ++i) {
+        OutShader->AddAttribute(config->attributes[i]);
     }
 
     // Технологическая униформа
-    for (u32 i = 0; i < config.UniformCount; ++i) {
-        if (config.uniforms[i].type == ShaderUniformType::Sampler) {
-            AddSampler(OutShader, config.uniforms[i]);
+    for (u32 i = 0; i < config->UniformCount; ++i) {
+        if (config->uniforms[i].type == ShaderUniformType::Sampler) {
+            AddSampler(OutShader, config->uniforms[i]);
         } else {
-            OutShader->AddUniform(config.uniforms[i]);
+            OutShader->AddUniform(config->uniforms[i]);
         }
     }
 
     // Инициализируйте шейдер.
     if (!Renderer::ShaderInitialize(OutShader)) {
-        MERROR("ShaderSystem::Create: не удалось инициализировать шейдер '%s'.", config.name.c_str());
+        MERROR("ShaderSystem::Create: не удалось инициализировать шейдер '%s'.", config->name.c_str());
         // ПРИМЕЧАНИЕ: Initialize автоматически уничтожает шейдер в случае сбоя.
         return false;
     }
 
     // На этом этапе создание прошло успешно, поэтому сохраните идентификатор шейдера в хеш-таблице, чтобы позже можно было найти его по имени.
-    if (!state->lookup.Set(config.name, &OutShader->id)) {
+    if (!state->lookup.Set(config->name, &OutShader->id)) {
         // Черт возьми, мы зашли так далеко... ну что ж, взрываем шейдер и загружаемся. (Черт возьми, мы зашли так далеко... Что ж, удалите шейдер и перезапустите.)
         Renderer::Unload(OutShader);
         return false;

@@ -1,6 +1,5 @@
 #pragma once
-#include "texture.hpp"
-#include "core/mmemory.hpp"
+#include "material_config.hpp"
 
 /// @brief Структура, которая отображает текстуру, использование и другие свойства.
 struct TextureMap {
@@ -8,17 +7,6 @@ struct TextureMap {
     TextureUse use;                                 // Использование текстуры.
     TextureMap() : texture(nullptr), use() {}
     TextureMap(Texture* texture, TextureUse use) : texture(texture), use(use) {}
-};
-
-constexpr int MATERIAL_NAME_MAX_LENGTH = 256;       // Максимальная длина имени материала.
-
-/// @brief Конфигурация материала обычно загружается из файла или создается в коде для загрузки материала.
-struct MaterialConfig {
-    char name[MATERIAL_NAME_MAX_LENGTH];            // Название материала.
-    MString ShaderName;                             // Имя шейдера материала.
-    bool AutoRelease;                               // Указывает, должен ли материал автоматически выпускаться, если на него не осталось ссылок.
-    char DiffuseMapName[TEXTURE_NAME_MAX_LENGTH];   // Рассеяный цвет материала.
-    Vector4D<f32> DiffuseColour;                    // Имя диффузной карты.
 };
 
 /// @brief Материал, который отражает различные свойства поверхности в мире, такие как текстура, цвет, неровности, блеск и многое другое.

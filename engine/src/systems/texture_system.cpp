@@ -258,7 +258,7 @@ void TextureSystem::DestroyDefaultTexture()
 bool TextureSystem::LoadTexture(const char* TextureName, Texture *t)
 {
     Resource ImgResource;
-    if (!ResourceSystem::Instance()->Load(TextureName, ResourceType::Image, &ImgResource)) {
+    if (!ResourceSystem::Instance()->Load(TextureName, ResourceType::Image, ImgResource)) {
         MERROR("Не удалось загрузить ресурс изображения для текстуры. '%s'", TextureName);
         return false;
     }
@@ -311,7 +311,7 @@ bool TextureSystem::LoadTexture(const char* TextureName, Texture *t)
     }
 
     // Очистите данные.
-    ResourceSystem::Instance()->Unload(&ImgResource);
+    ResourceSystem::Instance()->Unload(ImgResource);
     return true;
 
 }

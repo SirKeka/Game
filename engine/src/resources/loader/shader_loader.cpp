@@ -6,9 +6,9 @@
 
 ShaderLoader::ShaderLoader() : ResourceLoader(ResourceType::Shader, nullptr, "shaders") {}
 
-bool ShaderLoader::Load(const char *name, Resource *OutResource)
+bool ShaderLoader::Load(const char *name, Resource &OutResource)
 {
-    if (!name || !OutResource) {
+    if (!name) {
         return false;
     }
 
@@ -22,25 +22,15 @@ bool ShaderLoader::Load(const char *name, Resource *OutResource)
         return false;
     }
 
-    OutResource->FullPath = FullFilePath;
+    OutResource.FullPath = FullFilePath;
 
-    ShaderConfig* ResourceData = new ShaderConfig(); //MMemory::TAllocate<ShaderConfig>(1, MemoryTag::Resource);
-    // Установите некоторые значения по умолчанию, создайте массивы.
-    // ResourceData->AttributeCount = 0;
-    // ResourceData->UniformCount = 0;
-    // ResourceData->StageCount = 0;
-    // ResourceData->UseInstances = false;
-    // ResourceData->UseLocal = false;
-    // ResourceData->StageCount = 0;
-    // ResourceData->RenderpassName = 0;
-
-    // ResourceData->name = 0;
+    ShaderConfig* ResourceData = new ShaderConfig();
 
     // Прочтите каждую строку файла.
     char LineBuf[512] = "";
     char* p = &LineBuf[0];
     u64 LineLength = 0;
-    u32 LineNumber = 1;
+    u32 LineNumber = 1; //18
     while (Filesystem::ReadLine(&f, 511, &p, LineLength)) {
         // Обрежьте строку.
         MString trimmed{MString::Trim(LineBuf)};
@@ -173,12 +163,12 @@ bool ShaderLoader::Load(const char *name, Resource *OutResource)
             }
 
             // string_cleanup_split_array(fields);
-            fields.Destroy();
+            fields.Clear();
         } else if (TrimmedVarName.Cmpi("uniform")) {
             // Анализ униформы.
             DArray<MString>fields;
-            u32 field_count = TrimmedValue.Split(',', fields, true, true);
-            if (field_count != 3) {
+            u32 FieldCount = TrimmedValue.Split(',', fields, true, true);
+            if (FieldCount != 3) {
                 MERROR("ShaderLoader::Load: Недопустимый макет файла. Унифицированные поля должны иметь следующий вид: «тип, область действия, имя». Пропуск.");
             } else {
                 ShaderUniformConfig uniform;
@@ -249,7 +239,7 @@ bool ShaderLoader::Load(const char *name, Resource *OutResource)
             }
 
             //string_cleanup_split_array(fields);
-            fields.Destroy();
+            fields.Clear();
         }
 
         // СДЕЛАТЬ: больше полей.
@@ -261,15 +251,15 @@ bool ShaderLoader::Load(const char *name, Resource *OutResource)
 
     Filesystem::Close(&f);
 
-    OutResource->data = ResourceData;
-    OutResource->DataSize = sizeof(ShaderConfig);
+    OutResource.data = ResourceData;
+    OutResource.DataSize = sizeof(ShaderConfig);
 
     return true;
 }
 
-void ShaderLoader::Unload(Resource *resource)
+void ShaderLoader::Unload(Resource &resource)
 {
-    ShaderConfig* data = reinterpret_cast<ShaderConfig*>(resource->data);
+    ShaderConfig* data = reinterpret_cast<ShaderConfig*>(resource.data);
     delete data;
 
     // string_cleanup_split_array(data->StageFilenames);

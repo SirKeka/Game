@@ -4,9 +4,9 @@
 
 BinaryLoader::BinaryLoader() : ResourceLoader(ResourceType::Binary, nullptr, "") {}
 
-bool BinaryLoader::Load(const char *name, Resource *OutResource)
+bool BinaryLoader::Load(const char *name, Resource &OutResource)
 {
-     if (!name || !OutResource) {
+     if (!name) {
         return false;
     }
 
@@ -21,7 +21,7 @@ bool BinaryLoader::Load(const char *name, Resource *OutResource)
     }
 
     // TODO: Здесь следует использовать распределитель.
-    OutResource->FullPath = FullFilePath;
+    OutResource.FullPath = FullFilePath;
 
     u64 FileSize = 0;
     if (!Filesystem::Size(&f, FileSize)) {
@@ -41,14 +41,14 @@ bool BinaryLoader::Load(const char *name, Resource *OutResource)
 
     Filesystem::Close(&f);
 
-    OutResource->data = ResourceData;
-    OutResource->DataSize = ReadSize;
-    OutResource->name = name;
+    OutResource.data = ResourceData;
+    OutResource.DataSize = ReadSize;
+    OutResource.name = name;
 
     return true;
 }
 
-void BinaryLoader::Unload(Resource *resource)
+void BinaryLoader::Unload(Resource &resource)
 {
     if (!LoaderUtils::ResourceUnload(this, resource, MemoryTag::Array)) {
         MWARN("BinaryLoader::Unload вызывается с nullptr для себя или ресурса.");

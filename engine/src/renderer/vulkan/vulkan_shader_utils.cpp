@@ -19,7 +19,7 @@ namespace VulkanShadersUtil
 
         // Чтение ресурса.
         Resource BinaryResource;
-        if (!ResourceSystem::Instance()->Load(FileName, ResourceType::Binary, &BinaryResource)) {
+        if (!ResourceSystem::Instance()->Load(FileName, ResourceType::Binary, BinaryResource)) {
             MERROR("Невозможно прочитать шейдерный модуль: %s.", FileName);
             return false;
         }

@@ -2,9 +2,9 @@
 #include "core/logger.hpp"
 #include "defines.hpp"
 
-bool LoaderUtils::ResourceUnload(ResourceLoader *self, Resource *resource, MemoryTag tag)
+bool LoaderUtils::ResourceUnload(ResourceLoader *self, Resource &resource, MemoryTag tag)
 {
-    if (!self || !resource) {
+    if (!self) {
         MWARN("ResourceUnload вызывается с nullptr для себя или ресурса.");
         return false;
     }
@@ -14,11 +14,11 @@ bool LoaderUtils::ResourceUnload(ResourceLoader *self, Resource *resource, Memor
         resource->FullPath.Destroy();
     }*/
 
-    if (resource->data) {
-        MMemory::Free(resource->data, resource->DataSize, tag);
-        resource->data = nullptr;
-        resource->DataSize = 0;
-        resource->LoaderID = INVALID::ID;
+    if (resource.data) {
+        MMemory::Free(resource.data, resource.DataSize, tag);
+        resource.data = nullptr;
+        resource.DataSize = 0;
+        resource.LoaderID = INVALID::ID;
     }
 
     return true;

@@ -9,7 +9,7 @@
  * 
  */
 #pragma once
-#include "resources/material.hpp"
+#include "resources/material/material.hpp"
 #include "containers/hashtable.hpp"
 #include "math/matrix4d.hpp"
 

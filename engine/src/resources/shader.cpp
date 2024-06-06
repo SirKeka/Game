@@ -32,12 +32,12 @@ Shader::Shader()
     ShaderData(nullptr) 
 {}
 
-Shader::Shader(u32 id, const ShaderConfig &config) 
+Shader::Shader(u32 id, const ShaderConfig *config) 
     : 
     id(id), 
-    name(config.name), 
-    UseInstances(config.UseInstances), 
-    UseLocals(config.UseLocal), 
+    name(config->name), 
+    UseInstances(config->UseInstances), 
+    UseLocals(config->UseLocal), 
     RequiredUboAlignment(), 
     GlobalUboSize(), 
     GlobalUboStride(), 
@@ -80,7 +80,7 @@ Shader::~Shader()
     }
 }
 
-bool Shader::Create(u32 id, const ShaderConfig &config)
+bool Shader::Create(u32 id, const ShaderConfig *config)
 {
     this->id = id;
     if (this->id == INVALID::ID) {
@@ -88,9 +88,9 @@ bool Shader::Create(u32 id, const ShaderConfig &config)
         return false;
     }
     this->state = ShaderState::NotCreated;
-    this->name = config.name;
-    this->UseInstances = config.UseInstances;
-    this->UseLocals = config.UseLocal;
+    this->name = config->name;
+    this->UseInstances = config->UseInstances;
+    this->UseLocals = config->UseLocal;
     this->PushConstantRangeCount = 0;
     MMemory::ZeroMem(this->PushConstantRanges, sizeof(Range) * 32);
     this->BoundInstanceID = INVALID::ID;

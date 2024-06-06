@@ -24,13 +24,15 @@ private:
     static RendererType* ptrRenderer;
     Matrix4D projection;
     Matrix4D view;
-    Matrix4D UI_Projection;
-    Matrix4D UI_View;
+    Matrix4D UIProjection;
+    Matrix4D UIView;
     f32 NearClip;
     f32 FarClip;
+    u32 MaterialShaderID;
+    u32 UIShaderID;
 
 public:
-    Renderer() : projection(), view(), UI_Projection(), UI_View(), NearClip(0.f), FarClip(0.f) {}
+    Renderer() : projection(), view(), UIProjection(), UIView(), NearClip(0.f), FarClip(0.f), MaterialShaderID(), UIShaderID() {}
     ~Renderer();
 
     /// @brief Инициализирует интерфейс/систему рендеринга.
@@ -38,7 +40,7 @@ public:
     /// @param ApplicationName Имя приложения.
     /// @param type тип отрисовщика с которым первоначально будет инициализироваться интерфейс/система
     /// @return true в случае успеха; в противном случае false.
-    bool Initialize(MWindow* window, const char *ApplicationName, ERendererType type);
+    bool Initialize(class MWindow* window, const char *ApplicationName, ERendererType type);
     /// @brief Выключает систему рендеринга/интерфейс.
     void Shutdown();
     /// @brief Обрабатывает события изменения размера.

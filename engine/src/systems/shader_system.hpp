@@ -49,7 +49,7 @@ public:
     /// @brief Создает новый шейдер с заданной конфигурацией. 
     /// @param config конфигурация, которая будет использоваться при создании шейдера.
     /// @return true в случае успеха; в противном случае false.
-    MAPI bool Create(const ShaderConfig& config);
+    MAPI bool Create(const ShaderConfig* config);
     /// @brief Получает идентификатор шейдера по имени.
     /// @param ShaderName имя шейдера.
     /// @return Идентификатор шейдера, если он найден; в противном случае INVALID::ID.

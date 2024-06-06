@@ -41,15 +41,15 @@ public:
 
     template<typename T>
     bool RegisterLoader(ResourceLoader loader);
-    bool Load(const char* name, ResourceType type, Resource* OutResource);
-    bool Load(const char* name, const char* CustomType, Resource* OutResource);
-    void Unload(Resource* resource);
+    bool Load(const char* name, ResourceType type, Resource& OutResource);
+    bool Load(const char* name, const char* CustomType, Resource& OutResource);
+    void Unload(Resource& resource);
     const char* BasePath();
 
     static void SetMaxLoaderCount(u32 value);
     static ResourceSystem* Instance() {return state;}
 private:
-    bool Load(const char* name, ResourceLoader* loader, Resource* OutResource);
+    bool Load(const char* name, ResourceLoader* loader, Resource& OutResource);
 public:
     void* operator new(u64 size);
 };

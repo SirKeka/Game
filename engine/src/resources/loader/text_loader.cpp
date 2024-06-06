@@ -9,9 +9,9 @@ TextLoader::TextLoader()
     TypePath = "";
 }
 
-bool TextLoader::Load(const char *name, Resource *OutResource)
+bool TextLoader::Load(const char *name, Resource &OutResource)
 {
-    if (!name || !OutResource) {
+    if (!name) {
         return false;
     }
 
@@ -19,8 +19,8 @@ bool TextLoader::Load(const char *name, Resource *OutResource)
     char FullFilePath[512];
     MString::Format(FullFilePath, FormatStr, ResourceSystem::Instance()->BasePath(), TypePath, name, "");
 
-    // TODO: Здесь следует использовать распределитель.
-    OutResource->FullPath = FullFilePath;
+    // СДЕЛАТЬ: Здесь следует использовать распределитель.
+    OutResource.FullPath = FullFilePath;
 
     FileHandle f;
     if (!Filesystem::Open(FullFilePath, FileModes::Read, false, &f)) {
@@ -35,7 +35,7 @@ bool TextLoader::Load(const char *name, Resource *OutResource)
         return false;
     }
 
-    // TODO: Здесь следует использовать распределитель.
+    // СДЕЛАТЬ: Здесь следует использовать распределитель.
     char* ResourceData = MMemory::TAllocate<char>(FileSize, MemoryTag::Array);
     u64 ReadSize = 0;
     if (!Filesystem::ReadAllText(&f, ResourceData, ReadSize)) {
@@ -46,14 +46,14 @@ bool TextLoader::Load(const char *name, Resource *OutResource)
 
     Filesystem::Close(&f);
 
-    OutResource->data = ResourceData;
-    OutResource->DataSize = ReadSize;
-    OutResource->name = name;
+    OutResource.data = ResourceData;
+    OutResource.DataSize = ReadSize;
+    OutResource.name = name;
 
     return true;
 }
 
-void TextLoader::Unload(Resource *resource)
+void TextLoader::Unload(Resource &resource)
 {
     if (!LoaderUtils::ResourceUnload(this, resource, MemoryTag::Array)) {
         MWARN("TextLoader::Unload вызывается с nullptr для ресурса.");

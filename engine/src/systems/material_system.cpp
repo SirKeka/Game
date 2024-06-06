@@ -112,7 +112,7 @@ Material *MaterialSystem::Acquire(const char *name)
 
     // Загрузить конфигурацию материала из ресурса.
     Resource MaterialResource;
-    if (!ResourceSystem::Instance()->Load(name, ResourceType::Material, &MaterialResource)) {
+    if (!ResourceSystem::Instance()->Load(name, ResourceType::Material, MaterialResource)) {
         MERROR("Не удалось загрузить ресурс материала, возвращается значение nullptr.");
         return nullptr;
     }
@@ -123,7 +123,7 @@ Material *MaterialSystem::Acquire(const char *name)
     }
 
     // Clean up
-    ResourceSystem::Instance()->Unload(&MaterialResource);
+    ResourceSystem::Instance()->Unload(MaterialResource);
 
     if (!m) {
         MERROR("Не удалось загрузить ресурс материала, возвращается значение nullptr.");
@@ -356,7 +356,7 @@ bool MaterialSystem::LoadMaterial(MaterialConfig config, Material *m)
         m->DiffuseMap.texture = nullptr;
     }
 
-    // TODO: другие карты
+    // СДЕЛАТЬ: другие карты
 
     // Отправьте его рендереру для получения ресурсов.
     Shader* s = ShaderSystem::GetInstance()->GetShader(config.ShaderName);

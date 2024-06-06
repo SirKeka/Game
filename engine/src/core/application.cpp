@@ -180,7 +180,7 @@ bool Application::ApplicationRun() {
     u8 FrameCount = 0;
     f64 TargetFrameSeconds = 1.0f / 60;
 
-    MINFO(MMemory::GetMemoryUsageStr());
+    MINFO(MMemory::GetMemoryUsageStr().c_str());
 
     while (State->IsRunning) {
         if(!State->Window->Messages()) {

@@ -640,81 +640,7 @@ bool VulkanAPI::ShaderReleaseInstanceResources(Shader *shader, u32 InstanceID)
     return true;
 }
 
-VulkanAPI::~VulkanAPI()
-{
-    vkDeviceWaitIdle(Device.LogicalDevice);
-
-    // Уничтожать в порядке, обратном порядку создания.
-
-    ObjectVertexBuffer.Destroy(this);
-    ObjectIndexBuffer.Destroy(this);
-
-    // Синхронизация объектов
-    for (u8 i = 0; i < swapchain.MaxFramesInFlight; ++i) {
-        if (ImageAvailableSemaphores[i]) {
-            vkDestroySemaphore(
-                Device.LogicalDevice,
-                ImageAvailableSemaphores[i],
-                allocator);
-            ImageAvailableSemaphores[i] = 0;
-        }
-        if (QueueCompleteSemaphores[i]) {
-            vkDestroySemaphore(
-                Device.LogicalDevice,
-                QueueCompleteSemaphores[i],
-                allocator);
-            QueueCompleteSemaphores[i] = 0;
-        }
-        vkDestroyFence(Device.LogicalDevice, InFlightFences[i], allocator);
-    }
-    ImageAvailableSemaphores.~DArray();
-    QueueCompleteSemaphores.~DArray();
-
-    // Буферы команд
-    for (u32 i = 0; i < swapchain.ImageCount; ++i) {
-        if (GraphicsCommandBuffers[i].handle) {
-            VulkanCommandBufferFree(
-                this,
-                Device.GraphicsCommandPool,
-                &GraphicsCommandBuffers[i]);
-                GraphicsCommandBuffers[i].handle = 0;
-        }
-    }
-    GraphicsCommandBuffers.~DArray();
-
-    // Уничтожить кадровые буферы.
-    for (u32 i = 0; i < swapchain.ImageCount; ++i) {
-        vkDestroyFramebuffer(Device.LogicalDevice, WorldFramebuffers[i], allocator);
-        vkDestroyFramebuffer(Device.LogicalDevice, swapchain.framebuffers[i], allocator);
-    }
-
-    // Проход рендеринга (Renderpass)
-    UI_Renderpass.Destroy(this);
-    MainRenderpass.Destroy(this);
-
-    // Цепочка подкачки (Swapchain)
-    VulkanSwapchainDestroy(this, &swapchain);
-
-    MDEBUG("Уничтожение устройства Вулкан...");
-    Device.Destroy(this);
-
-    MDEBUG("Уничтожение поверхности Вулкана...");
-    if (surface) {
-        vkDestroySurfaceKHR(instance, surface, allocator);
-        surface = 0;
-    }
-
-    MDEBUG("Уничтожение отладчика Vulkan...");
-    if (DebugMessenger) {
-        PFN_vkDestroyDebugUtilsMessengerEXT func =
-            (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
-        func(instance, DebugMessenger, allocator);
-    }
-    MDEBUG("Уничтожение экземпляра Vulkan...");
-    vkDestroyInstance(instance, allocator);
-}
-
-bool VulkanAPI::Initialize(MWindow* window, const char* ApplicationName)
+VulkanAPI::VulkanAPI(MWindow *window, const char *ApplicationName)
 {
     // TODO: пользовательский allocator.
     allocator = NULL;
@@ -788,7 +714,7 @@ bool VulkanAPI::Initialize(MWindow* window, const char* ApplicationName)
 
         if (!found) {
             MFATAL("Необходимый уровень проверки отсутствует: %shader", RequiredValidationLayerNames[i]);
-            return false;
+            return;
         }
     }
     MINFO("Присутствуют все необходимые уровни проверки.");
@@ -824,14 +750,14 @@ bool VulkanAPI::Initialize(MWindow* window, const char* ApplicationName)
     MDEBUG("Создание Vulkan поверхности...");
     if (!PlatformCreateVulkanSurface(window, this)) {
         MERROR("Не удалось создать поверхность платформы!");
-        return false;
+        return;
     }
     MDEBUG("Поверхность Vulkan создана.");
 
     // Создание устройства
     if (!Device.Create(this)) {
         MERROR("Не удалось создать устройство!");
-        return false;
+        return;
     }
 
     // Swapchain
@@ -894,7 +820,10 @@ bool VulkanAPI::Initialize(MWindow* window, const char* ApplicationName)
         ImagesInFlight[i] = 0;
     }
 
-    CreateBuffers();
+    if (!CreateBuffers()) {
+        MERROR("Не удалось создать буферы.")
+        return;
+    }
 
     // Отметить все геометрии как недействительные
     for (u32 i = 0; i < VULKAN_MAX_GEOMETRY_COUNT; ++i) {
@@ -902,7 +831,80 @@ bool VulkanAPI::Initialize(MWindow* window, const char* ApplicationName)
     }
 
     MINFO("Средство визуализации Vulkan успешно инициализировано.");
-    return true;
+}
+
+VulkanAPI::~VulkanAPI()
+{
+    vkDeviceWaitIdle(Device.LogicalDevice);
+
+    // Уничтожать в порядке, обратном порядку создания.
+
+    ObjectVertexBuffer.Destroy(this);
+    ObjectIndexBuffer.Destroy(this);
+
+    // Синхронизация объектов
+    for (u8 i = 0; i < swapchain.MaxFramesInFlight; ++i) {
+        if (ImageAvailableSemaphores[i]) {
+            vkDestroySemaphore(
+                Device.LogicalDevice,
+                ImageAvailableSemaphores[i],
+                allocator);
+            ImageAvailableSemaphores[i] = 0;
+        }
+        if (QueueCompleteSemaphores[i]) {
+            vkDestroySemaphore(
+                Device.LogicalDevice,
+                QueueCompleteSemaphores[i],
+                allocator);
+            QueueCompleteSemaphores[i] = 0;
+        }
+        vkDestroyFence(Device.LogicalDevice, InFlightFences[i], allocator);
+    }
+    ImageAvailableSemaphores.~DArray();
+    QueueCompleteSemaphores.~DArray();
+
+    // Буферы команд
+    for (u32 i = 0; i < swapchain.ImageCount; ++i) {
+        if (GraphicsCommandBuffers[i].handle) {
+            VulkanCommandBufferFree(
+                this,
+                Device.GraphicsCommandPool,
+                &GraphicsCommandBuffers[i]);
+                GraphicsCommandBuffers[i].handle = 0;
+        }
+    }
+    GraphicsCommandBuffers.~DArray();
+
+    // Уничтожить кадровые буферы.
+    for (u32 i = 0; i < swapchain.ImageCount; ++i) {
+        vkDestroyFramebuffer(Device.LogicalDevice, WorldFramebuffers[i], allocator);
+        vkDestroyFramebuffer(Device.LogicalDevice, swapchain.framebuffers[i], allocator);
+    }
+
+    // Проход рендеринга (Renderpass)
+    UI_Renderpass.Destroy(this);
+    MainRenderpass.Destroy(this);
+
+    // Цепочка подкачки (Swapchain)
+    VulkanSwapchainDestroy(this, &swapchain);
+
+    MDEBUG("Уничтожение устройства Вулкан...");
+    Device.Destroy(this);
+
+    MDEBUG("Уничтожение поверхности Вулкана...");
+    if (surface) {
+        vkDestroySurfaceKHR(instance, surface, allocator);
+        surface = 0;
+    }
+
+    MDEBUG("Уничтожение отладчика Vulkan...");
+    if (DebugMessenger) {
+        PFN_vkDestroyDebugUtilsMessengerEXT func =
+            (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+        func(instance, DebugMessenger, allocator);
+    }
+    MDEBUG("Уничтожение экземпляра Vulkan...");
+    vkDestroyInstance(instance, allocator);
 }
 
 void VulkanAPI::ShutDown()
@@ -1358,7 +1360,7 @@ bool VulkanAPI::CreateModule(VulkanShader *shader, VulkanShaderStageConfig confi
 {
     // Прочтите ресурс.
     Resource BinaryResource;
-    if (!ResourceSystem::Instance()->Load(config.FileName, ResourceType::Binary, &BinaryResource)) {
+    if (!ResourceSystem::Instance()->Load(config.FileName, ResourceType::Binary, BinaryResource)) {
         MERROR("Невозможно прочитать модуль шейдера: %s.", config.FileName);
         return false;
     }
@@ -1367,7 +1369,7 @@ bool VulkanAPI::CreateModule(VulkanShader *shader, VulkanShaderStageConfig confi
     ShaderStage->CreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
     // Используйте размер и данные ресурса напрямую.
     ShaderStage->CreateInfo.codeSize = BinaryResource.DataSize;
-    ShaderStage->CreateInfo.pCode = (u32*)BinaryResource.data;
+    ShaderStage->CreateInfo.pCode = reinterpret_cast<u32*>(BinaryResource.data);
 
     VK_CHECK(vkCreateShaderModule(
         Device.LogicalDevice,
@@ -1376,7 +1378,7 @@ bool VulkanAPI::CreateModule(VulkanShader *shader, VulkanShaderStageConfig confi
         &ShaderStage->handle));
 
     // Освободите ресурс.
-    ResourceSystem::Instance()->Unload(&BinaryResource);
+    ResourceSystem::Instance()->Unload(BinaryResource);
 
     // Информация об этапе шейдера
     MMemory::ZeroMem(&ShaderStage->ShaderStageCreateInfo, sizeof(VkPipelineShaderStageCreateInfo));

@@ -71,10 +71,10 @@ private:
     u32 CachedFramebufferHeight{};
 
 public:
-    VulkanAPI() = default;
+    VulkanAPI(class MWindow* window, const char* ApplicationName);
     ~VulkanAPI();
     
-    bool Initialize(MWindow* window, const char* ApplicationName) override;
+    // bool Initialize(MWindow* window, const char* ApplicationName) override;
     void ShutDown() override;
     void Resized(u16 width, u16 height) override;
     bool BeginFrame(f32 Deltatime) override;

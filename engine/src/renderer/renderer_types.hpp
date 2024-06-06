@@ -80,7 +80,7 @@ public:
 public:
     virtual ~RendererType() = default;
 
-    virtual bool Initialize(class MWindow* window, const char* ApplicationName) = 0;
+    // virtual bool Initialize(class MWindow* window, const char* ApplicationName) = 0;
     virtual void ShutDown() = 0;
     virtual void Resized(u16 width, u16 height) = 0;
     virtual bool BeginFrame(f32 Deltatime) = 0;

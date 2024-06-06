@@ -2,7 +2,7 @@
 
 #include "defines.hpp"
 #include "resources/geometry.hpp"
-#include "resources/material.hpp"
+#include "resources/material/material.hpp"
 
 struct GeometryConfig {
     u32 VertexSize;

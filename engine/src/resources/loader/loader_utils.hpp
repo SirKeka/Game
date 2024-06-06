@@ -4,5 +4,5 @@
 
 namespace LoaderUtils
 {
-    bool ResourceUnload(class ResourceLoader* self, Resource* resource, MemoryTag tag);
+    bool ResourceUnload(class ResourceLoader* self, Resource& resource, MemoryTag tag);
 } // namespace LoaderUtils

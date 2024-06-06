@@ -1,14 +1,14 @@
 #include "material_loader.hpp"
 #include "platform/filesystem.hpp"
-#include "resources/material.hpp"
+#include "resources/material/material.hpp"
 #include "systems/resource_system.hpp"
 #include "loader_utils.hpp"
 
 MaterialLoader::MaterialLoader() : ResourceLoader(ResourceType::Material, nullptr, "materials") {}
 
-bool MaterialLoader::Load(const char *name, Resource *OutResource)
+bool MaterialLoader::Load(const char *name, Resource &OutResource)
 {
-    if (!name || !OutResource) {
+    if (!name) {
         return false;
     }
 
@@ -23,15 +23,15 @@ bool MaterialLoader::Load(const char *name, Resource *OutResource)
     }
 
     // TODO: Здесь следует использовать распределитель.
-    OutResource->FullPath = FullFilePath;
+    OutResource.FullPath = FullFilePath;
 
     // TODO: Здесь следует использовать распределитель.
-    MaterialConfig* ResourceData = MMemory::TAllocate<MaterialConfig>(1, MemoryTag::MaterialInstance);
+    MaterialConfig* ResourceData;// = new MaterialConfig();
     // Установите некоторые значения по умолчанию.
     ResourceData->ShaderName = "Builtin.Material"; // Материал поумолчанию.
     ResourceData->AutoRelease = true;
     ResourceData->DiffuseColour = Vector4D<f32>::One() ;  // белый.
-    ResourceData->DiffuseMapName[0] = 0;
+    ResourceData->DiffuseMapName[0] = '\0';
     MMemory::CopyMem(ResourceData->name, name, MATERIAL_NAME_MAX_LENGTH);
 
     // Прочтите каждую строку файла.
@@ -99,14 +99,14 @@ bool MaterialLoader::Load(const char *name, Resource *OutResource)
 
     Filesystem::Close(&f);
 
-    OutResource->data = ResourceData;
-    OutResource->DataSize = sizeof(MaterialConfig);
-    OutResource->name = name;
+    OutResource.data = ResourceData;
+    OutResource.DataSize = sizeof(MaterialConfig);
+    OutResource.name = name;
 
     return true;
 }
 
-void MaterialLoader::Unload(Resource *resource)
+void MaterialLoader::Unload(Resource &resource)
 {
     if (!LoaderUtils::ResourceUnload(this, resource, MemoryTag::MaterialInstance)) {
         MWARN("MaterialLoader::Unload вызывается с nullptr для себя или ресурса.");

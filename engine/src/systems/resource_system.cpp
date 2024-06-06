@@ -75,7 +75,7 @@ bool ResourceSystem::RegisterLoader(ResourceLoader loader)
     return false;
 }
 
-bool ResourceSystem::Load(const char *name, ResourceType type, Resource *OutResource)
+bool ResourceSystem::Load(const char *name, ResourceType type, Resource &OutResource)
 {
     if (type != ResourceType::Custom) {
         // Выбор загрузчика.
@@ -87,12 +87,12 @@ bool ResourceSystem::Load(const char *name, ResourceType type, Resource *OutReso
         }
     }
 
-    OutResource->LoaderID = INVALID::ID;
+    OutResource.LoaderID = INVALID::ID;
     MERROR("ResourceSystem::Load — загрузчик для типа %d не найден.", type);
     return false;
 }
 
-bool ResourceSystem::Load(const char *name, const char *CustomType, Resource *OutResource)
+bool ResourceSystem::Load(const char *name, const char *CustomType, Resource &OutResource)
 {
     if (CustomType && MString::Lenght(CustomType) > 0) {
         // Выбор загрузчика.
@@ -104,21 +104,21 @@ bool ResourceSystem::Load(const char *name, const char *CustomType, Resource *Ou
         }
     }
 
-    OutResource->LoaderID = INVALID::ID;
+    OutResource.LoaderID = INVALID::ID;
     MERROR("ResourceSystem::LoadCustom — загрузчик для типа %s не найден.", CustomType);
     return false;
 }
 
-void ResourceSystem::Unload(Resource *resource)
+void ResourceSystem::Unload(Resource &resource)
 {
-    if (resource) {
-        if (resource->LoaderID != INVALID::ID) {
-            ResourceLoader* l = &RegisteredLoaders[resource->LoaderID];
+    //if (resource) {
+        if (resource.LoaderID != INVALID::ID) {
+            ResourceLoader* l = &RegisteredLoaders[resource.LoaderID];
             if (l->id != INVALID::ID) {
                 l->Unload(resource);
             }
         }
-    }
+    //}
 }
 
 const char *ResourceSystem::BasePath()
@@ -136,14 +136,14 @@ void ResourceSystem::SetMaxLoaderCount(u32 value)
     MaxLoaderCount = value;
 }
 
-bool ResourceSystem::Load(const char *name, ResourceLoader *loader, Resource *OutResource)
+bool ResourceSystem::Load(const char *name, ResourceLoader *loader, Resource &OutResource)
 {
-    if (!name || !loader || !OutResource) {
-        OutResource->LoaderID = INVALID::ID;
+    if (!name || !loader) {
+        OutResource.LoaderID = INVALID::ID;
         return false;
     }
 
-    OutResource->LoaderID = loader->id;
+    OutResource.LoaderID = loader->id;
     return loader->Load(name, OutResource);
 }
 

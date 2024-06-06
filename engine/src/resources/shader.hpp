@@ -158,10 +158,10 @@ class Shader {
     class VulkanShader* ShaderData;                   // Непрозрачный указатель для хранения конкретных данных API средства рендеринга. Рендерер несет ответственность за создание и уничтожение этого.
 public:
     Shader();
-    Shader(u32 id, const ShaderConfig& config);
+    Shader(u32 id, const ShaderConfig* config);
     ~Shader();
 
-    bool Create(u32 id, const ShaderConfig& config);
+    bool Create(u32 id, const ShaderConfig* config);
     /// @brief Добавляет новый атрибут вершины. Должно быть сделано после инициализации шейдера.
     /// @param config конфигурация атрибута.
     /// @return True в случае успеха; в противном случае ложь.

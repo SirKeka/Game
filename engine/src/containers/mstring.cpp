@@ -20,15 +20,19 @@ MString::MString(const char *s)
     lenght(Lenght(s) + 1),
     str(MMemory::TAllocate<char>(lenght, MemoryTag::String))
 {
-    MMemory::CopyMem(this->str, s, lenght);
+    if(s) {
+        MMemory::CopyMem(this->str, s, lenght);
+    }
 }
 
 constexpr MString::MString(const MString &s)
 :
     lenght(s.lenght),
-    str(MMemory::TAllocate<char>(lenght, MemoryTag::String))
+    str(lenght ? MMemory::TAllocate<char>(lenght, MemoryTag::String) : nullptr)
 {
-    MMemory::CopyMem(this->str, s.str, lenght);
+    if (lenght) {
+        MMemory::CopyMem(this->str, s.str, lenght);
+    }
 }
 
 constexpr MString::MString(MString &&s) : lenght(s.lenght), str(s.str) 
@@ -135,6 +139,10 @@ const u64 MString::Lenght() const
 
 const u64 MString::Lenght(const char *s)
 {
+    if (!s) {
+        return 0;
+    }
+    
     u64 length = 0;
     while (*s) {
         length++;

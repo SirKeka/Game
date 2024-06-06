@@ -70,10 +70,10 @@ bool Filesystem::Size(FileHandle *handle, u64 &OutSize)
 
 bool Filesystem::ReadLine(FileHandle *handle, u64 MaxLength, char** LineBuf, u64& OutLineLength)
 {
-    if (handle->handle && LineBuf && OutLineLength && MaxLength > 0) {
+    if (handle->handle && LineBuf && MaxLength > 0) {
         char* buf = *LineBuf;
         if (fgets(buf, MaxLength, reinterpret_cast<FILE*>(handle->handle)) != 0) {
-            OutLineLength = strlen(*LineBuf);
+            OutLineLength = MString::Lenght(*LineBuf);
             return true;
         }
     }

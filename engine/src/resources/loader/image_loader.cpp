@@ -8,9 +8,9 @@
 
 ImageLoader::ImageLoader() : ResourceLoader(ResourceType::Image, nullptr, "textures") {}
 
-bool ImageLoader::Load(const char *name, Resource *OutResource)
+bool ImageLoader::Load(const char *name, Resource &OutResource)
 {
-    if (!name || !OutResource) {
+    if (!name) {
         return false;
     }
 
@@ -54,7 +54,7 @@ bool ImageLoader::Load(const char *name, Resource *OutResource)
     }
 
     // TODO: Здесь следует использовать распределитель.
-    OutResource->FullPath = FullFilePath;
+    OutResource.FullPath = FullFilePath;
 
     // TODO: Здесь следует использовать распределитель.
     ImageResourceData* ResourceData = MMemory::TAllocate<ImageResourceData>(1, MemoryTag::Texture);
@@ -63,14 +63,14 @@ bool ImageLoader::Load(const char *name, Resource *OutResource)
     ResourceData->height = height;
     ResourceData->ChannelCount = RequiredChannelCount;
 
-    OutResource->data = ResourceData;
-    OutResource->DataSize = sizeof(ImageResourceData);
-    OutResource->name = name;
+    OutResource.data = ResourceData;
+    OutResource.DataSize = sizeof(ImageResourceData);
+    OutResource.name = name;
 
     return true;
 }
 
-void ImageLoader::Unload(Resource *resource)
+void ImageLoader::Unload(Resource &resource)
 {
     if (!LoaderUtils::ResourceUnload(this, resource, MemoryTag::Texture)) {
         MWARN("ImageLoader: Выгрузка вызывается со значением nullptr для себя или ресурса.");
