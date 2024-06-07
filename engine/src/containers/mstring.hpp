@@ -15,7 +15,7 @@ private:
 public:
    constexpr MString();
    constexpr MString(u64 lenght);
-   MString(const char* s);
+   constexpr MString(const char* s);
    constexpr MString(const MString& s);
    constexpr MString(MString&& s);
     ~MString();
@@ -62,7 +62,9 @@ public:
     void nCopy(MString source, u64 Length);
     void nCopy(const char* source, u64 Length);
     static char* nCopy(char* dest, MString source, u64 length);
-
+private: 
+    char* Copy(const char* string, u64 length);
+public:
     void Trim();
     static char* Trim(char* s);
 
@@ -186,7 +188,7 @@ public:
     /// @return Количество записей, полученных в результате операции разделения.
     u32 Split(char delimiter, DArray<MString>& darray, bool TrimEntries, bool IncludeEmpty);
 
-    void Destroy();
+    void Clear();
 };
 
 //MAPI bool operator== (const char*   lhs, const string& rhs);

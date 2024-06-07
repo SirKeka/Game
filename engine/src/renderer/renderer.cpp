@@ -237,7 +237,7 @@ bool Renderer::RenderpassID(const MString &name, u8 &OutRenderpassID)
     return false;
 }
 
-bool Renderer::Load(Shader *shader, u8 RenderpassID, u8 StageCount, DArray<MString> StageFilenames, const ShaderStage *stages)
+bool Renderer::Load(Shader *shader, u8 RenderpassID, u8 StageCount, const DArray<MString>& StageFilenames, const ShaderStage *stages)
 {
     return ptrRenderer->Load(shader, RenderpassID, StageCount, StageFilenames, stages);
 }

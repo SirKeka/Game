@@ -96,7 +96,7 @@ public:
     /// @param StageFilenames массив имен файлов этапов шейдера, которые будут загружены. Должно соответствовать массиву этапов.
     /// @param stages массив этапов шейдера(ShaderStage), указывающий, какие этапы рендеринга (вершина, фрагмент и т. д.) используются в этом шейдере.
     /// @return true в случае успеха, иначе false.
-    bool Load(Shader* shader, u8 RenderpassID, u8 StageCount, DArray<MString> StageFilenames, const ShaderStage* stages) override;
+    bool Load(Shader* shader, u8 RenderpassID, u8 StageCount, const DArray<MString>& StageFilenames, const ShaderStage* stages) override;
     /// @brief Уничтожает данный шейдер и освобождает все имеющиеся в нем ресурсы.--------------------------------------------------------------------
     /// @param shader указатель на шейдер, который нужно уничтожить.
     void Unload(Shader* shader) override;
@@ -146,7 +146,7 @@ private:
     void RegenerateFramebuffers();
     bool RecreateSwapchain();
     bool CreateBuffers();
-    bool CreateModule(VulkanShader* shader, VulkanShaderStageConfig config, VulkanShaderStage* ShaderStage);
+    bool CreateModule(VulkanShader* shader, const VulkanShaderStageConfig& config, VulkanShaderStage* ShaderStage);
 
     bool UploadDataRange(VkCommandPool pool, VkFence fence, VkQueue queue, VulkanBuffer& buffer, u64& OutOffset, u64 size, const void* data);
     void FreeDataRange(VulkanBuffer* buffer, u64 offset, u64 size);

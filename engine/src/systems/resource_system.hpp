@@ -4,12 +4,12 @@
 
 /// @brief Общая структура ресурса. Все загрузчики ресурсов загружают в них данные.
 struct Resource {
-    u32 LoaderID;       // Идентификатор загрузчика, обрабатывающего этот ресурс.
-    const char* name;   // Название ресурса.
-    MString FullPath;   // Полный путь к файлу ресурса.
-    u64 DataSize;       // Размер данных ресурса в байтах.
-    void* data;         // Данные ресурса.
-    
+    u32 LoaderID{};             // Идентификатор загрузчика, обрабатывающего этот ресурс.
+    MString name{};             // Название ресурса.
+    MString FullPath{};         // Полный путь к файлу ресурса.
+    u64 DataSize{};             // Размер данных ресурса в байтах.
+    void* data{nullptr};        // Данные ресурса.
+    // constexpr Resource() : LoaderID(), name(), FullPath(), DataSize(), data(nullptr) {}
 };
 
 struct ImageResourceData {
@@ -47,7 +47,7 @@ public:
     const char* BasePath();
 
     static void SetMaxLoaderCount(u32 value);
-    static ResourceSystem* Instance() {return state;}
+    static MINLINE ResourceSystem* Instance() {return state;}
 private:
     bool Load(const char* name, ResourceLoader* loader, Resource& OutResource);
 public:

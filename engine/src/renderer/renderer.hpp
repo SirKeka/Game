@@ -84,7 +84,7 @@ public:
     /// @param StageFilenames массив имен файлов этапов шейдера, которые будут загружены. Должно соответствовать массиву этапов.
     /// @param stages массив этапов шейдера(ShaderStage), указывающий, какие этапы рендеринга (вершина, фрагмент и т. д.) используются в этом шейдере.
     /// @return true в случае успеха, иначе false.
-    static bool Load(Shader* shader, u8 RenderpassID, u8 StageCount, DArray<MString> StageFilenames, const ShaderStage* stages);
+    static bool Load(Shader* shader, u8 RenderpassID, u8 StageCount, const DArray<MString>& StageFilenames, const ShaderStage* stages);
     /// @brief Уничтожает данный шейдер и освобождает все имеющиеся в нем ресурсы.--------------------------------------------------------------------
     /// @param shader указатель на шейдер, который нужно уничтожить.
     static void Unload(Shader* shader);

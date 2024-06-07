@@ -22,8 +22,8 @@ private:
 // Функции
 public:
     constexpr DArray() : size(), capacity(), ptrValue(nullptr) {}
-
-    constexpr DArray(u64 size, const T& value = T{}) {
+    constexpr DArray(u64 capacity) : size(), capacity(capacity), ptrValue(capacity ? MMemory::TAllocate<T>(capacity, MemoryTag::DArray) : nullptr) {}
+    constexpr DArray(u64 size, const T& value) {
         if(size > 0) {
             this->size = size;
             this->capacity = size;

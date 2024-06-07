@@ -52,8 +52,8 @@ Shader::Shader(u32 id, const ShaderConfig *config)
     BoundInstanceID(INVALID::ID), 
     BoundUboOffset(), 
     HashtableBlock(MMemory::Allocate(sizeof(u16) * 1024, MemoryTag::HashTable)), 
-    UniformLookup(sizeof(u16), false, reinterpret_cast<u16*>(this->HashtableBlock)), 
-    uniforms(), 
+    UniformLookup(1024, false, reinterpret_cast<u16*>(this->HashtableBlock), INVALID::U16ID), 
+    uniforms(config->UniformCount), 
     attributes(), 
     state(ShaderState::NotCreated), 
     PushConstantRangeCount(), 
@@ -75,9 +75,9 @@ Shader::~Shader()
     state = ShaderState::NotCreated;
 
     // Освободите имя.
-    if (name) {
+    /*if (name) {
         name.Destroy();
-    }
+    }*/
 }
 
 bool Shader::Create(u32 id, const ShaderConfig *config)
@@ -160,11 +160,7 @@ bool Shader::AddAttribute(const ShaderAttributeConfig &config)
     AttributeStride += size;
 
     // Создайте/отправьте атрибут.
-    ShaderAttribute attrib = {};
-    attrib.name = config.name;
-    attrib.size = size;
-    attrib.type = config.type;
-    attributes.PushBack(attrib);
+    attributes.PushBack(ShaderAttribute(config.name, config.type, size));
 
     return true;
 }
@@ -249,7 +245,7 @@ bool Shader::UniformAdd(const MString &UniformName, u32 size, ShaderUniformType 
 
 bool Shader::UniformNameValid(const MString &UniformName)
 {
-    if (!UniformName || !UniformName.Lenght()) {
+    if (!UniformName) {
         MERROR("Единое имя должно существовать.");
         return false;
     }

@@ -30,22 +30,22 @@ bool ShaderLoader::Load(const char *name, Resource &OutResource)
     char LineBuf[512] = "";
     char* p = &LineBuf[0];
     u64 LineLength = 0;
-    u32 LineNumber = 1; //18
+    u32 LineNumber = 1; //4
     while (Filesystem::ReadLine(&f, 511, &p, LineLength)) {
         // Обрежьте строку.
-        MString trimmed{MString::Trim(LineBuf)};
+        MString line{LineBuf}; // MString::Trim(LineBuf)
 
         // Получите обрезанную длину.
-        LineLength = trimmed.Lenght();
+        LineLength = line.Lenght();
 
         // Пропускайте пустые строки и комментарии.
-        if (LineLength < 1 || trimmed[0] == '#') {
+        if (LineLength < 1 || line[0] == '#') {
             LineNumber++;
             continue;
         }
 
         // Разделить на var/value
-        i32 EqualIndex = trimmed.IndexOf('=');
+        i32 EqualIndex = line.IndexOf('=');
         if (EqualIndex == -1) {
             MWARN("В файле «%s» обнаружена потенциальная проблема с форматированием: токен «=» не найден. Пропуск строки %ui.", FullFilePath, LineNumber);
             LineNumber++;
@@ -54,12 +54,12 @@ bool ShaderLoader::Load(const char *name, Resource &OutResource)
 
         // Предположим, что имя переменной содержит не более 64 символов.
         char RawVarName[64]{};
-        MString::Mid(RawVarName, trimmed, 0, EqualIndex);
+        MString::Mid(RawVarName, line, 0, EqualIndex);
         MString TrimmedVarName = MString::Trim(RawVarName);
 
         // Предположим, что максимальная длина значения, учитывающего имя переменной и знак «=», составляет 511–65 (446).
         char RawValue[446]{};
-        MString::Mid(RawValue, trimmed, EqualIndex + 1, -1);  // Прочтите остальную часть строки
+        MString::Mid(RawValue, line, EqualIndex + 1, -1);  // Прочтите остальную часть строки
         MString TrimmedValue{MString::Trim(RawValue)};
 
         // Обработайте переменную.
@@ -217,11 +217,11 @@ bool ShaderLoader::Load(const char *name, Resource &OutResource)
                 }
 
                 // Анализ области действия
-                if (fields[1].Cmpi("0")) {
+                if (fields[1]== "0") {
                     uniform.scope = ShaderScope::Global;
-                } else if (fields[1].Cmpi("1")) {
+                } else if (fields[1]== "1") {
                     uniform.scope = ShaderScope::Instance;
-                } else if (fields[1].Cmpi("2")) {
+                } else if (fields[1] == "2") {
                     uniform.scope = ShaderScope::Local;
                 } else {
                     MERROR("ShaderLoader::Load: Недопустимый макет файла: универсальная область должна быть равна 0 для глобального, 1 для экземпляра или 2 для локального.");

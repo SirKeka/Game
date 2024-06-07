@@ -11,14 +11,48 @@ template <typename T>
 class HashTable
 {
 public:
-    //u64 ElementSize;
+    T* memory;
     u32 ElementCount;
     bool IsPointerType;
-    T* memory;
+    
 private:
     static const u64 multiplier;
 public:
-    HashTable() : ElementCount(), IsPointerType(false), memory(nullptr) {}
+    constexpr HashTable() : memory(nullptr), ElementCount(), IsPointerType(false) {}
+
+    /// @brief Создает хештаблицу c заданными параметрами
+    /// @param ElementCount 
+    /// @param IsPointerType 
+    /// @param memory 
+    /// @param element 
+    constexpr HashTable(u32 ElementCount, bool IsPointerType, T* memory) 
+    : 
+    memory(memory ? memory : nullptr),
+    ElementCount(ElementCount), 
+    IsPointerType(IsPointerType)
+    {
+        if (!memory) {
+            MERROR("Создать не получилось! Требуется указатель на память");
+            return;
+        }
+        if (!ElementCount) {
+            MERROR("ElementCount должен быть положительным значением, отличным от нуля.");
+            return;
+        }
+    }
+    /// @brief Создает хештаблицу и заполняет её
+    /// @param ElementCount количество элементов
+    /// @param IsPointerType являются ли элементы указателями
+    /// @param memory память где будут хранится элементы
+    /// @param element элемент
+    constexpr HashTable(u32 ElementCount, bool IsPointerType, T* memory, const T& element)
+    :
+    memory(memory ? memory : nullptr),
+    ElementCount(ElementCount), 
+    IsPointerType(IsPointerType)
+    {
+        Fill(element);
+    }
     /// @brief Создает хеш-таблицу
     /// @param ElementSize размер каждого элемента в байтах.
     /// @param ElementCount максимальное количество элементов. Размер не может быть изменен.
@@ -37,13 +71,10 @@ public:
         // TODO: Возможно, вам понадобится распределитель и вместо этого выделите эту память.
         this->memory = memory;
         this->ElementCount = ElementCount;
-        //this->ElementSize = ElementSize;
         this->IsPointerType = IsPointerType;
         MMemory::ZeroMem(this->memory, sizeof(T) * ElementCount);
     }
-        HashTable(u32 ElementCount, bool IsPointerType, T* memory) {
-            Create(ElementCount, IsPointerType, memory);
-    }
+    
 
     ~HashTable() {
         memory = nullptr;

@@ -110,7 +110,7 @@ bool Filesystem::Read(FileHandle *handle, u64 DataSize, void *OutData, u64 &OutB
 
 bool Filesystem::ReadAllBytes(FileHandle *handle, u8 *OutBytes, u64 &OutBytesRead)
 {
-    if (handle->handle && OutBytes && OutBytesRead) {
+    if (handle->handle && OutBytes) {
         // Размер файла
         u64 size = 0;
         if(!Filesystem::Size(handle, size)) {

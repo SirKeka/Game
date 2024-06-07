@@ -119,7 +119,7 @@ bool ShaderSystem::Create(const ShaderConfig *config)
         OutShader->AddAttribute(config->attributes[i]);
     }
 
-    // Технологическая униформа
+    // Технологическая униформа i = 1
     for (u32 i = 0; i < config->UniformCount; ++i) {
         if (config->uniforms[i].type == ShaderUniformType::Sampler) {
             AddSampler(OutShader, config->uniforms[i]);

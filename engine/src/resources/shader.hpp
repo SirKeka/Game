@@ -79,20 +79,20 @@ struct ShaderUniformConfig {
 /// @brief Конфигурация шейдера. Обычно создается и уничтожается загрузчиком
 /// ресурсов шейдера и задается свойствами, найденными в файле ресурсов .shadercfg.
 struct ShaderConfig {
-    MString name;                               // Имя создаваемого шейдера.
-    bool UseInstances;                          // Указывает, использует ли шейдер униформы уровня экземпляра.
-    bool UseLocal;                              // Указывает, использует ли шейдер униформы локального уровня.
-    u8 AttributeCount;                          // Количество атрибутов.
-    DArray<ShaderAttributeConfig> attributes;   // Коллекция атрибутов.
-    u8 UniformCount;                            // Учёт униформы.
-    DArray<ShaderUniformConfig> uniforms;       // Коллекция униформы.
-    MString RenderpassName;                     // Имя прохода рендеринга, используемого этим шейдером.
-    u8 StageCount;                              // Количество этапов, присутствующих в шейдере.
-    DArray<ShaderStage> stages;                 // Сборник этапов.
-    DArray<MString> StageNames;                 // Коллекция сценических имен. Должно соответствовать массиву этапов.
-    DArray<MString> StageFilenames;             // Коллекция имен файлов этапов, которые необходимо загрузить (по одному на этап). Должно соответствовать массиву этапов.
+    MString name{};                               // Имя создаваемого шейдера.
+    bool UseInstances{false};                     // Указывает, использует ли шейдер униформы уровня экземпляра.
+    bool UseLocal{false};                         // Указывает, использует ли шейдер униформы локального уровня.
+    u8 AttributeCount{};                          // Количество атрибутов.
+    DArray<ShaderAttributeConfig> attributes{};   // Коллекция атрибутов.
+    u8 UniformCount{};                            // Учёт униформы.
+    DArray<ShaderUniformConfig> uniforms{};       // Коллекция униформы.
+    MString RenderpassName{};                     // Имя прохода рендеринга, используемого этим шейдером.
+    u8 StageCount{};                              // Количество этапов, присутствующих в шейдере.
+    DArray<ShaderStage> stages{};                 // Сборник этапов.
+    DArray<MString> StageNames{};                 // Коллекция сценических имен. Должно соответствовать массиву этапов.
+    DArray<MString> StageFilenames{};             // Коллекция имен файлов этапов, которые необходимо загрузить (по одному на этап). Должно соответствовать массиву этапов.
 
-    ShaderConfig() : name(), UseInstances(false), UseLocal(false), AttributeCount(), attributes(), UniformCount(), uniforms(), RenderpassName(nullptr), StageCount(), stages(), StageNames(), StageFilenames() {}
+    ShaderConfig() : name(), UseInstances(false), UseLocal(false), AttributeCount(), attributes(), UniformCount(), uniforms(), RenderpassName(), StageCount(), stages(), StageNames(), StageFilenames() {}
     //~ShaderConfig() {}
     void* operator new(u64 size) {return MMemory::Allocate(size, MemoryTag::Resource);}
     void operator delete(void* ptr) {MMemory::Free(ptr, sizeof(ShaderConfig), MemoryTag::Resource);}
@@ -107,13 +107,13 @@ enum class ShaderState {
 
 ///@brief Представляет одну запись во внутреннем универсальном массиве.
 struct ShaderUniform {
-    u64 offset;                                 // Смещение в байтах от начала универсального набора (глобальное/экземплярное/локальное).
-    u16 location;                               // Местоположение, которое будет использоваться для поиска. Обычно совпадает с индексом, за исключением сэмплеров, которые используются для поиска индекса текстуры во внутреннем массиве в заданной области (глобальный/экземпляр).
-    u16 index;                                  // Индекс во внутренний универсальный массив.
-    u16 size;                                   // Размер униформы или 0 для сэмплеров.
-    u8  SetIndex;                               // Индекс набора дескрипторов, которому принадлежит униформа (0 = глобальный, 1 = экземпляр, INVALID::ID = локальный).
-    ShaderScope scope;                          // Область применения униформы.
-    ShaderUniformType type;                     // Тип униформы.
+    u64 offset{};                                // Смещение в байтах от начала универсального набора (глобальное/экземплярное/локальное).
+    u16 location{};                              // Местоположение, которое будет использоваться для поиска. Обычно совпадает с индексом, за исключением сэмплеров, которые используются для поиска индекса текстуры во внутреннем массиве в заданной области (глобальный/экземпляр).
+    u16 index{};                                 // Индекс во внутренний универсальный массив.
+    u16 size{};                                  // Размер униформы или 0 для сэмплеров.
+    u8  SetIndex{};                              // Индекс набора дескрипторов, которому принадлежит униформа (0 = глобальный, 1 = экземпляр, INVALID::ID = локальный).
+    ShaderScope scope{};                         // Область применения униформы.
+    ShaderUniformType type{};                    // Тип униформы.
 };
 
 /// @brief Представляет один атрибут вершины шейдера.
@@ -121,6 +121,7 @@ struct ShaderAttribute {
     MString name;                               // Имя атрибута.
     ShaderAttributeType type;                   // Тип атрибута.
     u32 size;                                   // Размер атрибута в байтах.
+    constexpr ShaderAttribute(const MString& name, ShaderAttributeType type, u32 size) : name(name), type(type), size(size) {}
 };  
 
 /// @brief Представляет шейдер во внешнем интерфейсе.

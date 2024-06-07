@@ -49,7 +49,7 @@ const u32 DESC_SET_INDEX_INSTANCE = 1;  // Индекс набора дескр�
 const u32 BINDING_INDEX_UBO       = 0;  // Индекс привязки УБО.
 const u32 BINDING_INDEX_SAMPLER   = 1;  // Индекс привязки сэмплера изображения.
 
-bool VulkanAPI::Load(Shader *shader, u8 RenderpassID, u8 StageCount, DArray<MString> StageFilenames, const ShaderStage *stages)
+bool VulkanAPI::Load(Shader *shader, u8 RenderpassID, u8 StageCount, const DArray<MString>& StageFilenames, const ShaderStage *stages)
 {
     shader->ShaderData = new VulkanShader();
 
@@ -85,7 +85,7 @@ bool VulkanAPI::Load(Shader *shader, u8 RenderpassID, u8 StageCount, DArray<MStr
     u32 MaxDescriptorAllocateCount = 1024;
 
     // Скопируйте указатель на контекст.
-    VulkanShader* OutShader = reinterpret_cast<VulkanShader*>(shader->ShaderData);
+    VulkanShader* OutShader = shader->ShaderData;
 
     OutShader->renderpass = renderpass;
 
@@ -93,7 +93,7 @@ bool VulkanAPI::Load(Shader *shader, u8 RenderpassID, u8 StageCount, DArray<MStr
     OutShader->config.MaxDescriptorSetCount = MaxDescriptorAllocateCount;
 
     // Этапы шейдера. Разбираем флаги.
-    MMemory::ZeroMem(OutShader->config.stages, sizeof(VulkanShaderStageConfig) * VulkanShaderConstants::MaxStages);
+    //  MMemory::ZeroMem(OutShader->config.stages, sizeof(VulkanShaderStageConfig) * VulkanShaderConstants::MaxStages);
     OutShader->config.StageCount = 0;
     // Перебрать предоставленные этапы.
     for (u32 i = 0; i < StageCount; i++) {
@@ -1356,7 +1356,7 @@ bool VulkanAPI::CreateBuffers()
     return true;
 }
 
-bool VulkanAPI::CreateModule(VulkanShader *shader, VulkanShaderStageConfig config, VulkanShaderStage *ShaderStage)
+bool VulkanAPI::CreateModule(VulkanShader *shader, const VulkanShaderStageConfig& config, VulkanShaderStage *ShaderStage)
 {
     // Прочтите ресурс.
     Resource BinaryResource;
