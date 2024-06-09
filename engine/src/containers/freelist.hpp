@@ -8,10 +8,10 @@ class MAPI FreeList
 {
 private:
     struct FreeListState {
-        u64 TotalSize;
-        u64 MaxNodes;
-        struct FreelistNode* head;
-        struct FreelistNode* nodes;
+        u64 TotalSize{};
+        u64 MaxNodes{};
+        struct FreelistNode* head{};
+        struct FreelistNode* nodes{};
     }* state;
 
 public:

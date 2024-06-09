@@ -29,17 +29,16 @@ public:
         MERROR("Создать не получилось! Требуется указатель на память");
         return;
     }
-    if (!ElementCount/* || !ElementSize*/) {
-        MERROR(/*"ElementSize и */"ElementCount должен быть положительным значением, отличным от нуля.");
+    if (!ElementCount) {
+        MERROR("ElementCount должен быть положительным значением, отличным от нуля.");
         return;
     }
 
     // TODO: Возможно, вам понадобится распределитель и вместо этого выделите эту память.
     this->memory = memory;
     this->ElementCount = ElementCount;
-    //this->ElementSize = ElementSize;
     this->IsPointerType = IsPointerType;
-    MMemory::TZeroMem<T>(this->memory, sizeof(T) * ElementCount);
+    MMemory::ZeroMem(this->memory, sizeof(T) * ElementCount);
     }
 
     /// @brief Уничтожает предоставленную хэш-таблицу. Не освобождает память для типов указателей.
@@ -93,7 +92,7 @@ public:
     /// @param name имя извлекаемой записи. Обязательно.
     /// @param OutValue указатель для хранения полученного значения. Обязательно.
     /// @return true или false, если передается нулевой указатель.
-    bool Get(MString name, T* OutValue) {
+    bool Get(const MString& name, T* OutValue) {
         if(!IsPointerType) {
             if (!name || !OutValue) {
                 MWARN("«Get» требует существования имени и OutValue.");

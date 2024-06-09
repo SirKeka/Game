@@ -68,8 +68,7 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
     } else State->Window->Create();
 
     // Система ресурсов
-    ResourceSystem::SetMaxLoaderCount(32);
-    if (!ResourceSystem::Instance()->Initialize("../assets")) {
+    if (!ResourceSystem::Initialize(32, "../assets")) {
         MFATAL("Не удалось инициализировать систему ресурсов. Приложение не может быть продолжено.");
         return false;
     }
@@ -88,8 +87,7 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
     }
 
     // Система текстур.
-    TextureSystem::SetMaxTextureCount(65536);
-    if (!TextureSystem::Instance()->Initialize()) {
+    if (!TextureSystem::Initialize(65536)) {
         MFATAL("Не удалось инициализировать систему текстур. Приложение не может быть продолжено.");
         return false;
     }

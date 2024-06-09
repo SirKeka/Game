@@ -7,10 +7,10 @@ class MAPI DynamicAllocator
 {
 private:
     struct DynamicAllocatorState {
-        u64 TotalSize;
-        FreeList list;
-        void* FreelistBlock;
-        void* MemoryBlock;
+        u64 TotalSize{};
+        FreeList list{};
+        void* FreelistBlock{nullptr};
+        void* MemoryBlock{nullptr};
     }* state;
 public:
     DynamicAllocator() : state(nullptr) {} // TotalSize(), list(), FreelistBlock(nullptr), MemoryBlock(nullptr) {}

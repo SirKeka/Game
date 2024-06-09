@@ -224,10 +224,10 @@ void Renderer::Unload(GeometryID *gid)
 bool Renderer::RenderpassID(const MString &name, u8 &OutRenderpassID)
 {
     // СДЕЛАТЬ: HACK: Нужны динамические проходы рендеринга(renderpass) вместо их жесткого кодирования.
-    if (name.Cmpi("Renderpass.Builtin.World")) {
+    if (name.Comparei("Renderpass.Builtin.World")) {
         OutRenderpassID = static_cast<u8>(BuiltinRenderpass::World);
         return true;
-    } else if (name.Cmpi("Renderpass.Builtin.UI")) {
+    } else if (name.Comparei("Renderpass.Builtin.UI")) {
         OutRenderpassID = static_cast<u8>(BuiltinRenderpass::UI);
         return true;
     }

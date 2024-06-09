@@ -10,17 +10,14 @@
 #include "core/mmemory.hpp"
 #include <new>
 
-u32 ResourceSystem::MaxLoaderCount = 0;
 ResourceSystem* ResourceSystem::state = nullptr;
 
-ResourceSystem::ResourceSystem(const char* BasePath)  : AssetBasePath(BasePath), RegisteredLoaders(nullptr) 
+constexpr ResourceSystem::ResourceSystem(u32 MaxLoaderCount, const char* BasePath, ResourceLoader* RegisteredLoaders) 
+: MaxLoaderCount(MaxLoaderCount), AssetBasePath(BasePath), RegisteredLoaders(RegisteredLoaders) 
 {
-    this->RegisteredLoaders = reinterpret_cast<ResourceLoader*>(this + sizeof(ResourceSystem));
+    // this->RegisteredLoaders = reinterpret_cast<ResourceLoader*>(this + 1);
     // Аннулировать все загрузчики
-    new (reinterpret_cast<void*>(RegisteredLoaders)) ResourceLoader[MaxLoaderCount]();
-    /*for (u32 i = 0; i < MaxLoaderCount; ++i) {
-        RegisteredLoaders[i].id = INVALID::U32ID;
-    }*/
+    // new (RegisteredLoaders) ResourceLoader[MaxLoaderCount]();
 
     // ПРИМЕЧАНИЕ: Здесь можно автоматически зарегистрировать известные типы загрузчиков.
     RegisterLoader<TextLoader>(TextLoader());
@@ -30,7 +27,7 @@ ResourceSystem::ResourceSystem(const char* BasePath)  : AssetBasePath(BasePath),
     RegisterLoader<ShaderLoader>(ShaderLoader());
 }
 
-bool ResourceSystem::Initialize(const char* BasePath)
+bool ResourceSystem::Initialize(u32 MaxLoaderCount, const char* BasePath)
 {
     if (MaxLoaderCount == 0) {
         MFATAL("ResourceSystem::Initialize е удалось, поскольку максимальное количество загрузчиков (MaxLoaderCount) = 0.");
@@ -38,12 +35,20 @@ bool ResourceSystem::Initialize(const char* BasePath)
     }
 
     if (!state) {
-        state = new ResourceSystem(BasePath);
+        u64 ResourceSystemSize = sizeof(ResourceSystem) + (sizeof(ResourceLoader) * MaxLoaderCount);
+        void* ResourceSystemPtr = LinearAllocator::Instance().Allocate(ResourceSystemSize); 
+        ResourceLoader* ResourceLoaderPtr = reinterpret_cast<ResourceLoader*> (reinterpret_cast<u8*>(ResourceSystemPtr) + sizeof(ResourceSystem));
+        state = new(ResourceSystemPtr) ResourceSystem(MaxLoaderCount, BasePath, ResourceLoaderPtr);
     }
 
     MINFO("Система ресурсов инициализируется с использованием базового пути '%s'.", state->AssetBasePath);
 
     return true;
+}
+
+void ResourceSystem::Shutdown()
+{
+    delete state;
 }
 
 template<typename T>
@@ -56,8 +61,8 @@ bool ResourceSystem::RegisterLoader(ResourceLoader loader)
             if (l->type == loader.type) {
                 MERROR("ResourceSystem::RegisterLoader — загрузчик типа %d уже существует и не будет зарегистрирован.", loader.type);
                 return false;
-            } else if (loader.CustomType && MString::Lenght(loader.CustomType) > 0 && MString::Equali(l->CustomType, loader.CustomType)) {
-                MERROR("ResourceSystem::RegisterLoader — загрузчик пользовательского типа %s уже существует и не будет зарегистрирован.", loader.CustomType);
+            } else if (loader.CustomType && loader.CustomType.Length() > 0 && l->CustomType.Comparei(loader.CustomType)) {
+                MERROR("ResourceSystem::RegisterLoader — загрузчик пользовательского типа %s уже существует и не будет зарегистрирован.", loader.CustomType.c_str());
                 return false;
             }
         }
@@ -94,11 +99,11 @@ bool ResourceSystem::Load(const char *name, ResourceType type, Resource &OutReso
 
 bool ResourceSystem::Load(const char *name, const char *CustomType, Resource &OutResource)
 {
-    if (CustomType && MString::Lenght(CustomType) > 0) {
+    if (CustomType && MString::Length(CustomType) > 0) {
         // Выбор загрузчика.
         for (u32 i = 0; i < MaxLoaderCount; ++i) {
             ResourceLoader* l = &RegisteredLoaders[i];
-            if (l->id != INVALID::ID && l->type == ResourceType::Custom && MString::Equali(l->CustomType, CustomType)) {
+            if (l->id != INVALID::ID && l->type == ResourceType::Custom && l->CustomType.Comparei(CustomType)) {
                 return Load(name, l, OutResource);
             }
         }
@@ -131,11 +136,6 @@ const char *ResourceSystem::BasePath()
     return "";
 }
 
-void ResourceSystem::SetMaxLoaderCount(u32 value)
-{
-    MaxLoaderCount = value;
-}
-
 bool ResourceSystem::Load(const char *name, ResourceLoader *loader, Resource &OutResource)
 {
     if (!name || !loader) {
@@ -146,9 +146,9 @@ bool ResourceSystem::Load(const char *name, ResourceLoader *loader, Resource &Ou
     OutResource.LoaderID = loader->id;
     return loader->Load(name, OutResource);
 }
-
+/*
 void *ResourceSystem::operator new(u64 size)
 {
     return LinearAllocator::Instance().Allocate(size + (sizeof(ResourceLoader) * MaxLoaderCount));
 }
-
+*/

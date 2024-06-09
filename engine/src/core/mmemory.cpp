@@ -102,7 +102,7 @@ void *MMemory::Allocate(u64 bytes, MemoryTag tag)
         // Если система еще не запустилась, предупредите об этом, но дайте пока память.
         MWARN("Memory::Allocate вызывается перед инициализацией системы памяти.");
         // СДЕЛАТЬ: Memory alignment
-        block = new u8[bytes](); //platform_allocate(size, false);
+        block = new u8[bytes]; //platform_allocate(size, false);
     }
 
     if (block) {
@@ -120,22 +120,25 @@ void MMemory::Free(void *block, u64 bytes, MemoryTag tag)
         if (tag == MemoryTag::Unknown) {
             MWARN("free вызывается с использованием MemoryTag::Unknown. Переклассифицировать это распределение.");
         }
+        if (state) {
+            state->TotalAllocated -= bytes;
+            state->TaggedAllocations[static_cast<u32>(tag)] -= bytes;
+            state->AllocCount--;
+            bool result = state->allocator.Free(block, bytes);
 
-        state->TotalAllocated -= bytes;
-        state->TaggedAllocations[static_cast<u32>(tag)] -= bytes;
-        state->AllocCount--;
-        bool result = state->allocator.Free(block, bytes);
-
-        // Если освобождение не удалось, возможно, это связано с тем, что выделение было выполнено до запуска этой системы. 
-        // Поскольку это абсолютно должно быть исключением из правил, попробуйте освободить его на уровне платформы. 
-        // Если это не удастся, значит, начнется какой-то другой вид мошенничества, и у нас возникнут более серьезные проблемы.
-        if (!result) {
-            // СДЕЛАТЬ: Выравнивание памяти
+            // Если освобождение не удалось, возможно, это связано с тем, что выделение было выполнено до запуска этой системы. 
+            // Поскольку это абсолютно должно быть исключением из правил, попробуйте освободить его на уровне платформы. 
+            // Если это не удастся, значит, начнется какой-то другой вид мошенничества, и у нас возникнут более серьезные проблемы.
+            if (!result) {
+                // СДЕЛАТЬ: Выравнивание памяти
+                u8* ptrRawMem = reinterpret_cast<u8*>(block);
+                delete[] ptrRawMem;                             //platform_free(block, false);
+            }
+        } else {
             u8* ptrRawMem = reinterpret_cast<u8*>(block);
             delete[] ptrRawMem;                             //platform_free(block, false);
         }
     }
-
 }
 
 void* MMemory::ZeroMem(void* block, u64 bytes)
@@ -171,7 +174,7 @@ MString MMemory::GetMemoryUsageStr()
     const u64 kib = 1024;
 
     char buffer[8000] = "Использование системной памяти (с тегами):\n";
-    u64 offset = strlen(buffer);
+    u64 offset = MString::Length(buffer);
     for (u32 i = 0; i < static_cast<u32>(MemoryTag::MaxTags); ++i) {
         char unit[4] = "XiB";
         float amount = 1.0f;

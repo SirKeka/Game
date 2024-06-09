@@ -5,7 +5,6 @@
 DynamicAllocator::~DynamicAllocator()
 {
     if (state) {
-        state->list.~FreeList();
         MMemory::ZeroMem(state->MemoryBlock, state->TotalSize);
         state->TotalSize = 0;
         state = nullptr;
@@ -90,7 +89,6 @@ bool DynamicAllocator::Destroy()
 void *DynamicAllocator::Allocate(u64 size)
 {
     if (state->MemoryBlock && size) {
-        // DynamicAllocatorState* state = allocator->memory;
         u64 offset = 0;
         // Попытайтесь выделить из свободного списка.
         if (state->list.AllocateBlock(size, offset)) {
@@ -122,7 +120,7 @@ bool DynamicAllocator::Free(void *block, u64 size)
         MERROR("DynamicAllocator::Free попытка освободить блок (0x%p) за пределами диапазона распределителя (0x%p)-(0x%p).", block, state->MemoryBlock, EndOfBlock);
         return false;
     }
-    u64 offset = reinterpret_cast<u8*>(block) - reinterpret_cast<u8*>(state->MemoryBlock);
+    u64 offset = (reinterpret_cast<u8*>(block) - reinterpret_cast<u8*>(state->MemoryBlock));
     if (!state->list.FreeBlock(size, offset)) {
         MERROR("DynamicAllocator::Free failed.");
         return false;

@@ -58,13 +58,13 @@ private:
 
     //static DArray<SharPtr> ptr;
     static struct MemoryState {
-        u64 TotalAllocSize; // Общий размер памяти в байтах, используемый внутренним распределителем для этой системы.
-        u64 TotalAllocated;
-        u64 TaggedAllocations[static_cast<u32>(MemoryTag::MaxTags)];
-        u64 AllocCount;
-        u64 AllocatorMemoryRequirement;
-        DynamicAllocator allocator;
-        void* AllocatorBlock;
+        u64 TotalAllocSize{}; // Общий размер памяти в байтах, используемый внутренним распределителем для этой системы.
+        u64 TotalAllocated{};
+        u64 TaggedAllocations[static_cast<u32>(MemoryTag::MaxTags)]{};
+        u64 AllocCount{};
+        u64 AllocatorMemoryRequirement{};
+        DynamicAllocator allocator{};
+        void* AllocatorBlock{nullptr};
     }* state;
     
 public:
@@ -86,34 +86,7 @@ public:
 
     template<typename T>
     static T* TAllocate(u64 size, MemoryTag tag) {
-        if (tag == MemoryTag::Unknown) {
-            MWARN("allocate вызывается с использованием MemoryTag::Unknown. Переклассифицировать это распределение.");
-        }
-        u64 byte = size * sizeof(T);
-
-        // Либо выделяйте из системного распределителя, либо из ОС. Последнее никогда не должно произойти.
-        u8* block = nullptr;
-
-        if (state) {
-            state->TotalAllocated += byte;
-            state->TaggedAllocations[static_cast<u32>(tag)] += byte;
-            state->AllocCount++;
-            block = reinterpret_cast<u8*>(state->allocator.Allocate(byte));
-        } else {
-            // Если система еще не запустилась, предупредите об этом, но дайте пока память.
-            MWARN("Memory::Allocate вызывается перед инициализацией системы памяти.");
-            // СДЕЛАТЬ: Выравнивание памяти
-            block = new u8[byte](); //platform_allocate(byte, false);
-        }
-
-        if (block) {
-            MMemory::ZeroMem(block, byte);
-            return (reinterpret_cast<T*>(block));
-        }
-    
-        MFATAL("MMemory::Allocate не удалось успешно распределить.");
-        return nullptr;
-
+        return (reinterpret_cast<T*>(Allocate(size * sizeof(T), tag)));
     }
     /// @brief Функция освобождает память
     /// @param block указатель на блок памяти, который нужно освободить
@@ -125,12 +98,6 @@ public:
     /// @param bytes размер блока памяти в байтах
     /// @return указатель на нулевой блок памяти
     static void* ZeroMem(void* block, u64 bytes);
-
-    template<typename T>
-    static void* TZeroMem(T* block, u64 bytes){
-        return ZeroMem(reinterpret_cast<void*>(block), bytes);
-    }
-
     /// @brief Функция копирует массив байтов из source указателя в dest
     /// @param dest указатель куда комируется массив байтов
     /// @param source указатель из которого копируется массив байтов

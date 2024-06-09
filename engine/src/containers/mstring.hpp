@@ -9,19 +9,19 @@ template<typename> class DArray;
 class MAPI MString
 {
 private:
-    u64 lenght;
-    char* str;
+    u16 length = 0;
+    char* str = nullptr;
 
 public:
    constexpr MString();
-   constexpr MString(u64 lenght);
+   constexpr MString(u16 length);
    constexpr MString(const char* s);
    constexpr MString(const MString& s);
    constexpr MString(MString&& s);
     ~MString();
 
     // char operator[] (u64 i);
-    const char operator[] (u64 i) const;
+    const char operator[] (u16 i) const;
 
     MString& operator= (const MString& s);
     MString& operator= (const char* s);
@@ -35,19 +35,23 @@ public:
 
     /// @brief Получает длину заданной строки.
     /// @return Длину(количество символов в строке)
-    const u64 Lenght() const;
+    const u16 Length() const;
     /// @brief Получает длину заданной строки.
     /// @param s строка в стиле си
     /// @return Длину(количество символов в строке)
-    static const u64 Lenght(const char* s);
+    static const u16 Length(const char* s);
     //char* Copy(const char* s);
 
     /// @return строку типа си
     const char* c_str() const noexcept;
     /// @brief Срвавнивает строки между собой без учета регистра.
+    /// @param string строка с которой нужно сравнить
+    /// @return true, если строки равны и false, если нет 
+    const bool Comparei(const MString& string) const;
+    /// @brief Срвавнивает строки между собой без учета регистра.
     /// @param string строка в стиле си с которой нужно сравнить
     /// @return true, если строки равны и false, если нет 
-    const bool Cmpi(MString string) const;
+    const bool Comparei(const char* string) const;
 
     // Выполняет форматирование строки для определения заданной строки формата и параметров.
     static i32 Format(char* dest, const char* format, ...);
@@ -59,11 +63,13 @@ public:
     static i32 FormatV(char* dest, const char* format, char* va_list);
 
     static void Copy(char* dest, const char* source);
-    void nCopy(MString source, u64 Length);
+    static void Copy(char* dest, const MString& source);
+    void nCopy(const MString& source, u64 length);
     void nCopy(const char* source, u64 Length);
-    static char* nCopy(char* dest, MString source, u64 length);
-private: 
+    static void nCopy(char* dest, const MString& source, u64 length); 
+private:
     char* Copy(const char* string, u64 length);
+    char* Copy(const MString& source);
 public:
     void Trim();
     static char* Trim(char* s);
@@ -92,6 +98,7 @@ public:
     /// @param OutVector A pointer to the vector to write to.
     /// @return True, если синтаксический анализ прошел успешно; в противном случае false. 
     static bool ToVector4D(char* str, Vector4D<f32>& OutVector);
+    bool ToVector4D(Vector4D<f32>& OutVector);
     /// @brief Пытается проанализировать вектор из предоставленной строки.
     /// @param str Строка для анализа. Должна быть разделена пробелами (т. е. «1,0 2,0 3,0»)
     /// @param OutVector Ссылка на вектор для записи.
@@ -189,7 +196,9 @@ public:
     u32 Split(char delimiter, DArray<MString>& darray, bool TrimEntries, bool IncludeEmpty);
 
     void Clear();
+    // void* operator new(u64 size);
+    // void operator delete(void* ptr, u64 size);
+    // void* operator new[](u64 size);
+    // void operator delete[](void* ptr, u64 size);
 };
 
-//MAPI bool operator== (const char*   lhs, const string& rhs);
-//MAPI bool operator== (const string& lhs, const char*   rhs);

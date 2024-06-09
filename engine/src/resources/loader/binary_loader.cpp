@@ -12,7 +12,7 @@ bool BinaryLoader::Load(const char *name, Resource &OutResource)
 
     const char* FormatStr = "%s/%s/%s%s";
     char FullFilePath[512];
-    MString::Format(FullFilePath, FormatStr, ResourceSystem::Instance()->BasePath(), TypePath, name, "");
+    MString::Format(FullFilePath, FormatStr, ResourceSystem::Instance()->BasePath(), TypePath.c_str(), name, "");
 
     FileHandle f;
     if (!Filesystem::Open(FullFilePath, FileModes::Read, true, &f)) {

@@ -45,13 +45,13 @@ void *Logger::operator new(u64 size)
     return LinearAllocator::Instance().Allocate(size);
 }
 
-void Logger::AppendToLogFile(const MString &message)
+void Logger::AppendToLogFile(const char *message)
 {
     if (LogFileHandle.IsValid) {
         // Поскольку сообщение уже содержит '\n', просто запишите байты напрямую.
-        u64 length = message.Lenght();
+        u64 length = MString::Length(message);
         u64 written = 0;
-        if (!Filesystem::Write(&LogFileHandle, length, message.c_str(), written)) {
+        if (!Filesystem::Write(&LogFileHandle, length, message, written)) {
             PlatformConsoleWriteError("ОШИБКА записи в console.log.", static_cast<u8>(LogLevel::Error));
         }
     }

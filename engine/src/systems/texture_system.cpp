@@ -7,54 +7,21 @@
 #include <new>
 
 struct TextureReference {
-    u64 ReferenceCount;
-    u32 handle;
-    bool AutoRelease;
+    u64 ReferenceCount{};
+    u32 handle{};
+    bool AutoRelease{false};
+    constexpr TextureReference() : ReferenceCount(), handle(), AutoRelease() {}
+    constexpr TextureReference(u64 ReferenceCount, u32 handle, bool AutoRelease) : ReferenceCount(ReferenceCount), handle(handle), AutoRelease(AutoRelease) {}
 };
 
-u32 TextureSystem::MaxTextureCount = 0;
 TextureSystem* TextureSystem::state = nullptr;
 
-TextureSystem::TextureSystem() : 
+TextureSystem::TextureSystem(u32 MaxTextureCount, Texture* RegisteredTextures, TextureReference* HashtableBlock) 
+: 
+    MaxTextureCount(MaxTextureCount),
     DefaultTexture(), 
-    RegisteredTextures(nullptr), 
-    RegisteredTextureTable() 
-{
-    //u64 StructRequirement = sizeof(TextureSystem);
-    u64 ArrayRequirement = sizeof(Texture) * MaxTextureCount;
-    //u64 HashtableRequirement = sizeof(TextureReference) * MaxTextureCount;
-    //*MemoryRequirement = StructRequirement + ArrayRequirement + HashtableRequirement;
-
-    //state_ptr = state;
-
-    // Блок массива находится после состояния. Уже выделено, поэтому просто установите указатель.
-    u8* ArrayBlock = reinterpret_cast<u8*>(this + sizeof(TextureSystem));
-    this->RegisteredTextures = reinterpret_cast<Texture*>(ArrayBlock);
-
-    // Блок хеш-таблицы находится после массива.
-    TextureReference* HashtableBlock = reinterpret_cast<TextureReference*>(ArrayBlock + ArrayRequirement);
-
-    // Создание хэш-таблицы для поиска текстур.
-    RegisteredTextureTable = HashTable<TextureReference>(MaxTextureCount, false, HashtableBlock);
-
-    // Заполнение хеш-таблицы недействительными ссылками, чтобы использовать их по умолчанию.
-    TextureReference InvalidRef;
-    InvalidRef.AutoRelease = false;
-    InvalidRef.handle = INVALID::ID;  // Основная причина необходимости использования значений по умолчанию.
-    InvalidRef.ReferenceCount = 0;
-    RegisteredTextureTable.Fill(InvalidRef);
-
-    // Сделать недействительными все текстуры в массиве.
-    //u32 count = MaxTextureCount;
-    new (reinterpret_cast<void*>(RegisteredTextures)) Texture[MaxTextureCount];
-    /*for (u32 i = 0; i < count; ++i) {
-        RegisteredTextures[i].id = INVALID::U32ID;
-        RegisteredTextures[i].generation = INVALID::U32ID;
-    }*/
-
-    // Создайте текстуры по умолчанию для использования в системе.
-    CreateDefaultTexture();
-}
+    RegisteredTextures(new(RegisteredTextures) Texture[MaxTextureCount]()), 
+    RegisteredTextureTable(MaxTextureCount, false, HashtableBlock, TextureReference(0, INVALID::ID, false)) {}
 
 TextureSystem::~TextureSystem()
 {
@@ -70,13 +37,27 @@ TextureSystem::~TextureSystem()
     }
 }
 
-bool TextureSystem::Initialize()
+bool TextureSystem::Initialize(u32 MaxTextureCount)
 {
-    if (state->MaxTextureCount == 0) {
+    if (MaxTextureCount == 0) {
         MFATAL("TextureSystemInitialize — MaxTextureCount должно быть > 0.");
         return false;
     }
-    state = new TextureSystem();
+
+    // Блок памяти будет содержать структуру состояния, затем блок массива, затем блок хеш-таблицы.
+    u64 StructRequirement = sizeof(TextureSystem);
+    u64 ArrayRequirement = sizeof(Texture) * MaxTextureCount;
+    u64 HashtableRequirement = sizeof(TextureReference) * MaxTextureCount;
+    u64 MemoryRequirement = StructRequirement + ArrayRequirement + HashtableRequirement;
+    u8* strTextureSystem = reinterpret_cast<u8*> (LinearAllocator::Instance().Allocate(MemoryRequirement));
+    Texture* ArrayBlock = reinterpret_cast<Texture*> (strTextureSystem + StructRequirement);
+    TextureReference* HashTableBlock = reinterpret_cast<TextureReference*> (strTextureSystem + StructRequirement + ArrayRequirement);
+    if (!state) {
+        state = new(strTextureSystem) TextureSystem(MaxTextureCount, ArrayBlock, HashTableBlock);
+    }
+
+    // Создайте текстуры по умолчанию для использования в системе.
+    state->CreateDefaultTexture();
 
     return true;
 }
@@ -193,26 +174,16 @@ Texture *TextureSystem::GetDefaultTexture()
     return nullptr;
 }
 
-void TextureSystem::SetMaxTextureCount(u32 value)
-{
-    MaxTextureCount = value;
-}
-
 TextureSystem *TextureSystem::Instance()
 {
     return state;
 }
-
+/*
 void *TextureSystem::operator new(u64 size)
 {
-    // Блок памяти будет содержать структуру состояния, затем блок массива, затем блок хеш-таблицы.
-    u64 StructRequirement = sizeof(TextureSystem);
-    u64 ArrayRequirement = sizeof(Texture) * MaxTextureCount;
-    u64 HashtableRequirement = sizeof(TextureReference) * MaxTextureCount;
-    //*memory_requirement = struct_requirement + array_requirement + hashtable_requirement;
-    return LinearAllocator::Instance().Allocate(size + ArrayRequirement + HashtableRequirement);
+    return LinearAllocator::Instance().Allocate(size);
 }
-
+*/
 bool TextureSystem::CreateDefaultTexture()
 {
     // ПРИМЕЧАНИЕ. Создайте текстуру по умолчанию — сине-белую шахматную доску размером 256x256.

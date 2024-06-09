@@ -343,7 +343,7 @@ bool MaterialSystem::LoadMaterial(MaterialConfig config, Material *m)
     m->DiffuseColour = config.DiffuseColour;
 
     // Diffuse map
-    if (MString::Lenght(config.DiffuseMapName) > 0) {
+    if (MString::Length(config.DiffuseMapName) > 0) {
         m->DiffuseMap.use = TextureUse::MapDiffuse;
         m->DiffuseMap.texture = TextureSystem::Instance()->Acquire(config.DiffuseMapName, true);
         if (!m->DiffuseMap.texture) {

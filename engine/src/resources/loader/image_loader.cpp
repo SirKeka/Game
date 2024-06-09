@@ -20,7 +20,7 @@ bool ImageLoader::Load(const char *name, Resource &OutResource)
     char FullFilePath[512];
 
     // TODO: попробуйте разные расширения
-    MString::Format(FullFilePath, FormatStr, ResourceSystem::Instance()->BasePath(), TypePath, name, ".png");
+    MString::Format(FullFilePath, FormatStr, ResourceSystem::Instance()->BasePath(), TypePath.c_str(), name, ".png");
 
     i32 width;
     i32 height;

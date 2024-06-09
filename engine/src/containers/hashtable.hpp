@@ -11,9 +11,9 @@ template <typename T>
 class HashTable
 {
 public:
-    T* memory;
-    u32 ElementCount;
-    bool IsPointerType;
+    T* memory{nullptr};
+    u32 ElementCount{};
+    bool IsPointerType{false};
     
 private:
     static const u64 multiplier;

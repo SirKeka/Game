@@ -33,7 +33,7 @@ public:
     MAPI void* operator new(u64 size);
     //MAPI void operator delete(void* ptr);
 private:
-    static void AppendToLogFile(const MString& message);
+    static void AppendToLogFile(const char* message);
 };
 
 // Регистрирует сообщение критического уровня.

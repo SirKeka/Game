@@ -1,7 +1,7 @@
 #pragma once
 #include "defines.hpp"
 #include "core/mmemory.hpp"
-#include <type_traits>
+#include <new>
 //#include "core/logger.hpp"
 /*
 template <typename T, typename = void_t<>>
@@ -15,9 +15,9 @@ class MAPI DArray
 {
 // Переменные
 private:
-    u64 size;
-    u64 capacity;
-    T* ptrValue;
+    u64 size{};             // Количество элементов в массиве
+    u64 capacity{};         // Выделенная память под данное количество элементов
+    T* ptrValue{nullptr};   // Указатель на область памяти где хранятся элементы
 
 // Функции
 public:
@@ -53,10 +53,6 @@ public:
         arr.ptrValue = nullptr;
     }
 
-    /// @brief Уничтожает динамический массив
-    MINLINE void Destroy() {
-        this->~DArray();
-    }
     // Доступ к элементу------------------------------------------------------------------------
 
     MINLINE T& operator [] (u64 index) {
@@ -90,7 +86,7 @@ public:
     /// которые вектор может содержать без необходимости перераспределения) до значения, 
     /// большего или равного NewCap. Если значение NewCap больше текущей capacity(емкости), 
     /// выделяется новое хранилище, в противном случае функция ничего не делает.
-    void Reserve(const u64& NewCap) {
+    void Reserve(u64 NewCap) {
         // TODO: добавить std::move()
         if (capacity == 0) {
             ptrValue = MMemory::TAllocate<T>(NewCap, MemoryTag::DArray);
@@ -134,6 +130,7 @@ public:
         if(size == capacity) {
             Reserve(capacity * 2);
         }
+        // ptrValue + size = new(ptrValue + size) T(value);
         ptrValue[size] = value;
         size++;
     }

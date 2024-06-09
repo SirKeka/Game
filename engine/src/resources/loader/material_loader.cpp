@@ -14,7 +14,7 @@ bool MaterialLoader::Load(const char *name, Resource &OutResource)
 
     const char* FormatStr = "%s/%s/%s%s";
     char FullFilePath[512];
-    MString::Format(FullFilePath, FormatStr, ResourceSystem::Instance()->BasePath(), TypePath, name, ".mmt");
+    MString::Format(FullFilePath, FormatStr, ResourceSystem::Instance()->BasePath(), TypePath.c_str(), name, ".mmt");
 
     FileHandle f;
     if (!Filesystem::Open(FullFilePath, FileModes::Read, false, &f)) {
@@ -26,13 +26,8 @@ bool MaterialLoader::Load(const char *name, Resource &OutResource)
     OutResource.FullPath = FullFilePath;
 
     // TODO: Здесь следует использовать распределитель.
-    MaterialConfig* ResourceData;// = new MaterialConfig();
+    MaterialConfig* ResourceData = new MaterialConfig(name, "Builtin.Material", true, nullptr, Vector4D<f32>::One());
     // Установите некоторые значения по умолчанию.
-    ResourceData->ShaderName = "Builtin.Material"; // Материал поумолчанию.
-    ResourceData->AutoRelease = true;
-    ResourceData->DiffuseColour = Vector4D<f32>::One() ;  // белый.
-    ResourceData->DiffuseMapName[0] = '\0';
-    MMemory::CopyMem(ResourceData->name, name, MATERIAL_NAME_MAX_LENGTH);
 
     // Прочтите каждую строку файла.
     char LineBuf[512] = "";
@@ -41,10 +36,10 @@ bool MaterialLoader::Load(const char *name, Resource &OutResource)
     u32 LineNumber = 1;
     while (Filesystem::ReadLine(&f, 511, &p, LineLength)) {
         // Обрезаем строку.
-        char* trimmed = MString::Trim(LineBuf);
+        MString trimmed { LineBuf };
 
         // Получите обрезанную длину.
-        LineLength = MString::Lenght(trimmed);
+        LineLength = trimmed.Length();
 
         // Пропускайте пустые строки и комментарии.
         if (LineLength < 1 || trimmed[0] == '#') {
@@ -53,7 +48,7 @@ bool MaterialLoader::Load(const char *name, Resource &OutResource)
         }
 
         // Разделить на var/value
-        i32 EqualIndex = MString::IndexOf(trimmed, '=');
+        i32 EqualIndex = trimmed.IndexOf('=');
         if (EqualIndex == -1) {
             MWARN("В файле «%s» обнаружена потенциальная проблема с форматированием: токен «=» не найден. Пропуск строки %ui.", FullFilePath, LineNumber);
             LineNumber++;
@@ -63,29 +58,29 @@ bool MaterialLoader::Load(const char *name, Resource &OutResource)
         // Предположим, что имя переменной содержит не более 64 символов.
         char RawVarName[64]{};
         MString::Mid(RawVarName, trimmed, 0, EqualIndex);
-        char* TrimmedVarName = MString::Trim(RawVarName);
+        MString TrimmedVarName { RawVarName };
 
         // Предположим, что максимальная длина значения, учитывающего имя переменной и знак «=», составляет 511–65 (446).
         char RawValue[446]{};
         MString::Mid(RawValue, trimmed, EqualIndex + 1, -1);  // Прочтите остальную часть строки
-        char* TrimmedValue = MString::Trim(RawValue);
+        MString TrimmedValue { RawValue };
 
         // Обработайте переменную.
-        if (MString::Equali(TrimmedVarName, "version")) {
+        if (TrimmedVarName.Comparei("version")) {
             // TODO: version
-        } else if (MString::Equali(TrimmedVarName, "name")) {
-            MMemory::CopyMem(ResourceData->name, TrimmedValue, MATERIAL_NAME_MAX_LENGTH);
-        } else if (MString::Equali(TrimmedVarName, "diffuse_map_name")) {
-            MMemory::CopyMem(ResourceData->DiffuseMapName, TrimmedValue, TEXTURE_NAME_MAX_LENGTH);
-        } else if (MString::Equali(TrimmedVarName, "diffuse_colour")) {
+        } else if (TrimmedVarName.Comparei("name")) {
+            MString::nCopy(ResourceData->name, TrimmedValue, MATERIAL_NAME_MAX_LENGTH);
+        } else if (TrimmedVarName.Comparei("diffuse_map_name")) {
+            MString::nCopy(ResourceData->DiffuseMapName, TrimmedValue, TEXTURE_NAME_MAX_LENGTH);
+        } else if (TrimmedVarName.Comparei("diffuse_colour")) {
             // Разобрать цвет
-            if (!MString::ToVector4D(TrimmedValue, ResourceData->DiffuseColour)) {
+            if (!TrimmedValue.ToVector4D(ResourceData->DiffuseColour)) {
                 MWARN("Ошибка анализа диффузного цвета (diffuse_color) в файле «%s». Вместо этого используется белый цвет по умолчанию.", FullFilePath);
                 // ПРИМЕЧАНИЕ. Уже назначено выше, его здесь нет необходимости.
             } 
-        } else if (MString::Equali(TrimmedVarName, "Shader")) {
+        } else if (TrimmedVarName.Comparei("Shader")) {
             // Возьмите копию названия материала.
-            if (MString::Equali(TrimmedValue, "ui")) {
+            if (TrimmedValue.Comparei("ui")) {
                 ResourceData->ShaderName = TrimmedValue;
                  }
         }

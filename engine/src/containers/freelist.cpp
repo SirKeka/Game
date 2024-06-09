@@ -3,9 +3,9 @@
 #include "core/mmemory.hpp"
 
 struct FreelistNode {
-    u64 offset;
-    u64 size;
-    FreelistNode* next;
+    u64 offset{};
+    u64 size{};
+    FreelistNode* next{nullptr};
 };
 
 FreeList::~FreeList()
@@ -52,7 +52,7 @@ void FreeList::Create(u64 TotalSize, void *memory)
     // Компоновка блока начинается с головы*, затем массива доступных узлов.
     MMemory::ZeroMem(memory, sizeof(FreeListState) + (sizeof(FreelistNode) * MaxNodes));
     state = reinterpret_cast<FreeListState*>(memory);
-    state->nodes = reinterpret_cast<FreelistNode*>(state + sizeof(FreeListState));
+    state->nodes = reinterpret_cast<FreelistNode*>(state + 1); // sizeof(FreeListState)
     state->MaxNodes = MaxNodes;
     state->TotalSize = TotalSize;
 
@@ -200,7 +200,7 @@ bool FreeList::Resize(void *NewMemory, u64 NewSize, void **OutOldMemory)
     MMemory::ZeroMem(NewMemory, NewSize);
 
     // Настройте новое состояние.
-    state->nodes = reinterpret_cast<FreelistNode*>(state + sizeof(FreeListState));
+    state->nodes = reinterpret_cast<FreelistNode*>(state + 1);
     state->MaxNodes = MaxNodes;
     state->TotalSize = NewSize;
 

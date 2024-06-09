@@ -140,7 +140,7 @@ u8 hashtable_should_set_and_get_ptr_nonexistant() {
     bool result = table.pSet("test1", reinterpret_cast<ht_test_struct**>(testval1));
     ExpectToBeTrue(result);
 
-    ht_test_struct* get_testval_1 = 0;
+    ht_test_struct* get_testval_1 = nullptr;
     result = table.Get("test2", reinterpret_cast<ht_test_struct**>(get_testval_1));
     ExpectToBeFalse(result);
     ExpectShouldBe(0, get_testval_1);

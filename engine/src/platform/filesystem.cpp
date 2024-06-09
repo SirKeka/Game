@@ -22,7 +22,7 @@ bool Filesystem::Open(const char *path, FileModes mode, bool binary, FileHandle 
 {
     OutHandle->IsValid = false;
     OutHandle->handle = 0;
-    MString ModeStr;
+    const char * ModeStr;
 
     if ((mode & FileModes::Read) != 0 && (mode & FileModes::Write) != 0) {
         ModeStr = binary ? "w+b" : "w+";
@@ -36,7 +36,7 @@ bool Filesystem::Open(const char *path, FileModes mode, bool binary, FileHandle 
     }
 
     // Попытайтесь открыть файл.
-    FILE* file = fopen(path, ModeStr.c_str());
+    FILE* file = fopen(path, ModeStr);
     if (!file) {
         MERROR("Ошибка при открытии файла: '%s'", path);
         return false;
@@ -73,7 +73,7 @@ bool Filesystem::ReadLine(FileHandle *handle, u64 MaxLength, char** LineBuf, u64
     if (handle->handle && LineBuf && MaxLength > 0) {
         char* buf = *LineBuf;
         if (fgets(buf, MaxLength, reinterpret_cast<FILE*>(handle->handle)) != 0) {
-            OutLineLength = MString::Lenght(*LineBuf);
+            OutLineLength = MString::Length(*LineBuf);
             return true;
         }
     }

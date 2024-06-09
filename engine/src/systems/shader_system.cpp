@@ -13,16 +13,10 @@ MaxUniformCount(MaxUniformCount),
 MaxGlobalTextures(MaxGlobalTextures),
 MaxInstanceTextures(MaxInstanceTextures),
 LookupMemory(LookupMemory),
-lookup(MaxShaderCount, false, reinterpret_cast<u32*>(LookupMemory)),
+lookup(MaxShaderCount, false, reinterpret_cast<u32*>(LookupMemory), INVALID::ID),
 CurrentShaderID(INVALID::ID),
 shaders(shaders) 
 {
-    // Заполняем таблицу недопустимыми идентификаторами.
-    u32 InvalidFillID = INVALID::ID;
-    if (!lookup.Fill(InvalidFillID)) {
-        MERROR("Hashtable::Fill не удалось.");
-        return;
-    }
     // Делаем недействительными все идентификаторы шейдеров.
     for (u32 i = 0; i < MaxShaderCount; ++i) {
         this->shaders[i].id = INVALID::ID;

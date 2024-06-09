@@ -95,7 +95,7 @@ struct ShaderConfig {
     ShaderConfig() : name(), UseInstances(false), UseLocal(false), AttributeCount(), attributes(), UniformCount(), uniforms(), RenderpassName(), StageCount(), stages(), StageNames(), StageFilenames() {}
     //~ShaderConfig() {}
     void* operator new(u64 size) {return MMemory::Allocate(size, MemoryTag::Resource);}
-    void operator delete(void* ptr) {MMemory::Free(ptr, sizeof(ShaderConfig), MemoryTag::Resource);}
+    void operator delete(void* ptr, u64 size) {MMemory::Free(ptr, size, MemoryTag::Resource);}
 };
 
 /// @brief Представляет текущее состояние данного шейдера.

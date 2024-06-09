@@ -160,13 +160,13 @@ GeometryConfig GeometrySystem::GeneratePlaneConfig(f32 width, f32 height, u32 xS
         }
     }
 
-    if (name && MString::Lenght(name) > 0) {
+    if (name && MString::Length(name) > 0) {
         MString::nCopy(config.name, name, GEOMETRY_NAME_MAX_LENGTH);
     } else {
         MString::nCopy(config.name, DEFAULT_GEOMETRY_NAME, GEOMETRY_NAME_MAX_LENGTH);
     }
 
-    if (MaterialName && MString::Lenght(MaterialName) > 0) {
+    if (MaterialName && MString::Length(MaterialName) > 0) {
         MString::nCopy(config.MaterialName, MaterialName, MATERIAL_NAME_MAX_LENGTH);
     } else {
         MString::nCopy(config.MaterialName, DEFAULT_MATERIAL_NAME, MATERIAL_NAME_MAX_LENGTH);
@@ -195,7 +195,7 @@ bool GeometrySystem::CreateGeometry(GeometryConfig config, GeometryID *gid)
     }
 
     // Получить материал
-    if (MString::Lenght(config.MaterialName) > 0) {
+    if (MString::Length(config.MaterialName) > 0) {
         gid->material = MaterialSystem::Instance()->Acquire(config.MaterialName);
         if (!gid->material) {
             gid->material = MaterialSystem::GetDefaultMaterial();
@@ -213,7 +213,7 @@ void GeometrySystem::DestroyGeometry(GeometryID *gid)
     gid->InternalID = INVALID::ID;
     gid->generation = INVALID::ID; 
     MMemory::SetMemory(gid->name, 0, GEOMETRY_NAME_MAX_LENGTH);
-    if (gid->material && MString::Lenght(gid->material->name) > 0) {
+    if (gid->material && MString::Length(gid->material->name) > 0) {
     MaterialSystem::Instance()->Release(gid->material->name);
     gid->material = nullptr;
     }

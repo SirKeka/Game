@@ -5,21 +5,21 @@
 #include <string>
 #include <stdarg.h>
 
-constexpr MString::MString() : lenght(), str(nullptr) {}
+constexpr MString::MString() : length(), str(nullptr) {}
 
-constexpr MString::MString(u64 lenght) 
+constexpr MString::MString(u16 length) 
 :
-    lenght(lenght),
-    str(MMemory::TAllocate<char>(lenght + 1, MemoryTag::String)) {}
+    length(length),
+    str(MMemory::TAllocate<char>(length + 1, MemoryTag::String)) {}
 
-constexpr MString::MString(const char *s) : lenght(Lenght(s) + 1), str(Copy(s, lenght)) {}
+constexpr MString::MString(const char *s) : length(Length(s) ? Length(s) + 1 : 0), str(Copy(s, length)) {}
 
-constexpr MString::MString(const MString &s) : lenght(s.lenght), str(Copy(s.str, lenght)) {}
+constexpr MString::MString(const MString &s) : length(s.length), str(Copy(s)) {}
 
-constexpr MString::MString(MString &&s) : lenght(s.lenght), str(s.str) 
+constexpr MString::MString(MString &&s) : length(s.length), str(s.str) 
 {
     s.str = nullptr;
-    s.lenght = 0;
+    s.length = 0;
 }
 
 MString::~MString()
@@ -36,9 +36,9 @@ char MString::operator[](u64 i)
     }
 }
 */
-const char MString::operator[](u64 i) const
+const char MString::operator[](u16 i) const
 {
-    if (!str || i >= lenght) {
+    if (!str || i >= length) {
         return '\0';
     } else {
         return str[i];
@@ -47,26 +47,31 @@ const char MString::operator[](u64 i) const
 
 MString &MString::operator=(const MString &s)
 {
-    if (str) {
+    if (str && length != s.length) {
         Clear();
     }
-    lenght = s.lenght;
-    this->str = MMemory::TAllocate<char>(lenght, MemoryTag::String);
-
-    Copy(this->str, s.str);
-    
+    if (length != s.length) {
+        length = s.length;
+        str = new char[length]; // this->str = MMemory::TAllocate<char>(lenght, MemoryTag::String);
+    } 
+    nCopy(s, length);
     return *this;
 }
 
 MString &MString::operator=(const char *s)
 {
-    if(str) {
+    u16 slength = 0;
+    if (s && *s != '\0') {
+        slength = Length(s) + 1;
+    }
+    length = slength;
+    if(str && slength != length) {
         Clear();
     }
-    lenght = Lenght(s) + 1;
-    str = reinterpret_cast<char*>(MMemory::Allocate(lenght, MemoryTag::String));
-    //this->str = MMemory::TAllocate<char>(lenght, MemoryTag::String);
-
+    if (!str) {
+        str = new char[length]; // str = MMemory::TAllocate<char>(lenght, MemoryTag::String);
+    }
+    
     Copy(this->str, s);
     
     return *this;
@@ -74,7 +79,7 @@ MString &MString::operator=(const char *s)
 
 MString::operator bool() const
 {
-    if (str != nullptr && lenght != 0) {
+    if (str != nullptr && length != 0) {
         return true;
     }
     return false;
@@ -82,10 +87,10 @@ MString::operator bool() const
 
 bool MString::operator==(const MString &rhs)
 {
-    if (lenght != rhs.lenght) {
+    if (length != rhs.length) {
         return false;
     }
-    for (u64 i = 0; i < lenght; i++) {
+    for (u64 i = 0; i < length; i++) {
         if (str[i] != rhs.str[i]) {
             return false;
         }
@@ -97,10 +102,10 @@ bool MString::operator==(const MString &rhs)
 
 bool MString::operator==(const char *s)
 {
-    if (lenght - 1 != Lenght(s)) {
+    if (length - 1 != Length(s)) {
         return false;
     }
-    for (u64 i = 0; i < lenght; i++) {
+    for (u64 i = 0; i < length; i++) {
         if (str[i] != s[i]) {
             return false;
         }
@@ -109,14 +114,17 @@ bool MString::operator==(const char *s)
     return true;
 }
 
-const u64 MString::Lenght() const
+const u16 MString::Length() const
 {
-    return lenght - 1;
+    if (length) {
+        return length - 1;
+    }
+    return length;
 }
 
-const u64 MString::Lenght(const char *s)
+const u16 MString::Length(const char *s)
 {
-    if (!s) {
+    if (!s || *s) {
         return 0;
     }
     
@@ -133,12 +141,21 @@ const u64 MString::Lenght(const char *s)
 
 const char *MString::c_str() const noexcept
 {
-    return str;
+    if (str) {
+        return str;
+    }
+    const char* s = "";
+    return s;
 }
 
-const bool MString::Cmpi(MString string) const
+const bool MString::Comparei(const MString &string) const
 {
     return MString::Equali(str, string.str);
+}
+
+const bool MString::Comparei(const char *string) const
+{
+    return MString::Equali(str, string);
 }
 
 i32 MString::Format(char *dest, const char *format, ...)
@@ -181,29 +198,52 @@ void MString::Copy(char *dest, const char *source)
     }
 }
 
-void MString::nCopy(MString source, u64 Length)
+void MString::Copy(char *dest, const MString &source)
 {
-    MMemory::CopyMem(str, source.str, lenght);
+    Copy(dest, source.str);
 }
 
-void MString::nCopy(const char *source, u64 Length)
+void MString::nCopy(const MString& source, u64 length)
 {
-    MMemory::CopyMem(str, source, Length);
+        if(str) {
+            for (u64 i = 0; i < length; i++) {
+            str[i] = source.str[i];
+            }
+        }
 }
 
-char *MString::nCopy(char *dest, MString source, u64 length)
+void MString::nCopy(char *dest, const MString &source, u64 length)
 {
-    return strncpy(dest, source.str, length);
+    if (dest && source.str) {
+        for (u64 i = 0; i < length; i++) {
+            if (source[i]) {
+                dest[i] = source[i];
+            }
+        }
+    }
 }
 
 char* MString::Copy(const char *string, u64 lenght)
 {
-    if(string) {
-        str = MMemory::TAllocate<char>(lenght + 1, MemoryTag::String);
+    if(string && lenght) {
+        str = new char[lenght + 1]; // str = MMemory::TAllocate<char>(lenght + 1, MemoryTag::String);
         Copy(str, string);
         return str;
     }
     return nullptr;
+}
+
+char *MString::Copy(const MString &source)
+{   
+    if (str && length != source.length) {
+        Clear();
+    }
+    if (length != source.length) {
+        length = source.length;
+        str = new char[length]; // this->str = MMemory::TAllocate<char>(lenght, MemoryTag::String);
+    } 
+    nCopy(source, length);
+    return str;
 }
 
 void MString::Trim()
@@ -237,7 +277,7 @@ void MString::Mid(char *dest, MString source, i32 start, i32 length)
     if (length == 0) {
         return;
     }
-    const u64& srcLength = source.Lenght();
+    const u64& srcLength = source.Length();
     if (start >= srcLength) {
         dest[0] = '\0';
         return;
@@ -262,7 +302,7 @@ i32 MString::IndexOf(char *str, char c)
     if (!str) {
         return -1;
     }
-    u32 length = Lenght(str);
+    u32 length = Length(str);
     if (length > 0) {
         for (u32 i = 0; i < length; ++i) {
             if (str[i] == c) {
@@ -287,6 +327,11 @@ bool MString::ToVector4D(char *s, Vector4D<f32> &OutVector)
 
     i32 result = sscanf(s, "%f %f %f %f", &OutVector.x, &OutVector.y, &OutVector.z, &OutVector.w);
     return result != -1;
+}
+
+bool MString::ToVector4D(Vector4D<f32> &OutVector)
+{
+    return MString::ToVector4D(OutVector);
 }
 
 bool MString::ToVector3D(char *str, Vector3D<f32> &OutVector)
@@ -438,7 +483,7 @@ u32 MString::Split(const char *str, char delimiter, DArray<MString> &darray, boo
     MString result;
     //u32 TrimmedLength = 0;
     u32 EntryCount = 0;
-    u32 length = Lenght(str);
+    u32 length = Length(str);
     char buffer[16384];  // Если одна запись выходит за рамки этого, что ж... просто не делайте этого.
     u32 CurrentLength = 0;
     // Повторяйте каждый символ, пока не будет достигнут разделитель.
@@ -506,12 +551,32 @@ u32 MString::Split(char delimiter, DArray<MString> &darray, bool TrimEntries, bo
 void MString::Clear()
 {
     if (str) {
-        MMemory::Free(str, lenght, MemoryTag::String);
-        lenght = 0;
-        str = nullptr;
+        length = 0;
+        delete[] str; // MMemory::Free(str, lenght, MemoryTag::String);
+        // str = nullptr;
     }
 }
+/*
+void *MString::operator new(u64 size)
+{
+    return MMemory::Allocate(size, MemoryTag::String);
+}
 
+void MString::operator delete(void *ptr, u64 size)
+{
+    MMemory::Free(ptr, size, MemoryTag::String);
+}
+
+void *MString::operator new[](u64 size)
+{
+    return MMemory::Allocate(size, MemoryTag::String);
+}
+
+void MString::operator delete[](void *ptr, u64 size)
+{
+    MMemory::Free(ptr, size, MemoryTag::String);
+}
+*/
 bool MString::Equal(const char *strL, const char *strR)
 {
     return strcmp(strL, strR) == 0;

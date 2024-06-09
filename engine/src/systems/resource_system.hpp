@@ -23,21 +23,21 @@ struct ImageResourceData {
 class ResourceSystem
 {
 private:
-    static u32 MaxLoaderCount;
+    u32 MaxLoaderCount;
     // Относительный базовый путь для активов.
     const char* AssetBasePath;
 
     class ResourceLoader* RegisteredLoaders;
 
     static ResourceSystem* state;
-    ResourceSystem(const char* BasePath);
+    constexpr ResourceSystem(u32 MaxLoaderCount, const char* BasePath, ResourceLoader* RegisteredLoaders);
 public:
     ~ResourceSystem() = default;
     ResourceSystem(const ResourceSystem&) = delete;
     ResourceSystem& operator= (const ResourceSystem&) = delete;
 
-    bool Initialize(const char* BasePath);
-    void Shutdown() {}
+    static bool Initialize(u32 MaxLoaderCount, const char* BasePath);
+    static void Shutdown();
 
     template<typename T>
     bool RegisterLoader(ResourceLoader loader);
@@ -46,10 +46,9 @@ public:
     void Unload(Resource& resource);
     const char* BasePath();
 
-    static void SetMaxLoaderCount(u32 value);
-    static MINLINE ResourceSystem* Instance() {return state;}
+    static MINLINE ResourceSystem* Instance() { return state; }
 private:
     bool Load(const char* name, ResourceLoader* loader, Resource& OutResource);
 public:
-    void* operator new(u64 size);
+    // void* operator new(u64 size);
 };

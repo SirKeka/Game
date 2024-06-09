@@ -34,7 +34,7 @@ private:
     // ---------------------------------------------------------------------------------------------------------------------------------
     static ShaderSystem* state;         // Статический экземпляр (синглтон) системы шейдеров
 public:
-    ShaderSystem() : MaxUniformCount(), MaxGlobalTextures(), MaxInstanceTextures(), lookup(), LookupMemory(nullptr), CurrentShaderID(INVALID::ID), shaders(nullptr) {}
+    constexpr ShaderSystem() : MaxShaderCount(), MaxUniformCount(), MaxGlobalTextures(), MaxInstanceTextures(), LookupMemory(nullptr), lookup(), CurrentShaderID(INVALID::ID), shaders(nullptr) {}
     ShaderSystem(u16 MaxShaderCount, u8 MaxUniformCount, u8 MaxGlobalTextures, u8 MaxInstanceTextures, void* LookupMemory, Shader* shaders);
     ~ShaderSystem();
 

@@ -2,12 +2,7 @@
 #include "systems/resource_system.hpp"
 #include "loader_utils.hpp"
 
-TextLoader::TextLoader()
-{
-    type = ResourceType::Text;
-    CustomType = nullptr;
-    TypePath = "";
-}
+TextLoader::TextLoader() : ResourceLoader(ResourceType::Text, nullptr, "") {}
 
 bool TextLoader::Load(const char *name, Resource &OutResource)
 {
@@ -17,7 +12,7 @@ bool TextLoader::Load(const char *name, Resource &OutResource)
 
     const char* FormatStr = "%s/%s/%s%s";
     char FullFilePath[512];
-    MString::Format(FullFilePath, FormatStr, ResourceSystem::Instance()->BasePath(), TypePath, name, "");
+    MString::Format(FullFilePath, FormatStr, ResourceSystem::Instance()->BasePath(), TypePath.c_str(), name, "");
 
     // СДЕЛАТЬ: Здесь следует использовать распределитель.
     OutResource.FullPath = FullFilePath;
