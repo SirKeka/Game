@@ -12,7 +12,7 @@ constexpr MString::MString(u16 length)
     length(length),
     str(MMemory::TAllocate<char>(length + 1, MemoryTag::String)) {}
 
-constexpr MString::MString(const char *s) : length(Length(s) ? Length(s) + 1 : 0), str(Copy(s, length)) {}
+constexpr MString::MString(const char *s) : length(Len(s)), str(Copy(s, length)) {}
 
 constexpr MString::MString(const MString &s) : length(s.length), str(Copy(s)) {}
 
@@ -52,7 +52,7 @@ MString &MString::operator=(const MString &s)
     }
     if (length != s.length) {
         length = s.length;
-        str = new char[length]; // this->str = MMemory::TAllocate<char>(lenght, MemoryTag::String);
+        this->str = MMemory::TAllocate<char>(length, MemoryTag::String); // str = new char[length];
     } 
     nCopy(s, length);
     return *this;
@@ -69,7 +69,7 @@ MString &MString::operator=(const char *s)
         Clear();
     }
     if (!str) {
-        str = new char[length]; // str = MMemory::TAllocate<char>(lenght, MemoryTag::String);
+        str = MMemory::TAllocate<char>(length, MemoryTag::String); // str = new char[length]; 
     }
     
     Copy(this->str, s);
@@ -124,19 +124,25 @@ const u16 MString::Length() const
 
 const u16 MString::Length(const char *s)
 {
-    if (!s || *s) {
+    if (!s) {
         return 0;
     }
     
-    u64 length = 0;
+    u64 len = 0;
     while (*s) {
         if(*s != '\n') {
-            length++;
+            len++;
         }
         s++;
     }
     
-    return length;
+    return len;
+}
+
+u16 MString::Len(const char *s)
+{
+    u16 len = Length(s);
+    return len ? len + 1 : 0;
 }
 
 const char *MString::c_str() const noexcept
@@ -223,12 +229,12 @@ void MString::nCopy(char *dest, const MString &source, u64 length)
     }
 }
 
-char* MString::Copy(const char *string, u64 lenght)
+char* MString::Copy(const char *source, u64 lenght)
 {
-    if(string && lenght) {
-        str = new char[lenght + 1]; // str = MMemory::TAllocate<char>(lenght + 1, MemoryTag::String);
-        Copy(str, string);
-        return str;
+    if(source && lenght) {
+         str = MMemory::TAllocate<char>(lenght, MemoryTag::String); // this->str = new char[lenght]; 
+        Copy(this->str, source);
+        return this->str;
     }
     return nullptr;
 }
@@ -240,7 +246,7 @@ char *MString::Copy(const MString &source)
     }
     if (length != source.length) {
         length = source.length;
-        str = new char[length]; // this->str = MMemory::TAllocate<char>(lenght, MemoryTag::String);
+         this->str = MMemory::TAllocate<char>(length, MemoryTag::String); // str = new char[length];
     } 
     nCopy(source, length);
     return str;
@@ -552,7 +558,7 @@ void MString::Clear()
 {
     if (str) {
         length = 0;
-        delete[] str; // MMemory::Free(str, lenght, MemoryTag::String);
+         MMemory::Free(str, length, MemoryTag::String); // delete[] str;
         // str = nullptr;
     }
 }

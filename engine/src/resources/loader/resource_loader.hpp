@@ -3,6 +3,7 @@
 #include "core/logger.hpp"
 
 enum class ResourceType {
+    Invalid,
     Text,
     Binary,
     Image,
@@ -21,8 +22,8 @@ protected:
     MString CustomType;
     MString TypePath;
 public:
-    constexpr ResourceLoader() : id(INVALID::ID), type(), CustomType(), TypePath() {}
-    constexpr ResourceLoader(ResourceType type, const char* CustomType, const char* TypePath) : id(INVALID::ID), type(type), CustomType(CustomType), TypePath(TypePath) {}
+    // constexpr ResourceLoader() : id(INVALID::ID), type(), CustomType(), TypePath() {}
+    constexpr ResourceLoader(ResourceType type, const MString& CustomType, const MString& TypePath) : id(), type(type), CustomType(CustomType), TypePath(TypePath) {}
     virtual ~ResourceLoader() {
         id = INVALID::ID;
     };

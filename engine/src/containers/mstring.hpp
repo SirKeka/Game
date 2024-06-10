@@ -40,6 +40,9 @@ public:
     /// @param s строка в стиле си
     /// @return Длину(количество символов в строке)
     static const u16 Length(const char* s);
+private:
+    u16 Len(const char* s);
+public:
     //char* Copy(const char* s);
 
     /// @return строку типа си
@@ -68,7 +71,7 @@ public:
     void nCopy(const char* source, u64 Length);
     static void nCopy(char* dest, const MString& source, u64 length); 
 private:
-    char* Copy(const char* string, u64 length);
+    char* Copy(const char* source, u64 length);
     char* Copy(const MString& source);
 public:
     void Trim();

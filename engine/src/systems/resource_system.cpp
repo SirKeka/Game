@@ -20,11 +20,11 @@ constexpr ResourceSystem::ResourceSystem(u32 MaxLoaderCount, const char* BasePat
     // new (RegisteredLoaders) ResourceLoader[MaxLoaderCount]();
 
     // ПРИМЕЧАНИЕ: Здесь можно автоматически зарегистрировать известные типы загрузчиков.
-    RegisterLoader<TextLoader>(TextLoader());
-    RegisterLoader<BinaryLoader>(BinaryLoader());
-    RegisterLoader<ImageLoader>(ImageLoader());
-    RegisterLoader<MaterialLoader>(MaterialLoader());
-    RegisterLoader<ShaderLoader>(ShaderLoader());
+    RegisterLoader<TextLoader>(ResourceType::Text, nullptr, "");
+    RegisterLoader<BinaryLoader>(ResourceType::Binary, nullptr, "");
+    RegisterLoader<ImageLoader>(ResourceType::Image, nullptr, "textures");
+    RegisterLoader<MaterialLoader>(ResourceType::Material, nullptr, "materials");
+    RegisterLoader<ShaderLoader>(ResourceType::Shader, nullptr, "shaders");
 }
 
 bool ResourceSystem::Initialize(u32 MaxLoaderCount, const char* BasePath)
@@ -52,25 +52,24 @@ void ResourceSystem::Shutdown()
 }
 
 template<typename T>
-bool ResourceSystem::RegisterLoader(ResourceLoader loader)
+bool ResourceSystem::RegisterLoader(ResourceType type, const MString& CustomType, const MString& TypePath)
 {
     // Убедитесь, что загрузчики данного типа еще не существуют.
     for (u32 i = 0; i < MaxLoaderCount; ++i) {
         ResourceLoader* l = &RegisteredLoaders[i];
-        if (l->id != INVALID::ID) {
-            if (l->type == loader.type) {
-                MERROR("ResourceSystem::RegisterLoader — загрузчик типа %d уже существует и не будет зарегистрирован.", loader.type);
+        if (l->type != ResourceType::Invalid) {
+            if (l->type == type) {
+                MERROR("ResourceSystem::RegisterLoader — загрузчик типа %d уже существует и не будет зарегистрирован.", type);
                 return false;
-            } else if (loader.CustomType && loader.CustomType.Length() > 0 && l->CustomType.Comparei(loader.CustomType)) {
-                MERROR("ResourceSystem::RegisterLoader — загрузчик пользовательского типа %s уже существует и не будет зарегистрирован.", loader.CustomType.c_str());
+            } else if (CustomType && CustomType.Length() > 0 && l->CustomType.Comparei(CustomType)) {
+                MERROR("ResourceSystem::RegisterLoader — загрузчик пользовательского типа %s уже существует и не будет зарегистрирован.", CustomType.c_str());
                 return false;
             }
         }
     }
     for (u32 i = 0; i < MaxLoaderCount; ++i) {
-        if (RegisteredLoaders[i].id == INVALID::ID) {
-            RegisteredLoaders[i].Destroy();
-            new(reinterpret_cast<void*>(RegisteredLoaders + i)) T();
+        if (RegisteredLoaders[i].type == ResourceType::Invalid) {
+            new(RegisteredLoaders + i) T(type, CustomType, TypePath);
             RegisteredLoaders[i].id = i;
             MTRACE("Загрузчик зарегистрирован.");
             return true;

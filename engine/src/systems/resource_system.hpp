@@ -40,7 +40,7 @@ public:
     static void Shutdown();
 
     template<typename T>
-    bool RegisterLoader(ResourceLoader loader);
+    bool RegisterLoader(ResourceType type, const MString& CustomType, const MString& TypePath);
     bool Load(const char* name, ResourceType type, Resource& OutResource);
     bool Load(const char* name, const char* CustomType, Resource& OutResource);
     void Unload(Resource& resource);

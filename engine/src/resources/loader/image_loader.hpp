@@ -8,8 +8,9 @@ private:
      * ResourceType type;      *
      * const char* CustomType; *
      * const char* TypePath;   */
+    using ResourceLoader::ResourceLoader;
 public:
-    ImageLoader();
+    // ImageLoader();
     //~ImageLoader() {};
 private:
     bool Load(const char* name, struct Resource& OutResource) override;

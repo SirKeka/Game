@@ -4,7 +4,7 @@
 #include "core/mmemory.hpp"
 #include "loader_utils.hpp"
 
-ShaderLoader::ShaderLoader() : ResourceLoader(ResourceType::Shader, nullptr, "shaders") {}
+// ShaderLoader::ShaderLoader() : ResourceLoader(ResourceType::Shader, nullptr, "shaders") {}
 
 bool ShaderLoader::Load(const char *name, Resource &OutResource)
 {
@@ -13,7 +13,7 @@ bool ShaderLoader::Load(const char *name, Resource &OutResource)
     }
 
     const char* FormatStr = "%s/%s/%s%s";
-    char FullFilePath[512];
+    char FullFilePath[512]{};
     MString::Format(FullFilePath, FormatStr, ResourceSystem::Instance()->BasePath(), TypePath.c_str(), name, ".shadercfg");
 
     FileHandle f;

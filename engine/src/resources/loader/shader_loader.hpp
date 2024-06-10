@@ -17,8 +17,9 @@ private:
      * ResourceType type;      *
      * const char* CustomType; *
      * const char* TypePath;   */
+    using ResourceLoader::ResourceLoader;
 public:
-    ShaderLoader();
+    // ShaderLoader();
     // ~ShaderLoader();
 private:
     bool Load(const char* name, struct Resource& OutResource) override;

@@ -4,7 +4,7 @@
 #include "systems/resource_system.hpp"
 #include "loader_utils.hpp"
 
-MaterialLoader::MaterialLoader() : ResourceLoader(ResourceType::Material, nullptr, "materials") {}
+// MaterialLoader::MaterialLoader() : ResourceLoader(ResourceType::Material, nullptr, "materials") {}
 
 bool MaterialLoader::Load(const char *name, Resource &OutResource)
 {
