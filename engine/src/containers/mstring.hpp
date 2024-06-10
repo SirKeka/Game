@@ -14,7 +14,7 @@ private:
 
 public:
    constexpr MString();
-   constexpr MString(u16 length);
+   // constexpr MString(u16 length);
    constexpr MString(const char* s);
    constexpr MString(const MString& s);
    constexpr MString(MString&& s);
@@ -76,6 +76,10 @@ private:
 public:
     void Trim();
     static char* Trim(char* s);
+
+    /// @brief Функция зануляет строку
+    /// @param string Строка которую нужно занулить
+    static void Zero(char* string);
 
     /// @brief Получает подстроку исходной строки между началом и длиной или до конца строки. 
     /// Если длина отрицательна или равна 0, переходит к концу строки. 

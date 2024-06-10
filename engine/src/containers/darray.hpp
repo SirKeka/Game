@@ -37,7 +37,9 @@ public:
     ~DArray() {
         if(this->ptrValue) {
             Clear();
-            MMemory::Free(reinterpret_cast<void*>(ptrValue), sizeof(T) * capacity, MemoryTag::DArray);
+            MMemory::Free(ptrValue, sizeof(T) * capacity, MemoryTag::DArray);
+            size = capacity = 0;
+            ptrValue = nullptr;
         }
     }
 
@@ -115,7 +117,9 @@ public:
     void Clear() {
         if (ptrValue && size){
             for (u64 i = 0; i < size; i++) {
-                ptrValue[i].~T();
+                if (ptrValue[i]) {
+                    ptrValue[i].~T();
+                }
             }
             
             size = 0;

@@ -75,7 +75,7 @@ bool ShaderSystem::Initialize(u16 MaxShaderCount, u8 MaxUniformCount, u8 MaxGlob
 void ShaderSystem::Shutdown()
 {
     if (state) {
-        delete state;
+        state->~ShaderSystem(); // delete state;
     }
 }
 

@@ -30,7 +30,7 @@ bool ShaderLoader::Load(const char *name, Resource &OutResource)
     char LineBuf[512] = "";
     char* p = &LineBuf[0];
     u64 LineLength = 0;
-    u32 LineNumber = 1; //5
+    u32 LineNumber = 1; //12
     while (Filesystem::ReadLine(&f, 511, &p, LineLength)) {
         // Обрежьте строку.
         MString line{LineBuf}; // MString::Trim(LineBuf)
@@ -156,9 +156,9 @@ bool ShaderLoader::Load(const char *name, Resource &OutResource)
                 // Возьмите копию имени атрибута.
                 attribute.NameLength = fields[1].Length();
                 attribute.name = fields[1];
-
+                
                 // Добавьте атрибут.
-                ResourceData->attributes.PushBack(attribute);
+                ResourceData->attributes.PushBack(attribute); // 
                 ResourceData->AttributeCount++;
             }
 

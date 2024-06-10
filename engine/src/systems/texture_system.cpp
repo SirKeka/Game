@@ -139,7 +139,7 @@ void TextureSystem::Release(const char* name)
 
         // Возьмите копию имени, так как оно будет уничтожено при уничтожении 
         // (поскольку имя передается как указатель на фактическое имя текстуры).
-        MString NameCopy = MString(TEXTURE_NAME_MAX_LENGTH);
+        MString NameCopy; // { TEXTURE_NAME_MAX_LENGTH };
         NameCopy = name;
 
         ref.ReferenceCount--;
