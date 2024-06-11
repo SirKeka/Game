@@ -63,10 +63,12 @@ void FreeList::Create(u64 TotalSize, void *memory)
 
     // Сделайте недействительными смещение и размер для всех узлов, кроме первого. 
     // Недопустимое значение будет проверяться при поиске нового узла из списка.
+    /*
     for (u64 i = 1; i < state->MaxNodes; ++i) {
         state->nodes[i].offset = INVALID::ID;
         state->nodes[i].size = INVALID::ID;
     }
+    */
 }
 
 bool FreeList::AllocateBlock(u64 size, u64 &OutOffset)
@@ -108,6 +110,10 @@ bool FreeList::AllocateBlock(u64 size, u64 &OutOffset)
 
 bool FreeList::FreeBlock(u64 size, u64 offset)
 {
+    if (!size) {
+        return false;
+    }
+    
     FreelistNode* node = state->head;
     FreelistNode* previous = nullptr;
     if (!node) {
@@ -121,7 +127,7 @@ bool FreeList::FreeBlock(u64 size, u64 offset)
         return true;
     } else {
         while (node) {
-            if (node->offset == offset) {
+            if (node->offset + node->size == offset) {
                 // Можно просто добавить к этому узлу.
                 node->size += size;
 
@@ -134,6 +140,10 @@ bool FreeList::FreeBlock(u64 size, u64 offset)
                     ReturnNode(next);
                 }
                 return true;
+            } else if(node->offset == offset) {
+                // Если есть точное совпадение, это означает, что точный блок памяти
+                // который уже свободен, освобождается снова.
+                MFATAL("Попытка освободить уже освобожденный блок памяти со смещением %llu", node->offset);
             } else if (node->offset > offset) {
                 // Выходит за пределы освобождаемого пространства. Нужен новый узел.
                 FreelistNode* NewNode = GetNode();
@@ -165,6 +175,17 @@ bool FreeList::FreeBlock(u64 size, u64 offset)
                     previous->next = rubbish->next;
                     ReturnNode(rubbish);
                 }
+
+                return true;
+            }
+
+            // Если на последнем узле смещение + размер < свободное смещение, требуется новый узел.
+            if (!node->next && node->offset + node->size < offset) {
+                FreelistNode* NewNode = GetNode();
+                NewNode->offset = offset;
+                NewNode->size = size;
+                NewNode->next = nullptr;
+                node->next = NewNode;
 
                 return true;
             }
@@ -204,12 +225,9 @@ bool FreeList::Resize(void *NewMemory, u64 NewSize, void **OutOldMemory)
     state->MaxNodes = MaxNodes;
     state->TotalSize = NewSize;
 
-    // Сделайте недействительными смещение и размер для всех узлов, кроме первого. 
+    // Сделайте недействительным смещение для всех узлов, кроме первого. 
     // Недопустимое значение будет проверяться при поиске нового узла из списка.
-    for (u64 i = 1; i < state->MaxNodes; ++i) {
-        state->nodes[i].offset = INVALID::ID;
-        state->nodes[i].size = INVALID::ID;
-    }
+    MMemory::ZeroMem(state->nodes, sizeof(FreelistNode) * state->MaxNodes);
 
     state->head = &state->nodes[0];
 
@@ -265,12 +283,9 @@ void FreeList::Clear()
         return;
     }
 
-    // Сделайте недействительными смещение и размер для всех узлов, кроме первого. 
+    // Сделайте недействительным смещение для всех узлов, кроме первого. 
     // Недопустимое значение будет проверяться при поиске нового узла из списка.
-    for (u64 i = 1; i < state->MaxNodes; ++i) {
-        state->nodes[i].offset = INVALID::ID;
-        state->nodes[i].size = INVALID::ID;
-    }
+    MMemory::ZeroMem(state->nodes, sizeof(FreelistNode) * state->MaxNodes);
 
     // Сбросьте настройки заголовка, чтобы занять всю вещь.
     state->head->offset = 0;
@@ -307,7 +322,9 @@ FreelistNode *FreeList::GetNode()
 {
     //InternalState* state = reinterpret_cast<InternalState*>(state->memory);
     for (u64 i = 1; i < state->MaxNodes; ++i) {
-        if (state->nodes[i].offset == INVALID::ID) {
+        if (state->nodes[i].size == 0) {
+            state->nodes[i].next = nullptr;
+            state->nodes[i].offset = 0;
             return &state->nodes[i];
         }
     }

@@ -121,7 +121,9 @@ struct ShaderAttribute {
     MString name;                               // Имя атрибута.
     ShaderAttributeType type;                   // Тип атрибута.
     u32 size;                                   // Размер атрибута в байтах.
+    constexpr ShaderAttribute() : name(), type(), size() {}
     constexpr ShaderAttribute(const MString& name, ShaderAttributeType type, u32 size) : name(name), type(type), size(size) {}
+    constexpr ShaderAttribute(const ShaderAttribute& sa) : name(sa.name), type(sa.type), size(sa.size) {}
 };  
 
 /// @brief Представляет шейдер во внешнем интерфейсе.

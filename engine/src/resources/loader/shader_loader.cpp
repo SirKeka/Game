@@ -166,7 +166,7 @@ bool ShaderLoader::Load(const char *name, Resource &OutResource)
             //fields.Destroy();
         } else if (TrimmedVarName.Comparei("uniform")) {
             // Анализ униформы.
-            DArray<MString>fields;
+            DArray<MString> fields;
             u32 FieldCount = TrimmedValue.Split(',', fields, true, true);
             if (FieldCount != 3) {
                 MERROR("ShaderLoader::Load: Недопустимый макет файла. Унифицированные поля должны иметь следующий вид: «тип, область действия, имя». Пропуск.");
@@ -279,7 +279,7 @@ void ShaderLoader::Unload(Resource &resource)
     // data->RenderpassName.Destroy();
     // data->name.Destroy();
     //kzero_memory(data, sizeof(shader_config));
-
+    // СДЕЛАТЬ: Нужность этой функции под вопросом
     if (!LoaderUtils::ResourceUnload(this, resource, MemoryTag::Resource)) {
         MWARN("ShaderLoader::Unload вызывается с nullptr для себя или ресурса.");
     }

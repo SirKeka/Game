@@ -93,7 +93,7 @@ void *DynamicAllocator::Allocate(u64 size)
         // Попытайтесь выделить из свободного списка.
         if (state->list.AllocateBlock(size, offset)) {
             // Используйте это смещение относительно блока базовой памяти, чтобы получить блок.
-            u8* block = (reinterpret_cast<u8*>(state->MemoryBlock)) + offset;
+            u8* block = (reinterpret_cast<u8*>(state->MemoryBlock) + offset);
             return block;
         } else {
             MERROR("DynamicAllocator::Allocate нет блоков памяти, достаточно больших для выделения.");

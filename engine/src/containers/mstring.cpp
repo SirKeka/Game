@@ -46,11 +46,11 @@ MString &MString::operator=(const MString &s)
 {
     if (str && length != s.length) {
         Clear();
-    }
+    } else
     if (length != s.length) {
         length = s.length;
-        this->str = MMemory::TAllocate<char>(length, MemoryTag::String);
-        // str = new char[length]; 
+        // this->str = MMemory::TAllocate<char>(length, MemoryTag::String);
+        str = new char[length]; 
     } 
     nCopy(s, length);
     return *this;
@@ -67,8 +67,8 @@ MString &MString::operator=(const char *s)
     }
     length = slength;
     if (!str) {
-        str = MMemory::TAllocate<char>(length, MemoryTag::String);
-        // str = new char[length]; 
+        // str = MMemory::TAllocate<char>(length, MemoryTag::String);
+        str = new char[length]; 
     }
     
     Copy(this->str, s);
@@ -231,8 +231,8 @@ void MString::nCopy(char *dest, const MString &source, u64 length)
 char* MString::Copy(const char *source, u64 lenght)
 {
     if(source && lenght) {
-        str = MMemory::TAllocate<char>(lenght, MemoryTag::String);
-        // this->str = new char[lenght]; 
+        // str = MMemory::TAllocate<char>(lenght, MemoryTag::String);
+        str = new char[lenght]; 
         Copy(str, source);
         return str;
     }
@@ -244,8 +244,8 @@ char *MString::Copy(const MString &source)
     if (!source) {
         return nullptr;
     }
-    str = MMemory::TAllocate<char>(length, MemoryTag::String); 
-    // str = new char[length]; 
+    // str = MMemory::TAllocate<char>(length, MemoryTag::String); 
+    str = new char[length]; 
     nCopy(source, length);
     return str;
 }
@@ -508,12 +508,7 @@ u32 MString::Split(const char *str, char delimiter, DArray<MString> &darray, boo
         if (c == delimiter) {
             buffer[CurrentLength] = '\0';
             result = buffer;
-            //TrimmedLength = CurrentLength;
-            // Обрезать, если применимо
-            /*if (TrimEntries && CurrentLength > 0) {
-                result.Trim();
-                TrimmedLength = result.Lenght();
-            }*/
+            
             // Добавить новую запись
             if (IncludeEmpty || result) {
                 if (!result) {
@@ -537,12 +532,7 @@ u32 MString::Split(const char *str, char delimiter, DArray<MString> &darray, boo
 
     // В конце строки. Если какие-либо символы поставлены в очередь, прочитайте их.
     result = buffer;
-    //TrimmedLength = CurrentLength;
-    // Обрезать, если применимо
-    /*if (TrimEntries && CurrentLength > 0) {
-        result.Trim();
-        TrimmedLength = result.Lenght();
-    }*/
+    
     // Добавить новую запись
     if (IncludeEmpty || result) {
         if (!result) {
@@ -565,8 +555,8 @@ u32 MString::Split(char delimiter, DArray<MString> &darray, bool TrimEntries, bo
 void MString::Clear()
 {
     if (str) {
-        MMemory::Free(str, length, MemoryTag::String); 
-        // delete[] str; 
+        // MMemory::Free(str, length, MemoryTag::String); 
+        delete[] str; 
         length = 0;
         str = nullptr;
     }

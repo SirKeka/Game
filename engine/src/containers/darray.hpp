@@ -22,12 +22,13 @@ private:
 // Функции
 public:
     constexpr DArray() : size(), capacity(), ptrValue(nullptr) {}
-    constexpr DArray(u64 capacity) : size(), capacity(capacity), ptrValue(capacity ? MMemory::TAllocate<T>(capacity, MemoryTag::DArray) : nullptr) {}
+    constexpr DArray(u64 capacity) : size(), capacity(capacity), ptrValue(capacity ? /*MMemory::TAllocate<T>(capacity, MemoryTag::DArray)*/ new T[capacity]() : nullptr) {}
     constexpr DArray(u64 size, const T& value) {
         if(size > 0) {
             this->size = size;
             this->capacity = size;
-            ptrValue = MMemory::TAllocate<T>(capacity, MemoryTag::DArray);
+            // ptrValue = MMemory::TAllocate<T>(capacity, MemoryTag::DArray);
+            ptrValue = new T[capacity]();
             for (u64 i = 0; i < size; i++) {
                 ptrValue[i] = value;
             }
@@ -37,7 +38,8 @@ public:
     ~DArray() {
         if(this->ptrValue) {
             Clear();
-            MMemory::Free(ptrValue, sizeof(T) * capacity, MemoryTag::DArray);
+            // MMemory::Free(ptrValue, sizeof(T) * capacity, MemoryTag::DArray);
+            delete[] ptrValue;
             size = capacity = 0;
             ptrValue = nullptr;
         }
@@ -91,13 +93,16 @@ public:
     void Reserve(u64 NewCap) {
         // TODO: добавить std::move()
         if (capacity == 0) {
-            ptrValue = MMemory::TAllocate<T>(NewCap, MemoryTag::DArray);
+            // ptrValue = MMemory::TAllocate<T>(NewCap, MemoryTag::DArray);
+            ptrValue = new T[NewCap]();
             capacity = NewCap;
         }
         else if (NewCap > capacity) {
-            T* ptrNew = MMemory::TAllocate<T>(NewCap, MemoryTag::DArray);
+            // T* ptrNew = MMemory::TAllocate<T>(NewCap, MemoryTag::DArray);
+            T* ptrNew = new T[NewCap]();
             MMemory::CopyMem(ptrNew, ptrValue, sizeof(T) * capacity);
-            MMemory::Free(ptrValue, sizeof(T) * capacity, MemoryTag::DArray);
+            // MMemory::Free(ptrValue, sizeof(T) * capacity, MemoryTag::DArray);
+            delete[] ptrValue;
             ptrValue = ptrNew;
             capacity = NewCap;
         }
@@ -117,9 +122,7 @@ public:
     void Clear() {
         if (ptrValue && size){
             for (u64 i = 0; i < size; i++) {
-                if (ptrValue[i]) {
-                    ptrValue[i].~T();
-                }
+                ptrValue[i].~T();
             }
             
             size = 0;
@@ -130,8 +133,7 @@ public:
     void PushBack(const T& value) {
         if(size == 0) {
             Reserve(2);
-        }
-        if(size == capacity) {
+        } else if(size == capacity) {
             Reserve(capacity * 2);
         }
         // ptrValue + size = new(ptrValue + size) T(value);
@@ -147,8 +149,8 @@ public:
     /// @brief Удаляет последний элемент контейнера.
     void PopBack() {
         if(size > 0) {
-            size--;
             ptrValue[size].~T();
+            size--;
         }
     }
 
