@@ -22,13 +22,12 @@ private:
 // Функции
 public:
     constexpr DArray() : size(), capacity(), ptrValue(nullptr) {}
-    constexpr DArray(u64 capacity) : size(), capacity(capacity), ptrValue(capacity ? /*MMemory::TAllocate<T>(capacity, MemoryTag::DArray)*/ new T[capacity]() : nullptr) {}
+    constexpr DArray(u64 capacity) : size(), capacity(capacity), ptrValue(capacity ? MMemory::TAllocate<T>(MemoryTag::DArray, capacity) : nullptr) {}
     constexpr DArray(u64 size, const T& value) {
         if(size > 0) {
             this->size = size;
             this->capacity = size;
-            // ptrValue = MMemory::TAllocate<T>(capacity, MemoryTag::DArray);
-            ptrValue = new T[capacity]();
+            ptrValue = MMemory::TAllocate<T>(MemoryTag::DArray, capacity);
             for (u64 i = 0; i < size; i++) {
                 ptrValue[i] = value;
             }
@@ -38,8 +37,7 @@ public:
     ~DArray() {
         if(this->ptrValue) {
             Clear();
-            // MMemory::Free(ptrValue, sizeof(T) * capacity, MemoryTag::DArray);
-            delete[] ptrValue;
+            MMemory::Free(ptrValue, sizeof(T) * capacity, MemoryTag::DArray);
             size = capacity = 0;
             ptrValue = nullptr;
         }
@@ -93,16 +91,13 @@ public:
     void Reserve(u64 NewCap) {
         // TODO: добавить std::move()
         if (capacity == 0) {
-            // ptrValue = MMemory::TAllocate<T>(NewCap, MemoryTag::DArray);
-            ptrValue = new T[NewCap]();
+            ptrValue = MMemory::TAllocate<T>(MemoryTag::DArray, NewCap);
             capacity = NewCap;
         }
         else if (NewCap > capacity) {
-            // T* ptrNew = MMemory::TAllocate<T>(NewCap, MemoryTag::DArray);
-            T* ptrNew = new T[NewCap]();
+            T* ptrNew = MMemory::TAllocate<T>(MemoryTag::DArray, NewCap);
             MMemory::CopyMem(ptrNew, ptrValue, sizeof(T) * capacity);
-            // MMemory::Free(ptrValue, sizeof(T) * capacity, MemoryTag::DArray);
-            delete[] ptrValue;
+            MMemory::Free(ptrValue, sizeof(T) * capacity, MemoryTag::DArray);
             ptrValue = ptrNew;
             capacity = NewCap;
         }

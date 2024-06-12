@@ -559,7 +559,7 @@ bool VulkanAPI::ShaderAcquireInstanceResources(Shader *shader, u32 &OutInstanceI
     VulkanShaderInstanceState& InstanceState = VkShader->InstanceStates[OutInstanceID];
     u32 InstanceTextureCount = VkShader->config.DescriptorSets[DESC_SET_INDEX_INSTANCE].bindings[BINDING_INDEX_SAMPLER].descriptorCount;
     // Очистите память всего массива, даже если она не вся использована.
-    InstanceState.InstanceTextures = MMemory::TAllocate<Texture*>(shader->InstanceTextureCount, MemoryTag::Array);
+    InstanceState.InstanceTextures = MMemory::TAllocate<Texture*>(MemoryTag::Array, shader->InstanceTextureCount);
     Texture* DefaultTexture = TextureSystem::Instance()->GetDefaultTexture();
     // Установите для всех указателей текстур значения по умолчанию, пока они не будут назначены.
     for (u32 i = 0; i < InstanceTextureCount; ++i) {

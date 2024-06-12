@@ -73,7 +73,7 @@ public:
     void Reserve(const u64& NewCap) {
         // TODO: добавить std::move()
         if (capacity == 0) {
-            ptrValue = MMemory::TAllocate<T>(NewCap, MemoryTag::DArray);
+            ptrValue = MMemory::TAllocate<T>(MemoryTag::DArray, NewCap);
             capacity = NewCap;
         }
         else if (NewCap > capacity) {

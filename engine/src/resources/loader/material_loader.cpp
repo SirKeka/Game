@@ -13,7 +13,7 @@ bool MaterialLoader::Load(const char *name, Resource &OutResource)
     }
 
     const char* FormatStr = "%s/%s/%s%s";
-    char FullFilePath[512];
+    char FullFilePath[512]{};
     MString::Format(FullFilePath, FormatStr, ResourceSystem::Instance()->BasePath(), TypePath.c_str(), name, ".mmt");
 
     FileHandle f;
@@ -80,9 +80,7 @@ bool MaterialLoader::Load(const char *name, Resource &OutResource)
             } 
         } else if (TrimmedVarName.Comparei("Shader")) {
             // Возьмите копию названия материала.
-            if (TrimmedValue.Comparei("ui")) {
-                ResourceData->ShaderName = TrimmedValue;
-                 }
+            ResourceData->ShaderName = TrimmedValue;
         }
 
         // TODO: больше полей.

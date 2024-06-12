@@ -132,7 +132,7 @@ Material *MaterialSystem::Acquire(const char *name)
     return m;
 }
 
-Material *MaterialSystem::Acquire(MaterialConfig config)
+Material *MaterialSystem::Acquire(const MaterialConfig &config)
 {
     // Вернуть материал по умолчанию.
     if (MString::Equali(config.name, DEFAULT_MATERIAL_NAME)) {
@@ -330,7 +330,7 @@ bool MaterialSystem::CreateDefaultMaterial()
     return true;
 }
 
-bool MaterialSystem::LoadMaterial(MaterialConfig config, Material *m)
+bool MaterialSystem::LoadMaterial(const MaterialConfig &config, Material *m)
 { 
     MMemory::ZeroMem(m, sizeof(Material));
 

@@ -175,7 +175,7 @@ GeometryConfig GeometrySystem::GeneratePlaneConfig(f32 width, f32 height, u32 xS
     return config;
 }
 
-bool GeometrySystem::CreateGeometry(GeometryConfig config, GeometryID *gid)
+bool GeometrySystem::CreateGeometry(const GeometryConfig &config, GeometryID *gid)
 {
     if (!config.VertexCount || !config.vertices) {
         MERROR("VulkanAPI::CreateGeometry требует данных вершин, но они не были предоставлены. VertexCount=%d, vertices=%p", config.VertexCount, config.vertices);
@@ -304,7 +304,7 @@ GeometryID *GeometrySystem::Acquire(u32 id)
     return nullptr;
 }
 
-GeometryID *GeometrySystem::Acquire(GeometryConfig config, bool AutoRelease)
+GeometryID *GeometrySystem::Acquire(const GeometryConfig& config, bool AutoRelease)
 {
     GeometryID* g = nullptr;
     GeometryReference* buf = this->RegisteredGeometries; // После функции CreateGeometries слетает указатель RegisteredGeometries по этому мы адрес на который он указывает сохраняем в буфере

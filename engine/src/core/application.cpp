@@ -25,7 +25,7 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
     }
 
     GameInst->state = MMemory::Allocate(GameInst->StateMemoryRequirement, MemoryTag::Application);
-    GameInst->application->State = MMemory::TAllocate<ApplicationState>(1, MemoryTag::Application);
+    GameInst->application->State = MMemory::TAllocate<ApplicationState>(MemoryTag::Application);
     State = GameInst->application->State;
     State->GameInst = GameInst;
 

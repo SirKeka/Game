@@ -84,7 +84,7 @@ MINLINE void MMemory::Shutdown()
     }
 }
 
-void *MMemory::Allocate(u64 bytes, MemoryTag tag)
+void *MMemory::Allocate(u64 bytes, MemoryTag tag, bool def)
 {
     if (tag == MemoryTag::Unknown) {
         MWARN("allocate вызывается с использованием MemoryTag::Unknown. Переклассифицировать это распределение.");
@@ -93,14 +93,16 @@ void *MMemory::Allocate(u64 bytes, MemoryTag tag)
     // Либо выделяйте из системного распределителя, либо из ОС. Последнее никогда не должно произойти.
     u8* block = nullptr;
 
-    if (state) {
+    if (state || !def) {
         state->TotalAllocated += bytes;
         state->TaggedAllocations[static_cast<u32>(tag)] += bytes;
         state->AllocCount++;
         block = reinterpret_cast<u8*>(state->allocator.Allocate(bytes));
     } else {
-        // Если система еще не запустилась, предупредите об этом, но дайте пока память.
-        MWARN("Memory::Allocate вызывается перед инициализацией системы памяти.");
+        if (!state) {
+            // Если система еще не запустилась, предупредите об этом, но дайте пока память.
+            MWARN("Memory::Allocate вызывается перед инициализацией системы памяти.");
+        }
         // СДЕЛАТЬ: Memory alignment
         block = new u8[bytes]; //platform_allocate(size, false);
     }
@@ -114,13 +116,13 @@ void *MMemory::Allocate(u64 bytes, MemoryTag tag)
     return nullptr;
 }
 
-void MMemory::Free(void *block, u64 bytes, MemoryTag tag)
+void MMemory::Free(void *block, u64 bytes, MemoryTag tag, bool def)
 {
     if (block) {
         if (tag == MemoryTag::Unknown) {
             MWARN("free вызывается с использованием MemoryTag::Unknown. Переклассифицировать это распределение.");
         }
-        if (state) {
+        if (state || !def) {
             state->TotalAllocated -= bytes;
             state->TaggedAllocations[static_cast<u32>(tag)] -= bytes;
             state->AllocCount--;
@@ -134,7 +136,7 @@ void MMemory::Free(void *block, u64 bytes, MemoryTag tag)
                 u8* ptrRawMem = reinterpret_cast<u8*>(block);
                 delete[] ptrRawMem;                             //platform_free(block, false);
             }
-        } else {
+        } else if (!state || def) {
             u8* ptrRawMem = reinterpret_cast<u8*>(block);
             delete[] ptrRawMem;                             //platform_free(block, false);
         }

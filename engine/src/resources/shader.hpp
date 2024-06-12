@@ -58,7 +58,7 @@ enum class ShaderScope {
 
 /// @brief Конфигурация атрибута.
 struct ShaderAttributeConfig {
-    u8 NameLength;                              // Длина имени.
+    // u8 NameLength;                              // Длина имени.
     MString name;                               // Имя атрибута.
     u8 size;                                    // Размер атрибута.
     ShaderAttributeType type;                   // Тип атрибута.
@@ -68,7 +68,7 @@ struct ShaderAttributeConfig {
 
 /// @brief Конфигурация униформы.
 struct ShaderUniformConfig {
-    u8 NameLength;                              // Длина имени.
+    // u8 NameLength;                           // Длина имени.
     MString name;                               // Название униформы.
     u8 size;                                    // Размер униформы.
     u32 location;                               // Расположение униформы.

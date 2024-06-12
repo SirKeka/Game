@@ -46,11 +46,10 @@ MString &MString::operator=(const MString &s)
 {
     if (str && length != s.length) {
         Clear();
-    } else
+    }
     if (length != s.length) {
         length = s.length;
-        // this->str = MMemory::TAllocate<char>(length, MemoryTag::String);
-        str = new char[length]; 
+        str = MMemory::TAllocate<char>(MemoryTag::String, length);
     } 
     nCopy(s, length);
     return *this;
@@ -67,8 +66,7 @@ MString &MString::operator=(const char *s)
     }
     length = slength;
     if (!str) {
-        // str = MMemory::TAllocate<char>(length, MemoryTag::String);
-        str = new char[length]; 
+        str = MMemory::TAllocate<char>(MemoryTag::String, length);
     }
     
     Copy(this->str, s);
@@ -84,7 +82,7 @@ MString::operator bool() const
     return false;
 }
 
-bool MString::operator==(const MString &rhs)
+bool MString::operator==(const MString &rhs) const
 {
     if (length != rhs.length) {
         return false;
@@ -99,12 +97,12 @@ bool MString::operator==(const MString &rhs)
     return true;
 }
 
-bool MString::operator==(const char *s)
+bool MString::operator==(const char *s) const
 {
     if (length - 1 != Length(s)) {
         return false;
     }
-    for (u64 i = 0; i < length; i++) {
+    for (u64 i = 0; i < length - 1; i++) {
         if (str[i] != s[i]) {
             return false;
         }
@@ -231,8 +229,7 @@ void MString::nCopy(char *dest, const MString &source, u64 length)
 char* MString::Copy(const char *source, u64 lenght)
 {
     if(source && lenght) {
-        // str = MMemory::TAllocate<char>(lenght, MemoryTag::String);
-        str = new char[lenght]; 
+        str = MMemory::TAllocate<char>(MemoryTag::String, length); 
         Copy(str, source);
         return str;
     }
@@ -244,8 +241,7 @@ char *MString::Copy(const MString &source)
     if (!source) {
         return nullptr;
     }
-    // str = MMemory::TAllocate<char>(length, MemoryTag::String); 
-    str = new char[length]; 
+    str = MMemory::TAllocate<char>(MemoryTag::String, length); 
     nCopy(source, length);
     return str;
 }
@@ -345,7 +341,7 @@ bool MString::ToVector4D(char *s, Vector4D<f32> &OutVector)
 
 bool MString::ToVector4D(Vector4D<f32> &OutVector)
 {
-    return MString::ToVector4D(OutVector);
+    return MString::ToVector4D(str, OutVector);
 }
 
 bool MString::ToVector3D(char *str, Vector3D<f32> &OutVector)
@@ -555,8 +551,7 @@ u32 MString::Split(char delimiter, DArray<MString> &darray, bool TrimEntries, bo
 void MString::Clear()
 {
     if (str) {
-        // MMemory::Free(str, length, MemoryTag::String); 
-        delete[] str; 
+        MMemory::Free(str, length, MemoryTag::String);  
         length = 0;
         str = nullptr;
     }

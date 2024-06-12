@@ -31,7 +31,7 @@ bool BinaryLoader::Load(const char *name, Resource &OutResource)
     }
 
     // TODO: Здесь следует использовать распределитель.
-    u8* ResourceData = MMemory::TAllocate<u8>(FileSize, MemoryTag::Array);
+    u8* ResourceData = MMemory::TAllocate<u8>(MemoryTag::Array, FileSize);
     u64 ReadSize = 0;
     if (!Filesystem::ReadAllBytes(&f, ResourceData, ReadSize)) {
         MERROR("Невозможно прочитать файл в двоичном формате: %s.", FullFilePath);

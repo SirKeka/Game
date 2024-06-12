@@ -60,15 +60,6 @@ void FreeList::Create(u64 TotalSize, void *memory)
     state->head->offset = 0;
     state->head->size = TotalSize;
     state->head->next = nullptr;
-
-    // Сделайте недействительными смещение и размер для всех узлов, кроме первого. 
-    // Недопустимое значение будет проверяться при поиске нового узла из списка.
-    /*
-    for (u64 i = 1; i < state->MaxNodes; ++i) {
-        state->nodes[i].offset = INVALID::ID;
-        state->nodes[i].size = INVALID::ID;
-    }
-    */
 }
 
 bool FreeList::AllocateBlock(u64 size, u64 &OutOffset)

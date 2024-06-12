@@ -109,7 +109,7 @@ bool ShaderLoader::Load(const char *name, Resource &OutResource)
             TrimmedValue.ToBool(ResourceData->UseLocal);
         } else if (TrimmedVarName.Comparei("attribute")) {
             // Анализ атрибута.
-            DArray<MString>fields;
+            DArray<MString>fields{2};
             u32 FieldCount = TrimmedValue.Split(',', fields, true, true);
             if (FieldCount != 2) {
                 MERROR("ShaderLoader::Load: Недопустимый макет файла. Поля атрибутов должны иметь формат «тип, имя». Пропуск.");
@@ -154,7 +154,7 @@ bool ShaderLoader::Load(const char *name, Resource &OutResource)
                 }
 
                 // Возьмите копию имени атрибута.
-                attribute.NameLength = fields[1].Length();
+                // attribute.NameLength = fields[1].Length();
                 attribute.name = fields[1];
                 
                 // Добавьте атрибут.
@@ -166,7 +166,7 @@ bool ShaderLoader::Load(const char *name, Resource &OutResource)
             //fields.Destroy();
         } else if (TrimmedVarName.Comparei("uniform")) {
             // Анализ униформы.
-            DArray<MString> fields;
+            DArray<MString>fields{3};
             u32 FieldCount = TrimmedValue.Split(',', fields, true, true);
             if (FieldCount != 3) {
                 MERROR("ShaderLoader::Load: Недопустимый макет файла. Унифицированные поля должны иметь следующий вид: «тип, область действия, имя». Пропуск.");
@@ -230,7 +230,7 @@ bool ShaderLoader::Load(const char *name, Resource &OutResource)
                 }
 
                 // Возьмите копию имени атрибута.
-                uniform.NameLength = fields[2].Length();
+                // uniform.NameLength = fields[2].Length();
                 uniform.name = fields[2];
 
                 // Добавьте атрибут.

@@ -30,8 +30,8 @@ public:
 
     explicit operator bool() const;
 
-    bool operator== (const MString& rhs);
-    bool operator== (const char* s);
+    bool operator== (const MString& rhs) const;
+    bool operator== (const char* s) const;
 
     /// @brief Получает длину заданной строки.
     /// @return Длину(количество символов в строке)

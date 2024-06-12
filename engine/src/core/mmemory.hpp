@@ -81,18 +81,21 @@ public:
     /// @brief Функция выделяет память
     /// @param bytes размер выделяемой памяти в байтах
     /// @param tag название(тег) для каких нужд используется память
+    /// @param def использовать стандартный new при выделении памяти. Поумолчанию false
     /// @return указатель на выделенный блок памяти
-    static void* Allocate(u64 bytes, MemoryTag tag);
+    static void* Allocate(u64 bytes, MemoryTag tag, bool def = false);
 
     template<typename T>
-    static T* TAllocate(u64 size, MemoryTag tag) {
-        return (reinterpret_cast<T*>(Allocate(size * sizeof(T), tag)));
+    static T* TAllocate(MemoryTag tag, u64 size = 1, bool def = false) {
+        u64 bytes = sizeof(T) * size;
+        return (reinterpret_cast<T*>(Allocate(bytes, tag, def)));
     }
     /// @brief Функция освобождает память
     /// @param block указатель на блок памяти, который нужно освободить
     /// @param bytes размер блока памяти в байтах
     /// @param tag название(тег) для чего использовалась память
-    static void Free(void* block, u64 bytes, MemoryTag tag);
+    /// @param def использовать стандартный new при выделении памяти. Если при выделении памяти использовался. Поумолчанию false
+    static void Free(void* block, u64 bytes, MemoryTag tag, bool def = false);
     /// @brief Функция зануляет выделенный блок памяти
     /// @param block указатель на блок памяти, который нужно обнулить
     /// @param bytes размер блока памяти в байтах

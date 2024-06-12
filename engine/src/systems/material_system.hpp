@@ -88,7 +88,7 @@ public:
     /// Если материал не найден, возвращается указатель на материал по умолчанию. Если материал _найден и загружен, его счетчик ссылок увеличивается.
     /// @param config конфигурация загружаемого материала
     /// @return Указатель на загруженный материал. Может быть указателем на материал по умолчанию, если он не найден.
-    Material* Acquire(MaterialConfig config);
+    Material* Acquire(const MaterialConfig& config);
     void Release(const char* name);
     /// @brief Применяет данные глобального уровня для идентификатора шейдера материала.
     /// @param ShaderID идентификатор шейдера, к которому применяются глобальные переменные.
@@ -108,7 +108,7 @@ public:
 
 private:
     bool CreateDefaultMaterial();
-    bool LoadMaterial(MaterialConfig config, Material* m);
+    bool LoadMaterial(const MaterialConfig& config, Material* m);
     void DestroyMaterial(Material* m);
 
 public:

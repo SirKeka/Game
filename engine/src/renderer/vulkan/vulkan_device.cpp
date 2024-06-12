@@ -171,7 +171,7 @@ void VulkanDevice::QuerySwapchainSupport(
 
     if (OutSupportInfo->FormatCount != 0) {
         if (!OutSupportInfo->formats) { // раскоментировать или закоментировать знак ! если будет ошибка
-            OutSupportInfo->formats = MMemory::TAllocate<VkSurfaceFormatKHR>(OutSupportInfo->FormatCount, MemoryTag::Renderer);
+            OutSupportInfo->formats = MMemory::TAllocate<VkSurfaceFormatKHR>(MemoryTag::Renderer, OutSupportInfo->FormatCount);
         }
         VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(
             PhysicalDevice,
@@ -188,7 +188,7 @@ void VulkanDevice::QuerySwapchainSupport(
         0));
     if (OutSupportInfo->PresentModeCount != 0) {
         if (!OutSupportInfo->PresentModes) { // раскоментировать или закоментировать знак ! если будет ошибка
-            OutSupportInfo->PresentModes = MMemory::TAllocate<VkPresentModeKHR>(OutSupportInfo->PresentModeCount, MemoryTag::Renderer);
+            OutSupportInfo->PresentModes = MMemory::TAllocate<VkPresentModeKHR>(MemoryTag::Renderer, OutSupportInfo->PresentModeCount);
         }
         VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(
             PhysicalDevice,
@@ -481,7 +481,7 @@ bool VulkanDevice::PhysicalDeviceMeetsRequirements(
                 &AvailableExtensionCount,
                 0));
             if (AvailableExtensionCount != 0) {
-                AvailableExtensions = MMemory::TAllocate<VkExtensionProperties>(AvailableExtensionCount, MemoryTag::Renderer);
+                AvailableExtensions = MMemory::TAllocate<VkExtensionProperties>(MemoryTag::Renderer, AvailableExtensionCount);
                 VK_CHECK(vkEnumerateDeviceExtensionProperties(
                     device,
                     0,

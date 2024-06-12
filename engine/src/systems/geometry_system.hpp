@@ -64,7 +64,7 @@ public:
     /// @param config Конфигурация геометрии.
     /// @param AutoRelease Указывает, должна ли полученная геометрия быть выгружена, когда ее счетчик ссылок достигнет 0.
     /// @return Указатель на полученную геометрию или nullptr в случае неудачи. 
-    GeometryID* Acquire(GeometryConfig config, bool AutoRelease);
+    GeometryID* Acquire(const GeometryConfig& config, bool AutoRelease);
     /// @brief Освобождает ссылку на предоставленную геометрию.
     /// @param Geometry Геометрия, которую нужно освободить.
     void Release(GeometryID *gid);
@@ -94,7 +94,7 @@ public:
         const char* name, 
         const char* MaterialName);
 private:
-    bool CreateGeometry(GeometryConfig config, GeometryID* gid);
+    bool CreateGeometry(const GeometryConfig& config, GeometryID* gid);
     void DestroyGeometry(GeometryID* gid);
     bool CreateDefaultGeometries();
 public:
