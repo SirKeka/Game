@@ -9,17 +9,12 @@
 
 MaterialSystem* MaterialSystem::state = nullptr;
 
-MaterialSystem::MaterialSystem(u32 MaxMaterialCount) 
+MaterialSystem::MaterialSystem(u32 MaxMaterialCount, Material* RegisteredMaterials, MaterialReference* HashTableBlock) 
 : 
 MaxMaterialCount(MaxMaterialCount),
-/*name(), 
-AutoRelease(false), 
-init(false), 
-DiffuseMapName(), 
-DiffuseColour(), */
 DefaultMaterial(DEFAULT_MATERIAL_NAME, Vector4D<f32>::One(), TextureUse::MapDiffuse, TextureSystem::Instance()->GetDefaultTexture()), 
-RegisteredMaterials(new((reinterpret_cast<u8*>(this) + sizeof(MaterialSystem))) Material[MaxMaterialCount]()),
-RegisteredMaterialTable(MaxMaterialCount, false, reinterpret_cast<MaterialReference*>(reinterpret_cast<u8*>(RegisteredMaterials) + sizeof(Material) * MaxMaterialCount)), 
+RegisteredMaterials(new(RegisteredMaterials) Material[MaxMaterialCount]()),
+RegisteredMaterialTable(MaxMaterialCount, false, HashTableBlock), 
 MaterialShaderID(INVALID::ID), 
 UI_ShaderID(INVALID::ID)
 {
@@ -84,7 +79,9 @@ bool MaterialSystem::Initialize(u32 MaxMaterialCount)
         u64 HashtableRequirement = sizeof(MaterialReference) * MaxMaterialCount;
         u64 MemoryRequirement = StructRequirement + ArrayRequirement + HashtableRequirement;
         void* ptrMatSys = LinearAllocator::Instance().Allocate(MemoryRequirement);
-        state = new(ptrMatSys) MaterialSystem(MaxMaterialCount);
+        Material* RegisteredMaterials = reinterpret_cast<Material*>(reinterpret_cast<u8*>(ptrMatSys) + sizeof(MaterialSystem));
+        MaterialReference* HashTableBlock = reinterpret_cast<MaterialReference*>(reinterpret_cast<u8*>(RegisteredMaterials) + sizeof(Material) * MaxMaterialCount);
+        state = new(ptrMatSys) MaterialSystem(MaxMaterialCount, RegisteredMaterials, HashTableBlock);
     }
 
     if (!state->CreateDefaultMaterial()) {

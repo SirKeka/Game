@@ -96,7 +96,9 @@ public:
         }
         else if (NewCap > capacity) {
             T* ptrNew = MMemory::TAllocate<T>(MemoryTag::DArray, NewCap);
-            MMemory::CopyMem(ptrNew, ptrValue, sizeof(T) * capacity);
+            for (u64 i = 0; i < size; i++) {
+                ptrNew[i] = ptrValue[i];
+            }
             MMemory::Free(ptrValue, sizeof(T) * capacity, MemoryTag::DArray);
             ptrValue = ptrNew;
             capacity = NewCap;

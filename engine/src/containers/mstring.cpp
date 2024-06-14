@@ -282,7 +282,7 @@ void MString::Zero(char *string)
     }
 }
 
-void MString::Mid(char *dest, MString source, i32 start, i32 length)
+void MString::Mid(char *dest, const MString &source, i32 start, i32 length)
 {
     if (length == 0) {
         return;

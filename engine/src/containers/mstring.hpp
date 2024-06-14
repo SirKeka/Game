@@ -89,7 +89,7 @@ public:
     /// @param source указатель на исходную строку с текстом в стиле си
     /// @param start индекс символа с которого нужно обрезать строку
     /// @param length длина обрезки строки
-    static void Mid(char* dest, MString source, i32 start, i32 length);
+    static void Mid(char* dest, const MString& source, i32 start, i32 length);
     /// @brief Возвращает индекс первого вхождения c в строку; в противном случае -1.
     /// @param str Строка для сканирования.
     /// @param c Персонаж, которого нужно искать.

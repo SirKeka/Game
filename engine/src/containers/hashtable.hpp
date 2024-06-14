@@ -100,7 +100,8 @@ public:
         }
 
         u64 hash = Name(name, ElementCount);
-        MMemory::CopyMem(memory + hash, value, sizeof(T));
+        memory[hash] = *value;
+        // MMemory::CopyMem(memory + hash, value, sizeof(T));
         return true;
     }
 
@@ -143,7 +144,7 @@ public:
             *OutValue = this->memory[hash];
             return *((void**)(OutValue)) != 0;
             }
-        else MMemory::CopyMem(OutValue, this->memory + hash, sizeof(T));
+        else *OutValue = memory[hash]; // MMemory::CopyMem(OutValue, this->memory + hash, sizeof(T));
         return true;
     }
 

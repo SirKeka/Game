@@ -50,7 +50,7 @@ void FreeList::Create(u64 TotalSize, void *memory)
 {
     u64 MaxNodes = TotalSize / (sizeof(void*) * sizeof(FreelistNode));  // ПРИМЕЧАНИЕ: Может быть остаток, но это нормально.
     // Компоновка блока начинается с головы*, затем массива доступных узлов.
-    MMemory::ZeroMem(memory, sizeof(FreeListState) + (sizeof(FreelistNode) * MaxNodes));
+    // MMemory::ZeroMem(memory, sizeof(FreeListState) + (sizeof(FreelistNode) * MaxNodes));
     state = reinterpret_cast<FreeListState*>(memory);
     state->nodes = reinterpret_cast<FreelistNode*>(state + 1); // sizeof(FreeListState)
     state->MaxNodes = MaxNodes;
@@ -118,7 +118,7 @@ bool FreeList::FreeBlock(u64 size, u64 offset)
         return true;
     } else {
         while (node) {
-            if (node->offset + node->size == offset) {
+            if (node->offset + node->size == offset || node->offset == offset + size) { 
                 // Можно просто добавить к этому узлу.
                 node->size += size;
 
@@ -326,7 +326,7 @@ FreelistNode *FreeList::GetNode()
 
 void FreeList::ReturnNode(FreelistNode *node)
 {
-    node->offset = INVALID::ID;
-    node->size = INVALID::ID;
+    node->offset = 0;
+    node->size = 0;
     node->next = nullptr;
 }

@@ -30,7 +30,7 @@ bool ShaderLoader::Load(const char *name, Resource &OutResource)
     char LineBuf[512] = "";
     char* p = &LineBuf[0];
     u64 LineLength = 0;
-    u32 LineNumber = 1; //12
+    u32 LineNumber = 1; //11 - 12, 16
     while (Filesystem::ReadLine(&f, 511, &p, LineLength)) {
         // Обрежьте строку.
         MString line{LineBuf}; // MString::Trim(LineBuf)

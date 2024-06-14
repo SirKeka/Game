@@ -93,7 +93,7 @@ void *MMemory::Allocate(u64 bytes, MemoryTag tag, bool def)
     // Либо выделяйте из системного распределителя, либо из ОС. Последнее никогда не должно произойти.
     u8* block = nullptr;
 
-    if (state || !def) {
+    if (state && !def) {
         state->TotalAllocated += bytes;
         state->TaggedAllocations[static_cast<u32>(tag)] += bytes;
         state->AllocCount++;
@@ -122,7 +122,7 @@ void MMemory::Free(void *block, u64 bytes, MemoryTag tag, bool def)
         if (tag == MemoryTag::Unknown) {
             MWARN("free вызывается с использованием MemoryTag::Unknown. Переклассифицировать это распределение.");
         }
-        if (state || !def) {
+        if (state && !def) {
             state->TotalAllocated -= bytes;
             state->TaggedAllocations[static_cast<u32>(tag)] -= bytes;
             state->AllocCount--;
@@ -131,12 +131,12 @@ void MMemory::Free(void *block, u64 bytes, MemoryTag tag, bool def)
             // Если освобождение не удалось, возможно, это связано с тем, что выделение было выполнено до запуска этой системы. 
             // Поскольку это абсолютно должно быть исключением из правил, попробуйте освободить его на уровне платформы. 
             // Если это не удастся, значит, начнется какой-то другой вид мошенничества, и у нас возникнут более серьезные проблемы.
-            if (!result) {
+            /*if (!result) {
                 // СДЕЛАТЬ: Выравнивание памяти
                 u8* ptrRawMem = reinterpret_cast<u8*>(block);
                 delete[] ptrRawMem;                             //platform_free(block, false);
-            }
-        } else if (!state || def) {
+            }*/
+        } else {
             u8* ptrRawMem = reinterpret_cast<u8*>(block);
             delete[] ptrRawMem;                             //platform_free(block, false);
         }
