@@ -1,6 +1,6 @@
 #include "vulkan_device.hpp"
 #include "vulkan_api.hpp"
-//#include "core/mmemory.hpp"
+// #include "core/mmemory.hpp"
 #include "containers/mstring.hpp"
 
 bool VulkanDevice::Create(VulkanAPI* VkAPI)
@@ -41,23 +41,43 @@ bool VulkanDevice::Create(VulkanAPI* VkAPI)
         // }
         QueueCreateInfos[i].flags = 0;
         QueueCreateInfos[i].pNext = 0;
-        f32 queue_priority = 1.0f;
-        QueueCreateInfos[i].pQueuePriorities = &queue_priority;
+        f32 QueuePriority = 1.0f;
+        QueueCreateInfos[i].pQueuePriorities = &QueuePriority;
     }
 
     // Запросите характеристики устройства.
     // TODO: должно управляться конфигурацией
     VkPhysicalDeviceFeatures DeviceFeatures = {};
     DeviceFeatures.samplerAnisotropy = VK_TRUE;  // Запросить анизотропию
-    DeviceFeatures.fillModeNonSolid = VK_TRUE;
+    // DeviceFeatures.fillModeNonSolid = VK_TRUE;
 
+    bool PortabilityRequired = false;
+    u32 AvailableExtensionCount = 0;
+    VkExtensionProperties* AvailableExtensions = 0;
+    VK_CHECK(vkEnumerateDeviceExtensionProperties(VkAPI->Device.PhysicalDevice, 0, &AvailableExtensionCount, 0));
+    if (AvailableExtensionCount != 0) {
+        AvailableExtensions = MMemory::TAllocate<VkExtensionProperties>(MemoryTag::Renderer, AvailableExtensionCount);
+        VK_CHECK(vkEnumerateDeviceExtensionProperties(VkAPI->Device.PhysicalDevice, 0, &AvailableExtensionCount, AvailableExtensions));
+        for (u32 i = 0; i < AvailableExtensionCount; ++i) {
+            if (MString::Equal(AvailableExtensions[i].extensionName, "VK_KHR_portability_subset")) {
+                MINFO("Добавляем необходимое расширение VK_KHR_portability_subset.");
+                PortabilityRequired = true;
+                break;
+            }
+        }
+    }
+    MMemory::Free(AvailableExtensions, sizeof(VkExtensionProperties) * AvailableExtensionCount, MemoryTag::Renderer);
+
+    u32 ExtensionCount = PortabilityRequired ? 2 : 1;
+    const char** ExtensionNames = PortabilityRequired
+                                       ? (const char* [2]){VK_KHR_SWAPCHAIN_EXTENSION_NAME, "VK_KHR_portability_subset"}
+                                       : (const char* [1]){VK_KHR_SWAPCHAIN_EXTENSION_NAME};
     VkDeviceCreateInfo DeviceCreateInfo = {VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO};
     DeviceCreateInfo.queueCreateInfoCount = IndexCount;
     DeviceCreateInfo.pQueueCreateInfos = QueueCreateInfos;
     DeviceCreateInfo.pEnabledFeatures = &DeviceFeatures;
-    DeviceCreateInfo.enabledExtensionCount = 1;
-    const char* ExtensionNames = VK_KHR_SWAPCHAIN_EXTENSION_NAME;
-    DeviceCreateInfo.ppEnabledExtensionNames = &ExtensionNames;
+    DeviceCreateInfo.enabledExtensionCount = ExtensionCount;
+    DeviceCreateInfo.ppEnabledExtensionNames = ExtensionNames;
 
     // Устарел и игнорируется, так что ничего не передавайте.
     DeviceCreateInfo.enabledLayerCount = 0;
@@ -233,8 +253,7 @@ bool VulkanDevice::SelectPhysicalDevice(VulkanAPI *VkAPI)
         return false;
     }
 
-    const u32 MaxDeviceCount = 32;
-    VkPhysicalDevice PhysicalDevices[MaxDeviceCount];
+    VkPhysicalDevice PhysicalDevices[32];
     VK_CHECK(vkEnumeratePhysicalDevices(VkAPI->instance, &PhysicalDeviceCount, PhysicalDevices));
     for (auto &&device : PhysicalDevices) {
         VkPhysicalDeviceProperties properties;

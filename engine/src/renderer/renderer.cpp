@@ -17,26 +17,17 @@ constexpr bool CriticalInit(bool op, const MString& message)
     return true;
 }
 
-Renderer::~Renderer()
+Renderer::Renderer(MWindow *window, const char *ApplicationName, ERendererType type)
+: 
+NearClip(0.1f), 
+FarClip(1000.f), 
+MaterialShaderID(), 
+UIShaderID(), 
+projection(Matrix4D::MakeFrustumProjection(Math::DegToRad(45.0f), 1280 / 720.0f, NearClip, FarClip)), 
+view(Matrix4D::MakeTranslation(Vector3D<f32>{0, 0, -30.f})), 
+UIProjection(Matrix4D::MakeOrthographicProjection(0, 1280.0f, 720.0f, 0, -100.f, 100.0f)),              // Намеренно перевернуто по оси Y.
+UIView(Matrix4D::MakeIdentity())
 {
-    delete ptrRenderer;
-}
-
-bool Renderer::Initialize(class MWindow* window, const char *ApplicationName, ERendererType type)
-{
-    /*switch (type)
-    {
-    case RENDERER_TYPE_VULKAN:
-        //ptrRenderer = dynamic_cast<VulcanAPI> (ptrRenderer);
-        ptrRenderer = new VulcanAPI(ApplicationName);
-        break;
-    case RENDERER_TYPE_DIRECTX:
-
-        break;
-    case RENDERER_TYPE_OPENGL:
-
-        break;
-    }*/
     if(type == ERendererType::VULKAN) {
         //ptrRenderer = dynamic_cast<VulkanAPI*> (ptrRenderer);
 
@@ -64,23 +55,35 @@ bool Renderer::Initialize(class MWindow* window, const char *ApplicationName, ER
         ResourceSystem::Instance()->Unload(ConfigResource);
         UIShaderID = ShaderSystem::GetInstance()->GetID(BUILTIN_SHADER_NAME_UI);
 
-        // Проекция мира/вид
-        NearClip = 0.1f;
-        FarClip = 1000.f;
-        projection = Matrix4D::MakeFrustumProjection(Math::DegToRad(45.0f), 1280 / 720.0f, NearClip, FarClip);
         // СДЕЛАТЬ: настраиваемое начальное положение камеры.
-        view = Matrix4D::MakeTranslation(Vector3D<f32>{0, 0, -30.f});
         view.Inverse();
-        // Проекция пользовательского интерфейса/вид
-        UIProjection = Matrix4D::MakeOrthographicProjection(0, 1280.0f, 720.0f, 0, -100.f, 100.0f); // Намеренно перевернуто по оси Y.
-        UIView = Matrix4D::MakeIdentity();
         UIView.Inverse();
-
-        return true;
     }
-    return false;
 }
 
+Renderer::~Renderer()
+{
+    delete ptrRenderer;
+}
+/*
+bool Renderer::Initialize(class MWindow* window, const char *ApplicationName, ERendererType type)
+{
+    switch (type)
+    {
+    case RENDERER_TYPE_VULKAN:
+        //ptrRenderer = dynamic_cast<VulcanAPI> (ptrRenderer);
+        ptrRenderer = new VulcanAPI(ApplicationName);
+        break;
+    case RENDERER_TYPE_DIRECTX:
+
+        break;
+    case RENDERER_TYPE_OPENGL:
+
+        break;
+    }
+    
+}
+*/
 void Renderer::Shutdown()
 {
     //this->~Renderer();
@@ -97,10 +100,10 @@ void Renderer::OnResized(u16 width, u16 height)
     }
 }
 
-bool Renderer::DrawFrame(RenderPacket *packet)
+bool Renderer::DrawFrame(RenderPacket &packet)
 {
     // Если начальный кадр возвращается успешно, операции в середине кадра могут продолжаться.
-    if (ptrRenderer->BeginFrame(packet->DeltaTime)) {
+    if (ptrRenderer->BeginFrame(packet.DeltaTime)) {
         // Мировой проход рендеринга
         if (!ptrRenderer->BeginRenderpass(static_cast<u8>(BuiltinRenderpass::World))) {
             MERROR("Ошибка Renderer::BeginRenderpass -> BuiltinRenderpass::World. Приложение закрывается...");
@@ -119,11 +122,11 @@ bool Renderer::DrawFrame(RenderPacket *packet)
         }
 
         // Отрисовка геометрии
-        const u32& count = packet->GeometryCount;
+        const u32& count = packet.GeometryCount;
         for (u32 i = 0; i < count; ++i) {
             Material* m = nullptr;
-            if (packet->geometries[i].gid->material) {
-                m = packet->geometries[i].gid->material;
+            if (packet.geometries[i].gid->material) {
+                m = packet.geometries[i].gid->material;
             } else {
                 m = MaterialSystem::Instance()->GetDefaultMaterial();
             }
@@ -135,10 +138,10 @@ bool Renderer::DrawFrame(RenderPacket *packet)
             }
 
             // Приминение locals
-            MaterialSystem::Instance()->ApplyLocal(m, packet->geometries[i].model);
+            MaterialSystem::Instance()->ApplyLocal(m, packet.geometries[i].model);
 
             // Отрисовка.
-            ptrRenderer->DrawGeometry(packet->geometries[i]);
+            ptrRenderer->DrawGeometry(packet.geometries[i]);
         }
 
         if (!ptrRenderer->EndRenderpass(static_cast<u8>(BuiltinRenderpass::World))) {
@@ -166,11 +169,11 @@ bool Renderer::DrawFrame(RenderPacket *packet)
         }
 
         // Нарисуйте геометрию пользовательского интерфейса.
-        const u32& UIcount = packet->UI_GeometryCount;
+        const u32& UIcount = packet.UI_GeometryCount;
         for (u32 i = 0; i < UIcount; ++i) {
             Material* m = nullptr;
-            if (packet->UI_Geometries[i].gid->material) {
-                m = packet->UI_Geometries[i].gid->material;
+            if (packet.UI_Geometries[i].gid->material) {
+                m = packet.UI_Geometries[i].gid->material;
             } else {
                 m = MaterialSystem::Instance()->GetDefaultMaterial();
             }
@@ -181,10 +184,10 @@ bool Renderer::DrawFrame(RenderPacket *packet)
             }
 
             // Приминение locals
-            MaterialSystem::Instance()->ApplyLocal(m, packet->geometries[i].model);
+            MaterialSystem::Instance()->ApplyLocal(m, packet.geometries[i].model);
 
             // Отрисовка.
-            ptrRenderer->DrawGeometry(packet->UI_Geometries[i]);
+            ptrRenderer->DrawGeometry(packet.UI_Geometries[i]);
         }
 
         if (!ptrRenderer->EndRenderpass(static_cast<u8>(BuiltinRenderpass::UI))) {
@@ -194,7 +197,7 @@ bool Renderer::DrawFrame(RenderPacket *packet)
         // Завершить рендеринг пользовательского интерфейса
 
         // Завершите кадр. Если это не удастся, скорее всего, это будет невозможно восстановить.
-        bool result = ptrRenderer->EndFrame(packet->DeltaTime);
+        bool result = ptrRenderer->EndFrame(packet.DeltaTime);
         ptrRenderer->FrameNumber++;
 
         if (!result) {

@@ -48,7 +48,10 @@ bool ResourceSystem::Initialize(u32 MaxLoaderCount, const char* BasePath)
 
 void ResourceSystem::Shutdown()
 {
-    delete state;
+    if (state) {
+        state->~ResourceSystem(); // delete state;
+        state = nullptr;
+    }
 }
 
 template<typename T>
@@ -115,14 +118,12 @@ bool ResourceSystem::Load(const char *name, const char *CustomType, Resource &Ou
 
 void ResourceSystem::Unload(Resource &resource)
 {
-    //if (resource) {
-        if (resource.LoaderID != INVALID::ID) {
-            ResourceLoader* l = &RegisteredLoaders[resource.LoaderID];
-            if (l->id != INVALID::ID) {
-                l->Unload(resource);
-            }
+    if (resource.LoaderID != INVALID::ID) {
+        ResourceLoader* l = &RegisteredLoaders[resource.LoaderID];
+        if (l->id != INVALID::ID) {
+            l->Unload(resource);
         }
-    //}
+    }
 }
 
 const char *ResourceSystem::BasePath()

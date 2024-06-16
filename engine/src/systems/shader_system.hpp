@@ -53,7 +53,7 @@ public:
     /// @brief Получает идентификатор шейдера по имени.
     /// @param ShaderName имя шейдера.
     /// @return Идентификатор шейдера, если он найден; в противном случае INVALID::ID.
-    MAPI u32 GetID(MString ShaderName);
+    MAPI u32 GetID(const MString& ShaderName);
     /// @brief Возвращает указатель на шейдер с заданным идентификатором.
     /// @param ShaderID идентификатор шейдера.
     /// @return Указатель на шейдер, если он найден; иначе nullptr.

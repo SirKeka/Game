@@ -5,11 +5,11 @@
 /// @brief Общая структура ресурса. Все загрузчики ресурсов загружают в них данные.
 struct Resource {
     u32 LoaderID{};             // Идентификатор загрузчика, обрабатывающего этот ресурс.
-    MString name{};             // Название ресурса.
-    MString FullPath{};         // Полный путь к файлу ресурса.
+    MString name;               // Название ресурса.
+    MString FullPath;         // Полный путь к файлу ресурса.
     u64 DataSize{};             // Размер данных ресурса в байтах.
     void* data{nullptr};        // Данные ресурса.
-    // constexpr Resource() : LoaderID(), name(), FullPath(), DataSize(), data(nullptr) {}
+    constexpr Resource() : LoaderID(), name(), FullPath(), DataSize(), data(nullptr) {}
 };
 
 struct ImageResourceData {

@@ -9,7 +9,7 @@ public:
     VkPipeline handle{};
     VkPipelineLayout PipelineLayout;
 public:
-    VulkanPipeline() = default;
+    constexpr VulkanPipeline() : handle(), PipelineLayout() {}
     ~VulkanPipeline() = default;
 
     bool Create(

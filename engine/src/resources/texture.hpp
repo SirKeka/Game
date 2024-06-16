@@ -2,6 +2,7 @@
 
 #include "defines.hpp"
 #include "renderer/vulkan/vulkan_image.hpp"
+#include "core/mmemory.hpp"
 #include "containers/mstring.hpp"
 
 constexpr u32 TEXTURE_NAME_MAX_LENGTH = 512;
@@ -11,6 +12,10 @@ class VulkanAPI;
 struct VulkanTextureData {
     VulkanImage image;
     VkSampler sampler;
+    constexpr VulkanTextureData() : image(), sampler() {}
+    constexpr VulkanTextureData(VulkanImage image) : image(image), sampler() {}
+    void* operator new(u64 size) { return MMemory::Allocate(size, MemoryTag::Texture); }
+    void operator delete(void* ptr, u64 size) { MMemory::Free(ptr, size, MemoryTag::Texture); }
 };
 
 enum class TextureUse {
@@ -33,14 +38,7 @@ public:
     VulkanTextureData* Data;            // Необработанные данные текстуры (пиксели).
 public:
     Texture();
-    Texture(
-        const char* name, 
-        i32 width, 
-        i32 height, 
-        i32 ChannelCount, 
-        const u8* pixels, 
-        bool HasTransparency,
-        VulkanAPI* VkAPI);
+    Texture(const char* name, i32 width, i32 height, i32 ChannelCount, const u8* pixels, bool HasTransparency, VulkanAPI* VkAPI);
     ~Texture();
     Texture(const Texture& t);
     void Create(

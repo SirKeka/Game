@@ -111,7 +111,7 @@ bool MString::operator==(const char *s) const
     return true;
 }
 
-const u16 MString::Length() const
+constexpr u16 MString::Length() const noexcept
 {
     if (length) {
         return length - 1;
@@ -213,6 +213,18 @@ void MString::nCopy(const MString& source, u64 length)
             str[i] = source.str[i];
             }
         }
+}
+
+void MString::nCopy(char *dest, const char *source, u64 Length)
+{
+    if (dest && source) {
+        for (u64 i = 0; i < Length; i++) {
+            dest[i] = source[i];
+            if (source[i]) {
+                break;
+            }
+        }
+    }
 }
 
 void MString::nCopy(char *dest, const MString &source, u64 length)

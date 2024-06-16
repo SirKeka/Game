@@ -5,7 +5,7 @@
 
 void VulkanCommandBufferAllocate(VulkanAPI *VkAPI, VkCommandPool pool, bool IsPrimary, VulkanCommandBuffer *OutCommandBuffer)
 {
-    MMemory::ZeroMem(OutCommandBuffer, sizeof(OutCommandBuffer));
+    // MMemory::ZeroMem(OutCommandBuffer, sizeof(OutCommandBuffer));
 
     VkCommandBufferAllocateInfo AllocateInfo = {VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
     AllocateInfo.commandPool = pool;

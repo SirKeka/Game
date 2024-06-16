@@ -36,21 +36,21 @@ void VulkanRenderpass::Create(VulkanAPI *VkAPI, Vector4D<f32> RenderArea, Vector
 
     // Цветное вложение
     bool DoClearColour = (this->ClearFlags & RenderpassClearFlag::ColourBufferFlag) != 0;
-    VkAttachmentDescription ColorAttachmentcol;
-    ColorAttachmentcol.format = VkAPI->swapchain.ImageFormat.format; // TODO: настроить
-    ColorAttachmentcol.samples = VK_SAMPLE_COUNT_1_BIT;
-    ColorAttachmentcol.loadOp = DoClearColour ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
-    ColorAttachmentcol.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-    ColorAttachmentcol.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    ColorAttachmentcol.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    VkAttachmentDescription ColorAttachment;
+    ColorAttachment.format = VkAPI->swapchain.ImageFormat.format; // СДЕЛАТЬ: настроить
+    ColorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+    ColorAttachment.loadOp = DoClearColour ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
+    ColorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    ColorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    ColorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
     // Если исходит из предыдущего прохода, он уже должен быть VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL. В противном случае неопределенно.
-    ColorAttachmentcol.initialLayout = HasPrevPass ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_UNDEFINED;
+    ColorAttachment.initialLayout = HasPrevPass ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_UNDEFINED;
 
     // Если собираетесь на другой проход, используйте VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL. В противном случае VK_IMAGE_LAYOUT_PRESENT_SRC_KHR.
-    ColorAttachmentcol.finalLayout = HasNextPass ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;  // Переход к этапу после рендеринга
-    ColorAttachmentcol.flags = 0;
+    ColorAttachment.finalLayout = HasNextPass ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;  // Переход к этапу после рендеринга
+    ColorAttachment.flags = 0;
 
-    AttachmentDescriptions[AttachmentDescriptionCount] = ColorAttachmentcol;
+    AttachmentDescriptions[AttachmentDescriptionCount] = ColorAttachment;
     AttachmentDescriptionCount++;
 
     VkAttachmentReference ColorAttachmentReference;

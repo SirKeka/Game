@@ -77,10 +77,12 @@ bool MMemory::Initialize(u64 TotalAllocSize)
 MINLINE void MMemory::Shutdown()
 {
     if (state) {
-        state->allocator.Destroy();
+        //state->allocator.Destroy();
         // Освободите целый блок.
         //platform_free(state_ptr, state_ptr->allocator_memory_requirement + sizeof(memory_system_state));
-        delete[] state;
+        u8* block = reinterpret_cast<u8*>(state);
+        state = nullptr;
+        delete[] block;
     }
 }
 

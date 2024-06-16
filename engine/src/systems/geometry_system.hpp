@@ -18,8 +18,8 @@ struct GeometryConfig {
 
     GeometryConfig(u32 VertexSize, u32 VertexCount, void* vertices, u32 IndexSize, u32 IndexCount, void* indices, const char* name, const char* MaterialName)
     : VertexSize(VertexSize), VertexCount(VertexCount), vertices(vertices), IndexSize(IndexSize), IndexCount(IndexCount), indices(indices) {
-        MMemory::CopyMem(this->name, name, GEOMETRY_NAME_MAX_LENGTH);
-        MMemory::CopyMem(this->MaterialName, MaterialName, GEOMETRY_NAME_MAX_LENGTH);
+        MString::nCopy(this->name, name, GEOMETRY_NAME_MAX_LENGTH);
+        MString::nCopy(this->MaterialName, MaterialName, GEOMETRY_NAME_MAX_LENGTH);
     }
 };
 

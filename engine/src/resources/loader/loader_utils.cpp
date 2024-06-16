@@ -15,7 +15,7 @@ bool LoaderUtils::ResourceUnload(ResourceLoader *self, Resource &resource, Memor
     }*/
 
     if (resource.data) {
-        MMemory::Free(resource.data, resource.DataSize, tag);
+        //MMemory::Free(resource.data, resource.DataSize, tag);
         resource.data = nullptr;
         resource.DataSize = 0;
         resource.LoaderID = INVALID::ID;

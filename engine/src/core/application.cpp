@@ -79,9 +79,9 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
         return false;
     }
 
-    State->Render = new Renderer();
+    State->Render = new Renderer(State->Window, GameInst->AppConfig.name, ERendererType::VULKAN);
     // Запуск рендерера
-    if (!State->Render->Initialize(State->Window, GameInst->AppConfig.name, ERendererType::VULKAN)) {
+    if (!State->Render) {
         MFATAL("Не удалось инициализировать средство визуализации. Прерывание приложения.");
         return false;
     }
@@ -224,7 +224,7 @@ bool Application::ApplicationRun() {
             packet.UI_Geometries = &TestUI_Render;
             // СДЕЛАТЬ: временно
 
-            State->Render->DrawFrame(&packet);
+            State->Render->DrawFrame(packet);
 
             // Выясните, сколько времени занял кадр и, если ниже
             f64 FrameEndTime = MWindow::PlatformGetAbsoluteTime();
@@ -267,7 +267,7 @@ bool Application::ApplicationRun() {
     Event::GetInstance()->Shutdown();
     Input::Instance()->Sutdown();
     GeometrySystem::Instance()->Shutdown();
-    MaterialSystem::Instance()->Shutdown();
+    MaterialSystem::Shutdown();
     TextureSystem::Instance()->Shutdown();
     ShaderSystem::Shutdown();
     ResourceSystem::Instance()->Shutdown();

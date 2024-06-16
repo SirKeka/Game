@@ -35,7 +35,7 @@ public:
 
     /// @brief Получает длину заданной строки.
     /// @return Длину(количество символов в строке)
-    const u16 Length() const;
+    constexpr u16 Length() const noexcept;
     /// @brief Получает длину заданной строки.
     /// @param s строка в стиле си
     /// @return Длину(количество символов в строке)
@@ -68,7 +68,7 @@ public:
     static void Copy(char* dest, const char* source);
     static void Copy(char* dest, const MString& source);
     void nCopy(const MString& source, u64 length);
-    void nCopy(const char* source, u64 Length);
+    void nCopy(char* dest, const char* source, u64 Length);
     static void nCopy(char* dest, const MString& source, u64 length); 
 private:
     char* Copy(const char* source, u64 length);

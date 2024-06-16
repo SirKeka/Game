@@ -48,6 +48,7 @@ struct VulkanShaderConfig {
     u8 DescriptorSetCount;                                                              // Общее количество наборов дескрипторов, настроенных для этого шейдера. Имеет значение 1, если используются только глобальные униформы/сэмплеры; иначе 2.
     VulkanDescriptorSetConfig DescriptorSets[2];                                        // Наборы дескрипторов, максимум 2. Индекс 0 = глобальный, 1 = экземпляр.
     VkVertexInputAttributeDescription attributes[VulkanShaderConstants::MaxAttributes]; // Массив описаний атрибутов для этого шейдера.
+    constexpr VulkanShaderConfig() : StageCount(), stages(), PoolSizes(), MaxDescriptorSetCount(), DescriptorSetCount(), DescriptorSets(), attributes() {}
 
 };
  
@@ -73,6 +74,7 @@ struct VulkanShaderInstanceState {
     u64 offset;                                         // Смещение в байтах в универсальном буфере экземпляра. 
     VulkanShaderDescriptorSetState DescriptorSetState;  //  Состояние набора дескрипторов. 
     class Texture** InstanceTextures;                   // Указатели экземпляров текстур, которые используются во время рендеринга. Они устанавливаются вызовами SetSampler.
+    constexpr VulkanShaderInstanceState() : id(INVALID::ID), offset(), DescriptorSetState(), InstanceTextures(nullptr) {}
 };
  
 /// @brief Представляет универсальный шейдер Vulkan. 
@@ -93,6 +95,7 @@ struct VulkanShader {
     VulkanShaderInstanceState InstanceStates[VULKAN_MAX_MATERIAL_COUNT];
 
     VulkanShader();
+    // constexpr VulkanShader(VulkanRenderpass* renderpass, );
     ~VulkanShader();
 
     void* operator new(u64 size);

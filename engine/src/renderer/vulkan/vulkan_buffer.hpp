@@ -29,6 +29,7 @@ public:
     bool HasFreelist;
 public:
     VulkanBuffer();
+    VulkanBuffer(VulkanAPI* VkAPI, u64 size, VkBufferUsageFlagBits usage, u32 MemoryPropertyFlags, bool BindOnCreate, bool UseFreelist);
     ~VulkanBuffer();
 
     /// @brief Создает новый буфер Vulkan.

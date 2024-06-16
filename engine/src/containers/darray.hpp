@@ -106,11 +106,11 @@ public:
     }
     /// @return количество элементов контейнера
     constexpr u64 Lenght() const noexcept {
-        return  this->size;
+        return size;
     }
     /// @return количество зарезервированных ячеек памяти типа Т
-    u64 Capacity() {
-        return this->capacity;
+    constexpr u64 Capacity() const noexcept {
+        return capacity;
     }
     //-----------------------------------------------------------------------------------Емкость
     // Модифицирующие методы--------------------------------------------------------------------
@@ -133,7 +133,6 @@ public:
         } else if(size == capacity) {
             Reserve(capacity * 2);
         }
-        // ptrValue + size = new(ptrValue + size) T(value);
         ptrValue[size] = value;
         size++;
     }

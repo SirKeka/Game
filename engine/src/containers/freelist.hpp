@@ -15,7 +15,8 @@ private:
     }* state;
 
 public:
-    FreeList() : state(nullptr) {}
+    constexpr FreeList() : state(nullptr) {}
+    // constexpr FreeList(u64 TotalSize, void* memory);
     /// @brief Создает новый свободный список или получает требуемую для него память. 
     /// Вызов дважды; один раз передача 0 в память для получения требуемой памяти, 
     /// а второй раз передача выделенного блока в память.

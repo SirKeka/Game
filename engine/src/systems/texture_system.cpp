@@ -121,7 +121,7 @@ Texture *TextureSystem::Acquire(const char* name, bool AutoRelease)
 
     // ПРИМЕЧАНИЕ. Это произойдет только в том случае, если что-то пойдет не так с состоянием.
     MERROR("TextureSystem::Acquire не удалось получить текстуру '%s'. Нулевой указатель будет возвращен.", name);
-    return 0;
+    return nullptr;
 }
 
 void TextureSystem::Release(const char* name)
@@ -213,7 +213,7 @@ bool TextureSystem::CreateDefaultTexture()
             }
         }
     }
-    DefaultTexture.Create(DEFAULT_TEXTURE_NAME, TexDimension, TexDimension, 4, pixels, false, Renderer::GetRenderer());
+    DefaultTexture = Texture(DEFAULT_TEXTURE_NAME, TexDimension, TexDimension, 4, pixels, false, Renderer::GetRenderer()); // DefaultTexture.Create(DEFAULT_TEXTURE_NAME, TexDimension, TexDimension, 4, pixels, false, Renderer::GetRenderer());
 
     // Вручную установите недействительную генерацию текстуры, поскольку это текстура по умолчанию.
     this->DefaultTexture.generation = INVALID::ID;

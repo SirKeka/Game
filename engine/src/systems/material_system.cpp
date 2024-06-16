@@ -14,7 +14,7 @@ MaterialSystem::MaterialSystem(u32 MaxMaterialCount, Material* RegisteredMateria
 MaxMaterialCount(MaxMaterialCount),
 DefaultMaterial(DEFAULT_MATERIAL_NAME, Vector4D<f32>::One(), TextureUse::MapDiffuse, TextureSystem::Instance()->GetDefaultTexture()), 
 RegisteredMaterials(new(RegisteredMaterials) Material[MaxMaterialCount]()),
-RegisteredMaterialTable(MaxMaterialCount, false, HashTableBlock), 
+RegisteredMaterialTable(MaxMaterialCount, false, HashTableBlock, MaterialReference(0, INVALID::ID, false)), 
 MaterialShaderID(INVALID::ID), 
 UI_ShaderID(INVALID::ID)
 {
@@ -31,7 +31,7 @@ UI_ShaderID(INVALID::ID)
 
     // Заполните хеш-таблицу недопустимыми ссылками, чтобы использовать ее по умолчанию.
     // MaterialReference InvalidRef{0, INVALID::ID, false}; // InvalidRef.handle = INVALID::ID; Основная причина необходимости использования значений по умолчанию.
-    RegisteredMaterialTable.Fill(MaterialReference(0, INVALID::ID, false));
+    //RegisteredMaterialTable.Fill(MaterialReference(0, INVALID::ID, false));
 
     // Сделать недействительными все материалы в массиве.
     // new (RegisteredMaterials) Material[MaxMaterialCount]();
@@ -94,7 +94,8 @@ bool MaterialSystem::Initialize(u32 MaxMaterialCount)
 void MaterialSystem::Shutdown()
 {
     if (state) {
-        delete state;
+        state->~MaterialSystem(); // delete state;
+        state = nullptr;
     }
 }
 
@@ -361,7 +362,7 @@ bool MaterialSystem::LoadMaterial(const MaterialConfig &config, Material *m)
         MERROR("Невозможно загрузить материал, поскольку его шейдер не найден: «%s». Вероятно, это проблема с ассетом материала.", config.ShaderName.c_str());
         return false;
     }
-    if(Renderer::ShaderAcquireInstanceResources(s, m->InternalId)) {
+    if(!Renderer::ShaderAcquireInstanceResources(s, m->InternalId)) {
         MERROR("Не удалось получить ресурсы средства визуализации для материала '%s'.", m->name);
         return false;
     }

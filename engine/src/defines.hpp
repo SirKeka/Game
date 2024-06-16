@@ -132,14 +132,12 @@ namespace INVALID
 //СДЕЛАТЬ: возможно здесь этому не место
 /// @brief Диапазон, обычной памяти
 struct Range {
-    /// @brief Смещение в байтах
-    u64 offset;
-    /// @brief Размер в байтах.
-    u64 size;
+    u64 offset; // Смещение в байтах
+    u64 size;   // Размер в байтах.
 
-    Range() : offset(), size() {}
-    Range(u64 offset, u64 size) : offset(offset), size(size) {}
-    Range(u64 offset, u64 size, u64 granularity) : offset(GetAligned(offset, granularity)), size(GetAligned(size, granularity)) {}
+    constexpr Range() : offset(), size() {}
+    constexpr Range(u64 offset, u64 size) : offset(offset), size(size) {}
+    constexpr Range(u64 offset, u64 size, u64 granularity) : offset(GetAligned(offset, granularity)), size(GetAligned(size, granularity)) {}
 
     static MINLINE u64 GetAligned(u64 operand, u64 granularity) {
         return ((operand + (granularity - 1)) & ~(granularity - 1));

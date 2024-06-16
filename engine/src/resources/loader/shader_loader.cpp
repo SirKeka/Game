@@ -30,7 +30,7 @@ bool ShaderLoader::Load(const char *name, Resource &OutResource)
     char LineBuf[512] = "";
     char* p = &LineBuf[0];
     u64 LineLength = 0;
-    u32 LineNumber = 1; //11 - 12, 16
+    u32 LineNumber = 1; // 4 и 72 строка
     while (Filesystem::ReadLine(&f, 511, &p, LineLength)) {
         // Обрежьте строку.
         MString line{LineBuf}; // MString::Trim(LineBuf)
@@ -261,26 +261,7 @@ void ShaderLoader::Unload(Resource &resource)
 {
     ShaderConfig* data = reinterpret_cast<ShaderConfig*>(resource.data);
     delete data;
-
-    // string_cleanup_split_array(data->StageFilenames);
-    // data->StageFilenames.Destroy();
-
-    // string_cleanup_split_array(data->StageNames);
-    // data->StageNames.Destroy();
-
-    // data->stages.Destroy();
-
-    // Очистите атрибуты.
-    // data->attributes.Destroy();
-
-    // Почистите униформу.
-    // data->uniforms.Destroy();
-
-    // data->RenderpassName.Destroy();
-    // data->name.Destroy();
-    //kzero_memory(data, sizeof(shader_config));
-    // СДЕЛАТЬ: Нужность этой функции под вопросом
-    if (!LoaderUtils::ResourceUnload(this, resource, MemoryTag::Resource)) {
-        MWARN("ShaderLoader::Unload вызывается с nullptr для себя или ресурса.");
-    }
+    resource.data = nullptr;
+    resource.DataSize = 0;
+    resource.LoaderID = INVALID::ID;
 }

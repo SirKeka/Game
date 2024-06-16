@@ -189,17 +189,12 @@ bool Shader::BindInstance(u32 InstanceID)
 
 bool Shader::UniformAdd(const MString &UniformName, u32 size, ShaderUniformType type, ShaderScope scope, u32 SetLocation, bool IsSampler)
 {
-    ShaderUniform entry;
-    entry.index = uniforms.Lenght();  // Индекс сохраняется в хеш-таблице для поиска.
-    entry.scope = scope;
-    entry.type = type;
+    ShaderUniform entry{
+        (u16)uniforms.Lenght(),                                 // Индекс сохраняется в хеш-таблице для поиска.
+        IsSampler ? (u16)SetLocation : (u16)uniforms.Lenght(),  // Просто используйте переданное местоположение
+        scope, 
+        type}; 
     bool IsGlobal = (scope == ShaderScope::Global);
-    if (IsSampler) {
-        // Просто используйте переданное местоположение
-        entry.location = SetLocation;
-    } else {
-        entry.location = entry.index;
-    }
 
     if (scope != ShaderScope::Local) {
         entry.SetIndex = (u32)scope;

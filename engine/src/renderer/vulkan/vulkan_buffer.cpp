@@ -4,8 +4,7 @@
 #include "vulkan_device.hpp"
 #include "vulkan_command_buffer.hpp"
 
-
-VulkanBuffer::VulkanBuffer() 
+VulkanBuffer::VulkanBuffer()
     : 
     TotalSize(), 
     handle(), 
@@ -18,6 +17,70 @@ VulkanBuffer::VulkanBuffer()
     FreeListBlock(nullptr), 
     BufferFreeList(),
     HasFreelist(false) {}
+
+VulkanBuffer::VulkanBuffer(VulkanAPI *VkAPI, u64 size, VkBufferUsageFlagBits usage, u32 MemoryPropertyFlags, bool BindOnCreate, bool UseFreelist)
+    :   
+    TotalSize(size), 
+    handle(), 
+    usage(usage), 
+    IsLocked(false), 
+    memory(), 
+    MemoryIndex(), 
+    MemoryPropertyFlags(MemoryPropertyFlags), 
+    FreeListMemoryRequirement(FreeList::GetMemoryRequirement(size)), 
+    FreeListBlock(UseFreelist ? MMemory::Allocate(FreeListMemoryRequirement, MemoryTag::Renderer) : nullptr), 
+    BufferFreeList(),
+    HasFreelist(UseFreelist)
+{
+
+    // Создание свободного списка, если нужно
+    if (UseFreelist) {
+        BufferFreeList.Create(size, FreeListBlock);
+    }
+
+    VkBufferCreateInfo BufferInfo = {VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
+    BufferInfo.size = size;
+    BufferInfo.usage = usage;
+    BufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;  // ПРИМЕЧАНИЕ: используется только в одной очереди.
+
+    VK_CHECK(vkCreateBuffer(VkAPI->Device.LogicalDevice, &BufferInfo, VkAPI->allocator, &this->handle));
+
+    // Сбор требований к памяти.
+    VkMemoryRequirements requirements;
+    vkGetBufferMemoryRequirements(VkAPI->Device.LogicalDevice, this->handle, &requirements);
+    this->MemoryIndex = VkAPI->FindMemoryIndex(requirements.memoryTypeBits, this->MemoryPropertyFlags);
+    if (this->MemoryIndex == -1) {
+        MERROR("Не удалось создать буфер vulkan, поскольку не был найден индекс требуемого типа памяти.");
+        // Обязательно уничтожьте свободный список.
+        CleanupFreelist();
+        return;
+    }
+
+    // Выделить информацию о памяти
+    VkMemoryAllocateInfo AllocateInfo = {VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
+    AllocateInfo.allocationSize = requirements.size;
+    AllocateInfo.memoryTypeIndex = this->MemoryIndex;
+
+    // Выделите память.
+    VkResult result = vkAllocateMemory(
+        VkAPI->Device.LogicalDevice,
+        &AllocateInfo,
+        VkAPI->allocator,
+        &this->memory);
+
+    if (result != VK_SUCCESS) {
+        MERROR("Не удалось создать буфер vulkan из-за сбоя выделения требуемой памяти. Ошибка: %i", result);
+        // Обязательно уничтожьте свободный список.
+        CleanupFreelist();
+        return;
+    }
+
+    if (BindOnCreate) {
+        Bind(VkAPI, 0);
+    }
+
+    return;
+}
 
 VulkanBuffer::~VulkanBuffer()
 {

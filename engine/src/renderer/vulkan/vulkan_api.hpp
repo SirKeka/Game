@@ -35,7 +35,7 @@ struct VulkanSwapchain
 class VulkanAPI : public RendererType
 {
 public:
-    f32 FrameDeltaTime;                                 // Время в секундах с момента последнего кадра.
+    f32 FrameDeltaTime{0};                              // Время в секундах с момента последнего кадра.
     u32 FramebufferWidth{0};                            // Текущая ширина фреймбуфера.
     u32 FramebufferHeight{0};                           // Текущая высота фреймбуфера.
     u64 FramebufferSizeGeneration{0};                   // Текущее поколение размера кадрового буфера. Если он не соответствует FramebufferSizeLastGeneration, необходимо создать новый.

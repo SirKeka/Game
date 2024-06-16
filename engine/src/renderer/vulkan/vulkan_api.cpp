@@ -51,8 +51,6 @@ const u32 BINDING_INDEX_SAMPLER   = 1;  // Индекс привязки сэм�
 
 bool VulkanAPI::Load(Shader *shader, u8 RenderpassID, u8 StageCount, const DArray<MString>& StageFilenames, const ShaderStage *stages)
 {
-    shader->ShaderData = new VulkanShader();
-
     // СДЕЛАТЬ: динамические проходы рендеринга
     VulkanRenderpass* renderpass = RenderpassID == 1 ? &MainRenderpass : &UI_Renderpass;
 
@@ -85,6 +83,7 @@ bool VulkanAPI::Load(Shader *shader, u8 RenderpassID, u8 StageCount, const DArra
     u32 MaxDescriptorAllocateCount = 1024;
 
     // Скопируйте указатель на контекст.
+    shader->ShaderData = new VulkanShader();
     VulkanShader* OutShader = shader->ShaderData;
 
     OutShader->renderpass = renderpass;
@@ -93,12 +92,12 @@ bool VulkanAPI::Load(Shader *shader, u8 RenderpassID, u8 StageCount, const DArra
     OutShader->config.MaxDescriptorSetCount = MaxDescriptorAllocateCount;
 
     // Этапы шейдера. Разбираем флаги.
-    //  MMemory::ZeroMem(OutShader->config.stages, sizeof(VulkanShaderStageConfig) * VulkanShaderConstants::MaxStages);
+    // MMemory::ZeroMem(OutShader->config.stages, sizeof(VulkanShaderStageConfig) * VulkanShaderConstants::MaxStages);
     OutShader->config.StageCount = 0;
     // Перебрать предоставленные этапы.
     for (u32 i = 0; i < StageCount; i++) {
         // Убедитесь, что достаточно места для добавления сцены.
-        if (OutShader->config.StageCount + 1 >  VulkanShaderConstants::MaxStages) {
+        if (OutShader->config.StageCount + 1 > VulkanShaderConstants::MaxStages) {
             MERROR("Шейдеры могут иметь максимум %d стадий.", VulkanShaderConstants::MaxStages);
             return false;
         }
@@ -125,10 +124,10 @@ bool VulkanAPI::Load(Shader *shader, u8 RenderpassID, u8 StageCount, const DArra
     }
 
     // Обнуляем массивы и подсчитываем.
-    MMemory::ZeroMem(OutShader->config.DescriptorSets, sizeof(VulkanDescriptorSetConfig) * 2);
+    //MMemory::ZeroMem(OutShader->config.DescriptorSets, sizeof(VulkanDescriptorSetConfig) * 2);
 
     // Массив атрибутов.
-    MMemory::ZeroMem(OutShader->config.attributes, sizeof(VkVertexInputAttributeDescription) * VulkanShaderConstants::MaxAttributes);
+    //MMemory::ZeroMem(OutShader->config.attributes, sizeof(VkVertexInputAttributeDescription) * VulkanShaderConstants::MaxAttributes);
 
     // На данный момент шейдеры будут иметь только эти два типа пулов дескрипторов.
     OutShader->config.PoolSizes[0] = VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1024};          // HACK: максимальное количество наборов дескрипторов ubo.
@@ -164,9 +163,9 @@ bool VulkanAPI::Load(Shader *shader, u8 RenderpassID, u8 StageCount, const DArra
 
     // Сделайте недействительными все состояния экземпляра.
     // СДЕЛАТЬ: динамическим
-    for (u32 i = 0; i < 1024; ++i) {
+    /*for (u32 i = 0; i < 1024; ++i) {
         OutShader->InstanceStates[i].id = INVALID::ID;
-    }
+    }*/
 
     return true;
 }
@@ -436,7 +435,7 @@ bool VulkanAPI::ShaderApplyGlobals(Shader *shader)
     VkWriteDescriptorSet DescriptorWrites[2];
     DescriptorWrites[0] = UboWrite;
 
-    u32 GlobalSetBindingCount = VkShader->config.DescriptorSets[DESC_SET_INDEX_GLOBAL].BindingCount;
+    u8& GlobalSetBindingCount = VkShader->config.DescriptorSets[DESC_SET_INDEX_GLOBAL].BindingCount;
     if (GlobalSetBindingCount > 1) {
         // СДЕЛАТЬ: Есть семплеры, которые нужно написать. Поддержите это.
         GlobalSetBindingCount = 1;
@@ -535,7 +534,7 @@ bool VulkanAPI::ShaderApplyInstance(Shader *shader)
     }
 
     // Привяжите набор дескрипторов для обновления или на случай изменения шейдера.
-    vkCmdBindDescriptorSets(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, VkShader->pipeline.PipelineLayout, 1, 1, &ObjectDescriptorSet, 0, nullptr);
+    vkCmdBindDescriptorSets(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, VkShader->pipeline.PipelineLayout, 1, 1, &ObjectDescriptorSet, 0, 0/*nullptr*/);
     return true;
 }
 
@@ -557,7 +556,7 @@ bool VulkanAPI::ShaderAcquireInstanceResources(Shader *shader, u32 &OutInstanceI
     }
 
     VulkanShaderInstanceState& InstanceState = VkShader->InstanceStates[OutInstanceID];
-    u32 InstanceTextureCount = VkShader->config.DescriptorSets[DESC_SET_INDEX_INSTANCE].bindings[BINDING_INDEX_SAMPLER].descriptorCount;
+    const u32& InstanceTextureCount = VkShader->config.DescriptorSets[DESC_SET_INDEX_INSTANCE].bindings[BINDING_INDEX_SAMPLER].descriptorCount;
     // Очистите память всего массива, даже если она не вся использована.
     InstanceState.InstanceTextures = MMemory::TAllocate<Texture*>(MemoryTag::Array, shader->InstanceTextureCount);
     Texture* DefaultTexture = TextureSystem::Instance()->GetDefaultTexture();
@@ -567,7 +566,7 @@ bool VulkanAPI::ShaderAcquireInstanceResources(Shader *shader, u32 &OutInstanceI
     }
 
     // Выделите немного места в УБО — по шагу, а не по размеру.
-    u64 size = shader->UboStride;
+    const u64& size = shader->UboStride;
     if (!VkShader->UniformBuffer.Allocate(size, InstanceState.offset)) {
         MERROR("VulkanAPI::ShaderAcquireInstanceResources — не удалось получить пространство UBO");
         return false;
@@ -576,8 +575,8 @@ bool VulkanAPI::ShaderAcquireInstanceResources(Shader *shader, u32 &OutInstanceI
     VulkanShaderDescriptorSetState& SetState = InstanceState.DescriptorSetState;
 
     // Привязка каждого дескриптора в наборе
-    u32 BindingCount = VkShader->config.DescriptorSets[DESC_SET_INDEX_INSTANCE].BindingCount;
-    MMemory::ZeroMem(SetState.DescriptorStates, sizeof(VulkanDescriptorState) * VulkanShaderConstants::MaxBindings);
+    const u32& BindingCount = VkShader->config.DescriptorSets[DESC_SET_INDEX_INSTANCE].BindingCount;
+    // MMemory::ZeroMem(SetState.DescriptorStates, sizeof(VulkanDescriptorState) * VulkanShaderConstants::MaxBindings);
     for (u32 i = 0; i < BindingCount; ++i) {
         for (u32 j = 0; j < 3; ++j) {
             SetState.DescriptorStates[i].generations[j] = INVALID::U8ID;
@@ -721,7 +720,7 @@ VulkanAPI::VulkanAPI(MWindow *window, const char *ApplicationName)
 #endif
 
     CreateInfo.enabledLayerCount = RequiredValidationLayerCount;
-    CreateInfo.ppEnabledLayerNames = RequiredValidationLayerNames.Data(); //TODO: указателю ppEnabledLayerNames присваевается адрес указателя массива после выхода из функции данные стираются
+    CreateInfo.ppEnabledLayerNames = RequiredValidationLayerNames.Data();
 
     VK_CHECK(vkCreateInstance(&CreateInfo, allocator, &instance));
     MINFO("Создан экземпляр Vulkan.");
@@ -1270,7 +1269,7 @@ i32 VulkanAPI::FindMemoryIndex(u32 TypeFilter, VkMemoryPropertyFlags PropertyFla
 
 void VulkanAPI::CreateCommandBuffers()
 {
-    if (GraphicsCommandBuffers.Lenght() == 0) {
+    if (GraphicsCommandBuffers.Capacity() == 0) {
         GraphicsCommandBuffers.Resize(swapchain.ImageCount);
     }
 

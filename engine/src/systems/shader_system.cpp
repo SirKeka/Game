@@ -76,6 +76,7 @@ void ShaderSystem::Shutdown()
 {
     if (state) {
         state->~ShaderSystem(); // delete state;
+        state = nullptr;
     }
 }
 
@@ -118,7 +119,11 @@ bool ShaderSystem::Create(const ShaderConfig *config)
         if (config->uniforms[i].type == ShaderUniformType::Sampler) {
             AddSampler(OutShader, config->uniforms[i]);
         } else {
-            OutShader->AddUniform(config->uniforms[i]);
+            if (OutShader->uniforms.Lenght() + 1 > MaxUniformCount) {
+                MERROR("Шейдер может принимать только общее максимальное количество форм и сэмплеров %d в глобальной, экземплярной и локальной областях.", MaxUniformCount);
+            } else {
+                OutShader->AddUniform(config->uniforms[i]);
+            }
         }
     }
 
@@ -139,7 +144,7 @@ bool ShaderSystem::Create(const ShaderConfig *config)
     return true;
 }
 
-u32 ShaderSystem::GetID(MString ShaderName)
+u32 ShaderSystem::GetID(const MString& ShaderName)
 {
     return GetShaderID(ShaderName);
 }
@@ -207,19 +212,19 @@ bool ShaderSystem::UniformSet(const char *UniformName, const void *value)
 
 bool ShaderSystem::UniformSet(u16 index, const void *value)
 {
-    Shader* shader = &state->shaders[state->CurrentShaderID];
-    ShaderUniform* uniform = &shader->uniforms[index];
-    if (shader->BoundScope != uniform->scope) {
-        if (uniform->scope == ShaderScope::Global) {
-            shader->BindGlobals();
-        } else if (uniform->scope == ShaderScope::Instance) {
-            shader->BindInstance(shader->BoundInstanceID);
+    Shader& shader = state->shaders[state->CurrentShaderID];
+    ShaderUniform& uniform = shader.uniforms[index];
+    if (shader.BoundScope != uniform.scope) {
+        if (uniform.scope == ShaderScope::Global) {
+            shader.BindGlobals();
+        } else if (uniform.scope == ShaderScope::Instance) {
+            shader.BindInstance(shader.BoundInstanceID);
         } else {
             // ПРИМЕЧАНИЕ: Больше здесь делать нечего, просто установите униформу.
         }
-        shader->BoundScope = uniform->scope;
+        shader.BoundScope = uniform.scope;
     }
-    return Renderer::SetUniform(shader, uniform, value);
+    return Renderer::SetUniform(&shader, &uniform, value);
 }
 
 bool ShaderSystem::SamplerSet(const char *SamplerName, const Texture *texture)

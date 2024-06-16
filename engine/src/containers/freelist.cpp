@@ -7,7 +7,12 @@ struct FreelistNode {
     u64 size{};
     FreelistNode* next{nullptr};
 };
-
+/*
+constexpr FreeList::FreeList(u64 TotalSize, void *memory)
+    :
+    state()
+{}
+*/
 FreeList::~FreeList()
 {
     if (state) {
@@ -118,7 +123,7 @@ bool FreeList::FreeBlock(u64 size, u64 offset)
         return true;
     } else {
         while (node) {
-            if (node->offset + node->size == offset || node->offset == offset + size) { 
+            if (node->offset + node->size == offset/* || node->offset == offset + size*/) { 
                 // Можно просто добавить к этому узлу.
                 node->size += size;
 
@@ -135,6 +140,7 @@ bool FreeList::FreeBlock(u64 size, u64 offset)
                 // Если есть точное совпадение, это означает, что точный блок памяти
                 // который уже свободен, освобождается снова.
                 MFATAL("Попытка освободить уже освобожденный блок памяти со смещением %llu", node->offset);
+                return false;
             } else if (node->offset > offset) {
                 // Выходит за пределы освобождаемого пространства. Нужен новый узел.
                 FreelistNode* NewNode = GetNode();

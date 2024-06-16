@@ -4,11 +4,11 @@
 
 DynamicAllocator::~DynamicAllocator()
 {
-    if (state) {
-        MMemory::ZeroMem(state->MemoryBlock, state->TotalSize);
-        state->TotalSize = 0;
-        state = nullptr;
-    }
+    //if (state) {
+    //    MMemory::ZeroMem(state->MemoryBlock, state->TotalSize);
+    //    state->TotalSize = 0;
+    //    state = nullptr;
+    //}
 }
 
 bool DynamicAllocator::MemoryRequirement(u64 TotalSize, u64 &MemoryRequirement)
