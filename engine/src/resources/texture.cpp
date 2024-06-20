@@ -12,9 +12,9 @@ Texture::Texture() :
     name(),
     Data(nullptr) {}
 
-Texture::Texture(const char* name,i32 width, i32 height, i32 ChannelCount, const u8 *pixels, bool HasTransparency, VulkanAPI *VkAPI) 
+Texture::Texture(const char* name, i32 width, i32 height, i32 ChannelCount, const u8 *pixels, bool HasTransparency, VulkanAPI *VkAPI) 
     : 
-    id(INVALID::ID), 
+    id(), 
     width(width), 
     height(height), 
     ChannelCount(ChannelCount), 
@@ -33,7 +33,7 @@ Texture::Texture(const char* name,i32 width, i32 height, i32 ChannelCount, const
         true,
         VK_IMAGE_ASPECT_COLOR_BIT))) 
 {
-    MMemory::CopyMem(this->name, name, TEXTURE_NAME_MAX_LENGTH); // this->name = name;
+    MString::nCopy(this->name, name, TEXTURE_NAME_MAX_LENGTH);
 
     // Создание внутренних данных.
     // TODO: Используйте для этого распределитель.
@@ -117,7 +117,6 @@ Texture::Texture(const char* name,i32 width, i32 height, i32 ChannelCount, const
         return;
     }
 
-    this->HasTransparency = HasTransparency;
     this->generation++;
 }
 

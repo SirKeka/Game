@@ -119,8 +119,8 @@ bool VulkanPipeline::Create(
         }
 
         // ПРИМЕЧАНИЕ: 32 — это максимальное количество диапазонов, которое мы можем когда-либо иметь, поскольку спецификация гарантирует только 128 байтов с 4-байтовым выравниванием.
-        VkPushConstantRange ranges[32];
-        MMemory::ZeroMem(ranges, sizeof(VkPushConstantRange) * 32);
+        VkPushConstantRange ranges[32]{};
+        // MMemory::ZeroMem(ranges, sizeof(VkPushConstantRange) * 32);
         for (u32 i = 0; i < PushConstantRangeCount; ++i) {
             ranges[i].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
             ranges[i].offset = PushConstantRanges[i].offset;

@@ -27,7 +27,7 @@ VulkanBuffer::VulkanBuffer(VulkanAPI *VkAPI, u64 size, VkBufferUsageFlagBits usa
     memory(), 
     MemoryIndex(), 
     MemoryPropertyFlags(MemoryPropertyFlags), 
-    FreeListMemoryRequirement(FreeList::GetMemoryRequirement(size)), 
+    FreeListMemoryRequirement(UseFreelist ? FreeList::GetMemoryRequirement(size) : 0), 
     FreeListBlock(UseFreelist ? MMemory::Allocate(FreeListMemoryRequirement, MemoryTag::Renderer) : nullptr), 
     BufferFreeList(),
     HasFreelist(UseFreelist)

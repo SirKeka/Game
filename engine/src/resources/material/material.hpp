@@ -5,8 +5,8 @@
 struct TextureMap {
     Texture* texture;                               // Указатель на текстуру.
     TextureUse use;                                 // Использование текстуры.
-    TextureMap() : texture(nullptr), use() {}
-    TextureMap(Texture* texture, TextureUse use) : texture(texture), use(use) {}
+    constexpr TextureMap() : texture(nullptr), use() {}
+    constexpr TextureMap(Texture* texture, TextureUse use) : texture(texture), use(use) {}
 };
 
 /// @brief Материал, который отражает различные свойства поверхности в мире, такие как текстура, цвет, неровности, блеск и многое другое.
@@ -23,9 +23,12 @@ public:
     Vector4D<f32> DiffuseColour;                    // Рассеянный(Diffuse) цвет.
     TextureMap DiffuseMap;                          // Карта диффузной текстуры.
 public:
-    Material();
-    Material(const Material& m);
-    Material(const char* name, Vector4D<f32> DiffuseColour, TextureUse use, Texture* texture);
+    constexpr Material() : id(INVALID::ID), generation(INVALID::ID), InternalId(INVALID::ID), ShaderID(), name(), DiffuseColour(), DiffuseMap() {}
+    constexpr Material(const Material& m);
+    constexpr Material(const char* name, Vector4D<f32> DiffuseColour, TextureUse use, Texture* texture) : id(INVALID::ID), generation(INVALID::ID), InternalId(), ShaderID(), name(), DiffuseColour(DiffuseColour), DiffuseMap(texture, use) 
+    { 
+        MString::nCopy(this->name, name, MATERIAL_NAME_MAX_LENGTH);
+    }
     ~Material();
 
     MINLINE void Destroy() { this->~Material(); }

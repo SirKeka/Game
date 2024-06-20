@@ -1,20 +1,9 @@
 #include "material.hpp"
 
-Material::Material() : id(INVALID::ID), generation(INVALID::ID), InternalId(INVALID::ID), name(), DiffuseColour(), DiffuseMap() {}
-
-Material::Material(const Material &m) : id(m.id), generation(m.generation), InternalId(m.InternalId)
+constexpr Material::Material(const Material &m) : id(m.id), generation(m.generation), InternalId(m.InternalId), ShaderID(m.ShaderID), name(), DiffuseColour(m.DiffuseColour), DiffuseMap(m.DiffuseMap) 
 {
-    id = m.id;
-    generation = m.generation;
-    InternalId = m.InternalId;
     MString::Copy(name, m.name);
-    DiffuseColour = m.DiffuseColour;
-    DiffuseMap = m.DiffuseMap;
 }
-
-Material::Material(const char *name, Vector4D<f32> DiffuseColour, TextureUse use, Texture *texture)
-: id(INVALID::ID), generation(INVALID::ID), InternalId(), ShaderID(), DiffuseColour(DiffuseColour), DiffuseMap(texture, use)
-{}
 
 Material::~Material()
 {

@@ -223,7 +223,7 @@ bool VulkanAPI::ShaderInitialize(Shader *shader)
     VulkanShader* VkShader = shader->ShaderData;
 
     // Создайте модуль для каждого этапа.
-    MMemory::ZeroMem(VkShader->stages, sizeof(VulkanShaderStage) * VulkanShaderConstants::MaxStages);
+    //MMemory::ZeroMem(VkShader->stages, sizeof(VulkanShaderStage) * VulkanShaderConstants::MaxStages);
     for (u32 i = 0; i < VkShader->config.StageCount; ++i) {
         if (!CreateModule(VkShader, VkShader->config.stages[i], &VkShader->stages[i])) {
             MERROR("Невозможно создать шейдерный модуль %s для «%s». Шейдер будет уничтожен", VkShader->config.stages[i].FileName, shader->name.c_str());
@@ -271,19 +271,19 @@ bool VulkanAPI::ShaderInitialize(Shader *shader)
         // Для сэмплеров необходимо обновить привязки дескриптора. С другими видами униформы здесь ничего делать не нужно.
         if (shader->uniforms[i].type == ShaderUniformType::Sampler) {
             const u32 SetIndex = (shader->uniforms[i].scope == ShaderScope::Global ? DESC_SET_INDEX_GLOBAL : DESC_SET_INDEX_INSTANCE);
-            VulkanDescriptorSetConfig* SetConfig = &VkShader->config.DescriptorSets[SetIndex];
-            if (SetConfig->BindingCount < 2) {
+            VulkanDescriptorSetConfig& SetConfig = VkShader->config.DescriptorSets[SetIndex];
+            if (SetConfig.BindingCount < 2) {
                 // Привязки пока нет, то есть это первый добавленный сэмплер.
                 // Создайте привязку с одним дескриптором для этого семплера.
-                SetConfig->bindings[BINDING_INDEX_SAMPLER].binding = BINDING_INDEX_SAMPLER;  // Всегда буду вторым.
-                SetConfig->bindings[BINDING_INDEX_SAMPLER].descriptorCount = 1;              // По умолчанию 1, будет увеличиваться с каждым добавлением сэмплера до соответствующего уровня.
-                SetConfig->bindings[BINDING_INDEX_SAMPLER].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-                SetConfig->bindings[BINDING_INDEX_SAMPLER].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-                SetConfig->BindingCount++;
+                SetConfig.bindings[BINDING_INDEX_SAMPLER].binding = BINDING_INDEX_SAMPLER;  // Всегда буду вторым.
+                SetConfig.bindings[BINDING_INDEX_SAMPLER].descriptorCount = 1;              // По умолчанию 1, будет увеличиваться с каждым добавлением сэмплера до соответствующего уровня.
+                SetConfig.bindings[BINDING_INDEX_SAMPLER].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+                SetConfig.bindings[BINDING_INDEX_SAMPLER].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+                SetConfig.BindingCount++;
             } else {
                 // Привязка для семплеров уже есть, поэтому просто добавьте к ней дескриптор.
                 // Возьмите текущее количество дескрипторов в качестве местоположения и увеличьте количество дескрипторов.
-                SetConfig->bindings[BINDING_INDEX_SAMPLER].descriptorCount++;
+                SetConfig.bindings[BINDING_INDEX_SAMPLER].descriptorCount++;
             }
         }
     }
@@ -303,7 +303,7 @@ bool VulkanAPI::ShaderInitialize(Shader *shader)
     }
 
     // Создайте макеты наборов дескрипторов.
-    MMemory::ZeroMem(VkShader->DescriptorSetLayouts, VkShader->config.DescriptorSetCount);
+    //MMemory::ZeroMem(VkShader->DescriptorSetLayouts, VkShader->config.DescriptorSetCount);
     for (u32 i = 0; i < VkShader->config.DescriptorSetCount; ++i) {
         VkDescriptorSetLayoutCreateInfo LayoutInfo = {VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO};
         LayoutInfo.bindingCount = VkShader->config.DescriptorSets[i].BindingCount;
@@ -331,8 +331,8 @@ bool VulkanAPI::ShaderInitialize(Shader *shader)
     scissor.extent.width = FramebufferWidth;
     scissor.extent.height = FramebufferHeight;
 
-    VkPipelineShaderStageCreateInfo StageCreateIfos[VulkanShaderConstants::MaxStages];
-    MMemory::ZeroMem(StageCreateIfos, sizeof(VkPipelineShaderStageCreateInfo) * VulkanShaderConstants::MaxStages);
+    VkPipelineShaderStageCreateInfo StageCreateIfos[VulkanShaderConstants::MaxStages]{};
+    // MMemory::ZeroMem(StageCreateIfos, sizeof(VkPipelineShaderStageCreateInfo) * VulkanShaderConstants::MaxStages);
     for (u32 i = 0; i < VkShader->config.StageCount; ++i) {
         StageCreateIfos[i] = VkShader->stages[i].ShaderStageCreateInfo;
     }
@@ -1364,7 +1364,7 @@ bool VulkanAPI::CreateModule(VulkanShader *shader, const VulkanShaderStageConfig
         return false;
     }
 
-    MMemory::ZeroMem(&ShaderStage->CreateInfo, sizeof(VkShaderModuleCreateInfo));
+    // MMemory::ZeroMem(&ShaderStage->CreateInfo, sizeof(VkShaderModuleCreateInfo));
     ShaderStage->CreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
     // Используйте размер и данные ресурса напрямую.
     ShaderStage->CreateInfo.codeSize = BinaryResource.DataSize;
@@ -1380,7 +1380,7 @@ bool VulkanAPI::CreateModule(VulkanShader *shader, const VulkanShaderStageConfig
     ResourceSystem::Instance()->Unload(BinaryResource);
 
     // Информация об этапе шейдера
-    MMemory::ZeroMem(&ShaderStage->ShaderStageCreateInfo, sizeof(VkPipelineShaderStageCreateInfo));
+    //MMemory::ZeroMem(&ShaderStage->ShaderStageCreateInfo, sizeof(VkPipelineShaderStageCreateInfo));
     ShaderStage->ShaderStageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     ShaderStage->ShaderStageCreateInfo.stage = config.stage;
     ShaderStage->ShaderStageCreateInfo.module = ShaderStage->handle;
