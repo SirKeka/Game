@@ -56,6 +56,7 @@ private:
     static MaterialSystem* state;                           // Экземпляр системы материалов (синглтон)
 
     /// @brief Инициализирует систему материалов при создании объекта.
+    constexpr MaterialSystem() : MaxMaterialCount(), DefaultMaterial(), RegisteredMaterials(nullptr), RegisteredMaterialTable(), MaterialLocations(), MaterialShaderID(), UI_Locations(), UI_ShaderID() {}
     MaterialSystem(u32 MaxMaterialCount, Material* RegisteredMaterials, MaterialReference* HashTableBlock);
 public:
     ~MaterialSystem();

@@ -174,10 +174,6 @@ Texture *TextureSystem::GetDefaultTexture()
     return nullptr;
 }
 
-TextureSystem *TextureSystem::Instance()
-{
-    return state;
-}
 /*
 void *TextureSystem::operator new(u64 size)
 {

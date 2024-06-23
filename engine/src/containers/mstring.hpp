@@ -68,7 +68,7 @@ public:
     static void Copy(char* dest, const char* source);
     static void Copy(char* dest, const MString& source);
     void nCopy(const MString& source, u64 length);
-    void nCopy(char* dest, const char* source, u64 Length);
+    static void nCopy(char* dest, const char* source, u64 Length);
     static void nCopy(char* dest, const MString& source, u64 length); 
 private:
     char* Copy(const char* source, u64 length);

@@ -14,16 +14,16 @@ struct GeometryConfig {
     char name[GEOMETRY_NAME_MAX_LENGTH];
     char MaterialName[MATERIAL_NAME_MAX_LENGTH];
 
-    GeometryConfig() : VertexSize(), VertexCount(), vertices(nullptr), IndexSize(), IndexCount(), indices(nullptr), name(), MaterialName() {}
+    constexpr GeometryConfig() : VertexSize(), VertexCount(), vertices(nullptr), IndexSize(), IndexCount(), indices(nullptr), name(), MaterialName() {}
 
-    GeometryConfig(u32 VertexSize, u32 VertexCount, void* vertices, u32 IndexSize, u32 IndexCount, void* indices, const char* name, const char* MaterialName)
+    constexpr GeometryConfig(u32 VertexSize, u32 VertexCount, void* vertices, u32 IndexSize, u32 IndexCount, void* indices, const char* name, const char* MaterialName)
     : VertexSize(VertexSize), VertexCount(VertexCount), vertices(vertices), IndexSize(IndexSize), IndexCount(IndexCount), indices(indices) {
         MString::nCopy(this->name, name, GEOMETRY_NAME_MAX_LENGTH);
         MString::nCopy(this->MaterialName, MaterialName, GEOMETRY_NAME_MAX_LENGTH);
     }
 };
 
-#define DEFAULT_GEOMETRY_NAME "default"
+constexpr const char* DEFAULT_GEOMETRY_NAME = "default";
 
 class GeometrySystem
 {
@@ -32,10 +32,7 @@ private:
     // ПРИМЕЧАНИЕ. Должно быть значительно больше, чем количество статических сеток, 
     // потому что их может и будет больше одного на сетку.
     // Принимаем во внимание и другие системы
-    static u32 MaxGeometryCount;
-
-    GeometryConfig config;
-
+    u32 MaxGeometryCount{};
     GeometryID DefaultGeometry{0, 0};
     GeometryID Default2dGeometry{0, 0};
 
@@ -44,17 +41,16 @@ private:
 
     static GeometrySystem* state;
 
-    GeometrySystem();
-    ~GeometrySystem();
+    GeometrySystem(u32 MaxGeometryCount, GeometryReference* RegisteredGeometries);
+    ~GeometrySystem() {}
 public:
     GeometrySystem(const GeometrySystem&) = delete;
     GeometrySystem& operator= (const GeometrySystem&) = delete;
 
-    static GeometrySystem* Instance() { return state; }
-    static void SetMaxGeometryCount(u32 value);
+    static MINLINE GeometrySystem* Instance() { return state; }
 
-    bool Initialize();
-    void Shutdown();
+    static bool Initialize(u32 MaxGeometryCount);
+    static void Shutdown();
 
     /// @brief Получает существующую геометрию по идентификатору.
     /// @param id Идентификатор геометрии, по которому необходимо получить данные.
@@ -98,5 +94,5 @@ private:
     void DestroyGeometry(GeometryID* gid);
     bool CreateDefaultGeometries();
 public:
-    void* operator new(u64 size);
+    // void* operator new(u64 size);
 };

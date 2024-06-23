@@ -62,7 +62,7 @@ public:
 	}
     /// @brief Единичный вектор
     /// @return (1, 1, 1, 1)
-    static MINLINE Vector4D One() {
+    static constexpr Vector4D One() {
 	    return Vector4D(1, 1, 1, 1);
 	}
 

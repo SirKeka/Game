@@ -12,26 +12,15 @@ struct GeometryReference {
     // GeometryReference() : ReferenceCount(), gid(), AutoRelease() {}
 };
 
-u32 GeometrySystem::MaxGeometryCount;
 GeometrySystem* GeometrySystem::state = nullptr;
 
-GeometrySystem::GeometrySystem()
- : 
-    //VertexCount(), 
-    //vertices(), 
-    //IndexCount(), 
-    //indices(nullptr), 
-    //name(/*GEOMETRY_NAME_MAX_LENGTH*/), 
-    //MaterialName(/*MATERIAL_NAME_MAX_LENGTH*/),
-    config(), 
+GeometrySystem::GeometrySystem(u32 MaxGeometryCount, GeometryReference* RegisteredGeometries)
+    : 
+    MaxGeometryCount(MaxGeometryCount),
     DefaultGeometry("DefaultGeometry"),
     Default2dGeometry("Default2dGeometry"),
-    RegisteredGeometries(nullptr)
-{
-    // Блок массива находится после состояния. Уже выделено, поэтому просто установите указатель.
-    void* ArrayBlock = reinterpret_cast<u8*>(this) + sizeof(GeometrySystem);
-    this->RegisteredGeometries = reinterpret_cast<GeometryReference*>(ArrayBlock);
-    
+    RegisteredGeometries(RegisteredGeometries)
+{   
     // Сделать недействительными все геометрии в массиве.
     // new (reinterpret_cast<void*>(RegisteredGeometries)) GeometryReference[MaxGeometryCount]();
     for (u32 i = 0; i < MaxGeometryCount; ++i) {
@@ -41,20 +30,20 @@ GeometrySystem::GeometrySystem()
     }
 }
 
-void GeometrySystem::SetMaxGeometryCount(u32 value)
-{
-    MaxGeometryCount = value;
-}
-
-bool GeometrySystem::Initialize()
+bool GeometrySystem::Initialize(u32 MaxGeometryCount)
 {
     if (MaxGeometryCount == 0) {
         MFATAL("«GeometrySystem::Initialize» — максимальное количество геометрии должно быть > 0.");
         return false;
     }
 
+    // Блок памяти будет содержать структуру состояния, затем блок массива, затем блок хеш-таблицы.
+    u64 ArrayRequirement = sizeof(GeometryReference) * MaxGeometryCount;
+    u8* PtrGeometrySystem = reinterpret_cast<u8*>(LinearAllocator::Instance().Allocate(sizeof(GeometrySystem) + ArrayRequirement));
+    auto ArrayBlock = reinterpret_cast<GeometryReference*>(PtrGeometrySystem + sizeof(GeometrySystem));
+
     if (!state) {
-        state = new GeometrySystem();
+        state = new(PtrGeometrySystem) GeometrySystem(MaxGeometryCount, ArrayBlock);
     }
 
     if (!state->CreateDefaultGeometries()) {
@@ -67,7 +56,7 @@ bool GeometrySystem::Initialize()
 
 void GeometrySystem::Shutdown()
 {
-
+    state = nullptr;
 }
 
 GeometryConfig GeometrySystem::GeneratePlaneConfig(f32 width, f32 height, u32 xSegmentCount, u32 ySegmentCount, f32 TileX, f32 TileY, const char *name, const char *MaterialName)
@@ -98,13 +87,18 @@ GeometryConfig GeometrySystem::GeneratePlaneConfig(f32 width, f32 height, u32 xS
         TileY = 1.0f;
     }
 
-    GeometryConfig config;
-    config.VertexSize = sizeof(Vertex3D);
-    config.VertexCount = xSegmentCount * ySegmentCount * 4;  // 4 вершины на сегмент
-    config.vertices = MMemory::Allocate(config.VertexCount * sizeof(Vertex3D), MemoryTag::Array);
-    config.IndexSize = sizeof(u32);
-    config.IndexCount = xSegmentCount * ySegmentCount * 6;  // 6 индексов на сегмент
-    config.indices = MMemory::Allocate(config.IndexCount * sizeof(u32), MemoryTag::Array);
+    u32 VertexCount = xSegmentCount * ySegmentCount * 4; // 4 вершины на сегмент
+    u32 IndexCount  = xSegmentCount * ySegmentCount * 6; // 6 индексов на сегмент
+    GeometryConfig config{
+        sizeof(Vertex3D), 
+        VertexCount,  
+        MMemory::Allocate(VertexCount * sizeof(Vertex3D), MemoryTag::Array),
+        sizeof(u32),
+        IndexCount,
+        MMemory::Allocate(IndexCount * sizeof(u32), MemoryTag::Array),
+        MString::Length(name) ? name : DEFAULT_GEOMETRY_NAME,
+        MString::Length(MaterialName) ? MaterialName : DEFAULT_MATERIAL_NAME
+        };
 
     // TODO: При этом создаются дополнительные вершины, но мы всегда можем дедуплицировать их позже.
     f32 SegWidth = width / xSegmentCount;
@@ -158,18 +152,6 @@ GeometryConfig GeometrySystem::GeneratePlaneConfig(f32 width, f32 height, u32 xS
             (reinterpret_cast<u32*>(config.indices))[iOffset + 4] = vOffset + 3;
             (reinterpret_cast<u32*>(config.indices))[iOffset + 5] = vOffset + 1;
         }
-    }
-
-    if (name && MString::Length(name) > 0) {
-        MString::nCopy(config.name, name, GEOMETRY_NAME_MAX_LENGTH);
-    } else {
-        MString::nCopy(config.name, DEFAULT_GEOMETRY_NAME, GEOMETRY_NAME_MAX_LENGTH);
-    }
-
-    if (MaterialName && MString::Length(MaterialName) > 0) {
-        MString::nCopy(config.MaterialName, MaterialName, MATERIAL_NAME_MAX_LENGTH);
-    } else {
-        MString::nCopy(config.MaterialName, DEFAULT_MATERIAL_NAME, MATERIAL_NAME_MAX_LENGTH);
     }
 
     return config;
@@ -373,10 +355,11 @@ GeometryID *GeometrySystem::GetDefault2D()
 {
     return &this->Default2dGeometry;
 }
-
+/*
 void *GeometrySystem::operator new(u64 size)
 {
     // Блок памяти будет содержать структуру состояния, затем блок массива, затем блок хеш-таблицы.
     u64 ArrayRequirement = sizeof(GeometryReference) * MaxGeometryCount;
     return LinearAllocator::Instance().Allocate(size + ArrayRequirement);
 }
+*/

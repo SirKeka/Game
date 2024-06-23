@@ -1,43 +1,10 @@
 #include "geometry.hpp"
 #include "core/logger.hpp"
 
-Geometry::Geometry() 
-: 
-id(INVALID::ID), 
-generation(INVALID::ID), 
-VertexCount(), 
-VertexElementSize(),
-VertexBufferOffset(),
-IndexCount(),
-IndexElementSize(),
-IndexBufferOffset() {}
-
-Geometry::Geometry(u32 VertexCount, u64 VertexBufferOffset, u32 IndexCount, u64 IndexBufferOffset)
-:
-id(INVALID::ID), 
-generation(INVALID::ID), 
-VertexCount(VertexCount), 
-VertexElementSize(VertexCount * sizeof(Vertex3D)), 
-VertexBufferOffset(VertexBufferOffset), 
-IndexCount(IndexCount), 
-IndexElementSize(IndexCount * sizeof(u32)), 
-IndexBufferOffset(IndexBufferOffset) {}
-
-Geometry::Geometry(const Geometry &g) 
+constexpr Geometry::Geometry(Geometry &&g)
 : 
 id(g.id), 
-generation(g.generation), 
-VertexCount(g.VertexCount), 
-VertexElementSize(g.VertexElementSize),
-VertexBufferOffset(g.VertexBufferOffset),
-IndexCount(g.IndexCount),
-IndexElementSize(g.IndexElementSize),
-IndexBufferOffset(g.IndexBufferOffset) {}
-
-Geometry::Geometry(Geometry &&g)
-: 
-id(g.id), 
-
+generation(g.generation),
 VertexCount(g.VertexCount), 
 VertexElementSize(g.VertexElementSize),
 VertexBufferOffset(g.VertexBufferOffset),
@@ -46,6 +13,7 @@ IndexElementSize(g.IndexElementSize),
 IndexBufferOffset(g.IndexBufferOffset) 
 {
     g.id = INVALID::ID;
+    g.generation = 0;
     g.VertexCount = 0;
     g.VertexElementSize = 0;
     g.VertexBufferOffset = 0;

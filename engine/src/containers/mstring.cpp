@@ -220,7 +220,7 @@ void MString::nCopy(char *dest, const char *source, u64 Length)
     if (dest && source) {
         for (u64 i = 0; i < Length; i++) {
             dest[i] = source[i];
-            if (source[i]) {
+            if (!dest[i] || !source[i]) {
                 break;
             }
         }
@@ -231,8 +231,9 @@ void MString::nCopy(char *dest, const MString &source, u64 length)
 {
     if (dest && source.str) {
         for (u64 i = 0; i < length; i++) {
-            if (source[i]) {
-                dest[i] = source[i];
+            dest[i] = source[i];
+            if (!dest[i] || !source[i]) {
+                break;
             }
         }
     }

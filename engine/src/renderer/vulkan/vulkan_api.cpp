@@ -1122,6 +1122,10 @@ bool VulkanAPI::EndRenderpass(u8 RenderpassID)
 
 bool VulkanAPI::Load(GeometryID *gid, u32 VertexSize, u32 VertexCount, const void* vertices, u32 IndexSize, u32 IndexCount, const void* indices)
 {
+    if (!VertexCount || !vertices) {
+        MERROR("VulkanAPI::LoadGeometry требует данных вершин, но они не были предоставлены. Количество вершин=%d, вершины=%p", VertexCount, vertices);
+        return false;
+    }
     // Проверьте, не повторная ли это загрузка. Если это так, необходимо впоследствии освободить старые данные.
     bool IsReupload = gid->InternalID != INVALID::ID;
     Geometry OldRange;
@@ -1131,12 +1135,6 @@ bool VulkanAPI::Load(GeometryID *gid, u32 VertexSize, u32 VertexCount, const voi
         geometry = &this->geometries[gid->InternalID];
 
         // Скопируйте старый диапазон.
-        /* OldRange.IndexBufferOffset = geometry->IndexBufferOffset;
-        OldRange.IndexCount = geometry->IndexCount;
-        OldRange.IndexSize = geometry->IndexSize;
-        OldRange.VertexBufferOffset = geometry->VertexBufferOffset;
-        OldRange.VertexCount = geometry->VertexCount;
-        OldRange.VertexSize = geometry->VertexSize;*/
         OldRange = geometry;
     } else {
         for (u32 i = 0; i < VULKAN_MAX_GEOMETRY_COUNT; ++i) {
@@ -1158,34 +1156,35 @@ bool VulkanAPI::Load(GeometryID *gid, u32 VertexSize, u32 VertexCount, const voi
     VkQueue &queue = this->Device.GraphicsQueue;
 
     // Данные вершин.
-    /*geometry->SetVertexData(VertexCount, sizeof(Vertex3D), this->GeometryVertexOffset);
+    *geometry = Geometry(VertexCount, VertexSize, IndexCount);
     u32 TotalSize = VertexCount * VertexSize;
-    UploadDataRange(
-        pool, 
-        0, 
-        queue, 
-        this->ObjectVertexBuffer, 
-        geometry->VertexBufferOffset, 
-        TotalSize, 
-        vertices);
-    // TODO: вместо этого следует поддерживать список свободной памяти
-    this->GeometryVertexOffset += TotalSize;
-
-    // Данные индексов, если применимо
-    if (IndexCount && indices) {
-        geometry->SetIndexData(IndexCount, this->GeometryIndexOffset);
-        TotalSize = IndexCount * IndexSize;
-        UploadDataRange(
+    if (!UploadDataRange(
             pool, 
             0, 
             queue, 
-            this->ObjectIndexBuffer, 
-            geometry->IndexBufferOffset, 
+            this->ObjectVertexBuffer, 
+            geometry->VertexBufferOffset, 
             TotalSize, 
-            indices);
-        // TODO: вместо этого следует поддерживать список свободной памяти
-        this->GeometryIndexOffset += TotalSize;
-    }*/
+            vertices)) {
+        MERROR("VulkanAPI::LoadGeometry не удалось загрузить в буфер вершин!");
+        return false;
+    }
+
+    // Данные индексов, если применимо
+    if (IndexCount && indices) {
+        TotalSize = IndexCount * IndexSize;
+        if (!UploadDataRange(
+                pool, 
+                0, 
+                queue, 
+                this->ObjectIndexBuffer, 
+                geometry->IndexBufferOffset, 
+                TotalSize, 
+                indices)) {
+            MERROR("VulkanAPI::LoadGeometry не удалось загрузить в индексный буфер!");
+            return false;
+        }
+    }
 
     if (gid->generation == INVALID::ID) {
         gid->generation = 0;

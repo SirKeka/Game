@@ -78,9 +78,9 @@ bool MaterialSystem::Initialize(u32 MaxMaterialCount)
         u64 ArrayRequirement = sizeof(Material) * MaxMaterialCount;
         u64 HashtableRequirement = sizeof(MaterialReference) * MaxMaterialCount;
         u64 MemoryRequirement = StructRequirement + ArrayRequirement + HashtableRequirement;
-        void* ptrMatSys = LinearAllocator::Instance().Allocate(MemoryRequirement);
-        Material* RegisteredMaterials = reinterpret_cast<Material*>(reinterpret_cast<u8*>(ptrMatSys) + sizeof(MaterialSystem));
-        MaterialReference* HashTableBlock = reinterpret_cast<MaterialReference*>(reinterpret_cast<u8*>(RegisteredMaterials) + sizeof(Material) * MaxMaterialCount);
+        u8* ptrMatSys = reinterpret_cast<u8*>(LinearAllocator::Instance().Allocate(MemoryRequirement));
+        Material* RegisteredMaterials = reinterpret_cast<Material*>(ptrMatSys + sizeof(MaterialSystem));
+        MaterialReference* HashTableBlock = reinterpret_cast<MaterialReference*>(RegisteredMaterials + MaxMaterialCount);
         state = new(ptrMatSys) MaterialSystem(MaxMaterialCount, RegisteredMaterials, HashTableBlock);
     }
 
@@ -312,13 +312,6 @@ bool MaterialSystem::ApplyLocal(Material *material, const Matrix4D &model)
 
 bool MaterialSystem::CreateDefaultMaterial()
 { 
-    // this->DefaultMaterial.Set(
-    //     DEFAULT_MATERIAL_NAME,
-    //     Vector4D<f32>::One(), // белый
-    //     TextureUse::MapDiffuse,
-    //     TextureSystem::Instance()->GetDefaultTexture() 
-    // );
-
     Shader* s = ShaderSystem::GetInstance()->GetShader(BUILTIN_SHADER_NAME_MATERIAL);
     if (!Renderer::ShaderAcquireInstanceResources(s, DefaultMaterial.InternalId)) {
         MFATAL("Не удалось получить ресурсы средства рендеринга для материала по умолчанию. Приложение не может быть продолжено.");

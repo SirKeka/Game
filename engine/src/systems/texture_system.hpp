@@ -34,7 +34,7 @@ public:
     /// @brief Функция для получения стандартной текстуры.
     /// @return указатель на стандартную текстуру.
     Texture* GetDefaultTexture();
-    static TextureSystem* Instance();
+    static MINLINE TextureSystem* Instance() { return state; };
     // void* operator new(u64 size);
     // void operator delete(void* ptr)
 

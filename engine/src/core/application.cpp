@@ -99,8 +99,7 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
     }
 
     // Система геометрии
-    GeometrySystem::SetMaxGeometryCount(4096);
-    if (!GeometrySystem::Instance()->Initialize()) {
+    if (!GeometrySystem::Initialize(4096)) {
         MFATAL("Не удалось инициализировать систему геометрии. Приложение не может быть продолжено.");
         return false;
     }
