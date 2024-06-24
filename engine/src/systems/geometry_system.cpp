@@ -157,6 +157,155 @@ GeometryConfig GeometrySystem::GeneratePlaneConfig(f32 width, f32 height, u32 xS
     return config;
 }
 
+GeometryConfig GeometrySystem::GenerateCubeConfig(f32 width, f32 height, f32 depth, f32 TileX, f32 TileY, const char *name, const char *MaterialName)
+{
+    if (width == 0) {
+        MWARN("Ширина должна быть ненулевой. По умолчанию один.");
+        width = 1.0f;
+    }
+    if (height == 0) {
+        MWARN("Высота должна быть ненулевой. По умолчанию один.");
+        height = 1.0f;
+    }
+    if (depth == 0) {
+        MWARN("Глубина должна быть ненулевой. По умолчанию один.");
+        depth = 1;
+    }
+    if (TileX == 0) {
+        MWARN("TileX не должен быть нулевым. По умолчанию один.");
+        TileX = 1.0f;
+    }
+    if (TileY == 0) {
+        MWARN("TileY не должно быть нулевым. По умолчанию один.");
+        TileY = 1.0f;
+    }
+
+    GeometryConfig config{
+        sizeof(Vertex3D), 
+        4 * 6, // 4 вершины на сторону, 6 сторон
+        MMemory::Allocate(4 * 6, MemoryTag::Array), 
+        sizeof(u32), 
+        6 * 6, // 6 индексов на каждой стороне, 6 сторон
+        MMemory::Allocate(6 * 6, MemoryTag::Array), 
+        MString::Length(name) ? name : DEFAULT_GEOMETRY_NAME,
+        MString::Length(MaterialName) ? MaterialName : DEFAULT_MATERIAL_NAME
+        };
+
+    f32 HalfWidth = width * 0.5f;
+    f32 HalfHeight = height * 0.5f;
+    f32 HalfDepth = depth * 0.5f;
+    f32 MinX = -HalfWidth;
+    f32 MinY = -HalfHeight;
+    f32 MinZ = -HalfDepth;
+    f32 MaxX = HalfWidth;
+    f32 MaxY = HalfHeight;
+    f32 MaxZ = HalfDepth;
+    f32 MinUVx = 0.f;
+    f32 MinUVy = 0.f;
+    f32 MaxUVx = TileX;
+    f32 MaxUVy = TileY;
+
+    Vertex3D verts[24];
+    // Передняя поверхность
+    verts[(0 * 4) + 0].position = Vector3D<f32>(MinX, MinY, MaxZ);
+    verts[(0 * 4) + 1].position = Vector3D<f32>(MaxX, MaxY, MaxZ);
+    verts[(0 * 4) + 2].position = Vector3D<f32>(MinX, MaxY, MaxZ);
+    verts[(0 * 4) + 3].position = Vector3D<f32>(MaxX, MinY, MaxZ);
+    verts[(0 * 4) + 0].texcoord = Vector2D<f32>(MinUVx, MinUVy);
+    verts[(0 * 4) + 1].texcoord = Vector2D<f32>(MaxUVx, MaxUVy);
+    verts[(0 * 4) + 2].texcoord = Vector2D<f32>(MinUVx, MaxUVy);
+    verts[(0 * 4) + 3].texcoord = Vector2D<f32>(MaxUVx, MinUVy);
+    verts[(0 * 4) + 0].normal   = Vector3D<f32>(0, 0, -1);
+    verts[(0 * 4) + 1].normal   = Vector3D<f32>(0, 0, -1);
+    verts[(0 * 4) + 2].normal   = Vector3D<f32>(0, 0, -1);
+    verts[(0 * 4) + 3].normal   = Vector3D<f32>(0, 0, -1);
+
+    // Задняя поверхность
+    verts[(1 * 4) + 0].position = Vector3D<f32>(MaxX, MinY, MinZ);
+    verts[(1 * 4) + 1].position = Vector3D<f32>(MinX, MaxY, MinZ);
+    verts[(1 * 4) + 2].position = Vector3D<f32>(MaxX, MaxY, MinZ);
+    verts[(1 * 4) + 3].position = Vector3D<f32>(MinX, MinY, MinZ);
+    verts[(1 * 4) + 0].texcoord = Vector2D<f32>(MinUVx, MinUVy);
+    verts[(1 * 4) + 1].texcoord = Vector2D<f32>(MaxUVx, MaxUVy);
+    verts[(1 * 4) + 2].texcoord = Vector2D<f32>(MinUVx, MaxUVy);
+    verts[(1 * 4) + 3].texcoord = Vector2D<f32>(MaxUVx, MinUVy);
+    verts[(1 * 4) + 0].normal   = Vector3D<f32>(0, 0, 1);
+    verts[(1 * 4) + 1].normal   = Vector3D<f32>(0, 0, 1);
+    verts[(1 * 4) + 2].normal   = Vector3D<f32>(0, 0, 1);
+    verts[(1 * 4) + 3].normal   = Vector3D<f32>(0, 0, 1);
+
+    // Левая поверхность
+    verts[(2 * 4) + 0].position = Vector3D<f32>(MinX, MinY, MinZ);
+    verts[(2 * 4) + 1].position = Vector3D<f32>(MinX, MaxY, MaxZ);
+    verts[(2 * 4) + 2].position = Vector3D<f32>(MinX, MaxY, MinZ);
+    verts[(2 * 4) + 3].position = Vector3D<f32>(MinX, MinY, MaxZ);
+    verts[(2 * 4) + 0].texcoord = Vector2D<f32>(MinUVx, MinUVy);
+    verts[(2 * 4) + 1].texcoord = Vector2D<f32>(MaxUVx, MaxUVy);
+    verts[(2 * 4) + 2].texcoord = Vector2D<f32>(MinUVx, MaxUVy);
+    verts[(2 * 4) + 3].texcoord = Vector2D<f32>(MaxUVx, MinUVy);
+    verts[(2 * 4) + 0].normal   = Vector3D<f32>(-1, 0, 0);
+    verts[(2 * 4) + 1].normal   = Vector3D<f32>(-1, 0, 0);
+    verts[(2 * 4) + 2].normal   = Vector3D<f32>(-1, 0, 0);
+    verts[(2 * 4) + 3].normal   = Vector3D<f32>(-1, 0, 0);
+
+    // Правая поверхность
+    verts[(3 * 4) + 0].position = Vector3D<f32>(MaxX, MinY, MaxZ);
+    verts[(3 * 4) + 1].position = Vector3D<f32>(MaxX, MaxY, MinZ);
+    verts[(3 * 4) + 2].position = Vector3D<f32>(MaxX, MaxY, MaxZ);
+    verts[(3 * 4) + 3].position = Vector3D<f32>(MaxX, MinY, MinZ);
+    verts[(3 * 4) + 0].texcoord = Vector2D<f32>(MinUVx, MinUVy);
+    verts[(3 * 4) + 1].texcoord = Vector2D<f32>(MaxUVx, MaxUVy);
+    verts[(3 * 4) + 2].texcoord = Vector2D<f32>(MinUVx, MaxUVy);
+    verts[(3 * 4) + 3].texcoord = Vector2D<f32>(MaxUVx, MinUVy);
+    verts[(3 * 4) + 0].normal   = Vector3D<f32>(0, 1, 0);
+    verts[(3 * 4) + 1].normal   = Vector3D<f32>(0, 1, 0);
+    verts[(3 * 4) + 2].normal   = Vector3D<f32>(0, 1, 0);
+    verts[(3 * 4) + 3].normal   = Vector3D<f32>(0, 1, 0);
+
+    // Нижняя поверхность
+    verts[(4 * 4) + 0].position = Vector3D<f32>(MaxX, MinY, MaxZ);
+    verts[(4 * 4) + 1].position = Vector3D<f32>(MinX, MinY, MinZ);
+    verts[(4 * 4) + 2].position = Vector3D<f32>(MaxX, MinY, MinZ);
+    verts[(4 * 4) + 3].position = Vector3D<f32>(MinX, MinY, MaxZ);
+    verts[(4 * 4) + 0].texcoord = Vector2D<f32>(MinUVx, MinUVy);
+    verts[(4 * 4) + 1].texcoord = Vector2D<f32>(MaxUVx, MaxUVy);
+    verts[(4 * 4) + 2].texcoord = Vector2D<f32>(MinUVx, MaxUVy);
+    verts[(4 * 4) + 3].texcoord = Vector2D<f32>(MaxUVx, MinUVy);
+    verts[(4 * 4) + 0].normal   = Vector3D<f32>(0, -1, 0);
+    verts[(4 * 4) + 1].normal   = Vector3D<f32>(0, -1, 0);
+    verts[(4 * 4) + 2].normal   = Vector3D<f32>(0, -1, 0);
+    verts[(4 * 4) + 3].normal   = Vector3D<f32>(0, -1, 0);
+
+    // Верхняя поверхность
+    verts[(5 * 4) + 0].position = Vector3D<f32>(MinX, MaxY, MaxZ);
+    verts[(5 * 4) + 1].position = Vector3D<f32>(MaxX, MaxY, MinZ);
+    verts[(5 * 4) + 2].position = Vector3D<f32>(MinX, MaxY, MinZ);
+    verts[(5 * 4) + 3].position = Vector3D<f32>(MaxX, MaxY, MaxZ);
+    verts[(5 * 4) + 0].texcoord = Vector2D<f32>(MinUVx, MinUVy);
+    verts[(5 * 4) + 1].texcoord = Vector2D<f32>(MaxUVx, MaxUVy);
+    verts[(5 * 4) + 2].texcoord = Vector2D<f32>(MinUVx, MaxUVy);
+    verts[(5 * 4) + 3].texcoord = Vector2D<f32>(MaxUVx, MinUVy);
+    verts[(5 * 4) + 0].normal   = Vector3D<f32>(0, 1, 0);
+    verts[(5 * 4) + 1].normal   = Vector3D<f32>(0, 1, 0);
+    verts[(5 * 4) + 2].normal   = Vector3D<f32>(0, 1, 0);
+    verts[(5 * 4) + 3].normal   = Vector3D<f32>(0, 1, 0);
+
+    MMemory::CopyMem(config.vertices, verts, config.VertexSize * config.VertexCount);
+
+    for (u32 i = 0; i < 6; ++i) {
+        u32 VOffset = i * 4;
+        u32 IOffset = i * 6;
+        ((u32*)config.indices)[IOffset + 0] = VOffset + 0;
+        ((u32*)config.indices)[IOffset + 1] = VOffset + 1;
+        ((u32*)config.indices)[IOffset + 2] = VOffset + 2;
+        ((u32*)config.indices)[IOffset + 3] = VOffset + 0;
+        ((u32*)config.indices)[IOffset + 4] = VOffset + 3;
+        ((u32*)config.indices)[IOffset + 5] = VOffset + 1;
+    }
+
+    return config;
+}
+
 bool GeometrySystem::CreateGeometry(const GeometryConfig &config, GeometryID *gid)
 {
     if (!config.VertexCount || !config.vertices) {

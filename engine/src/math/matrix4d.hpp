@@ -16,12 +16,12 @@ public:
 	};
 
 public:
-	Matrix4D() : data() {}
-	Matrix4D(f32 n11, f32 n12, f32 n13, f32 n14,
-			 f32 n21, f32 n22, f32 n23, f32 n24,
-			 f32 n31, f32 n32, f32 n33, f32 n34,
-			 f32 n41, f32 n42, f32 n43, f32 n44);
-	Matrix4D(const Vector4D<f32>& a, const Vector4D<f32>& b, const Vector4D<f32>& c, const Vector4D<f32>& d);
+	constexpr Matrix4D() : data() {}
+	constexpr Matrix4D(f32 n11, f32 n12, f32 n13, f32 n14,
+			 		   f32 n21, f32 n22, f32 n23, f32 n24,
+					   f32 n31, f32 n32, f32 n33, f32 n34,
+					   f32 n41, f32 n42, f32 n43, f32 n44);
+	constexpr Matrix4D(const Vector4D<f32>& a, const Vector4D<f32>& b, const Vector4D<f32>& c, const Vector4D<f32>& d);
 	Matrix4D (const Quaternion& q);
 	/// @brief Вычисляет матрицу поворота на основе кватерниона и пройденной центральной точки.
 	/// @param q кватернион
@@ -69,7 +69,7 @@ public:
 
 	/// @brief Создает и возвращает единичную матрицу:
 	/// @return новая единичная матрица
-	static MINLINE Matrix4D MakeIdentity() {
+	static constexpr Matrix4D MakeIdentity() {
 		return Matrix4D(1.0f, 0.0f, 0.0f, 0.0f,
 						0.0f, 1.0f, 0.0f, 0.0f,
 						0.0f, 0.0f, 1.0f, 0.0f,

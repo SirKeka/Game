@@ -184,7 +184,7 @@ bool Renderer::DrawFrame(RenderPacket &packet)
             }
 
             // Приминение locals
-            MaterialSystem::Instance()->ApplyLocal(m, packet.geometries[i].model);
+            MaterialSystem::Instance()->ApplyLocal(m, packet.UI_Geometries[i].model);
 
             // Отрисовка.
             ptrRenderer->DrawGeometry(packet.UI_Geometries[i]);

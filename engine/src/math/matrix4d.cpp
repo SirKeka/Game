@@ -4,23 +4,22 @@
 #include "math.hpp"
 #include "core/logger.hpp"
 
-Matrix4D::Matrix4D(f32 n11, f32 n12, f32 n13, f32 n14,
-				   f32 n21, f32 n22, f32 n23, f32 n24,
-				   f32 n31, f32 n32, f32 n33, f32 n34,
-				   f32 n41, f32 n42, f32 n43, f32 n44)
+constexpr Matrix4D::Matrix4D(f32 n11, f32 n12, f32 n13, f32 n14, f32 n21, f32 n22, f32 n23, f32 n24, f32 n31, f32 n32, f32 n33, f32 n34, f32 n41, f32 n42, f32 n43, f32 n44)
+: data{n11, n12, n13, n14, n21, n22, n23, n24, n31, n32, n33, n34, n41, n42, n43, n44}
 {
-	n[0][0] = n11; n[0][1] = n12; n[0][2] = n13; n[0][3] = n14;
+  /*n[0][0] = n11; n[0][1] = n12; n[0][2] = n13; n[0][3] = n14;
 	n[1][0] = n21; n[1][1] = n22; n[1][2] = n23; n[1][3] = n24;
 	n[2][0] = n31; n[2][1] = n32; n[2][2] = n33; n[2][3] = n34;
-	n[3][0] = n41; n[3][1] = n42; n[3][2] = n43; n[3][3] = n44;
+	n[3][0] = n41; n[3][1] = n42; n[3][2] = n43; n[3][3] = n44;*/
 }
 
-Matrix4D::Matrix4D(const Vector4D<f32>& a, const Vector4D<f32>& b, const Vector4D<f32>& c, const Vector4D<f32>& d)
+constexpr Matrix4D::Matrix4D(const Vector4D<f32>& a, const Vector4D<f32>& b, const Vector4D<f32>& c, const Vector4D<f32>& d)
+: data{a.x, a.y, a.z, a.w, b.x, b.y, b.z, b.w, c.x, c.y, c.z, c.w, d.x, d.y, d.z, d.w}
 {
-	n[0][0] = a.x; n[0][1] = a.y; n[0][2] = a.z; n[0][3] = a.w;
+  /*n[0][0] = a.x; n[0][1] = a.y; n[0][2] = a.z; n[0][3] = a.w;
 	n[1][0] = b.x; n[1][1] = b.y; n[1][2] = b.z; n[1][3] = b.w;
 	n[2][0] = c.x; n[2][1] = c.y; n[2][2] = c.z; n[2][3] = c.w;
-	n[3][0] = d.x; n[3][1] = d.y; n[3][2] = d.z; n[3][3] = d.w;
+	n[3][0] = d.x; n[3][1] = d.y; n[3][2] = d.z; n[3][3] = d.w;*/
 }
 
 Matrix4D::Matrix4D(const Quaternion &q)

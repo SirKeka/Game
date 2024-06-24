@@ -10,7 +10,8 @@ struct Vertex2D
 
 struct Vertex3D
 {
-    Vector3D<f32> position;
+    Vector3D<f32> position; // Позиция вершины
+    Vector3D<f32> normal;   // Нормаль вершины
     Vector2D<f32> texcoord;
 };
 

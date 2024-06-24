@@ -89,6 +89,17 @@ public:
         f32 TileX, f32 TileY, 
         const char* name, 
         const char* MaterialName);
+    
+    /// @brief 
+    /// @param width 
+    /// @param height 
+    /// @param depth 
+    /// @param TileX 
+    /// @param TileY 
+    /// @param name 
+    /// @param MaterialName 
+    /// @return 
+    GeometryConfig GenerateCubeConfig(f32 width, f32 height, f32 depth, f32 TileX, f32 TileY, const char* name, const char* MaterialName);
 private:
     bool CreateGeometry(const GeometryConfig& config, GeometryID* gid);
     void DestroyGeometry(GeometryID* gid);
