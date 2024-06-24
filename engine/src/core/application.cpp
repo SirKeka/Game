@@ -114,33 +114,25 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
     MMemory::Free(gConfig.vertices, gConfig.VertexCount * sizeof(Vertex3D), MemoryTag::Array);
     MMemory::Free(gConfig.indices, gConfig.IndexCount * sizeof(u32), MemoryTag::Array);
 
-    // Загрузите тестовую геометрию пользовательского интерфейса.
-    // GeometryConfig UI_Config {sizeof(Vertex2D), 4, sizeof(u32), 6, "test_ui_material", "test_ui_geometry"};
-    // UI_Config.VertexSize = sizeof(Vertex2D);
-    // UI_Config.VertexCount = 4;
-    // UI_Config.IndexSize = sizeof(u32);
-    // UI_Config.IndexCount = 6;
-    // MMemory::CopyMem(UI_Config.MaterialName, "test_ui_material", MATERIAL_NAME_MAX_LENGTH);
-    // MMemory::CopyMem(UI_Config.name, "test_ui_geometry", GEOMETRY_NAME_MAX_LENGTH);
-
-    const f32 f = 512.0f;
+    const f32 w = 128.f;
+    const f32 h = 49.f;
     Vertex2D uiverts [4];
     uiverts[0].position.x = 0.0f;  // 0    3
     uiverts[0].position.y = 0.0f;  //
     uiverts[0].texcoord.x = 0.0f;  //
     uiverts[0].texcoord.y = 0.0f;  // 2    1
 
-    uiverts[1].position.y = f;
-    uiverts[1].position.x = f;
+    uiverts[1].position.y = h;
+    uiverts[1].position.x = w;
     uiverts[1].texcoord.x = 1.0f;
     uiverts[1].texcoord.y = 1.0f;
 
     uiverts[2].position.x = 0.0f;
-    uiverts[2].position.y = f;
+    uiverts[2].position.y = h;
     uiverts[2].texcoord.x = 0.0f;
     uiverts[2].texcoord.y = 1.0f;
 
-    uiverts[3].position.x = f;
+    uiverts[3].position.x = w;
     uiverts[3].position.y = 0.0;
     uiverts[3].texcoord.x = 1.0f;
     uiverts[3].texcoord.y = 0.0f;
