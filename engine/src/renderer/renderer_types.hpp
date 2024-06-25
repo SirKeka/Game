@@ -68,6 +68,9 @@ struct GeometryRenderData
 {
     Matrix4D model;
     struct GeometryID* gid;
+
+    constexpr GeometryRenderData() : model(), gid(nullptr) {}
+    constexpr GeometryRenderData(Matrix4D model, struct GeometryID* gid) : model(model), gid(gid) {}
 };
 
 class RendererType

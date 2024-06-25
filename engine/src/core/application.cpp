@@ -107,7 +107,8 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
     // СДЕЛАТЬ: временно
 
     // Загрузите конфигурацию плоскости и загрузите из нее геометрию.
-    GeometryConfig gConfig = GeometrySystem::Instance()->GenerateCubeConfig(10.f, 10.f, 10.f, 1.f, 1.f, "test_cube", "test_material");
+    GeometryConfig gConfig = GeometrySystem::Instance()->GeneratePlaneConfig(10.0f, 5.0f, 5, 5, 5.0f, 2.0f, "test geometry", "test_material");
+    //GeometryConfig gConfig = GeometrySystem::Instance()->GenerateCubeConfig(10.f, 10.f, 10.f, 1.f, 1.f, "test_cube", "test_material");
     State->TestGeometry = GeometrySystem::Instance()->Acquire(gConfig, true);
 
     // Очистите места для конфигурации геометрии.
@@ -136,11 +137,9 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
     uiverts[3].position.y = 0.0;
     uiverts[3].texcoord.x = 1.0f;
     uiverts[3].texcoord.y = 0.0f;
-    //UI_Config.vertices = uiverts;
 
     // Индексы - против часовой стрелки
     u32 uiindices[6] = {2, 1, 0, 3, 0, 1};
-    //UI_Config.indices = uiindices;
     GeometryConfig UI_Config {sizeof(Vertex2D), 4, uiverts, sizeof(u32), 6, uiindices, "test_ui_geometry", "test_ui_material"};
 
     // Получите геометрию пользовательского интерфейса из конфигурации.
@@ -201,16 +200,12 @@ bool Application::ApplicationRun() {
             packet.DeltaTime = delta;
 
             // СДЕЛАТЬ: временно
-            GeometryRenderData TestRender;
-            TestRender.gid = State->TestGeometry;
-            TestRender.model = Matrix4D::MakeIdentity();
+            GeometryRenderData TestRender{Matrix4D::MakeIdentity(), State->TestGeometry};
 
             packet.GeometryCount = 1;
             packet.geometries = &TestRender;
 
-            GeometryRenderData TestUI_Render;
-            TestUI_Render.gid = State->TestUI_Geometry;
-            TestUI_Render.model = Matrix4D::MakeTranslation(Vector3D<f32>{0, 0, 0});
+            GeometryRenderData TestUI_Render{Matrix4D::MakeTranslation(Vector3D<f32>::Zero()), State->TestUI_Geometry};
             packet.UI_GeometryCount = 1;
             packet.UI_Geometries = &TestUI_Render;
             // СДЕЛАТЬ: временно

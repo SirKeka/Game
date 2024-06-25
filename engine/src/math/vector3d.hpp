@@ -23,8 +23,8 @@ public:
         };
     };
 
-	Vector3D() = default;
-	constexpr explicit Vector3D(T x, T y, T z) noexcept;
+	constexpr Vector3D() : x(), y(), z() {}
+	constexpr explicit Vector3D(T x, T y, T z = 0) noexcept : x(x), y(y), z(z) {}
 	Vector3D(const Vector2D<T>& v);
 	Vector3D(const Vector4D<T>& v);
 
@@ -193,14 +193,6 @@ template<typename T>
 MINLINE Vector3D<T>& Reject(const Vector3D<T>& a, const Vector3D<T>& b)
 {
 	return Vector3D<T>(a - b * (Dot(a, b) / Dot(b, b)));
-}
-
-template <typename T>
-MINLINE constexpr Vector3D<T>::Vector3D(T x, T y, T z) noexcept
-{
-	this->x = x;
-	this->y = y;
-	this->z = z;
 }
 
 template <typename T>
