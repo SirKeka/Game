@@ -161,6 +161,15 @@ const bool MString::Comparei(const char *string) const
     return MString::Equali(str, string);
 }
 
+char *MString::Duplicate(const char *s)
+{
+    u64 length = Length(s);
+    char* copy = MMemory::TAllocate<char>(MemoryTag::String, length + 1);
+    nCopy(copy, s, length);
+    copy[length] = '\0';
+    return copy;
+}
+
 i32 MString::Format(char *dest, const char *format, ...)
 {
     if (dest) {

@@ -159,7 +159,6 @@ bool VulkanBuffer::Create(
 
 void VulkanBuffer::Destroy(VulkanAPI *VkAPI)
 {
-    this->~VulkanBuffer();
     if (memory) {
         vkFreeMemory(VkAPI->Device.LogicalDevice, memory, VkAPI->allocator);
         memory = 0;

@@ -54,8 +54,8 @@ Texture::Texture(const char* name, i32 width, i32 height, i32 ChannelCount, cons
     //     VK_IMAGE_ASPECT_COLOR_BIT);
 
     VulkanCommandBuffer TempBuffer{};
-    const VkCommandPool& pool = VkAPI->Device.GraphicsCommandPool;
-    const VkQueue& queue = VkAPI->Device.GraphicsQueue;
+    VkCommandPool& pool = VkAPI->Device.GraphicsCommandPool;
+    VkQueue& queue = VkAPI->Device.GraphicsQueue;
     VulkanCommandBufferAllocateAndBeginSingleUse(VkAPI, pool, &TempBuffer);
 
     // Измените макет с того, какой он есть в данный момент, на оптимальный для получения данных.
@@ -80,7 +80,7 @@ Texture::Texture(const char* name, i32 width, i32 height, i32 ChannelCount, cons
     VulkanCommandBufferEndSingleUse(VkAPI, pool, &TempBuffer, queue);
 
     // Уничтожение промежуточного буфера
-    staging.Destroy(VkAPI);
+    //staging.Destroy(VkAPI);
 
     // Создание сэмплера для текстуры
     VkSamplerCreateInfo SamplerInfo = {VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
@@ -112,12 +112,8 @@ Texture::Texture(const char* name, i32 width, i32 height, i32 ChannelCount, cons
 
 Texture::~Texture()
 {
-    id = 0; 
-    width = 0;
-    height = 0; 
-    ChannelCount = 0; 
-    HasTransparency = false;
-    generation = 0; 
+    delete Data;
+    Data = nullptr;
 }
 
 void Texture::Create(const char* name, i32 width, i32 height, i32 ChannelCount, const u8 *pixels, bool HasTransparency, VulkanAPI *VkAPI)
@@ -126,11 +122,9 @@ void Texture::Create(const char* name, i32 width, i32 height, i32 ChannelCount, 
     this->height = height;
     this->ChannelCount = ChannelCount;
     this->generation = INVALID::ID;
-    MMemory::CopyMem(this->name, name, TEXTURE_NAME_MAX_LENGTH); // this->name = name;
+    MString::nCopy(this->name, name, TEXTURE_NAME_MAX_LENGTH); // this->name = name;
 
     // Создание внутренних данных.
-    // TODO: Используйте для этого распределитель.
-    Data = reinterpret_cast<VulkanTextureData*>(MMemory::Allocate(sizeof(VulkanTextureData), MemoryTag::Texture));
     VkDeviceSize ImageSize = width * height * ChannelCount;
 
     // ПРИМЕЧАНИЕ: Предполагается, что на канал приходится 8 бит.
@@ -145,7 +139,7 @@ void Texture::Create(const char* name, i32 width, i32 height, i32 ChannelCount, 
     staging.LoadData(VkAPI, 0, ImageSize, 0, pixels);
 
     // ПРИМЕЧАНИЕ. Здесь много предположений, для разных типов текстур потребуются разные параметры.
-    Data->image = VulkanImage(
+    Data = new VulkanTextureData (VulkanImage(
         VkAPI,
         VK_IMAGE_TYPE_2D,
         width,
@@ -155,11 +149,11 @@ void Texture::Create(const char* name, i32 width, i32 height, i32 ChannelCount, 
         VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
         true,
-        VK_IMAGE_ASPECT_COLOR_BIT);
+        VK_IMAGE_ASPECT_COLOR_BIT));
 
     VulkanCommandBuffer TempBuffer{};
-    VkCommandPool pool = VkAPI->Device.GraphicsCommandPool;
-    VkQueue queue = VkAPI->Device.GraphicsQueue;
+    const VkCommandPool& pool = VkAPI->Device.GraphicsCommandPool;
+    const VkQueue& queue = VkAPI->Device.GraphicsQueue;
     VulkanCommandBufferAllocateAndBeginSingleUse(VkAPI, pool, &TempBuffer);
 
     // Измените макет с того, какой он есть в данный момент, на оптимальный для получения данных.
@@ -227,8 +221,6 @@ void Texture::Destroy(VulkanAPI *VkAPI)
 
     MMemory::Free(Data, sizeof(VulkanTextureData), MemoryTag::Texture);
     }
-    
-    this->~Texture();
 }
 
 Texture::operator bool() const
@@ -244,7 +236,7 @@ void *Texture::operator new(u64 size)
     return MMemory::Allocate(size, MemoryTag::Texture);
 }
 
-void Texture::operator delete(void *ptr)
+void Texture::operator delete(void *ptr, u64 size)
 {
-    MMemory::Free(ptr, sizeof(Texture), MemoryTag::Texture);
+    MMemory::Free(ptr, size, MemoryTag::Texture);
 }

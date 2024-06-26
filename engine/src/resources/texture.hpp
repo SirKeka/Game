@@ -14,6 +14,7 @@ struct VulkanTextureData {
     VkSampler sampler;
     constexpr VulkanTextureData() : image(), sampler() {}
     constexpr VulkanTextureData(VulkanImage image) : image(image), sampler() {}
+    constexpr VulkanTextureData(const VulkanTextureData& value) : image(value.image), sampler(value.sampler) {}
     void* operator new(u64 size) { return MMemory::Allocate(size, MemoryTag::Texture); }
     void operator delete(void* ptr, u64 size) { MMemory::Free(ptr, size, MemoryTag::Texture); }
 };
@@ -40,9 +41,9 @@ public:
     constexpr Texture() : id(INVALID::ID), width(0), height(0), ChannelCount(0), HasTransparency(false), generation(INVALID::ID), name(), Data(nullptr) {}
     Texture(const char* name, i32 width, i32 height, i32 ChannelCount, const u8* pixels, bool HasTransparency, VulkanAPI* VkAPI);
     ~Texture();
-    constexpr Texture(const Texture& t) 
+    Texture(const Texture& t) 
     : id(t.id), width(t.width), height(t.height), ChannelCount(t.ChannelCount), 
-    HasTransparency(t.HasTransparency), generation(t.generation), name(), Data(t.Data) 
+    HasTransparency(t.HasTransparency), generation(t.generation), name(), Data(new VulkanTextureData(*t.Data)) 
     { MMemory::CopyMem(this->name, t.name, TEXTURE_NAME_MAX_LENGTH); }
     void Create(
         const char* name, 
@@ -57,5 +58,5 @@ public:
 
     explicit operator bool() const;
     void* operator new(u64 size);
-    void operator delete(void* ptr);
+    void operator delete(void* ptr, u64 size);
 };

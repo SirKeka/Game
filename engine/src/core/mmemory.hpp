@@ -120,7 +120,7 @@ public:
     template<class U, class... Args>
     void Construct (U* ptr, Args && ...args);
 
-    static MString GetMemoryUsageStr();
+    static char* GetMemoryUsageStr();
 
     //void* operator new(u64 size);
 };

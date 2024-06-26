@@ -55,7 +55,10 @@ public:
     /// @param string строка в стиле си с которой нужно сравнить
     /// @return true, если строки равны и false, если нет 
     const bool Comparei(const char* string) const;
-
+    /// @brief Копирует строку
+    /// @param s строка которую нужно скопировать
+    /// @return указатель на копию строки
+    static char* Duplicate(const char* s);
     // Выполняет форматирование строки для определения заданной строки формата и параметров.
     static i32 Format(char* dest, const char* format, ...);
     /// @brief Выполняет форматирование переменной строки для определения заданной строки формата и va_list.

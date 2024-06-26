@@ -209,7 +209,7 @@ bool TextureSystem::CreateDefaultTexture()
             }
         }
     }
-    DefaultTexture = Texture(DEFAULT_TEXTURE_NAME, TexDimension, TexDimension, 4, pixels, false, Renderer::GetRenderer()); // DefaultTexture.Create(DEFAULT_TEXTURE_NAME, TexDimension, TexDimension, 4, pixels, false, Renderer::GetRenderer());
+    DefaultTexture.Create(DEFAULT_TEXTURE_NAME, TexDimension, TexDimension, 4, pixels, false, Renderer::GetRenderer());
 
     // Вручную установите недействительную генерацию текстуры, поскольку это текстура по умолчанию.
     this->DefaultTexture.generation = INVALID::ID;
@@ -232,8 +232,6 @@ bool TextureSystem::LoadTexture(const char* TextureName, Texture *t)
 
     ImageResourceData* ResourceData = reinterpret_cast<ImageResourceData*>(ImgResource.data);
 
-    
-
     u32 CurrentGeneration = t->generation;
     t->generation = INVALID::ID;
 
@@ -248,25 +246,15 @@ bool TextureSystem::LoadTexture(const char* TextureName, Texture *t)
         }
     }
 
-    // Получите внутренние ресурсы текстур и загрузите их в графический процессор.
-    // Используйте временную текстуру для загрузки.
-    Texture TempTexture = Texture(
-        TextureName,
-        ResourceData->width,
-        ResourceData->height,
-        ResourceData->ChannelCount,
-        ResourceData->pixels,
-        HasTransparency,
-        Renderer::GetRenderer());
-
     // Скопируйте старую текстуру.
-    Texture old = *t;
+    // Texture old = *t;
+    if (t->Data) {
+        // Уничтожьте старую текстуру.
+        t->Destroy(Renderer::GetRenderer());
+    }
 
-    // Присвойте указателю временную текстуру.
-    *t = TempTexture;
-
-    // Уничтожьте старую текстуру.
-    old.Destroy(Renderer::GetRenderer());
+    // Получите внутренние ресурсы текстур и загрузите их в графический процессор.
+    t->Create(TextureName, ResourceData->width, ResourceData->height, ResourceData->ChannelCount, ResourceData->pixels, HasTransparency, Renderer::GetRenderer());
 
     if (CurrentGeneration == INVALID::ID) {
         t->generation = 0;
