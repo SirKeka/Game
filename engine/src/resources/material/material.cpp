@@ -29,12 +29,11 @@ Material::~Material()
     return false;
 }*/
 
-void Material::Set(const char *name, Vector4D<f32> DiffuseColour, TextureUse use, Texture *texture)
+void Material::Reset()
 {
-    MMemory::CopyMem(this->name, name, MATERIAL_NAME_MAX_LENGTH);
-    this->DiffuseColour = DiffuseColour;
-    this->DiffuseMap.use = use;
-    this->DiffuseMap.texture = texture;
+    id = 0;        
+    generation = 0;
+    InternalId = 0;
 }
 
 void Material::SetName(const char *name)

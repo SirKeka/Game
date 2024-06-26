@@ -323,7 +323,7 @@ bool MaterialSystem::CreateDefaultMaterial()
 
 bool MaterialSystem::LoadMaterial(const MaterialConfig &config, Material *m)
 { 
-    MMemory::ZeroMem(m, sizeof(Material));
+    m->Reset();
 
     // имя
     MString::nCopy(m->name, config.name, MATERIAL_NAME_MAX_LENGTH);

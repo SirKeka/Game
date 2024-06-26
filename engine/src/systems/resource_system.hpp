@@ -1,6 +1,7 @@
 #pragma once
 #include "defines.hpp"
 #include "resources/loader/resource_loader.hpp"
+#include "core/mmemory.hpp"
 
 /// @brief Общая структура ресурса. Все загрузчики ресурсов загружают в них данные.
 struct Resource {
@@ -17,6 +18,11 @@ struct ImageResourceData {
     u32 width;
     u32 height;
     u8* pixels;
+
+    constexpr ImageResourceData(u8 ChannelCount, u32 width, u32 height, u8* pixels)
+    : ChannelCount(ChannelCount), width(width), height(height), pixels(pixels) {}
+    void* operator new(u64 size) { return MMemory::Allocate(size, MemoryTag::Texture); }
+    void operator delete(void* ptr, u64 size) { MMemory::Free(ptr, size, MemoryTag::Texture); }
 };
 
 // TODO: Сделать шаблонной

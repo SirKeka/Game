@@ -107,8 +107,8 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
     // СДЕЛАТЬ: временно
 
     // Загрузите конфигурацию плоскости и загрузите из нее геометрию.
-    GeometryConfig gConfig = GeometrySystem::Instance()->GeneratePlaneConfig(10.0f, 5.0f, 5, 5, 5.0f, 2.0f, "test geometry", "test_material");
-    //GeometryConfig gConfig = GeometrySystem::Instance()->GenerateCubeConfig(10.f, 10.f, 10.f, 1.f, 1.f, "test_cube", "test_material");
+    //GeometryConfig gConfig = GeometrySystem::Instance()->GeneratePlaneConfig(10.0f, 5.0f, 5, 5, 5.0f, 2.0f, "test_geometry", "test_material");
+    GeometryConfig gConfig = GeometrySystem::Instance()->GenerateCubeConfig(10.f, 10.f, 10.f, 1.f, 1.f, "test_cube", "test_material");
     State->TestGeometry = GeometrySystem::Instance()->Acquire(gConfig, true);
 
     // Очистите места для конфигурации геометрии.

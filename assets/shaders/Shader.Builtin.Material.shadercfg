@@ -9,7 +9,7 @@ use_local=1
 
 # Attributes: type,name
 attribute=vec3,in_position
-# attribute=vec3,in_normal
+attribute=vec3,in_normal
 attribute=vec2,in_texcoord
 
 # Uniforms: type,scope,name

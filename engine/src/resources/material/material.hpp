@@ -25,13 +25,12 @@ public:
 public:
     constexpr Material() : id(INVALID::ID), generation(INVALID::ID), InternalId(INVALID::ID), ShaderID(), name(), DiffuseColour(), DiffuseMap() {}
     constexpr Material(const Material& m);
-    constexpr Material(const char* name, Vector4D<f32> DiffuseColour, TextureUse use, Texture* texture) : id(INVALID::ID), generation(INVALID::ID), InternalId(), ShaderID(), name(), DiffuseColour(DiffuseColour), DiffuseMap(texture, use) 
-    { 
+    constexpr Material(const char* name, Vector4D<f32> DiffuseColour, TextureUse use, Texture* texture) : id(INVALID::ID), generation(INVALID::ID), InternalId(), ShaderID(), name(), DiffuseColour(DiffuseColour), DiffuseMap(texture, use) { 
         MString::nCopy(this->name, name, MATERIAL_NAME_MAX_LENGTH);
     }
     ~Material();
 
     MINLINE void Destroy() { this->~Material(); }
-    void Set(const char* name, Vector4D<f32> DiffuseColour, TextureUse use, Texture* texture);
+    void Reset();
     void SetName(const char* name);
 };

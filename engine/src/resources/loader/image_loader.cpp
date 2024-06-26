@@ -57,11 +57,7 @@ bool ImageLoader::Load(const char *name, Resource &OutResource)
     OutResource.FullPath = FullFilePath;
 
     // TODO: Здесь следует использовать распределитель.
-    ImageResourceData* ResourceData = MMemory::TAllocate<ImageResourceData>(MemoryTag::Texture);
-    ResourceData->pixels = data;
-    ResourceData->width = width;
-    ResourceData->height = height;
-    ResourceData->ChannelCount = RequiredChannelCount;
+    ImageResourceData* ResourceData = new ImageResourceData(RequiredChannelCount, width, height, data);
 
     OutResource.data = ResourceData;
     OutResource.DataSize = sizeof(ImageResourceData);

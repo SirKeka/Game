@@ -96,11 +96,6 @@ bool Shader::Create(u32 id, const ShaderConfig *config)
     this->BoundInstanceID = INVALID::ID;
     this->AttributeStride = 0;
 
-    // Настройка массивов
-    //this->GlobalTextures = darray_create(texture*);
-    //this->uniforms = darray_create(shader_uniform);
-    //this->attributes = darray_create(shader_attribute);
-
     // Создайте хеш-таблицу для хранения индексов унифицированного массива. 
     // Это обеспечивает прямой индекс массива «uniforms», хранящегося в шейдере, для быстрого поиска по имени.
     u64 ElementSize = sizeof(u16);  // Индексы хранятся как u16.

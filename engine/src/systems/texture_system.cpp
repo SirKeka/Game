@@ -232,19 +232,15 @@ bool TextureSystem::LoadTexture(const char* TextureName, Texture *t)
 
     ImageResourceData* ResourceData = reinterpret_cast<ImageResourceData*>(ImgResource.data);
 
-    // Используйте временную текстуру для загрузки.
-    Texture TempTexture;
-    TempTexture.width = ResourceData->width;
-    TempTexture.height = ResourceData->height;
-    TempTexture.ChannelCount = ResourceData->ChannelCount;
+    
 
     u32 CurrentGeneration = t->generation;
     t->generation = INVALID::ID;
 
-    u64 TotalSize = TempTexture.width * TempTexture.height * TempTexture.ChannelCount;
+    u64 TotalSize = ResourceData->width * ResourceData->height * ResourceData->ChannelCount;
     // Проверка прозрачности
     b32 HasTransparency = false;
-    for (u64 i = 0; i < TotalSize; i += TempTexture.ChannelCount) {
+    for (u64 i = 0; i < TotalSize; i += ResourceData->ChannelCount) {
         u8 a = ResourceData->pixels[i + 3];
         if (a < 255) {
             HasTransparency = true;
@@ -253,11 +249,12 @@ bool TextureSystem::LoadTexture(const char* TextureName, Texture *t)
     }
 
     // Получите внутренние ресурсы текстур и загрузите их в графический процессор.
-    TempTexture = Texture(
+    // Используйте временную текстуру для загрузки.
+    Texture TempTexture = Texture(
         TextureName,
-        TempTexture.width,
-        TempTexture.height,
-        TempTexture.ChannelCount,
+        ResourceData->width,
+        ResourceData->height,
+        ResourceData->ChannelCount,
         ResourceData->pixels,
         HasTransparency,
         Renderer::GetRenderer());

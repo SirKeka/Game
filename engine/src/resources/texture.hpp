@@ -37,10 +37,13 @@ public:
     // СДЕЛАТЬ: Пока нет реализации DirectX храним указатель текстуры Vulkan.
     VulkanTextureData* Data;            // Необработанные данные текстуры (пиксели).
 public:
-    Texture();
+    constexpr Texture() : id(INVALID::ID), width(0), height(0), ChannelCount(0), HasTransparency(false), generation(INVALID::ID), name(), Data(nullptr) {}
     Texture(const char* name, i32 width, i32 height, i32 ChannelCount, const u8* pixels, bool HasTransparency, VulkanAPI* VkAPI);
     ~Texture();
-    Texture(const Texture& t);
+    constexpr Texture(const Texture& t) 
+    : id(t.id), width(t.width), height(t.height), ChannelCount(t.ChannelCount), 
+    HasTransparency(t.HasTransparency), generation(t.generation), name(), Data(t.Data) 
+    { MMemory::CopyMem(this->name, t.name, TEXTURE_NAME_MAX_LENGTH); }
     void Create(
         const char* name, 
         i32 width, 
