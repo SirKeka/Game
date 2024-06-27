@@ -123,9 +123,13 @@ bool FreeList::FreeBlock(u64 size, u64 offset)
         return true;
     } else {
         while (node) {
-            if (node->offset + node->size == offset/* || node->offset == offset + size*/) { 
+            if (node->offset + node->size == offset || node->offset == offset + size) { 
                 // Можно просто добавить к этому узлу.
                 node->size += size;
+                if (node->offset == offset + size) {
+                    node->offset = offset;
+                }
+                
 
                 // Проверьте, соединяет ли это диапазон между этим и следующим узлом, 
                 // и если да, объедините их и верните второй узел.

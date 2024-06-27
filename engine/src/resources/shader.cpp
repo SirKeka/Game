@@ -32,7 +32,7 @@ constexpr Shader::Shader()
     ShaderData(nullptr) 
 {}
 
-constexpr Shader::Shader(u32 id, const ShaderConfig *config) 
+Shader::Shader(u32 id, const ShaderConfig *config) 
     : 
     id(id), 
     name(config->name), 
@@ -51,8 +51,8 @@ constexpr Shader::Shader(u32 id, const ShaderConfig *config)
     BoundScope(), 
     BoundInstanceID(INVALID::ID), 
     BoundUboOffset(), 
-    HashtableBlock(MMemory::TAllocate<u16>(MemoryTag::HashTable, 1024, true)), 
-    UniformLookup(1024, false, HashtableBlock, INVALID::U16ID), 
+    HashtableBlock(MMemory::Allocate(1024 * sizeof(u16), MemoryTag::Renderer, true)), 
+    UniformLookup(1024, false, reinterpret_cast<u16*>(HashtableBlock), true, INVALID::U16ID), 
     uniforms(config->UniformCount), 
     attributes(), 
     state(ShaderState::NotCreated), 

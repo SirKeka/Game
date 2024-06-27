@@ -2,10 +2,9 @@
 
 #include "defines.hpp"
 #include "matrix3d.hpp"
+#include "vector3d.hpp"
 
 #include "math.hpp"
-
-template<typename T> class Vector3D;
 
 class Quaternion
 {
@@ -30,14 +29,25 @@ public:
         };
     };
 
-	Quaternion() = default;
-	Quaternion(f32 a, f32 b, f32 c, f32 s);
-	Quaternion(const Vector3D<f32>& v, f32 s);
+	constexpr Quaternion() : x(), y(), z(), w() {}
+	constexpr Quaternion(f32 x, f32 y, f32 z, f32 w) : x(x), y(y), z(z), w(w) {}
+	constexpr Quaternion(const Vector3D<f32>& v, f32 s) : x(v.x), y(v.y), z(v.z), w(s) {}
 	/// @brief 
 	/// @param axis 
 	/// @param angle 
 	/// @param normalize 
-	Quaternion(const Vector3D<f32>& axis, f32 angle, bool normalize);
+	constexpr Quaternion(const Vector3D<f32>& axis, f32 angle, bool normalize) {
+		const f32 HalfAngle = 0.5f * angle;
+    	f32 s = Math::sin(HalfAngle);
+    	f32 c = Math::cos(HalfAngle);
+
+		x = s * axis.x;
+		y = s * axis.y;
+		z = s * axis.z;
+		w = c;
+
+    	if (normalize) this->Normalize();
+	}
 	Quaternion(const Quaternion& q);
 	Quaternion(Quaternion&& q);
 

@@ -11,7 +11,9 @@
 #pragma once
 #include "resources/material/material.hpp"
 #include "containers/hashtable.hpp"
-#include "math/matrix4d.hpp"
+//#include "math/matrix4d.hpp"
+class Matrix4D;
+template<typename T> class Vector4D;
 
 constexpr const char* DEFAULT_MATERIAL_NAME = "default";    // Имя материала по умолчанию.
 
@@ -38,6 +40,7 @@ private:
     struct MaterialShaderUniformLocations {
         u16 projection{};
         u16 view{};
+        u16 AmbientColour{};
         u16 DiffuseColour{INVALID::U16ID};
         u16 DiffuseTexture{INVALID::U16ID};
         u16 model{};
@@ -95,8 +98,9 @@ public:
     /// @param ShaderID идентификатор шейдера, к которому применяются глобальные переменные.
     /// @param projection константная ссылка на матрицу проекции.
     /// @param view константная ссылка на матрицу представления.
+    /// @param AmbientColour Окружающий цвет сцены.
     /// @return true в случае успеха иначе false.
-    bool ApplyGlobal(u32 ShaderID, const Matrix4D& projection, const Matrix4D& view);
+    bool ApplyGlobal(u32 ShaderID, const Matrix4D& projection, const Matrix4D& view, const Vector4D<f32>& AmbientColour = Vector4D<f32>());
     /// @brief Применяет данные материала на уровне экземпляра для данного материала.
     /// @param material указатель на материал, который будет применен.
     /// @return true в случае успеха иначе false.

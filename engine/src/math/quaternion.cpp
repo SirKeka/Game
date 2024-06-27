@@ -1,37 +1,5 @@
 #include "quaternion.hpp"
 
-#include "vector3d.hpp"
-
-Quaternion::Quaternion(f32 a, f32 b, f32 c, f32 s)
-{
-	x = a; 
-	y = b; 
-	z = c;
-	w = s;
-}
-
-Quaternion::Quaternion(const Vector3D<f32>& v, f32 s)
-{
-	x = v.x; 
-	y = v.y; 
-	z = v.z;
-	w = s;
-}
-
-Quaternion::Quaternion(const Vector3D<f32> &axis, f32 angle, bool normalize)
-{
-	const f32 HalfAngle = 0.5f * angle;
-    f32 s = Math::sin(HalfAngle);
-    f32 c = Math::cos(HalfAngle);
-
-	x = s * axis.x;
-	y = s * axis.y;
-	z = s * axis.z;
-	w = c;
-
-    if (normalize) this->Normalize();
-}
-
 Quaternion::Quaternion(const Quaternion &q)
 {
 	x = q.x;

@@ -19,14 +19,13 @@ private:
     static const u64 multiplier;
 public:
     constexpr HashTable() : memory(nullptr), ElementCount(), IsPointerType(false) {}
-
-    /// @brief Создает хештаблицу c заданными параметрами
-    /// @param ElementCount 
-    /// @param IsPointerType 
-    /// @param memory 
-    /// @param element 
-    constexpr HashTable(u32 ElementCount, bool IsPointerType, T* memory) 
-    : 
+    /// @brief Создает хештаблицу и заполняет её
+    /// @param ElementCount количество элементов
+    /// @param IsPointerType являются ли элементы указателями
+    /// @param memory память где будут хранится элементы
+    /// @param element элемент
+    constexpr HashTable(u32 ElementCount, bool IsPointerType, T* memory, bool fill = false, const T& element = T())
+    :
     memory(memory ? memory : nullptr),
     ElementCount(ElementCount), 
     IsPointerType(IsPointerType)
@@ -39,19 +38,9 @@ public:
             MERROR("ElementCount должен быть положительным значением, отличным от нуля.");
             return;
         }
-    }
-    /// @brief Создает хештаблицу и заполняет её
-    /// @param ElementCount количество элементов
-    /// @param IsPointerType являются ли элементы указателями
-    /// @param memory память где будут хранится элементы
-    /// @param element элемент
-    constexpr HashTable(u32 ElementCount, bool IsPointerType, T* memory, const T& element)
-    :
-    memory(memory ? memory : nullptr),
-    ElementCount(ElementCount), 
-    IsPointerType(IsPointerType)
-    {
-        Fill(element);
+        if (fill) {
+            Fill(element);
+        }
     }
     /// @brief Создает хеш-таблицу
     /// @param ElementSize размер каждого элемента в байтах.
@@ -161,7 +150,7 @@ public:
 
         for (u32 i = 0; i < this->ElementCount; ++i) {
             // MMemory::CopyMem(this->memory + (sizeof(T) * i), &value, sizeof(T));
-            *(this->memory + i) = value;
+            this->memory[i] = value;
         }
 
         return true;

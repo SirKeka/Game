@@ -108,11 +108,11 @@ void *MMemory::Allocate(u64 bytes, MemoryTag tag, bool nullify, bool def)
         // СДЕЛАТЬ: Memory alignment
         block = new u8[bytes]; //platform_allocate(size, false);
     }
-    if (nullify) {
-        MMemory::ZeroMem(block, bytes);
-    }
 
     if (block) {
+        if (nullify) {
+            MMemory::ZeroMem(block, bytes);
+        }
         return block;
     }
     

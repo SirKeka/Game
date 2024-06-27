@@ -22,14 +22,15 @@ class Shader;
 class Renderer
 {
 private:
-    f32 NearClip;
-    f32 FarClip;
-    u32 MaterialShaderID;
-    u32 UIShaderID;
-    Matrix4D projection;
-    Matrix4D view;
-    Matrix4D UIProjection;
-    Matrix4D UIView;
+    f32 NearClip{};
+    f32 FarClip{};
+    u32 MaterialShaderID{};
+    u32 UIShaderID{};
+    Matrix4D projection{};
+    Matrix4D view{};
+    Matrix4D UIProjection{};
+    Matrix4D UIView{};
+    Vector4D<f32> AmbientColour{};
 
     static RendererType* ptrRenderer;
 public:
@@ -59,7 +60,7 @@ public:
 
     /// @brief Функция/метод предоставляющая доступ к самому отрисовщику.
     /// @return указатель на отрисовщик вулкан.
-    static VulkanAPI* GetRenderer();
+    static MINLINE VulkanAPI* GetRenderer() { return reinterpret_cast<VulkanAPI*>(ptrRenderer); }
  
     //static bool CreateMaterial(class Material* material);
     //static void DestroyMaterial(class Material* material);

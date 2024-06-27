@@ -21,7 +21,7 @@ TextureSystem::TextureSystem(u32 MaxTextureCount, Texture* RegisteredTextures, T
     MaxTextureCount(MaxTextureCount),
     DefaultTexture(), 
     RegisteredTextures(new(RegisteredTextures) Texture[MaxTextureCount]()), 
-    RegisteredTextureTable(MaxTextureCount, false, HashtableBlock, TextureReference(0, INVALID::ID, false)) {}
+    RegisteredTextureTable(MaxTextureCount, false, HashtableBlock, true, TextureReference(0, INVALID::ID, false)) {}
 
 TextureSystem::~TextureSystem()
 {

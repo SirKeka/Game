@@ -200,11 +200,16 @@ bool Application::ApplicationRun() {
             packet.DeltaTime = delta;
 
             // СДЕЛАТЬ: временно
-            GeometryRenderData TestRender{Matrix4D::MakeIdentity(), State->TestGeometry};
+            static f32 angle = 0;
+            angle += (1.0f * delta);
+            Quaternion rotation{ Vector3D<f32>(0, 1, 0), angle, true};
+            GeometryRenderData TestRender{rotation/*Matrix4D::MakeIdentity()*/, State->TestGeometry};
+            
+            // TestRender.model = Matrix4D(rotation);  //  Matrix4D(rotation, vec3_zero());
 
             packet.GeometryCount = 1;
             packet.geometries = &TestRender;
-
+            
             GeometryRenderData TestUI_Render{Matrix4D::MakeTranslation(Vector3D<f32>::Zero()), State->TestUI_Geometry};
             packet.UI_GeometryCount = 1;
             packet.UI_Geometries = &TestUI_Render;
@@ -361,8 +366,8 @@ bool Application::OnResized(u16 code, void *sender, void *ListenerInst, EventCon
 bool Application::OnDebugEvent(u16 code, void *sender, void *ListenerInst, EventContext context)
 {
     const char* names[3] = {
+        "ice-diffuse",
         "asphalt",
-        "iris",
         "uvgrid"};
     static i8 choice = 2;
 

@@ -26,7 +26,8 @@ UIShaderID(),
 projection(Matrix4D::MakeFrustumProjection(Math::DegToRad(45.0f), 1280 / 720.0f, NearClip, FarClip)), 
 view(Matrix4D::MakeTranslation(Vector3D<f32>{0, 0, -30.f})), 
 UIProjection(Matrix4D::MakeOrthographicProjection(0, 1280.0f, 720.0f, 0, -100.f, 100.0f)),              // Намеренно перевернуто по оси Y.
-UIView(Matrix4D::MakeIdentity())
+UIView(Matrix4D::MakeIdentity()),
+AmbientColour(0.25f, 0.25f, 0.25f, 1.0f)
 {
     if(type == ERendererType::VULKAN) {
         //ptrRenderer = dynamic_cast<VulkanAPI*> (ptrRenderer);
@@ -116,7 +117,7 @@ bool Renderer::DrawFrame(RenderPacket &packet)
         }
 
         // Apply globals
-        if(!MaterialSystem::Instance()->ApplyGlobal(MaterialShaderID, projection, view)) {
+        if(!MaterialSystem::Instance()->ApplyGlobal(MaterialShaderID, projection, view, AmbientColour)) {
             MERROR("Не удалось использовать глобальные переменные для шейдера материала. Не удалось выполнить рендеринг кадра.");
             return false;
         }
@@ -207,11 +208,6 @@ bool Renderer::DrawFrame(RenderPacket &packet)
     }
 
     return false;
-}
-
-VulkanAPI *Renderer::GetRenderer()
-{
-    return dynamic_cast<VulkanAPI*>(ptrRenderer);
 }
 
 bool Renderer::Load(GeometryID *gid, u32 VertexSize, u32 VertexCount, const void *vertices, u32 IndexSize, u32 IndexCount, const void *indices)

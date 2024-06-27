@@ -14,7 +14,7 @@ MaterialSystem::MaterialSystem(u32 MaxMaterialCount, Material* RegisteredMateria
 MaxMaterialCount(MaxMaterialCount),
 DefaultMaterial(DEFAULT_MATERIAL_NAME, Vector4D<f32>::One(), TextureUse::MapDiffuse, TextureSystem::Instance()->GetDefaultTexture()), 
 RegisteredMaterials(new(RegisteredMaterials) Material[MaxMaterialCount]()),
-RegisteredMaterialTable(MaxMaterialCount, false, HashTableBlock, MaterialReference(0, INVALID::ID, false)), 
+RegisteredMaterialTable(MaxMaterialCount, false, HashTableBlock, true, MaterialReference(0, INVALID::ID, false)), 
 MaterialShaderID(INVALID::ID), 
 UI_ShaderID(INVALID::ID)
 {
@@ -175,6 +175,7 @@ Material *MaterialSystem::Acquire(const MaterialConfig &config)
                 MaterialShaderID = s->id;
                 MaterialLocations.projection = ShaderSystem::GetInstance()->UniformIndex(s, "projection");
                 MaterialLocations.view = ShaderSystem::GetInstance()->UniformIndex(s, "view");
+                MaterialLocations.AmbientColour = ShaderSystem::GetInstance()->UniformIndex(s, "ambient_colour");
                 MaterialLocations.DiffuseColour = ShaderSystem::GetInstance()->UniformIndex(s, "diffuse_colour");
                 MaterialLocations.DiffuseTexture = ShaderSystem::GetInstance()->UniformIndex(s, "diffuse_texture");
                 MaterialLocations.model = ShaderSystem::GetInstance()->UniformIndex(s, "model");
@@ -251,11 +252,12 @@ void MaterialSystem::Release(const char *name)
         return false;                                       \
     }
 
-bool MaterialSystem::ApplyGlobal(u32 ShaderID, const Matrix4D &projection, const Matrix4D &view)
+bool MaterialSystem::ApplyGlobal(u32 ShaderID, const Matrix4D &projection, const Matrix4D &view, const Vector4D<f32>& AmbientColour)
 {
     if (ShaderID == state->MaterialShaderID) {
         MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->UniformSet(state->MaterialLocations.projection, &projection));
         MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->UniformSet(state->MaterialLocations.view, &view));
+        MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->UniformSet(state->MaterialLocations.AmbientColour, &AmbientColour));
     } else if (ShaderID == state->UI_ShaderID) {
         MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->UniformSet(state->UI_Locations.projection, &projection));
         MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->UniformSet(state->UI_Locations.view, &view));
@@ -317,6 +319,8 @@ bool MaterialSystem::CreateDefaultMaterial()
         MFATAL("Не удалось получить ресурсы средства рендеринга для материала по умолчанию. Приложение не может быть продолжено.");
         return false;
     }
+    // Обязательно укажите идентификатор шейдера.
+    state->DefaultMaterial.ShaderID = s->id;
 
     return true;
 }

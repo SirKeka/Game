@@ -163,7 +163,7 @@ class Shader {
     class VulkanShader* ShaderData;                   // Непрозрачный указатель для хранения конкретных данных API средства рендеринга. Рендерер несет ответственность за создание и уничтожение этого.
 public:
     constexpr Shader();
-    constexpr Shader(u32 id, const ShaderConfig* config);
+    Shader(u32 id, const ShaderConfig* config);
     ~Shader();
 
     bool Create(u32 id, const ShaderConfig* config);

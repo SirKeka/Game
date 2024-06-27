@@ -92,10 +92,10 @@ GeometryConfig GeometrySystem::GeneratePlaneConfig(f32 width, f32 height, u32 xS
     GeometryConfig config{
         sizeof(Vertex3D), 
         VertexCount,  
-        MMemory::Allocate(VertexCount * sizeof(Vertex3D), MemoryTag::Array),
+        MMemory::Allocate(VertexCount * sizeof(Vertex3D), MemoryTag::Array, true),
         sizeof(u32),
         IndexCount,
-        MMemory::Allocate(IndexCount * sizeof(u32), MemoryTag::Array),
+        MMemory::Allocate(IndexCount * sizeof(u32), MemoryTag::Array, true),
         MString::Length(name) ? name : DEFAULT_GEOMETRY_NAME,
         MString::Length(MaterialName) ? MaterialName : DEFAULT_MATERIAL_NAME
         };
@@ -166,10 +166,10 @@ GeometryConfig GeometrySystem::GenerateCubeConfig(f32 width, f32 height, f32 dep
     GeometryConfig config{
         sizeof(Vertex3D), 
         4 * 6, // 4 вершины на сторону, 6 сторон
-        MMemory::Allocate(4 * 6, MemoryTag::Array), 
+        MMemory::Allocate(4 * 6 * sizeof(Vertex3D), MemoryTag::Array, true), 
         sizeof(u32), 
         6 * 6, // 6 индексов на каждой стороне, 6 сторон
-        MMemory::Allocate(6 * 6, MemoryTag::Array), 
+        MMemory::Allocate(6 * 6 * sizeof(u32), MemoryTag::Array, true), 
         MString::Length(name) ? name : DEFAULT_GEOMETRY_NAME,
         MString::Length(MaterialName) ? MaterialName : DEFAULT_MATERIAL_NAME
         };

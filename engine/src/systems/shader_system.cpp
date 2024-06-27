@@ -13,7 +13,7 @@ MaxUniformCount(MaxUniformCount),
 MaxGlobalTextures(MaxGlobalTextures),
 MaxInstanceTextures(MaxInstanceTextures),
 LookupMemory(LookupMemory),
-lookup(MaxShaderCount, false, reinterpret_cast<u32*>(LookupMemory), INVALID::ID),
+lookup(MaxShaderCount, false, reinterpret_cast<u32*>(LookupMemory), true, INVALID::ID),
 CurrentShaderID(INVALID::ID),
 shaders(shaders) 
 {

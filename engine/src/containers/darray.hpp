@@ -22,12 +22,12 @@ private:
 // Функции
 public:
     constexpr DArray() : size(), capacity(), ptrValue(nullptr) {}
-    constexpr DArray(u64 capacity) : size(), capacity(capacity), ptrValue(capacity ? MMemory::TAllocate<T>(MemoryTag::DArray, capacity) : nullptr) {}
+    constexpr DArray(u64 capacity) : size(), capacity(capacity), ptrValue(capacity ? MMemory::TAllocate<T>(MemoryTag::DArray, capacity, true) : nullptr) {}
     constexpr DArray(u64 size, const T& value) {
         if(size > 0) {
             this->size = size;
             this->capacity = size;
-            ptrValue = MMemory::TAllocate<T>(MemoryTag::DArray, capacity);
+            ptrValue = MMemory::TAllocate<T>(MemoryTag::DArray, capacity, true);
             for (u64 i = 0; i < size; i++) {
                 ptrValue[i] = value;
             }
@@ -59,14 +59,14 @@ public:
 
     MINLINE T& operator [] (u64 index) {
         if(index < 0 || index >= size) {
-            MERROR("Индекс за пределами этого массива! Длина: %i, индекс: %index", size, index);
+            MERROR("Индекс за пределами этого массива! Длина: %i, индекс: %i", size, index);
         }
         return ptrValue[index];
     }
     // Доступ к элементу
     MINLINE const T& operator [] (u64 index) const {
         if(index < 0 || index >= size) {
-            MERROR("Индекс за пределами этого массива! Длина: %i, индекс: %index", size, index);
+            MERROR("Индекс за пределами этого массива! Длина: %i, индекс: %i", size, index);
         }
         return ptrValue[index];
     }
@@ -91,11 +91,11 @@ public:
     void Reserve(u64 NewCap) {
         // TODO: добавить std::move()
         if (capacity == 0) {
-            ptrValue = MMemory::TAllocate<T>(MemoryTag::DArray, NewCap);
+            ptrValue = MMemory::TAllocate<T>(MemoryTag::DArray, NewCap, true);
             capacity = NewCap;
         }
         else if (NewCap > capacity) {
-            T* ptrNew = MMemory::TAllocate<T>(MemoryTag::DArray, NewCap);
+            T* ptrNew = MMemory::TAllocate<T>(MemoryTag::DArray, NewCap, true);
             for (u64 i = 0; i < size; i++) {
                 ptrNew[i] = ptrValue[i];
             }
