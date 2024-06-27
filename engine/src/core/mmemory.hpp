@@ -83,12 +83,11 @@ public:
     /// @param tag название(тег) для каких нужд используется память
     /// @param def использовать стандартный new при выделении памяти. Поумолчанию false
     /// @return указатель на выделенный блок памяти
-    static void* Allocate(u64 bytes, MemoryTag tag, bool def = false);
+    static void* Allocate(u64 bytes, MemoryTag tag, bool nullify = false, bool def = false);
 
     template<typename T>
-    static T* TAllocate(MemoryTag tag, u64 size = 1, bool def = false) {
-        u64 bytes = sizeof(T) * size;
-        return (reinterpret_cast<T*>(Allocate(bytes, tag, def)));
+    static constexpr T* TAllocate(MemoryTag tag, u64 size = 1, bool nullify = false, bool def = false) {
+        return (reinterpret_cast<T*>(Allocate(sizeof(T) * size, tag, nullify, def)));
     }
     /// @brief Функция освобождает память
     /// @param block указатель на блок памяти, который нужно освободить

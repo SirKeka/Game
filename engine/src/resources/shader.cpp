@@ -2,7 +2,7 @@
 #include "renderer/renderer.hpp"
 #include "renderer/vulkan/vulkan_shader.hpp"
 
-Shader::Shader()
+constexpr Shader::Shader()
     :
     id(), 
     name(), 
@@ -32,7 +32,7 @@ Shader::Shader()
     ShaderData(nullptr) 
 {}
 
-Shader::Shader(u32 id, const ShaderConfig *config) 
+constexpr Shader::Shader(u32 id, const ShaderConfig *config) 
     : 
     id(id), 
     name(config->name), 
@@ -51,8 +51,8 @@ Shader::Shader(u32 id, const ShaderConfig *config)
     BoundScope(), 
     BoundInstanceID(INVALID::ID), 
     BoundUboOffset(), 
-    HashtableBlock(MMemory::Allocate(sizeof(u16) * 1024, MemoryTag::HashTable)), 
-    UniformLookup(1024, false, reinterpret_cast<u16*>(this->HashtableBlock), INVALID::U16ID), 
+    HashtableBlock(MMemory::TAllocate<u16>(MemoryTag::HashTable, 1024, true)), 
+    UniformLookup(1024, false, HashtableBlock, INVALID::U16ID), 
     uniforms(config->UniformCount), 
     attributes(), 
     state(ShaderState::NotCreated), 

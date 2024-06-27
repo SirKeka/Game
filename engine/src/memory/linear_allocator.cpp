@@ -8,7 +8,7 @@ LinearAllocator::LinearAllocator(u64 TotalSize, void *memory)
 :
     TotalSize(TotalSize),
     allocated(),
-    memory(memory ? memory : MMemory::Allocate(TotalSize, MemoryTag::LinearAllocator)),
+    memory(memory ? memory : MMemory::Allocate(TotalSize, MemoryTag::LinearAllocator, true)),
     OwnsMemory(memory == nullptr)
 {
     /*this->TotalSize = TotalSize;

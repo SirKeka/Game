@@ -162,8 +162,8 @@ class Shader {
     // СДЕЛАТЬ: Пока нет реализации DirectX храним указатель шейдера Vulkan.
     class VulkanShader* ShaderData;                   // Непрозрачный указатель для хранения конкретных данных API средства рендеринга. Рендерер несет ответственность за создание и уничтожение этого.
 public:
-    Shader();
-    Shader(u32 id, const ShaderConfig* config);
+    constexpr Shader();
+    constexpr Shader(u32 id, const ShaderConfig* config);
     ~Shader();
 
     bool Create(u32 id, const ShaderConfig* config);
