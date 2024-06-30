@@ -4,8 +4,6 @@
 #include "systems/resource_system.hpp"
 #include "loader_utils.hpp"
 
-// MaterialLoader::MaterialLoader() : ResourceLoader(ResourceType::Material, nullptr, "materials") {}
-
 bool MaterialLoader::Load(const char *name, Resource &OutResource)
 {
     if (!name) {
@@ -26,7 +24,7 @@ bool MaterialLoader::Load(const char *name, Resource &OutResource)
     OutResource.FullPath = FullFilePath;
 
     // TODO: Здесь следует использовать распределитель.
-    MaterialConfig* ResourceData = new MaterialConfig(name, "Builtin.Material", true, nullptr, Vector4D<f32>::One());
+    MaterialConfig* ResourceData = new MaterialConfig(name, "Builtin.Material", true, Vector4D<f32>::One());
     // Установите некоторые значения по умолчанию.
 
     // Прочтите каждую строку файла.
@@ -72,6 +70,10 @@ bool MaterialLoader::Load(const char *name, Resource &OutResource)
             MString::nCopy(ResourceData->name, TrimmedValue, MATERIAL_NAME_MAX_LENGTH);
         } else if (TrimmedVarName.Comparei("diffuse_map_name")) {
             MString::nCopy(ResourceData->DiffuseMapName, TrimmedValue, TEXTURE_NAME_MAX_LENGTH);
+        } else if (TrimmedVarName.Comparei("specular_map_name")) {
+            MString::nCopy(ResourceData->SpecularMapName, TrimmedValue, TEXTURE_NAME_MAX_LENGTH);
+        } else if (TrimmedVarName.Comparei("normal_map_name")) {
+            MString::nCopy(ResourceData->NormalMapName, TrimmedValue, TEXTURE_NAME_MAX_LENGTH);
         } else if (TrimmedVarName.Comparei("diffuse_colour")) {
             // Разобрать цвет
             if (!TrimmedValue.ToVector4D(ResourceData->DiffuseColour)) {
@@ -81,6 +83,11 @@ bool MaterialLoader::Load(const char *name, Resource &OutResource)
         } else if (TrimmedVarName.Comparei("Shader")) {
             // Возьмите копию названия материала.
             ResourceData->ShaderName = TrimmedValue;
+        } else if (TrimmedVarName.Comparei("specular")) {
+            if(!TrimmedValue.ToFloat(ResourceData->specular)) {
+                MWARN("Ошибка анализа зеркального отражения в файле «%s». Вместо этого используется значение по умолчанию 32.0.", FullFilePath);
+                ResourceData->specular = 32.0f;
+            }
         }
 
         // TODO: больше полей.

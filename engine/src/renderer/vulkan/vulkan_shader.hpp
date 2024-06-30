@@ -16,7 +16,7 @@ namespace VulkanShaderConstants
     constexpr int MaxInstanceTextures = 31; // Максимальное количество текстур, разрешенное на уровне экземпляра.
     constexpr int MaxAttributes = 16;       // Максимально допустимое количество входных атрибутов вершин.
     constexpr int MaxUniforms = 128;        // Максимальное количество униформ и сэмплеров, разрешенное на глобальном, экземплярном и локальном уровнях вместе взятых. Вероятно, это больше, чем когда-либо понадобится.
-    constexpr int MaxBindings = 32;         // Максимальное количество привязок на набор дескрипторов.
+    constexpr int MaxBindings = 2;          // Максимальное количество привязок на набор дескрипторов.
     constexpr int MaxPushConstRanges = 32;  // Максимальное количество диапазонов push-констант для шейдера.
 } // namespace VulkanShader
 

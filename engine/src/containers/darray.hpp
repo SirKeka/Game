@@ -17,70 +17,70 @@ class MAPI DArray
 private:
     u64 size{};             // Количество элементов в массиве
     u64 capacity{};         // Выделенная память под данное количество элементов
-    T* ptrValue{nullptr};   // Указатель на область памяти где хранятся элементы
+    T* data{nullptr};   // Указатель на область памяти где хранятся элементы
 
 // Функции
 public:
-    constexpr DArray() : size(), capacity(), ptrValue(nullptr) {}
-    constexpr DArray(u64 capacity) : size(), capacity(capacity), ptrValue(capacity ? MMemory::TAllocate<T>(MemoryTag::DArray, capacity, true) : nullptr) {}
+    constexpr DArray() : size(), capacity(), data(nullptr) {}
+    constexpr DArray(u64 capacity) : size(), capacity(capacity), data(capacity ? MMemory::TAllocate<T>(MemoryTag::DArray, capacity, true) : nullptr) {}
     constexpr DArray(u64 size, const T& value) {
         if(size > 0) {
             this->size = size;
             this->capacity = size;
-            ptrValue = MMemory::TAllocate<T>(MemoryTag::DArray, capacity, true);
+            data = MMemory::TAllocate<T>(MemoryTag::DArray, capacity, true);
             for (u64 i = 0; i < size; i++) {
-                ptrValue[i] = value;
+                data[i] = value;
             }
         }
     }
 
     ~DArray() {
-        if(this->ptrValue) {
+        if(this->data) {
             Clear();
-            MMemory::Free(ptrValue, sizeof(T) * capacity, MemoryTag::DArray);
+            MMemory::Free(data, sizeof(T) * capacity, MemoryTag::DArray);
             size = capacity = 0;
-            ptrValue = nullptr;
+            data = nullptr;
         }
     }
 
     // Конструктор копирования
-    constexpr DArray(const DArray& arr) : size(arr.size), capacity(arr.capacity), ptrValue(arr.ptrValue) {}
+    constexpr DArray(const DArray& arr) : size(arr.size), capacity(arr.capacity), data(arr.data) {}
 
     // Конструктор перемещения
-    constexpr DArray(DArray&& arr) :  size(arr.size), capacity(arr.capacity), ptrValue(arr.ptrValue)
+    constexpr DArray(DArray&& arr) :  size(arr.size), capacity(arr.capacity), data(arr.data)
     {
         arr.size = 0;
         arr.capacity = 0;
         //arr.mem = nullptr;
-        arr.ptrValue = nullptr;
+        arr.data = nullptr;
     }
 
     // Доступ к элементу------------------------------------------------------------------------
 
-    MINLINE T& operator [] (u64 index) {
+    constexpr T& operator [] (u64 index) {
         if(index < 0 || index >= size) {
             MERROR("Индекс за пределами этого массива! Длина: %i, индекс: %i", size, index);
         }
-        return ptrValue[index];
+        return data[index];
     }
     // Доступ к элементу
-    MINLINE const T& operator [] (u64 index) const {
+    constexpr const T& operator [] (u64 index) const {
         if(index < 0 || index >= size) {
             MERROR("Индекс за пределами этого массива! Длина: %i, индекс: %i", size, index);
         }
-        return ptrValue[index];
+        return data[index];
     }
     // ------------------------------------------------------------------------Доступ к элементу
 
     /// @brief Возвращает указатель на базовый массив, служащий хранилищем элементов.
     /// @return Указатель на базовый массив, служащий хранилищем элементов.
     MINLINE T* Data() {
-        return ptrValue;
+        return data;
     }
     /// @brief Возвращает указатель на базовый массив, служащий хранилищем элементов.
     /// @return Указатель на базовый массив.
-    MINLINE const T* Data() const {
-        return ptrValue;
+    constexpr T* Data() const {
+        return data;
     }
     // Емкость----------------------------------------------------------------------------------
 
@@ -91,16 +91,16 @@ public:
     void Reserve(u64 NewCap) {
         // TODO: добавить std::move()
         if (capacity == 0) {
-            ptrValue = MMemory::TAllocate<T>(MemoryTag::DArray, NewCap, true);
+            data = MMemory::TAllocate<T>(MemoryTag::DArray, NewCap, true);
             capacity = NewCap;
         }
         else if (NewCap > capacity) {
             T* ptrNew = MMemory::TAllocate<T>(MemoryTag::DArray, NewCap, true);
             for (u64 i = 0; i < size; i++) {
-                ptrNew[i] = ptrValue[i];
+                ptrNew[i] = std::move(data[i]);
             }
-            MMemory::Free(ptrValue, sizeof(T) * capacity, MemoryTag::DArray);
-            ptrValue = ptrNew;
+            MMemory::Free(data, sizeof(T) * capacity, MemoryTag::DArray);
+            data = ptrNew;
             capacity = NewCap;
         }
     }
@@ -117,9 +117,9 @@ public:
 
     /// @brief Очищает массив. Емкость остается прежней.
     void Clear() {
-        if (ptrValue && size){
+        if (data && size){
             for (u64 i = 0; i < size; i++) {
-                ptrValue[i].~T();
+                data[i].~T();
             }
             
             size = 0;
@@ -133,19 +133,36 @@ public:
         } else if(size == capacity) {
             Reserve(capacity * 2);
         }
-        ptrValue[size] = value;
+        data[size] = value;
         size++;
     }
-/*
+
     void PushBack(T&& value)
     {
-
+        if(size == 0) {
+            Reserve(2);
+        } else if(size == capacity) {
+            Reserve(capacity * 2);
+        }
+        data[size] = std::move(value);
+        size++;
     }
-*/
+
+    template<typename... Args>
+    T& EmplaceBack(Args&&... args) {
+        if(size == 0) {
+            Reserve(2);
+        } else if(size == capacity) {
+            Reserve(capacity * 2);
+        }
+        data[size] = T(std::forward<Args>(args)...); 
+        return data[size++];
+    }
+
     /// @brief Удаляет последний элемент контейнера.
     void PopBack() {
         if(size > 0) {
-            ptrValue[size].~T();
+            data[size].~T();
             size--;
         }
     }
@@ -162,7 +179,7 @@ public:
         }
         // Если не последний элемент, скопируйте остальное наружу.
         if (index != size - 1) {
-            MMemory::CopyMem((ptrValue + index), (ptrValue + index + 1), size - 1);
+            MMemory::CopyMem((data + index), (data + index + 1), size - 1);
         }
         size++;
     }
@@ -173,7 +190,7 @@ public:
 
         // Если не последний элемент, вырезаем запись и копируем остальное внутрь. TODO: оптимизироваать
         if (index != size - 1) {
-            MMemory::CopyMem(ptrValue + index, ptrValue + index + 1, size - 1);
+            MMemory::CopyMem(data + index, data + index + 1, size - 1);
         }
         size--;
     }
@@ -185,7 +202,7 @@ public:
             Reserve(NewSize);
             // TODO: изменить
             for (u64 i = size; i < NewSize; i++) {
-                ptrValue[i] = value;
+                data[i] = value;
             }
         
         }

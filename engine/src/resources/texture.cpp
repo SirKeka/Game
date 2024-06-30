@@ -80,7 +80,7 @@ Texture::Texture(const char* name, i32 width, i32 height, i32 ChannelCount, cons
     VulkanCommandBufferEndSingleUse(VkAPI, pool, &TempBuffer, queue);
 
     // Уничтожение промежуточного буфера
-    //staging.Destroy(VkAPI);
+    staging.Destroy(VkAPI);
 
     // Создание сэмплера для текстуры
     VkSamplerCreateInfo SamplerInfo = {VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
@@ -219,7 +219,7 @@ void Texture::Destroy(VulkanAPI *VkAPI)
         vkDestroySampler(VkAPI->Device.LogicalDevice, Data->sampler, VkAPI->allocator);
         Data->sampler = 0;
 
-    MMemory::Free(Data, sizeof(VulkanTextureData), MemoryTag::Texture);
+    //MMemory::Free(Data, sizeof(VulkanTextureData), MemoryTag::Texture);
     }
 }
 

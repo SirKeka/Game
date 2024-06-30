@@ -123,12 +123,12 @@ public:
     /// @param str Строка для анализа. *Не* должно иметь постфикс «f».
     /// @param f A pointer to the float to write to.
     /// @return True, если синтаксический анализ прошел успешно; в противном случае false.
-    bool ToFloat(char* str, f32& f);
+    bool ToFloat(f32& f);
     /// @brief Пытается проанализировать 64-битное число с плавающей запятой из предоставленной строки.
     /// @param str Строка для анализа.
     /// @param f A pointer to the float to write to.
     /// @return True, если синтаксический анализ прошел успешно; в противном случае false.
-    bool ToFloat(char* str, f64& f);
+    bool ToFloat(f64& f);
     ///@brief Пытается проанализировать 8-битное целое число со знаком из предоставленной строки.
     ///@param str Строка для анализа.
     ///@param i Указатель на int, в который осуществляется запись.

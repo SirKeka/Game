@@ -1,5 +1,4 @@
 #include "matrix4d.hpp"
-#include "vector4d.hpp"
 
 #include "math.hpp"
 #include "core/logger.hpp"
@@ -13,7 +12,7 @@ constexpr Matrix4D::Matrix4D(f32 n11, f32 n12, f32 n13, f32 n14, f32 n21, f32 n2
 	n[3][0] = n41; n[3][1] = n42; n[3][2] = n43; n[3][3] = n44;*/
 }
 
-constexpr Matrix4D::Matrix4D(const Vector4D<f32>& a, const Vector4D<f32>& b, const Vector4D<f32>& c, const Vector4D<f32>& d)
+constexpr Matrix4D::Matrix4D(const FVec4& a, const FVec4& b, const FVec4& c, const FVec4& d)
 : data{a.x, a.y, a.z, a.w, b.x, b.y, b.z, b.w, c.x, c.y, c.z, c.w, d.x, d.y, d.z, d.w}
 {
   /*n[0][0] = a.x; n[0][1] = a.y; n[0][2] = a.z; n[0][3] = a.w;
@@ -91,14 +90,14 @@ const f32 &Matrix4D::operator()(int i) const
 	return data[i];
 }
 
-Vector4D<f32>& Matrix4D::operator[](int j)
+FVec4& Matrix4D::operator[](int j)
 {
-	return *reinterpret_cast<Vector4D<f32>*>(n[j]);
+	return *reinterpret_cast<FVec4*>(n[j]);
 }
 
-const Vector4D<f32>& Matrix4D::operator[](int j) const
+const FVec4& Matrix4D::operator[](int j) const
 {
-	return *reinterpret_cast<const Vector4D<f32>*>(n[j]);
+	return *reinterpret_cast<const FVec4*>(n[j]);
 }
 
 Matrix4D &Matrix4D::operator=(const Matrix4D &m)
@@ -180,19 +179,11 @@ MINLINE Matrix4D Matrix4D::MakeTransposed(const Matrix4D &m)
 
 /*MINLINE Matrix4D Matrix4D::MakeTranslation(const Vector3D<f32> &position)
 {
-    return Matrix4D(Vector4D<f32>(1.0f, 0.0f, 0.0f, 0.0f),
-					Vector4D<f32>(0.0f, 1.0f, 0.0f, 0.0f),
-					Vector4D<f32>(0.0f, 0.0f, 1.0f, 0.0f),
-					Vector4D<f32>(position,         1.0f));
+    return Matrix4D(FVec4(1.0f, 0.0f, 0.0f, 0.0f),
+					FVec4(0.0f, 1.0f, 0.0f, 0.0f),
+					FVec4(0.0f, 0.0f, 1.0f, 0.0f),
+					FVec4(position,         1.0f));
 }*/
-
-MINLINE Matrix4D Matrix4::MakeScale(const Vector3D<f32> &scale)
-{
-    return Matrix4D(scale.x,    0,       0,   	  0,
-					   0, 	 scale.y,    0,  	  0,
-					   0,       0, 	  scale.z,    0,
-					   0,       0,	     0,  	 1.0f);
-}
 
 MINLINE Vector3D<f32> Matrix4::Up(const Matrix4D& m)
 {

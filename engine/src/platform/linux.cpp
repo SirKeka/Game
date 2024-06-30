@@ -1,4 +1,4 @@
-//#include "platform.hpp"
+#include "platform.hpp"
 
 // Уровень платформы Linux.
 #if MPLATFORM_LINUX
@@ -67,7 +67,7 @@ bool Create(
 
     if (xcb_connection_has_error(state->connection)) {
         MFATAL("Не удалось подключиться к X-серверу через XCB.");
-        return FALSE;
+        return false;
     }
 
     // Получить данные с X-сервера
@@ -167,14 +167,14 @@ bool Create(
     i32 stream_result = xcb_flush(state->connection);
     if (stream_result <= 0) {
         MFATAL("Произошла ошибка при очистке потока: %d", stream_result);
-        return FALSE;
+        return false;
     }
 
-    return TRUE;
+    return true;
 }
 
 void Close() {
-    // Simply cold-cast to the known type.
+    // Просто метод холодного приведения к известному типу.
     PlatformState* state = (PlatformState*)PlatState->InternalState;
 
     // Повторное включение клавиши, поскольку это глобально для ОС... просто... вау.
@@ -212,7 +212,7 @@ bool Messages() {
                     state->display,
                     (KeyCode)code,  //event.xkey.keycode,
                     0,
-                    code & ShiftMask ? 1 : 0);
+                    0/*code & ShiftMask ? 1 : 0*/);
 
                 Keys key = translate_keycode(key_sym);
 
@@ -268,7 +268,7 @@ bool Messages() {
 
                 // Закрытие окна
                 if (cm->data.data32[0] == state->wmDeleteWin) {
-                    quit_flagged = TRUE;
+                    quit_flagged = true;
                 }
             } break;
             default:
@@ -348,11 +348,11 @@ b8 PlatformCreateVulkanSurface(MWindow *window, VulkanAPI *VkAPI) {
         &state->surface);
     if (result != VK_SUCCESS) {
         KFATAL("Vulkan surface creation failed.");
-        return FALSE;
+        return false;
     }
 
     context->surface = state->surface;
-    return TRUE;
+    return true;
 }
 
 // Key translation
@@ -542,6 +542,27 @@ Keys translate_keycode(u32 x_keycode) {
             return KEY_SLASH;
         case XK_grave:
             return KEY_GRAVE;
+
+        case XK_0:
+            return KEY_0;
+        case XK_1:
+            return KEY_1;
+        case XK_2:
+            return KEY_2;
+        case XK_3:
+            return KEY_3;
+        case XK_4:
+            return KEY_4;
+        case XK_5:
+            return KEY_5;
+        case XK_6:
+            return KEY_6;
+        case XK_7:
+            return KEY_7;
+        case XK_8:
+            return KEY_8;
+        case XK_9:
+            return KEY_9;
 
         case XK_a:
         case XK_A:

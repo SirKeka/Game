@@ -8,6 +8,10 @@
 #include "systems/resource_system.hpp"
 #include "systems/shader_system.hpp"
 
+// СДЕЛАТЬ: временно
+#include "math/geometry_utils.hpp"
+// СДЕЛАТЬ: временно
+
 ApplicationState* Application::State = nullptr;
 
 bool Application::ApplicationCreate(GameTypes *GameInst)
@@ -107,8 +111,8 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
     // СДЕЛАТЬ: временно
 
     // Загрузите конфигурацию плоскости и загрузите из нее геометрию.
-    //GeometryConfig gConfig = GeometrySystem::Instance()->GeneratePlaneConfig(10.0f, 5.0f, 5, 5, 5.0f, 2.0f, "test_geometry", "test_material");
     GeometryConfig gConfig = GeometrySystem::Instance()->GenerateCubeConfig(10.f, 10.f, 10.f, 1.f, 1.f, "test_cube", "test_material");
+    Math::Geometry::GenerateTangents(gConfig.VertexCount, reinterpret_cast<Vertex3D*>(gConfig.vertices), gConfig.IndexCount, reinterpret_cast<u32*>(gConfig.indices));
     State->TestGeometry = GeometrySystem::Instance()->Acquire(gConfig, true);
 
     // Очистите места для конфигурации геометрии.
@@ -196,23 +200,20 @@ bool Application::ApplicationRun() {
             }
 
             // СДЕЛАТЬ: refactor packet creation
-            RenderPacket packet;
-            packet.DeltaTime = delta;
-
             // СДЕЛАТЬ: временно
             static f32 angle = 0;
-            angle += (1.0f * delta);
-            Quaternion rotation{ Vector3D<f32>(0, 1, 0), angle, true};
-            GeometryRenderData TestRender{rotation/*Matrix4D::MakeIdentity()*/, State->TestGeometry};
-            
-            // TestRender.model = Matrix4D(rotation);  //  Matrix4D(rotation, vec3_zero());
-
-            packet.GeometryCount = 1;
-            packet.geometries = &TestRender;
-            
+            angle += (.5f * delta);
+            //// СДЕЛАТЬ: Что-то с матрицами вращения портит направленное освещение, в частности, кажется, по оси X. До поворота все в порядке.
+            Quaternion rotation{ Vector3D<f32>(0, 1, 0), angle, true };
+            //Matrix4D t = Matrix4D::MakeTranslation(Vector3D<f32>::Zero());
+            //Matrix4D r = rotation;
+            //Matrix4D s = Matrix4D::MakeScale(Vector3D<f32>::One()) ;
+            //t = r * t;
+            //t = s * t;
+            GeometryRenderData TestRender{ rotation, State->TestGeometry }; //  Matrix4D(rotation, vec3_zero());
             GeometryRenderData TestUI_Render{Matrix4D::MakeTranslation(Vector3D<f32>::Zero()), State->TestUI_Geometry};
-            packet.UI_GeometryCount = 1;
-            packet.UI_Geometries = &TestUI_Render;
+
+            RenderPacket packet{delta, 1, &TestRender, 1, &TestUI_Render};
             // СДЕЛАТЬ: временно
 
             State->Render->DrawFrame(packet);
@@ -255,7 +256,7 @@ bool Application::ApplicationRun() {
     //СДЕЛАТЬ: временно
     Event::GetInstance()->Unregister(EVENT_CODE_DEBUG0, nullptr, OnDebugEvent);
     //СДЕЛАТЬ: временно
-    Event::GetInstance()->Shutdown();
+    Event::GetInstance()->Shutdown(); // СДЕЛАТЬ: при удалении указателя на систему событий происходит ошибка
     Input::Instance()->Sutdown();
     GeometrySystem::Instance()->Shutdown();
     MaterialSystem::Shutdown();
@@ -304,14 +305,14 @@ bool Application::OnKey(u16 code, void *sender, void *ListenerInst, EventContext
 {
     if (code == EVENT_CODE_KEY_PRESSED) {
         u16 KeyCode = context.data.u16[0];
-        if (KeyCode == KEY_ESCAPE) {
+        if (KeyCode == Keys::ESCAPE) {
             // ПРИМЕЧАНИЕ. Технически событие генерируется само по себе, но могут быть и другие прослушиватели.
             EventContext data = {};
             Event::GetInstance()->Fire(EVENT_CODE_APPLICATION_QUIT, 0, data);
 
             // Заблокируйте что-либо еще от обработки этого.
             return true;
-        } else if (KeyCode == KEY_A) {
+        } else if (KeyCode == Keys::A) {
             // Пример проверки ключа
             MDEBUG("Явно — клавиша A нажата!");
         } else {
@@ -319,7 +320,7 @@ bool Application::OnKey(u16 code, void *sender, void *ListenerInst, EventContext
         }
     } else if (code == EVENT_CODE_KEY_RELEASED) {
         u16 KeyCode = context.data.u16[0];
-        if (KeyCode == KEY_B) {
+        if (KeyCode == Keys::B) {
             // Пример проверки ключа
             MDEBUG("Явно — клавиша B отущена!");
         } else {
@@ -366,27 +367,58 @@ bool Application::OnResized(u16 code, void *sender, void *ListenerInst, EventCon
 bool Application::OnDebugEvent(u16 code, void *sender, void *ListenerInst, EventContext context)
 {
     const char* names[3] = {
-        "ice-diffuse",
-        "asphalt",
-        "uvgrid"};
+        "Ice",
+        "Sand",
+        "Rope"
+    };
+    const char* SpecularNames[3] = {
+        "Ice-Specular",
+        "Sand-Specular",
+        "Rope-Specular"
+    };
+    const char* NormalNames[3] = {
+        "Ice-Normal",
+        "Sand-Normal",
+        "Rope-Normal"
+    };
     static i8 choice = 2;
 
     // Сохраните старое имя.
     MString OldName = names[choice];
+    MString OldSpecName = SpecularNames[choice];
+    MString OldNormalName = NormalNames[choice];
 
     choice++;
     choice %= 3;
 
-    // Приобретите новую текстуру.
+    // Создайте новую диффузную текстуру.
     if (State->TestGeometry) {
         State->TestGeometry->material->DiffuseMap.texture = TextureSystem::Instance()->Acquire(names[choice], true);
         if (!State->TestGeometry->material->DiffuseMap.texture) {
-            MWARN("Event::OnDebugEvent нет текстуры! используется значение по умолчанию");
+            MWARN("Event::OnDebugEvent нет диффузой текстуры! Используется значение по умолчанию");
             State->TestGeometry->material->DiffuseMap.texture = TextureSystem::Instance()->GetDefaultTexture();
         }
 
-        // Освободите старую текстуру.
+        // Освободите старую диффузную текстуру.
         TextureSystem::Instance()->Release(OldName.c_str());
+
+        State->TestGeometry->material->SpecularMap.texture = TextureSystem::Instance()->Acquire(SpecularNames[choice], true);
+        if (!State->TestGeometry->material->SpecularMap.texture) {
+            MWARN("Event::OnDebugEvent нет зеркальной текстуры! Используется значение по умолчанию");
+            State->TestGeometry->material->SpecularMap.texture = TextureSystem::Instance()->GetDefaultSpecularTexture();
+        }
+
+        // Освободите старую диффузную текстуру.
+        TextureSystem::Instance()->Release(OldSpecName.c_str());
+
+        State->TestGeometry->material->NormalMap.texture = TextureSystem::Instance()->Acquire(NormalNames[choice], true);
+        if (!State->TestGeometry->material->NormalMap.texture) {
+            MWARN("Event::OnDebugEvent нет текстуры нормалей! Используется значение по умолчанию");
+            State->TestGeometry->material->NormalMap.texture = TextureSystem::Instance()->GetDefaultNormalTexture();
+        }
+
+        // Освободите старую диффузную текстуру.
+        TextureSystem::Instance()->Release(OldNormalName.c_str());
     }
 
     return true;

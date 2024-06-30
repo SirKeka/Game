@@ -38,12 +38,12 @@ bool Game::Update(f32 DeltaTime)
     u64 AllocCount = 0;
     u64 PrevAllocCount = AllocCount;
     AllocCount = MMemory::GetMemoryAllocCount(); // TODO: проверить странные значения
-    if (Input::Instance()->Instance()->IsKeyUp(KEY_M) && Input::Instance()->WasKeyDown(KEY_M)) {
+    if (Input::Instance()->Instance()->IsKeyUp(Keys::M) && Input::Instance()->WasKeyDown(Keys::M)) {
         MDEBUG("Распределено: %llu (%llu в этом кадре)", AllocCount, AllocCount - PrevAllocCount);
     }
 
     // TODO: temp
-    if (Input::Instance()->IsKeyUp(KEY_T) && Input::Instance()->WasKeyDown(KEY_T)) {
+    if (Input::Instance()->IsKeyUp(Keys::T) && Input::Instance()->WasKeyDown(Keys::T)) {
         MDEBUG("Swapping texture!");
         EventContext context = {};
         Event::GetInstance()->Fire(EVENT_CODE_DEBUG0, this, context);
@@ -51,19 +51,19 @@ bool Game::Update(f32 DeltaTime)
     // TODO: end temp
 
     // ВЗЛОМ: временный взлом для перемещения камеры по кругу.
-    if (Input::Instance()->IsKeyDown(KEY_A) || Input::Instance()->IsKeyDown(KEY_LEFT)) {
+    if (Input::Instance()->IsKeyDown(Keys::A) || Input::Instance()->IsKeyDown(Keys::LEFT)) {
         CameraYaw(1.0f * DeltaTime);
     }
 
-    if (Input::Instance()->IsKeyDown(KEY_D) || Input::Instance()->IsKeyDown(KEY_RIGHT)) {
+    if (Input::Instance()->IsKeyDown(Keys::D) || Input::Instance()->IsKeyDown(Keys::RIGHT)) {
         CameraYaw(-1.0f * DeltaTime);
     }
 
-    if (Input::Instance()->IsKeyDown(KEY_UP)) {
+    if (Input::Instance()->IsKeyDown(Keys::UP)) {
         CameraPitch(1.0f * DeltaTime);
     }
 
-    if (Input::Instance()->IsKeyDown(KEY_DOWN)) {
+    if (Input::Instance()->IsKeyDown(Keys::DOWN)) {
         CameraPitch(-1.0f * DeltaTime);
     }
 
@@ -71,32 +71,32 @@ bool Game::Update(f32 DeltaTime)
     Vector3D<f32> velocity = Vector3D<f32>::Zero();
 
     //Не работает
-    if (Input::Instance()->IsKeyDown(KEY_W)) {
+    if (Input::Instance()->IsKeyDown(Keys::W)) {
         Vector3D<f32> forward = Matrix4::Forward(gameState->view);
         velocity += forward;
     }
 
     //Не работает
-    if (Input::Instance()->IsKeyDown(KEY_S)) {
+    if (Input::Instance()->IsKeyDown(Keys::S)) {
         Vector3D<f32> backward = Matrix4::Backward(gameState->view);
         velocity += backward;
     }
 
-    if (Input::Instance()->IsKeyDown(KEY_Q)) {
+    if (Input::Instance()->IsKeyDown(Keys::Q)) {
         Vector3D<f32> left = Matrix4::Left(gameState->view);
         velocity += left;
     }
 
-    if (Input::Instance()->IsKeyDown(KEY_E)) {
+    if (Input::Instance()->IsKeyDown(Keys::E)) {
         Vector3D<f32> right = Matrix4::Right(gameState->view);
         velocity += right;
     }
 
-    if (Input::Instance()->IsKeyDown(KEY_SPACE)) {
+    if (Input::Instance()->IsKeyDown(Keys::SPACE)) {
         velocity.y += 1.0f;
     }
 
-    if (Input::Instance()->IsKeyDown(KEY_X)) {
+    if (Input::Instance()->IsKeyDown(Keys::X)) {
         velocity.y -= 1.0f;
     }
 
@@ -112,7 +112,36 @@ bool Game::Update(f32 DeltaTime)
 
     RecalculateViewMatrix();
 
-    application->State->Render->SetView(gameState->view);
+    application->State->Render->SetView(gameState->view, gameState->CameraPosition);
+
+    // СДЕЛАТЬ: временно
+    if (Input::Instance()->IsKeyUp(Keys::P) && Input::Instance()->WasKeyDown(Keys::P)) {
+        MDEBUG(
+            "Позиция:[%.2f, %.2f, %.2f",
+            gameState->CameraPosition.x,
+            gameState->CameraPosition.y,
+            gameState->CameraPosition.z);
+    }
+
+    // RENDERER DEBUG FUNCTIONS
+    if (Input::Instance()->IsKeyUp(Keys::KEY_1) && Input::Instance()->WasKeyDown(Keys::KEY_1)) {
+        EventContext data = {};
+        data.data.i32[0] = RendererDebugViewMode::Lighting;
+        Event::GetInstance()->Fire(EVENT_CODE_SET_RENDER_MODE, this, data);
+    }
+
+    if (Input::Instance()->IsKeyUp(Keys::KEY_2) && Input::Instance()->WasKeyDown(Keys::KEY_2)) {
+        EventContext data = {};
+        data.data.i32[0] = RendererDebugViewMode::Normals;
+        Event::GetInstance()->Fire(EVENT_CODE_SET_RENDER_MODE, this, data);
+    }
+
+    if (Input::Instance()->IsKeyUp(Keys::KEY_0) && Input::Instance()->WasKeyDown(Keys::KEY_0)) {
+        EventContext data = {};
+        data.data.i32[0] = RendererDebugViewMode::Default;
+        Event::GetInstance()->Fire(EVENT_CODE_SET_RENDER_MODE, this, data);
+    }
+    // СДЕЛАТЬ: временно
 
     return true;
 }

@@ -386,7 +386,7 @@ bool MString::ToVector2D(char *str, Vector2D<f32> &OutVector)
     return result != -1;
 }
 
-bool MString::ToFloat(char *str, f32 &f)
+bool MString::ToFloat(f32 &f)
 {
     if (!str) {
         return false;
@@ -397,7 +397,7 @@ bool MString::ToFloat(char *str, f32 &f)
     return result != -1;
 }
 
-bool MString::ToFloat(char *str, f64 &f)
+bool MString::ToFloat(f64 &f)
 {
     if (!str) {
         return false;
@@ -530,7 +530,7 @@ u32 MString::Split(const char *str, char delimiter, DArray<MString> &darray, boo
             // Добавить новую запись
             if (IncludeEmpty || result) {
                 if (!result) {
-                    darray.PushBack(MString());
+                    darray.EmplaceBack();
                 } else {
                     // MString entry{result};
                     darray.PushBack(result);
@@ -554,7 +554,7 @@ u32 MString::Split(const char *str, char delimiter, DArray<MString> &darray, boo
     // Добавить новую запись
     if (IncludeEmpty || result) {
         if (!result) {
-            darray.PushBack(MString());
+            darray.EmplaceBack();
         } else {
             //MString entry{result};
             darray.PushBack(result);

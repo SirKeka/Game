@@ -9,6 +9,14 @@
 struct StaticMeshData;
 // class Shader;
 
+namespace RendererDebugViewMode {
+    enum RendererDebugViewMode : u32 {
+        Default = 0,
+        Lighting = 1,
+        Normals = 2
+};
+}
+
 enum class ERendererType 
 {
     VULKAN,
@@ -22,13 +30,14 @@ enum class ERendererType
  * struct GeometryRenderData* UI_Geometries*/
 struct RenderPacket
 {
-    f32 DeltaTime;
-
+    f64 DeltaTime;
     u32 GeometryCount;
     struct GeometryRenderData* geometries;
-
     u32 UI_GeometryCount;
     struct GeometryRenderData* UI_Geometries;
+    constexpr RenderPacket() : DeltaTime(), GeometryCount(), geometries(nullptr), UI_GeometryCount(), UI_Geometries(nullptr) {}
+    constexpr RenderPacket(f64 DeltaTime, u32 GeometryCount, struct GeometryRenderData* geometries, u32 UI_GeometryCount, struct GeometryRenderData* UI_Geometries)
+    : DeltaTime(DeltaTime), GeometryCount(GeometryCount), geometries(geometries), UI_GeometryCount(UI_GeometryCount), UI_Geometries(UI_Geometries) {}
 };
 
 /*размер данной струтуры для карт Nvidia должен быть равен 256 байт*/

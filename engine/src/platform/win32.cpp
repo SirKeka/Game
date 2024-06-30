@@ -253,6 +253,8 @@ LRESULT CALLBACK Win32MessageProcessor(HWND hwnd, u32 msg, WPARAM w_param, LPARA
             return 1;*/
         case WM_CLOSE:
             // TODO: Вызов события для закрытия приложения.
+            EventContext data;
+            Event::GetInstance()->Fire(EVENT_CODE_APPLICATION_QUIT, nullptr, data);
             return 0;
             // Вызывается, когда пользователь закрывает окно
         case WM_DESTROY:
@@ -283,14 +285,14 @@ LRESULT CALLBACK Win32MessageProcessor(HWND hwnd, u32 msg, WPARAM w_param, LPARA
             // Проверьте наличие расширенного кода сканирования.
             bool IsExtended = (HIWORD(l_param) & KF_EXTENDED) == KF_EXTENDED;
             if (w_param == VK_MENU) {
-                key = IsExtended ? KEY_RALT : KEY_LALT;
+                key = IsExtended ? Keys::RALT : Keys::LALT;
             } else if (w_param == VK_SHIFT) {
                 // Досадно, что KF_EXTENDED не установлен для клавиш shift.
                 u32 LeftShift = MapVirtualKey(VK_LSHIFT, MAPVK_VK_TO_VSC);
                 u32 scancode = ((l_param & (0xFF << 16)) >> 16);
-                key = scancode == LeftShift ? KEY_LSHIFT : KEY_RSHIFT;
+                key = scancode == LeftShift ? Keys::LSHIFT : Keys::RSHIFT;
             } else if (w_param == VK_CONTROL) {
-                key = IsExtended ? KEY_RCONTROL : KEY_LCONTROL;
+                key = IsExtended ? Keys::RCONTROL : Keys::LCONTROL;
             }
 
             // Перейдите к подсистеме ввода для обработки.
@@ -322,24 +324,24 @@ LRESULT CALLBACK Win32MessageProcessor(HWND hwnd, u32 msg, WPARAM w_param, LPARA
         case WM_MBUTTONUP:
         case WM_RBUTTONUP: {
             bool pressed = msg == WM_LBUTTONDOWN || msg == WM_RBUTTONDOWN || msg == WM_MBUTTONDOWN;
-            Buttons MouseButtons = BUTTON_MAX_BUTTONS;
+            Buttons MouseButtons = Buttons::Max;
             switch (msg)
             {
             case WM_LBUTTONDOWN:
                 case WM_LBUTTONUP:
-                    MouseButtons = BUTTON_LEFT;
+                    MouseButtons = Buttons::Left;
                     break;
                 case WM_MBUTTONDOWN:
                 case WM_MBUTTONUP:
-                    MouseButtons = BUTTON_MIDDLE;
+                    MouseButtons = Buttons::Middle;
                     break;
                 case WM_RBUTTONDOWN:
                 case WM_RBUTTONUP:
-                    MouseButtons = BUTTON_RIGHT;
+                    MouseButtons = Buttons::Right;
                     break;
             }
             // Переходим к подсистеме ввода.
-            if (MouseButtons != BUTTON_MAX_BUTTONS) {
+            if (MouseButtons != Buttons::Max) {
                 Input::Instance()->ProcessButton(MouseButtons, pressed);
             }
         } break;

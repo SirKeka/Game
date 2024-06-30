@@ -1,6 +1,16 @@
 #include "material.hpp"
 
-constexpr Material::Material(const Material &m) : id(m.id), generation(m.generation), InternalId(m.InternalId), ShaderID(m.ShaderID), name(), DiffuseColour(m.DiffuseColour), DiffuseMap(m.DiffuseMap) 
+constexpr Material::Material(const Material &m) 
+: 
+id(m.id), 
+generation(m.generation), 
+InternalId(m.InternalId), 
+ShaderID(m.ShaderID), 
+name(), 
+DiffuseColour(m.DiffuseColour), 
+DiffuseMap(m.DiffuseMap), 
+SpecularMap(m.SpecularMap), 
+specular(m.specular)
 {
     MString::Copy(name, m.name);
 }

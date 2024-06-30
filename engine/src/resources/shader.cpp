@@ -155,7 +155,7 @@ bool Shader::AddAttribute(const ShaderAttributeConfig &config)
     AttributeStride += size;
 
     // Создайте/отправьте атрибут.
-    attributes.PushBack(ShaderAttribute(config.name, config.type, size));
+    attributes.EmplaceBack(config.name, config.type, size);
 
     return true;
 }

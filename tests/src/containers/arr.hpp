@@ -10,58 +10,58 @@ class DArray
 private:
     u64 size;
     u64 capacity;
-    T* ptrValue;
+    T* data;
 
 // Функции
 public:
-    inline DArray() : size(0), capacity(0), ptrValue(nullptr) {}
+    inline DArray() : size(0), capacity(0), data(nullptr) {}
 
     DArray(u64 lenght, const T& value = T{}) {
         if(lenght > 0) {
             this->size = lenght;
             this->capacity = lenght;
-            ptrValue = MMemory::TAllocate<T>(capacity, MemoryTag::DArray);
+            data = MMemory::TAllocate<T>(capacity, MemoryTag::DArray);
             for (u64 i = 0; i < lenght; i++) {
-                ptrValue[i] = value;
+                data[i] = value;
             }
         }
     }
 
     ~DArray() {
-        if(this->capacity != 0) MMemory::Free(reinterpret_cast<void*>(ptrValue), sizeof(T) * capacity, MemoryTag::DArray);
+        if(this->capacity != 0) MMemory::Free(reinterpret_cast<void*>(data), sizeof(T) * capacity, MemoryTag::DArray);
     }
 
     // Конструктор копирования
-    DArray(const DArray& arr) : size(arr.size), capacity(arr.capacity), ptrValue(arr.ptrValue) {}
+    DArray(const DArray& arr) : size(arr.size), capacity(arr.capacity), data(arr.data) {}
 
     // Конструктор перемещения
-    DArray(DArray&& arr) :  size(arr.size), capacity(arr.capacity), ptrValue(arr.ptrValue)
+    DArray(DArray&& arr) :  size(arr.size), capacity(arr.capacity), data(arr.data)
     {
         arr.size = 0;
         arr.capacity = 0;
         //arr.mem = nullptr;
-        arr.ptrValue = nullptr;
+        arr.data = nullptr;
     }
 
     // Доступ к элементу
 
     inline T& operator [] (u64 index) {
         if(index < 0 || index >= size) MERROR("Индекс за пределами этого массива! Длина: %i, индекс: %index", size, index);
-        return ptrValue[index];
+        return data[index];
     }
 
     inline const T& operator [] (u64 index) const{
         if(index < 0 || index >= size) MERROR("Индекс за пределами этого массива! Длина: %i, индекс: %index", size, index);
-        return ptrValue[index];
+        return data[index];
     }
 
     /// @return Возвращает указатель на базовый массив, служащий хранилищем элементов.
     T* Data() {
-        return ptrValue;
+        return data;
     }
 
     const T* Data() const {
-        return ptrValue;
+        return data;
     }
 
     // Емкость
@@ -73,14 +73,14 @@ public:
     void Reserve(const u64& NewCap) {
         // TODO: добавить std::move()
         if (capacity == 0) {
-            ptrValue = MMemory::TAllocate<T>(MemoryTag::DArray, NewCap);
+            data = MMemory::TAllocate<T>(MemoryTag::DArray, NewCap);
             capacity = NewCap;
         }
         else if (NewCap > capacity) {
             void* ptrNew = MMemory::Allocate(sizeof(T) * NewCap, MemoryTag::DArray);
-            MMemory::CopyMem(ptrNew, reinterpret_cast<void*>(ptrValue), sizeof(T) * capacity);
-            MMemory::Free(ptrValue, sizeof(T) * capacity, MemoryTag::DArray);
-            ptrValue = reinterpret_cast<T*> (ptrNew);
+            MMemory::CopyMem(ptrNew, reinterpret_cast<void*>(data), sizeof(T) * capacity);
+            MMemory::Free(data, sizeof(T) * capacity, MemoryTag::DArray);
+            data = reinterpret_cast<T*> (ptrNew);
             capacity = NewCap;
         }
     }
@@ -102,7 +102,7 @@ public:
     void PushBack(const T& value) {
         if(size == 0) Reserve(2);
         if(size == capacity) Reserve(capacity * 2);
-        ptrValue[size] = value;
+        data[size] = value;
         size++;
     }
 
@@ -121,8 +121,8 @@ public:
         // Если не последний элемент, скопируйте остальное наружу.
         if (index != size - 1) {
             MMemory::CopyMem(
-                reinterpret_cast<void*>(ptrValue + (index* sizeof(T))),
-                reinterpret_cast<void*>(ptrValue + (index + 1 * sizeof(T))),
+                reinterpret_cast<void*>(data + (index* sizeof(T))),
+                reinterpret_cast<void*>(data + (index + 1 * sizeof(T))),
                 size - 1);
         }
         size++;
@@ -135,8 +135,8 @@ public:
         // Если не последний элемент, вырезаем запись и копируем остальное внутрь. TODO: оптимизироваать
         if (index != size - 1) {
             MMemory::CopyMem(
-                reinterpret_cast<void*>(ptrValue + (index * sizeof(T))),
-                reinterpret_cast<void*>(ptrValue + (index + 1 * sizeof(T))),
+                reinterpret_cast<void*>(data + (index * sizeof(T))),
+                reinterpret_cast<void*>(data + (index + 1 * sizeof(T))),
                 size - 1);
         }
         size--;
@@ -149,7 +149,7 @@ public:
             Reserve(NewSize);
             // TODO: изменить
             for (u64 i = size; i < NewSize; i++) {
-                ptrValue[i] = value;
+                data[i] = value;
             }
         
         }

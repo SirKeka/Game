@@ -12,6 +12,7 @@
 
 #include "renderer_types.hpp"
 #include "math/vertex.hpp"
+#include "core/event.hpp"
 
 class MWindow;
 struct StaticMeshData;
@@ -26,11 +27,13 @@ private:
     f32 FarClip{};
     u32 MaterialShaderID{};
     u32 UIShaderID{};
+    u32 RenderMode{};
     Matrix4D projection{};
     Matrix4D view{};
     Matrix4D UIProjection{};
     Matrix4D UIView{};
     Vector4D<f32> AmbientColour{};
+    Vector3D<f32> ViewPosition{};
 
     static RendererType* ptrRenderer;
 public:
@@ -127,16 +130,15 @@ public:
     /// @param value указатель на значение, которое необходимо установить.
     /// @return true в случае успеха, иначе false.
     static bool SetUniform(Shader* shader, struct ShaderUniform* uniform, const void* value);
-
     /// @brief Устанавливает матрицу представления в средстве визуализации. ПРИМЕЧАНИЕ: Доступен общедоступному API.
     /// @deprecated ВЗЛОМ: это не должно быть выставлено за пределы движка.
     /// @param view Матрица представления, которую необходимо установить.
-    MAPI void SetView(Matrix4D view);
+    MAPI void SetView(const Matrix4D& view, const Vector3D<f32>& ViewPosition);
 
 
     void* operator new(u64 size);
     // void operator delete(void* ptr);
 private:
-    //static void CreateTexture(class Texture* t);
+    static bool OnEvent(u16 code, void* sender, void* ListenerInst, EventContext context);
 };
 

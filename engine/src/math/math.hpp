@@ -2,45 +2,32 @@
 
 #include "defines.hpp"
 
-#include "vector2d.hpp"
-
-#define M_PI 3.14159265358979323846f
-#define M_PI_2 2.0f * M_PI
-#define M_HALF_PI 0.5f * M_PI
-#define M_QUARTER_PI 0.25f * M_PI
-#define M_ONE_OVER_PI 1.0f / M_PI
-#define M_ONE_OVER_TWO_PI 1.0f / M_PI_2
-#define M_SQRT_TWO 1.41421356237309504880f
-#define M_SQRT_THREE 1.73205080756887729352f
-#define M_SQRT_ONE_OVER_TWO 0.70710678118654752440f
-#define M_SQRT_ONE_OVER_THREE 0.57735026918962576450f
-#define M_DEG2RAD_MULTIPLIER M_PI / 180.0f
-#define M_RAD2DEG_MULTIPLIER 180.0f / M_PI
+constexpr f32 M_PI = 3.14159265358979323846f;
+constexpr f32 M_PI_2 = 2.0f * M_PI;
+constexpr f32 M_HALF_PI = 0.5f * M_PI;
+constexpr f32 M_QUARTER_PI = 0.25f * M_PI;
+constexpr f32 M_ONE_OVER_PI = 1.0f / M_PI;
+constexpr f32 M_ONE_OVER_TWO_PI = 1.0f / M_PI_2;
+constexpr f32 M_SQRT_TWO = 1.41421356237309504880f;
+constexpr f32 M_SQRT_THREE = 1.73205080756887729352f;
+constexpr f32 M_SQRT_ONE_OVER_TWO = 0.70710678118654752440f;
+constexpr f32 M_SQRT_ONE_OVER_THREE = 0.57735026918962576450f;
+constexpr f32 M_DEG2RAD_MULTIPLIER = M_PI / 180.0f;
+constexpr f32 M_RAD2DEG_MULTIPLIER = 180.0f / M_PI;
 
 // Множитель для преобразования секунд в миллисекунды.
-#define M_SEC_TO_MS_MULTIPLIER 1000.0f
+constexpr f32 M_SEC_TO_MS_MULTIPLIER = 1000.0f;
 
 // Множитель для преобразования миллисекунд в секунды.
-#define M_MS_TO_SEC_MULTIPLIER 0.001f
+constexpr f32 M_MS_TO_SEC_MULTIPLIER = 0.001f;
 
 // Огромное число, которое должно быть больше любого используемого допустимого числа.
-#define M_INFINITY 1e30f
+constexpr f32 M_INFINITY = 1e30f;
 
 // Наименьшее положительное число, где 1.0 + FLOAT_EPSILON != 0
-#define M_FLOAT_EPSILON 1.192092896e-07f
+constexpr f32 M_FLOAT_EPSILON = 1.192092896e-07f;
 
-//using f32Vec2 = Vector2D<float>;
-//using f64Vec2 = Vector2D<double>;
-//using i8Vec2  = Vector2D<char>;
-//using i16Vec2 = Vector2D<signed short>;
-//using i32Vec2 = Vector2D<int>;
-//using i64Vec2 = Vector2D<long long>;
-//using u8Vec2  = Vector2D<unsigned char>;
-//using u16Vec2 = Vector2D<unsigned short>;
-//using u32Vec2 = Vector2D<unsigned int>;
-//using u64Vec2 = Vector2D<unsigned long long>;
-
-namespace /*M::*/Math
+namespace Math
 {
 // ------------------------------------------
 // Общие математические функции

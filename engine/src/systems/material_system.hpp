@@ -1,11 +1,11 @@
 /**
- * @file material_system.h
+ * @file material_system.hpp
  * @author
  * @brief Система материалов отвечает за управление материалами в движке, включая подсчет ссылок и автоматическую выгрузку.
  * @version 1.0
  * @date
  * 
- * @copyright Kohi Game Engine is Copyright (c) Travis Vroman 2021-2022
+ * @copyright
  * 
  */
 #pragma once
@@ -23,7 +23,6 @@ private:
     // Конфигурация материала---------------------------------------------------------------------------------
     u32 MaxMaterialCount;                                   // Максимальное количество загружаемых материалов.
     //--------------------------------------------------------------------------------------------------------
-    // bool init = false; // СДЕЛАТЬ: временно
     Material DefaultMaterial;                               // Стандартный материал.
     Material* RegisteredMaterials;                          // Массив зарегистрированных материалов.
 
@@ -38,21 +37,26 @@ private:
     HashTable<MaterialReference> RegisteredMaterialTable;   // Хэш-таблица для поиска материалов.
 
     struct MaterialShaderUniformLocations {
-        u16 projection{};
-        u16 view{};
-        u16 AmbientColour{};
+        u16 projection{INVALID::U16ID};
+        u16 view{INVALID::U16ID};
+        u16 AmbientColour{INVALID::U16ID};
+        u16 ViewPosition{INVALID::U16ID};
+        u16 specular{INVALID::U16ID};
         u16 DiffuseColour{INVALID::U16ID};
         u16 DiffuseTexture{INVALID::U16ID};
-        u16 model{};
+        u16 SpecularTexture{INVALID::U16ID};
+        u16 NormalTexture{INVALID::U16ID};
+        u16 model{INVALID::U16ID};
+        u16 RenderMode{INVALID::U16ID};
     } MaterialLocations;                                    // Известные местоположения шейдера материала.
     u32 MaterialShaderID;
 
     struct UI_ShaderUniformLocations {
-        u16 projection{};
-        u16 view{};
+        u16 projection{INVALID::U16ID};
+        u16 view{INVALID::U16ID};
         u16 DiffuseColour{INVALID::U16ID};
         u16 DiffuseTexture{INVALID::U16ID};
-        u16 model{};
+        u16 model{INVALID::U16ID};
     } UI_Locations;
     u32 UI_ShaderID;
 
@@ -72,7 +76,6 @@ public:
     /// @return Указатель на систему материалов.
     static MINLINE MaterialSystem* Instance() { /*if(state) */return state; }
     static Material* GetDefaultMaterial();
-    static void Check() {for (u32 i = 0; i < 73; ++i) { MTRACE("id%u, %u", state->RegisteredMaterials[i].id, i);}} // СДЕЛАТЬ: временно
 
     /// @brief Функция создает объект класса и инициализирует его
     /// @param MaxMaterialCount максимальное количество загружаемых материалов.
@@ -98,9 +101,10 @@ public:
     /// @param ShaderID идентификатор шейдера, к которому применяются глобальные переменные.
     /// @param projection константная ссылка на матрицу проекции.
     /// @param view константная ссылка на матрицу представления.
-    /// @param AmbientColour Окружающий цвет сцены.
+    /// @param AmbientColour окружающий цвет сцены.
+    /// @param ViewPosition позиция камеры.
     /// @return true в случае успеха иначе false.
-    bool ApplyGlobal(u32 ShaderID, const Matrix4D& projection, const Matrix4D& view, const Vector4D<f32>& AmbientColour = Vector4D<f32>());
+    bool ApplyGlobal(u32 ShaderID, const Matrix4D& projection, const Matrix4D& view, const Vector4D<f32>& AmbientColour = Vector4D<f32>(), const Vector3D<f32>& ViewPosition = Vector3D<f32>(), u32 RenderMode = 0);
     /// @brief Применяет данные материала на уровне экземпляра для данного материала.
     /// @param material указатель на материал, который будет применен.
     /// @return true в случае успеха иначе false.

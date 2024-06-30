@@ -74,7 +74,8 @@
         "xmemory": "cpp",
         "xstddef": "cpp",
         "expected": "cpp",
-        "functional": "cpp"
+        "functional": "cpp",
+        "unordered_map": "cpp"
     },
 
     "files.encoding": "utf8",

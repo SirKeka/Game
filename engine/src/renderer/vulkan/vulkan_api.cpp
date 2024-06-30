@@ -500,7 +500,7 @@ bool VulkanAPI::ShaderApplyInstance(Shader *shader)
         // Итерация сэмплеров.
         const u32& TotalSamplerCount = VkShader->config.DescriptorSets[DESC_SET_INDEX_INSTANCE].bindings[BINDING_INDEX_SAMPLER].descriptorCount;
         u32 UpdateSamplerCount = 0;
-        VkDescriptorImageInfo ImageInfos[VulkanShaderConstants::MaxGlobalTextures];
+        VkDescriptorImageInfo ImageInfos[VulkanShaderConstants::MaxGlobalTextures]{};
         for (u32 i = 0; i < TotalSamplerCount; ++i) {
             // СДЕЛАТЬ: обновляйте список только в том случае, если оно действительно необходимо.
             Texture* t = VkShader->InstanceStates[shader->BoundInstanceID].InstanceTextures[i];

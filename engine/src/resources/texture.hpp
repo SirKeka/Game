@@ -20,8 +20,10 @@ struct VulkanTextureData {
 };
 
 enum class TextureUse {
-    Unknown = 0x00,
-    MapDiffuse = 0x01
+    Unknown = 0x00,         // Неизвестное применение. Это значение по умолчанию, но его никогда не следует использовать.
+    MapDiffuse = 0x01,      // Текстура используется как диффузная карта.
+    MapSpecular = 0x02,     // Текстура используется как карта отражений.
+    MapNormal = 0x03        // Текстура используется как карта нормалей.
 };
 
 class Texture

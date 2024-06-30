@@ -12,11 +12,11 @@ private:
 
 public:
 
-	Matrix3D() = default;
-	Matrix3D(f32 n00, f32 n01, f32 n02,
-		   	 f32 n10, f32 n11, f32 n12,
-			 f32 n20, f32 n21, f32 n22);
-	Matrix3D(const Matrix3D& m);
+	constexpr Matrix3D() : n{} {}
+	constexpr Matrix3D(f32 n00, f32 n01, f32 n02,
+		   	 		   f32 n10, f32 n11, f32 n12,
+					   f32 n20, f32 n21, f32 n22) : n{ { n00, n01, n02 }, { n10, n11, n12 }, { n20, n21, n22 } } {}
+	constexpr Matrix3D(const Matrix3D& m)  : n{ { m(0, 0), m(0, 1), m(0, 2) }, { m(1, 0), m(1, 1), m(1, 2) }, { m(2, 0), m(2, 1), m(2, 2) } } {}
 
 	f32& operator ()(u8 i, u8 j);
 	const f32& operator ()(u8 i, u8 j) const;
@@ -25,7 +25,7 @@ public:
 
 	f32 Determinant();
 
-	static Matrix3D MakeIdentity();
+	static MINLINE Matrix3D MakeIdentity();
 };
 
 Matrix3D operator *(const Matrix3D& A, const Matrix3D& B);

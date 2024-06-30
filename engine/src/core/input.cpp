@@ -40,7 +40,7 @@ bool Input::IsKeyDown(Keys key)
     if (!input) {
         return false;
     }
-    return KeyboardCurrent.keys[key] == true;
+    return KeyboardCurrent.keys[ToInt(key)] == true;
 }
 
 bool Input::IsKeyUp(Keys key)
@@ -48,7 +48,7 @@ bool Input::IsKeyUp(Keys key)
     if (!input) {
         return true;
     }
-    return KeyboardCurrent.keys[key] == false;
+    return KeyboardCurrent.keys[ToInt(key)] == false;
 }
 
 bool Input::WasKeyDown(Keys key)
@@ -56,7 +56,7 @@ bool Input::WasKeyDown(Keys key)
     if (!input) {
         return false;
     }
-    return KeyboardPrevious.keys[key] == true;
+    return KeyboardPrevious.keys[ToInt(key)] == true;
 }
 
 bool Input::WasKeyUp(Keys key)
@@ -64,37 +64,37 @@ bool Input::WasKeyUp(Keys key)
     if (!input) {
         return true;
     }
-    return KeyboardPrevious.keys[key] == false;
+    return KeyboardPrevious.keys[ToInt(key)] == false;
 }
 
 void Input::ProcessKey(Keys key, bool pressed)
 {
     // Обрабатывайте это только в том случае, если состояние действительно изменилось.
-    if (KeyboardCurrent.keys[key] != pressed) {
+    if (KeyboardCurrent.keys[ToInt(key)] != pressed) {
         // Обновить внутреннее состояние.
-        KeyboardCurrent.keys[key] = pressed;
+        KeyboardCurrent.keys[ToInt(key)] = pressed;
 
-        if (key == KEY_LALT) {
+        if (key == Keys::LALT) {
             MINFO("Левая клавиша alt %s.", pressed ? "нажата" : "отпущена");
-        } else if (key == KEY_RALT) {
+        } else if (key == Keys::RALT) {
             MINFO("Правая клавиша alt %s.", pressed ? "нажата" : "отпущена");
         }
 
-        if (key == KEY_LCONTROL) {
+        if (key == Keys::LCONTROL) {
             MINFO("Левая клавиша ctrl %s.", pressed ? "нажата" : "отпущена");
-        } else if (key == KEY_RCONTROL) {
+        } else if (key == Keys::RCONTROL) {
             MINFO("Правая клавиша ctrl %s.", pressed ? "нажата" : "отпущена");
         }
 
-        if (key == KEY_LSHIFT) {
+        if (key == Keys::LSHIFT) {
             MINFO("Левая клавиша shift %s.", pressed ? "нажата" : "отпущена");
-        } else if (key == KEY_RSHIFT) {
+        } else if (key == Keys::RSHIFT) {
             MINFO("Правая клавиша shift %s.", pressed ? "нажата" : "отпущена");
         }
 
         // Запустите событие для немедленной обработки.
         EventContext context;
-        context.data.u16[0] = key;
+        context.data.u16[0] = ToInt(key);
         Event::GetInstance()->Fire(pressed ? EVENT_CODE_KEY_PRESSED : EVENT_CODE_KEY_RELEASED, 0, context);
     }
 }
@@ -104,7 +104,7 @@ bool Input::IsButtonDown(Buttons button)
     if (!input) {
         return false;
     }
-    return MouseCurrent.Buttons[button] == true;
+    return MouseCurrent.Buttons[ToInt(button)] == true;
 }
 
 bool Input::IsButtonUp(Buttons button)
@@ -112,7 +112,7 @@ bool Input::IsButtonUp(Buttons button)
     if (!input) {
         return true;
     }
-    return MouseCurrent.Buttons[button] == false;
+    return MouseCurrent.Buttons[ToInt(button)] == false;
 }
 
 bool Input::WasButtonDown(Buttons button)
@@ -120,7 +120,7 @@ bool Input::WasButtonDown(Buttons button)
     if (!input) {
         return false;
     }
-    return MousePrevious.Buttons[button] == true;
+    return MousePrevious.Buttons[ToInt(button)] == true;
 }
 
 bool Input::WasButtonUp(Buttons button)
@@ -128,7 +128,7 @@ bool Input::WasButtonUp(Buttons button)
     if (!input) {
         return true;
     }
-    return MousePrevious.Buttons[button] == false;
+    return MousePrevious.Buttons[ToInt(button)] == false;
 }  
 
 void Input::GetMousePosition(i16& x, i16& y)
@@ -156,12 +156,12 @@ void Input::GetPreviousMousePosition(i16& x, i16& y)
 void Input::ProcessButton(Buttons button, bool pressed)
 {
     // Если состояние изменилось, создайте событие.
-    if (MouseCurrent.Buttons[button] != pressed) {
-        MouseCurrent.Buttons[button] = pressed;
+    if (MouseCurrent.Buttons[ToInt(button)] != pressed) {
+        MouseCurrent.Buttons[ToInt(button)] = pressed;
 
         // Запустите событие.
         EventContext context;
-        context.data.u16[0] = button;
+        context.data.u16[0] = ToInt(button);
         Event::GetInstance()->Fire(pressed ? EVENT_CODE_BUTTON_PRESSED : EVENT_CODE_BUTTON_RELEASED, 0, context);
     }
 }
@@ -203,4 +203,14 @@ Input *Input::Instance()
 void *Input::operator new(u64 size)
 {
     return LinearAllocator::Instance().Allocate(size);
+}
+
+constexpr u16 Input::ToInt(Keys key)
+{
+    return (u16)key;
+}
+
+constexpr u32 Input::ToInt(Buttons button)
+{
+    return (u32)button;
 }

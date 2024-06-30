@@ -3,7 +3,9 @@
 #include "resources/texture.hpp"
 #include "containers/hashtable.hpp"
 
-#define DEFAULT_TEXTURE_NAME "default"
+constexpr const char* DEFAULT_TEXTURE_NAME = "default";                     // Имя текстуры по умолчанию.
+constexpr const char* DEFAULT_SPECULAR_TEXTURE_NAME = "default_specular";   // Имя зеркальной текстуры по умолчанию.
+constexpr const char* DEFAULT_NORMAL_TEXTURE_NAME = "default_normal";       // Имя текстуры нормалей по умолчанию.
 struct TextureReference;
 
 class TextureSystem
@@ -11,6 +13,8 @@ class TextureSystem
 private:
     u32 MaxTextureCount{};
     Texture DefaultTexture{};
+    Texture DefaultSpecularTexture{};
+    Texture DefaultNormalTexture{};
 
     // Массив зарегистрированных текстур.
     Texture* RegisteredTextures{};
@@ -34,6 +38,12 @@ public:
     /// @brief Функция для получения стандартной текстуры.
     /// @return указатель на стандартную текстуру.
     Texture* GetDefaultTexture();
+    /// @brief Функция для получения стандартной зеркальной текстуры.
+    /// @return указатель на стандартную зеркальную текстуру.
+    Texture* GetDefaultSpecularTexture();
+    /// @brief Функция для получения текстуры нормалей.
+    /// @return указатель на текстуру нормалей.
+    Texture* GetDefaultNormalTexture();
     static MINLINE TextureSystem* Instance() { return state; };
     // void* operator new(u64 size);
     // void operator delete(void* ptr)

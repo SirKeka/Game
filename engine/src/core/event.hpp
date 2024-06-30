@@ -2,7 +2,6 @@
 
 #include "defines.hpp"
 #include "containers/darray.hpp"
-//#include <functional>
 
 struct EventContext {
     // 128 байт
@@ -32,6 +31,7 @@ typedef bool (*PFN_OnEvent)(u16 code, void* sender, void* ListenerInst, EventCon
 struct RegisteredEvent {
     void* listener;
     PFN_OnEvent callback;
+    constexpr RegisteredEvent(void* listener, PFN_OnEvent callback) : listener(listener), callback(callback) {}
 };
 
 struct EventCodeEntry {
@@ -39,7 +39,7 @@ struct EventCodeEntry {
 };
 
 // Кодов должно быть более чем достаточно...
-#define MAX_MESSAGE_CODES 16384
+constexpr u16 MAX_MESSAGE_CODES = 16384;
 
 class MAPI Event
 {
@@ -60,35 +60,39 @@ public:
 
     /// @brief Зарегистрируйте, следить за отправкой событий с предоставленным кодом. 
     /// События с повторяющимися комбинациями прослушивателя и обратного вызова не будут регистрироваться снова 
-    /// и приведут к возврату FALSE.
+    /// и приведут к возврату false.
     /// @param code Код события, который необходимо прослушать.
     /// @param listener Указатель на экземпляр прослушивателя. Может быть 0/NULL.
     /// @param OnEvent Указатель функции обратного вызова, который будет вызываться при запуске кода события.
-    /// @return TRUE, если событие успешно зарегистрировано; в противном случае FALSE.
+    /// @return true, если событие успешно зарегистрировано; в противном случае false.
     bool Register(u16 code, void* listener, PFN_OnEvent OnEvent);
 
     /// @brief Отмените регистрацию от прослушивания событий, отправляемых с помощью предоставленного кода.
-    /// Если соответствующая регистрация не найдена, эта функция возвращает FALSE.
+    /// Если соответствующая регистрация не найдена, эта функция возвращает false.
     /// @param code Код события, для которого необходимо прекратить прослушивание.
     /// @param listener Указатель на экземпляр прослушивателя. Может быть 0/NULL.
     /// @param OnEvent Указатель функции обратного вызова, регистрацию которого необходимо отменить.
-    /// @return TRUE, если событие успешно отменено; в противном случае FALSE.
+    /// @return true, если событие успешно отменено; в противном случае false.
     bool Unregister(u16 code, void* listener, PFN_OnEvent OnEvent);
 
-    /// @brief Вызывает событие для слушателей данного кода. Если обработчик событий возвращает TRUE, 
+    /// @brief Вызывает событие для слушателей данного кода. Если обработчик событий возвращает true, 
     /// событие считается обработанным и больше не передается прослушивателям.
     /// @param code Код события, которое необходимо активировать.
     /// @param sender Указатель на отправителя. Может быть 0/NULL.
     /// @param data Данные о событии.
-    /// @return TRUE, если обработано, иначе FALSE.
+    /// @return true, если обработано, иначе false.
     bool Fire(u16 code, void* sender, EventContext context);
 
-    static Event* GetInstance();
+    static MINLINE Event* GetInstance() {
+        if (!event) {
+            MERROR("Функция Event::GetInstance вызывается перед инициализацией!");
+        }
+        
+        return event;
+    }
 
     void* operator new(u64 size);
 };
-
-
 
 // Коды внутренних событий системы. Приложение должно использовать коды, превышающие 255.
 enum SystemEventCode {
@@ -132,11 +136,16 @@ enum SystemEventCode {
      * u16 height = data.data.u16[1];   */
     EVENT_CODE_RESIZED = 0x08,
 
-    EVENT_CODE_DEBUG0 = 0x10,
-    EVENT_CODE_DEBUG1 = 0x11,
-    EVENT_CODE_DEBUG2 = 0x12,
-    EVENT_CODE_DEBUG3 = 0x13,
-    EVENT_CODE_DEBUG4 = 0x14,
+    // Измените режим рендеринга в целях отладки.
+    /* Использование контекста:
+     * i32 mode = context.data.i32[0];  */
+    EVENT_CODE_SET_RENDER_MODE = 0x0A,
 
-    MAX_EVENT_CODE = 0xFF
+    EVENT_CODE_DEBUG0 = 0x10,   // Специальное событие отладки. Контекст будет меняться со временем.
+    EVENT_CODE_DEBUG1 = 0x11,   // Специальное событие отладки. Контекст будет меняться со временем.
+    EVENT_CODE_DEBUG2 = 0x12,   // Специальное событие отладки. Контекст будет меняться со временем.
+    EVENT_CODE_DEBUG3 = 0x13,   // Специальное событие отладки. Контекст будет меняться со временем.
+    EVENT_CODE_DEBUG4 = 0x14,   // Специальное событие отладки. Контекст будет меняться со временем.
+
+    MAX_EVENT_CODE = 0xFF       // Максимальный код события, который можно использовать внутри.
 };

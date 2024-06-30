@@ -1,7 +1,8 @@
 #pragma once
 
 #include "defines.hpp"
-#include "vector3d.hpp"
+#include "vector3d_fwd.hpp"
+#include "vector4d_fwd.hpp"
 #include "quaternion.hpp"
 
 template<typename T> class Vector4D;
@@ -21,19 +22,19 @@ public:
 			 		   f32 n21, f32 n22, f32 n23, f32 n24,
 					   f32 n31, f32 n32, f32 n33, f32 n34,
 					   f32 n41, f32 n42, f32 n43, f32 n44);
-	constexpr Matrix4D(const Vector4D<f32>& a, const Vector4D<f32>& b, const Vector4D<f32>& c, const Vector4D<f32>& d);
+	constexpr Matrix4D(const FVec4& a, const FVec4& b, const FVec4& c, const FVec4& d);
 	Matrix4D (const Quaternion& q);
 	/// @brief Вычисляет матрицу поворота на основе кватерниона и пройденной центральной точки.
 	/// @param q кватернион
 	/// @param v вектор
-	Matrix4D (const Quaternion &q, const Vector3D<f32> &center);
+	Matrix4D (const Quaternion &q, const FVec3 &center);
 
 	f32& operator ()(int i, int j);
 	const f32& operator ()(int i, int j) const;
 	f32& operator ()(int i);
 	const f32& operator ()(int i) const;
-	Vector4D<f32>& operator [](int j);
-	const Vector4D<f32>& operator [](int j) const;
+	FVec4& operator [](int j);
+	const FVec4& operator [](int j) const;
 	Matrix4D& operator=(const Matrix4D& m);
 
 	/// @brief Инвертирует текущую матрицу
@@ -177,25 +178,25 @@ public:
 	/// @param target позиция, на которую нужно "смотреть".
 	/// @param up восходящий вектор.
 	/// @return Матрица, рассматривающая цель с точки зрения позиции.
-	static MINLINE Matrix4D MakeLookAt(const Vector3D<f32>& position, const Vector3D<f32>& target, const Vector3D<f32>& up);
+	static MINLINE Matrix4D MakeLookAt(const FVec3& position, const FVec3& target, const FVec3& up);
 	/// @brief Создает и возвращает значение, обратное предоставленной матрице.
 	/// @param m матрица, подлежащая инвертированию
 	/// @return перевернутая копия предоставленной матрицы.
 	static MINLINE Matrix4D MakeInverse(const Matrix4D& m) {
-		const Vector3D<f32>& a = reinterpret_cast<const Vector3D<f32>&>(m[0]);
-		const Vector3D<f32>& b = reinterpret_cast<const Vector3D<f32>&>(m[1]);
-		const Vector3D<f32>& c = reinterpret_cast<const Vector3D<f32>&>(m[2]);
-		const Vector3D<f32>& d = reinterpret_cast<const Vector3D<f32>&>(m[3]);
+		const FVec3& a = reinterpret_cast<const FVec3&>(m[0]);
+		const FVec3& b = reinterpret_cast<const FVec3&>(m[1]);
+		const FVec3& c = reinterpret_cast<const FVec3&>(m[2]);
+		const FVec3& d = reinterpret_cast<const FVec3&>(m[3]);
 
 		const f32& x = m(1, 4);
 		const f32& y = m(2, 4);
 		const f32& z = m(3, 4);
 		const f32& w = m(4, 4);
 
-		Vector3D<f32> s = Cross(a, b);
-		Vector3D<f32> t = Cross(c, d);
-		Vector3D<f32> u = a * y - b * x;
-		Vector3D<f32> v = c * w - d * z;
+		FVec3 s = Cross(a, b);
+		FVec3 t = Cross(c, d);
+		FVec3 u = a * y - b * x;
+		FVec3 v = c * w - d * z;
 
 		float invDet = 1.0F / (Dot(s, v) + Dot(t, u));
 		s *= invDet;
@@ -203,10 +204,10 @@ public:
 		u *= invDet;
 		v *= invDet;
 
-		Vector3D<f32> r0 = Cross(b, v) + t * y;
-		Vector3D<f32> r1 = Cross(v, a) - t * x;
-		Vector3D<f32> r2 = Cross(d, u) + s * w;
-		Vector3D<f32> r3 = Cross(u, c) - s * z;
+		FVec3 r0 = Cross(b, v) + t * y;
+		FVec3 r1 = Cross(v, a) - t * x;
+		FVec3 r2 = Cross(d, u) + s * w;
+		FVec3 r3 = Cross(u, c) - s * z;
 
 		return Matrix4D(	r0.x, 	   r1.x, 	   r2.x,      r3.x,
 							r0.y, 	   r1.y, 	   r2.y,      r3.y,
@@ -220,11 +221,20 @@ public:
 	/// @brief 
 	/// @param position 
 	/// @return 
-	static constexpr Matrix4D MakeTranslation(const Vector3D<f32>& position) {
+	static constexpr Matrix4D MakeTranslation(const FVec3& position) {
 		return Matrix4D(	1.0f, 		0.0f, 	   0.0f,    0.0f,
 							0.0f, 		1.0f, 	   0.0f,    0.0f,
 							0.0f, 		0.0f, 	   1.0f,    0.0f,
 	   					position.x, position.y, position.z, 1.0f);
+	}
+	/// @brief Возвращает матрицу масштаба, используя предоставленный масштаб.
+	/// @param scale 
+	/// @return 
+	static constexpr Matrix4D MakeScale(const FVec3& scale) {
+		return Matrix4D (scale.x,  0.f,     0.f,   0.f,
+						   0.f,  scale.y,   0.f,   0.f,
+						   0.f,    0.f,   scale.z, 0.f,
+						   0.f,    0.f,     0.f,   1.f);
 	}
 };
 
@@ -236,10 +246,7 @@ public:
 
 	namespace Matrix4
 	{
-	/// @brief Возвращает матрицу масштаба, используя предоставленный масштаб.
-	/// @param scale 
-	/// @return 
-	MINLINE Matrix4D MakeScale(const Vector3D<f32>& scale);
+	
 
 	MINLINE Matrix4D MakeEulerX(f32 AngleRadians)
 	{
@@ -294,7 +301,7 @@ public:
     	return m;
 	}
 
-	MAPI MINLINE Matrix4D MakeEulerXYZ(Vector3D<f32> v)
+	MAPI MINLINE Matrix4D MakeEulerXYZ(FVec3 v)
 	{
 		Matrix4D rx = MakeEulerX(v.x);
 		Matrix4D ry = MakeEulerY(v.y);
@@ -307,38 +314,38 @@ public:
 	/// @brief Возвращает вектор направленный вперед относительно предоставленной матрицы.
 	/// @param m матрица 4х4, на основе которой строится вектор.
 	/// @return трехкомпонентный вектор направления.
-	MINLINE Vector3D<f32> Forward(const Matrix4D& m)
+	MINLINE FVec3 Forward(const Matrix4D& m)
 	{
-		return -Normalize(Vector3D<f32>(m(2), m(6), m(10)));
+		return -Normalize(FVec3(m(2), m(6), m(10)));
 	}
 	/// @brief Возвращает вектор направленный назад относительно предоставленной матрицы.
 	/// @param m матрица 4х4, на основе которой строится вектор.
 	/// @return трехкомпонентный вектор направления.
-	MINLINE Vector3D<f32> Backward(const Matrix4D& m)
+	MINLINE FVec3 Backward(const Matrix4D& m)
 	{
-		return Normalize(Vector3D<f32>(m(2), m(6), m(10)));
+		return Normalize(FVec3(m(2), m(6), m(10)));
 	}
 	/// @brief Возвращает вектор направленный вверх относительно предоставленной матрицы.
 	/// @param m матрица 4х4, на основе которой строится вектор.
 	/// @return трехкомпонентный вектор направления.
-	MINLINE Vector3D<f32> Up(const Matrix4D& m);
+	MINLINE FVec3 Up(const Matrix4D& m);
 	/// @brief Возвращает вектор направленный вниз относительно предоставленной матрицы.
 	/// @param m матрица 4х4, на основе которой строится вектор.
 	/// @return трехкомпонентный вектор направления.
-	MINLINE Vector3D<f32> Down(const Matrix4D& m);
+	MINLINE FVec3 Down(const Matrix4D& m);
 	/// @brief Возвращает вектор направленный влево относительно предоставленной матрицы.
 	/// @param m матрица 4х4, на основе которой строится вектор.
 	/// @return трехкомпонентный вектор направления.
-	MINLINE Vector3D<f32> Left(const Matrix4D& m)
+	MINLINE FVec3 Left(const Matrix4D& m)
 	{
-		return -Normalize(Vector3D<f32>(m(0), m(4), m(8)));
+		return -Normalize(FVec3(m(0), m(4), m(8)));
 	}
 	/// @brief Возвращает вектор направленный вправо относительно предоставленной матрицы.
 	/// @param m матрица 4х4, на основе которой строится вектор.
 	/// @return трехкомпонентный вектор направления.
-	MINLINE Vector3D<f32> Right(const Matrix4D& m)
+	MINLINE FVec3 Right(const Matrix4D& m)
 	{
-		return Normalize(Vector3D<f32>(m(0), m(4), m(8)));
+		return Normalize(FVec3(m(0), m(4), m(8)));
 	}
 	} // namespace Matrix4D
 	

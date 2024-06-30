@@ -16,13 +16,13 @@ bool Event::Initialize()
 void Event::Shutdown()
 {
     // Освободите массивы событий. А объекты, на которые указывают, должны уничтожаться самостоятельно.
-    for(u16 i = 0; i < MAX_MESSAGE_CODES; ++i){
+    /*for(u16 i = 0; i < MAX_MESSAGE_CODES; ++i){
         if(registered[i].events.Capacity() > 0) {
             registered[i].events.~DArray();
             // state.registered[i].events = 0;
         }
-    }
-    //delete event;
+    }*/
+    delete event;
 }
 
 bool Event::Register(u16 code, void *listener, PFN_OnEvent OnEvent)
@@ -40,10 +40,7 @@ bool Event::Register(u16 code, void *listener, PFN_OnEvent OnEvent)
     }
 
     // Если на этом этапе дубликат не найден. Продолжайте регистрацию.
-    RegisteredEvent event;
-    event.listener = listener;
-    event.callback = OnEvent;
-    registered[code].events.PushBack(event);
+    registered[code].events.EmplaceBack(listener, OnEvent);
 
     return true;
 }
@@ -62,7 +59,7 @@ bool Event::Unregister(u16 code, void *listener, PFN_OnEvent OnEvent)
 
     u64 RegisteredCount = registered[code].events.Lenght();
     for(u64 i = 0; i < RegisteredCount; ++i) {
-        RegisteredEvent e = registered[code].events[i];
+        const RegisteredEvent& e = registered[code].events[i];
         if(e.listener == listener/* && e.callback == OnEvent*/) {
             // Нашёл, удали
             // RegisteredEvent PoppedEvent;
@@ -86,9 +83,9 @@ bool Event::Fire(u16 code, void *sender, EventContext context)
         return false;
     }
 
-    u64 RegisteredCount = registered[code].events.Lenght();
+    const u64& RegisteredCount = registered[code].events.Lenght();
     for(u64 i = 0; i < RegisteredCount; ++i) {
-        RegisteredEvent& e = registered[code].events[i];
+        const RegisteredEvent& e = registered[code].events[i];
         if(e.callback(code, sender, e.listener, context)) {
             // Сообщение обработано, не отправляйте его другим слушателям.
             return true;
@@ -97,11 +94,6 @@ bool Event::Fire(u16 code, void *sender, EventContext context)
 
     // Не найдено.
     return false;
-}
-
-Event *Event::GetInstance()
-{
-    return event;
 }
 
 void *Event::operator new(u64 size)

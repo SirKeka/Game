@@ -1,42 +1,24 @@
 #include "matrix3d.hpp"
-#include "vector3d.hpp"
-
-	Matrix3D::Matrix3D(f32 n00, f32 n01, f32 n02,
-					   f32 n10, f32 n11, f32 n12,
-					   f32 n20, f32 n21, f32 n22)
-	{
-		n[0][0] = n00; n[0][1] = n01; n[0][2] = n02;
-		n[1][0] = n10; n[1][1] = n11; n[1][2] = n12;
-		n[2][0] = n20; n[2][1] = n21; n[2][2] = n22;
-	}
-
-    Matrix3D::Matrix3D(const Matrix3D &m)
-    {
-		for (u64 i = 0; i < 3; i++) {
-			for (u64 j = 0; j < 3; j++) {
-				n[i][j] = m.n[i][j];
-			}
-		}
-	}
+#include "vector3d_fwd.hpp"
 
     f32& Matrix3D::operator()(u8 i, u8 j)
 	{
-		return (n[i][j]); //� ����� ���� n[j][i]
+		return (n[i][j]);
 	}
 
 	const f32& Matrix3D::operator()(u8 i, u8 j) const
 	{
-		return (n[i][j]); //� ����� ���� n[j][i]
+		return (n[i][j]);
 	}
 
-	Vector3D<f32>& Matrix3D::operator[](u8 j)
+	FVec3& Matrix3D::operator[](u8 j)
 	{
-		return (*reinterpret_cast<Vector3D<f32>*>(n[j]));
+		return (*reinterpret_cast<FVec3*>(n[j]));
 	}
 
-	const Vector3D<f32>& Matrix3D::operator[](u8 j) const
+	const FVec3& Matrix3D::operator[](u8 j) const
 	{
-		return (*reinterpret_cast<const Vector3D<f32>*>(n[j]));
+		return (*reinterpret_cast<const FVec3*>(n[j]));
 	}
 
     MINLINE f32 Matrix3D::Determinant()
@@ -48,20 +30,25 @@
 
     MINLINE Matrix3D Matrix3D::MakeIdentity()
     {
-        return Matrix3D(1.0f, 0.0f, 0.0f,
-						0.0f, 1.0f, 0.0f,
-						0.0f, 0.0f, 1.0f);
+        return Matrix3D(1.f, 0.f, 0.f,
+						0.f, 1.f, 0.f,
+						0.f, 0.f, 1.f);
     }
+
+    /*constexpr Matrix3D Matrix3D::MakeIdentity()
+    {
+        
+    }*/
 
     MINLINE Matrix3D Inverse(const Matrix3D& M)
 	{
-		const Vector3D<f32>& a = M[0];
-		const Vector3D<f32>& b = M[1];
-		const Vector3D<f32>& c = M[2];
+		const FVec3& a = M[0];
+		const FVec3& b = M[1];
+		const FVec3& c = M[2];
 
-		Vector3D<f32> r0 = Cross(b, c);
-		Vector3D<f32> r1 = Cross(c, a);
-		Vector3D<f32> r2 = Cross(a, b);
+		FVec3 r0 = Cross(b, c);
+		FVec3 r1 = Cross(c, a);
+		FVec3 r2 = Cross(a, b);
 
 		f32 invDet = 1.0F / Dot(r2, c);
 
@@ -112,9 +99,9 @@
 						 A(2, 0) * B(0, 2) + A(2, 1) * B(1, 2) + A(2, 2) * B(2, 2)));
 	}
 
-	MINLINE Vector3D<f32> operator *(const  Matrix3D& M, const Vector3D<f32>& v)
+	MINLINE FVec3 operator *(const  Matrix3D& M, const FVec3& v)
 	{
-		return (Vector3D<f32>(M(0, 0) * v.x + M(0, 1) * M(0, 2) * v.z,
+		return (FVec3(M(0, 0) * v.x + M(0, 1) * M(0, 2) * v.z,
 			             M(1, 0) * v.x + M(1, 1) * M(1, 2) * v.z,
 			             M(2, 0) * v.x + M(2, 1) * M(2, 2) * v.z));
     }
@@ -126,7 +113,7 @@
 			  + M(0, 2) * (M(1, 0) * M(2, 1) - M(1, 1) * M(2, 0)));
 	}
 
-	MINLINE Matrix3D MakeRotation(f32 t, const Vector3D<f32>& a)
+	MINLINE Matrix3D MakeRotation(f32 t, const FVec3& a)
 	{
 		f32 c = Math::cos(t);
 		f32 s = Math::sin(t);
@@ -144,7 +131,7 @@
 						 axaz - s * a.y, ayaz + s * a.x, c + z * a.z));
 	}
 
-	MINLINE Matrix3D MakeReflection(const Vector3D<f32>& a)
+	MINLINE Matrix3D MakeReflection(const FVec3& a)
 	{
 		f32 x = a.x * -2.0F;
 		f32 y = a.y * -2.0F;
@@ -158,7 +145,7 @@
 						 axaz, ayaz, z * a.z + 1.0F));
 	}
 
-	MINLINE Matrix3D MakeInvolution(const Vector3D<f32>& a)
+	MINLINE Matrix3D MakeInvolution(const FVec3& a)
 	{
 		f32 x = a.x * 2.0F;
 		f32 y = a.y * 2.0F;
@@ -177,7 +164,7 @@
 		return Matrix3D();
 	}
 
-	MINLINE Matrix3D MakeScale(f32 s, const Vector3D<f32>& a)
+	MINLINE Matrix3D MakeScale(f32 s, const FVec3& a)
 	{
 		s -= 1.0F;
 		f32 x = a.x * s;
@@ -192,7 +179,7 @@
 						 axaz, ayaz, z * a.z + 1.0F));
 	}
 
-	MINLINE Matrix3D MakeSkew(f32 t, const Vector3D<f32>& a, const Vector3D<f32>& b)
+	MINLINE Matrix3D MakeSkew(f32 t, const FVec3& a, const FVec3& b)
 	{
 		t = Math::tan(t);
 		f32 x = a.x * t;

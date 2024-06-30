@@ -20,6 +20,8 @@ TextureSystem::TextureSystem(u32 MaxTextureCount, Texture* RegisteredTextures, T
 : 
     MaxTextureCount(MaxTextureCount),
     DefaultTexture(), 
+    DefaultSpecularTexture(),
+    DefaultNormalTexture(),
     RegisteredTextures(new(RegisteredTextures) Texture[MaxTextureCount]()), 
     RegisteredTextureTable(MaxTextureCount, false, HashtableBlock, true, TextureReference(0, INVALID::ID, false)) {}
 
@@ -174,6 +176,26 @@ Texture *TextureSystem::GetDefaultTexture()
     return nullptr;
 }
 
+Texture *TextureSystem::GetDefaultSpecularTexture()
+{
+    if (state) {
+        return &DefaultSpecularTexture;
+    }
+
+    MERROR("TextureSystem::GetDefaultSpecularTexture вызывается перед инициализацией системы текстур! Возвратился нулевой указатель.");
+    return nullptr;
+}
+
+Texture *TextureSystem::GetDefaultNormalTexture()
+{
+    if (state) {
+        return &DefaultNormalTexture;
+    }
+
+    MERROR("TextureSystem::GetDefaultNormalTexture вызывается перед инициализацией системы текстур! Возвратился нулевой указатель.");
+    return nullptr;
+}
+
 /*
 void *TextureSystem::operator new(u64 size)
 {
@@ -214,12 +236,39 @@ bool TextureSystem::CreateDefaultTexture()
     // Вручную установите недействительную генерацию текстуры, поскольку это текстура по умолчанию.
     this->DefaultTexture.generation = INVALID::ID;
 
+    // Зеркальная текстура.
+    MTRACE("Создание зеркальной текстуры по умолчанию...");
+    u8 SpecPixels[16 * 16 * 4]{}; // Карта спецификации по умолчанию черная (без бликов).
+    DefaultSpecularTexture.Create(DEFAULT_SPECULAR_TEXTURE_NAME, 16, 16, 4, SpecPixels, false, Renderer::GetRenderer());
+    // Вручную установите недействительное поколение текстуры, поскольку это текстура по умолчанию.
+    DefaultSpecularTexture.generation = INVALID::ID;
+
+    // Текстура нормалей.
+    MTRACE("Создание текстуры нормалей по умолчанию...");
+    u8 NormalPixels[16 * 16 * 4]{};  // w * h * channels
+    // Каждый пиксель.
+    for (u64 row = 0; row < 16; ++row) {
+        for (u64 col = 0; col < 16; ++col) {
+            u64 index = (row * 16) + col;
+            u64 IndexBpp = index * channels;
+            // Установите синий цвет, ось Z по умолчанию и альфу.
+            NormalPixels[IndexBpp + 0] = 128;
+            NormalPixels[IndexBpp + 1] = 128;
+            NormalPixels[IndexBpp + 2] = 255;
+            NormalPixels[IndexBpp + 3] = 255;
+        }
+    }
+    DefaultNormalTexture.Create(DEFAULT_NORMAL_TEXTURE_NAME, 16, 16, 4, NormalPixels, false, Renderer::GetRenderer());
+    DefaultNormalTexture.generation = INVALID::ID;
+
     return true;
 }
 
 void TextureSystem::DestroyDefaultTexture()
 {
     DefaultTexture.Destroy(Renderer::GetRenderer());
+    DefaultSpecularTexture.Destroy(Renderer::GetRenderer());
+    DefaultNormalTexture.Destroy(Renderer::GetRenderer());
 }
 
 bool TextureSystem::LoadTexture(const char* TextureName, Texture *t)
