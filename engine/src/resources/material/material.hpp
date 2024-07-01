@@ -30,21 +30,35 @@ public:
     u32 RenderFrameNumber;                  // Синхронизируется с текущим номером кадра средства рендеринга, когда к этому кадру был применен материал.
     
 public:
-    constexpr Material() : id(INVALID::ID), generation(INVALID::ID), InternalId(INVALID::ID), ShaderID(), name(), DiffuseColour(), DiffuseMap(), SpecularMap(), NormalMap(), specular() {}
+    constexpr Material() 
+    : id(INVALID::ID), 
+    generation(INVALID::ID), 
+    InternalId(INVALID::ID), 
+    ShaderID(), 
+    name(), 
+    DiffuseColour(), 
+    DiffuseMap(), 
+    SpecularMap(), 
+    NormalMap(), 
+    specular(), 
+    RenderFrameNumber(INVALID::ID) {}
     constexpr Material(const Material& m);
     constexpr Material(const char* name, const Vector4D<f32>& DiffuseColour, const TextureMap& DiffuseMap, const TextureMap& SpecularMap, const TextureMap& NormalMap)
     : 
-        id(INVALID::ID), 
-        generation(INVALID::ID), 
-        InternalId(), 
-        ShaderID(), 
-        name(), 
-        DiffuseColour(DiffuseColour), 
-        DiffuseMap(DiffuseMap), 
-        SpecularMap(SpecularMap), 
-        NormalMap(NormalMap),
-        specular() 
-    { MString::nCopy(this->name, name, MATERIAL_NAME_MAX_LENGTH); }
+    id(INVALID::ID), 
+    generation(INVALID::ID), 
+    InternalId(), 
+    ShaderID(), 
+    name(), 
+    DiffuseColour(DiffuseColour), 
+    DiffuseMap(DiffuseMap), 
+    SpecularMap(SpecularMap), 
+    NormalMap(NormalMap),
+    specular(), 
+    RenderFrameNumber(INVALID::ID) 
+    {
+        MString::nCopy(this->name, name, MATERIAL_NAME_MAX_LENGTH);
+    }
     ~Material();
 
     MINLINE void Destroy() { this->~Material(); }

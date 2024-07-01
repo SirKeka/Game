@@ -110,14 +110,27 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
     
     // СДЕЛАТЬ: временно
 
-    // Загрузите конфигурацию плоскости и загрузите из нее геометрию.
+    // Загрузите конфигурацию и загрузите из нее геометрию.
+    Mesh CubeMesh{ 1, new GeometryID*[1], Matrix4D::Identity() };
     GeometryConfig gConfig = GeometrySystem::Instance()->GenerateCubeConfig(10.f, 10.f, 10.f, 1.f, 1.f, "test_cube", "test_material");
     Math::Geometry::GenerateTangents(gConfig.VertexCount, reinterpret_cast<Vertex3D*>(gConfig.vertices), gConfig.IndexCount, reinterpret_cast<u32*>(gConfig.indices));
-    State->TestGeometry = GeometrySystem::Instance()->Acquire(gConfig, true);
+    CubeMesh.geometries[0] = GeometrySystem::Instance()->Acquire(gConfig, true);
+
+    State->meshes.PushBack(std::move(CubeMesh));
 
     // Очистите места для конфигурации геометрии.
     MMemory::Free(gConfig.vertices, gConfig.VertexCount * sizeof(Vertex3D), MemoryTag::Array);
     MMemory::Free(gConfig.indices, gConfig.IndexCount * sizeof(u32), MemoryTag::Array);
+
+    Mesh CubeMesh2{ 1, new GeometryID*[1], Matrix4D::Identity() };
+    GeometryConfig gConfig2 = GeometrySystem::Instance()->GenerateCubeConfig(10.f, 10.f, 10.f, 1.f, 1.f, "test_cube", "test_material");
+    Math::Geometry::GenerateTangents(gConfig2.VertexCount, reinterpret_cast<Vertex3D*>(gConfig2.vertices), gConfig2.IndexCount, reinterpret_cast<u32*>(gConfig2.indices));
+    CubeMesh2.geometries[0] = GeometrySystem::Instance()->Acquire(gConfig2, true);
+
+    State->meshes.PushBack(std::move(CubeMesh2));
+    // Очистите места для конфигурации геометрии.
+    MMemory::Free(gConfig2.vertices, gConfig2.VertexCount * sizeof(Vertex3D), MemoryTag::Array);
+    MMemory::Free(gConfig2.indices, gConfig2.IndexCount * sizeof(u32), MemoryTag::Array);
 
     const f32 w = 128.f;
     const f32 h = 49.f;
@@ -199,19 +212,40 @@ bool Application::ApplicationRun() {
                 break;
             }
 
-            // СДЕЛАТЬ: refactor packet creation
-            // СДЕЛАТЬ: временно
-            static f32 angle = 0;
-            angle += (.5f * delta);
-            //// СДЕЛАТЬ: Что-то с матрицами вращения портит направленное освещение, в частности, кажется, по оси X. До поворота все в порядке.
-            Quaternion rotation{ Vector3D<f32>(0, 1, 0), angle, true };
-            //Matrix4D t = Matrix4D::MakeTranslation(Vector3D<f32>::Zero());
-            //Matrix4D r = rotation;
-            //Matrix4D s = Matrix4D::MakeScale(Vector3D<f32>::One()) ;
-            //t = r * t;
-            //t = s * t;
-            GeometryRenderData TestRender{ rotation, State->TestGeometry }; //  Matrix4D(rotation, vec3_zero());
-            GeometryRenderData TestUI_Render{Matrix4D::MakeTranslation(Vector3D<f32>::Zero()), State->TestUI_Geometry};
+            // СДЕЛАТЬ: переделать создание пакета
+            RenderPacket packet;
+            packet.DeltaTime = delta;
+
+            u32 MeshCount = State->meshes.Lenght();
+            if (MeshCount > 0) {
+
+                // Выполните небольшой поворот на первой сетке.
+                Quaternion rotation{ FVec3(0, 1, 0), 0.5f * delta, false};
+                Matrix4D RotationMatrix { rotation};
+                State->meshes[0].model *= RotationMatrix;
+
+                if (MeshCount > 1) {
+                    // «Родительский» второй куб по отношению к первому.
+                    State->meshes[1].model = Matrix4D::MakeTranslation(FVec3(10.0f, 0.0f, 1.0f)) * State->meshes[0].model;
+                }
+
+                // Перебрать все сетки и добавить их в коллекцию геометрий пакета.
+                for (u32 i = 0; i < MeshCount; ++i) {
+                    for (u32 j = 0; j < State->meshes[i].geometry_count; ++j) {
+                        GeometryRenderData data;
+                        data.geometry = State->meshes[i].geometries[j];
+                        data.model = State->meshes[i].model;
+                        packet.geometries.PushBack(data);
+                    }
+                }
+
+                packet.GeometryCount = packet.geometries.Lenght();
+
+            } else {
+                packet.GeometryCount = 0;
+                //packet.geometries = 0;
+            }
+            GeometryRenderData TestUI_Render{Matrix4D::MakeTranslation(FVec3()), State->TestUI_Geometry};
 
             RenderPacket packet{delta, 1, &TestRender, 1, &TestUI_Render};
             // СДЕЛАТЬ: временно
@@ -371,54 +405,27 @@ bool Application::OnDebugEvent(u16 code, void *sender, void *ListenerInst, Event
         "Sand",
         "Rope"
     };
-    const char* SpecularNames[3] = {
-        "Ice-Specular",
-        "Sand-Specular",
-        "Rope-Specular"
-    };
-    const char* NormalNames[3] = {
-        "Ice-Normal",
-        "Sand-Normal",
-        "Rope-Normal"
-    };
     static i8 choice = 2;
 
     // Сохраните старое имя.
     MString OldName = names[choice];
-    MString OldSpecName = SpecularNames[choice];
-    MString OldNormalName = NormalNames[choice];
 
     choice++;
     choice %= 3;
 
-    // Создайте новую диффузную текстуру.
-    if (State->TestGeometry) {
-        State->TestGeometry->material->DiffuseMap.texture = TextureSystem::Instance()->Acquire(names[choice], true);
-        if (!State->TestGeometry->material->DiffuseMap.texture) {
-            MWARN("Event::OnDebugEvent нет диффузой текстуры! Используется значение по умолчанию");
-            State->TestGeometry->material->DiffuseMap.texture = TextureSystem::Instance()->GetDefaultTexture();
+    // Просто замените материал на первой сетке, если она существует.
+    GeometryID* g = State->meshes[0].geometries[0];
+    if (g) {
+        // Приобретите новый материал.
+        g->material = MaterialSystem::Instance()->Acquire(names[choice]);
+
+    if (!g->material) {
+            MWARN("Application::OnDebugEvent: материал не найден! Использование материала по умолчанию.");
+            g->material = MaterialSystem::Instance()->GetDefaultMaterial();
         }
 
-        // Освободите старую диффузную текстуру.
-        TextureSystem::Instance()->Release(OldName.c_str());
-
-        State->TestGeometry->material->SpecularMap.texture = TextureSystem::Instance()->Acquire(SpecularNames[choice], true);
-        if (!State->TestGeometry->material->SpecularMap.texture) {
-            MWARN("Event::OnDebugEvent нет зеркальной текстуры! Используется значение по умолчанию");
-            State->TestGeometry->material->SpecularMap.texture = TextureSystem::Instance()->GetDefaultSpecularTexture();
-        }
-
-        // Освободите старую диффузную текстуру.
-        TextureSystem::Instance()->Release(OldSpecName.c_str());
-
-        State->TestGeometry->material->NormalMap.texture = TextureSystem::Instance()->Acquire(NormalNames[choice], true);
-        if (!State->TestGeometry->material->NormalMap.texture) {
-            MWARN("Event::OnDebugEvent нет текстуры нормалей! Используется значение по умолчанию");
-            State->TestGeometry->material->NormalMap.texture = TextureSystem::Instance()->GetDefaultNormalTexture();
-        }
-
-        // Освободите старую диффузную текстуру.
-        TextureSystem::Instance()->Release(OldNormalName.c_str());
+        // Освободите старый рассеянный материал.
+        MaterialSystem::Instance()->Release(OldName.c_str());
     }
 
     return true;

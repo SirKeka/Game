@@ -8,6 +8,7 @@
 #include "event.hpp"
 #include "input.hpp"
 #include "clock.hpp"
+#include "resources/mesh.hpp"
 
 
 struct ApplicationState {
@@ -31,7 +32,7 @@ struct ApplicationState {
     f64 LastTime;
 
     // TODO: временно
-    struct GeometryID* TestGeometry;
+    DArray<Mesh>meshes;
     struct GeometryID* TestUI_Geometry;
     // TODO: временно
 

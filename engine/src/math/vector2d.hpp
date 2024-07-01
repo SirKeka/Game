@@ -25,32 +25,32 @@ public:
 
     /// @brief нулевой вектор
     /// @return (0, 0)
-    constexpr Vector2D Zero() {
+    constexpr Vector2D& Zero() {
         return Vector2D<T>(T(), T());
     }
     /// @brief единичный вектор
     /// @return (1, 1)
-    constexpr Vector2D One() {
+    constexpr Vector2D& One() {
         return Vector2D(1, 1);
     }
     /// @brief Верх
     /// @return (0, 1)
-    constexpr Vector2D Up() {
+    constexpr Vector2D& Up() {
         return Vector2D(0, 1);
     }
     /// @brief Низ
     /// @return (0, -1)
-    constexpr Vector2D Down() {
+    constexpr Vector2D& Down() {
         return Vector2D(0, -1);
     }
     /// @brief Лево
     /// @return (-1, 0)
-    constexpr Vector2D Left() {
+    constexpr Vector2D& Left() {
         return Vector2D(-1, 0);
     }
     /// @brief Право
     /// @return (1, 0)
-    constexpr Vector2D Right() {
+    constexpr Vector2D& Right() {
         return Vector2D(1, 0);
     }
 

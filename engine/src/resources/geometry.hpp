@@ -17,6 +17,8 @@ struct GeometryID {
     class Material* material;
     GeometryID(u32 id, u32 generation) : id(id), InternalID(INVALID::ID), generation(generation), name(), material(nullptr) {}
     GeometryID(const char* name) : id(INVALID::ID), InternalID(INVALID::ID), generation(INVALID::ID), material(nullptr) {MMemory::CopyMem(this->name, name, GEOMETRY_NAME_MAX_LENGTH);}
+    void* operator new[](u64 size) { return MMemory::Allocate(size, MemoryTag::Array); }
+    void operator delete[](void* ptr, u64 size) { MMemory::Free(ptr, size, MemoryTag::Array); }
 };
 
 /// @brief Представляет фактическую геометрию в мире.
@@ -50,4 +52,9 @@ public:
     void SetIndexData(u32 IndexCount, u64 IndexBufferOffset);
 
     void Destroy();
+
+    void* operator new(u64 size);
+    void* operator new[](u64 size);
+    void operator delete(void* ptr, u64 size);
+    void operator delete[](void* ptr, u64 size);
 };

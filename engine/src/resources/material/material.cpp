@@ -10,7 +10,8 @@ name(),
 DiffuseColour(m.DiffuseColour), 
 DiffuseMap(m.DiffuseMap), 
 SpecularMap(m.SpecularMap), 
-specular(m.specular)
+specular(m.specular),
+RenderFrameNumber(m.RenderFrameNumber)
 {
     MString::Copy(name, m.name);
 }
@@ -18,12 +19,11 @@ specular(m.specular)
 Material::~Material()
 {
     MTRACE("Уничтожение материала '%s'...", name);
-    u32 id = INVALID::ID;
-    u32 generation = INVALID::ID;
-    u32 InternalId = INVALID::ID;
-    MMemory::ZeroMem(name, MATERIAL_NAME_MAX_LENGTH);
-    Vector4D<f32> DiffuseColour = Vector4D<f32>::Zero();
-    MMemory::ZeroMem(&DiffuseMap, sizeof(TextureMap));
+    MMemory::ZeroMem(this, sizeof(Material));
+    id                = INVALID::ID;
+    generation        = INVALID::ID;
+    InternalId        = INVALID::ID;
+    RenderFrameNumber = INVALID::ID;
 }
 
 /*const bool Material::operator ! (Material& m)
@@ -41,7 +41,7 @@ Material::~Material()
 
 void Material::Reset()
 {
-    id = 0;        
+    id         = 0;        
     generation = 0;
     InternalId = 0;
 }

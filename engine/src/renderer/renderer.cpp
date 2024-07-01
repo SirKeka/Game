@@ -107,6 +107,7 @@ void Renderer::OnResized(u16 width, u16 height)
 
 bool Renderer::DrawFrame(RenderPacket &packet)
 {
+    ptrRenderer->FrameNumber++;
     // Если начальный кадр возвращается успешно, операции в середине кадра могут продолжаться.
     if (ptrRenderer->BeginFrame(packet.DeltaTime)) {
         // Мировой проход рендеринга
@@ -136,11 +137,17 @@ bool Renderer::DrawFrame(RenderPacket &packet)
                 m = MaterialSystem::Instance()->GetDefaultMaterial();
             }
 
-            // Приминение материала
-            if (!MaterialSystem::Instance()->ApplyInstance(m)) {
-                MWARN("Не удалось применить материал «%s». Пропуск отрисовки.", m->name);
-                continue;
-            }
+            // Примените материал, если он еще не был в этом кадре. 
+            // Это предотвращает многократное обновление одного и того же материала.
+            if (m->RenderFrameNumber != ptrRenderer->FrameNumber) {
+                if (!MaterialSystem::Instance()->ApplyInstance(m)) {
+                    MWARN("Не удалось применить материал «%s». Пропуск отрисовки.", m->name);
+                    continue;
+                }
+            } else {
+                    // Синхронизация ноиера кадров.
+                    m->RenderFrameNumber = ptrRenderer->FrameNumber;
+                }
 
             // Приминение locals
             MaterialSystem::Instance()->ApplyLocal(m, packet.geometries[i].model);
@@ -203,7 +210,6 @@ bool Renderer::DrawFrame(RenderPacket &packet)
 
         // Завершите кадр. Если это не удастся, скорее всего, это будет невозможно восстановить.
         bool result = ptrRenderer->EndFrame(packet.DeltaTime);
-        ptrRenderer->FrameNumber++;
 
         if (!result) {
             MERROR("Ошибка EndFrame. Приложение закрывается...");

@@ -23,22 +23,6 @@ enum class ERendererType
     OPENGL,
     DIRECTX
 };
-/* f32 DeltaTime
- * u32 GeometryCount
- * struct GeometryRenderData* geometries
- * u32 UI_GeometryCount
- * struct GeometryRenderData* UI_Geometries*/
-struct RenderPacket
-{
-    f64 DeltaTime;
-    u32 GeometryCount;
-    struct GeometryRenderData* geometries;
-    u32 UI_GeometryCount;
-    struct GeometryRenderData* UI_Geometries;
-    constexpr RenderPacket() : DeltaTime(), GeometryCount(), geometries(nullptr), UI_GeometryCount(), UI_Geometries(nullptr) {}
-    constexpr RenderPacket(f64 DeltaTime, u32 GeometryCount, struct GeometryRenderData* geometries, u32 UI_GeometryCount, struct GeometryRenderData* UI_Geometries)
-    : DeltaTime(DeltaTime), GeometryCount(GeometryCount), geometries(geometries), UI_GeometryCount(UI_GeometryCount), UI_Geometries(UI_Geometries) {}
-};
 
 /*размер данной струтуры для карт Nvidia должен быть равен 256 байт*/
 struct VulkanMaterialShaderGlobalUniformObject
@@ -79,7 +63,32 @@ struct GeometryRenderData
     struct GeometryID* gid;
 
     constexpr GeometryRenderData() : model(), gid(nullptr) {}
-    constexpr GeometryRenderData(Matrix4D model, struct GeometryID* gid) : model(model), gid(gid) {}
+    constexpr GeometryRenderData(const Matrix4D& model, struct GeometryID* gid) : model(model), gid(gid) {}
+    constexpr GeometryRenderData(GeometryRenderData&& grd) : model(grd.model), gid() {}
+};
+
+/* f32 DeltaTime
+ * u32 GeometryCount
+ * struct GeometryRenderData* geometries
+ * u32 UI_GeometryCount
+ * struct GeometryRenderData* UI_Geometries*/
+struct RenderPacket
+{
+    f64 DeltaTime;
+    u32 GeometryCount;
+    DArray<GeometryRenderData> geometries;
+    u32 UI_GeometryCount;
+    DArray<GeometryRenderData> UI_Geometries;
+    constexpr RenderPacket() : DeltaTime(), GeometryCount(), geometries(), UI_GeometryCount(), UI_Geometries() {}
+    constexpr RenderPacket(f64 DeltaTime, u32 GeometryCount, GeometryRenderData geometries, u32 UI_GeometryCount, GeometryRenderData UI_Geometries)
+    : DeltaTime(DeltaTime), 
+    GeometryCount(GeometryCount), 
+    geometries(), 
+    UI_GeometryCount(UI_GeometryCount), 
+    UI_Geometries() {
+        this->geometries.PushBack(std::move(geometries));
+        this->UI_Geometries.PushBack(std::move(UI_Geometries));
+    }
 };
 
 class RendererType
