@@ -141,6 +141,25 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
     State->MeshCount++;
     // Очистите места для конфигурации геометрии.
     gConfig.Dispose();
+    // Тестовая модель загружается из файла
+    Mesh& CarMesh = State->meshes[State->MeshCount];
+    Resource CarMeshResource;
+    if (!ResourceSystem::Instance()->Load("Silvia", ResourceType::Mesh, CarMeshResource)) {
+        MERROR("Не удалось загрузить тестовую модель машины!");
+    } else {
+        GeometryConfig* configs = reinterpret_cast<GeometryConfig*>(CarMeshResource.data);
+        CarMesh.GeometryCount = CarMeshResource.DataSize;
+        CarMesh.geometries = new GeometryID*[CarMesh.GeometryCount];
+        for (u64 i = 0; i < CarMesh.GeometryCount; i++) {
+            GeometryConfig& c = configs[i];
+            Math::Geometry::GenerateTangents(c.VertexCount, reinterpret_cast<Vertex3D*>(c.vertices), c.IndexCount, reinterpret_cast<u32*>(c.indices));
+            CarMesh.geometries[i] = GeometrySystem::Instance()->Acquire(configs[i], true);
+        }
+        CarMesh.transform = Transform(FVec3(15.f, 0.f, 1.f));
+        ResourceSystem::Instance()->Unload(CarMeshResource);
+        State->MeshCount++;
+    }
+    
 
     const f32 w = 128.f;
     const f32 h = 49.f;

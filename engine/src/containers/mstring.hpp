@@ -55,6 +55,27 @@ public:
     /// @param string строка в стиле си с которой нужно сравнить
     /// @return true, если строки равны и false, если нет 
     const bool Comparei(const char* string) const;
+    /// @brief Сравнение строк с учетом регистра для нескольких символов.
+    /// @param string строка с которой нужно сравнить данную строку
+    /// @param length максимальное количество символов для сравнения.
+    /// @return true, если то же самое, в противном случае false.
+    const bool Necompare(const MString& string, u64 length) const;
+    /// @brief Сравнение строк с учетом регистра для нескольких символов.
+    /// @param string строка в стиле си с которой нужно сравнить данную строку
+    /// @param length максимальное количество символов для сравнения.
+    /// @return true, если то же самое, в противном случае false.
+    const bool Necompare(const char* string, u64 length) const;
+    /// @brief Сравнение строк без учета регистра для нескольких символов.
+    /// @param string строка с которой нужно сравнить данную строку
+    /// @param length максимальное количество символов для сравнения.
+    /// @return true, если то же самое, в противном случае false.
+    const bool Necomparei(const MString& string, u64 length) const;
+    /// @brief Сравнение строк без учета регистра для нескольких символов.
+    /// @param string строка в стиле си с которой нужно сравнить данную строку
+    /// @param length максимальное количество символов для сравнения.
+    /// @return true, если то же самое, в противном случае false.
+    const bool Necomparei(const char* string, u64 length) const;
+    static const bool Necomparei(const char* string1, const char* string2, u64 length);
     /// @brief Копирует строку
     /// @param s строка которую нужно скопировать
     /// @return указатель на копию строки

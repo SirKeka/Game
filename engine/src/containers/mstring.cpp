@@ -76,7 +76,7 @@ MString &MString::operator=(const char *s)
 
 MString::operator bool() const
 {
-    if (str != nullptr && length != 0) {
+    if (str != nullptr) {
         return true;
     }
     return false;
@@ -159,6 +159,67 @@ const bool MString::Comparei(const MString &string) const
 const bool MString::Comparei(const char *string) const
 {
     return MString::Equali(str, string);
+}
+
+const bool MString::Necompare(const MString &string, u64 lenght) const
+{
+    if (!str && !string) {
+        return true;
+    } else {
+        return false;
+    }
+    
+    if (this->length < lenght && string.length < lenght) {
+        MERROR("MString::Necompare: длина сравнения больше длины строки!")
+        return false;
+    }
+    
+    for (u64 i = 0; i < lenght; i++) {
+        if(!(str[i] == string[i])) {
+            return false;
+        } 
+    }
+    return true;
+}
+
+const bool MString::Necompare(const char *string, u64 lenght) const
+{
+    if (!str && !string) {
+        return true;
+    } else {
+        return false;
+    }
+
+    if (this->length < lenght && Length(string) < lenght) {
+        MERROR("MString::Necompare: длина сравнения больше длины строки!")
+        return false;
+    }
+
+    for (u64 i = 0; i < lenght; i++) {
+        if(!(str[i] == string[i])) {
+            return false;
+        } 
+    }
+    return true;
+}
+
+const bool MString::Necomparei(const MString &string, u64 length) const
+{
+    return Necomparei(str, string.str, length);
+}
+
+const bool MString::Necomparei(const char *string, u64 length) const
+{
+    return Necomparei(str, string, length);
+}
+
+const bool MString::Necomparei(const char *string1, const char *string2, u64 length)
+{
+#if defined(__GNUC__)
+    return strncasecmp(str0, str1, length) == 0;
+#elif (defined _MSC_VER)
+    return _strnicmp(string1, string2, length) == 0;
+#endif
 }
 
 char *MString::Duplicate(const char *s)
