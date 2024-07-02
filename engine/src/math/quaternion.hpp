@@ -48,11 +48,17 @@ public:
 
     	if (normalize) this->Normalize();
 	}
-	Quaternion(const Quaternion& q);
-	Quaternion(Quaternion&& q);
+	//constexpr Quaternion(const Quaternion& q) : x(q.x), y(q.y), z(q.z), w(q.w) {}
+	/*constexpr Quaternion(Quaternion&& q) : x(q.x), y(q.y), z(q.z), w(q.w) {
+		q.x = 0;
+		q.y = 0;
+		q.z = 0;
+		q.w = 0;
+	}*/
 
 	Quaternion& operator-();
-	Quaternion& operator=(const Quaternion& q);
+	Quaternion& operator*=(const Quaternion& q);
+	//Quaternion& operator=(const Quaternion& q);
 
 	Vector3D<f32>& GetVectorPart(void);
 	const Vector3D<f32>& GetVectorPart(void) const;

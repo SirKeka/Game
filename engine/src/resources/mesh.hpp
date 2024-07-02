@@ -42,5 +42,6 @@ struct Mesh {
             geometries[i] = mesh.geometries[i];
         }
         model = mesh.model;
+        return *this;
     }
 };

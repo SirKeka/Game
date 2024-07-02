@@ -36,7 +36,7 @@ public:
 	}*/
     /// @brief единичный вектор
     /// @return (1, 1, 1)
-    static constexpr Vector3D& One() noexcept {
+    static constexpr Vector3D One() noexcept {
 		return Vector3D(1, 1, 1);
 	}
     /// @brief Вектор указывающий вверх

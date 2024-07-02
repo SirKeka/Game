@@ -5,21 +5,11 @@
 
 constexpr Matrix4D::Matrix4D(f32 n11, f32 n12, f32 n13, f32 n14, f32 n21, f32 n22, f32 n23, f32 n24, f32 n31, f32 n32, f32 n33, f32 n34, f32 n41, f32 n42, f32 n43, f32 n44)
 : data{n11, n12, n13, n14, n21, n22, n23, n24, n31, n32, n33, n34, n41, n42, n43, n44}
-{
-  /*n[0][0] = n11; n[0][1] = n12; n[0][2] = n13; n[0][3] = n14;
-	n[1][0] = n21; n[1][1] = n22; n[1][2] = n23; n[1][3] = n24;
-	n[2][0] = n31; n[2][1] = n32; n[2][2] = n33; n[2][3] = n34;
-	n[3][0] = n41; n[3][1] = n42; n[3][2] = n43; n[3][3] = n44;*/
-}
+{}
 
 constexpr Matrix4D::Matrix4D(const FVec4& a, const FVec4& b, const FVec4& c, const FVec4& d)
 : data{a.x, a.y, a.z, a.w, b.x, b.y, b.z, b.w, c.x, c.y, c.z, c.w, d.x, d.y, d.z, d.w}
-{
-  /*n[0][0] = a.x; n[0][1] = a.y; n[0][2] = a.z; n[0][3] = a.w;
-	n[1][0] = b.x; n[1][1] = b.y; n[1][2] = b.z; n[1][3] = b.w;
-	n[2][0] = c.x; n[2][1] = c.y; n[2][2] = c.z; n[2][3] = c.w;
-	n[3][0] = d.x; n[3][1] = d.y; n[3][2] = d.z; n[3][3] = d.w;*/
-}
+{}
 
 Matrix4D::Matrix4D(const Quaternion &q)
 {
@@ -44,7 +34,7 @@ Matrix4D::Matrix4D(const Quaternion &q)
 	n[3][0] = 0.0f; n[3][1] = 0.0f; n[3][2] = 0.0f; n[3][3] = 1.0f;
 }
 
-Matrix4D::Matrix4D(const Quaternion &q, const Vector3D<f32> &center)
+Matrix4D::Matrix4D(const Quaternion &q, const FVec3 &center)
 {
 	n[0][0] = (q.x * q.x) - (q.y * q.y) - (q.z * q.z) + (q.w * q.w);
 	n[0][1] = 2.0f * ((q.x * q.y) + (q.z * q.w));
@@ -109,6 +99,19 @@ Matrix4D &Matrix4D::operator=(const Matrix4D &m)
     return *this;
 }
 
+Matrix4D &Matrix4D::operator*=(const Matrix4D &m)
+{
+    for (int i = 0; i < 4; i++) {
+		for (int j = 0; j < 4; j++) {
+			n[i][j] = n[i][0] * m.n[0][j] + 
+					  n[i][1] * m.n[1][j] + 
+					  n[i][2] * m.n[2][j] + 
+					  n[i][3] * m.n[3][j];
+		}
+	}
+	return *this;
+}
+
 /*MINLINE Matrix4D Matrix4D::MakeIdentity()
 {
     return Matrix4D(1.0f, 0.0f, 0.0f, 0.0f,
@@ -154,14 +157,13 @@ Matrix4D &Matrix4D::operator=(const Matrix4D &m)
 	                  0.0F, 0.0F, 1.0F,    0.0F));
 }*/
 
-MINLINE Matrix4D Matrix4D::MakeLookAt(const Vector3D<f32> &position, const Vector3D<f32> &target, const Vector3D<f32> &up)
+MINLINE Matrix4D Matrix4D::MakeLookAt(const FVec3 &position, const FVec3 &target, const FVec3 &up)
 {
-    Vector3D<f32> Z_Axis;
-	Z_Axis = target - position;
+    FVec3 Z_Axis { target - position };
 
     Z_Axis.Normalize();
-    Vector3D<f32> X_Axis = Normalize(Cross(Z_Axis, up));
-    Vector3D<f32> Y_Axis = Cross(X_Axis, Z_Axis);
+    FVec3 X_Axis = Normalize(Cross(Z_Axis, up));
+    FVec3 Y_Axis = Cross(X_Axis, Z_Axis);
 
     return Matrix4D(		X_Axis.x, 				Y_Axis.x, 			  -Z_Axis.x, 		0, 
 							X_Axis.y, 				Y_Axis.y, 			  -Z_Axis.y, 		0, 
@@ -177,7 +179,7 @@ MINLINE Matrix4D Matrix4D::MakeTransposed(const Matrix4D &m)
 					m(0, 3), m(1, 3), m(2, 3), m(3, 3));
 }
 
-/*MINLINE Matrix4D Matrix4D::MakeTranslation(const Vector3D<f32> &position)
+/*MINLINE Matrix4D Matrix4D::MakeTranslation(const FVec3 &position)
 {
     return Matrix4D(FVec4(1.0f, 0.0f, 0.0f, 0.0f),
 					FVec4(0.0f, 1.0f, 0.0f, 0.0f),
@@ -185,14 +187,14 @@ MINLINE Matrix4D Matrix4D::MakeTransposed(const Matrix4D &m)
 					FVec4(position,         1.0f));
 }*/
 
-MINLINE Vector3D<f32> Matrix4::Up(const Matrix4D& m)
+MINLINE FVec3 Matrix4::Up(const Matrix4D& m)
 {
-	return Normalize(Vector3D<f32>(m(0, 1), m(1, 1), m(2, 2)));
+	return Normalize(FVec3(m(0, 1), m(1, 1), m(2, 2)));
 }
 
-MINLINE Vector3D<f32> Matrix4::Down(const Matrix4D& m)
+MINLINE FVec3 Matrix4::Down(const Matrix4D& m)
 {
-	return -Normalize(Vector3D<f32>(m(0, 1), m(1, 1), m(2, 2)));
+	return -Normalize(FVec3(m(0, 1), m(1, 1), m(2, 2)));
 }
 
 void Matrix4D::Inverse()
@@ -200,12 +202,12 @@ void Matrix4D::Inverse()
 	*this = Matrix4D::MakeInverse(*this);
 }
 
-Matrix& Matrix4D::Identity()
+void Matrix4D::Identity()
 {
 	data[0] = data[5] = data[10] = data[15] = 1.f;
 }
 
-Matrix4D operator*(Matrix4D &a, Matrix4D &b)
+Matrix4D operator*(const Matrix4D &a, const Matrix4D &b)
 {
 	Matrix4D c {};
     for (int i = 1; i < 5; i++) {

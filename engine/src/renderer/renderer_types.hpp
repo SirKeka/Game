@@ -64,7 +64,7 @@ struct GeometryRenderData
 
     constexpr GeometryRenderData() : model(), gid(nullptr) {}
     constexpr GeometryRenderData(const Matrix4D& model, struct GeometryID* gid) : model(model), gid(gid) {}
-    constexpr GeometryRenderData(GeometryRenderData&& grd) : model(grd.model), gid() {}
+    //constexpr GeometryRenderData(GeometryRenderData&& grd) : model(grd.model), gid() {}
 };
 
 /* f32 DeltaTime

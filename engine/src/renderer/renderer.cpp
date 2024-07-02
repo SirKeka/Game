@@ -143,11 +143,11 @@ bool Renderer::DrawFrame(RenderPacket &packet)
                 if (!MaterialSystem::Instance()->ApplyInstance(m)) {
                     MWARN("Не удалось применить материал «%s». Пропуск отрисовки.", m->name);
                     continue;
-                }
-            } else {
+                } else {
                     // Синхронизация ноиера кадров.
                     m->RenderFrameNumber = ptrRenderer->FrameNumber;
                 }
+            } 
 
             // Приминение locals
             MaterialSystem::Instance()->ApplyLocal(m, packet.geometries[i].model);

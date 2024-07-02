@@ -36,13 +36,14 @@ public:
 	FVec4& operator [](int j);
 	const FVec4& operator [](int j) const;
 	Matrix4D& operator=(const Matrix4D& m);
+	Matrix4D& operator*=(const Matrix4D& m);
 
 	/// @brief Инвертирует текущую матрицу
 	/// @return инвертированную матрицу
 	void Inverse();
 	/// @brief Создает и возвращает единичную матрицу:
 	/// @return новая единичная матрица
-	static Matrix4D& Identity();
+	void Identity();
 	/// @brief Создает и возвращает матрицу ортогональной проекции. Обычно используется для рендеринга плоских или 2D-сцен.
 	/// @param left левая сторона усеченного изображения.
 	/// @param right правая сторона усеченного изображения.
@@ -242,7 +243,7 @@ public:
 	/// @param a матрица 4x4
 	/// @param b матрица 4x4
 	/// @return результат умножения матрицы а на матрицу b
-	MAPI Matrix4D operator*(Matrix4D& a, Matrix4D& b);
+	MAPI Matrix4D operator*(const Matrix4D& a, const Matrix4D& b);
 
 	namespace Matrix4
 	{

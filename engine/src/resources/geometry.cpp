@@ -74,21 +74,3 @@ void Geometry::Destroy()
 {
     this->~Geometry();
 }
-
-void *Geometry::operator new(u64 size)
-{
-    return MMemory::Allocate(size, MemoryTag::);
-}
-
-void *Geometry::operator new[](u64 size)
-{
-    return nullptr;
-}
-
-void Geometry::operator delete(void *ptr, u64 size)
-{
-}
-
-void Geometry::operator delete[](void *ptr, u64 size)
-{
-}

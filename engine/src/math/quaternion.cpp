@@ -1,26 +1,5 @@
 #include "quaternion.hpp"
 
-Quaternion::Quaternion(const Quaternion &q)
-{
-	x = q.x;
-	y = q.y;
-	z = q.z;
-	w = q.w;
-}
-
-Quaternion::Quaternion(Quaternion &&q)
-{
-	x = q.x;
-	y = q.y;
-	z = q.z;
-	w = q.w;
-
-	q.x = 0;
-	q.y = 0;
-	q.z = 0;
-	q.w = 0;
-}
-
 Quaternion &Quaternion::operator-()
 {
 	x *= -1;
@@ -31,14 +10,14 @@ Quaternion &Quaternion::operator-()
     return *this;
 }
 
-Quaternion &Quaternion::operator=(const Quaternion &q)
+/*Quaternion &Quaternion::operator=(const Quaternion &q)
 {
     x = q.x;
 	y = q.y;
 	z = q.z;
 	w = q.w;
 	return *this;
-}
+}*/
 
 Vector3D<f32> &Quaternion::GetVectorPart(void)
 {

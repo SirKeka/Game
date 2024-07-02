@@ -111,7 +111,7 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
     // СДЕЛАТЬ: временно
 
     // Загрузите конфигурацию и загрузите из нее геометрию.
-    Mesh CubeMesh{ 1, new GeometryID*[1], Matrix4D::Identity() };
+    Mesh CubeMesh{ 1, new GeometryID*[1], Matrix4D::MakeIdentity() };
     GeometryConfig gConfig = GeometrySystem::Instance()->GenerateCubeConfig(10.f, 10.f, 10.f, 1.f, 1.f, "test_cube", "test_material");
     Math::Geometry::GenerateTangents(gConfig.VertexCount, reinterpret_cast<Vertex3D*>(gConfig.vertices), gConfig.IndexCount, reinterpret_cast<u32*>(gConfig.indices));
     CubeMesh.geometries[0] = GeometrySystem::Instance()->Acquire(gConfig, true);
@@ -122,8 +122,8 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
     MMemory::Free(gConfig.vertices, gConfig.VertexCount * sizeof(Vertex3D), MemoryTag::Array);
     MMemory::Free(gConfig.indices, gConfig.IndexCount * sizeof(u32), MemoryTag::Array);
 
-    Mesh CubeMesh2{ 1, new GeometryID*[1], Matrix4D::Identity() };
-    GeometryConfig gConfig2 = GeometrySystem::Instance()->GenerateCubeConfig(10.f, 10.f, 10.f, 1.f, 1.f, "test_cube", "test_material");
+    Mesh CubeMesh2{ 1, new GeometryID*[1], Matrix4D::MakeIdentity() };
+    GeometryConfig gConfig2 = GeometrySystem::Instance()->GenerateCubeConfig(5.f, 5.f, 5.f, 1.f, 1.f, "test_cube2", "test_material");
     Math::Geometry::GenerateTangents(gConfig2.VertexCount, reinterpret_cast<Vertex3D*>(gConfig2.vertices), gConfig2.IndexCount, reinterpret_cast<u32*>(gConfig2.indices));
     CubeMesh2.geometries[0] = GeometrySystem::Instance()->Acquire(gConfig2, true);
 
@@ -216,12 +216,12 @@ bool Application::ApplicationRun() {
             RenderPacket packet;
             packet.DeltaTime = delta;
 
-            u32 MeshCount = State->meshes.Lenght();
+            const u32& MeshCount = State->meshes.Lenght();
             if (MeshCount > 0) {
 
                 // Выполните небольшой поворот на первой сетке.
-                Quaternion rotation{ FVec3(0, 1, 0), 0.5f * delta, false};
-                Matrix4D RotationMatrix { rotation};
+                Quaternion rotation( FVec3(0, 1, 0), 0.5f * delta, false );
+                Matrix4D RotationMatrix { rotation };
                 State->meshes[0].model *= RotationMatrix;
 
                 if (MeshCount > 1) {
@@ -231,11 +231,8 @@ bool Application::ApplicationRun() {
 
                 // Перебрать все сетки и добавить их в коллекцию геометрий пакета.
                 for (u32 i = 0; i < MeshCount; ++i) {
-                    for (u32 j = 0; j < State->meshes[i].geometry_count; ++j) {
-                        GeometryRenderData data;
-                        data.geometry = State->meshes[i].geometries[j];
-                        data.model = State->meshes[i].model;
-                        packet.geometries.PushBack(data);
+                    for (u32 j = 0; j < State->meshes[i].GeometryCount; ++j) {
+                        packet.geometries.EmplaceBack(State->meshes[i].model, State->meshes[i].geometries[j]);
                     }
                 }
 
@@ -245,9 +242,9 @@ bool Application::ApplicationRun() {
                 packet.GeometryCount = 0;
                 //packet.geometries = 0;
             }
-            GeometryRenderData TestUI_Render{Matrix4D::MakeTranslation(FVec3()), State->TestUI_Geometry};
 
-            RenderPacket packet{delta, 1, &TestRender, 1, &TestUI_Render};
+            packet.UI_GeometryCount = 1; 
+            packet.UI_Geometries.EmplaceBack(Matrix4D::MakeTranslation(FVec3()), State->TestUI_Geometry);
             // СДЕЛАТЬ: временно
 
             State->Render->DrawFrame(packet);

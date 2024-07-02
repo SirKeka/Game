@@ -23,8 +23,8 @@ bool Game::Initialize()
 
     gameState = reinterpret_cast<GameState*>(state);
     
-    gameState->CameraPosition = Vector3D<f32> (0, 0, 30.f);
-    gameState->CameraEuler = Vector3D<f32>::Zero();
+    gameState->CameraPosition = FVec3(0, 0, 30.f);
+    gameState->CameraEuler = FVec3();
 
     gameState->view = Matrix4D::MakeTranslation(gameState->CameraPosition);
     gameState->view.Inverse();
@@ -68,27 +68,27 @@ bool Game::Update(f32 DeltaTime)
     }
 
     f32 TempMoveSpeed = 50.0f;
-    Vector3D<f32> velocity = Vector3D<f32>::Zero();
+    FVec3 velocity = FVec3();
 
     //Не работает
     if (Input::Instance()->IsKeyDown(Keys::W)) {
-        Vector3D<f32> forward = Matrix4::Forward(gameState->view);
+        FVec3 forward = Matrix4::Forward(gameState->view);
         velocity += forward;
     }
 
     //Не работает
     if (Input::Instance()->IsKeyDown(Keys::S)) {
-        Vector3D<f32> backward = Matrix4::Backward(gameState->view);
+        FVec3 backward = Matrix4::Backward(gameState->view);
         velocity += backward;
     }
 
     if (Input::Instance()->IsKeyDown(Keys::Q)) {
-        Vector3D<f32> left = Matrix4::Left(gameState->view);
+        FVec3 left = Matrix4::Left(gameState->view);
         velocity += left;
     }
 
     if (Input::Instance()->IsKeyDown(Keys::E)) {
-        Vector3D<f32> right = Matrix4::Right(gameState->view);
+        FVec3 right = Matrix4::Right(gameState->view);
         velocity += right;
     }
 
@@ -100,7 +100,7 @@ bool Game::Update(f32 DeltaTime)
         velocity.y -= 1.0f;
     }
 
-    Vector3D<f32> z = Vector3D<f32>::Zero();
+    FVec3 z = FVec3();
     if (!Compare(z, velocity, 0.0002f)) {
         // Обязательно нормализуйте скорость перед применением.
         velocity.Normalize();

@@ -343,8 +343,8 @@ bool MaterialSystem::LoadMaterial(const MaterialConfig &config, Material *m)
 
     // Карта нормалей
     if (MString::Length(config.NormalMapName) > 0) {
-        m->SpecularMap.use = TextureUse::MapNormal;
-        m->SpecularMap.texture = TextureSystem::Instance()->Acquire(config.NormalMapName, true);
+        m->NormalMap.use = TextureUse::MapNormal;
+        m->NormalMap.texture = TextureSystem::Instance()->Acquire(config.NormalMapName, true);
         if (!m->NormalMap.texture) {
             MWARN("Невозможно загрузить текстуру нормалей «%s» для материала «%s», используется значение по умолчанию.", config.NormalMapName, m->name);
             m->SpecularMap.texture = TextureSystem::Instance()->GetDefaultNormalTexture();
