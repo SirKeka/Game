@@ -30,7 +30,7 @@ public:
     /// @brief Создает преобразование из заданной позиции.
     /// Использует нулевое вращение и единичный масштаб.
     /// @param position позиция, которую нужно использовать.
-    constexpr Transform(FVec3 position) 
+    constexpr Transform(const FVec3& position) 
     : 
     position(position), 
     rotation(0.f, 0.f, 0.f, 1.f), 
@@ -42,7 +42,7 @@ public:
     /// @brief Создает преобразование из заданного поворота.
     /// Использует нулевое положение и единичный масштаб.
     /// @param rotation используемое вращение.
-    constexpr Transform(Quaternion rotation) 
+    constexpr Transform(const Quaternion& rotation) 
     :  
     position(), 
     rotation(rotation), 
@@ -55,7 +55,7 @@ public:
     /// Использует нулевое положение и единичный масштаб.
     /// @param position позиция, которую нужно использовать.
     /// @param rotation используемое вращение.
-    constexpr Transform(FVec3 position, Quaternion rotation)
+    constexpr Transform(const FVec3& position, const Quaternion& rotation)
     :
     position(position), 
     rotation(rotation), 
@@ -69,7 +69,7 @@ public:
     /// @param position позиция, которую нужно использовать.
     /// @param rotation используемое вращение.
     /// @param scale масштаб
-    constexpr Transform(FVec3 position, Quaternion rotation, FVec3 scale)
+    constexpr Transform(const FVec3& position, const Quaternion& rotation, const FVec3& scale)
     :
     position(position), 
     rotation(rotation), 
@@ -129,4 +129,9 @@ public:
     /// Автоматически пересчитывает матрицу, если она загрязнена. В противном случае возвращается уже рассчитанное.
     /// @return константную ссылку на матрицу локального преобразования
     constexpr Matrix4D& GetLocation();
+    /// @brief Получает мировую матрицу данного преобразования, проверяя его родительский элемент (если он есть) и умножая его на локальную матрицу.
+    /// @return константную ссылку на мировую матрицу
+    Matrix4D GetWorld();
+private:
+    const Matrix4D& GetLocal();
 };

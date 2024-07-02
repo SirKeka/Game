@@ -32,7 +32,8 @@ struct ApplicationState {
     f64 LastTime;
 
     // TODO: временно
-    DArray<Mesh>meshes;
+    Mesh meshes[10];
+    u32 MeshCount{};
     struct GeometryID* TestUI_Geometry;
     // TODO: временно
 

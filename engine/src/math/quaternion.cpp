@@ -10,6 +10,15 @@ Quaternion &Quaternion::operator-()
     return *this;
 }
 
+Quaternion &Quaternion::operator*=(const Quaternion &q)
+{
+	x = w * q.x + x * q.w + y * q.z - z * q.y;
+	y = w * q.y - x * q.z + y * q.w + z * q.x;
+	z = w * q.z + x * q.y - y * q.x + z * q.w;
+	w = w * q.w - x * q.x - y * q.y - z * q.z;
+    return *this;
+}
+
 /*Quaternion &Quaternion::operator=(const Quaternion &q)
 {
     x = q.x;

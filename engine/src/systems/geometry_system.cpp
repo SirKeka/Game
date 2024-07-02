@@ -441,3 +441,14 @@ void *GeometrySystem::operator new(u64 size)
     return LinearAllocator::Instance().Allocate(size + ArrayRequirement);
 }
 */
+
+void GeometryConfig::Dispose()
+{
+    if (vertices) {
+        MMemory::Free(vertices, VertexSize * VertexCount, MemoryTag::Array);
+    }
+    if (indices) {
+        MMemory::Free(indices, IndexSize * IndexCount, MemoryTag::Array);
+    }
+    MMemory::ZeroMem(this, sizeof(GeometryConfig));
+}

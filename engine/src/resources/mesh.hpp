@@ -1,6 +1,6 @@
 #pragma once
 #include "defines.hpp"
-#include "math/matrix4d.hpp"
+#include "math/transform.hpp"
 #include "core/mmemory.hpp"
 
 class GeometryID;
@@ -8,25 +8,22 @@ class GeometryID;
 struct Mesh {
     u16 GeometryCount{};
     GeometryID** geometries{nullptr};
-    Matrix4D model{};
+    Transform transform{};
 
-    constexpr Mesh() : GeometryCount(), geometries(nullptr), model() {}
-    constexpr Mesh(u16 GeometryCount, GeometryID** geometries, Matrix4D model)
-    : GeometryCount(GeometryCount), geometries(geometries), model(model) {}
+    constexpr Mesh() : GeometryCount(), geometries(nullptr), transform() {}
+    constexpr Mesh(u16 GeometryCount, GeometryID** geometries, const Transform& transform)
+    : GeometryCount(GeometryCount), geometries(geometries), transform(transform) {}
     Mesh(const Mesh& mesh)
-    : GeometryCount(mesh.GeometryCount), geometries(new GeometryID*[GeometryCount]), model(mesh.model) {
+    : GeometryCount(mesh.GeometryCount), geometries(new GeometryID*[GeometryCount]), transform(mesh.transform) {
         for (u64 i = 0; i < GeometryCount; i++) {
             geometries[i] = mesh.geometries[i];
         }
     }
-    constexpr Mesh(Mesh&& mesh) : GeometryCount(mesh.GeometryCount), geometries(mesh.geometries), model(mesh.model)
+    constexpr Mesh(Mesh&& mesh) : GeometryCount(mesh.GeometryCount), geometries(mesh.geometries), transform(mesh.transform)
     {
         mesh.GeometryCount = 0;
         mesh.geometries = nullptr;
-        mesh.model = Matrix4D(0.f, 0.f, 0.f, 0.f,
-                              0.f, 0.f, 0.f, 0.f, 
-                              0.f, 0.f, 0.f, 0.f, 
-                              0.f, 0.f, 0.f, 0.f);
+        mesh.transform = Transform();
     }
     ~Mesh() {}
     Mesh& operator=(const Mesh& mesh) {
@@ -41,7 +38,7 @@ struct Mesh {
         for (u64 i = 0; i < GeometryCount; i++) {
             geometries[i] = mesh.geometries[i];
         }
-        model = mesh.model;
+        transform = mesh.transform;
         return *this;
     }
 };

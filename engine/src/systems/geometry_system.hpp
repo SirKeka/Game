@@ -21,6 +21,9 @@ struct GeometryConfig {
         MString::nCopy(this->name, name, GEOMETRY_NAME_MAX_LENGTH);
         MString::nCopy(this->MaterialName, MaterialName, GEOMETRY_NAME_MAX_LENGTH);
     }
+    /// @brief Освобождает ресурсы, имеющиеся в указанной конфигурации.
+    /// @param config ссылка на конфигурацию, которую нужно удалить.
+    void Dispose();
 };
 
 constexpr const char* DEFAULT_GEOMETRY_NAME = "default";
@@ -61,6 +64,7 @@ public:
     /// @param AutoRelease Указывает, должна ли полученная геометрия быть выгружена, когда ее счетчик ссылок достигнет 0.
     /// @return Указатель на полученную геометрию или nullptr в случае неудачи. 
     GeometryID* Acquire(const GeometryConfig& config, bool AutoRelease);
+
     /// @brief Освобождает ссылку на предоставленную геометрию.
     /// @param Geometry Геометрия, которую нужно освободить.
     void Release(GeometryID *gid);

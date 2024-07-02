@@ -36,7 +36,7 @@ public:
 	/// @param axis 
 	/// @param angle 
 	/// @param normalize 
-	constexpr Quaternion(const Vector3D<f32>& axis, f32 angle, bool normalize) {
+	constexpr Quaternion(const Vector3D<f32>& axis, f32 angle, bool normalize) : x(), y(), z(), w() {
 		const f32 HalfAngle = 0.5f * angle;
     	f32 s = Math::sin(HalfAngle);
     	f32 c = Math::cos(HalfAngle);

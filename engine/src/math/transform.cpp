@@ -86,10 +86,30 @@ void Transform::TranslateRotate(FVec3 translation, Quaternion rotation)
 constexpr Matrix4D &Transform::GetLocation()
 {
     if (IsDirty) {
-            Matrix4D tr = Matrix4D(rotation) * Matrix4D::MakeTranslation(position);
+            Matrix4D tr { Matrix4D(rotation) * Matrix4D::MakeTranslation(position) };
             local = Matrix4D::MakeScale(scale) * tr;
             IsDirty = false;
         }
 
         return local;
+}
+
+Matrix4D Transform::GetWorld()
+{
+    if (parent) {
+        return GetLocal() * parent->GetWorld();
+    }
+    return GetLocal();
+}
+
+const Matrix4D& Transform::GetLocal()
+{
+    if (IsDirty) {
+        Matrix4D tr = Matrix4D(rotation) * Matrix4D::MakeTranslation(position);
+        tr = Matrix4D::MakeScale(scale) * tr;
+        local = tr;
+        IsDirty = false;
+    }
+
+    return local;
 }

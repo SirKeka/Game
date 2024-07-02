@@ -10,6 +10,7 @@
 
 // СДЕЛАТЬ: временно
 #include "math/geometry_utils.hpp"
+#include "math/transform.hpp"
 // СДЕЛАТЬ: временно
 
 ApplicationState* Application::State = nullptr;
@@ -111,26 +112,35 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
     // СДЕЛАТЬ: временно
 
     // Загрузите конфигурацию и загрузите из нее геометрию.
-    Mesh CubeMesh{ 1, new GeometryID*[1], Matrix4D::MakeIdentity() };
+    Mesh& CubeMesh = State->meshes[State->MeshCount];
+    CubeMesh = Mesh(1, new GeometryID*[1], Transform());
     GeometryConfig gConfig = GeometrySystem::Instance()->GenerateCubeConfig(10.f, 10.f, 10.f, 1.f, 1.f, "test_cube", "test_material");
     Math::Geometry::GenerateTangents(gConfig.VertexCount, reinterpret_cast<Vertex3D*>(gConfig.vertices), gConfig.IndexCount, reinterpret_cast<u32*>(gConfig.indices));
     CubeMesh.geometries[0] = GeometrySystem::Instance()->Acquire(gConfig, true);
 
-    State->meshes.PushBack(std::move(CubeMesh));
-
+    State->MeshCount++;
     // Очистите места для конфигурации геометрии.
-    MMemory::Free(gConfig.vertices, gConfig.VertexCount * sizeof(Vertex3D), MemoryTag::Array);
-    MMemory::Free(gConfig.indices, gConfig.IndexCount * sizeof(u32), MemoryTag::Array);
+    gConfig.Dispose();
 
-    Mesh CubeMesh2{ 1, new GeometryID*[1], Matrix4D::MakeIdentity() };
-    GeometryConfig gConfig2 = GeometrySystem::Instance()->GenerateCubeConfig(5.f, 5.f, 5.f, 1.f, 1.f, "test_cube2", "test_material");
-    Math::Geometry::GenerateTangents(gConfig2.VertexCount, reinterpret_cast<Vertex3D*>(gConfig2.vertices), gConfig2.IndexCount, reinterpret_cast<u32*>(gConfig2.indices));
-    CubeMesh2.geometries[0] = GeometrySystem::Instance()->Acquire(gConfig2, true);
-
-    State->meshes.PushBack(std::move(CubeMesh2));
+    Mesh& CubeMesh2 = State->meshes[State->MeshCount];
+    CubeMesh2 = Mesh(1, new GeometryID*[1], Transform(FVec3(10.f, 0.f, 1.f)));
+    gConfig = GeometrySystem::Instance()->GenerateCubeConfig(5.f, 5.f, 5.f, 1.f, 1.f, "test_cube2", "test_material");
+    Math::Geometry::GenerateTangents(gConfig.VertexCount, reinterpret_cast<Vertex3D*>(gConfig.vertices), gConfig.IndexCount, reinterpret_cast<u32*>(gConfig.indices));
+    CubeMesh2.geometries[0] = GeometrySystem::Instance()->Acquire(gConfig, true);
+    CubeMesh2.transform.SetParent(&CubeMesh.transform);
+    State->MeshCount++;
     // Очистите места для конфигурации геометрии.
-    MMemory::Free(gConfig2.vertices, gConfig2.VertexCount * sizeof(Vertex3D), MemoryTag::Array);
-    MMemory::Free(gConfig2.indices, gConfig2.IndexCount * sizeof(u32), MemoryTag::Array);
+    gConfig.Dispose();
+
+    Mesh& CubeMesh3 = State->meshes[State->MeshCount];
+    CubeMesh3 = Mesh(1, new GeometryID*[1], Transform(FVec3(5.f, 0.f, 1.f)));
+    gConfig = GeometrySystem::Instance()->GenerateCubeConfig(2.f, 2.f, 2.f, 1.f, 1.f, "test_cube3", "test_material");
+    Math::Geometry::GenerateTangents(gConfig.VertexCount, reinterpret_cast<Vertex3D*>(gConfig.vertices), gConfig.IndexCount, reinterpret_cast<u32*>(gConfig.indices));
+    CubeMesh3.geometries[0] = GeometrySystem::Instance()->Acquire(gConfig, true);
+    CubeMesh3.transform.SetParent(&CubeMesh2.transform);
+    State->MeshCount++;
+    // Очистите места для конфигурации геометрии.
+    gConfig.Dispose();
 
     const f32 w = 128.f;
     const f32 h = 49.f;
@@ -216,31 +226,35 @@ bool Application::ApplicationRun() {
             RenderPacket packet;
             packet.DeltaTime = delta;
 
-            const u32& MeshCount = State->meshes.Lenght();
-            if (MeshCount > 0) {
+            if (State->MeshCount > 0) {
 
                 // Выполните небольшой поворот на первой сетке.
-                Quaternion rotation( FVec3(0, 1, 0), 0.5f * delta, false );
-                Matrix4D RotationMatrix { rotation };
-                State->meshes[0].model *= RotationMatrix;
+                Quaternion rotation( FVec3(0.f, 1.f, 0.f), 0.5f * delta, false );
+                State->meshes[0].transform.Rotate(rotation);
 
-                if (MeshCount > 1) {
+                // Выполняем аналогичное вращение для второй сетки, если она существует.
+                if (State->MeshCount > 1) {
                     // «Родительский» второй куб по отношению к первому.
-                    State->meshes[1].model = Matrix4D::MakeTranslation(FVec3(10.0f, 0.0f, 1.0f)) * State->meshes[0].model;
+                    State->meshes[1].transform.Rotate(rotation);
+                }
+
+                // Выполняем аналогичное вращение для второй сетки, если она существует.
+                if (State->MeshCount > 2) {
+                    // «Родительский» второй куб по отношению к первому.
+                    State->meshes[2].transform.Rotate(rotation);
                 }
 
                 // Перебрать все сетки и добавить их в коллекцию геометрий пакета.
-                for (u32 i = 0; i < MeshCount; ++i) {
-                    for (u32 j = 0; j < State->meshes[i].GeometryCount; ++j) {
-                        packet.geometries.EmplaceBack(State->meshes[i].model, State->meshes[i].geometries[j]);
+                for (u32 i = 0; i < State->MeshCount; ++i) {
+                    Mesh& m = State->meshes[i];
+                    for (u32 j = 0; j < m.GeometryCount; ++j) {
+                        packet.geometries.EmplaceBack(m.transform.GetWorld(), State->meshes[i].geometries[j]);
+                        packet.GeometryCount++;
                     }
                 }
 
                 packet.GeometryCount = packet.geometries.Lenght();
 
-            } else {
-                packet.GeometryCount = 0;
-                //packet.geometries = 0;
             }
 
             packet.UI_GeometryCount = 1; 
