@@ -1,22 +1,16 @@
 #include "mstring.hpp"
 #include "darray.hpp"
+#include "core/mmemory.hpp"
 
 #include <string>
 #include <stdarg.h>
 
-constexpr u8 NumToChar(i32 i) {
-    if(i >= 0 && i <= 9) {
-        u8 num = 0;
-        return num = 48 + i;
-    }
-}
+constexpr MString::MString(u16 length) : length(length + 1), str(MMemory::TAllocate<char>(MemoryTag::String, this->length)) {}
 
 constexpr MString::MString(const char *str1, const char *str2)
-: length(Length(str1) + Length(str2) + 1), str(Concat(str1, str2, length)) {}
+    : length(Length(str1) + Length(str2) + 1), str(Concat(str1, str2, length)) {}
 
-constexpr MString::MString(const MString &str1, const MString &str2)
-{
-}
+constexpr MString::MString(const MString &str1, const MString &str2) : length(str1.length + str2.length - 1), str(Concat(str1.str, str2.str, length)) {}
 
 constexpr MString::MString(const char *s) : length(Len(s)), str(Copy(s, length)) {}
 
@@ -79,6 +73,54 @@ MString &MString::operator=(const char *s)
     }
     
     Copy(this->str, s);
+    
+    return *this;
+}
+
+MString &MString::operator+=(const MString &s)
+{
+    char* NewString = MMemory::TAllocate<char>(MemoryTag::String, length + s.length - 1);
+    for (u64 i = 0, j = 0; i < length + s.length - 1; i++) {
+        if (i < length - 1) {
+           NewString[i] = str[i];
+        } else {
+            NewString[i] = s.str[j];
+            j++;
+        }
+    }
+    if (str) {
+        Clear();
+    }
+    str = NewString;
+    length = length + s.length - 1;
+
+    return *this;
+}
+
+MString &MString::operator+=(i64 n)
+{
+    return *this += IntToString(n);
+}
+
+MString &MString::operator+=(bool b)
+{
+    char* NewString = nullptr;
+    const char* bl = nullptr;
+    if (b) {
+        bl = "true";
+        NewString = MMemory::TAllocate<char>(MemoryTag::String, length + 4);
+    } else {
+        bl = "false";
+        NewString = MMemory::TAllocate<char>(MemoryTag::String, length + 5);
+    }
+    for (u64 i = 0, j = 0; i < length + 5; i++) {
+        if(str[i]) {
+            NewString[i] = str[i];
+        } else {
+            NewString[i] = bl[j];
+            j++;
+        }
+    }
     
     return *this;
 }
@@ -266,27 +308,55 @@ i32 MString::FormatV(char *dest, const char *format, char *va_list)
     return -1;
 }
 
-char *MString::IntToChar(u64 n)
+MString MString::IntToString(i64 n)
 {
-    int ibuf[20]{};
-    char cbuf[20]{};
+    u8 buf[20]{}; // 10 для i30 и u32
+    u16 length = 0;
+    bool minus = false;
 
-    for (size_t i = 1; i < 21; i++) {
-        ibuf[20 - (i)] = n % 10;
+    for (u64 i = 0; i < 20; i++) {
+        if (n < 0) {
+			n *= -1;
+			minus = true;
+		}
+        buf[19 - i] = '0' + (n % 10);
         n /= 10;
         if (!n) {
+            if (minus) {
+				length = i + 1;
+				buf[19 - i - 1] = '-';
+				break;
+			}
+            length = i;
             break;
         }
     }
 
-    int j = 0;
-    for (size_t i = 0; i < 20; i++) {
-        if (ibuf[i]){
-            cbuf[j] = NumToChar(ibuf[i]);
-            j++;
-        }
+    MString string{length};
+    for (u64 i = 20 - length; i < length; i++) {
+        string.str[i] = buf[i];
     }
-    return cbuf;
+    return string;
+}
+
+u64 MString::StringToInt(const char *s)
+{
+	unsigned int num = 0;
+	unsigned int factor = 10;
+	int length = Length(s);
+	for (size_t i = 1; i <= length; i++) {
+		if (i == 1) {
+			num += s[length - i] - '0';
+		}
+		if (i > 1) {
+			num += (s[length - i] - '0') * factor;
+			factor *= 10;
+		}
+		/*if (!s++) {
+			break;
+		}*/
+	}
+    return num;
 }
 
 void MString::Copy(char *dest, const char *source)
@@ -726,11 +796,10 @@ bool MString::Equali(const char *str0, const char *str1)
 
 MString operator+(const MString &ls, const MString &rs)
 {
-
-    return MString();
+    return MString(ls, rs);
 }
 
 MString operator+(const MString &ls, const char *rs)
 {
-    return MString();
+    return MString(ls, rs);
 }

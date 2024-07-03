@@ -2,7 +2,6 @@
 
 #include "defines.hpp"
 #include "math/vector4d.hpp"
-#include "core/mmemory.hpp"
 
 template<typename> class DArray;
 
@@ -14,14 +13,15 @@ private:
 
 public:
    constexpr MString() : length(), str(nullptr) {}
-   /// @brief Создает пустую строку с зарезервированной памятью под нужное количество символов
+   /// @brief Создает нулевую строку с зарезервированной памятью под нужное количество символов + 1 для терминального ноля
    /// @param length длина строки
-   constexpr MString(u16 length) : length(length), str() {}
+   constexpr MString(u16 length);
    /// @brief Создает строку из двух строк
    /// @param str1 первая строка
    /// @param str2 вторая строка
    constexpr MString(const char *str1, const char *str2);
    constexpr MString(const MString &str1, const MString &str2);
+   //constexpr MString()
    constexpr MString(const char *s);
    constexpr MString(const MString &s);
    constexpr MString(MString&& s);
@@ -35,6 +35,38 @@ public:
     //MString& operator= (char c);
     //MString& operator= (MString&& s) noexcept;
 
+    /// @brief Добавляет добавление к источнику и возвращает новую строку.
+    /// @param s строка которую нужно добавить
+    /// @return ссылку на строку
+    MString& operator+=(const MString& s);
+    /// @brief Добавляет предоставленное целое число в источник и выводит в назначение.
+    /// @param n целое число которое нужно добавить
+    /// @return ссылку на строку
+    MString& operator+=(i64 n);
+    /// @brief Добавляет предоставленное число с плавающей запятой в исходную строку.
+    /// @param f число с плавающей запятой которое нужно добавить
+    /// @return ссылку на строку
+    MString& operator+=(f32 f);
+    /// @brief Добавляет предоставленное логическое значение (как «истина» или «ложь») в источник и выводит в назначение.
+    /// @param b 
+    /// @return 
+    MString& operator+=(bool b);
+    /// @brief Добавляет предоставленный символ в исходный код и выводит в целевой.
+    /// @param c 
+    /// @return 
+    MString& operator+=(char c);
+    /// @brief Извлекает каталог из полного пути к файлу.
+    /// @param path путь к файлу
+    /// @return 
+    MString& DirectoryFromPath(const char* path);
+    /// @brief Извлекает имя файла (включая расширение файла) из полного пути к файлу.
+    /// @param path путь к файлу
+    /// @return 
+    MString& FilenameFromPath(const char* path);
+    /// @brief Извлекает имя файла (исключая расширение файла) из полного пути к файлу.
+    /// @param path путь к файлу
+    /// @return 
+    MString& FilenameNoExtensionFromPath(const char* path);
     explicit operator bool() const;
 
     bool operator== (const MString& rhs) const;
@@ -95,7 +127,8 @@ public:
     /// @param va_list cписок переменных аргументов.
     /// @return размер записываемых данных.
     static i32 FormatV(char* dest, const char* format, char* va_list);
-    char* IntToChar(u64 n);
+    MString IntToString(i64 n);
+    u64 StringToInt(const char* s);
 
     static void Copy(char* dest, const char* source);
     static void Copy(char* dest, const MString& source);
