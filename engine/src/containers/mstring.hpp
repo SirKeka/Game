@@ -2,7 +2,7 @@
 
 #include "defines.hpp"
 #include "math/vector4d.hpp"
-//#include "containers/darray.hpp"
+#include "core/mmemory.hpp"
 
 template<typename> class DArray;
 
@@ -13,10 +13,17 @@ private:
     char* str = nullptr;
 
 public:
-   constexpr MString();
-   // constexpr MString(u16 length);
-   constexpr MString(const char* s);
-   constexpr MString(const MString& s);
+   constexpr MString() : length(), str(nullptr) {}
+   /// @brief Создает пустую строку с зарезервированной памятью под нужное количество символов
+   /// @param length длина строки
+   constexpr MString(u16 length) : length(length), str() {}
+   /// @brief Создает строку из двух строк
+   /// @param str1 первая строка
+   /// @param str2 вторая строка
+   constexpr MString(const char *str1, const char *str2);
+   constexpr MString(const MString &str1, const MString &str2);
+   constexpr MString(const char *s);
+   constexpr MString(const MString &s);
    constexpr MString(MString&& s);
     ~MString();
 
@@ -59,23 +66,23 @@ public:
     /// @param string строка с которой нужно сравнить данную строку
     /// @param length максимальное количество символов для сравнения.
     /// @return true, если то же самое, в противном случае false.
-    const bool Necompare(const MString& string, u64 length) const;
+    const bool nCompare(const MString& string, u64 length) const;
     /// @brief Сравнение строк с учетом регистра для нескольких символов.
     /// @param string строка в стиле си с которой нужно сравнить данную строку
     /// @param length максимальное количество символов для сравнения.
     /// @return true, если то же самое, в противном случае false.
-    const bool Necompare(const char* string, u64 length) const;
+    const bool nCompare(const char* string, u64 length) const;
     /// @brief Сравнение строк без учета регистра для нескольких символов.
     /// @param string строка с которой нужно сравнить данную строку
     /// @param length максимальное количество символов для сравнения.
     /// @return true, если то же самое, в противном случае false.
-    const bool Necomparei(const MString& string, u64 length) const;
+    const bool nComparei(const MString& string, u64 length) const;
     /// @brief Сравнение строк без учета регистра для нескольких символов.
     /// @param string строка в стиле си с которой нужно сравнить данную строку
     /// @param length максимальное количество символов для сравнения.
     /// @return true, если то же самое, в противном случае false.
-    const bool Necomparei(const char* string, u64 length) const;
-    static const bool Necomparei(const char* string1, const char* string2, u64 length);
+    const bool nComparei(const char* string, u64 length) const;
+    static const bool nComparei(const char* string1, const char* string2, u64 length);
     /// @brief Копирует строку
     /// @param s строка которую нужно скопировать
     /// @return указатель на копию строки
@@ -88,15 +95,18 @@ public:
     /// @param va_list cписок переменных аргументов.
     /// @return размер записываемых данных.
     static i32 FormatV(char* dest, const char* format, char* va_list);
+    char* IntToChar(u64 n);
 
     static void Copy(char* dest, const char* source);
     static void Copy(char* dest, const MString& source);
     void nCopy(const MString& source, u64 length);
     static void nCopy(char* dest, const char* source, u64 Length);
     static void nCopy(char* dest, const MString& source, u64 length); 
+    // static char* Concat();
 private:
     char* Copy(const char* source, u64 length);
     char* Copy(const MString& source);
+    constexpr char* Concat(const char *str1, const char *str2, u64 length);
 public:
     void Trim();
     static char* Trim(char* s);
@@ -233,3 +243,9 @@ public:
     // void operator delete[](void* ptr, u64 size);
 };
 
+/// @brief Функция конкатенации строк
+/// @param ls строка к которой будет присоединяться вторая
+/// @param rs строка которая будет присоединяться
+/// @return строку состоящую из двух других 
+MString operator+(const MString& ls, const MString& rs);
+MString operator+(const MString& ls, const char* rs);

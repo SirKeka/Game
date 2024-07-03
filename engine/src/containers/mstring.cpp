@@ -1,13 +1,22 @@
 #include "mstring.hpp"
-#include "core/mmemory.hpp"
 #include "darray.hpp"
 
 #include <string>
 #include <stdarg.h>
 
-constexpr MString::MString() : length(), str(nullptr) {}
+constexpr u8 NumToChar(i32 i) {
+    if(i >= 0 && i <= 9) {
+        u8 num = 0;
+        return num = 48 + i;
+    }
+}
 
-// constexpr MString::MString(u16 length) : length(length), str(MMemory::TAllocate<char>(length + 1, MemoryTag::String)) {}
+constexpr MString::MString(const char *str1, const char *str2)
+: length(Length(str1) + Length(str2) + 1), str(Concat(str1, str2, length)) {}
+
+constexpr MString::MString(const MString &str1, const MString &str2)
+{
+}
 
 constexpr MString::MString(const char *s) : length(Len(s)), str(Copy(s, length)) {}
 
@@ -161,7 +170,7 @@ const bool MString::Comparei(const char *string) const
     return MString::Equali(str, string);
 }
 
-const bool MString::Necompare(const MString &string, u64 lenght) const
+const bool MString::nCompare(const MString &string, u64 lenght) const
 {
     if (!str && !string) {
         return true;
@@ -182,7 +191,7 @@ const bool MString::Necompare(const MString &string, u64 lenght) const
     return true;
 }
 
-const bool MString::Necompare(const char *string, u64 lenght) const
+const bool MString::nCompare(const char *string, u64 lenght) const
 {
     if (!str && !string) {
         return true;
@@ -203,17 +212,17 @@ const bool MString::Necompare(const char *string, u64 lenght) const
     return true;
 }
 
-const bool MString::Necomparei(const MString &string, u64 length) const
+const bool MString::nComparei(const MString &string, u64 length) const
 {
-    return Necomparei(str, string.str, length);
+    return nComparei(str, string.str, length);
 }
 
-const bool MString::Necomparei(const char *string, u64 length) const
+const bool MString::nComparei(const char *string, u64 length) const
 {
-    return Necomparei(str, string, length);
+    return nComparei(str, string, length);
 }
 
-const bool MString::Necomparei(const char *string1, const char *string2, u64 length)
+const bool MString::nComparei(const char *string1, const char *string2, u64 length)
 {
 #if defined(__GNUC__)
     return strncasecmp(str0, str1, length) == 0;
@@ -255,6 +264,29 @@ i32 MString::FormatV(char *dest, const char *format, char *va_list)
         return written;
     }
     return -1;
+}
+
+char *MString::IntToChar(u64 n)
+{
+    int ibuf[20]{};
+    char cbuf[20]{};
+
+    for (size_t i = 1; i < 21; i++) {
+        ibuf[20 - (i)] = n % 10;
+        n /= 10;
+        if (!n) {
+            break;
+        }
+    }
+
+    int j = 0;
+    for (size_t i = 0; i < 20; i++) {
+        if (ibuf[i]){
+            cbuf[j] = NumToChar(ibuf[i]);
+            j++;
+        }
+    }
+    return cbuf;
 }
 
 void MString::Copy(char *dest, const char *source)
@@ -326,6 +358,24 @@ char *MString::Copy(const MString &source)
     }
     str = MMemory::TAllocate<char>(MemoryTag::String, length); 
     nCopy(source, length);
+    return str;
+}
+
+constexpr char* MString::Concat(const char *str1, const char *str2, u64 length)
+{
+    if(!str) {
+        str = MMemory::TAllocate<char>(MemoryTag::String, length);
+    }
+    u64 j = 0;
+    for (u64 i = 0; i < length; i++) {
+        if (!str1[i]) {
+            str[i] = str1[i];
+        }
+        else {
+            str[i] = str2[j];
+            j++;
+        }
+    }
     return str;
 }
 
@@ -672,4 +722,15 @@ bool MString::Equali(const char *str0, const char *str1)
 #elif (defined _MSC_VER)
     return _strcmpi(str0, str1) == 0;
 #endif
+}
+
+MString operator+(const MString &ls, const MString &rs)
+{
+
+    return MString();
+}
+
+MString operator+(const MString &ls, const char *rs)
+{
+    return MString();
 }
