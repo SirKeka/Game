@@ -7,7 +7,7 @@
 struct Resource {
     u32 LoaderID{};             // Идентификатор загрузчика, обрабатывающего этот ресурс.
     MString name;               // Название ресурса.
-    MString FullPath;         // Полный путь к файлу ресурса.
+    MString FullPath;           // Полный путь к файлу ресурса.
     u64 DataSize{};             // Размер данных ресурса в байтах.
     void* data{nullptr};        // Данные ресурса.
     constexpr Resource() : LoaderID(), name(), FullPath(), DataSize(), data(nullptr) {}
