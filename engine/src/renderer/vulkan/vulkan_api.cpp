@@ -452,7 +452,7 @@ bool VulkanAPI::ShaderApplyGlobals(Shader *shader)
     return true;
 }
 
-bool VulkanAPI::ShaderApplyInstance(Shader *shader)
+bool VulkanAPI::ShaderApplyInstance(Shader *shader, bool NeedsUpdate)
 {
     if (!shader->UseInstances) {
         MERROR("Этот шейдер не использует экземпляры.");
@@ -465,72 +465,73 @@ bool VulkanAPI::ShaderApplyInstance(Shader *shader)
     VulkanShaderInstanceState& ObjectState = VkShader->InstanceStates[shader->BoundInstanceID];
     const VkDescriptorSet& ObjectDescriptorSet = ObjectState.DescriptorSetState.DescriptorSets[ImageIndex];
 
-    // СДЕЛАТЬ: если требуется обновление
-    VkWriteDescriptorSet DescriptorWrites[2] {};  // Всегда максимум два набора дескрипторов.
-    u32 DescriptorCount = 0;
-    u32 DescriptorIndex = 0;
-
-    // Дескриптор 0 — универсальный буфер
-    // Делайте это только в том случае, если дескриптор еще не был обновлен.
-    u8& InstanceUboGeneration = ObjectState.DescriptorSetState.DescriptorStates[DescriptorIndex].generations[ImageIndex];
-    // СДЕЛАТЬ: определить, требуется ли обновление.
-    if (InstanceUboGeneration == INVALID::U8ID /*|| *global_ubo_generation != material->generation*/) {
-        VkDescriptorBufferInfo BufferInfo;
-        BufferInfo.buffer = VkShader->UniformBuffer.handle;
-        BufferInfo.offset = ObjectState.offset;
-        BufferInfo.range = shader->UboStride;
-
-        VkWriteDescriptorSet UboDescriptor = {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
-        UboDescriptor.dstSet = ObjectDescriptorSet;
-        UboDescriptor.dstBinding = DescriptorIndex;
-        UboDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        UboDescriptor.descriptorCount = 1;
-        UboDescriptor.pBufferInfo = &BufferInfo;
-
-        DescriptorWrites[DescriptorCount] = UboDescriptor;
-        DescriptorCount++;
-
-        // Обновите генерацию кадра. В данном случае он нужен только один раз, поскольку это буфер.
-        InstanceUboGeneration = 1;  // material->generation; СДЕЛАТЬ: какое-то поколение откуда-то...
-    }
-    DescriptorIndex++;
-
-    // Сэмплеры всегда будут в переплете. Если количество привязок меньше 2, сэмплеров нет.
-    if (VkShader->config.DescriptorSets[DESC_SET_INDEX_INSTANCE].BindingCount > 1) {
-        // Итерация сэмплеров.
-        const u32& TotalSamplerCount = VkShader->config.DescriptorSets[DESC_SET_INDEX_INSTANCE].bindings[BINDING_INDEX_SAMPLER].descriptorCount;
-        u32 UpdateSamplerCount = 0;
-        VkDescriptorImageInfo ImageInfos[VulkanShaderConstants::MaxGlobalTextures]{};
-        for (u32 i = 0; i < TotalSamplerCount; ++i) {
-            // СДЕЛАТЬ: обновляйте список только в том случае, если оно действительно необходимо.
-            Texture* t = VkShader->InstanceStates[shader->BoundInstanceID].InstanceTextures[i];
-            ImageInfos[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-            ImageInfos[i].imageView = t->Data->image.view;
-            ImageInfos[i].sampler = t->Data->sampler;
-
-            // СДЕЛАТЬ: измените состояние дескриптора, чтобы справиться с этим должным образом.
-            // Синхронизировать генерацию кадров, если не используется текстура по умолчанию.
-            // if (t->generation != INVALID_ID) {
-            //     *descriptor_generation = t->generation;
-            //     *descriptor_id = t->id;
-            // }
-
-            UpdateSamplerCount++;
+    if(NeedsUpdate) {
+        VkWriteDescriptorSet DescriptorWrites[2] {};  // Всегда максимум два набора дескрипторов.
+        u32 DescriptorCount = 0;
+        u32 DescriptorIndex = 0;
+    
+        // Дескриптор 0 — универсальный буфер
+        // Делайте это только в том случае, если дескриптор еще не был обновлен.
+        u8& InstanceUboGeneration = ObjectState.DescriptorSetState.DescriptorStates[DescriptorIndex].generations[ImageIndex];
+        // СДЕЛАТЬ: определить, требуется ли обновление.
+        if (InstanceUboGeneration == INVALID::U8ID /*|| *global_ubo_generation != material->generation*/) {
+            VkDescriptorBufferInfo BufferInfo;
+            BufferInfo.buffer = VkShader->UniformBuffer.handle;
+            BufferInfo.offset = ObjectState.offset;
+            BufferInfo.range = shader->UboStride;
+    
+            VkWriteDescriptorSet UboDescriptor = {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+            UboDescriptor.dstSet = ObjectDescriptorSet;
+            UboDescriptor.dstBinding = DescriptorIndex;
+            UboDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            UboDescriptor.descriptorCount = 1;
+            UboDescriptor.pBufferInfo = &BufferInfo;
+    
+            DescriptorWrites[DescriptorCount] = UboDescriptor;
+            DescriptorCount++;
+    
+            // Обновите генерацию кадра. В данном случае он нужен только один раз, поскольку это буфер.
+            InstanceUboGeneration = 1;  // material->generation; СДЕЛАТЬ: какое-то поколение откуда-то...
         }
-
-        VkWriteDescriptorSet SamplerDescriptor = {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
-        SamplerDescriptor.dstSet = ObjectDescriptorSet;
-        SamplerDescriptor.dstBinding = DescriptorIndex;
-        SamplerDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        SamplerDescriptor.descriptorCount = UpdateSamplerCount;
-        SamplerDescriptor.pImageInfo = ImageInfos;
-
-        DescriptorWrites[DescriptorCount] = SamplerDescriptor;
-        DescriptorCount++;
-    }
-
-    if (DescriptorCount > 0) {
-        vkUpdateDescriptorSets(Device.LogicalDevice, DescriptorCount, DescriptorWrites, 0, nullptr);
+        DescriptorIndex++;
+    
+        // Сэмплеры всегда будут в переплете. Если количество привязок меньше 2, сэмплеров нет.
+        if (VkShader->config.DescriptorSets[DESC_SET_INDEX_INSTANCE].BindingCount > 1) {
+            // Итерация сэмплеров.
+            const u32& TotalSamplerCount = VkShader->config.DescriptorSets[DESC_SET_INDEX_INSTANCE].bindings[BINDING_INDEX_SAMPLER].descriptorCount;
+            u32 UpdateSamplerCount = 0;
+            VkDescriptorImageInfo ImageInfos[VulkanShaderConstants::MaxGlobalTextures]{};
+            for (u32 i = 0; i < TotalSamplerCount; ++i) {
+                // СДЕЛАТЬ: обновляйте список только в том случае, если оно действительно необходимо.
+                Texture* t = VkShader->InstanceStates[shader->BoundInstanceID].InstanceTextures[i];
+                ImageInfos[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                ImageInfos[i].imageView = t->Data->image.view;
+                ImageInfos[i].sampler = t->Data->sampler;
+    
+                // СДЕЛАТЬ: измените состояние дескриптора, чтобы справиться с этим должным образом.
+                // Синхронизировать генерацию кадров, если не используется текстура по умолчанию.
+                // if (t->generation != INVALID_ID) {
+                //     *descriptor_generation = t->generation;
+                //     *descriptor_id = t->id;
+                // }
+    
+                UpdateSamplerCount++;
+            }
+    
+            VkWriteDescriptorSet SamplerDescriptor = {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+            SamplerDescriptor.dstSet = ObjectDescriptorSet;
+            SamplerDescriptor.dstBinding = DescriptorIndex;
+            SamplerDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            SamplerDescriptor.descriptorCount = UpdateSamplerCount;
+            SamplerDescriptor.pImageInfo = ImageInfos;
+    
+            DescriptorWrites[DescriptorCount] = SamplerDescriptor;
+            DescriptorCount++;
+        }
+    
+        if (DescriptorCount > 0) {
+            vkUpdateDescriptorSets(Device.LogicalDevice, DescriptorCount, DescriptorWrites, 0, nullptr);
+        }
     }
 
     // Привяжите набор дескрипторов для обновления или на случай изменения шейдера.

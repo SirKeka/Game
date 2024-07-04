@@ -102,6 +102,12 @@ MString &MString::operator+=(i64 n)
     return *this += IntToString(n);
 }
 
+MString &MString::Append(const char* source, f32 f)
+{
+    sprintf(str, "%s%f", source, f);
+    return *this;
+}
+
 MString &MString::operator+=(bool b)
 {
     char* NewString = nullptr;
@@ -122,6 +128,67 @@ MString &MString::operator+=(bool b)
         }
     }
     
+    return *this;
+}
+
+MString &MString::operator+=(char c)
+{
+    // TODO: вставьте здесь оператор return
+}
+
+MString &MString::DirectoryFromPath(const char *path)
+{
+    u64 length = Length(path);
+    if (this->length < length) {
+        Clear();
+    }
+    this->length = length + 1;
+    str = MMemory::TAllocate<char>(MemoryTag::String, this->length);
+    for (i32 i = length; i >= 0; --i) {
+        char c = path[i];
+        if (c == '/' || c == '\\') {
+            nCopy(path, i + 1);
+            return *this;
+        }
+    }
+    return *this;
+}
+
+MString &MString::FilenameFromPath(const char *path)
+{
+    u64 length = Length(path);
+    if (this->length < length) {
+        Clear();
+    }
+    this->length = length + 1;
+    str = MMemory::TAllocate<char>(MemoryTag::String, this->length);
+    for (i32 i = length; i >= 0; --i) {
+        char c = path[i];
+        if (c == '/' || c == '\\') {
+            Copy(str, path + i + 1);
+            return *this;
+        }
+    }
+    return *this;
+}
+
+MString &MString::FilenameNoExtensionFromPath(const char *path)
+{
+    u64 length = Length(path);
+    u64 start = 0;
+    u64 end = 0;
+    for (i32 i = length; i >= 0; --i) {
+        char c = path[i];
+        if (end == 0 && c == '.') {
+            end = i;
+        }
+        if (start == 0 && (c == '/' || c == '\\')) {
+            start = i + 1;
+            break;
+        }
+    }
+
+    Mid(str, path, start, end - start);
     return *this;
 }
 

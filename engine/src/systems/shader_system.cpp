@@ -242,9 +242,9 @@ bool ShaderSystem::ApplyGlobal()
     return Renderer::ShaderApplyGlobals(&state->shaders[state->CurrentShaderID]);
 }
 
-bool ShaderSystem::ApplyInstance()
+bool ShaderSystem::ApplyInstance(bool NeedsUpdate)
 {
-    return Renderer::ShaderApplyInstance(&state->shaders[state->CurrentShaderID]);
+    return Renderer::ShaderApplyInstance(&state->shaders[state->CurrentShaderID], NeedsUpdate);
 }
 
 bool ShaderSystem::BindInstance(u32 InstanceID)

@@ -72,7 +72,9 @@ public:
 
 	T& operator [] (int i);
 	const T& operator [](int i) const;
-	Vector3D& operator +=(const Vector3D& v);
+	Vector3D& operator +=(const Vector3D& v) {
+		x += v.x; y += v.y; z += v.z; return *this;
+	}
 	Vector3D& operator +=(const T s);
 	Vector3D& operator -=(const Vector3D& v);
 	Vector3D& operator -=(const T s);
@@ -82,6 +84,18 @@ public:
 	Vector3D& operator /=(const T s);
 	Vector3D<f32>& operator-();
 	//explicit operator bool() const;
+	const bool operator==(const Vector3D& v) const {
+		if (Math::abs(x - v.x) > M_FLOAT_EPSILON) {
+			return false;
+		}
+        if (Math::abs(y - v.y) > M_FLOAT_EPSILON) {
+            return false;
+        }
+		if (Math::abs(z - v.z) > M_FLOAT_EPSILON) {
+			return false;
+		}
+		return true;
+	}
 
 	Vector3D& Normalize() {
     	return *this /= VectorLenght<T>(*this);
@@ -212,15 +226,6 @@ template<typename T>
 MINLINE Vector3D<T>& Reject(const Vector3D<T>& a, const Vector3D<T>& b)
 {
 	return Vector3D<T>(a - b * (Dot(a, b) / Dot(b, b)));
-}
-
-template <typename T>
-MINLINE Vector3D<T> &Vector3D<T>::operator+=(const Vector3D<T> &v)
-{
-    this->x += v.x;
-	this->y += v.y;
-	this->z += v.z;
-	return *this;
 }
 
 template <typename T>

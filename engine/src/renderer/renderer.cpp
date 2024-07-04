@@ -139,15 +139,14 @@ bool Renderer::DrawFrame(RenderPacket &packet)
 
             // Примените материал, если он еще не был в этом кадре. 
             // Это предотвращает многократное обновление одного и того же материала.
-            if (m->RenderFrameNumber != ptrRenderer->FrameNumber) {
-                if (!MaterialSystem::Instance()->ApplyInstance(m)) {
-                    MWARN("Не удалось применить материал «%s». Пропуск отрисовки.", m->name);
-                    continue;
-                } else {
-                    // Синхронизация ноиера кадров.
-                    m->RenderFrameNumber = ptrRenderer->FrameNumber;
-                }
-            } 
+            bool NeedsUpdate = m->RenderFrameNumber != ptrRenderer->FrameNumber;
+            if (!MaterialSystem::Instance()->ApplyInstance(m, NeedsUpdate)) {
+                MWARN("Не удалось применить материал «%s». Пропуск отрисовки.", m->name);
+                continue;
+            } else {
+                // Синхронизация ноиера кадров.
+                m->RenderFrameNumber = ptrRenderer->FrameNumber;
+            }
 
             // Приминение locals
             MaterialSystem::Instance()->ApplyLocal(m, packet.geometries[i].model);
@@ -190,9 +189,13 @@ bool Renderer::DrawFrame(RenderPacket &packet)
                 m = MaterialSystem::Instance()->GetDefaultMaterial();
             }
             // Приминение материала
-            if (!MaterialSystem::Instance()->ApplyInstance(m)) {
+            bool NeedsUpdate = m->RenderFrameNumber != ptrRenderer->FrameNumber;
+            if (!MaterialSystem::Instance()->ApplyInstance(m, NeedsUpdate)) {
                 MWARN("Не удалось применить материал пользовательского интерфейса «%s». Пропуск отрисовки.", m->name);
                 continue;
+            } else {
+                // Синхронизация ноиера кадров.
+                m->RenderFrameNumber = ptrRenderer->FrameNumber;
             }
 
             // Приминение locals
@@ -271,9 +274,9 @@ bool Renderer::ShaderApplyGlobals(Shader *shader)
     return ptrRenderer->ShaderApplyGlobals(shader);
 }
 
-bool Renderer::ShaderApplyInstance(Shader *shader)
+bool Renderer::ShaderApplyInstance(Shader *shader, bool NeedsUpdate)
 {
-    return ptrRenderer->ShaderApplyInstance(shader);
+    return ptrRenderer->ShaderApplyInstance(shader, NeedsUpdate);
 }
 
 bool Renderer::ShaderAcquireInstanceResources(Shader *shader, u32 &OutInstanceID)

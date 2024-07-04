@@ -241,26 +241,28 @@ bool MaterialSystem::ApplyGlobal(u32 ShaderID, const Matrix4D &projection, const
     return true;
 }
 
-bool MaterialSystem::ApplyInstance(Material *material)
+bool MaterialSystem::ApplyInstance(Material *material, bool NeedsUpdate)
 {
     // Примените униформу на уровне экземпляра.
     MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->BindInstance(material->InternalId));
-    if (material->ShaderID == state->MaterialShaderID) {
-        // Шейдер материала
-        MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->UniformSet(state->MaterialLocations.DiffuseColour, &material->DiffuseColour));
-        MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->UniformSet(state->MaterialLocations.DiffuseTexture, material->DiffuseMap.texture));
-        MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->UniformSet(state->MaterialLocations.SpecularTexture, material->SpecularMap.texture));
-        MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->UniformSet(state->MaterialLocations.specular, &material->specular));
-        MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->UniformSet(state->MaterialLocations.NormalTexture, material->NormalMap.texture));
-    } else if (material->ShaderID == state->UI_ShaderID) {
-        // шейдер пользовательского интерфейса
-        MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->UniformSet(state->UI_Locations.DiffuseColour, &material->DiffuseColour));
-        MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->UniformSet(state->UI_Locations.DiffuseTexture, material->DiffuseMap.texture));
-    } else {
-        MERROR("MaterialSystem::ApplyInstance(): Нераспознанный идентификатор шейдера «%d» в шейдере «%s».", material->ShaderID, material->name);
-        return false;
+    if(NeedsUpdate) {
+        if (material->ShaderID == state->MaterialShaderID) {
+            // Шейдер материала
+            MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->UniformSet(state->MaterialLocations.DiffuseColour, &material->DiffuseColour));
+            MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->UniformSet(state->MaterialLocations.DiffuseTexture, material->DiffuseMap.texture));
+            MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->UniformSet(state->MaterialLocations.SpecularTexture, material->SpecularMap.texture));
+            MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->UniformSet(state->MaterialLocations.specular, &material->specular));
+            MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->UniformSet(state->MaterialLocations.NormalTexture, material->NormalMap.texture));
+        } else if (material->ShaderID == state->UI_ShaderID) {
+            // шейдер пользовательского интерфейса
+            MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->UniformSet(state->UI_Locations.DiffuseColour, &material->DiffuseColour));
+            MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->UniformSet(state->UI_Locations.DiffuseTexture, material->DiffuseMap.texture));
+        } else {
+            MERROR("MaterialSystem::ApplyInstance(): Нераспознанный идентификатор шейдера «%d» в шейдере «%s».", material->ShaderID, material->name);
+            return false;
+        }
     }
-    MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->ApplyInstance());
+    MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->ApplyInstance(NeedsUpdate));
 
     return true;
 }

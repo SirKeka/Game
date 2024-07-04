@@ -4,6 +4,7 @@
 #include "containers/hashtable.hpp"
 
 constexpr const char* DEFAULT_TEXTURE_NAME = "default";                     // Имя текстуры по умолчанию.
+constexpr const char* DEFAULT_DIFFUSE_TEXTURE_NAME = "default_diffuse";     // Имя диффизной текстуры по умолчанию.
 constexpr const char* DEFAULT_SPECULAR_TEXTURE_NAME = "default_specular";   // Имя зеркальной текстуры по умолчанию.
 constexpr const char* DEFAULT_NORMAL_TEXTURE_NAME = "default_normal";       // Имя текстуры нормалей по умолчанию.
 struct TextureReference;
@@ -13,6 +14,7 @@ class TextureSystem
 private:
     u32 MaxTextureCount{};
     Texture DefaultTexture{};
+    Texture DefaultDiffuseTexture{};
     Texture DefaultSpecularTexture{};
     Texture DefaultNormalTexture{};
 
@@ -38,6 +40,9 @@ public:
     /// @brief Функция для получения стандартной текстуры.
     /// @return указатель на стандартную текстуру.
     Texture* GetDefaultTexture();
+    /// @brief Функция для получения стандартной диффузной текстуры.
+    /// @return указатель на стандартную текстуру.
+    Texture* GetDefaultDiffuseTexture();
     /// @brief Функция для получения стандартной зеркальной текстуры.
     /// @return указатель на стандартную зеркальную текстуру.
     Texture* GetDefaultSpecularTexture();

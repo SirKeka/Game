@@ -76,6 +76,21 @@ public:
 		if ((x != 0) && (y != 0) && (z != 0) && (w != 0)) return true;
 		return false;
 	}
+	const bool operator==(const Vector4D& v) const {
+		if (Math::abs(x - v.x) > M_FLOAT_EPSILON) {
+			return false;
+		}
+        if (Math::abs(y - v.y) > M_FLOAT_EPSILON) {
+            return false;
+        }
+		if (Math::abs(z - v.z) > M_FLOAT_EPSILON) {
+			return false;
+		}
+		if (Math::abs(w - v.w) > M_FLOAT_EPSILON) {
+			return false;
+		}
+		return true;
+	}
 	
 	Vector4D& Normalize();
 };

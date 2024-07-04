@@ -46,26 +46,26 @@ public:
     /// @brief Добавляет предоставленное число с плавающей запятой в исходную строку.
     /// @param f число с плавающей запятой которое нужно добавить
     /// @return ссылку на строку
-    MString& operator+=(f32 f);
+    MString& Append(const char* source, f32 f);
     /// @brief Добавляет предоставленное логическое значение (как «истина» или «ложь») в источник и выводит в назначение.
     /// @param b 
-    /// @return 
+    /// @return ссылку на строку
     MString& operator+=(bool b);
     /// @brief Добавляет предоставленный символ в исходный код и выводит в целевой.
     /// @param c 
-    /// @return 
+    /// @return ссылку на строку
     MString& operator+=(char c);
     /// @brief Извлекает каталог из полного пути к файлу.
     /// @param path путь к файлу
-    /// @return 
+    /// @return ссылку на строку
     MString& DirectoryFromPath(const char* path);
     /// @brief Извлекает имя файла (включая расширение файла) из полного пути к файлу.
     /// @param path путь к файлу
-    /// @return 
+    /// @return ссылку на строку
     MString& FilenameFromPath(const char* path);
     /// @brief Извлекает имя файла (исключая расширение файла) из полного пути к файлу.
     /// @param path путь к файлу
-    /// @return 
+    /// @return ссылку на строку
     MString& FilenameNoExtensionFromPath(const char* path);
     explicit operator bool() const;
 

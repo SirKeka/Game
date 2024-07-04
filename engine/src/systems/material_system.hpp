@@ -108,7 +108,7 @@ public:
     /// @brief Применяет данные материала на уровне экземпляра для данного материала.
     /// @param material указатель на материал, который будет применен.
     /// @return true в случае успеха иначе false.
-    bool ApplyInstance(Material* material);
+    bool ApplyInstance(Material* material, bool NeedsUpdate);
     /// @brief Применяет данные о материале локального уровня (обычно только матрицу модели).
     /// @param material указатель на материал, который будет применен.
     /// @param model константная ссылка на применяемую матрицу модели.

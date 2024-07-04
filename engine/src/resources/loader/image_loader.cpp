@@ -19,8 +19,22 @@ bool ImageLoader::Load(const char *name, Resource &OutResource)
     stbi_set_flip_vertically_on_load(true);
     char FullFilePath[512];
 
-    // TODO: попробуйте разные расширения
-    MString::Format(FullFilePath, FormatStr, ResourceSystem::Instance()->BasePath(), TypePath.c_str(), name, ".png");
+    // попробуйте разные расширения
+    constexpr i32 IMAGE_EXTENSION_COUNT = 4;
+    bool found = false;
+    char* extensions[IMAGE_EXTENSION_COUNT] = {".tga", ".png", ".jpg", ".bmp"};
+    for (u32 i = 0; i < IMAGE_EXTENSION_COUNT; ++i) {
+        MString::Format(FullFilePath, FormatStr, ResourceSystem::Instance()->BasePath(), TypePath.c_str(), name, extensions[i]);
+        if (Filesystem::Exists(FullFilePath)) {
+            found = true;
+            break;
+        }
+    }
+
+    if (!found) {
+        MERROR("Загрузчику ресурсов изображения не удалось найти файл «%s».", FullFilePath);
+        return false;
+    }
 
     i32 width;
     i32 height;
@@ -36,7 +50,7 @@ bool ImageLoader::Load(const char *name, Resource &OutResource)
         RequiredChannelCount);
 
     // Проверьте причину сбоя. Если он есть, прервать выполнение, очистить память, если она выделена, вернуть false.
-    const char* FailReason = stbi_failure_reason();
+    /*const char* FailReason = stbi_failure_reason();
     if (FailReason) {
         MERROR("Загрузчику ресурсов изображения не удалось загрузить файл '%s': %s", FullFilePath, FailReason);
         // Устраните ошибку, чтобы следующая загрузка не завершилась неудачно.
@@ -46,7 +60,7 @@ bool ImageLoader::Load(const char *name, Resource &OutResource)
             stbi_image_free(data);
         }
         return false;
-    }
+    }*/
 
     if (!data) {
         MERROR("Загрузчику ресурсов изображения не удалось загрузить файл '%s'.", FullFilePath);

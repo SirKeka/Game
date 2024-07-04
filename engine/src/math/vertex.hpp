@@ -18,6 +18,13 @@ struct Vertex3D
     FVec4 colour;   // Цвет вершины
     FVec4 tangent;  // Касательная вершины.
 
+    const bool operator==(const Vertex3D v3d) {
+        if (position == v3d.position && normal == v3d.normal && texcoord == v3d.texcoord && colour == v3d.colour && tangent == v3d.tangent) {
+            return true;
+        }
+        return false;
+    }
+
     constexpr Vertex3D() : position(), normal(), texcoord(), colour(), tangent() {}
     constexpr Vertex3D(FVec3 position, FVec3 normal, FVec2 texcoord) 
     : position(position), normal(normal), texcoord(texcoord), colour(), tangent() {}
@@ -25,8 +32,8 @@ struct Vertex3D
     : position(PositionX, positionY), normal(), texcoord(TexcoordX, TexcoordY), colour(), tangent() {}
     constexpr Vertex3D(f32 PositionX, f32 positionY, f32 PositionZ, f32 NormalX, f32 NormalY, f32 NormalZ, f32 TexcoordX, f32 TexcoordY)
     : position(PositionX, positionY, PositionZ), normal(NormalX, NormalY, NormalZ), texcoord(TexcoordX, TexcoordY), colour(), tangent() {}
-    void* operator new(u64 size) { return MMemory::Allocate(size, MemoryTag::Array); }
-    void operator delete(void* ptr, u64 size) { MMemory::Free(ptr, size, MemoryTag::Array); }
+    //void* operator new(u64 size) { return MMemory::Allocate(size, MemoryTag::Array); }
+    //void operator delete(void* ptr, u64 size) { MMemory::Free(ptr, size, MemoryTag::Array); }
     void* operator new[](u64 size) { return MMemory::Allocate(size, MemoryTag::Array); }
     void operator delete[](void* ptr, u64 size) { MMemory::Free(ptr, size, MemoryTag::Array); }
 };

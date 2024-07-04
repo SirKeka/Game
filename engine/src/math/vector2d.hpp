@@ -58,6 +58,15 @@ public:
     Vector2D& operator -=(const Vector2D& v);
     Vector2D& operator *=(const Vector2D& v);
     Vector2D& operator /=(const Vector2D& v);
+    const bool operator==(const Vector2D& v) const {
+        if (Math::abs(x - v.x) > M_FLOAT_EPSILON) {
+			return false;
+		}
+        if (Math::abs(y - v.y) > M_FLOAT_EPSILON) {
+            return false;
+        }
+		return true;
+    }
 
     
     T LengthSquared();

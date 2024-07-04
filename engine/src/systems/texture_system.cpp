@@ -20,6 +20,7 @@ TextureSystem::TextureSystem(u32 MaxTextureCount, Texture* RegisteredTextures, T
 : 
     MaxTextureCount(MaxTextureCount),
     DefaultTexture(), 
+    DefaultDiffuseTexture(),
     DefaultSpecularTexture(),
     DefaultNormalTexture(),
     RegisteredTextures(new(RegisteredTextures) Texture[MaxTextureCount]()), 
@@ -176,6 +177,16 @@ Texture *TextureSystem::GetDefaultTexture()
     return nullptr;
 }
 
+Texture *TextureSystem::GetDefaultDiffuseTexture()
+{
+    if (state) {
+        return &DefaultDiffuseTexture;
+    }
+
+    MERROR("TextureSystem::GetDefaultTexture вызывается перед инициализацией системы текстур! Возвратился нулевой указатель.");
+    return nullptr;
+}
+
 Texture *TextureSystem::GetDefaultSpecularTexture()
 {
     if (state) {
@@ -235,6 +246,12 @@ bool TextureSystem::CreateDefaultTexture()
 
     // Вручную установите недействительную генерацию текстуры, поскольку это текстура по умолчанию.
     this->DefaultTexture.generation = INVALID::ID;
+
+    // Диффузная текстура
+    u8 DiffPixels[16 * 16 * 4];
+    MMemory::SetMemory(DiffPixels, 255, 16 * 16 * 4);
+    DefaultDiffuseTexture.Create(DEFAULT_DIFFUSE_TEXTURE_NAME, 16, 16, 4, DiffPixels, false, Renderer::GetRenderer());
+    DefaultDiffuseTexture.generation = INVALID::ID;
 
     // Зеркальная текстура.
     MTRACE("Создание зеркальной текстуры по умолчанию...");
