@@ -30,14 +30,14 @@ void VulkanRenderpass::Create(VulkanAPI *VkAPI, Vector4D<f32> RenderArea, Vector
     VkSubpassDescription subpass = {};
     subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 
-    // Вложения TODO: сделать это настраиваемым.
+    // Вложения ЗАДАЧА: сделать это настраиваемым.
     u32 AttachmentDescriptionCount = 0;
     VkAttachmentDescription AttachmentDescriptions[2];
 
     // Цветное вложение
     bool DoClearColour = (this->ClearFlags & RenderpassClearFlag::ColourBufferFlag) != 0;
     VkAttachmentDescription ColorAttachment;
-    ColorAttachment.format = VkAPI->swapchain.ImageFormat.format; // СДЕЛАТЬ: настроить
+    ColorAttachment.format = VkAPI->swapchain.ImageFormat.format; // ЗАДАЧА: настроить
     ColorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
     ColorAttachment.loadOp = DoClearColour ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
     ColorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -81,7 +81,7 @@ void VulkanRenderpass::Create(VulkanAPI *VkAPI, Vector4D<f32> RenderArea, Vector
         DepthAttachmentReference.attachment = 1;
         DepthAttachmentReference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-        // TODO: другие типы вложений (ввод, разрешение, сохранение)
+        // ЗАДАЧА: другие типы вложений (ввод, разрешение, сохранение)
 
         // Данные трафарета глубины.
         subpass.pDepthStencilAttachment = &DepthAttachmentReference;
@@ -101,7 +101,7 @@ void VulkanRenderpass::Create(VulkanAPI *VkAPI, Vector4D<f32> RenderArea, Vector
     subpass.preserveAttachmentCount = 0;
     subpass.pPreserveAttachments = 0;
 
-    // Зависимости прохода рендеринга. TODO: сделать это настраиваемым.
+    // Зависимости прохода рендеринга. ЗАДАЧА: сделать это настраиваемым.
     VkSubpassDependency dependency;
     dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
     dependency.dstSubpass = 0;

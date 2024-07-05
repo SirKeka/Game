@@ -84,6 +84,23 @@ private:
 public:
     //char* Copy(const char* s);
 
+    /// @brief Добавляет к массиву символов целое число
+    /// ПРИМЕЧАНИЕ: в строке должны быть свободные нулевые символы
+    /// @param str строка к кторой нужно добавить число
+    /// @param num число которое нужно добавить к строке
+    template<u64 N>
+    static void Append(char (&arr)[N], i64 n) {
+        MString s;
+        s.IntToString(n);
+        for (u64 i = 0, j = 0; i < N; i++) {
+            if (arr[i] == '\0') {
+                arr[i] = s[j];
+                j++;
+            }
+            
+        }
+        
+    }
     /// @return строку типа си
     const char* c_str() const noexcept;
     /// @brief Срвавнивает строки между собой без учета регистра.
@@ -127,7 +144,7 @@ public:
     /// @param va_list cписок переменных аргументов.
     /// @return размер записываемых данных.
     static i32 FormatV(char* dest, const char* format, char* va_list);
-    MString IntToString(i64 n);
+    MString& IntToString(i64 n);
     u64 StringToInt(const char* s);
 
     static void Copy(char* dest, const char* source);

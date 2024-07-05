@@ -20,7 +20,7 @@ bool BinaryLoader::Load(const char *name, Resource &OutResource)
         return false;
     }
 
-    // TODO: Здесь следует использовать распределитель.
+    // ЗАДАЧА: Здесь следует использовать распределитель.
     OutResource.FullPath = FullFilePath;
 
     u64 FileSize = 0;
@@ -30,7 +30,7 @@ bool BinaryLoader::Load(const char *name, Resource &OutResource)
         return false;
     }
 
-    // TODO: Здесь следует использовать распределитель.
+    // ЗАДАЧА: Здесь следует использовать распределитель.
     u8* ResourceData = MMemory::TAllocate<u8>(MemoryTag::Array, FileSize);
     u64 ReadSize = 0;
     if (!Filesystem::ReadAllBytes(&f, ResourceData, ReadSize)) {

@@ -63,7 +63,7 @@ public:
     u32 ImageIndex{0};                                  // Индекс текущего изображения.
     u32 CurrentFrame{0};                                // Текущий кадр.
     bool RecreatingSwapchain{false};                    // Указывает, воссоздается ли в данный момент цепочка обмена.
-    Geometry geometries[VULKAN_MAX_GEOMETRY_COUNT]{};   // СДЕЛАТЬ: динамическим, копии геометрий хранятся в системе геометрий, возможно стоит хранить здесь указатели на геометрии
+    Geometry geometries[VULKAN_MAX_GEOMETRY_COUNT]{};   // ЗАДАЧА: динамическим, копии геометрий хранятся в системе геометрий, возможно стоит хранить здесь указатели на геометрии
     VkFramebuffer WorldFramebuffers[3]{};               // Буферы кадров, используемые для рендеринга мира, по одному на кадр.
 
 private:
@@ -82,7 +82,7 @@ public:
     bool BeginRenderpass(u8 RenderpassID) override;
     bool EndRenderpass(u8 RenderpassID) override;
 
-    // TODO: перенести в класс системы визуализации
+    // ЗАДАЧА: перенести в класс системы визуализации
     bool Load(GeometryID* gid, u32 VertexSize, u32 VertexCount, const void* vertices, u32 IndexSize, u32 IndexCount, const void* indices) override;
     void Unload(GeometryID* gid) override;
     void DrawGeometry(const GeometryRenderData& data) override;

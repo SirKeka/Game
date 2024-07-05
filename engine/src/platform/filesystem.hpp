@@ -2,7 +2,7 @@
 
 #include "defines.hpp"
 
-//TODO: переписать
+//ЗАДАЧА: переписать
 
 // Содержит дескриптор файла.
 struct FileHandle {

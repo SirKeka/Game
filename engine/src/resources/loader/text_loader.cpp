@@ -14,7 +14,7 @@ bool TextLoader::Load(const char *name, Resource &OutResource)
     char FullFilePath[512];
     MString::Format(FullFilePath, FormatStr, ResourceSystem::Instance()->BasePath(), TypePath.c_str(), name, "");
 
-    // СДЕЛАТЬ: Здесь следует использовать распределитель.
+    // ЗАДАЧА: Здесь следует использовать распределитель.
     OutResource.FullPath = FullFilePath;
 
     FileHandle f;
@@ -30,7 +30,7 @@ bool TextLoader::Load(const char *name, Resource &OutResource)
         return false;
     }
 
-    // СДЕЛАТЬ: Здесь следует использовать распределитель.
+    // ЗАДАЧА: Здесь следует использовать распределитель.
     char* ResourceData = MMemory::TAllocate<char>(MemoryTag::Array, FileSize);
     u64 ReadSize = 0;
     if (!Filesystem::ReadAllText(&f, ResourceData, ReadSize)) {

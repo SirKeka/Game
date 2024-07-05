@@ -50,7 +50,7 @@ bool MMemory::Initialize(u64 TotalAllocSize)
     DynamicAllocator::MemoryRequirement(TotalAllocSize, AllocRequirement);
 
     // Вызовите распределитель платформы, чтобы получить память для всей системы, включая состояние.
-    // СДЕЛАТЬ: выравнивание памяти
+    // ЗАДАЧА: выравнивание памяти
     u8* block = new u8[StateMemoryRequirement + AllocRequirement](); // platform_allocate(StateMemoryRequirement + AllocRequirement, false);
     if (!block) {
         MFATAL("Не удалось выделить память в системе, и система не может продолжить работу.");
@@ -105,7 +105,7 @@ void *MMemory::Allocate(u64 bytes, MemoryTag tag, bool nullify, bool def)
             // Если система еще не запустилась, предупредите об этом, но дайте пока память.
             MWARN("Memory::Allocate вызывается перед инициализацией системы памяти.");
         }
-        // СДЕЛАТЬ: Memory alignment
+        // ЗАДАЧА: Memory alignment
         block = new u8[bytes]; //platform_allocate(size, false);
     }
 
@@ -136,7 +136,7 @@ void MMemory::Free(void *block, u64 bytes, MemoryTag tag, bool def)
             // Поскольку это абсолютно должно быть исключением из правил, попробуйте освободить его на уровне платформы. 
             // Если это не удастся, значит, начнется какой-то другой вид мошенничества, и у нас возникнут более серьезные проблемы.
             /*if (!result) {
-                // СДЕЛАТЬ: Выравнивание памяти
+                // ЗАДАЧА: Выравнивание памяти
                 u8* ptrRawMem = reinterpret_cast<u8*>(block);
                 delete[] ptrRawMem;                             //platform_free(block, false);
             }*/

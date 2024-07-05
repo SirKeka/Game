@@ -3,7 +3,7 @@
 #include "vulkan_pipeline.hpp"
 #include "vulkan_buffer.hpp"
 
-/// @todo СДЕЛАТЬ: сделать настраиваемым
+/// @todo ЗАДАЧА: сделать настраиваемым
 constexpr int VULKAN_MAX_UI_COUNT = 1024;       // Максимальное количество экземпляров элемента управления пользовательского интерфейса
 constexpr int VULKAN_MAX_MATERIAL_COUNT = 1024; // Максимальное число экземпляров материала.
 
@@ -91,7 +91,7 @@ struct VulkanShader {
     VkDescriptorSet GlobalDescriptorSets[3];                            // Наборы глобальных дескрипторов, по одному на кадр.
     VulkanBuffer UniformBuffer;                                         // Универсальный буфер, используемый этим шейдером.
     VulkanPipeline pipeline;                                            // Конвейер, связанный с этим шейдером.
-    u32 InstanceCount;                                                  // Экземпляр состояния для всех экземпляров. СДЕЛАТЬ: динамичным */
+    u32 InstanceCount;                                                  // Экземпляр состояния для всех экземпляров. ЗАДАЧА: динамичным */
     VulkanShaderInstanceState InstanceStates[VULKAN_MAX_MATERIAL_COUNT];
 
     VulkanShader();

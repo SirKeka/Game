@@ -20,10 +20,10 @@ bool MaterialLoader::Load(const char *name, Resource &OutResource)
         return false;
     }
 
-    // TODO: Здесь следует использовать распределитель.
+    // ЗАДАЧА: Здесь следует использовать распределитель.
     OutResource.FullPath = FullFilePath;
 
-    // TODO: Здесь следует использовать распределитель.
+    // ЗАДАЧА: Здесь следует использовать распределитель.
     MaterialConfig* ResourceData = new MaterialConfig(name, "Builtin.Material", true, Vector4D<f32>::One());
     // Установите некоторые значения по умолчанию.
 
@@ -65,7 +65,7 @@ bool MaterialLoader::Load(const char *name, Resource &OutResource)
 
         // Обработайте переменную.
         if (TrimmedVarName.Comparei("version")) {
-            // TODO: version
+            // ЗАДАЧА: version
         } else if (TrimmedVarName.Comparei("name")) {
             MString::nCopy(ResourceData->name, TrimmedValue, MATERIAL_NAME_MAX_LENGTH);
         } else if (TrimmedVarName.Comparei("diffuse_map_name")) {
@@ -90,7 +90,7 @@ bool MaterialLoader::Load(const char *name, Resource &OutResource)
             }
         }
 
-        // TODO: больше полей.
+        // ЗАДАЧА: больше полей.
 
         // Очистите буфер строк.
         MMemory::ZeroMem(LineBuf, sizeof(char) * 512);

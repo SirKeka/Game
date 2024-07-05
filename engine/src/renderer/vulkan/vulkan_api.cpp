@@ -51,7 +51,7 @@ const u32 BINDING_INDEX_SAMPLER   = 1;  // Индекс привязки сэм�
 
 bool VulkanAPI::Load(Shader *shader, u8 RenderpassID, u8 StageCount, const DArray<MString>& StageFilenames, const ShaderStage *stages)
 {
-    // СДЕЛАТЬ: динамические проходы рендеринга
+    // ЗАДАЧА: динамические проходы рендеринга
     VulkanRenderpass* renderpass = RenderpassID == 1 ? &MainRenderpass : &UI_Renderpass;
 
     // Этапы перевода
@@ -78,7 +78,7 @@ bool VulkanAPI::Load(Shader *shader, u8 RenderpassID, u8 StageCount, const DArra
         }
     }
 
-    // СДЕЛАТЬ: настраиваемый максимальный счетчик выделения дескриптора.
+    // ЗАДАЧА: настраиваемый максимальный счетчик выделения дескриптора.
 
     u32 MaxDescriptorAllocateCount = 1024;
 
@@ -162,7 +162,7 @@ bool VulkanAPI::Load(Shader *shader, u8 RenderpassID, u8 StageCount, const DArra
     }
 
     // Сделайте недействительными все состояния экземпляра.
-    // СДЕЛАТЬ: динамическим
+    // ЗАДАЧА: динамическим
     /*for (u32 i = 0; i < 1024; ++i) {
         OutShader->InstanceStates[i].id = INVALID::ID;
     }*/
@@ -249,7 +249,7 @@ bool VulkanAPI::ShaderInitialize(Shader *shader)
     }
 
     // Атрибуты процесса
-    u32 AttributeCount = shader->attributes.Lenght();
+    u32 AttributeCount = shader->attributes.Length();
     u32 offset = 0;
     for (u32 i = 0; i < AttributeCount; ++i) {
         // Настройте новый атрибут.
@@ -266,7 +266,7 @@ bool VulkanAPI::ShaderInitialize(Shader *shader)
     }
 
     // Process uniforms.
-    u32 UniformCount = shader->uniforms.Lenght();
+    u32 UniformCount = shader->uniforms.Length();
     for (u32 i = 0; i < UniformCount; ++i) {
         // Для сэмплеров необходимо обновить привязки дескриптора. С другими видами униформы здесь ничего делать не нужно.
         if (shader->uniforms[i].type == ShaderUniformType::Sampler) {
@@ -315,7 +315,7 @@ bool VulkanAPI::ShaderInitialize(Shader *shader)
         }
     }
 
-    // СДЕЛАТЬ: Кажется неправильным иметь их здесь, по крайней мере, в таком виде. 
+    // ЗАДАЧА: Кажется неправильным иметь их здесь, по крайней мере, в таком виде. 
     // Вероятно, следует настроить получение из какого-либо места вместо области просмотра.
     VkViewport viewport;
     viewport.x = 0.0f;
@@ -341,7 +341,7 @@ bool VulkanAPI::ShaderInitialize(Shader *shader)
         this,
         VkShader->renderpass,
         shader->AttributeStride,
-        shader->attributes.Lenght(),
+        shader->attributes.Length(),
         VkShader->config.attributes,  // shader->attributes,
         VkShader->config.DescriptorSetCount,
         VkShader->DescriptorSetLayouts,
@@ -368,7 +368,7 @@ bool VulkanAPI::ShaderInitialize(Shader *shader)
 
     // Однородный буфер.
     // u32 DeviceLocalBits = Device.SupportsDeviceLocalHostVisible ? VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT : 0;
-    // СДЕЛАТЬ: Максимальное количество должно быть настраиваемым или, возможно, иметь долгосрочную поддержку изменения размера буфера.
+    // ЗАДАЧА: Максимальное количество должно быть настраиваемым или, возможно, иметь долгосрочную поддержку изменения размера буфера.
     u64 TotalBufferSize = shader->GlobalUboStride + (shader->UboStride * VULKAN_MAX_MATERIAL_COUNT);  // global + (locals)
     if (!VkShader->UniformBuffer.Create(
             this,
@@ -437,7 +437,7 @@ bool VulkanAPI::ShaderApplyGlobals(Shader *shader)
 
     u8& GlobalSetBindingCount = VkShader->config.DescriptorSets[DESC_SET_INDEX_GLOBAL].BindingCount;
     if (GlobalSetBindingCount > 1) {
-        // СДЕЛАТЬ: Есть семплеры, которые нужно написать. Поддержите это.
+        // ЗАДАЧА: Есть семплеры, которые нужно написать. Поддержите это.
         GlobalSetBindingCount = 1;
         MERROR("Глобальные образцы изображений пока не поддерживаются.");
 
@@ -473,7 +473,7 @@ bool VulkanAPI::ShaderApplyInstance(Shader *shader, bool NeedsUpdate)
         // Дескриптор 0 — универсальный буфер
         // Делайте это только в том случае, если дескриптор еще не был обновлен.
         u8& InstanceUboGeneration = ObjectState.DescriptorSetState.DescriptorStates[DescriptorIndex].generations[ImageIndex];
-        // СДЕЛАТЬ: определить, требуется ли обновление.
+        // ЗАДАЧА: определить, требуется ли обновление.
         if (InstanceUboGeneration == INVALID::U8ID /*|| *global_ubo_generation != material->generation*/) {
             VkDescriptorBufferInfo BufferInfo;
             BufferInfo.buffer = VkShader->UniformBuffer.handle;
@@ -491,7 +491,7 @@ bool VulkanAPI::ShaderApplyInstance(Shader *shader, bool NeedsUpdate)
             DescriptorCount++;
     
             // Обновите генерацию кадра. В данном случае он нужен только один раз, поскольку это буфер.
-            InstanceUboGeneration = 1;  // material->generation; СДЕЛАТЬ: какое-то поколение откуда-то...
+            InstanceUboGeneration = 1;  // material->generation; ЗАДАЧА: какое-то поколение откуда-то...
         }
         DescriptorIndex++;
     
@@ -502,13 +502,13 @@ bool VulkanAPI::ShaderApplyInstance(Shader *shader, bool NeedsUpdate)
             u32 UpdateSamplerCount = 0;
             VkDescriptorImageInfo ImageInfos[VulkanShaderConstants::MaxGlobalTextures]{};
             for (u32 i = 0; i < TotalSamplerCount; ++i) {
-                // СДЕЛАТЬ: обновляйте список только в том случае, если оно действительно необходимо.
+                // ЗАДАЧА: обновляйте список только в том случае, если оно действительно необходимо.
                 Texture* t = VkShader->InstanceStates[shader->BoundInstanceID].InstanceTextures[i];
                 ImageInfos[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
                 ImageInfos[i].imageView = t->Data->image.view;
                 ImageInfos[i].sampler = t->Data->sampler;
     
-                // СДЕЛАТЬ: измените состояние дескриптора, чтобы справиться с этим должным образом.
+                // ЗАДАЧА: измените состояние дескриптора, чтобы справиться с этим должным образом.
                 // Синхронизировать генерацию кадров, если не используется текстура по умолчанию.
                 // if (t->generation != INVALID_ID) {
                 //     *descriptor_generation = t->generation;
@@ -542,7 +542,7 @@ bool VulkanAPI::ShaderApplyInstance(Shader *shader, bool NeedsUpdate)
 bool VulkanAPI::ShaderAcquireInstanceResources(Shader *shader, u32 &OutInstanceID)
 {
     VulkanShader* VkShader = shader->ShaderData;
-    // СДЕЛАТЬ: динамическим
+    // ЗАДАЧА: динамическим
     OutInstanceID = INVALID::ID;
     for (u32 i = 0; i < 1024; ++i) {
         if (VkShader->InstanceStates[i].id == INVALID::ID) {
@@ -642,7 +642,7 @@ bool VulkanAPI::ShaderReleaseInstanceResources(Shader *shader, u32 InstanceID)
 
 VulkanAPI::VulkanAPI(MWindow *window, const char *ApplicationName)
 {
-    // TODO: пользовательский allocator.
+    // ЗАДАЧА: пользовательский allocator.
     allocator = NULL;
 
     Application::ApplicationGetFramebufferSize(CachedFramebufferWidth, CachedFramebufferHeight);
@@ -671,17 +671,17 @@ VulkanAPI::VulkanAPI(MWindow *window, const char *ApplicationName)
     RequiredExtensions.PushBack(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);     // утилиты отладки
 
     MDEBUG("Необходимые расширения:");
-    u32 length = RequiredExtensions.Lenght();
+    u32 length = RequiredExtensions.Length();
     for (u32 i = 0; i < length; ++i) {
         MDEBUG(RequiredExtensions[i]);
     }
 #endif
 
-    CreateInfo.enabledExtensionCount = RequiredExtensions.Lenght();
-    CreateInfo.ppEnabledExtensionNames = RequiredExtensions.Data(); //TODO: указателю ppEnabledExtensionNames присваевается адрес указателя массива после выхода из функции данные стираются
+    CreateInfo.enabledExtensionCount = RequiredExtensions.Length();
+    CreateInfo.ppEnabledExtensionNames = RequiredExtensions.Data(); //ЗАДАЧА: указателю ppEnabledExtensionNames присваевается адрес указателя массива после выхода из функции данные стираются
 
     // Уровни проверки.
-    DArray<const char*> RequiredValidationLayerNames; // указатель на массив символов TODO: придумать как использовать строки или другой способ отображать занятую память
+    DArray<const char*> RequiredValidationLayerNames; // указатель на массив символов ЗАДАЧА: придумать как использовать строки или другой способ отображать занятую память
     u32 RequiredValidationLayerCount = 0;
 
 // Если необходимо выполнить проверку, получите список имен необходимых слоев проверки 
@@ -691,7 +691,7 @@ VulkanAPI::VulkanAPI(MWindow *window, const char *ApplicationName)
 
     // Список требуемых уровней проверки.
     RequiredValidationLayerNames.PushBack("VK_LAYER_KHRONOS_validation");
-    RequiredValidationLayerCount = RequiredValidationLayerNames.Lenght();
+    RequiredValidationLayerCount = RequiredValidationLayerNames.Length();
 
     // Получите список доступных уровней проверки.
     u32 AvailableLayerCount = 0;

@@ -23,15 +23,15 @@ VulkanImage::VulkanImage(
     ImageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
     ImageCreateInfo.extent.width = width;
     ImageCreateInfo.extent.height = height;
-    ImageCreateInfo.extent.depth = 1;  // TODO: Поддержка настраиваемой глубины.
-    ImageCreateInfo.mipLevels = 4;     // TODO: Поддержка мип-маппинга
-    ImageCreateInfo.arrayLayers = 1;   // TODO: Поддержка количества слоев изображения.
+    ImageCreateInfo.extent.depth = 1;  // ЗАДАЧА: Поддержка настраиваемой глубины.
+    ImageCreateInfo.mipLevels = 4;     // ЗАДАЧА: Поддержка мип-маппинга
+    ImageCreateInfo.arrayLayers = 1;   // ЗАДАЧА: Поддержка количества слоев изображения.
     ImageCreateInfo.format = format;
     ImageCreateInfo.tiling = tiling;
     ImageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     ImageCreateInfo.usage = usage;
-    ImageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;          // TODO: Настраиваемое количество образцов.
-    ImageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;  // TODO: Настраиваемый режим обмена.
+    ImageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;          // ЗАДАЧА: Настраиваемое количество образцов.
+    ImageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;  // ЗАДАЧА: Настраиваемый режим обмена.
 
     VK_CHECK(vkCreateImage(VkAPI->Device.LogicalDevice, &ImageCreateInfo, VkAPI->allocator, &this->handle));
 
@@ -51,7 +51,7 @@ VulkanImage::VulkanImage(
     VK_CHECK(vkAllocateMemory(VkAPI->Device.LogicalDevice, &MemoryAllocateInfo, VkAPI->allocator, &this->memory));
 
     // Свяжите память
-    VK_CHECK(vkBindImageMemory(VkAPI->Device.LogicalDevice, this->handle, this->memory, 0));  // TODO: настраиваемое смещение памяти.
+    VK_CHECK(vkBindImageMemory(VkAPI->Device.LogicalDevice, this->handle, this->memory, 0));  // ЗАДАЧА: настраиваемое смещение памяти.
 
     // Создать представление
     if (CreateView) {
@@ -64,11 +64,11 @@ void VulkanImage::ViewCreate(VulkanAPI *VkAPI, VkFormat format, VkImageAspectFla
 {
     VkImageViewCreateInfo ViewCreateInfo = {VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
     ViewCreateInfo.image = this->handle;
-    ViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;  // TODO: Сделать настраиваемым.
+    ViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;  // ЗАДАЧА: Сделать настраиваемым.
     ViewCreateInfo.format = format;
     ViewCreateInfo.subresourceRange.aspectMask = AspectFlags;
 
-    // TODO: Сделать настраиваемым
+    // ЗАДАЧА: Сделать настраиваемым
     ViewCreateInfo.subresourceRange.baseMipLevel = 0;
     ViewCreateInfo.subresourceRange.levelCount = 1;
     ViewCreateInfo.subresourceRange.baseArrayLayer = 0;

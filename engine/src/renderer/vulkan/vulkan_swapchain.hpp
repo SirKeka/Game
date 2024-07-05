@@ -2,8 +2,6 @@
 
 #include "vulkan_api.hpp"
 
-//TODO: Подумать об ООП
-
 void VulkanSwapchainCreate(
     VulkanAPI* VkAPI,
     u32 width,

@@ -8,10 +8,10 @@
 #include "systems/resource_system.hpp"
 #include "systems/shader_system.hpp"
 
-// СДЕЛАТЬ: временно
+// ЗАДАЧА: временно
 #include "math/geometry_utils.hpp"
 #include "math/transform.hpp"
-// СДЕЛАТЬ: временно
+// ЗАДАЧА: временно
 
 ApplicationState* Application::State = nullptr;
 
@@ -59,9 +59,9 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
     Event::GetInstance()->Register(EVENT_CODE_KEY_PRESSED, nullptr, OnKey);
     Event::GetInstance()->Register(EVENT_CODE_KEY_RELEASED, nullptr, OnKey);
     Event::GetInstance()->Register(EVENT_CODE_RESIZED, nullptr, OnResized);
-    //СДЕЛАТЬ: временно
+    //ЗАДАЧА: временно
     Event::GetInstance()->Register(EVENT_CODE_DEBUG0, nullptr, OnDebugEvent);
-    //СДЕЛАТЬ: временно
+    //ЗАДАЧА: временно
     State->Window = new MWindow(GameInst->AppConfig.name,
                         GameInst->AppConfig.StartPosX, 
                         GameInst->AppConfig.StartPosY, 
@@ -109,7 +109,7 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
         return false;
     }
     
-    // СДЕЛАТЬ: временно
+    // ЗАДАЧА: временно
 
     // Загрузите конфигурацию и загрузите из нее геометрию.
     Mesh& CubeMesh = State->meshes[State->MeshCount];
@@ -193,7 +193,7 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
 
     // Загрузите геометрию по умолчанию.
     // AppState->TestGeometry = GeometrySystem::Instance()->GetDefault();
-    // СДЕЛАТЬ: временно 
+    // ЗАДАЧА: временно 
 
     // Инициализируйте игру.
     if (!GameInst->Initialize()) {
@@ -241,7 +241,7 @@ bool Application::ApplicationRun() {
                 break;
             }
 
-            // СДЕЛАТЬ: переделать создание пакета
+            // ЗАДАЧА: переделать создание пакета
             RenderPacket packet;
             packet.DeltaTime = delta;
 
@@ -272,13 +272,13 @@ bool Application::ApplicationRun() {
                     }
                 }
 
-                packet.GeometryCount = packet.geometries.Lenght();
+                packet.GeometryCount = packet.geometries.Length();
 
             }
 
             packet.UI_GeometryCount = 1; 
             packet.UI_Geometries.EmplaceBack(Matrix4D::MakeTranslation(FVec3()), State->TestUI_Geometry);
-            // СДЕЛАТЬ: временно
+            // ЗАДАЧА: временно
 
             State->Render->DrawFrame(packet);
 
@@ -317,10 +317,10 @@ bool Application::ApplicationRun() {
     Event::GetInstance()->Unregister(EVENT_CODE_KEY_PRESSED, nullptr, OnKey);
     Event::GetInstance()->Unregister(EVENT_CODE_KEY_RELEASED, nullptr, OnKey);
     Event::GetInstance()->Unregister(EVENT_CODE_RESIZED, nullptr, OnResized);
-    //СДЕЛАТЬ: временно
+    //ЗАДАЧА: временно
     Event::GetInstance()->Unregister(EVENT_CODE_DEBUG0, nullptr, OnDebugEvent);
-    //СДЕЛАТЬ: временно
-    Event::GetInstance()->Shutdown(); // СДЕЛАТЬ: при удалении указателя на систему событий происходит ошибка
+    //ЗАДАЧА: временно
+    Event::GetInstance()->Shutdown(); // ЗАДАЧА: при удалении указателя на систему событий происходит ошибка
     Input::Instance()->Sutdown();
     GeometrySystem::Instance()->Shutdown();
     MaterialSystem::Shutdown();
@@ -427,7 +427,7 @@ bool Application::OnResized(u16 code, void *sender, void *ListenerInst, EventCon
     return false;
 }
 
-// TODO: временно
+// ЗАДАЧА: временно
 bool Application::OnDebugEvent(u16 code, void *sender, void *ListenerInst, EventContext context)
 {
     const char* names[3] = {
@@ -460,4 +460,4 @@ bool Application::OnDebugEvent(u16 code, void *sender, void *ListenerInst, Event
 
     return true;
 }
-//TODO: временно
+//ЗАДАЧА: временно

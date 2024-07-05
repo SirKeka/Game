@@ -60,7 +60,7 @@ ViewPosition()
         ResourceSystem::Instance()->Unload(ConfigResource);
         UIShaderID = ShaderSystem::GetInstance()->GetID(BUILTIN_SHADER_NAME_UI);
 
-        // СДЕЛАТЬ: настраиваемое начальное положение камеры.
+        // ЗАДАЧА: настраиваемое начальное положение камеры.
         view.Inverse();
         UIView.Inverse();
     }
@@ -235,7 +235,7 @@ void Renderer::Unload(GeometryID *gid)
 
 bool Renderer::RenderpassID(const MString &name, u8 &OutRenderpassID)
 {
-    // СДЕЛАТЬ: HACK: Нужны динамические проходы рендеринга(renderpass) вместо их жесткого кодирования.
+    // ЗАДАЧА: HACK: Нужны динамические проходы рендеринга(renderpass) вместо их жесткого кодирования.
     if (name.Comparei("Renderpass.Builtin.World")) {
         OutRenderpassID = static_cast<u8>(BuiltinRenderpass::World);
         return true;

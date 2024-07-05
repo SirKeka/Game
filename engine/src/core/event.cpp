@@ -31,10 +31,10 @@ bool Event::Register(u16 code, void *listener, PFN_OnEvent OnEvent)
         return false;
     }
 
-    u64 RegisteredCount = registered[code].events.Lenght();
+    u64 RegisteredCount = registered[code].events.Length();
     for(u64 i = 0; i < RegisteredCount; ++i) {
         if(registered[code].events[i].listener == listener) {
-            // TODO: warn
+            // ЗАДАЧА: warn
             return false;
         }
     }
@@ -53,11 +53,11 @@ bool Event::Unregister(u16 code, void *listener, PFN_OnEvent OnEvent)
 
     // По коду ничего не прописано, загружаемся.
     if(registered[code].events.Capacity() == 0) {
-        // TODO: warn
+        // ЗАДАЧА: warn
         return false;
     }
 
-    u64 RegisteredCount = registered[code].events.Lenght();
+    u64 RegisteredCount = registered[code].events.Length();
     for(u64 i = 0; i < RegisteredCount; ++i) {
         const RegisteredEvent& e = registered[code].events[i];
         if(e.listener == listener/* && e.callback == OnEvent*/) {
@@ -79,11 +79,11 @@ bool Event::Fire(u16 code, void *sender, EventContext context)
     }
 
     // Если для кода ничего не зарегистрировано, выйдите из системы.
-    if(registered[code].events.Lenght() == 0) {
+    if(registered[code].events.Length() == 0) {
         return false;
     }
 
-    const u64& RegisteredCount = registered[code].events.Lenght();
+    const u64& RegisteredCount = registered[code].events.Length();
     for(u64 i = 0; i < RegisteredCount; ++i) {
         const RegisteredEvent& e = registered[code].events[i];
         if(e.callback(code, sender, e.listener, context)) {

@@ -129,7 +129,7 @@ namespace INVALID
 #define VARIABLE_TO_STRING(Variable) (void(Variable),#Variable)   // Проверяет существует ли переменная, если да, то преобразует в строку.
 #define TYPE_TO_STRING(Type) (void(sizeof(Type)),#Type)           // Проверяет существует ли тип, если да, то преобразует в строку.
 
-//СДЕЛАТЬ: возможно здесь этому не место
+//ЗАДАЧА: возможно здесь этому не место
 /// @brief Диапазон, обычной памяти
 struct Range {
     u64 offset; // Смещение в байтах

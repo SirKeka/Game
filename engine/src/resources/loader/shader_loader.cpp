@@ -64,7 +64,7 @@ bool ShaderLoader::Load(const char *name, Resource &OutResource)
 
         // Обработайте переменную.
         if (TrimmedVarName.Comparei("version")) {
-            // СДЕЛАТЬ: version
+            // ЗАДАЧА: version
         } else if (TrimmedVarName.Comparei("name")) {
             ResourceData->name = TrimmedValue;
         } else if (TrimmedVarName.Comparei("renderpass")) {
@@ -242,7 +242,7 @@ bool ShaderLoader::Load(const char *name, Resource &OutResource)
             // fields.Destroy();
         }
 
-        // СДЕЛАТЬ: больше полей.
+        // ЗАДАЧА: больше полей.
 
         // Очистите буфер строки.
         MMemory::ZeroMem(LineBuf, sizeof(char) * 512);

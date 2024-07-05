@@ -33,6 +33,22 @@ public:
             }
         }
     }
+    
+    /// @brief Конструктор копирования
+    /// @param other динамический массив из которого нужно копировать данные
+    constexpr DArray(const DArray& other) : size(other.size), capacity(other.capacity), data() {
+        data = MMemory::TAllocate<T>(MemoryTag::DArray, capacity);
+        for (u64 i = 0; i < size; i++) {
+            data[i] = other.data[i];
+        }
+    }
+    /// @brief Конструктор перемещения
+    /// @param other динамический массив из которого нужно переместить данные
+    constexpr DArray(DArray&& other) : size(other.size), capacity(other.capacity), data(other.data) {
+        other.size = 0;
+        other.capacity = 0;
+        other.data = nullptr;
+    }
 
     ~DArray() {
         if(this->data) {
@@ -43,16 +59,18 @@ public:
         }
     }
 
-    // Конструктор копирования
-    constexpr DArray(const DArray& arr) : size(arr.size), capacity(arr.capacity), data(arr.data) {}
+    // Операторы--------------------------------------------------------------------------------
 
-    // Конструктор перемещения
-    constexpr DArray(DArray&& arr) :  size(arr.size), capacity(arr.capacity), data(arr.data)
-    {
-        arr.size = 0;
-        arr.capacity = 0;
-        //arr.mem = nullptr;
-        arr.data = nullptr;
+    DArray& operator=(const DArray& darr) {
+        if (data) {
+            Clear();
+        }
+        data = MMemory::TAllocate<T>(MemoryTag::DArray, darr.capacity);
+        for (u64 i = 0; i < darr.size; i++) {
+            data[i] = darr.data[i];
+        }
+        size = darr.size;
+        return *this;
     }
 
     // Доступ к элементу------------------------------------------------------------------------
@@ -89,7 +107,7 @@ public:
     /// большего или равного NewCap. Если значение NewCap больше текущей capacity(емкости), 
     /// выделяется новое хранилище, в противном случае функция ничего не делает.
     void Reserve(u64 NewCap) {
-        // TODO: добавить std::move()
+        // ЗАДАЧА: добавить std::move()
         if (capacity == 0) {
             data = MMemory::TAllocate<T>(MemoryTag::DArray, NewCap, true);
             capacity = NewCap;
@@ -105,7 +123,7 @@ public:
         }
     }
     /// @return количество элементов контейнера
-    constexpr u64 Lenght() const noexcept {
+    constexpr u64 Length() const noexcept {
         return size;
     }
     /// @return количество зарезервированных ячеек памяти типа Т
@@ -188,7 +206,7 @@ public:
     void PopAt(u64 index) {
         if (index >= size) MERROR("Индекс за пределами этого массива! Длина: %i, индекс: %index", size, index);
 
-        // Если не последний элемент, вырезаем запись и копируем остальное внутрь. TODO: оптимизироваать
+        // Если не последний элемент, вырезаем запись и копируем остальное внутрь. ЗАДАЧА: оптимизироваать
         if (index != size - 1) {
             MMemory::CopyMem(data + index, data + index + 1, size - 1);
         }
@@ -200,7 +218,7 @@ public:
     void Resize(u64 NewSize, const T& value = T()) {
         if(NewSize > capacity) {
             Reserve(NewSize);
-            // TODO: изменить
+            // ЗАДАЧА: изменить
             for (u64 i = size; i < NewSize; i++) {
                 data[i] = value;
             }

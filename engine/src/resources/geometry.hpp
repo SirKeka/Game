@@ -6,7 +6,7 @@
 constexpr int GEOMETRY_NAME_MAX_LENGTH = 256;
 
 // Максимальное количество одновременно загружаемых геометрий
-// СДЕЛАТЬ: сделать настраиваемым
+// ЗАДАЧА: сделать настраиваемым
 constexpr int VULKAN_MAX_GEOMETRY_COUNT = 4096;
 
 struct GeometryID {

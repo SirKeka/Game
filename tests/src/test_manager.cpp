@@ -31,7 +31,7 @@ void TestManagerRunTests()
     u32 failed = 0;
     u32 skipped = 0;
 
-    u32 count = tests.Lenght();
+    u32 count = tests.Length();
 
     Clock TotalTime;
     TotalTime.Start();

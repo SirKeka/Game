@@ -86,7 +86,7 @@ public:
     }
 
     /// @return количество элементов контейнера
-    inline constexpr u64 Lenght() const noexcept {
+    inline constexpr u64 Length() const noexcept {
         return  this->size;
     }
 

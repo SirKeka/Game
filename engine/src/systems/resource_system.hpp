@@ -25,7 +25,7 @@ struct ImageResourceData {
     void operator delete(void* ptr, u64 size) { MMemory::Free(ptr, size, MemoryTag::Texture); }
 };
 
-// TODO: Сделать шаблонной
+// ЗАДАЧА: Сделать шаблонной
 class ResourceSystem
 {
 private:

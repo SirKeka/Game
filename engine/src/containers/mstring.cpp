@@ -133,7 +133,7 @@ MString &MString::operator+=(bool b)
 
 MString &MString::operator+=(char c)
 {
-    // TODO: вставьте здесь оператор return
+    // ЗАДАЧА: вставьте здесь оператор return
 }
 
 MString &MString::DirectoryFromPath(const char *path)
@@ -375,35 +375,43 @@ i32 MString::FormatV(char *dest, const char *format, char *va_list)
     return -1;
 }
 
-MString MString::IntToString(i64 n)
+MString& MString::IntToString(i64 n)
 {
     u8 buf[20]{}; // 10 для i30 и u32
     u16 length = 0;
     bool minus = false;
 
-    for (u64 i = 0; i < 20; i++) {
+    for (u64 i = 1; i < 21; i++) {
         if (n < 0) {
 			n *= -1;
 			minus = true;
 		}
-        buf[19 - i] = '0' + (n % 10);
+        buf[20 - i] = '0' + (n % 10);
         n /= 10;
         if (!n) {
             if (minus) {
 				length = i + 1;
-				buf[19 - i - 1] = '-';
+				buf[20 - i - 1] = '-';
 				break;
-			}
-            length = i;
+			} 
+            else length = i;
             break;
         }
     }
 
-    MString string{length};
-    for (u64 i = 20 - length; i < length; i++) {
-        string.str[i] = buf[i];
+    if (str) {
+        Clear();
     }
-    return string;
+    this->length = length + 1;
+    str = MMemory::TAllocate<char>(MemoryTag::String, this->length);
+    str[length] = '\0';
+    
+
+    for (u64 i = 20 - length, j = 0; i < 20; i++) {
+        str[j] = buf[i];
+        j++;
+    }
+    return *this;
 }
 
 u64 MString::StringToInt(const char *s)

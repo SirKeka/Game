@@ -357,7 +357,7 @@ bool MaterialSystem::LoadMaterial(const MaterialConfig &config, Material *m)
         m->NormalMap.texture = TextureSystem::Instance()->GetDefaultNormalTexture();
     }
     
-    // СДЕЛАТЬ: другие карты
+    // ЗАДАЧА: другие карты
 
     // Отправьте его рендереру для получения ресурсов.
     Shader* s = ShaderSystem::GetInstance()->GetShader(config.ShaderName);

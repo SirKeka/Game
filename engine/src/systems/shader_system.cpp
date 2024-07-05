@@ -119,7 +119,7 @@ bool ShaderSystem::Create(const ShaderConfig *config)
         if (config->uniforms[i].type == ShaderUniformType::Sampler) {
             AddSampler(OutShader, config->uniforms[i]);
         } else {
-            if (OutShader->uniforms.Lenght() + 1 > MaxUniformCount) {
+            if (OutShader->uniforms.Length() + 1 > MaxUniformCount) {
                 MERROR("Шейдер может принимать только общее максимальное количество форм и сэмплеров %d в глобальной, экземплярной и локальной областях.", MaxUniformCount);
             } else {
                 OutShader->AddUniform(config->uniforms[i]);
@@ -275,7 +275,7 @@ bool ShaderSystem::AddSampler(Shader *shader, const ShaderUniformConfig &config)
     // Если глобальный, вставьте в глобальный список.
     u32 location = 0;
     if (config.scope == ShaderScope::Global) {
-        u32 GlobalTextureCount = shader->GlobalTextures.Lenght();
+        u32 GlobalTextureCount = shader->GlobalTextures.Length();
         if (GlobalTextureCount + 1 > state->MaxGlobalTextures) {
             MERROR("Глобальное количество текстур шейдера %i превышает максимальное значение %i", GlobalTextureCount, state->MaxGlobalTextures);
             return false;
@@ -295,7 +295,7 @@ bool ShaderSystem::AddSampler(Shader *shader, const ShaderUniformConfig &config)
     // Относитесь к этому как к униформе. ПРИМЕЧАНИЕ: В случае сэмплеров OutLocation используется для непосредственного определения 
     // значения поля «location» записи хэш-таблицы, а затем ему присваивается индекс универсального массива. Это позволяет осуществлять 
     // поиск местонахождения сэмплеров, как если бы они были униформой (поскольку технически это так и есть). 
-    // СДЕЛАТЬ: возможно, придется сохранить это в другом месте
+    // ЗАДАЧА: возможно, придется сохранить это в другом месте
     if (!shader->UniformAdd(config.name, 0, config.type, config.scope, location, true)) {
         MERROR("Невозможно добавить форму сэмплера.");
         return false;
@@ -326,7 +326,7 @@ u32 ShaderSystem::NewShaderID()
 
 bool ShaderSystem::UniformAdd(Shader* shader, const char *UniformName, u32 size, ShaderUniformType type, ShaderScope scope, u32 SetLocation, bool IsSampler)
 {
-    if (shader->uniforms.Lenght() + 1 > state->MaxUniformCount) {
+    if (shader->uniforms.Length() + 1 > state->MaxUniformCount) {
         MERROR("Шейдер может принимать только общее максимальное количество форм и сэмплеров %d в глобальной, экземплярной и локальной областях.", state->MaxUniformCount);
         return false;
     }

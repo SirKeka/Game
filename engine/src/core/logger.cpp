@@ -3,7 +3,7 @@
 #include "platform/platform.hpp"
 #include "memory/linear_allocator.hpp"
 
-// TODO: временное
+// ЗАДАЧА: временное
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
@@ -23,7 +23,7 @@ bool Logger::Initialize()
         return false;
     }
 
-    // TODO: Удали это
+    // ЗАДАЧА: Удали это
     MFATAL("Тестовое сообщение: %f", 3.14f);
     MERROR("Тестовое сообщение: %f", 3.14f);
     MWARN("Тестовое сообщение: %f", 3.14f);
@@ -36,7 +36,7 @@ bool Logger::Initialize()
 
 void Logger::Shutdown() 
 {
-    // TODO: очистка журнала/запись записей в очереди.
+    // ЗАДАЧА: очистка журнала/запись записей в очереди.
     //this->~Logger();
 }
 
@@ -59,7 +59,7 @@ void Logger::AppendToLogFile(const char *message)
 
 void Logger::Output(LogLevel level, const char *message, ...)
 {
-    // TODO: Все эти строковые операции выполняются довольно медленно. В конечном 
+    // ЗАДАЧА: Все эти строковые операции выполняются довольно медленно. В конечном 
     // итоге это необходимо переместить в другой поток вместе с записью файла, 
     // чтобы избежать замедления процесса во время попытки запуска движка.
     const char* LevelStrings[6] = {"[FATAL]: ", "[ОШИБКА]: ", "[ПРЕДУПРЕЖДЕНИЕ]:  ", "[ИНФО]:  ", "[ОТЛАДКА]: ", "[TRACE]: "};

@@ -119,7 +119,7 @@ bool MWindow::Create()
     }
 
     // Показывает окно
-    b32 ShouldActivate = 1;  // TODO: если окно не должно принимать вводимые данные, это должно быть значение false.
+    b32 ShouldActivate = 1;  // ЗАДАЧА: если окно не должно принимать вводимые данные, это должно быть значение false.
     i32 ShowWindowCommandFlags = ShouldActivate ? SW_SHOW : SW_SHOWNOACTIVATE;
     // Если изначально свернуто, используйте SW_MINIMIZE : SW_SHOWMINNOACTIVE;
     // Если изначально развернуто, используйте SW_SHOWMAXIMIZED : SW_MAXIMIZE
@@ -252,7 +252,7 @@ LRESULT CALLBACK Win32MessageProcessor(HWND hwnd, u32 msg, WPARAM w_param, LPARA
             // Сообщите ОС, что удаление будет выполняться приложением для предотвращения мерцания.
             return 1;*/
         case WM_CLOSE:
-            // TODO: Вызов события для закрытия приложения.
+            // ЗАДАЧА: Вызов события для закрытия приложения.
             EventContext data;
             Event::GetInstance()->Fire(EVENT_CODE_APPLICATION_QUIT, nullptr, data);
             return 0;

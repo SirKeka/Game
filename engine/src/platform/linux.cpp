@@ -419,7 +419,7 @@ Keys translate_keycode(u32 x_keycode) {
          что мета-ключи не всегда являются 
          ключами Windows (из-за разных оконных менеджеров)*/
         case XK_Meta_L:
-        return KEY_LWIN;  // TODO: не уверен, что это правильно
+        return KEY_LWIN;  // ЗАДАЧА: не уверен, что это правильно
     case XK_Meta_R:
             return KEY_RWIN;
             // case XK_apps: return KEY_APPS; // not supported

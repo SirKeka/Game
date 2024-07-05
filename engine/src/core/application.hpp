@@ -31,18 +31,18 @@ struct ApplicationState {
     Clock clock{};
     f64 LastTime;
 
-    // TODO: временно
+    // ЗАДАЧА: временно
     Mesh meshes[10];
     u32 MeshCount{};
     struct GeometryID* TestUI_Geometry;
-    // TODO: временно
+    // ЗАДАЧА: временно
 
 };
 
 class Application
 {
 public:
-    MAPI static ApplicationState* State; //TODO: убрать MAPI 
+    MAPI static ApplicationState* State; //ЗАДАЧА: убрать MAPI 
 public:
     Application() = default;
     ~Application();
@@ -62,7 +62,7 @@ private:
     static bool OnKey(u16 code, void* sender, void* ListenerInst, EventContext context);
     static bool OnResized(u16 code, void* sender, void* ListenerInst, EventContext context);
 
-    //TODO: временно
+    //ЗАДАЧА: временно
     static bool OnDebugEvent(u16 code, void* sender, void* ListenerInst, EventContext context);
-    //TODO: временно
+    //ЗАДАЧА: временно
 };

@@ -10,7 +10,7 @@ template<typename T> class Vector4D;
 class MAPI Matrix4D
 {
 public:
-	// TODO: SIMD
+	// ЗАДАЧА: SIMD
 	union{
 		f32 data[16];
 		f32 n[4][4];

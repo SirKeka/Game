@@ -2,7 +2,7 @@
 #include "systems/resource_system.hpp"
 #include "loader_utils.hpp"
 
-// TODO: загрузчик ресурсов.
+// ЗАДАЧА: загрузчик ресурсов.
 #define STB_IMAGE_IMPLEMENTATION
 #include "vendor/stb_image.h"
 
@@ -22,7 +22,7 @@ bool ImageLoader::Load(const char *name, Resource &OutResource)
     // попробуйте разные расширения
     constexpr i32 IMAGE_EXTENSION_COUNT = 4;
     bool found = false;
-    char* extensions[IMAGE_EXTENSION_COUNT] = {".tga", ".png", ".jpg", ".bmp"};
+    const char* extensions[IMAGE_EXTENSION_COUNT] = {".tga", ".png", ".jpg", ".bmp"};
     for (u32 i = 0; i < IMAGE_EXTENSION_COUNT; ++i) {
         MString::Format(FullFilePath, FormatStr, ResourceSystem::Instance()->BasePath(), TypePath.c_str(), name, extensions[i]);
         if (Filesystem::Exists(FullFilePath)) {
@@ -41,7 +41,7 @@ bool ImageLoader::Load(const char *name, Resource &OutResource)
     i32 СhannelСount;
 
     // А пока предположим, что 8 бит на канал, 4 канала.
-    // TODO: extend this to make it configurable.
+    // ЗАДАЧА: extend this to make it configurable.
     u8* data = stbi_load(
         FullFilePath,
         &width,
@@ -67,10 +67,10 @@ bool ImageLoader::Load(const char *name, Resource &OutResource)
         return false;
     }
 
-    // TODO: Здесь следует использовать распределитель.
+    // ЗАДАЧА: Здесь следует использовать распределитель.
     OutResource.FullPath = FullFilePath;
 
-    // TODO: Здесь следует использовать распределитель.
+    // ЗАДАЧА: Здесь следует использовать распределитель.
     ImageResourceData* ResourceData = new ImageResourceData(RequiredChannelCount, width, height, data);
 
     OutResource.data = ResourceData;

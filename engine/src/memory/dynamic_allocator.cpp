@@ -99,7 +99,7 @@ void *DynamicAllocator::Allocate(u64 size)
             MERROR("DynamicAllocator::Allocate нет блоков памяти, достаточно больших для выделения.");
             u64 available = state->list.FreeSpace();
             MERROR("Запрошенный размер: %llu, общее доступное пространство: %llu", size, available);
-            // СДЕЛАТЬ: Report fragmentation?
+            // ЗАДАЧА: Report fragmentation?
             return nullptr;
         }
     }

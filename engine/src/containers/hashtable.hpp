@@ -57,7 +57,7 @@ public:
             return;
         }
 
-        // TODO: Возможно, вам понадобится распределитель и вместо этого выделите эту память.
+        // ЗАДАЧА: Возможно, вам понадобится распределитель и вместо этого выделите эту память.
         this->memory = memory;
         this->ElementCount = ElementCount;
         this->IsPointerType = IsPointerType;

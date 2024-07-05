@@ -100,7 +100,7 @@ GeometryConfig GeometrySystem::GeneratePlaneConfig(f32 width, f32 height, u32 xS
         MString::Length(MaterialName) ? MaterialName : DEFAULT_MATERIAL_NAME
         };
 
-    // TODO: При этом создаются дополнительные вершины, но мы всегда можем дедуплицировать их позже.
+    // ЗАДАЧА: При этом создаются дополнительные вершины, но мы всегда можем дедуплицировать их позже.
     f32 SegWidth = width / xSegmentCount;
     f32 SegHeight = height / ySegmentCount;
     f32 HalfWidth = width * 0.5f;

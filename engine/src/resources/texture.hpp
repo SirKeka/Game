@@ -37,7 +37,7 @@ public:
     u32 generation;                     // Генерация текстур. Увеличивается каждый раз при перезагрузке данных.
     char name[TEXTURE_NAME_MAX_LENGTH]; // Имя текстуры.
 
-    // СДЕЛАТЬ: Пока нет реализации DirectX храним указатель текстуры Vulkan.
+    // ЗАДАЧА: Пока нет реализации DirectX храним указатель текстуры Vulkan.
     VulkanTextureData* Data;            // Необработанные данные текстуры (пиксели).
 public:
     constexpr Texture() : id(INVALID::ID), width(0), height(0), ChannelCount(0), HasTransparency(false), generation(INVALID::ID), name(), Data(nullptr) {}

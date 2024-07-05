@@ -35,7 +35,7 @@ bool VulkanDevice::Create(VulkanAPI* VkAPI)
         QueueCreateInfos[i].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
         QueueCreateInfos[i].queueFamilyIndex = indices[i];
         QueueCreateInfos[i].queueCount = 1;
-        // TODO: Включите это для дальнейшего улучшения.
+        // ЗАДАЧА: Включите это для дальнейшего улучшения.
         // if (indices[i] == this->GraphicsQueueIndex) {
         //    QueueCreateInfos[i].queueCount = 2;
         // }
@@ -46,7 +46,7 @@ bool VulkanDevice::Create(VulkanAPI* VkAPI)
     }
 
     // Запросите характеристики устройства.
-    // TODO: должно управляться конфигурацией
+    // ЗАДАЧА: должно управляться конфигурацией
     VkPhysicalDeviceFeatures DeviceFeatures = {};
     DeviceFeatures.samplerAnisotropy = VK_TRUE;  // Запросить анизотропию
     // DeviceFeatures.fillModeNonSolid = VK_TRUE;
@@ -279,7 +279,7 @@ bool VulkanDevice::SelectPhysicalDevice(VulkanAPI *VkAPI)
             }
         }
     
-        // TODO: Эти требования, вероятно, должны определяться движком
+        // ЗАДАЧА: Эти требования, вероятно, должны определяться движком
         // конфигурация.
         VulkanPhysicalDeviceRequirements requirements = {};
         requirements.graphics = true;
@@ -376,7 +376,7 @@ bool VulkanDevice::PhysicalDeviceMeetsRequirements(
     VkSurfaceKHR surface, 
     const VkPhysicalDeviceProperties *properties, 
     const VkPhysicalDeviceFeatures *features, 
-    const VulkanPhysicalDeviceRequirements *requirements, // TODO: передавать сюда массив DArray
+    const VulkanPhysicalDeviceRequirements *requirements, // ЗАДАЧА: передавать сюда массив DArray
     VulkanPhysicalDeviceQueueFamilyInfo *OutQueueFamilyInfo, 
     VulkanSwapchainSupportInfo *OutSwapchainSupport)
 {
@@ -507,7 +507,7 @@ bool VulkanDevice::PhysicalDeviceMeetsRequirements(
                     &AvailableExtensionCount,
                     AvailableExtensions));
 
-                u32 RequiredExtensionCount = requirements->DeviceExtensionNames.Lenght();
+                u32 RequiredExtensionCount = requirements->DeviceExtensionNames.Length();
                 for (u32 i = 0; i < RequiredExtensionCount; ++i) {
                     bool found = false;
                     for (u32 j = 0; j < AvailableExtensionCount; ++j) {

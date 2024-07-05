@@ -26,7 +26,7 @@ Texture::Texture(const char* name, i32 width, i32 height, i32 ChannelCount, cons
     MString::nCopy(this->name, name, TEXTURE_NAME_MAX_LENGTH);
 
     // Создание внутренних данных.
-    // TODO: Используйте для этого распределитель.
+    // ЗАДАЧА: Используйте для этого распределитель.
     // Data = reinterpret_cast<VulkanTextureData*>(MMemory::Allocate(sizeof(VulkanTextureData), MemoryTag::Texture));
     VkDeviceSize ImageSize = width * height * ChannelCount;
 
@@ -84,7 +84,7 @@ Texture::Texture(const char* name, i32 width, i32 height, i32 ChannelCount, cons
 
     // Создание сэмплера для текстуры
     VkSamplerCreateInfo SamplerInfo = {VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
-    // TODO: Эти фильтры должны быть настраиваемыми.
+    // ЗАДАЧА: Эти фильтры должны быть настраиваемыми.
     SamplerInfo.magFilter = VK_FILTER_LINEAR;
     SamplerInfo.minFilter = VK_FILTER_LINEAR;
     SamplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
@@ -182,7 +182,7 @@ void Texture::Create(const char* name, i32 width, i32 height, i32 ChannelCount, 
 
     // Создание сэмплера для текстуры
     VkSamplerCreateInfo SamplerInfo = {VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
-    // TODO: Эти фильтры должны быть настраиваемыми.
+    // ЗАДАЧА: Эти фильтры должны быть настраиваемыми.
     SamplerInfo.magFilter = VK_FILTER_LINEAR;
     SamplerInfo.minFilter = VK_FILTER_LINEAR;
     SamplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
