@@ -18,13 +18,21 @@ struct GeometryConfig {
     FVec3 MinExtents;
     FVec3 MaxExtents;
 
-    constexpr GeometryConfig() : VertexSize(), VertexCount(), vertices(nullptr), IndexSize(), IndexCount(), indices(nullptr), name(), MaterialName() {}
+    constexpr GeometryConfig() : VertexSize(), VertexCount(), vertices(nullptr), IndexSize(), IndexCount(), indices(nullptr), name(), MaterialName(), Center(), MinExtents(), MaxExtents() {}
 
     constexpr GeometryConfig(u32 VertexSize, u32 VertexCount, void* vertices, u32 IndexSize, u32 IndexCount, void* indices, const char* name, const char* MaterialName)
-    : VertexSize(VertexSize), VertexCount(VertexCount), vertices(vertices), IndexSize(IndexSize), IndexCount(IndexCount), indices(indices), name(), MaterialName()  {
+    : VertexSize(VertexSize), VertexCount(VertexCount), vertices(vertices), IndexSize(IndexSize), IndexCount(IndexCount), indices(indices), name(), MaterialName(), Center(), MinExtents(), MaxExtents()  {
         MString::nCopy(this->name, name, GEOMETRY_NAME_MAX_LENGTH);
         MString::nCopy(this->MaterialName, MaterialName, GEOMETRY_NAME_MAX_LENGTH);
     }
+    /*constexpr GeometryConfig(const GeometryConfig& conf)
+    : VertexSize(conf.VertexSize), VertexCount(conf.VertexCount), vertices(nullptr), IndexSize(conf.IndexSize), IndexCount(conf.IndexCount), indices(nullptr), name(), MaterialName(), Center(conf.Center), MinExtents(conf.MinExtents), MaxExtents(conf.MaxExtents) {
+        MMemory::CopyMem(vertices, conf.vertices, VertexCount * VertexSize);
+        MMemory::CopyMem(indices, conf.indices, IndexCount * IndexSize);
+        MString::nCopy(this->name, conf.name, GEOMETRY_NAME_MAX_LENGTH);
+        MString::nCopy(this->MaterialName, conf.MaterialName, GEOMETRY_NAME_MAX_LENGTH);
+    }
+    constexpr GeometryConfig(GeometryConfig&& conf) : {}*/
     /// @brief Освобождает ресурсы, имеющиеся в указанной конфигурации.
     /// @param config ссылка на конфигурацию, которую нужно удалить.
     void Dispose();

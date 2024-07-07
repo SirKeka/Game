@@ -136,22 +136,15 @@ MString &MString::operator+=(char c)
     // ЗАДАЧА: вставьте здесь оператор return
 }
 
-MString &MString::DirectoryFromPath(const char *path)
+void MString::DirectoryFromPath(char* dest, const char *path)
 {
     u64 length = Length(path);
-    if (this->length < length) {
-        Clear();
-    }
-    this->length = length + 1;
-    str = MMemory::TAllocate<char>(MemoryTag::String, this->length);
     for (i32 i = length; i >= 0; --i) {
         char c = path[i];
         if (c == '/' || c == '\\') {
-            nCopy(path, i + 1);
-            return *this;
+            nCopy(dest, path, i + 1);
         }
     }
-    return *this;
 }
 
 MString &MString::FilenameFromPath(const char *path)
@@ -172,7 +165,7 @@ MString &MString::FilenameFromPath(const char *path)
     return *this;
 }
 
-MString &MString::FilenameNoExtensionFromPath(const char *path)
+void MString::FilenameNoExtensionFromPath(char* dest, const char *path)
 {
     u64 length = Length(path);
     u64 start = 0;
@@ -188,8 +181,7 @@ MString &MString::FilenameNoExtensionFromPath(const char *path)
         }
     }
 
-    Mid(str, path, start, end - start);
-    return *this;
+    Mid(dest, path, start, end - start);
 }
 
 MString::operator bool() const
@@ -381,7 +373,7 @@ MString& MString::IntToString(i64 n)
     u16 length = 0;
     bool minus = false;
 
-    for (u64 i = 1; i < 21; i++) {
+    for (u32 i = 1; i < 21; i++) {
         if (n < 0) {
 			n *= -1;
 			minus = true;
@@ -407,31 +399,11 @@ MString& MString::IntToString(i64 n)
     str[length] = '\0';
     
 
-    for (u64 i = 20 - length, j = 0; i < 20; i++) {
+    for (u32 i = 20 - length, j = 0; i < 20; i++) {
         str[j] = buf[i];
         j++;
     }
     return *this;
-}
-
-u64 MString::StringToInt(const char *s)
-{
-	unsigned int num = 0;
-	unsigned int factor = 10;
-	int length = Length(s);
-	for (size_t i = 1; i <= length; i++) {
-		if (i == 1) {
-			num += s[length - i] - '0';
-		}
-		if (i > 1) {
-			num += (s[length - i] - '0') * factor;
-			factor *= 10;
-		}
-		/*if (!s++) {
-			break;
-		}*/
-	}
-    return num;
 }
 
 void MString::Copy(char *dest, const char *source)

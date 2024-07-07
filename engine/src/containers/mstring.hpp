@@ -56,9 +56,10 @@ public:
     /// @return ссылку на строку
     MString& operator+=(char c);
     /// @brief Извлекает каталог из полного пути к файлу.
+    /// @tparam N количество символов в массиве
+    /// @param arr массив символов в который нужно скопировать путь
     /// @param path путь к файлу
-    /// @return ссылку на строку
-    MString& DirectoryFromPath(const char* path);
+    static void DirectoryFromPath(char* dest, const char* path);
     /// @brief Извлекает имя файла (включая расширение файла) из полного пути к файлу.
     /// @param path путь к файлу
     /// @return ссылку на строку
@@ -66,7 +67,7 @@ public:
     /// @brief Извлекает имя файла (исключая расширение файла) из полного пути к файлу.
     /// @param path путь к файлу
     /// @return ссылку на строку
-    MString& FilenameNoExtensionFromPath(const char* path);
+    static void FilenameNoExtensionFromPath(char* dest, const char* path);
     explicit operator bool() const;
 
     bool operator== (const MString& rhs) const;
@@ -83,11 +84,23 @@ private:
     u16 Len(const char* s);
 public:
     //char* Copy(const char* s);
-
+    /// @brief Добавляет к массиву символов строку
+    /// @tparam N число символов в массиве
+    /// @param arr массив символов
+    /// @param string строка которую нужно включить в массив строк
+    template<u64 N>
+    static void Append(char (&arr)[N], const char* s) {
+        for (u16 i = 0, j = 0; i < N; i++) {
+            if (arr[i] == '\0' && s[j] != '\0') {
+                arr[i] = s[j];
+                j++;
+            }
+        }
+    }
     /// @brief Добавляет к массиву символов целое число
-    /// ПРИМЕЧАНИЕ: в строке должны быть свободные нулевые символы
-    /// @param str строка к кторой нужно добавить число
-    /// @param num число которое нужно добавить к строке
+    /// @tparam N число символов в массиве
+    /// @param arr массив символов
+    /// @param n число которое нужно добавить к строке
     template<u64 N>
     static void Append(char (&arr)[N], i64 n) {
         MString s;
@@ -97,9 +110,7 @@ public:
                 arr[i] = s[j];
                 j++;
             }
-            
         }
-        
     }
     /// @return строку типа си
     const char* c_str() const noexcept;
@@ -145,7 +156,25 @@ public:
     /// @return размер записываемых данных.
     static i32 FormatV(char* dest, const char* format, char* va_list);
     MString& IntToString(i64 n);
-    u64 StringToInt(const char* s);
+    template<typename T>
+    T StringToNum(const char* s) {
+        T num = 0;
+        u16 factor = 10;
+	    u32 length = Length(s);
+	    for (u32 i = 1; i <= length; i++) {
+	    	if (i == 1) {
+	    		num += s[length - i] - '0';
+	    	}
+	    	if (i > 1) {
+	    		num += (s[length - i] - '0') * factor;
+	    		factor *= 10;
+	    	}
+	    	/*if (!s++) {
+	    		break;
+	    	}*/
+	    }
+        return num;
+    }
 
     static void Copy(char* dest, const char* source);
     static void Copy(char* dest, const MString& source);

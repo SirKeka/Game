@@ -6,6 +6,7 @@
 #include "resources/loader/binary_loader.hpp"
 #include "resources/loader/text_loader.hpp"
 #include "resources/loader/shader_loader.hpp"
+#include "resources/loader/mesh_loader.hpp"
 
 #include "core/mmemory.hpp"
 #include <new>
@@ -25,6 +26,7 @@ constexpr ResourceSystem::ResourceSystem(u32 MaxLoaderCount, const char* BasePat
     RegisterLoader<ImageLoader>(ResourceType::Image, nullptr, "textures");
     RegisterLoader<MaterialLoader>(ResourceType::Material, nullptr, "materials");
     RegisterLoader<ShaderLoader>(ResourceType::Shader, nullptr, "shaders");
+    RegisterLoader<ShaderLoader>(ResourceType::Mesh, nullptr, "models");
 }
 
 bool ResourceSystem::Initialize(u32 MaxLoaderCount, const char* BasePath)

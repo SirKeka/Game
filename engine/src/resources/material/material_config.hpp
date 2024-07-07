@@ -1,7 +1,8 @@
 #pragma once
 #include "defines.hpp"
-#include "resources/texture.hpp"
 #include "core/mmemory.hpp"
+#include "resources/texture.hpp"
+#include "math/vector4d_fwd.hpp"
 
 constexpr i32 MATERIAL_NAME_MAX_LENGTH = 256;       // Максимальная длина имени материала.
 
@@ -28,6 +29,31 @@ struct MaterialConfig {
             }
         }
         //MString::nCopy(this->name, name, MATERIAL_NAME_MAX_LENGTH);
+    }
+    void Reset() {
+        ShaderName.Clear();
+        AutoRelease = false;
+        DiffuseColour = FVec4();
+        specular = 0;
+        for (u32 i = 0; i < TEXTURE_NAME_MAX_LENGTH; i++) {
+            if (name[i]) {
+                name[i] = '\0';
+            }
+            if (DiffuseMapName[i]) {
+                DiffuseMapName[i] = '\0';
+            }
+            if (SpecularMapName[i]) {
+                SpecularMapName[i] = '\0';
+            }
+            if (NormalMapName[i]) {
+                NormalMapName[i] = '\0';
+            }
+            if (name[i] == DiffuseMapName[i] == SpecularMapName[i] == NormalMapName[i] == '\0') {
+                break;
+            }
+            
+        }
+        
     }
         
     void* operator new(u64 size) { return MMemory::Allocate(size, MemoryTag::MaterialInstance); }
