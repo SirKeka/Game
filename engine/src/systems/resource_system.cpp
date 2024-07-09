@@ -26,7 +26,7 @@ constexpr ResourceSystem::ResourceSystem(u32 MaxLoaderCount, const char* BasePat
     RegisterLoader<ImageLoader>(ResourceType::Image, nullptr, "textures");
     RegisterLoader<MaterialLoader>(ResourceType::Material, nullptr, "materials");
     RegisterLoader<ShaderLoader>(ResourceType::Shader, nullptr, "shaders");
-    RegisterLoader<ShaderLoader>(ResourceType::Mesh, nullptr, "models");
+    RegisterLoader<MeshLoader>(ResourceType::Mesh, nullptr, "models");
 }
 
 bool ResourceSystem::Initialize(u32 MaxLoaderCount, const char* BasePath)

@@ -17,6 +17,7 @@ struct MaterialConfig {
     char SpecularMapName[TEXTURE_NAME_MAX_LENGTH];  // Имя зеркальной карты.
     char NormalMapName[TEXTURE_NAME_MAX_LENGTH];    // Название карты нормалей.
 
+    constexpr MaterialConfig() : name(), ShaderName(), AutoRelease(), DiffuseColour(), specular(), DiffuseMapName(), SpecularMapName(), NormalMapName() {}
     constexpr MaterialConfig(const char* name, const char* ShaderName, bool AutoRelease, const Vector4D<f32>& DiffuseColour) 
     : name(), ShaderName(ShaderName), AutoRelease(AutoRelease), DiffuseColour(DiffuseColour), specular(), DiffuseMapName(), SpecularMapName(), NormalMapName()
     {

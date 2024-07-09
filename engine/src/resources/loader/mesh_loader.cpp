@@ -4,6 +4,8 @@
 #include "systems/resource_system.hpp"
 #include "math/geometry_utils.hpp"
 
+#include <stdio.h>
+
 enum class MeshFileType 
 {
     NotFound,
@@ -74,7 +76,7 @@ bool MeshLoader::Load(const char *name, Resource &OutResource)
     for (u32 i = 0; i < SUPPORTED_FILETYPE_COUNT; ++i) {
         MString::Format(FullFilePath, FormatString, ResourceSystem::Instance()->BasePath(), TypePath.c_str(), name, SupportedFiletypes[i].extension.c_str());
         // Если файл существует, откройте его и перестаньте искать.
-        if (Filesystem::Exists(FullFilePath)) {
+        if (!Filesystem::Exists(FullFilePath)) {
             if (Filesystem::Open(FullFilePath, FileModes::Read, SupportedFiletypes[i].IsBinary, &f)) {
                 type = SupportedFiletypes[i].type;
                 break;
@@ -362,15 +364,15 @@ bool ImportObjFile(FileHandle *ObjFile, const char *OutMsmFilename, DArray<Geome
         g.VertexCount = NewVertCount;
 
         // Сделайте копию индексов как обычный файл без динамического массива.
-        u32* indices = kallocate(sizeof(u32) * g.IndexCount, MemoryTag::Array);
-        kcopy_memory(indices, g.indices, sizeof(u32) * g.IndexCount);
+        //u32* indices = ;
+        //kcopy_memory(indices, g.indices, sizeof(u32) * g.IndexCount);
         // Destroy the darray
-        darray_destroy(g.indices);
+        //darray_destroy(g.indices);
         // Замените версией без Darray.
-        g.indices = indices;
+        //g.indices = indices;
     }
     
-    // Output a ksm file, which will be loaded in the future.
+    // Выведите файл msm, который будет загружен в дальнейшем.
     return WriteMsmFile(OutMsmFilename, name, OutGeometries.Length(), OutGeometries);
 }
 
@@ -519,7 +521,7 @@ bool ImportObjMaterialLibraryFile(const char *MtlFilePath)
                         // Цвет Ambient/Diffuse на этом уровне обрабатывается одинаково. Окружающий цвет определяется уровнем.
                         char t[2];
                         sscanf(
-                            line,
+                            line.c_str(),
                             "%s %f %f %f",
                             t,
                             &CurrentConfig.DiffuseColour.r,
@@ -538,7 +540,7 @@ bool ImportObjMaterialLibraryFile(const char *MtlFilePath)
                         // ПРИМЕЧАНИЕ: Пока не использую это.
                         f32 SpecRubbish = 0.0f;
                         sscanf(
-                            line,
+                            line.c_str(),
                             "%s %f %f %f",
                             t,
                             &SpecRubbish,
@@ -554,7 +556,7 @@ bool ImportObjMaterialLibraryFile(const char *MtlFilePath)
                         // Зеркальный показатель
                         char t[2];
 
-                        sscanf(line, "%s %f", t, &CurrentConfig.specular);
+                        sscanf(line.c_str(), "%s %f", t, &CurrentConfig.specular);
                     } break;
                 }
             } break;
@@ -564,7 +566,7 @@ bool ImportObjMaterialLibraryFile(const char *MtlFilePath)
                 char TextureFileName[512];
 
                 sscanf(
-                    line,
+                    line.c_str(),
                     "%s %s",
                     substr,
                     TextureFileName);
@@ -587,7 +589,7 @@ bool ImportObjMaterialLibraryFile(const char *MtlFilePath)
                 char TextureFileName[512];
 
                 sscanf(
-                    line,
+                    line.c_str(),
                     "%s %s",
                     substr,
                     TextureFileName);
@@ -602,7 +604,7 @@ bool ImportObjMaterialLibraryFile(const char *MtlFilePath)
                 char MaterialName[512];
 
                 sscanf(
-                    line,
+                    line.c_str(),
                     "%s %s",
                     substr,
                     MaterialName);
@@ -707,7 +709,7 @@ bool WriteMmtFile(const char *MtlFilePath, MaterialConfig &config)
         MString::Format(LineBuffer, "normal_map_name=%s", config.NormalMapName);
         Filesystem::WriteLine(&f, LineBuffer);
     }
-    MString::Format(LineBuffer, "shader=%s", config.ShaderName);
+    MString::Format(LineBuffer, "shader=%s", config.ShaderName.c_str());
     Filesystem::WriteLine(&f, LineBuffer);
 
     Filesystem::Close(&f);

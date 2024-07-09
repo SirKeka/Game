@@ -25,7 +25,7 @@ bool ImageLoader::Load(const char *name, Resource &OutResource)
     const char* extensions[IMAGE_EXTENSION_COUNT] = {".tga", ".png", ".jpg", ".bmp"};
     for (u32 i = 0; i < IMAGE_EXTENSION_COUNT; ++i) {
         MString::Format(FullFilePath, FormatStr, ResourceSystem::Instance()->BasePath(), TypePath.c_str(), name, extensions[i]);
-        if (Filesystem::Exists(FullFilePath)) {
+        if (!Filesystem::Exists(FullFilePath)) {
             found = true;
             break;
         }

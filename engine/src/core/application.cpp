@@ -144,7 +144,7 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
     // Тестовая модель загружается из файла
     Mesh& CarMesh = State->meshes[State->MeshCount];
     Resource CarMeshResource;
-    if (!ResourceSystem::Instance()->Load("Silvia", ResourceType::Mesh, CarMeshResource)) {
+    if (!ResourceSystem::Instance()->Load("falcon", ResourceType::Mesh, CarMeshResource)) {
         MERROR("Не удалось загрузить тестовую модель машины!");
     } else {
         GeometryConfig* configs = reinterpret_cast<GeometryConfig*>(CarMeshResource.data);
