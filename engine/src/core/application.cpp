@@ -160,7 +160,6 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
         State->MeshCount++;
     }
     
-
     const f32 w = 128.f;
     const f32 h = 49.f;
     Vertex2D uiverts [4];
