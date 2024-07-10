@@ -35,10 +35,15 @@ struct MeshGroupData {
     DArray<MeshFaceData> faces;
 
     constexpr MeshGroupData() : faces() {}
+    constexpr MeshGroupData(u64 size) : faces(size) {}
     constexpr MeshGroupData(const MeshGroupData& mgd) : faces(mgd.faces) {}
     constexpr MeshGroupData(MeshGroupData&& mgd) : faces(std::move(mgd.faces)) {}
     constexpr MeshGroupData& operator=(const MeshGroupData& mgd) { 
         faces = mgd.faces;
+        return *this;
+    }
+    constexpr  MeshGroupData& operator=(MeshGroupData&& mgd) {
+        faces = std::move(mgd.faces);
         return *this;
     }
 };
@@ -70,7 +75,7 @@ bool MeshLoader::Load(const char *name, Resource &OutResource)
     //SupportedFiletypes[0] = SupportedMeshFiletype(".ksm", MeshFileType::MSM, true);
     //SupportedFiletypes[1] = SupportedMeshFiletype(".obj", MeshFileType::OBJ, false);
 
-    char FullFilePath[512];
+    char FullFilePath[512]{};
     MeshFileType type = MeshFileType::NotFound;
     // Попробуйте каждое поддерживаемое расширение.
     for (u32 i = 0; i < SUPPORTED_FILETYPE_COUNT; ++i) {
@@ -296,9 +301,8 @@ bool ImportObjFile(FileHandle *ObjFile, const char *OutMsmFilename, DArray<Geome
             case 'u': {
                 // Каждый раз, когда появляется usemtl, создайте новую группу.
                 // Необходимо добавить новую именованную группу или группу сглаживания, в нее должны быть добавлены все последующие грани.
-                MeshGroupData NewGroup;
-                NewGroup.faces.Reserve(16384);
-                groups.PushBack(NewGroup);
+                MeshGroupData NewGroup{ 16384 };
+                groups.PushBack(std::move(NewGroup));
 
                 // usemtl
                 // Прочтите название материала.
@@ -400,14 +404,14 @@ void ProcessSubobject(DArray<FVec3>& positions, DArray<FVec3>& normals, DArray<F
     for (u64 f = 0; f < FaceCount; f++) {
         MeshFaceData& face = faces[f];
 
-        // Each vertex
+        // Каждая вершина
         for (u64 i = 0; i < 3; ++i) {
-            MeshVertexIndexData IndexData = face.vertices[i];
+            const MeshVertexIndexData& IndexData = face.vertices[i];
             indices.PushBack(i + (f * 3));
 
             Vertex3D vert;
 
-            FVec3 pos = positions[IndexData.PositionIndex - 1];
+            const FVec3& pos = positions[IndexData.PositionIndex - 1];
             vert.position = pos;
 
             // Проверка экстентов – мин.

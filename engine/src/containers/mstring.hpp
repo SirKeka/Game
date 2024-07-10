@@ -31,6 +31,7 @@ public:
     const char operator[] (u16 i) const;
 
     MString& operator= (const MString& s);
+    MString& operator= (MString&& s);
     MString& operator= (const char* s);
     //MString& operator= (char c);
     //MString& operator= (MString&& s) noexcept;

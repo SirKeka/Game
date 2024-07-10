@@ -58,12 +58,27 @@ enum class ShaderScope {
 
 /// @brief Конфигурация атрибута.
 struct ShaderAttributeConfig {
-    // u8 NameLength;                              // Длина имени.
     MString name;                               // Имя атрибута.
     u8 size;                                    // Размер атрибута.
     ShaderAttributeType type;                   // Тип атрибута.
     
-    
+    constexpr ShaderAttributeConfig() : name(), size(), type() {}
+    constexpr ShaderAttributeConfig(ShaderAttributeConfig&& sac) : name(std::move(sac.name)), size(sac.size), type(sac.type) {
+        size = 0;
+        type = static_cast<ShaderAttributeType>(0);
+    }
+    ShaderAttributeConfig& operator =(const ShaderAttributeConfig& sac) {
+        name = sac.name;
+        size = sac.size;
+        type = sac.type;
+        return *this;
+    }
+    ShaderAttributeConfig& operator =(ShaderAttributeConfig&& sac) {
+        name = std::move(sac.name);
+        size = sac.size;
+        type = sac.type;
+        return *this;
+    }
 };
 
 /// @brief Конфигурация униформы.
@@ -74,6 +89,27 @@ struct ShaderUniformConfig {
     u32 location;                               // Расположение униформы.
     ShaderUniformType type;                     // Тип униформы.
     ShaderScope scope;                          // Область применения униформы.
+    constexpr ShaderUniformConfig() : name(), size(), location(), type(), scope() {}
+    constexpr ShaderUniformConfig(ShaderUniformConfig&& suc) : name(std::move(suc.name)), size(suc.size), location(suc.location), type(suc.type), scope(suc.scope) {
+        suc.size = 0;
+        suc.location = 0;
+    }
+    ShaderUniformConfig& operator =(const ShaderUniformConfig& suc) {
+        name = suc.name;
+        size = suc.size;
+        location = suc.location;
+        type = suc.type;
+        scope = suc.scope;
+        return *this;
+    }
+    ShaderUniformConfig& operator =(ShaderUniformConfig&& suc) {
+        name = std::move(suc.name);
+        size = suc.size;
+        location = suc.location;
+        type = suc.type;
+        scope = suc.scope;
+        return *this;
+    }
 };
 
 /// @brief Конфигурация шейдера. Обычно создается и уничтожается загрузчиком

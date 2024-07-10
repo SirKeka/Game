@@ -66,9 +66,9 @@ bool ShaderLoader::Load(const char *name, Resource &OutResource)
         if (TrimmedVarName.Comparei("version")) {
             // ЗАДАЧА: version
         } else if (TrimmedVarName.Comparei("name")) {
-            ResourceData->name = TrimmedValue;
+            ResourceData->name = std::move(TrimmedValue);
         } else if (TrimmedVarName.Comparei("renderpass")) {
-            ResourceData->RenderpassName = TrimmedValue;
+            ResourceData->RenderpassName = std::move(TrimmedValue);
         } else if (TrimmedVarName.Comparei("stages")) {
             // Разбор этапов
             // char** StageNames = darray_create(char*);
@@ -155,15 +155,13 @@ bool ShaderLoader::Load(const char *name, Resource &OutResource)
 
                 // Возьмите копию имени атрибута.
                 // attribute.NameLength = fields[1].Length();
-                attribute.name = fields[1];
+                attribute.name = std::move(fields[1]);
                 
                 // Добавьте атрибут.
-                ResourceData->attributes.PushBack(attribute); // 
+                ResourceData->attributes.PushBack(std::move(attribute)); // 
                 ResourceData->AttributeCount++;
             }
 
-            // string_cleanup_split_array(fields);
-            //fields.Destroy();
         } else if (TrimmedVarName.Comparei("uniform")) {
             // Анализ униформы.
             DArray<MString>fields{3};
@@ -231,21 +229,18 @@ bool ShaderLoader::Load(const char *name, Resource &OutResource)
 
                 // Возьмите копию имени атрибута.
                 // uniform.NameLength = fields[2].Length();
-                uniform.name = fields[2];
+                uniform.name = std::move(fields[2]);
 
                 // Добавьте атрибут.
-                ResourceData->uniforms.PushBack(uniform);
+                ResourceData->uniforms.PushBack(std::move(uniform));
                 ResourceData->UniformCount++;
             }
-
-            //string_cleanup_split_array(fields);
-            // fields.Destroy();
         }
 
         // ЗАДАЧА: больше полей.
 
         // Очистите буфер строки.
-        MMemory::ZeroMem(LineBuf, sizeof(char) * 512);
+        MMemory::ZeroMem(LineBuf, sizeof(char) * 512); //ЗАДАЧА: заменить
         LineNumber++;
     }
 

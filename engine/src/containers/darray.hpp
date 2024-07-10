@@ -62,14 +62,30 @@ public:
     // Операторы--------------------------------------------------------------------------------
 
     DArray& operator=(const DArray& darr) {
-        if (data) {
-            Clear();
+        Clear();
+        if (data && capacity < darr.capacity) {
+            MMemory::Free(data, capacity * sizeof(T), MemoryTag::DArray);
+            data = MMemory::TAllocate<T>(MemoryTag::DArray, darr.capacity);
+            size = darr.size;
+            capacity = darr.capacity;
         }
-        data = MMemory::TAllocate<T>(MemoryTag::DArray, darr.capacity);
         for (u64 i = 0; i < darr.size; i++) {
             data[i] = darr.data[i];
         }
+        
+        return *this;
+    }
+
+    DArray& operator=(DArray&& darr) {
+        if (data) {
+            Clear();
+        }
+        data = darr.data;
         size = darr.size;
+        capacity = darr.capacity;
+        darr.data = nullptr;
+        darr.size = 0;
+        darr.capacity = 0;
         return *this;
     }
 
@@ -146,7 +162,7 @@ public:
     /// @brief Добавляет заданное значение элемента в конец контейнера.
     /// @param value элемент который нужно поместить в конец контейнера.
     void PushBack(const T& value) {
-        if(size == 0) {
+        if(!capacity && !size) {
             Reserve(2);
         } else if(size == capacity) {
             Reserve(capacity * 2);
@@ -157,7 +173,7 @@ public:
 
     void PushBack(T&& value)
     {
-        if(size == 0) {
+        if(!capacity && !size) {
             Reserve(2);
         } else if(size == capacity) {
             Reserve(capacity * 2);
@@ -168,7 +184,7 @@ public:
 
     template<typename... Args>
     T& EmplaceBack(Args&&... args) {
-        if(size == 0) {
+        if(!capacity && !size) {
             Reserve(2);
         } else if(size == capacity) {
             Reserve(capacity * 2);

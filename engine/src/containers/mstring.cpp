@@ -50,11 +50,29 @@ MString &MString::operator=(const MString &s)
     if (str && length != s.length) {
         Clear();
     }
+
     if (length != s.length) {
         length = s.length;
         str = MMemory::TAllocate<char>(MemoryTag::String, length);
     } 
+
     nCopy(s, length);
+    return *this;
+}
+
+MString &MString::operator=(MString &&s)
+{
+    if (str && length != s.length) {
+        Clear();
+    }
+    if (length != s.length) {
+        length = s.length;
+    } 
+
+    str = s.str;
+    s.length = 0;
+    s.str = nullptr;
+
     return *this;
 }
 
@@ -730,7 +748,7 @@ bool MString::ToBool(/*char *str, */bool &b)
         MERROR("MString::ToBool: нулевая строка")
         return false;
     }
-    b = MString::Equal(str, "1") || MString::Equali(str, "true");
+    b = *this == "1" || Equali(str, "true");
     return true;
 }
 
@@ -761,7 +779,7 @@ u32 MString::Split(const char *str, char delimiter, DArray<MString> &darray, boo
                     darray.EmplaceBack();
                 } else {
                     // MString entry{result};
-                    darray.PushBack(result);
+                    darray.EmplaceBack(std::move(result));
                 }
                 EntryCount++;
             } 
@@ -785,7 +803,7 @@ u32 MString::Split(const char *str, char delimiter, DArray<MString> &darray, boo
             darray.EmplaceBack();
         } else {
             //MString entry{result};
-            darray.PushBack(result);
+            darray.EmplaceBack(std::move(result));
         }
         EntryCount++;
     }
