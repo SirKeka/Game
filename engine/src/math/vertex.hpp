@@ -10,6 +10,12 @@ struct Vertex2D
     FVec2 texcoord; // Текстурные коорднаты
 };
 
+/// @brief Структура вершины геометрии/сетки(меша) содержит:
+/// FVec3 position - Позиция вершины
+/// FVec3 normal   - Нормаль вершины
+/// FVec2 texcoord - Текстурные коорднаты
+/// FVec4 colour   - Цвет вершины
+/// FVec4 tangent  - Касательная вершины.
 struct Vertex3D
 {
     FVec3 position; // Позиция вершины
@@ -18,7 +24,7 @@ struct Vertex3D
     FVec4 colour;   // Цвет вершины
     FVec4 tangent;  // Касательная вершины.
 
-    const bool operator==(const Vertex3D v3d) {
+    const bool operator==(const Vertex3D& v3d) {
         if (position == v3d.position && normal == v3d.normal && texcoord == v3d.texcoord && colour == v3d.colour && tangent == v3d.tangent) {
             return true;
         }
@@ -34,7 +40,11 @@ struct Vertex3D
     : position(PositionX, positionY, PositionZ), normal(NormalX, NormalY, NormalZ), texcoord(TexcoordX, TexcoordY), colour(), tangent() {}
     //void* operator new(u64 size) { return MMemory::Allocate(size, MemoryTag::Array); }
     //void operator delete(void* ptr, u64 size) { MMemory::Free(ptr, size, MemoryTag::Array); }
-    void* operator new[](u64 size) { return MMemory::Allocate(size, MemoryTag::Array); }
-    void operator delete[](void* ptr, u64 size) { MMemory::Free(ptr, size, MemoryTag::Array); }
+    void* operator new[](u64 size) { 
+        return MMemory::Allocate(size, MemoryTag::Array); 
+        }
+    void operator delete[](void* ptr, u64 size) { 
+        MMemory::Free(ptr, size, MemoryTag::Array); 
+        }
 };
 

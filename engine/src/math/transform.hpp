@@ -35,7 +35,7 @@ public:
     position(position), 
     rotation(0.f, 0.f, 0.f, 1.f), 
     scale(FVec3::One()), 
-    IsDirty(false), 
+    IsDirty(true), 
     local(Matrix4D::MakeIdentity()), 
     parent(nullptr) 
     {}
@@ -47,7 +47,7 @@ public:
     position(), 
     rotation(rotation), 
     scale(FVec3::One()), 
-    IsDirty(false), 
+    IsDirty(true), 
     local(Matrix4D::MakeIdentity()), 
     parent(nullptr) 
     {}
@@ -60,7 +60,7 @@ public:
     position(position), 
     rotation(rotation), 
     scale(FVec3::One()), 
-    IsDirty(false), 
+    IsDirty(true), 
     local(Matrix4D::MakeIdentity()), 
     parent(nullptr) 
     {}
@@ -74,7 +74,7 @@ public:
     position(position), 
     rotation(rotation), 
     scale(scale), 
-    IsDirty(false), 
+    IsDirty(true), 
     local(Matrix4D::MakeIdentity()), 
     parent(nullptr) 
     {}

@@ -1,4 +1,5 @@
 #include "geometry_utils.hpp"
+#include "containers/darray.hpp"
 
 namespace Math
 {
@@ -33,7 +34,7 @@ namespace Math
         }
     }
 
-    void Geometry::GenerateTangents(u32 VertexCount, Vertex3D *vertices, u32 IndexCount, u32 *indices)
+    void Geometry::CalculateTangents(u32 VertexCount, Vertex3D *vertices, u32 IndexCount, u32 *indices)
     {
         for (u32 i = 0; i < IndexCount; i += 3) {
             u32 i0 = indices[i + 0];
@@ -68,11 +69,56 @@ namespace Math
             vertices[i2].tangent = t4;
         }
     }
+/*
+    void Geometry::CalculateTangents(const DArray<Face>& triangles, DArray<Vertex3D> &vertices)
+    {
+        // Выделите временное хранилище для тангенсов и битангентов и инициализируйте их нулями.
+        const u64& VCount = vertices.Length();
+	    FVec3 tangent[VCount]{};
+	    FVec3 bitangent[VCount]{};
 
+	    // Вычислите тангенс и битангенс для каждого треугольника и сложите все три вершины.
+	    for (u32 k = 0; k < triangles.Length(); k++) {
+	    	u32 i0 = triangleArray[k].index[0];
+	    	u32 i1 = triangleArray[k].index[1];
+	    	u32 i2 = triangleArray[k].index[2];
+	    	const FVec3& p0 = vertices[i0].position;
+	    	const FVec3& p1 = vertices[i1].position;
+	    	const FVec3& p2 = vertices[i2].position;
+	    	const FVec2& w0 = vertices[i0].texcoord;
+	    	const FVec2& w1 = vertices[i1].texcoord;
+	    	const FVec2& w2 = vertices[i2].texcoord;
+
+	    	FVec3 e1 = p1 - p0, e2 = p2 - p0;
+	    	f32 x1 = w1.x - w0.x, x2 = w2.x - w0.x;
+	    	f32 y1 = w1.y - w0.y, y2 = w2.y - w0.y;
+
+	    	f32 r = 1.F / (x1 * y2 - x2 * y1);
+	    	FVec3 t = (e1 * y2 - e2 * y1) * r;
+	    	FVec3 b = (e2 * x1 - e1 * x2) * r;
+
+	    	tangent[i0] += t;
+	    	tangent[i1] += t;
+	    	tangent[i2] += t;
+	    	bitangent[i0] += b;
+	    	bitangent[i1] += b;
+	    	bitangent[i2] += b;
+	    }
+
+	    //Ортонормируйте каждую касательную и вычислите направленность.
+	    for (u32 i = 0; i < VCount; i++) {
+	    	const FVec3& t = tangent[i];
+	    	const FVec3& b = bitangent[i];
+	    	const FVec3& n = normalArray[i];
+	    	vertices[i].tangent = FVec4(Normalize(Reject(t, n)), (Dot(Cross(t, b), n) > 0.F) ? 1.F : -1.F);
+	    }
+
+    }
+*/
     void Geometry::DeduplicateVertices(u32 VertexCount, Vertex3D *vertices, u32 IndexCount, u32 *indices, u32 &OutVertexCount, Vertex3D **OutVertices)
     {
         // Создайте новые массивы для размещения коллекции.
-        Vertex3D* UniqueVerts = new Vertex3D[VertexCount]();
+        Vertex3D* UniqueVerts = new Vertex3D[VertexCount];
         OutVertexCount = 0;
 
         u32 FoundCount = 0;
@@ -91,7 +137,7 @@ namespace Math
             if (!found) {
                 // Скопируйте в уникальный.
                 UniqueVerts[OutVertexCount] = vertices[v];
-                (OutVertexCount)++;
+                OutVertexCount++;
             }
         }
 

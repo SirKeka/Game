@@ -17,7 +17,8 @@ namespace Math
         /// @param Vertices массив вершин.
         /// @param IndexCount количество индексов.
         /// @param Indices массив вершин.
-        void GenerateTangents(u32 VertexCount, Vertex3D* vertices, u32 IndexCount, u32* indices);
+        void CalculateTangents(u32 VertexCount, Vertex3D* vertices, u32 IndexCount, u32* indices);
+        //void CalculateTangents(const DArray<Face>& triangleArray, DArray<Vertex3D> &vertices);
         /// @brief Удаляет дубликаты вершин, оставляя только уникальные. 
         /// Оставляет исходный массив вершин нетронутым. Выделяет новый массив в OutVertices. 
         /// Изменяет индексы на месте. Исходный массив вершин должен быть освобожден вызывающей стороной.

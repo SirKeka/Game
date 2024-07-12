@@ -27,12 +27,13 @@ struct MeshVertexIndexData {
     constexpr MeshVertexIndexData() : PositionIndex(), NormalIndex(), TexcoordIndex() {}
 };
 
-struct MeshFaceData {
+/// @brief Грань геометрии(обычно треугольник)
+struct Face {
     MeshVertexIndexData vertices[3];
 };
 
 struct MeshGroupData {
-    DArray<MeshFaceData> faces;
+    DArray<Face> faces;
 
     constexpr MeshGroupData() : faces() {}
     constexpr MeshGroupData(u64 size) : faces(size) {}
@@ -49,7 +50,7 @@ struct MeshGroupData {
 };
 
 bool ImportObjFile(FileHandle* ObjFile, const char* OutMsmFilename, DArray<GeometryConfig>& OutGeometries);
-void ProcessSubobject(DArray<FVec3>& positions, DArray<FVec3>& normals, DArray<FVec2>& TexCoords, DArray<MeshFaceData>& faces, GeometryConfig& OutData);
+void ProcessSubobject(DArray<FVec3>& positions, DArray<FVec3>& normals, DArray<FVec2>& TexCoords, DArray<Face>& faces, GeometryConfig& OutData);
 bool ImportObjMaterialLibraryFile(const char* MtlFilePath);
 
 bool LoadMsmFile(FileHandle* MsmFile, DArray<GeometryConfig>& OutGeometries);
@@ -124,9 +125,9 @@ bool MeshLoader::Load(const char *name, Resource &OutResource)
         return false;
     }
 
-    OutResource.data = ResourceData.MovePtr();
     // Используйте размер данных в качестве счетчика.
     OutResource.DataSize = ResourceData.Length();
+    OutResource.data = ResourceData.MovePtr();
 
     return true;
 }
@@ -154,6 +155,7 @@ bool ImportObjFile(FileHandle *ObjFile, const char *OutMsmFilename, DArray<Geome
     DArray<FVec3> positions { 16384 };
     DArray<FVec3> normals { 16384 };
     DArray<FVec2> TexCoords { 16384 };
+    //DArray<Vertex3D> vertices { 16384 , Vertex3D() };
     DArray<MeshGroupData> groups { 4 };
     char MaterialFileName[512] = "";
 
@@ -164,6 +166,7 @@ bool ImportObjFile(FileHandle *ObjFile, const char *OutMsmFilename, DArray<Geome
     char LineBuf[512] = "";
     char* p = &LineBuf[0];
     u64 LineLength = 0;
+    //u64 iv = 0, in = 0, it = 0;
 
     // индекс 0 — предыдущий, 1 — предыдущий.
     char PrevFirstChars[2] = {0, 0};
@@ -192,6 +195,7 @@ bool ImportObjFile(FileHandle *ObjFile, const char *OutMsmFilename, DArray<Geome
                     FVec3 pos;
                     char t[2];
                     sscanf(LineBuf, "%s %f %f %f", t, &pos.x, &pos.y, &pos.z);
+                    //iv++;
                     positions.PushBack(pos);
                 } break;
                 case 'n': {
@@ -199,14 +203,16 @@ bool ImportObjFile(FileHandle *ObjFile, const char *OutMsmFilename, DArray<Geome
                     FVec3 norm;
                     char t[2];
                     sscanf(LineBuf, "%s %f %f %f", t, &norm.x, &norm.y, &norm.z);
+                    //in++;
                     normals.PushBack(norm);
                 } break;
                 case 't': {
                         // Текстурные координаты вершины.
                         FVec2 TexCoord;
                         char t[2];
-                        // ПРИМЕЧАНИЕ: Ignoring Z if present.
+                        // ПРИМЕЧАНИЕ: Игнорирование Z координаты, если она присутствует.
                         sscanf( LineBuf, "%s %f %f", t, &TexCoord.x, &TexCoord.y);
+                        //it++;
                         TexCoords.PushBack(TexCoord);
                 } break; 
             } 
@@ -218,7 +224,7 @@ bool ImportObjFile(FileHandle *ObjFile, const char *OutMsmFilename, DArray<Geome
             case 'f': {
                 // грань
                 // f 1/1/1 2/2/2 3/3/3  = pos/tex/norm pos/tex/norm pos/tex/norm
-                MeshFaceData face;
+                Face face;
                 char t[2];
 
                 const u64& NormalCount = normals.Length();
@@ -380,7 +386,7 @@ bool ImportObjFile(FileHandle *ObjFile, const char *OutMsmFilename, DArray<Geome
     return WriteMsmFile(OutMsmFilename, name, OutGeometries.Length(), OutGeometries);
 }
 
-void ProcessSubobject(DArray<FVec3>& positions, DArray<FVec3>& normals, DArray<FVec2>& TexCoords, DArray<MeshFaceData>& faces, GeometryConfig& OutData)
+void ProcessSubobject(DArray<FVec3>& positions, DArray<FVec3>& normals, DArray<FVec2>& TexCoords, DArray<Face>& faces, GeometryConfig& OutData)
 {
     DArray<u32> indices;
     DArray<Vertex3D> vertices;
@@ -402,7 +408,7 @@ void ProcessSubobject(DArray<FVec3>& positions, DArray<FVec3>& normals, DArray<F
     }
 
     for (u64 f = 0; f < FaceCount; f++) {
-        MeshFaceData& face = faces[f];
+        Face& face = faces[f];
 
         // Каждая вершина
         for (u64 i = 0; i < 3; ++i) {
@@ -463,7 +469,7 @@ void ProcessSubobject(DArray<FVec3>& positions, DArray<FVec3>& normals, DArray<F
     }
 
     // Вычислить касательные.
-    Math::Geometry::GenerateTangents(vertices.Length(), vertices.Data(), indices.Length(), indices.Data());
+    Math::Geometry::CalculateTangents(vertices.Length(), vertices.Data(), indices.Length(), indices.Data());
 
     OutData.VertexCount = vertices.Length();
     OutData.VertexSize = sizeof(Vertex3D);
@@ -699,7 +705,7 @@ bool WriteMmtFile(const char *MtlFilePath, MaterialConfig &config)
     Filesystem::WriteLine(&f, LineBuffer);
     MString::Format(LineBuffer, "diffuse_colour=%.6f %.6f %.6f %.6f", config.DiffuseColour.r, config.DiffuseColour.g, config.DiffuseColour.b, config.DiffuseColour.a);
     Filesystem::WriteLine(&f, LineBuffer);
-    MString::Format(LineBuffer, "shininess=%f", config.specular);
+    MString::Format(LineBuffer, "specular=%f", config.specular);
     Filesystem::WriteLine(&f, LineBuffer);
     if (config.DiffuseMapName[0]) {
         MString::Format(LineBuffer, "diffuse_map_name=%s", config.DiffuseMapName);

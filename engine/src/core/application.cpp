@@ -115,7 +115,7 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
     Mesh& CubeMesh = State->meshes[State->MeshCount];
     CubeMesh = Mesh(1, new GeometryID*[1], Transform());
     GeometryConfig gConfig = GeometrySystem::Instance()->GenerateCubeConfig(10.f, 10.f, 10.f, 1.f, 1.f, "test_cube", "test_material");
-    Math::Geometry::GenerateTangents(gConfig.VertexCount, reinterpret_cast<Vertex3D*>(gConfig.vertices), gConfig.IndexCount, reinterpret_cast<u32*>(gConfig.indices));
+    Math::Geometry::CalculateTangents(gConfig.VertexCount, reinterpret_cast<Vertex3D*>(gConfig.vertices), gConfig.IndexCount, reinterpret_cast<u32*>(gConfig.indices));
     CubeMesh.geometries[0] = GeometrySystem::Instance()->Acquire(gConfig, true);
 
     State->MeshCount++;
@@ -125,7 +125,7 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
     Mesh& CubeMesh2 = State->meshes[State->MeshCount];
     CubeMesh2 = Mesh(1, new GeometryID*[1], Transform(FVec3(10.f, 0.f, 1.f)));
     gConfig = GeometrySystem::Instance()->GenerateCubeConfig(5.f, 5.f, 5.f, 1.f, 1.f, "test_cube2", "test_material");
-    Math::Geometry::GenerateTangents(gConfig.VertexCount, reinterpret_cast<Vertex3D*>(gConfig.vertices), gConfig.IndexCount, reinterpret_cast<u32*>(gConfig.indices));
+    Math::Geometry::CalculateTangents(gConfig.VertexCount, reinterpret_cast<Vertex3D*>(gConfig.vertices), gConfig.IndexCount, reinterpret_cast<u32*>(gConfig.indices));
     CubeMesh2.geometries[0] = GeometrySystem::Instance()->Acquire(gConfig, true);
     CubeMesh2.transform.SetParent(&CubeMesh.transform);
     State->MeshCount++;
@@ -135,7 +135,7 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
     Mesh& CubeMesh3 = State->meshes[State->MeshCount];
     CubeMesh3 = Mesh(1, new GeometryID*[1], Transform(FVec3(5.f, 0.f, 1.f)));
     gConfig = GeometrySystem::Instance()->GenerateCubeConfig(2.f, 2.f, 2.f, 1.f, 1.f, "test_cube3", "test_material");
-    Math::Geometry::GenerateTangents(gConfig.VertexCount, reinterpret_cast<Vertex3D*>(gConfig.vertices), gConfig.IndexCount, reinterpret_cast<u32*>(gConfig.indices));
+    Math::Geometry::CalculateTangents(gConfig.VertexCount, reinterpret_cast<Vertex3D*>(gConfig.vertices), gConfig.IndexCount, reinterpret_cast<u32*>(gConfig.indices));
     CubeMesh3.geometries[0] = GeometrySystem::Instance()->Acquire(gConfig, true);
     CubeMesh3.transform.SetParent(&CubeMesh2.transform);
     State->MeshCount++;
@@ -152,14 +152,13 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
         CarMesh.geometries = new GeometryID*[CarMesh.GeometryCount];
         for (u64 i = 0; i < CarMesh.GeometryCount; i++) {
             GeometryConfig& c = configs[i];
-            Math::Geometry::GenerateTangents(c.VertexCount, reinterpret_cast<Vertex3D*>(c.vertices), c.IndexCount, reinterpret_cast<u32*>(c.indices));
+            Math::Geometry::CalculateTangents(c.VertexCount, reinterpret_cast<Vertex3D*>(c.vertices), c.IndexCount, reinterpret_cast<u32*>(c.indices));
             CarMesh.geometries[i] = GeometrySystem::Instance()->Acquire(configs[i], true);
         }
         CarMesh.transform = Transform(FVec3(15.f, 0.f, 1.f));
         ResourceSystem::Instance()->Unload(CarMeshResource);
         State->MeshCount++;
     }
-    
 
     const f32 w = 128.f;
     const f32 h = 49.f;

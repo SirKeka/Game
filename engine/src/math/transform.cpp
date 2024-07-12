@@ -8,6 +8,7 @@ MINLINE Transform *Transform::GetParent()
 void Transform::SetParent(Transform *parent)
 {
     this->parent = parent;
+    
 }
 
 constexpr FVec3 &Transform::GetPosition()
