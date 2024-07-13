@@ -408,7 +408,7 @@ void ProcessSubobject(DArray<FVec3>& positions, DArray<FVec3>& normals, DArray<F
     }
 
     for (u64 f = 0; f < FaceCount; f++) {
-        Face& face = faces[f];
+        const Face& face = faces[f];
 
         // Каждая вершина
         for (u64 i = 0; i < 3; ++i) {
