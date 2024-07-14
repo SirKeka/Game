@@ -1,7 +1,7 @@
 #include "geometry_system.hpp"
 #include "material_system.hpp"
 #include "renderer/renderer.hpp"
-
+#include "math/geometry_utils.hpp"
 #include "memory/linear_allocator.hpp"
 #include <new>
 
@@ -220,17 +220,19 @@ GeometryConfig GeometrySystem::GenerateCubeConfig(f32 width, f32 height, f32 dep
     vertex[22] = Vertex3D(MinX, MaxY, MinZ, 0.f, 1.f, 0.f, MinUVx, MaxUVy);
     vertex[23] = Vertex3D(MaxX, MaxY, MaxZ, 0.f, 1.f, 0.f, MaxUVx, MinUVy);
 
-    u32* index = reinterpret_cast<u32*>(config.indices);
+    u32* indices = reinterpret_cast<u32*>(config.indices);
     for (u32 i = 0; i < 6; ++i) {
         u32 VOffset = i * 4;
         u32 IOffset = i * 6;
-        index[IOffset + 0] = VOffset + 0;
-        index[IOffset + 1] = VOffset + 1;
-        index[IOffset + 2] = VOffset + 2;
-        index[IOffset + 3] = VOffset + 0;
-        index[IOffset + 4] = VOffset + 3;
-        index[IOffset + 5] = VOffset + 1;
+        indices[IOffset + 0] = VOffset + 0;
+        indices[IOffset + 1] = VOffset + 1;
+        indices[IOffset + 2] = VOffset + 2;
+        indices[IOffset + 3] = VOffset + 0;
+        indices[IOffset + 4] = VOffset + 3;
+        indices[IOffset + 5] = VOffset + 1;
     }
+
+    Math::Geometry::CalculateTangents(config.VertexCount, vertex, config.IndexCount, indices);
 
     return config;
 }
@@ -451,4 +453,21 @@ void GeometryConfig::Dispose()
         MMemory::Free(indices, IndexSize * IndexCount, MemoryTag::Array);
     }
     MMemory::ZeroMem(this, sizeof(GeometryConfig));
+}
+
+void GeometryConfig::CopyNames(const char (&name)[256], const char (&MaterialName)[256])
+{
+    for (u64 i = 0, j = 0; i < 256;) {
+            if(name[i]) {
+                this->name[i] = name[i];
+                i++;
+            }
+            if(MaterialName[j]) {
+                this->MaterialName[j] = MaterialName[j];
+                j++;
+            }
+            if (!name[i] && !MaterialName[j]) {
+                break;
+            }
+        }
 }

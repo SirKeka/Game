@@ -110,6 +110,7 @@ bool MeshLoader::Load(const char *name, Resource &OutResource)
         case MeshFileType::MSM:
             result = LoadMsmFile(&f, ResourceData);
             break;
+        default:
         case MeshFileType::NotFound:
             MERROR("Не удалось найти сетку поддерживаемого типа под названием «%s».", name);
             result = false;
@@ -217,7 +218,6 @@ bool ImportObjFile(FileHandle *ObjFile, const char *OutMsmFilename, DArray<Geome
                 } break; 
             } 
             } break;
-            // case 'g':
             case 's': {
 
             } break;
@@ -269,10 +269,19 @@ bool ImportObjFile(FileHandle *ObjFile, const char *OutMsmFilename, DArray<Geome
                     // ЗАДАЧА: проверка
                 }
             } break;
+            case 'u': {
+                // Каждый раз, когда появляется usemtl, создайте новую группу.
+                // Необходимо добавить новую именованную группу или группу сглаживания, в нее должны быть добавлены все последующие грани.
+                MeshGroupData NewGroup{ 16384 };
+                groups.PushBack(std::move(NewGroup));
+
+                // usemtl
+                // Прочтите название материала.
+                char t[8];
+                sscanf(LineBuf, "%s %s", t, MaterialNames[CurrentMatNameCount]);
+                CurrentMatNameCount++;
+            } break;
             case 'g': {
-                // case 'o': {
-                //  Новый объект. сначала обработайте предыдущий объект, если мы ранее что-то читали. Это будет верно только после первого объекта.
-                // if (hit_name) {
                 const u64& GroupCount = groups.Length();
 
                 // Обрабатывайте каждую группу как подобъект.
@@ -286,7 +295,7 @@ bool ImportObjFile(FileHandle *ObjFile, const char *OutMsmFilename, DArray<Geome
 
                     ProcessSubobject(positions, normals, TexCoords, groups[i].faces, NewData);
 
-                    OutGeometries.PushBack(NewData);
+                    OutGeometries.PushBack(std::move(NewData));
 
                     // Увеличьте количество объектов.
                     //darray_destroy(groups[i].faces);
@@ -295,26 +304,11 @@ bool ImportObjFile(FileHandle *ObjFile, const char *OutMsmFilename, DArray<Geome
                 CurrentMatNameCount = 0;
                 groups.Clear();
                 MMemory::ZeroMem(name, 512);
-                //}
-
-                // hit_name = true;
 
                 // Прочтите имя
                 char t[2];
                 sscanf(LineBuf, "%s %s", t, name);
 
-            } break;
-            case 'u': {
-                // Каждый раз, когда появляется usemtl, создайте новую группу.
-                // Необходимо добавить новую именованную группу или группу сглаживания, в нее должны быть добавлены все последующие грани.
-                MeshGroupData NewGroup{ 16384 };
-                groups.PushBack(std::move(NewGroup));
-
-                // usemtl
-                // Прочтите название материала.
-                char t[8];
-                sscanf(LineBuf, "%s %s", t, MaterialNames[CurrentMatNameCount]);
-                CurrentMatNameCount++;
             } break;
         }
         PrevFirstChars[1] = PrevFirstChars[0];
@@ -334,7 +328,7 @@ bool ImportObjFile(FileHandle *ObjFile, const char *OutMsmFilename, DArray<Geome
 
         ProcessSubobject(positions, normals, TexCoords, groups[i].faces, NewData);
 
-        OutGeometries.PushBack(NewData);
+        OutGeometries.PushBack(std::move(NewData));
 
         // Увеличьте количество объектов.
         // groups[i].faces.~DArray;
@@ -366,20 +360,12 @@ bool ImportObjFile(FileHandle *ObjFile, const char *OutMsmFilename, DArray<Geome
         Vertex3D* UniquVerts = nullptr;
         Math::Geometry::DeduplicateVertices(g.VertexCount, reinterpret_cast<Vertex3D*>(g.vertices), g.IndexCount, reinterpret_cast<u32*>(g.indices), NewVertCount, &UniquVerts);
 
-        // Destroy the old, large array...
-        //darray_destroy(g->vertices);
-
         // И замените дедуплицированным.
         g.vertices = UniquVerts;
         g.VertexCount = NewVertCount;
 
-        // Сделайте копию индексов как обычный файл без динамического массива.
-        //u32* indices = ;
-        //kcopy_memory(indices, g.indices, sizeof(u32) * g.IndexCount);
-        // Destroy the darray
-        //darray_destroy(g.indices);
-        // Замените версией без Darray.
-        //g.indices = indices;
+        // Вычислить касательные.
+        Math::Geometry::CalculateTangents(g.VertexCount, reinterpret_cast<Vertex3D*>(g.vertices), g.IndexCount, reinterpret_cast<u32*>(g.indices));
     }
     
     // Выведите файл msm, который будет загружен в дальнейшем.
@@ -445,7 +431,7 @@ void ProcessSubobject(DArray<FVec3>& positions, DArray<FVec3>& normals, DArray<F
             ExtentSet = true;
 
             if (SkipNormals) {
-                vert.normal = FVec3();
+                vert.normal = FVec3(0.f, 0.f, 1.f);
             } else {
                 vert.normal = normals[IndexData.NormalIndex - 1];
             }
@@ -467,9 +453,6 @@ void ProcessSubobject(DArray<FVec3>& positions, DArray<FVec3>& normals, DArray<F
     for (u8 i = 0; i < 3; ++i) {
         OutData.Center.elements[i] = (OutData.MinExtents.elements[i] + OutData.MaxExtents.elements[i]) / 2.0f;
     }
-
-    // Вычислить касательные.
-    Math::Geometry::CalculateTangents(vertices.Length(), vertices.Data(), indices.Length(), indices.Data());
 
     OutData.VertexCount = vertices.Length();
     OutData.VertexSize = sizeof(Vertex3D);
@@ -665,12 +648,123 @@ bool ImportObjMaterialLibraryFile(const char *MtlFilePath)
 
 bool LoadMsmFile(FileHandle *MsmFile, DArray<GeometryConfig> &OutGeometries)
 {
-    
+    // версия
+    u64 BytesRead = 0;
+    u16 version = 0;
+    Filesystem::Read(MsmFile, sizeof(u16), &version, BytesRead);
+
+    // Длина имени
+    u32 NameLength = 0;
+    Filesystem::Read(MsmFile, sizeof(u32), &NameLength, BytesRead);
+    // Имя + терминатор
+    char name[256];
+    Filesystem::Read(MsmFile, sizeof(char) * NameLength, name, BytesRead);
+
+    // Количество геометрии
+    u32 GeometryCount = 0;
+    Filesystem::Read(MsmFile, sizeof(u32), &GeometryCount, BytesRead);
+
+    // Каждая геометрия
+    for (u32 i = 0; i < GeometryCount; ++i) {
+        GeometryConfig g;
+
+        // Вершины (размер/количество/массив)
+        Filesystem::Read(MsmFile, sizeof(u32), &g.VertexSize, BytesRead);
+        Filesystem::Read(MsmFile, sizeof(u32), &g.VertexCount, BytesRead);
+        g.vertices = MMemory::Allocate(g.VertexSize * g.VertexCount, MemoryTag::Array);
+        Filesystem::Read(MsmFile, g.VertexSize * g.VertexCount, g.vertices, BytesRead);
+
+        // Индексы (размер/количество/массив)
+        Filesystem::Read(MsmFile, sizeof(u32), &g.IndexSize, BytesRead);
+        Filesystem::Read(MsmFile, sizeof(u32), &g.IndexCount, BytesRead);
+        g.indices = MMemory::Allocate(g.IndexSize * g.IndexCount, MemoryTag::Array);
+        Filesystem::Read(MsmFile, g.IndexSize * g.IndexCount, g.indices, BytesRead);
+
+        // Имя
+        u32 GNameLength = 0;
+        Filesystem::Read(MsmFile, sizeof(u32), &GNameLength, BytesRead);
+        Filesystem::Read(MsmFile, sizeof(char) * GNameLength, g.name, BytesRead);
+
+        // Название материала
+        u32 MNameLength = 0;
+        Filesystem::Read(MsmFile, sizeof(u32), &MNameLength, BytesRead);
+        Filesystem::Read(MsmFile, sizeof(char) * MNameLength, g.MaterialName, BytesRead);
+
+        // Центер
+        Filesystem::Read(MsmFile, sizeof(FVec3), &g.Center, BytesRead);
+
+        // Объёмы (мин/maкс)
+        Filesystem::Read(MsmFile, sizeof(FVec3), &g.MinExtents, BytesRead);
+        Filesystem::Read(MsmFile, sizeof(FVec3), &g.MaxExtents, BytesRead);
+
+        // Добавьте в выходной массив.
+        OutGeometries.PushBack(std::move(g));
+    }
+
+    Filesystem::Close(MsmFile);
+
     return true;
 }
 
 bool WriteMsmFile(const char *path, const char *name, u32 GeometryCount, DArray<GeometryConfig> &geometries)
 {
+    if (Filesystem::Exists(path)) {
+        MINFO("Файл «%s» уже существует и будет перезаписан.", path);
+    }
+
+    FileHandle f;
+    if (!Filesystem::Open(path, FileModes::Write, true, &f)) {
+        MERROR("Невозможно открыть файл «%s» для записи. Ошибка записи MSM.", path);
+        return false;
+    }
+
+    // Версия
+    u64 written = 0;
+    u16 version = 0x0001U;
+    Filesystem::Write(&f, sizeof(u16), &version, written);
+
+    // Длина имени
+    u32 NameLength = MString::Length(name) + 1;
+    Filesystem::Write(&f, sizeof(u32), &NameLength, written);
+    // Имя + терминатор
+    Filesystem::Write(&f, sizeof(char) * NameLength, name, written);
+
+    // Количество геометрии
+    Filesystem::Write(&f, sizeof(u32), &GeometryCount, written);
+
+    // Каждая геометрия
+    for (u32 i = 0; i < GeometryCount; ++i) {
+        const GeometryConfig* g = &geometries[i];
+
+        // Вершины (размер/количество/массив)
+        Filesystem::Write(&f, sizeof(u32), &g->VertexSize, written);
+        Filesystem::Write(&f, sizeof(u32), &g->VertexCount, written);
+        Filesystem::Write(&f, g->VertexSize * g->VertexCount, g->vertices, written);
+
+        // Индексы (размер/количество/массив)
+        Filesystem::Write(&f, sizeof(u32), &g->IndexSize, written);
+        Filesystem::Write(&f, sizeof(u32), &g->IndexCount, written);
+        Filesystem::Write(&f, g->IndexSize * g->IndexCount, g->indices, written);
+
+        // Имя
+        u32 GNameLength = MString::Length(g->name) + 1;
+        Filesystem::Write(&f, sizeof(u32), &GNameLength, written);
+        Filesystem::Write(&f, sizeof(char) * GNameLength, g->name, written);
+
+        // Имя материала
+        u32 MNameLength = MString::Length(g->MaterialName) + 1;
+        Filesystem::Write(&f, sizeof(u32), &MNameLength, written);
+        Filesystem::Write(&f, sizeof(char) * MNameLength, g->MaterialName, written);
+
+        // Центер
+        Filesystem::Write(&f, sizeof(FVec3), &g->Center, written);
+
+        // Extents (min/max)
+        Filesystem::Write(&f, sizeof(FVec3), &g->MaxExtents, written);
+        Filesystem::Write(&f, sizeof(FVec3), &g->MaxExtents, written);
+    }
+
+    Filesystem::Close(&f);
     
     return true;
 }
@@ -705,7 +799,7 @@ bool WriteMmtFile(const char *MtlFilePath, MaterialConfig &config)
     Filesystem::WriteLine(&f, LineBuffer);
     MString::Format(LineBuffer, "diffuse_colour=%.6f %.6f %.6f %.6f", config.DiffuseColour.r, config.DiffuseColour.g, config.DiffuseColour.b, config.DiffuseColour.a);
     Filesystem::WriteLine(&f, LineBuffer);
-    MString::Format(LineBuffer, "specular=%f", config.specular);
+    MString::Format(LineBuffer, "specular=%.6f", config.specular);
     Filesystem::WriteLine(&f, LineBuffer);
     if (config.DiffuseMapName[0]) {
         MString::Format(LineBuffer, "diffuse_map_name=%s", config.DiffuseMapName);

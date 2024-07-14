@@ -117,9 +117,10 @@ public:
     static bool ShaderApplyInstance(Shader* shader, bool NeedsUpdate);
     /// @brief Получает внутренние ресурсы уровня экземпляра и предоставляет идентификатор экземпляра.------------------------------------------------
     /// @param shader указатель на шейдер, к которому нужно применить данные экземпляра.
+    /// @param maps массив указателей текстурных карт. Должен быть один на текстуру в экземпляре.
     /// @param OutInstanceID ссылка для хранения нового идентификатора экземпляра.
     /// @return true в случае успеха, иначе false.
-    static bool ShaderAcquireInstanceResources(Shader* shader, u32& OutInstanceID);
+    static bool ShaderAcquireInstanceResources(Shader* shader, TextureMap** maps, u32& OutInstanceID);
     /// @brief Освобождает внутренние ресурсы уровня экземпляра для данного идентификатора экземпляра.------------------------------------------------
     /// @param shader указатель на шейдер, из которого необходимо освободить ресурсы.
     /// @param InstanceID идентификатор экземпляра, ресурсы которого должны быть освобождены.
@@ -131,6 +132,13 @@ public:
     /// @param value указатель на значение, которое необходимо установить.
     /// @return true в случае успеха, иначе false.
     static bool SetUniform(Shader* shader, struct ShaderUniform* uniform, const void* value);
+    /// @brief Получает внутренние ресурсы для данной карты текстур.
+    /// @param map указатель на карту текстуры, для которой нужно получить ресурсы.
+    /// @return true в случае успеха; в противном случае false.
+    static bool TextureMapAcquireResources(TextureMap* map);
+    /// @brief Освобождает внутренние ресурсы для данной карты текстур.
+    /// @param map указатель на карту текстур, из которой необходимо освободить ресурсы.
+    static void TextureMapReleaseResources(TextureMap* map);
     /// @brief Устанавливает матрицу представления в средстве визуализации. ПРИМЕЧАНИЕ: Доступен общедоступному API.
     /// @deprecated ВЗЛОМ: это не должно быть выставлено за пределы движка.
     /// @param view Матрица представления, которую необходимо установить.

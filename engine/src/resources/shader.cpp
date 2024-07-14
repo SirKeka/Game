@@ -16,7 +16,7 @@ constexpr Shader::Shader()
     UboStride(), 
     PushConstantSize(), 
     PushConstantStride(), 
-    GlobalTextures(), 
+    GlobalTextureMaps(), 
     InstanceTextureCount(), 
     BoundScope(), 
     BoundInstanceID(), 
@@ -46,7 +46,7 @@ Shader::Shader(u32 id, const ShaderConfig *config)
     UboStride(), 
     PushConstantSize(), 
     PushConstantStride(128), 
-    GlobalTextures(), 
+    GlobalTextureMaps(), 
     InstanceTextureCount(), 
     BoundScope(), 
     BoundInstanceID(INVALID::ID), 
@@ -73,11 +73,6 @@ Shader::~Shader()
 
     // Сразу же сделайте его непригодным для использования.
     state = ShaderState::NotCreated;
-
-    // Освободите имя.
-    /*if (name) {
-        name.Destroy();
-    }*/
 }
 
 bool Shader::Create(u32 id, const ShaderConfig *config)

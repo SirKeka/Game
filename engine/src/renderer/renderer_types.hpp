@@ -5,6 +5,7 @@
 #include "math/vector4d.hpp"
 #include "math/vertex.hpp"
 #include "resources/shader.hpp"
+#include "resources/texture_map.hpp"
 
 struct StaticMeshData;
 // class Shader;
@@ -147,12 +148,19 @@ public:
     /// @param shader указатель на шейдер, к которому нужно применить данные экземпляра.
     /// @param OutInstanceID ссылка для хранения нового идентификатора экземпляра.
     /// @return true в случае успеха, иначе false.
-    virtual bool ShaderAcquireInstanceResources(Shader* shader, u32& OutInstanceID) = 0;
+    virtual bool ShaderAcquireInstanceResources(Shader* shader, TextureMap** maps, u32& OutInstanceID) = 0;
     /// @brief Освобождает внутренние ресурсы уровня экземпляра для данного идентификатора экземпляра.------------------------------------------------
     /// @param shader указатель на шейдер, из которого необходимо освободить ресурсы.
     /// @param InstanceID идентификатор экземпляра, ресурсы которого должны быть освобождены.
     /// @return true в случае успеха, иначе false.
     virtual bool ShaderReleaseInstanceResources(Shader* shader, u32 InstanceID) = 0;
+    /// @brief Получает внутренние ресурсы для данной карты текстур.
+    /// @param map указатель на карту текстуры, для которой нужно получить ресурсы.
+    /// @return true в случае успеха; в противном случае false.
+    virtual bool TextureMapAcquireResources(TextureMap* map) = 0;
+    /// @brief Освобождает внутренние ресурсы для данной карты текстур.
+    /// @param map указатель на карту текстур, из которой необходимо освободить ресурсы.
+    virtual void TextureMapReleaseResources(TextureMap* map) = 0;
     /// @brief Устанавливает униформу данного шейдера на указанное значение.--------------------------------------------------------------------------
     /// @param shader указатель на шейдер.
     /// @param uniform постоянный указатель на униформу.

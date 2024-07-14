@@ -1,7 +1,7 @@
 #pragma once
 #include "defines.hpp"
+#include "resources/texture_map.hpp"
 #include "core/mmemory.hpp"
-#include "resources/texture.hpp"
 #include "math/vector4d_fwd.hpp"
 
 constexpr i32 MATERIAL_NAME_MAX_LENGTH = 256;       // Максимальная длина имени материала.

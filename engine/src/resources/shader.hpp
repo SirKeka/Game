@@ -181,7 +181,7 @@ class Shader {
     u64 UboStride;                              // Шаг объекта универсального буфера экземпляра.
     u64 PushConstantSize;                       // Общий размер всех диапазонов констант push вместе взятых.
     u64 PushConstantStride;                     // Шаг константы нажатия, выровненный по 4 байтам, как того требует Vulkan.
-    DArray<class Texture*> GlobalTextures;      // Массив глобальных указателей текстур. Darray
+    DArray<class TextureMap*> GlobalTextureMaps;// Массив глобальных указателей текстурных карт.
     u8 InstanceTextureCount;                    // Количество экземпляров текстур.
     ShaderScope BoundScope;                     
     u32 BoundInstanceID;                        // Идентификатор привязанного в данный момент экземпляра.
@@ -196,7 +196,7 @@ class Shader {
     u16 AttributeStride;                        // Размер всех атрибутов вместе взятых, то есть размер вершины.
 
     // ЗАДАЧА: Пока нет реализации DirectX храним указатель шейдера Vulkan.
-    class VulkanShader* ShaderData;                   // Непрозрачный указатель для хранения конкретных данных API средства рендеринга. Рендерер несет ответственность за создание и уничтожение этого.
+    class VulkanShader* ShaderData;             // Непрозрачный указатель для хранения конкретных данных API средства рендеринга. Рендерер несет ответственность за создание и уничтожение этого.
 public:
     constexpr Shader();
     Shader(u32 id, const ShaderConfig* config);

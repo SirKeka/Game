@@ -1,15 +1,6 @@
 #pragma once
 #include "material_config.hpp"
 
-/// @brief Структура, которая отображает текстуру, использование и другие свойства.
-struct TextureMap {
-    Texture* texture;                       // Указатель на текстуру.
-    TextureUse use;                         // Использование текстуры.
-    constexpr TextureMap() : texture(nullptr), use() {}
-    constexpr TextureMap(Texture* texture, TextureUse use) : texture(texture), use(use) {}
-    constexpr TextureMap(const TextureMap& tm) : texture(tm.texture), use(tm.use) {}
-};
-
 /// @brief Материал, который отражает различные свойства поверхности в мире, такие как текстура, цвет, неровности, блеск и многое другое.
 class Material
 {

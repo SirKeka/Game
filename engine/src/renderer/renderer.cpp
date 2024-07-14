@@ -279,9 +279,9 @@ bool Renderer::ShaderApplyInstance(Shader *shader, bool NeedsUpdate)
     return ptrRenderer->ShaderApplyInstance(shader, NeedsUpdate);
 }
 
-bool Renderer::ShaderAcquireInstanceResources(Shader *shader, u32 &OutInstanceID)
+bool Renderer::ShaderAcquireInstanceResources(Shader *shader, TextureMap **maps, u32 &OutInstanceID)
 {
-    return ptrRenderer->ShaderAcquireInstanceResources(shader, OutInstanceID);
+    return ptrRenderer->ShaderAcquireInstanceResources(shader, maps, OutInstanceID);
 }
 
 bool Renderer::ShaderReleaseInstanceResources(Shader *shader, u32 InstanceID)
@@ -292,6 +292,16 @@ bool Renderer::ShaderReleaseInstanceResources(Shader *shader, u32 InstanceID)
 bool Renderer::SetUniform(Shader *shader, ShaderUniform *uniform, const void *value)
 {
     return ptrRenderer->SetUniform(shader, uniform, value);
+}
+
+bool Renderer::TextureMapAcquireResources(TextureMap *map)
+{
+    return ptrRenderer->TextureMapAcquireResources(map);
+}
+
+void Renderer::TextureMapReleaseResources(TextureMap *map)
+{
+    ptrRenderer->TextureMapReleaseResources(map);
 }
 
 void Renderer::SetView(const Matrix4D& view, const Vector3D<f32>& ViewPosition)

@@ -275,13 +275,23 @@ bool ShaderSystem::AddSampler(Shader *shader, const ShaderUniformConfig &config)
     // Если глобальный, вставьте в глобальный список.
     u32 location = 0;
     if (config.scope == ShaderScope::Global) {
-        u32 GlobalTextureCount = shader->GlobalTextures.Length();
+        u32 GlobalTextureCount = shader->GlobalTextureMaps.Length();
         if (GlobalTextureCount + 1 > state->MaxGlobalTextures) {
             MERROR("Глобальное количество текстур шейдера %i превышает максимальное значение %i", GlobalTextureCount, state->MaxGlobalTextures);
             return false;
         }
         location = GlobalTextureCount;
-        shader->GlobalTextures.PushBack(TextureSystem::Instance()->GetDefaultTexture());
+        // ПРИМЕЧАНИЕ: создание карты текстур по умолчанию, которая будет использоваться здесь. Всегда можно обновить позже.
+        // Выделите указатель, назначьте текстуру и вставьте ее в глобальные карты текстур.
+        // ПРИМЕЧАНИЕ: Это распределение выполняется только для глобальных карт текстур.
+        TextureMap* DefaultMap = new TextureMap();
+        if (!Renderer::TextureMapAcquireResources(DefaultMap)) {
+            MERROR("Не удалось получить ресурсы для глобальной карты текстур во время создания шейдера.");
+            return false;
+        }
+
+        DefaultMap->texture = TextureSystem::Instance()->GetDefaultTexture();
+        shader->GlobalTextureMaps.PushBack(DefaultMap);
     } else {
         // В противном случае это происходит на уровне экземпляра, поэтому подсчитывайте, сколько ресурсов необходимо добавить во время получения ресурса.
         if (shader->InstanceTextureCount + 1 > state->MaxInstanceTextures) {

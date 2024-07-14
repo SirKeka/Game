@@ -3,7 +3,6 @@
 #include "renderer/renderer_types.hpp"
 
 #include "core/asserts.hpp"
-#include "vulkan_image.hpp"
 #include "vulkan_device.hpp"
 #include "vulkan_renderpass.hpp"
 #include "vulkan_buffer.hpp"
@@ -20,7 +19,7 @@ struct VulkanSwapchain
     VkImage* images;
     VkImageView* views;
 
-    VulkanImage* DepthAttachment;
+    class VulkanImage* DepthAttachment;
 
     // Буферы кадров, используемые для экранного рендеринга, по три на кадр.
     VkFramebuffer framebuffers[3];
@@ -120,9 +119,10 @@ public:
     bool ShaderApplyInstance(Shader* shader, bool NeedsUpdate) override;
     /// @brief Получает внутренние ресурсы уровня экземпляра и предоставляет идентификатор экземпляра.------------------------------------------------
     /// @param shader указатель на шейдер, к которому нужно применить данные экземпляра.
+    /// @param maps массив указателей текстурных карт. Должен быть один на текстуру в экземпляре.
     /// @param OutInstanceID ссылка для хранения нового идентификатора экземпляра.
     /// @return true в случае успеха, иначе false.
-    bool ShaderAcquireInstanceResources(Shader* shader, u32& OutInstanceID) override;
+    bool ShaderAcquireInstanceResources(Shader* shader, TextureMap** maps, u32& OutInstanceID) override;
     /// @brief Освобождает внутренние ресурсы уровня экземпляра для данного идентификатора экземпляра.------------------------------------------------
     /// @param shader указатель на шейдер, из которого необходимо освободить ресурсы.
     /// @param InstanceID идентификатор экземпляра, ресурсы которого должны быть освобождены.
@@ -134,6 +134,13 @@ public:
     /// @param value указатель на значение, которое необходимо установить.
     /// @return true в случае успеха, иначе false.
     bool SetUniform(Shader* shader, struct ShaderUniform* uniform, const void* value) override;
+    /// @brief Получает внутренние ресурсы для данной карты текстур.
+    /// @param map указатель на карту текстуры, для которой нужно получить ресурсы.
+    /// @return true в случае успеха; в противном случае false.
+    bool TextureMapAcquireResources(TextureMap* map) override;
+    /// @brief Освобождает внутренние ресурсы для данной карты текстур.
+    /// @param map указатель на карту текстур, из которой необходимо освободить ресурсы.
+    void TextureMapReleaseResources(TextureMap* map) override;
 
     void* operator new(u64 size);
     /// @brief Функция поиска индекса памяти заданного типа и с заданными свойствами.

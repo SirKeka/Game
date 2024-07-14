@@ -1,6 +1,5 @@
 #include "vulkan_device.hpp"
 #include "vulkan_api.hpp"
-// #include "core/mmemory.hpp"
 #include "containers/mstring.hpp"
 
 bool VulkanDevice::Create(VulkanAPI* VkAPI)

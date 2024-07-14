@@ -242,7 +242,7 @@ bool TextureSystem::CreateDefaultTexture()
             }
         }
     }
-    DefaultTexture.Create(DEFAULT_TEXTURE_NAME, TexDimension, TexDimension, 4, pixels, false, Renderer::GetRenderer());
+    DefaultTexture.Create(DEFAULT_TEXTURE_NAME, TexDimension, TexDimension, 4, pixels, false, false, Renderer::GetRenderer());
 
     // Вручную установите недействительную генерацию текстуры, поскольку это текстура по умолчанию.
     this->DefaultTexture.generation = INVALID::ID;
@@ -250,13 +250,13 @@ bool TextureSystem::CreateDefaultTexture()
     // Диффузная текстура
     u8 DiffPixels[16 * 16 * 4];
     MMemory::SetMemory(DiffPixels, 255, 16 * 16 * 4);
-    DefaultDiffuseTexture.Create(DEFAULT_DIFFUSE_TEXTURE_NAME, 16, 16, 4, DiffPixels, false, Renderer::GetRenderer());
+    DefaultDiffuseTexture.Create(DEFAULT_DIFFUSE_TEXTURE_NAME, 16, 16, 4, DiffPixels, false, false, Renderer::GetRenderer());
     DefaultDiffuseTexture.generation = INVALID::ID;
 
     // Зеркальная текстура.
     MTRACE("Создание зеркальной текстуры по умолчанию...");
     u8 SpecPixels[16 * 16 * 4]{}; // Карта спецификации по умолчанию черная (без бликов).
-    DefaultSpecularTexture.Create(DEFAULT_SPECULAR_TEXTURE_NAME, 16, 16, 4, SpecPixels, false, Renderer::GetRenderer());
+    DefaultSpecularTexture.Create(DEFAULT_SPECULAR_TEXTURE_NAME, 16, 16, 4, SpecPixels, false, false, Renderer::GetRenderer());
     // Вручную установите недействительное поколение текстуры, поскольку это текстура по умолчанию.
     DefaultSpecularTexture.generation = INVALID::ID;
 
@@ -275,7 +275,7 @@ bool TextureSystem::CreateDefaultTexture()
             NormalPixels[IndexBpp + 3] = 255;
         }
     }
-    DefaultNormalTexture.Create(DEFAULT_NORMAL_TEXTURE_NAME, 16, 16, 4, NormalPixels, false, Renderer::GetRenderer());
+    DefaultNormalTexture.Create(DEFAULT_NORMAL_TEXTURE_NAME, 16, 16, 4, NormalPixels, false, false, Renderer::GetRenderer());
     DefaultNormalTexture.generation = INVALID::ID;
 
     return true;
@@ -320,7 +320,7 @@ bool TextureSystem::LoadTexture(const char* TextureName, Texture *t)
     }
 
     // Получите внутренние ресурсы текстур и загрузите их в графический процессор.
-    t->Create(TextureName, ResourceData->width, ResourceData->height, ResourceData->ChannelCount, ResourceData->pixels, HasTransparency, Renderer::GetRenderer());
+    t->Create(TextureName, ResourceData->width, ResourceData->height, ResourceData->ChannelCount, ResourceData->pixels, HasTransparency, false, Renderer::GetRenderer());
 
     if (CurrentGeneration == INVALID::ID) {
         t->generation = 0;

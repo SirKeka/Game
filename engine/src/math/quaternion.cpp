@@ -110,11 +110,6 @@ Quaternion& Quaternion::Normalize()
 	return *this;
 }
 
-MINLINE Quaternion Quaternion::Identity()
-{
-    return Quaternion(0.f, 0.0f, 0.0f, 1.0f);
-}
-
 MINLINE Quaternion Conjugate(const Quaternion &q)
 {
     return Quaternion(-q.x, -q.y, -q.z, q.w);

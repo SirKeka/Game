@@ -503,10 +503,11 @@ bool VulkanAPI::ShaderApplyInstance(Shader *shader, bool NeedsUpdate)
             VkDescriptorImageInfo ImageInfos[VulkanShaderConstants::MaxGlobalTextures]{};
             for (u32 i = 0; i < TotalSamplerCount; ++i) {
                 // ЗАДАЧА: обновляйте список только в том случае, если оно действительно необходимо.
-                Texture* t = VkShader->InstanceStates[shader->BoundInstanceID].InstanceTextures[i];
+                TextureMap* map = VkShader->InstanceStates[shader->BoundInstanceID].InstanceTexturesMaps[i];
+                Texture* t = map->texture;
                 ImageInfos[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
                 ImageInfos[i].imageView = t->Data->image.view;
-                ImageInfos[i].sampler = t->Data->sampler;
+                ImageInfos[i].sampler = map->sampler;
     
                 // ЗАДАЧА: измените состояние дескриптора, чтобы справиться с этим должным образом.
                 // Синхронизировать генерацию кадров, если не используется текстура по умолчанию.
@@ -539,7 +540,35 @@ bool VulkanAPI::ShaderApplyInstance(Shader *shader, bool NeedsUpdate)
     return true;
 }
 
-bool VulkanAPI::ShaderAcquireInstanceResources(Shader *shader, u32 &OutInstanceID)
+VkSamplerAddressMode ConvertRepeatType (const char* axis, TextureRepeat repeat) {
+    switch (repeat) {
+        case TextureRepeat::Repeat:
+            return VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        case TextureRepeat::MirroredRepeat:
+            return VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+        case TextureRepeat::ClampToEdge:
+            return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        case TextureRepeat::ClampToBorder:
+            return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+        default:
+            MWARN("ConvertRepeatType(ось = «%s») Тип «%x» не поддерживается, по умолчанию используется повтор.", axis, repeat);
+            return VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    }
+}
+
+VkFilter ConvertFilterType(const char* op, TextureFilter filter) {
+    switch (filter) {
+        case TextureFilter::ModeNearest:
+            return VK_FILTER_NEAREST;
+        case TextureFilter::ModeLinear:
+            return VK_FILTER_LINEAR;
+        default:
+            MWARN("ConvertFilterType(op='%s'): Неподдерживаемый тип фильтра «%x», по умолчанию — линейный.", op, filter);
+            return VK_FILTER_LINEAR;
+    }
+}
+
+bool VulkanAPI::ShaderAcquireInstanceResources(Shader *shader, TextureMap** maps, u32 &OutInstanceID)
 {
     VulkanShader* VkShader = shader->ShaderData;
     // ЗАДАЧА: динамическим
@@ -559,11 +588,12 @@ bool VulkanAPI::ShaderAcquireInstanceResources(Shader *shader, u32 &OutInstanceI
     VulkanShaderInstanceState& InstanceState = VkShader->InstanceStates[OutInstanceID];
     const u32& InstanceTextureCount = VkShader->config.DescriptorSets[DESC_SET_INDEX_INSTANCE].bindings[BINDING_INDEX_SAMPLER].descriptorCount;
     // Очистите память всего массива, даже если она не вся использована.
-    InstanceState.InstanceTextures = MMemory::TAllocate<Texture*>(MemoryTag::Array, shader->InstanceTextureCount);
+    InstanceState.InstanceTexturesMaps = MMemory::TAllocate<TextureMap*>(MemoryTag::Array, shader->InstanceTextureCount);
     Texture* DefaultTexture = TextureSystem::Instance()->GetDefaultTexture();
     // Установите для всех указателей текстур значения по умолчанию, пока они не будут назначены.
     for (u32 i = 0; i < InstanceTextureCount; ++i) {
-        InstanceState.InstanceTextures[i] = DefaultTexture;
+        InstanceState.InstanceTexturesMaps[i] = maps[i];
+        InstanceState.InstanceTexturesMaps[i]->texture = DefaultTexture;
     }
 
     // Выделите немного места в УБО — по шагу, а не по размеру.
@@ -628,9 +658,9 @@ bool VulkanAPI::ShaderReleaseInstanceResources(Shader *shader, u32 InstanceID)
     // Уничтожить состояния дескриптора.
     MMemory::ZeroMem(InstanceState.DescriptorSetState.DescriptorStates, sizeof(VulkanDescriptorState) * VulkanShaderConstants::MaxBindings);
 
-    if (InstanceState.InstanceTextures) {
-        MMemory::Free(InstanceState.InstanceTextures, sizeof(Texture*) * shader->InstanceTextureCount, MemoryTag::Array);
-        InstanceState.InstanceTextures = nullptr;
+    if (InstanceState.InstanceTexturesMaps) {
+        MMemory::Free(InstanceState.InstanceTexturesMaps, sizeof(TextureMap*) * shader->InstanceTextureCount, MemoryTag::Array);
+        InstanceState.InstanceTexturesMaps = nullptr;
     }
 
     VkShader->UniformBuffer.Free(shader->UboStride, InstanceState.offset);
@@ -1502,9 +1532,9 @@ bool VulkanAPI::SetUniform(Shader *shader, ShaderUniform *uniform, const void *v
     VulkanShader* VkShader = shader->ShaderData;
     if (uniform->type == ShaderUniformType::Sampler) {
         if (uniform->scope == ShaderScope::Global) {
-            shader->GlobalTextures[uniform->location] = (Texture*)value;
+            shader->GlobalTextureMaps[uniform->location]->texture = (Texture*)value;
         } else {
-            VkShader->InstanceStates[shader->BoundInstanceID].InstanceTextures[uniform->location] = (Texture*)value;
+            VkShader->InstanceStates[shader->BoundInstanceID].InstanceTexturesMaps[uniform->location]->texture = (Texture*)value;
         }
     } else {
         if (uniform->scope == ShaderScope::Local) {
@@ -1521,6 +1551,47 @@ bool VulkanAPI::SetUniform(Shader *shader, ShaderUniform *uniform, const void *v
         }
     }
     return true;
+}
+
+bool VulkanAPI::TextureMapAcquireResources(TextureMap *map)
+{
+    // Создайте сэмплер для текстуры
+    VkSamplerCreateInfo SamplerInfo = {VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
+
+    SamplerInfo.minFilter = ConvertFilterType("min", map->FilterMinify);
+    SamplerInfo.magFilter = ConvertFilterType("mag", map->FilterMagnify);
+
+    SamplerInfo.addressModeU = ConvertRepeatType("U", map->RepeatU);
+    SamplerInfo.addressModeV = ConvertRepeatType("V", map->RepeatV);
+    SamplerInfo.addressModeW = ConvertRepeatType("W", map->RepeatW);
+
+    // ЗАДАЧА: Настраивается
+    SamplerInfo.anisotropyEnable = VK_TRUE;
+    SamplerInfo.maxAnisotropy = 16;
+    SamplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+    SamplerInfo.unnormalizedCoordinates = VK_FALSE;
+    SamplerInfo.compareEnable = VK_FALSE;
+    SamplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+    SamplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+    SamplerInfo.mipLodBias = 0.F;
+    SamplerInfo.minLod = 0.F;
+    SamplerInfo.maxLod = 0.F;
+
+    VkResult result = vkCreateSampler(Device.LogicalDevice, &SamplerInfo, allocator, &map->sampler);
+    if (!VulkanResultIsSuccess(VK_SUCCESS)) {
+        MERROR("Ошибка создания сэмплера текстуры: %s.", VulkanResultString(result, true));
+        return false;
+    }
+
+    return true;
+}
+
+void VulkanAPI::TextureMapReleaseResources(TextureMap *map)
+{
+    if (map) {
+        vkDestroySampler(Device.LogicalDevice, map->sampler, allocator);
+        MMemory::ZeroMem(&map->sampler, sizeof(VkSampler)); // map->sampler = 0;
+    }
 }
 
 void *VulkanAPI::operator new(u64 size)

@@ -2,13 +2,14 @@
 #include "renderer/vulkan/vulkan_api.hpp"
 #include "renderer/vulkan/vulkan_utils.hpp"
 
-Texture::Texture(const char* name, i32 width, i32 height, i32 ChannelCount, const u8 *pixels, bool HasTransparency, VulkanAPI *VkAPI) 
+Texture::Texture(const char* name, i32 width, i32 height, i32 ChannelCount, const u8 *pixels, bool HasTransparency, bool IsWriteable, VulkanAPI *VkAPI) 
     : 
     id(), 
     width(width), 
     height(height), 
     ChannelCount(ChannelCount), 
     HasTransparency(HasTransparency), 
+    IsWriteable(IsWriteable),
     generation(INVALID::ID), 
     name(),
     Data(new VulkanTextureData(VulkanImage(
@@ -82,31 +83,6 @@ Texture::Texture(const char* name, i32 width, i32 height, i32 ChannelCount, cons
     // Уничтожение промежуточного буфера
     staging.Destroy(VkAPI);
 
-    // Создание сэмплера для текстуры
-    VkSamplerCreateInfo SamplerInfo = {VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
-    // ЗАДАЧА: Эти фильтры должны быть настраиваемыми.
-    SamplerInfo.magFilter = VK_FILTER_LINEAR;
-    SamplerInfo.minFilter = VK_FILTER_LINEAR;
-    SamplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-    SamplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-    SamplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-    SamplerInfo.anisotropyEnable = VK_TRUE;
-    SamplerInfo.maxAnisotropy = 16;
-    SamplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-    SamplerInfo.unnormalizedCoordinates = VK_FALSE;
-    SamplerInfo.compareEnable = VK_FALSE;
-    SamplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-    SamplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-    SamplerInfo.mipLodBias = 0.0f;
-    SamplerInfo.minLod = 0.0f;
-    SamplerInfo.maxLod = 0.0f;
-
-    VkResult result = vkCreateSampler(VkAPI->Device.LogicalDevice, &SamplerInfo, VkAPI->allocator, &Data->sampler);
-    if (!VulkanResultIsSuccess(VK_SUCCESS)) {
-        MERROR("Ошибка создания сэмплера текстур: %s", VulkanResultString(result, true));
-        return;
-    }
-
     this->generation++;
 }
 
@@ -116,7 +92,21 @@ Texture::~Texture()
     Data = nullptr;
 }
 
-void Texture::Create(const char* name, i32 width, i32 height, i32 ChannelCount, const u8 *pixels, bool HasTransparency, VulkanAPI *VkAPI)
+Texture::Texture(const Texture &t)
+    : 
+    id(t.id), 
+    width(t.width), 
+    height(t.height), 
+    ChannelCount(t.ChannelCount), 
+    HasTransparency(t.HasTransparency), 
+    IsWriteable(t.IsWriteable), 
+    generation(t.generation), 
+    name(), 
+    Data(new VulkanTextureData(*t.Data)) { 
+    MString::nCopy(this->name, t.name, TEXTURE_NAME_MAX_LENGTH); 
+}
+
+void Texture::Create(const char* name, i32 width, i32 height, i32 ChannelCount, const u8 *pixels, bool HasTransparency, bool IsWriteable, VulkanAPI *VkAPI)
 {
     this->width = width;
     this->height = height;
@@ -180,32 +170,8 @@ void Texture::Create(const char* name, i32 width, i32 height, i32 ChannelCount, 
     // Уничтожение промежуточного буфера
     staging.Destroy(VkAPI);
 
-    // Создание сэмплера для текстуры
-    VkSamplerCreateInfo SamplerInfo = {VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
-    // ЗАДАЧА: Эти фильтры должны быть настраиваемыми.
-    SamplerInfo.magFilter = VK_FILTER_LINEAR;
-    SamplerInfo.minFilter = VK_FILTER_LINEAR;
-    SamplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-    SamplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-    SamplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-    SamplerInfo.anisotropyEnable = VK_TRUE;
-    SamplerInfo.maxAnisotropy = 16;
-    SamplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-    SamplerInfo.unnormalizedCoordinates = VK_FALSE;
-    SamplerInfo.compareEnable = VK_FALSE;
-    SamplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-    SamplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-    SamplerInfo.mipLodBias = 0.0f;
-    SamplerInfo.minLod = 0.0f;
-    SamplerInfo.maxLod = 0.0f;
-
-    VkResult result = vkCreateSampler(VkAPI->Device.LogicalDevice, &SamplerInfo, VkAPI->allocator, &Data->sampler);
-    if (!VulkanResultIsSuccess(VK_SUCCESS)) {
-        MERROR("Ошибка создания сэмплера текстур: %s", VulkanResultString(result, true));
-        return;
-    }
-
     this->HasTransparency = HasTransparency;
+    this->IsWriteable = IsWriteable;
     this->generation++;
 }
 
@@ -216,8 +182,6 @@ void Texture::Destroy(VulkanAPI *VkAPI)
     if(Data) {
         Data->image.Destroy(VkAPI);
         MMemory::ZeroMem(&Data->image, sizeof(VulkanImage));
-        vkDestroySampler(VkAPI->Device.LogicalDevice, Data->sampler, VkAPI->allocator);
-        Data->sampler = 0;
 
     //MMemory::Free(Data, sizeof(VulkanTextureData), MemoryTag::Texture);
     }

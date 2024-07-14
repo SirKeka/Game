@@ -161,6 +161,7 @@ void MString::DirectoryFromPath(char* dest, const char *path)
         char c = path[i];
         if (c == '/' || c == '\\') {
             nCopy(dest, path, i + 1);
+            return;
         }
     }
 }
@@ -428,7 +429,7 @@ void MString::Copy(char *dest, const char *source)
 {
     if(dest && source) {
         while (*source) {
-            if(*source != '\n') {
+            if(*source != '\n' && *source != '\t') {
                 *dest = *source;
                 dest++;
             }
@@ -454,14 +455,16 @@ void MString::nCopy(const MString& source, u64 length)
 
 void MString::nCopy(char *dest, const char *source, u64 Length)
 {
-    if (dest && source) {
-        for (u64 i = 0; i < Length; i++) {
+    for (u64 i = 0; i < Length; i++) {
+        if (dest && source) {
             dest[i] = source[i];
-            if (!dest[i] || !source[i]) {
-                break;
+            if (!source[i]) {
+                dest[i] = '\0';
+                return;
             }
-        }
+        }    
     }
+    dest[Length] = '\0';
 }
 
 void MString::nCopy(char *dest, const MString &source, u64 length)

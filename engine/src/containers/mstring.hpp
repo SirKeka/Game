@@ -182,6 +182,17 @@ public:
     void nCopy(const MString& source, u64 length);
     static void nCopy(char* dest, const char* source, u64 Length);
     static void nCopy(char* dest, const MString& source, u64 length); 
+    /// @brief Зануляет статический массив символов
+    /// @tparam N число символов в статическом массиве
+    /// @param arr ссылка на статический массив
+    template<u64 N>
+    static void Zero(char (&arr)[N]) {
+        for (u64 i = 0; i < N; i++) {
+            if(arr[i]) {
+                arr[i] = '\0';
+            } else break;
+        }
+    }
     // static char* Concat();
 private:
     char* Copy(const char* source, u64 length);

@@ -249,14 +249,14 @@ bool MaterialSystem::ApplyInstance(Material *material, bool NeedsUpdate)
         if (material->ShaderID == state->MaterialShaderID) {
             // Шейдер материала
             MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->UniformSet(state->MaterialLocations.DiffuseColour, &material->DiffuseColour));
-            MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->UniformSet(state->MaterialLocations.DiffuseTexture, material->DiffuseMap.texture));
-            MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->UniformSet(state->MaterialLocations.SpecularTexture, material->SpecularMap.texture));
+            MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->UniformSet(state->MaterialLocations.DiffuseTexture, &material->DiffuseMap));
+            MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->UniformSet(state->MaterialLocations.SpecularTexture, &material->SpecularMap));
             MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->UniformSet(state->MaterialLocations.specular, &material->specular));
-            MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->UniformSet(state->MaterialLocations.NormalTexture, material->NormalMap.texture));
+            MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->UniformSet(state->MaterialLocations.NormalTexture, &material->NormalMap));
         } else if (material->ShaderID == state->UI_ShaderID) {
             // шейдер пользовательского интерфейса
             MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->UniformSet(state->UI_Locations.DiffuseColour, &material->DiffuseColour));
-            MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->UniformSet(state->UI_Locations.DiffuseTexture, material->DiffuseMap.texture));
+            MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->UniformSet(state->UI_Locations.DiffuseTexture, &material->DiffuseMap));
         } else {
             MERROR("MaterialSystem::ApplyInstance(): Нераспознанный идентификатор шейдера «%d» в шейдере «%s».", material->ShaderID, material->name);
             return false;
@@ -291,8 +291,9 @@ bool MaterialSystem::ApplyLocal(Material *material, const Matrix4D &model)
 
 bool MaterialSystem::CreateDefaultMaterial()
 { 
+    TextureMap* maps[3] = {&DefaultMaterial.DiffuseMap, &DefaultMaterial.SpecularMap, &DefaultMaterial.NormalMap};
     Shader* s = ShaderSystem::GetInstance()->GetShader(BUILTIN_SHADER_NAME_MATERIAL);
-    if (!Renderer::ShaderAcquireInstanceResources(s, DefaultMaterial.InternalId)) {
+    if (!Renderer::ShaderAcquireInstanceResources(s, maps, DefaultMaterial.InternalId)) {
         MFATAL("Не удалось получить ресурсы средства рендеринга для материала по умолчанию. Приложение не может быть продолжено.");
         return false;
     }
@@ -316,6 +317,14 @@ bool MaterialSystem::LoadMaterial(const MaterialConfig &config, Material *m)
     m->specular = config.specular;
 
     // Diffuse map
+    // ЗАДАЧА: настроить
+    m->DiffuseMap.FilterMinify = m->DiffuseMap.FilterMagnify = TextureFilter::ModeLinear;
+    m->DiffuseMap.RepeatU = m->DiffuseMap.RepeatV = m->DiffuseMap.RepeatW = TextureRepeat::Repeat;
+    if (!Renderer::TextureMapAcquireResources(&m->DiffuseMap)) {
+        MERROR("Невозможно получить ресурсы для карты диффузных текстур.");
+        return false;
+    }
+    
     if (MString::Length(config.DiffuseMapName) > 0) {
         m->DiffuseMap.use = TextureUse::MapDiffuse;
         m->DiffuseMap.texture = TextureSystem::Instance()->Acquire(config.DiffuseMapName, true);
@@ -325,11 +334,17 @@ bool MaterialSystem::LoadMaterial(const MaterialConfig &config, Material *m)
         }
     } else {
         // ПРИМЕЧАНИЕ. Устанавливается только для ясности, поскольку вызов MMemory::ZeroMem выше уже делает это.
-        m->DiffuseMap.use = TextureUse::Unknown;
-        m->DiffuseMap.texture = nullptr;
+        m->DiffuseMap.use = TextureUse::MapDiffuse;
+        m->DiffuseMap.texture = TextureSystem::Instance()->GetDefaultTexture();
     }
 
     // Карта блеска
+    m->SpecularMap.FilterMinify = m->SpecularMap.FilterMagnify = TextureFilter::ModeLinear;
+    m->SpecularMap.RepeatU = m->SpecularMap.RepeatV = m->SpecularMap.RepeatW = TextureRepeat::Repeat;
+    if (!Renderer::TextureMapAcquireResources(&m->SpecularMap)) {
+        MERROR("Невозможно получить ресурсы для карты зеркальных текстур.");
+        return false;
+    }
     if (MString::Length(config.SpecularMapName) > 0) {
         m->SpecularMap.use = TextureUse::MapSpecular;
         m->SpecularMap.texture = TextureSystem::Instance()->Acquire(config.SpecularMapName, true);
@@ -339,11 +354,17 @@ bool MaterialSystem::LoadMaterial(const MaterialConfig &config, Material *m)
         }
     } else {
         // ПРИМЕЧАНИЕ: Устанавливается только для ясности, поскольку вызов MMemory::Zero() выше уже делает это.
-        m->SpecularMap.use = TextureUse::Unknown;
-        m->SpecularMap.texture = nullptr;
+        m->SpecularMap.use = TextureUse::MapSpecular;
+        m->SpecularMap.texture = TextureSystem::Instance()->GetDefaultSpecularTexture();
     }
 
     // Карта нормалей
+    m->NormalMap.FilterMinify = m->NormalMap.FilterMagnify = TextureFilter::ModeLinear;
+    m->NormalMap.RepeatU = m->NormalMap.RepeatV = m->NormalMap.RepeatW = TextureRepeat::Repeat;
+    if (!Renderer::TextureMapAcquireResources(&m->NormalMap)) {
+        MERROR("Невозможно получить ресурсы для карты нормалей текстур.");
+        return false;
+    }
     if (MString::Length(config.NormalMapName) > 0) {
         m->NormalMap.use = TextureUse::MapNormal;
         m->NormalMap.texture = TextureSystem::Instance()->Acquire(config.NormalMapName, true);
@@ -365,7 +386,9 @@ bool MaterialSystem::LoadMaterial(const MaterialConfig &config, Material *m)
         MERROR("Невозможно загрузить материал, поскольку его шейдер не найден: «%s». Вероятно, это проблема с ассетом материала.", config.ShaderName.c_str());
         return false;
     }
-    if(!Renderer::ShaderAcquireInstanceResources(s, m->InternalId)) {
+    // Соберите список указателей на карты текстур.
+    TextureMap* maps[3] = {&m->DiffuseMap, &m->SpecularMap, &m->NormalMap};
+    if(!Renderer::ShaderAcquireInstanceResources(s, maps, m->InternalId)) {
         MERROR("Не удалось получить ресурсы средства визуализации для материала '%s'.", m->name);
         return false;
     }
@@ -387,6 +410,11 @@ void MaterialSystem::DestroyMaterial(Material *m)
     if (m->NormalMap.texture) {
         TextureSystem::Instance()->Release(m->NormalMap.texture->name);
     }
+
+    // Освободите ресурсы карт текстур.
+    Renderer::TextureMapReleaseResources(&m->DiffuseMap);
+    Renderer::TextureMapReleaseResources(&m->SpecularMap);
+    Renderer::TextureMapReleaseResources(&m->NormalMap);
 
     // Освободите ресурсы средства рендеринга.
     if (m->ShaderID != INVALID::ID && m->InternalId != INVALID::ID) {

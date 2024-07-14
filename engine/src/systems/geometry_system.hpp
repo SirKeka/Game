@@ -18,24 +18,91 @@ struct GeometryConfig {
     FVec3 MinExtents;
     FVec3 MaxExtents;
 
-    constexpr GeometryConfig() : VertexSize(), VertexCount(), vertices(nullptr), IndexSize(), IndexCount(), indices(nullptr), name(), MaterialName(), Center(), MinExtents(), MaxExtents() {}
+    constexpr GeometryConfig() 
+    : VertexSize(), VertexCount(), vertices(nullptr), IndexSize(), IndexCount(), indices(nullptr), name(), MaterialName(), Center(), MinExtents(), MaxExtents() {}
 
     constexpr GeometryConfig(u32 VertexSize, u32 VertexCount, void* vertices, u32 IndexSize, u32 IndexCount, void* indices, const char* name, const char* MaterialName)
     : VertexSize(VertexSize), VertexCount(VertexCount), vertices(vertices), IndexSize(IndexSize), IndexCount(IndexCount), indices(indices), name(), MaterialName(), Center(), MinExtents(), MaxExtents()  {
-        MString::nCopy(this->name, name, GEOMETRY_NAME_MAX_LENGTH);
-        MString::nCopy(this->MaterialName, MaterialName, GEOMETRY_NAME_MAX_LENGTH);
+        for (u64 i = 0, j = 0; i < 256;) {
+            if(name[i]) {
+                this->name[i] = name[i];
+                i++;
+            }
+            if(MaterialName[j]) {
+                this->MaterialName[j] = MaterialName[j];
+                j++;
+            }
+            if (!name[i] && !MaterialName[j]) {
+                break;
+            }
+        }
     }
-    /*constexpr GeometryConfig(const GeometryConfig& conf)
-    : VertexSize(conf.VertexSize), VertexCount(conf.VertexCount), vertices(nullptr), IndexSize(conf.IndexSize), IndexCount(conf.IndexCount), indices(nullptr), name(), MaterialName(), Center(conf.Center), MinExtents(conf.MinExtents), MaxExtents(conf.MaxExtents) {
+    constexpr GeometryConfig(const GeometryConfig& conf)
+    : VertexSize(conf.VertexSize), VertexCount(conf.VertexCount), vertices(MMemory::Allocate(VertexCount * VertexSize, MemoryTag::Array)), IndexSize(conf.IndexSize), IndexCount(conf.IndexCount), indices(MMemory::Allocate(IndexCount * IndexSize, MemoryTag::Array)), name(), MaterialName(), Center(conf.Center), MinExtents(conf.MinExtents), MaxExtents(conf.MaxExtents) {
         MMemory::CopyMem(vertices, conf.vertices, VertexCount * VertexSize);
         MMemory::CopyMem(indices, conf.indices, IndexCount * IndexSize);
-        MString::nCopy(this->name, conf.name, GEOMETRY_NAME_MAX_LENGTH);
-        MString::nCopy(this->MaterialName, conf.MaterialName, GEOMETRY_NAME_MAX_LENGTH);
+        CopyNames(conf.name, conf.MaterialName);
     }
-    constexpr GeometryConfig(GeometryConfig&& conf) : {}*/
+    constexpr GeometryConfig(GeometryConfig&& conf) : VertexSize(conf.VertexSize), VertexCount(conf.VertexCount), vertices(conf.vertices), IndexSize(conf.IndexSize), IndexCount(conf.IndexCount), indices(conf.indices), name(), MaterialName(), Center(conf.Center), MinExtents(conf.MinExtents), MaxExtents(conf.MaxExtents) {
+        CopyNames(conf.name, conf.MaterialName);
+        conf.VertexSize = 0;
+        conf.VertexCount = 0;
+        conf.vertices = nullptr;
+        conf.IndexSize = 0;
+        conf.IndexCount = 0;
+        conf.indices = nullptr;
+        conf.Center = FVec3();
+        conf.MinExtents = FVec3();
+        conf.MaxExtents = FVec3();
+    }
+    GeometryConfig& operator =(const GeometryConfig& conf) {
+        VertexSize = conf.VertexSize;
+        VertexCount = conf.VertexCount;
+        vertices = MMemory::Allocate(VertexCount * VertexSize, MemoryTag::Array);
+        MMemory::CopyMem(vertices, conf.vertices, VertexCount * VertexSize);
+        IndexSize = conf.IndexSize;
+        IndexCount = conf.IndexCount;
+        indices = MMemory::Allocate(IndexCount * IndexSize, MemoryTag::Array);
+        MMemory::CopyMem(indices, conf.indices, IndexCount * IndexSize);
+        CopyNames(conf.name, conf.MaterialName);
+        Center = conf.Center;
+        MinExtents = conf.MinExtents;
+        MaxExtents = conf.MaxExtents;
+        return *this;
+    }
+    GeometryConfig& operator =(GeometryConfig&& conf) {
+        VertexSize = conf.VertexSize;
+        VertexCount = conf.VertexCount;
+        vertices = conf.vertices;
+        IndexSize = conf.IndexSize;
+        IndexCount = conf.IndexCount;
+        indices = conf.indices;
+        CopyNames(conf.name, conf.MaterialName);
+        Center = conf.Center;
+        MinExtents = conf.MinExtents;
+        MaxExtents = conf.MaxExtents;
+
+        conf.VertexSize = 0;
+        conf.VertexCount = 0;
+        conf.vertices = nullptr;
+        conf.IndexSize = 0;
+        conf.IndexCount = 0;
+        conf.indices = nullptr;
+        conf.Center = FVec3();
+        conf.MinExtents = FVec3();
+        conf.MaxExtents = FVec3();
+
+        return *this;
+    }
+
     /// @brief Освобождает ресурсы, имеющиеся в указанной конфигурации.
     /// @param config ссылка на конфигурацию, которую нужно удалить.
     void Dispose();
+private:
+    /// @brief 
+    /// @param name 
+    /// @param MaterialName 
+    void CopyNames(const char (&name)[256], const char (&MaterialName)[256]);
 };
 
 constexpr const char* DEFAULT_GEOMETRY_NAME = "default";
