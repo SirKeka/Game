@@ -81,7 +81,32 @@ public:
     bool BeginRenderpass(u8 RenderpassID) override;
     bool EndRenderpass(u8 RenderpassID) override;
 
-    // ЗАДАЧА: перенести в класс системы визуализации
+    /// @brief Загружает данные текстуры в графический процессор.
+    /// @param texture указатель на текстуру которую нужно загрузить.
+    /// @param pixels Необработанные данные изображения, которые будут загружены в графический процессор.
+    /// @return true в случае успеха, иначе false.
+    bool Load(const u8* pixels, Texture* texture) override;
+    /// @brief Загружает новую записываемую текстуру без записи в нее данных.
+    /// @param texture указатель на текстуру которую нужно загрузить.
+    /// @return true в случае успеха, иначе false.
+    bool LoadTextureWriteable(Texture* texture) override;
+    /// @brief Изменяет размер текстуры. На этом уровне нет проверки возможности записи текстуры. 
+    /// Внутренние ресурсы уничтожаются и воссоздаются при новом разрешении. Данные потеряны, и их необходимо перезагрузить.
+    /// @param texture указатель на текстуру, размер которой нужно изменить.
+    /// @param NewWidth новая ширина в пикселях.
+    /// @param NewHeight новая высота в пикселях.
+    void TextureResize(Texture* texture, u32 NewWidth, u32 NewHeight) override;
+    /// @brief Записывает данные в предоставленную текстуру. ПРИМЕЧАНИЕ: На этом уровне это может быть как записываемая, 
+    /// так и незаписываемая текстура, поскольку она также обрабатывает начальную загрузку текстуры. Сама система текстур 
+    /// должна отвечать за блокировку запросов на запись в недоступные для записи текстуры.
+    /// @param texture указатель на текстуру, в которую нужно записать.
+    /// @param offset смещение в байтах от начала записываемых данных.
+    /// @param size количество байтов, которые необходимо записать.
+    /// @param pixels необработанные данные изображения, которые необходимо записать.
+    void TextureWriteData(Texture* texture, u32 offset, u32 size, const u8* pixels) override;
+    /// @brief Выгружает данные текстуры из графического процессора.
+    /// @param texture указатель на текстуру которую нужно выгрузить.
+    void Unload(Texture* texture) override;
     bool Load(GeometryID* gid, u32 VertexSize, u32 VertexCount, const void* vertices, u32 IndexSize, u32 IndexCount, const void* indices) override;
     void Unload(GeometryID* gid) override;
     void DrawGeometry(const GeometryRenderData& data) override;

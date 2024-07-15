@@ -1,6 +1,7 @@
 #include "vulkan_api.hpp"
-#include "vulkan_swapchain.hpp"
 #include "core/application.hpp"
+#include "vulkan_swapchain.hpp"
+#include "vulkan_texture_data.hpp"
 #include "vulkan_platform.hpp"
 #include "systems/material_system.hpp"
 #include "systems/resource_system.hpp"
@@ -593,7 +594,9 @@ bool VulkanAPI::ShaderAcquireInstanceResources(Shader *shader, TextureMap** maps
     // Установите для всех указателей текстур значения по умолчанию, пока они не будут назначены.
     for (u32 i = 0; i < InstanceTextureCount; ++i) {
         InstanceState.InstanceTexturesMaps[i] = maps[i];
-        InstanceState.InstanceTexturesMaps[i]->texture = DefaultTexture;
+        if (!maps[i]->texture) {
+            InstanceState.InstanceTexturesMaps[i]->texture = DefaultTexture;
+        }
     }
 
     // Выделите немного места в УБО — по шагу, а не по размеру.
@@ -1151,7 +1154,62 @@ bool VulkanAPI::EndRenderpass(u8 RenderpassID)
     return true;
 }
 
-bool VulkanAPI::Load(GeometryID *gid, u32 VertexSize, u32 VertexCount, const void* vertices, u32 IndexSize, u32 IndexCount, const void* indices)
+bool VulkanAPI::Load(const u8* pixels, Texture *texture)
+{
+    // Создание внутренних данных.
+    u32 ImageSize = texture->width * texture->height * texture->ChannelCount;
+
+    // ПРИМЕЧАНИЕ: Предполагается, что на канал приходится 8 бит.
+    VkFormat ImageFormat = VK_FORMAT_R8G8B8A8_UNORM;
+
+    // ПРИМЕЧАНИЕ. Здесь много предположений, для разных типов текстур потребуются разные параметры.
+    texture->Data = new VulkanTextureData (VulkanImage(
+        this,
+        VK_IMAGE_TYPE_2D,
+        texture->width,
+        texture->height,
+        ImageFormat,
+        VK_IMAGE_TILING_OPTIMAL,
+        VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+        true,
+        VK_IMAGE_ASPECT_COLOR_BIT));
+
+    VulkanCommandBuffer TempBuffer{};
+    const VkCommandPool& pool = VkAPI->Device.GraphicsCommandPool;
+    const VkQueue& queue = VkAPI->Device.GraphicsQueue;
+    VulkanCommandBufferAllocateAndBeginSingleUse(VkAPI, pool, &TempBuffer);
+
+    // Измените макет с того, какой он есть в данный момент, на оптимальный для получения данных.
+    Data->image.TransitionLayout(
+        VkAPI,
+        &TempBuffer,
+        ImageFormat,
+        VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+    // Скопируйте данные из буфера.
+    Data->image.CopyFromBuffer(VkAPI, staging.handle, &TempBuffer);
+
+    // Переход от оптимальной для приема данных компоновки к оптимальной для шейдера, доступной только для чтения.
+    Data->image.TransitionLayout(
+        VkAPI,
+        &TempBuffer,
+        ImageFormat,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+    VulkanCommandBufferEndSingleUse(VkAPI, pool, &TempBuffer, queue);
+
+    // Уничтожение промежуточного буфера
+    staging.Destroy(VkAPI);
+}
+
+void VulkanAPI::Unload(Texture *texture)
+{
+}
+
+bool VulkanAPI::Load(GeometryID *gid, u32 VertexSize, u32 VertexCount, const void *vertices, u32 IndexSize, u32 IndexCount, const void *indices)
 {
     if (!VertexCount || !vertices) {
         MERROR("VulkanAPI::LoadGeometry требует данных вершин, но они не были предоставлены. Количество вершин=%d, вершины=%p", VertexCount, vertices);
@@ -1532,9 +1590,9 @@ bool VulkanAPI::SetUniform(Shader *shader, ShaderUniform *uniform, const void *v
     VulkanShader* VkShader = shader->ShaderData;
     if (uniform->type == ShaderUniformType::Sampler) {
         if (uniform->scope == ShaderScope::Global) {
-            shader->GlobalTextureMaps[uniform->location]->texture = (Texture*)value;
+            shader->GlobalTextureMaps[uniform->location] = (TextureMap*)value;
         } else {
-            VkShader->InstanceStates[shader->BoundInstanceID].InstanceTexturesMaps[uniform->location]->texture = (Texture*)value;
+            VkShader->InstanceStates[shader->BoundInstanceID].InstanceTexturesMaps[uniform->location] = (TextureMap*)value;
         }
     } else {
         if (uniform->scope == ShaderScope::Local) {

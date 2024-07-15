@@ -2,7 +2,7 @@
 
 #include "vector2d.hpp"
 
-using FVec2   = Vector2D<f32>;
+using FVec2     = Vector2D<f32>;
 //using DVec2   = Vector2D<f64>;
 //using i8Vec2  = Vector2D<i8>;
 //using i16Vec2 = Vector2D<i16>;

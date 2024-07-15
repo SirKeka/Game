@@ -242,7 +242,8 @@ bool TextureSystem::CreateDefaultTexture()
             }
         }
     }
-    DefaultTexture.Create(DEFAULT_TEXTURE_NAME, TexDimension, TexDimension, 4, pixels, false, false, Renderer::GetRenderer());
+    DefaultTexture = Texture(DEFAULT_TEXTURE_NAME, TexDimension, TexDimension, 4, false, false);
+    Renderer::Load(pixels, DefaultTexture);
 
     // Вручную установите недействительную генерацию текстуры, поскольку это текстура по умолчанию.
     this->DefaultTexture.generation = INVALID::ID;
@@ -250,13 +251,15 @@ bool TextureSystem::CreateDefaultTexture()
     // Диффузная текстура
     u8 DiffPixels[16 * 16 * 4];
     MMemory::SetMemory(DiffPixels, 255, 16 * 16 * 4);
-    DefaultDiffuseTexture.Create(DEFAULT_DIFFUSE_TEXTURE_NAME, 16, 16, 4, DiffPixels, false, false, Renderer::GetRenderer());
+    DefaultDiffuseTexture = Texture(DEFAULT_DIFFUSE_TEXTURE_NAME, 16, 16, 4, false, false);
+    Renderer::Load(DiffPixels, &DefaultDiffuseTexture);
     DefaultDiffuseTexture.generation = INVALID::ID;
 
     // Зеркальная текстура.
     MTRACE("Создание зеркальной текстуры по умолчанию...");
     u8 SpecPixels[16 * 16 * 4]{}; // Карта спецификации по умолчанию черная (без бликов).
-    DefaultSpecularTexture.Create(DEFAULT_SPECULAR_TEXTURE_NAME, 16, 16, 4, SpecPixels, false, false, Renderer::GetRenderer());
+    DefaultSpecularTexture = Texture(DEFAULT_SPECULAR_TEXTURE_NAME, 16, 16, 4, false, false);
+    Renderer::Load(SpecPixels, &DefaultSpecularTexture);
     // Вручную установите недействительное поколение текстуры, поскольку это текстура по умолчанию.
     DefaultSpecularTexture.generation = INVALID::ID;
 
@@ -275,7 +278,8 @@ bool TextureSystem::CreateDefaultTexture()
             NormalPixels[IndexBpp + 3] = 255;
         }
     }
-    DefaultNormalTexture.Create(DEFAULT_NORMAL_TEXTURE_NAME, 16, 16, 4, NormalPixels, false, false, Renderer::GetRenderer());
+    DefaultNormalTexture = Texture(DEFAULT_NORMAL_TEXTURE_NAME, 16, 16, 4, false, false);
+    Renderer::Load(NormalPixels, &DefaultNormalTexture);
     DefaultNormalTexture.generation = INVALID::ID;
 
     return true;

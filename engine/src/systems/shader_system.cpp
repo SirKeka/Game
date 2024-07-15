@@ -2,6 +2,7 @@
 #include "memory/linear_allocator.hpp"
 #include "systems/texture_system.hpp"
 #include "renderer/renderer.hpp"
+#include "resources/texture_map.hpp"
 #include <new>
 
 ShaderSystem* ShaderSystem::state = nullptr;

@@ -1,4 +1,5 @@
 #pragma once
+#include "vulkan/vulkan.h"
 #include "texture.hpp"
 
 /// @brief Структура, которая отображает текстуру, использование и другие свойства.

@@ -5,10 +5,9 @@
 #include "math/vector4d.hpp"
 #include "math/vertex.hpp"
 #include "resources/shader.hpp"
-#include "resources/texture_map.hpp"
 
 struct StaticMeshData;
-// class Shader;
+class Texture;
 
 namespace RendererDebugViewMode {
     enum RendererDebugViewMode : u32 {
@@ -111,6 +110,33 @@ public:
     virtual bool EndRenderpass(u8 RenderpassID) = 0;
     virtual void DrawGeometry(const GeometryRenderData& data) = 0;
 
+    /// @brief Загружает данные текстуры в графический процессор.
+    /// @param texture указатель на текстуру которую нужно загрузить.
+    /// @param pixels Необработанные данные изображения, которые будут загружены в графический процессор.
+    /// @return true в случае успеха, иначе false.
+    virtual bool Load(const u8* pixels, Texture* texture) = 0;
+    /// @brief Загружает новую записываемую текстуру без записи в нее данных.
+    /// @param texture указатель на текстуру которую нужно загрузить.
+    /// @return true в случае успеха, иначе false.
+    virtual bool LoadTextureWriteable(Texture* texture) = 0;
+    /// @brief Изменяет размер текстуры. На этом уровне нет проверки возможности записи текстуры. 
+    /// Внутренние ресурсы уничтожаются и воссоздаются при новом разрешении. Данные потеряны, и их необходимо перезагрузить.
+    /// @param texture указатель на текстуру, размер которой нужно изменить.
+    /// @param NewWidth новая ширина в пикселях.
+    /// @param NewHeight новая высота в пикселях.
+    virtual void TextureResize(Texture* texture, u32 NewWidth, u32 NewHeight) = 0;
+    /// @brief Записывает данные в предоставленную текстуру. ПРИМЕЧАНИЕ: На этом уровне это может быть как записываемая, 
+    /// так и незаписываемая текстура, поскольку она также обрабатывает начальную загрузку текстуры. Сама система текстур 
+    /// должна отвечать за блокировку запросов на запись в недоступные для записи текстуры.
+    /// @param texture указатель на текстуру, в которую нужно записать.
+    /// @param offset смещение в байтах от начала записываемых данных.
+    /// @param size количество байтов, которые необходимо записать.
+    /// @param pixels необработанные данные изображения, которые необходимо записать.
+    virtual void TextureWriteData(Texture* texture, u32 offset, u32 size, const u8* pixels) = 0;
+    /// @brief Выгружает данные текстуры из графического процессора.
+    /// @param texture указатель на текстуру которую нужно выгрузить.
+    virtual void Unload(Texture* texture) = 0;
+
     virtual bool Load(struct GeometryID* gid, u32 VertexSize, u32 VertexCount, const void* vertices, u32 IndexSize, u32 IndexCount, const void* indices) = 0;
     virtual void Unload(struct GeometryID* gid) = 0;
     // Методы относящиеся к шейдерам---------------------------------------------------------------------------------------------------------------------------------------------
@@ -148,7 +174,7 @@ public:
     /// @param shader указатель на шейдер, к которому нужно применить данные экземпляра.
     /// @param OutInstanceID ссылка для хранения нового идентификатора экземпляра.
     /// @return true в случае успеха, иначе false.
-    virtual bool ShaderAcquireInstanceResources(Shader* shader, TextureMap** maps, u32& OutInstanceID) = 0;
+    virtual bool ShaderAcquireInstanceResources(Shader* shader, struct TextureMap** maps, u32& OutInstanceID) = 0;
     /// @brief Освобождает внутренние ресурсы уровня экземпляра для данного идентификатора экземпляра.------------------------------------------------
     /// @param shader указатель на шейдер, из которого необходимо освободить ресурсы.
     /// @param InstanceID идентификатор экземпляра, ресурсы которого должны быть освобождены.
