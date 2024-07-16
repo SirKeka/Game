@@ -1,7 +1,7 @@
 #include "texture.hpp"
-#include "renderer/vulkan/vulkan_api.hpp"
-#include "renderer/vulkan/vulkan_utils.hpp"
-#include "renderer/vulkan/vulkan_texture_data.hpp"
+//#include "renderer/vulkan/vulkan_api.hpp"
+//#include "renderer/vulkan/vulkan_utils.hpp"
+#include "renderer/vulkan/vulkan_image.hpp"
 
 /*Texture::Texture(const char* name, i32 width, i32 height, i32 ChannelCount, const u8 *pixels, bool HasTransparency, bool IsWriteable) 
 {
@@ -81,7 +81,9 @@ constexpr Texture::Texture(const char *name, i32 width, i32 height, i32 ChannelC
 
 Texture::~Texture()
 {
-    delete Data;
+    if(Data) {
+        delete Data;
+    }
     Data = nullptr;
 }
 
@@ -94,7 +96,7 @@ Texture::Texture(const Texture &t)
     flags(t.flags), 
     generation(t.generation), 
     name(), 
-    Data(new VulkanTextureData(*t.Data)) { 
+    Data(new VulkanImage(*t.Data)) { 
     MString::nCopy(this->name, t.name, TEXTURE_NAME_MAX_LENGTH); 
 }
 
@@ -107,7 +109,7 @@ Texture &Texture::operator=(const Texture &t)
     flags = t.flags;
     generation = t.generation;
     MString::nCopy(this->name, t.name, TEXTURE_NAME_MAX_LENGTH);
-    Data = new VulkanTextureData(*t.Data);
+    Data = new VulkanImage(*t.Data);
     return *this;
 }
 
@@ -145,18 +147,6 @@ void Texture::Create(const char* name, i32 width, i32 height, i32 ChannelCount, 
     this->generation++;
 }
 
-void Texture::Destroy(VulkanAPI *VkAPI)
-{
-    vkDeviceWaitIdle(VkAPI->Device.LogicalDevice);
-    //vulkan_texture_data* Data = (vulkan_texture_data*)texture->internal_data;
-    if(Data) {
-        Data->image.Destroy(VkAPI);
-        MMemory::ZeroMem(&Data->image, sizeof(VulkanImage));
-
-    //MMemory::Free(Data, sizeof(VulkanTextureData), MemoryTag::Texture);
-    }
-}
-
 Texture::operator bool() const
 {
     if (id != 0 && width  != 0 && height != 0 && ChannelCount != 0 && flags != 0 && generation != 0 && Data != nullptr) {
@@ -170,7 +160,17 @@ void *Texture::operator new(u64 size)
     return MMemory::Allocate(size, MemoryTag::Texture);
 }
 
+void *Texture::operator new[](u64 size)
+{
+    return MMemory::Allocate(size, MemoryTag::Renderer);
+}
+
 void Texture::operator delete(void *ptr, u64 size)
 {
     MMemory::Free(ptr, size, MemoryTag::Texture);
+}
+
+void Texture::operator delete[](void *ptr, u64 size)
+{
+    MMemory::Free(ptr, size, MemoryTag::Renderer);
 }

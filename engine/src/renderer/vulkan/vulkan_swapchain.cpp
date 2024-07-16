@@ -12,13 +12,6 @@ void VulkanSwapchainCreate(VulkanAPI *VkAPI, u32 width, u32 height, VulkanSwapch
     create(VkAPI, width, height, OutSwapchain);
 }
 
-void VulkanSwapchainRecreate(VulkanAPI *VkAPI, u32 width, u32 height, VulkanSwapchain *swapchain)
-{
-    // Уничтожте старую и создайте новую.
-    destroy(VkAPI, swapchain);
-    create(VkAPI, width, height, swapchain);
-}
-
 void VulkanSwapchainDestroy(VulkanAPI *VkAPI, VulkanSwapchain *swapchain)
 {
     destroy(VkAPI, swapchain);
@@ -82,7 +75,30 @@ void VulkanSwapchainPresent(
     VkAPI->CurrentFrame = (VkAPI->CurrentFrame + 1) % swapchain->MaxFramesInFlight;
 }
 
-void create(VulkanAPI *VkAPI, u32 width, u32 height, VulkanSwapchain *swapchain)
+void destroy(VulkanAPI *VkAPI, VulkanSwapchain *swapchain)
+{
+    vkDeviceWaitIdle(VkAPI->Device.LogicalDevice);
+    swapchain->DepthAttachment->Destroy(VkAPI);
+
+    // ЗАДАЧА: после выхода из функции main() попадаем в фаил exe_comon.inl который перенаправляет снова в этот цикл
+    // Уничтожайте только представления, а не изображения, поскольку они принадлежат цепочке обмена и, следовательно, уничтожаются, когда это происходит.
+    for (u32 i = 0; i < swapchain->ImageCount; ++i) {
+        vkDestroyImageView(VkAPI->Device.LogicalDevice, swapchain->views[i], VkAPI->allocator);
+    }
+
+    vkDestroySwapchainKHR(VkAPI->Device.LogicalDevice, swapchain->handle, VkAPI->allocator);
+}
+
+VulkanSwapchain::VulkanSwapchain(VulkanAPI *VkAPI, u32 width, u32 height)
+{
+    create
+}
+
+VulkanSwapchain::~VulkanSwapchain()
+{
+}
+
+void VulkanSwapchain::Create(VulkanAPI *VkAPI, u32 width, u32 height)
 {
     VkExtent2D SwapchainExtent = {width, height};
 
@@ -93,14 +109,14 @@ void create(VulkanAPI *VkAPI, u32 width, u32 height, VulkanSwapchain *swapchain)
         // Предпочтительные форматы
         if (format.format == VK_FORMAT_B8G8R8A8_UNORM &&
             format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
-            swapchain->ImageFormat = format;
+            ImageFormat = format;
             found = true;
             break;
         }
     }
 
     if (!found) {
-        swapchain->ImageFormat = VkAPI->Device.SwapchainSupport.formats[0];
+        ImageFormat = VkAPI->Device.SwapchainSupport.formats[0];
     }
 
     // При высокой скорости рендера кадров выбирается самый последний
@@ -135,14 +151,14 @@ void create(VulkanAPI *VkAPI, u32 width, u32 height, VulkanSwapchain *swapchain)
         ImageCount = VkAPI->Device.SwapchainSupport.capabilities.maxImageCount;
     }
 
-    swapchain->MaxFramesInFlight = ImageCount - 1;  // Тройная буферизация
+    MaxFramesInFlight = ImageCount - 1;  // Тройная буферизация
 
     // Информация о создании Swapchain
     VkSwapchainCreateInfoKHR SwapchainCreateInfo = {VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR};
     SwapchainCreateInfo.surface = VkAPI->surface;
     SwapchainCreateInfo.minImageCount = ImageCount;
-    SwapchainCreateInfo.imageFormat = swapchain->ImageFormat.format;
-    SwapchainCreateInfo.imageColorSpace = swapchain->ImageFormat.colorSpace;
+    SwapchainCreateInfo.imageFormat = ImageFormat.format;
+    SwapchainCreateInfo.imageColorSpace = ImageFormat.colorSpace;
     SwapchainCreateInfo.imageExtent = SwapchainExtent;
     SwapchainCreateInfo.imageArrayLayers = 1;
     SwapchainCreateInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
@@ -167,14 +183,54 @@ void create(VulkanAPI *VkAPI, u32 width, u32 height, VulkanSwapchain *swapchain)
     SwapchainCreateInfo.clipped = VK_TRUE;
     SwapchainCreateInfo.oldSwapchain = 0;
 
-    VK_CHECK(vkCreateSwapchainKHR(VkAPI->Device.LogicalDevice, &SwapchainCreateInfo, VkAPI->allocator, &swapchain->handle));
+    VK_CHECK(vkCreateSwapchainKHR(VkAPI->Device.LogicalDevice, &SwapchainCreateInfo, VkAPI->allocator, &handle));
 
     // Начните с нулевого индекса кадра.
     VkAPI->CurrentFrame = 0;
 
     // Изображения
-    swapchain->ImageCount = 0;
-    VK_CHECK(vkGetSwapchainImagesKHR(VkAPI->Device.LogicalDevice, swapchain->handle, &swapchain->ImageCount, 0));
+    ImageCount = 0;
+    VK_CHECK(vkGetSwapchainImagesKHR(VkAPI->Device.LogicalDevice, handle, &ImageCount, 0));
+
+    if (!RenderTextures) {
+        RenderTextures = new Texture*[ImageCount]; //(Texture**)kallocate(sizeof(Texture*) * ImageCount, MEMORY_TAG_RENDERER);
+        // При создании массива внутренние объекты текстуры также еще не созданы.
+        for (u32 i = 0; i < ImageCount; ++i) {
+            void* internal_data = kallocate(sizeof(vulkan_image), MEMORY_TAG_TEXTURE);
+
+            char TexName[38] = "__internal_vulkan_swapchain_image_0__";
+            TexName[34] = '0' + (char)i;
+
+            RenderTextures[i] = texture_system_wrap_internal(
+                TexName,
+                swapchain_extent.width,
+                swapchain_extent.height,
+                4,
+                false,
+                true,
+                false,
+                internal_data);
+            if (!RenderTextures[i]) {
+                MFATAL("Не удалось создать новую текстуру изображения цепочки обмена!");
+                return;
+            }
+        }
+    } else {
+        for (u32 i = 0; i < ImageCount; ++i) {
+            // Просто обновите размеры.
+            texture_system_resize(RenderTextures[i], swapchain_extent.width, swapchain_extent.height, false);
+        }
+    }
+    VkImage swapchain_images[32];
+    VK_CHECK(vkGetSwapchainImagesKHR(context->device.logical_device, swapchain->handle, &swapchain->image_count, swapchain_images));
+    for (u32 i = 0; i < swapchain->image_count; ++i) {
+        // Обновите внутренний образ для каждого.
+        vulkan_image* image = (vulkan_image*)swapchain->render_textures[i]->internal_data;
+        image->handle = swapchain_images[i];
+        image->width = swapchain_extent.width;
+        image->height = swapchain_extent.height;
+    }
+
     if (!swapchain->images) {
         swapchain->images = MMemory::TAllocate<VkImage>(MemoryTag::Renderer, swapchain->ImageCount);
     }
@@ -219,16 +275,9 @@ void create(VulkanAPI *VkAPI, u32 width, u32 height, VulkanSwapchain *swapchain)
     MINFO("Swapchain успешно создан.");
 }
 
-void destroy(VulkanAPI *VkAPI, VulkanSwapchain *swapchain)
+void VulkanSwapchain::VulkanSwapchainRecreate(VulkanAPI *VkAPI, u32 width, u32 height)
 {
-    vkDeviceWaitIdle(VkAPI->Device.LogicalDevice);
-    swapchain->DepthAttachment->Destroy(VkAPI);
-
-    // ЗАДАЧА: после выхода из функции main() попадаем в фаил exe_comon.inl который перенаправляет снова в этот цикл
-    // Уничтожайте только представления, а не изображения, поскольку они принадлежат цепочке обмена и, следовательно, уничтожаются, когда это происходит.
-    for (u32 i = 0; i < swapchain->ImageCount; ++i) {
-        vkDestroyImageView(VkAPI->Device.LogicalDevice, swapchain->views[i], VkAPI->allocator);
-    }
-
-    vkDestroySwapchainKHR(VkAPI->Device.LogicalDevice, swapchain->handle, VkAPI->allocator);
+    // Уничтожте старую и создайте новую.
+    destroy(VkAPI, swapchain);
+    create(VkAPI, width, height, swapchain);
 }

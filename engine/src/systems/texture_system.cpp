@@ -33,10 +33,10 @@ TextureSystem::~TextureSystem()
         for (u32 i = 0; i < this->MaxTextureCount; ++i) {
             Texture* t = &this->RegisteredTextures[i];
             if (t->generation != INVALID::ID) {
-                t->Destroy(Renderer::GetRenderer());
+                Renderer::Unload(t);
             }
         }
-        DefaultTexture.Destroy(Renderer::GetRenderer());
+        Renderer::Unload(&DefaultTexture);
     }
 }
 
@@ -150,7 +150,7 @@ void TextureSystem::Release(const char* name)
             Texture* t = &RegisteredTextures[ref.handle];
 
             // Уничтожить/ сбросить текстуру.
-            t->Destroy(Renderer::GetRenderer());
+            Renderer::Unload(t);
 
             // Сброс ссылки.
             ref.handle = INVALID::ID;
@@ -243,7 +243,7 @@ bool TextureSystem::CreateDefaultTexture()
         }
     }
     DefaultTexture = Texture(DEFAULT_TEXTURE_NAME, TexDimension, TexDimension, 4, false, false);
-    Renderer::Load(pixels, DefaultTexture);
+    Renderer::Load(pixels, &DefaultTexture);
 
     // Вручную установите недействительную генерацию текстуры, поскольку это текстура по умолчанию.
     this->DefaultTexture.generation = INVALID::ID;
@@ -287,9 +287,9 @@ bool TextureSystem::CreateDefaultTexture()
 
 void TextureSystem::DestroyDefaultTexture()
 {
-    DefaultTexture.Destroy(Renderer::GetRenderer());
-    DefaultSpecularTexture.Destroy(Renderer::GetRenderer());
-    DefaultNormalTexture.Destroy(Renderer::GetRenderer());
+    Renderer::Unload(&DefaultTexture);
+    Renderer::Unload(&DefaultSpecularTexture);
+    Renderer::Unload(&DefaultNormalTexture);
 }
 
 bool TextureSystem::LoadTexture(const char* TextureName, Texture *t)
@@ -320,7 +320,7 @@ bool TextureSystem::LoadTexture(const char* TextureName, Texture *t)
     // Texture old = *t;
     if (t->Data) {
         // Уничтожьте старую текстуру.
-        t->Destroy(Renderer::GetRenderer());
+        Renderer::Unload(t);
     }
 
     // Получите внутренние ресурсы текстур и загрузите их в графический процессор.

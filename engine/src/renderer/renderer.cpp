@@ -225,12 +225,17 @@ bool Renderer::DrawFrame(RenderPacket &packet)
 
 bool Renderer::Load(const u8* pixels, Texture *texture)
 {
-    return ptrRenderer->Load(const u8* pixels, texture);
+    return ptrRenderer->Load(pixels, texture);
+}
+
+void Renderer::LoadTextureWriteable(Texture *texture)
+{
+    ptrRenderer->LoadTextureWriteable(texture);
 }
 
 void Renderer::Unload(Texture *texture)
 {
-    ptrRenderer->Unload(texture)
+    ptrRenderer->Unload(texture);
 }
 
 bool Renderer::Load(GeometryID *gid, u32 VertexSize, u32 VertexCount, const void *vertices, u32 IndexSize, u32 IndexCount, const void *indices)

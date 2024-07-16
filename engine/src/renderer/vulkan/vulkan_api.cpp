@@ -1,7 +1,7 @@
 #include "vulkan_api.hpp"
 #include "core/application.hpp"
 #include "vulkan_swapchain.hpp"
-#include "vulkan_texture_data.hpp"
+#include "vulkan_image.hpp"
 #include "vulkan_platform.hpp"
 #include "systems/material_system.hpp"
 #include "systems/resource_system.hpp"
@@ -507,7 +507,7 @@ bool VulkanAPI::ShaderApplyInstance(Shader *shader, bool NeedsUpdate)
                 TextureMap* map = VkShader->InstanceStates[shader->BoundInstanceID].InstanceTexturesMaps[i];
                 Texture* t = map->texture;
                 ImageInfos[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-                ImageInfos[i].imageView = t->Data->image.view;
+                ImageInfos[i].imageView = t->Data->view;
                 ImageInfos[i].sampler = map->sampler;
     
                 // ЗАДАЧА: измените состояние дескриптора, чтобы справиться с этим должным образом.
@@ -591,9 +591,9 @@ bool VulkanAPI::ShaderAcquireInstanceResources(Shader *shader, TextureMap** maps
     // Очистите память всего массива, даже если она не вся использована.
     InstanceState.InstanceTexturesMaps = MMemory::TAllocate<TextureMap*>(MemoryTag::Array, shader->InstanceTextureCount);
     Texture* DefaultTexture = TextureSystem::Instance()->GetDefaultTexture();
+    MMemory::CopyMem(InstanceState.InstanceTexturesMaps, maps, sizeof(TextureMap*) * shader->InstanceTextureCount);
     // Установите для всех указателей текстур значения по умолчанию, пока они не будут назначены.
     for (u32 i = 0; i < InstanceTextureCount; ++i) {
-        InstanceState.InstanceTexturesMaps[i] = maps[i];
         if (!maps[i]->texture) {
             InstanceState.InstanceTexturesMaps[i]->texture = DefaultTexture;
         }
@@ -1163,7 +1163,7 @@ bool VulkanAPI::Load(const u8* pixels, Texture *texture)
     VkFormat ImageFormat = VK_FORMAT_R8G8B8A8_UNORM;
 
     // ПРИМЕЧАНИЕ. Здесь много предположений, для разных типов текстур потребуются разные параметры.
-    texture->Data = new VulkanTextureData (VulkanImage(
+    texture->Data = new VulkanImage(
         this,
         VK_IMAGE_TYPE_2D,
         texture->width,
@@ -1173,40 +1173,121 @@ bool VulkanAPI::Load(const u8* pixels, Texture *texture)
         VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
         true,
-        VK_IMAGE_ASPECT_COLOR_BIT));
+        VK_IMAGE_ASPECT_COLOR_BIT);
 
-    VulkanCommandBuffer TempBuffer{};
-    const VkCommandPool& pool = VkAPI->Device.GraphicsCommandPool;
-    const VkQueue& queue = VkAPI->Device.GraphicsQueue;
-    VulkanCommandBufferAllocateAndBeginSingleUse(VkAPI, pool, &TempBuffer);
+    TextureWriteData(texture, 0, ImageSize, pixels);
+    texture->generation++;
+}
 
-    // Измените макет с того, какой он есть в данный момент, на оптимальный для получения данных.
-    Data->image.TransitionLayout(
-        VkAPI,
-        &TempBuffer,
+VkFormat ChannelCountToFormat(u8 ChannelCount, VkFormat DefaultFormat) {
+    switch (ChannelCount) {
+        case 1:
+            return VK_FORMAT_R8_UNORM;
+        case 2:
+            return VK_FORMAT_R8G8_UNORM;
+        case 3:
+            return VK_FORMAT_R8G8B8_UNORM;
+        case 4:
+            return VK_FORMAT_R8G8B8A8_UNORM;
+        default:
+            return DefaultFormat;
+    }
+}
+
+void VulkanAPI::LoadTextureWriteable(Texture *texture)
+{
+    VkFormat ImageFormat = ChannelCountToFormat(texture->ChannelCount, VK_FORMAT_R8G8B8A8_UNORM);
+    // ЗАДАЧА: здесь много предположений, разные типы текстур потребуют разных опций.
+    texture->Data = new VulkanImage(
+        this,
+        VK_IMAGE_TYPE_2D,
+        texture->width,
+        texture->height,
         ImageFormat,
-        VK_IMAGE_LAYOUT_UNDEFINED,
-        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+        VK_IMAGE_TILING_OPTIMAL,
+        VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+        true,
+        VK_IMAGE_ASPECT_COLOR_BIT);
+    texture->generation++;
+}
+
+void VulkanAPI::TextureResize(Texture *texture, u32 NewWidth, u32 NewHeight)
+{
+    if (texture && texture->Data) {
+        // Изменение размера на самом деле просто разрушает старое изображение и создает новое. 
+        // Данные не сохраняются, поскольку не существует надежного способа сопоставить старые 
+        // данные с новыми, поскольку объем данных различается.
+        texture->Data->Destroy(this);
+
+        VkFormat ImageFormat = ChannelCountToFormat(texture->ChannelCount, VK_FORMAT_R8G8B8A8_UNORM);
+
+        // ЗАДАЧА: здесь много предположений, разные типы текстур потребуют разных опций.
+        texture->Data->Create(
+        this,
+        VK_IMAGE_TYPE_2D,
+        NewWidth,
+        NewHeight,
+        ImageFormat,
+        VK_IMAGE_TILING_OPTIMAL,
+        VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+        true,
+        VK_IMAGE_ASPECT_COLOR_BIT);
+
+        texture->generation++;
+    }
+}
+
+void VulkanAPI::TextureWriteData(Texture *texture, u32 offset, u32 size, const u8 *pixels)
+{
+    VkDeviceSize ImageSize = texture->width * texture->height * texture->ChannelCount;
+
+    VkFormat ImageFormat = ChannelCountToFormat(texture->ChannelCount, VK_FORMAT_R8G8B8A8_UNORM);
+
+    // Создайте промежуточный буфер и загрузите в него данные.
+    VkMemoryPropertyFlags MemoryPropFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+    VulkanBuffer staging{this, ImageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, MemoryPropFlags, true, false};
+
+    staging.LoadData(this, 0, ImageSize, 0, pixels);
+
+    VulkanCommandBuffer TempBuffer;
+    const VkCommandPool& pool = Device.GraphicsCommandPool;
+    const VkQueue& queue = Device.GraphicsQueue;
+    VulkanCommandBufferAllocateAndBeginSingleUse(this, pool, &TempBuffer);
+
+    // Переведите макет от текущего к оптимальному для получения данных.
+    texture->Data->TransitionLayout(this, &TempBuffer, ImageFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
     // Скопируйте данные из буфера.
-    Data->image.CopyFromBuffer(VkAPI, staging.handle, &TempBuffer);
+    texture->Data->CopyFromBuffer(this, staging.handle, &TempBuffer);
 
-    // Переход от оптимальной для приема данных компоновки к оптимальной для шейдера, доступной только для чтения.
-    Data->image.TransitionLayout(
-        VkAPI,
-        &TempBuffer,
-        ImageFormat,
-        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    // Переход от оптимального для приема данных к оптимальному макету, доступному только для чтения шейдеров.
+    texture->Data->TransitionLayout(
+        this, 
+        &TempBuffer, 
+        ImageFormat, 
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+    );
 
-    VulkanCommandBufferEndSingleUse(VkAPI, pool, &TempBuffer, queue);
+    VulkanCommandBufferEndSingleUse(this, pool, &TempBuffer, queue);
 
-    // Уничтожение промежуточного буфера
-    staging.Destroy(VkAPI);
+    staging.Destroy(this);
+
+    texture->generation++;
 }
 
 void VulkanAPI::Unload(Texture *texture)
 {
+    vkDeviceWaitIdle(Device.LogicalDevice);
+
+    if (texture->Data) {
+        texture->Data->Destroy(this);
+
+        delete texture->Data;
+    }
+    //kzero_memory(texture, sizeof(struct texture));
 }
 
 bool VulkanAPI::Load(GeometryID *gid, u32 VertexSize, u32 VertexCount, const void *vertices, u32 IndexSize, u32 IndexCount, const void *indices)

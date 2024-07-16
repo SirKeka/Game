@@ -4,26 +4,12 @@
 
 #include "core/asserts.hpp"
 #include "vulkan_device.hpp"
+#include "vulkan_swapchain.hpp"
 #include "vulkan_renderpass.hpp"
 #include "vulkan_buffer.hpp"
 #include "vulkan_shader.hpp"
 #include "resources/geometry.hpp"
 #include "math/vertex.hpp"
-
-struct VulkanSwapchain 
-{
-    VkSurfaceFormatKHR ImageFormat;
-    u8 MaxFramesInFlight;
-    VkSwapchainKHR handle;
-    u32 ImageCount;
-    VkImage* images;
-    VkImageView* views;
-
-    class VulkanImage* DepthAttachment;
-
-    // Буферы кадров, используемые для экранного рендеринга, по три на кадр.
-    VkFramebuffer framebuffers[3];
-};
 
 // Проверяет возвращаемое значение данного выражения на соответствие VK_SUCCESS.
 #define VK_CHECK(expr)           \
@@ -89,7 +75,7 @@ public:
     /// @brief Загружает новую записываемую текстуру без записи в нее данных.
     /// @param texture указатель на текстуру которую нужно загрузить.
     /// @return true в случае успеха, иначе false.
-    bool LoadTextureWriteable(Texture* texture) override;
+    void LoadTextureWriteable(Texture* texture) override;
     /// @brief Изменяет размер текстуры. На этом уровне нет проверки возможности записи текстуры. 
     /// Внутренние ресурсы уничтожаются и воссоздаются при новом разрешении. Данные потеряны, и их необходимо перезагрузить.
     /// @param texture указатель на текстуру, размер которой нужно изменить.

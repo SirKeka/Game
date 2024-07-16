@@ -26,8 +26,18 @@ public:
         VkMemoryPropertyFlags MemoryFlags,
         b32 CreateView,
         VkImageAspectFlags ViewAspectFlags);
-    ~VulkanImage() = default;
+    ~VulkanImage();
 
+    void Create(VulkanAPI* VkAPI,
+        VkImageType ImageType,
+        u32 width,
+        u32 height,
+        VkFormat format,
+        VkImageTiling tiling,
+        VkImageUsageFlags usage,
+        VkMemoryPropertyFlags MemoryFlags,
+        b32 CreateView,
+        VkImageAspectFlags ViewAspectFlags);
     void ViewCreate(VulkanAPI* VkAPI, VkFormat format, VkImageAspectFlags AspectFlags);
 
         //Преобразует предоставленное изображение из OldLayout в NewLayout.
@@ -46,4 +56,7 @@ public:
     void CopyFromBuffer(VulkanAPI* VkAPI, VkBuffer buffer, VulkanCommandBuffer* CommandBuffer);
 
     void Destroy(VulkanAPI* VkAPI);
+
+    void* operator new(u64 size);
+    void operator delete(void* ptr, u64 size);
 };

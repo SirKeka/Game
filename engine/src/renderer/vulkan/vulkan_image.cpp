@@ -14,6 +14,20 @@ VulkanImage::VulkanImage(
     b32 CreateView, 
     VkImageAspectFlags ViewAspectFlags)
 {
+    Create(VkAPI, ImageType, width, height, format, tiling, usage, MemoryFlags, CreateView, ViewAspectFlags);
+}
+
+VulkanImage::~VulkanImage()
+{
+    handle = 0;
+    memory = 0;
+    view = 0;
+    width = 0;
+    height = 0;
+}
+
+void VulkanImage::Create(VulkanAPI *VkAPI, VkImageType ImageType, u32 width, u32 height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags MemoryFlags, b32 CreateView, VkImageAspectFlags ViewAspectFlags)
+{
     // Копировать параметры
     this->width = width;
     this->height = height;
@@ -179,3 +193,12 @@ void VulkanImage::Destroy(VulkanAPI *VkAPI)
     }
 }
 
+void *VulkanImage::operator new(u64 size)
+{
+    return MMemory::Allocate(size, MemoryTag::Texture);
+}
+
+void VulkanImage::operator delete(void *ptr, u64 size)
+{
+    MMemory::Free(ptr, size, MemoryTag::Texture);
+}

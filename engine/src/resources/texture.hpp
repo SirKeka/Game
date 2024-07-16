@@ -48,7 +48,7 @@ public:
     char name[TEXTURE_NAME_MAX_LENGTH]; // Имя текстуры.
 
     // ЗАДАЧА: Пока нет реализации DirectX храним указатель текстуры Vulkan.
-    struct VulkanTextureData* Data;            // Необработанные данные текстуры (пиксели).
+    class VulkanImage* Data;            // Необработанные данные текстуры (пиксели).
 public:
     constexpr Texture() 
     : id(INVALID::ID), width(0), height(0), ChannelCount(0), flags(), generation(INVALID::ID), name(), Data(nullptr) {}
@@ -76,10 +76,11 @@ public:
         i32 ChannelCount, 
         const u8* pixels, 
         TextureFlagBits flags);
-    void Destroy(VulkanAPI* VkAPI);
 
 
     explicit operator bool() const;
     void* operator new(u64 size);
+    void* operator new[](u64 size);
     void operator delete(void* ptr, u64 size);
+    void operator delete[](void* ptr, u64 size);
 };
