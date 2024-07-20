@@ -4,10 +4,10 @@
 #include "containers/mstring.hpp"
 #include "platform/filesystem.hpp"
 
-#define LOG_WARN_ENABLED 1
-#define LOG_INFO_ENABLED 1
-#define LOG_DEBUG_ENABLED 1
-#define LOG_TRACE_ENABLED 1
+constexpr int LOG_WARN_ENABLED  = 1;
+constexpr int LOG_INFO_ENABLED  = 1;
+constexpr int LOG_DEBUG_ENABLED = 1;
+constexpr int LOG_TRACE_ENABLED = 1;
 
 // Отключите ведение журнала отладки и трассировки для сборок выпуска.
 #if MRELEASE == 1

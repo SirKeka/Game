@@ -590,7 +590,7 @@ bool VulkanAPI::ShaderAcquireInstanceResources(Shader *shader, TextureMap** maps
     const u32& InstanceTextureCount = VkShader->config.DescriptorSets[DESC_SET_INDEX_INSTANCE].bindings[BINDING_INDEX_SAMPLER].descriptorCount;
     // Очистите память всего массива, даже если она не вся использована.
     InstanceState.InstanceTexturesMaps = MMemory::TAllocate<TextureMap*>(MemoryTag::Array, shader->InstanceTextureCount);
-    Texture* DefaultTexture = TextureSystem::Instance()->GetDefaultTexture();
+    Texture* DefaultTexture = TextureSystem::Instance()->GetDefaultTexture(ETexture::Default);
     MMemory::CopyMem(InstanceState.InstanceTexturesMaps, maps, sizeof(TextureMap*) * shader->InstanceTextureCount);
     // Установите для всех указателей текстур значения по умолчанию, пока они не будут назначены.
     for (u32 i = 0; i < InstanceTextureCount; ++i) {
@@ -684,14 +684,14 @@ VulkanAPI::VulkanAPI(MWindow *window, const char *ApplicationName)
     CachedFramebufferWidth = 0;
     CachedFramebufferHeight = 0;
 
-    // Настройка экземпляра Vulkan.
+    // Общая структура информации о приложении.
     VkApplicationInfo AppInfo = {VK_STRUCTURE_TYPE_APPLICATION_INFO};
     AppInfo.apiVersion = VK_API_VERSION_1_2;
     AppInfo.pApplicationName = ApplicationName;
     AppInfo.applicationVersion = VK_MAKE_API_VERSION(0, 1, 0, 0);
     AppInfo.pEngineName = "Moon Engine";
     AppInfo.engineVersion = VK_MAKE_API_VERSION(0, 1, 0, 0); 
-
+    // Создание экземпляра.
     VkInstanceCreateInfo CreateInfo = {VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO};
     CreateInfo.pApplicationInfo = &AppInfo;
 
@@ -794,12 +794,7 @@ VulkanAPI::VulkanAPI(MWindow *window, const char *ApplicationName)
     }
 
     // Swapchain
-    VulkanSwapchainCreate(
-        this,
-        FramebufferWidth,
-        FramebufferHeight,
-        &swapchain
-    );
+    swapchain.Create(this, FramebufferWidth, FramebufferHeight);
 
     // World renderpass 
     MainRenderpass.Create(
@@ -919,7 +914,7 @@ VulkanAPI::~VulkanAPI()
     MainRenderpass.Destroy(this);
 
     // Цепочка подкачки (Swapchain)
-    VulkanSwapchainDestroy(this, &swapchain);
+    swapchain.Destroy(this);
 
     MDEBUG("Уничтожение устройства Вулкан...");
     Device.Destroy(this);
@@ -997,9 +992,8 @@ bool VulkanAPI::BeginFrame(f32 Deltatime)
 
     // Получаем следующее изображение из цепочки обмена. Передайте семафор, который должен сигнализировать, когда это завершится.
     // Этот же семафор позже будет ожидаться при отправке в очередь, чтобы убедиться, что это изображение доступно.
-    if (!VulkanSwapchainAcquireNextImageIndex(
+    if (!swapchain.AcquireNextImageIndex(
             this,
-            &swapchain,
             UINT64_MAX,
             ImageAvailableSemaphores[CurrentFrame],
             0,
@@ -1093,9 +1087,8 @@ bool VulkanAPI::EndFrame(f32 DeltaTime)
     // Отправка в конечную очередь
 
     // Верните изображение обратно в swapchain.
-    VulkanSwapchainPresent(
+    swapchain.Present(
         this,
-        &swapchain,
         Device.GraphicsQueue,
         Device.PresentQueue,
         QueueCompleteSemaphores[CurrentFrame],
@@ -1154,7 +1147,7 @@ bool VulkanAPI::EndRenderpass(u8 RenderpassID)
     return true;
 }
 
-bool VulkanAPI::Load(const u8* pixels, Texture *texture)
+void VulkanAPI::Load(const u8* pixels, Texture *texture)
 {
     // Создание внутренних данных.
     u32 ImageSize = texture->width * texture->height * texture->ChannelCount;
@@ -1464,7 +1457,8 @@ void VulkanAPI::RegenerateFramebuffers()
 {
     u32& ImageCount = swapchain.ImageCount;
     for (u32 i = 0; i < ImageCount; ++i) {
-        VkImageView WorldAttachments[2] = {swapchain.views[i], swapchain.DepthAttachment->view};
+        VulkanImage& image = *swapchain.RenderTextures[i]->Data;
+        VkImageView WorldAttachments[2] = {image.view, swapchain.DepthAttachment->view};
         VkFramebufferCreateInfo FramebufferCreateInfo = {VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
         FramebufferCreateInfo.renderPass = MainRenderpass.handle;
         FramebufferCreateInfo.attachmentCount = 2;
@@ -1476,7 +1470,7 @@ void VulkanAPI::RegenerateFramebuffers()
         VK_CHECK(vkCreateFramebuffer(Device.LogicalDevice, &FramebufferCreateInfo, allocator, &WorldFramebuffers[i]));
 
         // Кадровые буферы Swapchain (проход пользовательского интерфейса). Выводы в образы swapchain
-        VkImageView UI_Attachments[1] = {swapchain.views[i]};
+        VkImageView UI_Attachments[1] = {image.view};
         VkFramebufferCreateInfo scFramebufferCreateInfo = {VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
         scFramebufferCreateInfo.renderPass = UI_Renderpass.handle;
         scFramebufferCreateInfo.attachmentCount = 1;
@@ -1622,11 +1616,7 @@ bool VulkanAPI::RecreateSwapchain()
         &Device.SwapchainSupport);
     Device.DetectDepthFormat(&Device);
 
-    VulkanSwapchainRecreate(
-        this,
-        CachedFramebufferWidth,
-        CachedFramebufferHeight,
-        &swapchain);
+    swapchain.Recreate(this, CachedFramebufferWidth, CachedFramebufferHeight);
 
     // Синхронизируйте размер фреймбуфера с кэшированными размерами.
     FramebufferWidth = CachedFramebufferWidth;

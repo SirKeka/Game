@@ -69,7 +69,7 @@ public:
     /// @param texture указатель на текстуру которую нужно загрузить.
     /// @param pixels Необработанные данные изображения, которые будут загружены в графический процессор.
     /// @return true в случае успеха, иначе false.
-    static bool Load(const u8* pixels, Texture* texture);
+    static void Load(const u8* pixels, Texture* texture);
     /// @brief Загружает новую записываемую текстуру без записи в нее данных.
     /// @param texture указатель на текстуру которую нужно загрузить.
     /// @return true в случае успеха, иначе false.

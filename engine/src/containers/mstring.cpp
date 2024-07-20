@@ -425,6 +425,59 @@ MString& MString::IntToString(i64 n)
     return *this;
 }
 
+i64 MString::StringToI64(const char *s)
+{
+    i64 num = 0;
+    bool sign = false;
+    if (*s == '-') {
+        sign = true;
+        s++;
+    }
+    while (s) {
+        num += *s - '0';
+        num *= 10;
+    }
+    return sign ? num / 10 * -1 : num/10;
+}
+
+f32 MString::StringToF32(const char *s)
+{
+    f32 exponent = 0.F;
+	f32 mantissa = 0.F;
+	u32 factor = 10;
+	bool sign = false;
+	if (*s == '-') {
+		sign = true;
+		s++;
+	}
+	else {
+		exponent += *s - '0';
+		s++;
+	}
+	while (s) {
+		if (*s != '.' && *s != ',' && !mantissa) {
+			exponent *= 10;
+			exponent += *s - '0';
+			s++;
+		}
+		else if (*s == '.' || *s == ',') {
+			s++;
+			mantissa += *s - '0';
+			mantissa *= 10;
+			factor *= 10;
+			s++;
+		}
+		else {
+			mantissa += *s - '0';
+			mantissa *= 10;
+			factor *= 10;
+			s++;
+		}
+
+	}
+	return sign ? exponent + (mantissa / factor) * -1 : exponent + (mantissa / factor);
+}
+
 void MString::Copy(char *dest, const char *source)
 {
     if(dest && source) {

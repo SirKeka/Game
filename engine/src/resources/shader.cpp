@@ -211,7 +211,7 @@ bool Shader::UniformAdd(const MString &UniformName, u32 size, ShaderUniformType 
         PushConstantSize += range.size;
     }
 
-    if (!UniformLookup.Set(UniformName, &entry.index)) {
+    if (!UniformLookup.Set(UniformName, entry.index)) {
         MERROR("Не удалось добавить униформу.");
         return false;
     }

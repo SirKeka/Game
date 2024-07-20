@@ -14,9 +14,9 @@ MaterialSystem::MaterialSystem(u32 MaxMaterialCount, Material* RegisteredMateria
 MaxMaterialCount(MaxMaterialCount),
 DefaultMaterial(DEFAULT_MATERIAL_NAME, 
                 Vector4D<f32>::One(), 
-                TextureMap(TextureSystem::Instance()->GetDefaultTexture(), TextureUse::MapDiffuse), 
-                TextureMap(TextureSystem::Instance()->GetDefaultSpecularTexture(), TextureUse::MapSpecular), 
-                TextureMap(TextureSystem::Instance()->GetDefaultNormalTexture(), TextureUse::MapNormal)), 
+                TextureMap(TextureSystem::Instance()->GetDefaultTexture(ETexture::Diffuse), TextureUse::MapDiffuse), 
+                TextureMap(TextureSystem::Instance()->GetDefaultTexture(ETexture::Specular), TextureUse::MapSpecular), 
+                TextureMap(TextureSystem::Instance()->GetDefaultTexture(ETexture::Normal), TextureUse::MapNormal)), 
 RegisteredMaterials(new(RegisteredMaterials) Material[MaxMaterialCount]()),
 RegisteredMaterialTable(MaxMaterialCount, false, HashTableBlock, true, MaterialReference(0, INVALID::ID, false)), 
 MaterialShaderID(INVALID::ID), 
@@ -172,7 +172,7 @@ Material *MaterialSystem::Acquire(const MaterialConfig &config)
         }
 
         // Обновите запись.
-        RegisteredMaterialTable.Set(config.name, &ref);
+        RegisteredMaterialTable.Set(config.name, ref);
         return &this->RegisteredMaterials[ref.handle];
     }
 
@@ -209,7 +209,7 @@ void MaterialSystem::Release(const char *name)
         }
 
         // Обновите запись.
-        RegisteredMaterialTable.Set(name, &ref);
+        RegisteredMaterialTable.Set(name, ref);
     } else {
         MERROR("MaterialSystem::Release не удалось выпустить материал '%s'.", name);
     }
@@ -330,12 +330,12 @@ bool MaterialSystem::LoadMaterial(const MaterialConfig &config, Material *m)
         m->DiffuseMap.texture = TextureSystem::Instance()->Acquire(config.DiffuseMapName, true);
         if (!m->DiffuseMap.texture) {
             MWARN("Невозможно загрузить текстуру '%s' для материала '%s', используется значение по умолчанию.", config.DiffuseMapName, m->name);
-            m->DiffuseMap.texture = TextureSystem::Instance()->GetDefaultTexture();
+            m->DiffuseMap.texture = TextureSystem::Instance()->GetDefaultTexture(ETexture::Diffuse);
         }
     } else {
         // ПРИМЕЧАНИЕ. Устанавливается только для ясности, поскольку вызов MMemory::ZeroMem выше уже делает это.
         m->DiffuseMap.use = TextureUse::MapDiffuse;
-        m->DiffuseMap.texture = TextureSystem::Instance()->GetDefaultTexture();
+        m->DiffuseMap.texture = TextureSystem::Instance()->GetDefaultTexture(ETexture::Diffuse);
     }
 
     // Карта блеска
@@ -350,12 +350,12 @@ bool MaterialSystem::LoadMaterial(const MaterialConfig &config, Material *m)
         m->SpecularMap.texture = TextureSystem::Instance()->Acquire(config.SpecularMapName, true);
         if (!m->SpecularMap.texture) {
             MWARN("Невозможно загрузить текстуру «%s» для материала «%s», используется значение по умолчанию.", config.SpecularMapName, m->name);
-            m->SpecularMap.texture = TextureSystem::Instance()->GetDefaultSpecularTexture();
+            m->SpecularMap.texture = TextureSystem::Instance()->GetDefaultTexture(ETexture::Specular);
         }
     } else {
         // ПРИМЕЧАНИЕ: Устанавливается только для ясности, поскольку вызов MMemory::Zero() выше уже делает это.
         m->SpecularMap.use = TextureUse::MapSpecular;
-        m->SpecularMap.texture = TextureSystem::Instance()->GetDefaultSpecularTexture();
+        m->SpecularMap.texture = TextureSystem::Instance()->GetDefaultTexture(ETexture::Specular);
     }
 
     // Карта нормалей
@@ -370,12 +370,12 @@ bool MaterialSystem::LoadMaterial(const MaterialConfig &config, Material *m)
         m->NormalMap.texture = TextureSystem::Instance()->Acquire(config.NormalMapName, true);
         if (!m->NormalMap.texture) {
             MWARN("Невозможно загрузить текстуру нормалей «%s» для материала «%s», используется значение по умолчанию.", config.NormalMapName, m->name);
-            m->SpecularMap.texture = TextureSystem::Instance()->GetDefaultNormalTexture();
+            m->SpecularMap.texture = TextureSystem::Instance()->GetDefaultTexture(ETexture::Normal);
         }
     } else {
         // Использование по умолчанию.
         m->NormalMap.use = TextureUse::MapNormal;
-        m->NormalMap.texture = TextureSystem::Instance()->GetDefaultNormalTexture();
+        m->NormalMap.texture = TextureSystem::Instance()->GetDefaultTexture(ETexture::Normal);
     }
     
     // ЗАДАЧА: другие карты

@@ -223,7 +223,7 @@ bool Renderer::DrawFrame(RenderPacket &packet)
     return false;
 }
 
-bool Renderer::Load(const u8* pixels, Texture *texture)
+void Renderer::Load(const u8* pixels, Texture *texture)
 {
     return ptrRenderer->Load(pixels, texture);
 }
@@ -231,6 +231,16 @@ bool Renderer::Load(const u8* pixels, Texture *texture)
 void Renderer::LoadTextureWriteable(Texture *texture)
 {
     ptrRenderer->LoadTextureWriteable(texture);
+}
+
+void Renderer::TextureResize(Texture *texture, u32 NewWidth, u32 NewHeight)
+{
+    ptrRenderer->TextureResize(texture, NewWidth, NewHeight);
+}
+
+void Renderer::TextureWriteData(Texture *texture, u32 offset, u32 size, const u8 *pixels)
+{
+    ptrRenderer->TextureWriteData(texture, offset, size, pixels);
 }
 
 void Renderer::Unload(Texture *texture)

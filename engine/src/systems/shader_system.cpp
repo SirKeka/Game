@@ -136,7 +136,7 @@ bool ShaderSystem::Create(const ShaderConfig *config)
     }
 
     // На этом этапе создание прошло успешно, поэтому сохраните идентификатор шейдера в хеш-таблице, чтобы позже можно было найти его по имени.
-    if (!state->lookup.Set(config->name, &OutShader->id)) {
+    if (!state->lookup.Set(config->name, OutShader->id)) {
         // Черт возьми, мы зашли так далеко... Что ж, удалите шейдер и перезапустите.
         Renderer::Unload(OutShader);
         return false;
@@ -291,7 +291,7 @@ bool ShaderSystem::AddSampler(Shader *shader, const ShaderUniformConfig &config)
             return false;
         }
 
-        DefaultMap->texture = TextureSystem::Instance()->GetDefaultTexture();
+        DefaultMap->texture = TextureSystem::Instance()->GetDefaultTexture(ETexture::Default);
         shader->GlobalTextureMaps.PushBack(DefaultMap);
     } else {
         // В противном случае это происходит на уровне экземпляра, поэтому подсчитывайте, сколько ресурсов необходимо добавить во время получения ресурса.

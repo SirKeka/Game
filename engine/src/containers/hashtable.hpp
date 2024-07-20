@@ -78,8 +78,8 @@ public:
     /// @param name имя записи, которую нужно задать. Обязательно.
     /// @param value значение, которое необходимо установить. Обязательно.
     /// @return true или false, если передается нулевой указатель.
-    bool Set(const MString& name, T* value) {
-        if (!name || !value) {
+    bool Set(const MString& name, T& value) {
+        if (!name) {
             MERROR("«HashTable::Set» требует существования имени и значения.");
             return false;
         }
@@ -89,7 +89,7 @@ public:
         }
 
         u64 hash = Name(name, ElementCount);
-        memory[hash] = *value;
+        memory[hash] = value;
         // MMemory::CopyMem(memory + hash, value, sizeof(T));
         return true;
     }

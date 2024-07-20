@@ -1,12 +1,13 @@
 #pragma once
 
-//#include "vulkan_api.hpp"
+#include "defines.hpp"
+#include <vulkan/vulkan.h>
 
 class VulkanAPI;
 
 class VulkanSwapchain
 {
-private:
+public:
     VkSurfaceFormatKHR ImageFormat;     // Формат изображения цепочки обмена.
     u8 MaxFramesInFlight;               // Максимальное количество «изображений в полете» (изображений, которые одновременно визуализируются). Обычно на одно меньше общего количества доступных изображений.
     VkSwapchainKHR handle;              // Внутренний дескриптор цепочки обмена.
@@ -17,23 +18,23 @@ private:
 
     VkFramebuffer framebuffers[3];      // Буферы кадров, используемые для экранного рендеринга, по три на кадр.
 public:
+    constexpr VulkanSwapchain() : ImageFormat(), MaxFramesInFlight(), handle(), ImageCount(), RenderTextures(nullptr), DepthAttachment(nullptr), framebuffers() {}
     VulkanSwapchain(VulkanAPI* VkAPI, u32 width, u32 height);
     ~VulkanSwapchain();
 
     void Create(VulkanAPI* VkAPI, u32 width, u32 height);
+    void Destroy(VulkanAPI* VkAPI);
 
-    void VulkanSwapchainRecreate(VulkanAPI* VkAPI, u32 width, u32 height);
+    void Recreate(VulkanAPI* VkAPI, u32 width, u32 height);
 
-    void VulkanSwapchainDestroy(VulkanAPI* VkAPI);
-
-    bool VulkanSwapchainAcquireNextImageIndex(
+    bool AcquireNextImageIndex(
         VulkanAPI* VkAPI,
         u64 TimeoutNs,
         VkSemaphore ImageAvailableSemaphore,
         VkFence fence,
         u32* OutImageIndex);
 
-    void VulkanSwapchainPresent(
+    void Present(
         VulkanAPI* VkAPI,
         VkQueue GraphicsQueue,
         VkQueue PresentQueue,

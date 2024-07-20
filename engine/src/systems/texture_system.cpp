@@ -20,9 +20,6 @@ TextureSystem::TextureSystem(u32 MaxTextureCount, Texture* RegisteredTextures, T
 : 
     MaxTextureCount(MaxTextureCount),
     DefaultTexture(), 
-    DefaultDiffuseTexture(),
-    DefaultSpecularTexture(),
-    DefaultNormalTexture(),
     RegisteredTextures(new(RegisteredTextures) Texture[MaxTextureCount]()), 
     RegisteredTextureTable(MaxTextureCount, false, HashtableBlock, true, TextureReference(0, INVALID::ID, false)) {}
 
@@ -36,7 +33,7 @@ TextureSystem::~TextureSystem()
                 Renderer::Unload(t);
             }
         }
-        Renderer::Unload(&DefaultTexture);
+        DestroyDefaultTexture();
     }
 }
 
@@ -73,137 +70,125 @@ void TextureSystem::Shutdown()
 Texture *TextureSystem::Acquire(const char* name, bool AutoRelease)
 {
     // Вернуть текстуру по умолчанию, но предупредить об этом, поскольку она должна быть возвращена через GetDefaultTexture();
+    // ЗАДАЧА: Проверить наличие других названий текстур по умолчанию?
     if (MString::Equali(name, DEFAULT_TEXTURE_NAME)) {
         MWARN("TextureSystem::Acquire: вызывает текстуру по умолчанию. Используйте TextureSystem::GetDefaultTexture для текстуры «по умолчанию».");
-        return &DefaultTexture;
+        return GetDefaultTexture(ETexture::Default);
     }
 
-    TextureReference ref;
-    if (RegisteredTextureTable.Get(name, &ref)) {
-        // Это можно изменить только при первой загрузке текстуры.
-        if (ref.ReferenceCount == 0) {
-            ref.AutoRelease = AutoRelease;
-        }
-        ref.ReferenceCount++;
-        if (ref.handle == INVALID::ID) {
-            // Это означает, что здесь нет текстуры. Сначала найдите свободный индекс.
-            u32 count = MaxTextureCount;
-            Texture* t = nullptr;
-            for (u32 i = 0; i < count; ++i) {
-                if (RegisteredTextures[i].id == INVALID::ID) {
-                    // Свободный слот найден. Используйте его индекс в качестве дескриптора.
-                    ref.handle = i;
-                    t = &RegisteredTextures[i];
-                    break;
-                }
-            }
-
-            // Убедитесь, что пустой слот действительно найден.
-            if (!t || ref.handle == INVALID::ID) {
-                MFATAL("TextureSystem::Acquire — Система текстур больше не может содержать текстуры. Настройте конфигурацию, чтобы разрешить больше.");
-                return nullptr;
-            }
-
-            // Создайте новую текстуру.
-            if (!LoadTexture(name, t)) {
-                MERROR("Не удалось загрузить текстуру '%s'.", name);
-                return nullptr;
-            }
-
-            // Также используйте дескриптор в качестве идентификатора текстуры.
-            t->id = ref.handle;
-            MTRACE("Текстура '%s' еще не существует. Создано, и RefCount теперь равен %i.", name, ref.ReferenceCount);
-        } else {
-            MTRACE("Текстура '%s' уже существует, RefCount увеличен до %i.", name, ref.ReferenceCount);
-        }
-
-        // Обновите запись.
-        RegisteredTextureTable.Set(name, &ref);
-        return &RegisteredTextures[ref.handle];
+    u32 id = INVALID::ID;
+    // ПРИМЕЧАНИЕ: Увеличивает счетчик ссылок или создает новую запись.
+    if (!ProcessTextureReference(name, 1, AutoRelease, false, id)) {
+        MERROR("TextSystem::Acquire не удалось получить новый идентификатор текстуры.");
+        return nullptr;
     }
-
-    // ПРИМЕЧАНИЕ. Это произойдет только в том случае, если что-то пойдет не так с состоянием.
-    MERROR("TextureSystem::Acquire не удалось получить текстуру '%s'. Нулевой указатель будет возвращен.", name);
-    return nullptr;
+    return &state->RegisteredTextures[id];
 }
 
-void TextureSystem::Release(const char* name)
+Texture *TextureSystem::AquireWriteable(const char *name, u32 width, u32 height, u8 ChannelCount, bool HasTransparency)
+{
+    u32 id = INVALID::ID;
+    // ПРИМЕЧАНИЕ. Обернутые текстуры никогда не выпускаются автоматически, поскольку это означает, 
+    // что их ресурсы создаются и управляются где-то во внутренних компонентах средства рендеринга.
+    if (!ProcessTextureReference(name, 1, false, true, id)) {
+        MERROR("TextureSystem::AquireWriteable не удалось получить новый идентификатор текстуры.");
+        return nullptr;
+    }
+
+    Texture& texture = state->RegisteredTextures[id];
+    TextureFlagBits flags = 0;
+    flags |= HasTransparency ? TextureFlag::HasTransparency : 0;
+    flags |= TextureFlag::IsWriteable;
+    texture = Texture(id, width, height, ChannelCount, flags, name, nullptr);
+    Renderer::LoadTextureWriteable(&texture);
+    return &texture;
+}
+
+void TextureSystem::Release(const char *name)
 {
     // Игнорируйте запросы на выпуск текстуры по умолчанию.
+    // ЗАДАЧА: Проверить и другие имена текстур по умолчанию?
     if (MString::Equali(name, DEFAULT_TEXTURE_NAME)) {
         return;
     }
-    TextureReference ref;
-    if (RegisteredTextureTable.Get(name, &ref)) {
-        if (ref.ReferenceCount == 0) {
-            MWARN("Попробовал выпустить несуществующую текстуру: '%s'", name);
-            return;
+    u32 id = INVALID::ID;
+    // ПРИМЕЧАНИЕ: Уменьшите счетчик ссылок.
+    if (!ProcessTextureReference(name, -1, false, false, id)) {
+        MERROR("TextureSystem::Release не удалось должным образом освободить текстуру «%s».", name);
+    }
+}
+/*
+template<typename T>
+Texture *TextureSystem::WrapInternal(const char *name, u32 width, u32 height, u8 ChannelCount, bool HasTransparency, bool IsWriteable, bool RegisterTexture, T *InternalData)
+{
+    u32 id = INVALID::ID;
+    Texture* texture = nullptr;
+    if (RegisterTexture) {
+        // ПРИМЕЧАНИЕ: Обернутые текстуры никогда не выпускаются автоматически, поскольку это означает, 
+        // что их ресурсы создаются и управляются где-то во внутренних компонентах средства рендеринга.
+        if (!ProcessTextureReference(name, 1, false, true, id)) {
+            MERROR("ТекстурнойСистеме::WrapInternal не удалось получить новый идентификатор текстуры.");
+            return nullptr;
         }
-
-        // Возьмите копию имени, так как оно будет уничтожено при уничтожении 
-        // (поскольку имя передается как указатель на фактическое имя текстуры).
-        MString NameCopy; // { TEXTURE_NAME_MAX_LENGTH };
-        NameCopy = name;
-
-        ref.ReferenceCount--;
-        if (ref.ReferenceCount == 0 && ref.AutoRelease) {
-            Texture* t = &RegisteredTextures[ref.handle];
-
-            // Уничтожить/ сбросить текстуру.
-            Renderer::Unload(t);
-
-            // Сброс ссылки.
-            ref.handle = INVALID::ID;
-            ref.AutoRelease = false;
-            MTRACE("Released texture '%s'., Текстура выгружена, поскольку количество ссылок = 0 и AutoRelease = true.", NameCopy.c_str());
-        } else {
-            MTRACE("Released texture '%s', теперь счетчик ссылок равен '%i' (AutoRelease=%s).", NameCopy.c_str(), ref.ReferenceCount, ref.AutoRelease ? "true" : "false");
-        }
-
-        // Обновите запись.
-        RegisteredTextureTable.Set(name, &ref);
+        texture = &state->RegisteredTextures[id];
     } else {
-        MERROR("TextureSystem::Release не удалось освободить текстуру '%s'.", name);
-    }
+        texture = new Texture();
+        MTRACE("TextureSystem::WrapInternal создала текстуру «%s», но не зарегистрировалась, что привело к выделению. Освобождение этой памяти зависит от вызывающего абонента.", name);
+    } 
+    TextureFlagBits flag = 0;
+    flag |= HasTransparency ? TextureFlag::HasTransparency : 0;
+    flag |= IsWriteable ? TextureFlag::IsWriteable : 0;
+    flag |= TextureFlag::IsWrapped;
+    *texture = Texture(id, width, height, ChannelCount, flag, name, InternalData);
+    return texture;
 }
 
-Texture *TextureSystem::GetDefaultTexture()
+template<typename T>
+bool TextureSystem::SetInternal(Texture *texture, T *InternalData)
+{
+    if (texture) {
+        texture->Data = InternalData;
+        texture->generation++;
+        return true;
+    }
+    return false;
+}
+*/
+bool TextureSystem::Resize(Texture *texture, u32 width, u32 height, bool RegenerateInternalData)
+{
+    if (texture) {
+        if (!(texture->flags & TextureFlag::IsWriteable)) {
+            MWARN("TextureSystem::Resize не следует вызывать для текстур, которые не доступны для записи.");
+            return false;
+        }
+        texture->width = width;
+        texture->height = height;
+        // Разрешите это только для записываемых текстур, которые не обернуты. 
+        // Обернутые текстуры могут вызывать TextureSystem::SetInternal, 
+        // а затем вызывать эту функцию, чтобы получить вышеуказанные обновления параметров и обновление генерации.
+        if (!(texture->flags & TextureFlag::IsWrapped) && RegenerateInternalData) {
+            // Восстановить внутренние детали до нового размера.
+            Renderer::TextureResize(texture, width, height);
+            return false;
+        }
+        texture->generation++;
+        return true;
+    }
+    return false;
+}
+
+bool TextureSystem::WriteData(Texture *texture, u32 offset, u32 size, void *data)
+{
+    return false;
+}
+
+Texture *TextureSystem::GetDefaultTexture(ETextureFlag texture)
 {
     if (state) {
-        return &DefaultTexture;
+        return &DefaultTexture[texture];
     }
 
     MERROR("TextureSystem::GetDefaultTexture вызывается перед инициализацией системы текстур! Возвратился нулевой указатель.");
-    return nullptr;
-}
-
-Texture *TextureSystem::GetDefaultDiffuseTexture()
-{
-    if (state) {
-        return &DefaultDiffuseTexture;
-    }
-
-    MERROR("TextureSystem::GetDefaultTexture вызывается перед инициализацией системы текстур! Возвратился нулевой указатель.");
-    return nullptr;
-}
-
-Texture *TextureSystem::GetDefaultSpecularTexture()
-{
-    if (state) {
-        return &DefaultSpecularTexture;
-    }
-
-    MERROR("TextureSystem::GetDefaultSpecularTexture вызывается перед инициализацией системы текстур! Возвратился нулевой указатель.");
-    return nullptr;
-}
-
-Texture *TextureSystem::GetDefaultNormalTexture()
-{
-    if (state) {
-        return &DefaultNormalTexture;
-    }
-
-    MERROR("TextureSystem::GetDefaultNormalTexture вызывается перед инициализацией системы текстур! Возвратился нулевой указатель.");
     return nullptr;
 }
 
@@ -242,26 +227,26 @@ bool TextureSystem::CreateDefaultTexture()
             }
         }
     }
-    DefaultTexture = Texture(DEFAULT_TEXTURE_NAME, TexDimension, TexDimension, 4, false, false);
-    Renderer::Load(pixels, &DefaultTexture);
+    DefaultTexture[ETexture::Default] = Texture(DEFAULT_TEXTURE_NAME, TexDimension, TexDimension, 4, 0);
+    Renderer::Load(pixels, &DefaultTexture[ETexture::Default]);
 
     // Вручную установите недействительную генерацию текстуры, поскольку это текстура по умолчанию.
-    this->DefaultTexture.generation = INVALID::ID;
+    DefaultTexture[ETexture::Default].generation = INVALID::ID;
 
     // Диффузная текстура
     u8 DiffPixels[16 * 16 * 4];
     MMemory::SetMemory(DiffPixels, 255, 16 * 16 * 4);
-    DefaultDiffuseTexture = Texture(DEFAULT_DIFFUSE_TEXTURE_NAME, 16, 16, 4, false, false);
-    Renderer::Load(DiffPixels, &DefaultDiffuseTexture);
-    DefaultDiffuseTexture.generation = INVALID::ID;
+    DefaultTexture[ETexture::Diffuse] = Texture(DEFAULT_DIFFUSE_TEXTURE_NAME, 16, 16, 4, 0);
+    Renderer::Load(DiffPixels, &DefaultTexture[ETexture::Diffuse]);
+    DefaultTexture[ETexture::Diffuse].generation = INVALID::ID;
 
     // Зеркальная текстура.
     MTRACE("Создание зеркальной текстуры по умолчанию...");
     u8 SpecPixels[16 * 16 * 4]{}; // Карта спецификации по умолчанию черная (без бликов).
-    DefaultSpecularTexture = Texture(DEFAULT_SPECULAR_TEXTURE_NAME, 16, 16, 4, false, false);
-    Renderer::Load(SpecPixels, &DefaultSpecularTexture);
+    DefaultTexture[ETexture::Specular] = Texture(DEFAULT_SPECULAR_TEXTURE_NAME, 16, 16, 4, 0);
+    Renderer::Load(SpecPixels, &DefaultTexture[ETexture::Specular]);
     // Вручную установите недействительное поколение текстуры, поскольку это текстура по умолчанию.
-    DefaultSpecularTexture.generation = INVALID::ID;
+    DefaultTexture[ETexture::Specular].generation = INVALID::ID;
 
     // Текстура нормалей.
     MTRACE("Создание текстуры нормалей по умолчанию...");
@@ -278,18 +263,18 @@ bool TextureSystem::CreateDefaultTexture()
             NormalPixels[IndexBpp + 3] = 255;
         }
     }
-    DefaultNormalTexture = Texture(DEFAULT_NORMAL_TEXTURE_NAME, 16, 16, 4, false, false);
-    Renderer::Load(NormalPixels, &DefaultNormalTexture);
-    DefaultNormalTexture.generation = INVALID::ID;
+    DefaultTexture[ETexture::Normal] = Texture(DEFAULT_NORMAL_TEXTURE_NAME, 16, 16, 4, 0);
+    Renderer::Load(NormalPixels, &DefaultTexture[ETexture::Normal]);
+    DefaultTexture[ETexture::Normal].generation = INVALID::ID;
 
     return true;
 }
 
 void TextureSystem::DestroyDefaultTexture()
 {
-    Renderer::Unload(&DefaultTexture);
-    Renderer::Unload(&DefaultSpecularTexture);
-    Renderer::Unload(&DefaultNormalTexture);
+    for (auto &&texture : DefaultTexture) {
+            Renderer::Unload(&texture);
+        }
 }
 
 bool TextureSystem::LoadTexture(const char* TextureName, Texture *t)
@@ -324,7 +309,13 @@ bool TextureSystem::LoadTexture(const char* TextureName, Texture *t)
     }
 
     // Получите внутренние ресурсы текстур и загрузите их в графический процессор.
-    t->Create(TextureName, ResourceData->width, ResourceData->height, ResourceData->ChannelCount, ResourceData->pixels, HasTransparency, false, Renderer::GetRenderer());
+    *t = Texture(
+        TextureName, 
+        ResourceData->width, 
+        ResourceData->height, 
+        ResourceData->ChannelCount, 
+        HasTransparency ? TextureFlag::HasTransparency : 0);
+    Renderer::Load(ResourceData->pixels, t);
 
     if (CurrentGeneration == INVALID::ID) {
         t->generation = 0;
@@ -336,4 +327,106 @@ bool TextureSystem::LoadTexture(const char* TextureName, Texture *t)
     ResourceSystem::Instance()->Unload(ImgResource);
     return true;
 
+}
+
+bool TextureSystem::ProcessTextureReference(const char *name, i8 ReferenceDiff, bool AutoRelease, bool SkipLoad, u32 &OutTextureId)
+{
+    OutTextureId = INVALID::ID;
+    if (state) {
+        TextureReference ref;
+        if (RegisteredTextureTable.Get(name, &ref)) {
+            // Если счетчик ссылок начинается с нуля, может быть верно одно из двух. 
+            // Если ссылки увеличиваются, это означает, что запись новая. 
+            // Если уменьшается, текстура не существует, если она не высвобождается автоматически.
+            if (ref.ReferenceCount == 0 && ReferenceDiff > 0) {
+                if (ReferenceDiff > 0) {
+                    // Это можно изменить только при первой загрузке текстуры.
+                    ref.AutoRelease = AutoRelease;
+                } else {
+                    if (ref.AutoRelease) {
+                        MWARN("Попробовал выпустить несуществующую текстуру: '%s'", name);
+                        return false;
+                    } else {
+                        MWARN("Пытался выпустить текстуру с autorelease=false, но ссылок уже было 0.");
+                        // По-прежнему считайте это успехом, но предупредите об этом.
+                        return true;
+                    }
+                }
+            }
+
+            ref.ReferenceCount += ReferenceDiff;
+
+            // Возьмите копию имени, поскольку в случае уничтожения оно будет уничтожено (поскольку имя передается как указатель на фактическое имя текстуры).
+            char NameCopy[TEXTURE_NAME_MAX_LENGTH];
+            MString::nCopy(NameCopy, name, TEXTURE_NAME_MAX_LENGTH);
+
+            // Если уменьшается, это означает освобождение.
+            if (ReferenceDiff < 0) {
+                // Проверьте, достиг ли счетчик ссылок 0. Если да, и ссылка настроена на автоматическое освобождение, уничтожьте текстуру.
+                if (ref.ReferenceCount == 0 && ref.AutoRelease) {
+                    Texture* texture = &state->RegisteredTextures[ref.handle];
+
+                    // Уничтожить/сбросить текстуру.
+                    texture->Destroy();
+
+                    // Сбросьте ссылку.
+                    ref.handle = INVALID::ID;
+                    ref.AutoRelease = false;
+                    MTRACE("Выпущена текстура «%s». Текстура выгружена, поскольку количество ссылок = 0 и AutoRelease = true.", NameCopy);
+                } else {
+                    MTRACE("Выпущена текстура «%s», теперь счетчик ссылок равен «%i» (AutoRelease=%s).", NameCopy, ref.ReferenceCount, ref.AutoRelease ? "true" : "false");
+                }
+
+            } else {
+                // Увеличение. Проверьте, новый дескриптор или нет.
+                if (ref.handle == INVALID::ID) {
+                    // Это означает, что здесь нет текстуры. Сначала найдите свободный индекс.
+                    u32 count = state->MaxTextureCount;
+
+                    for (u32 i = 0; i < count; ++i) {
+                        if (state->RegisteredTextures[i].id == INVALID::ID) {
+                            // Свободный слот найден. Используйте его индекс в качестве дескриптора.
+                            ref.handle = i;
+                            OutTextureId = i;
+                            break;
+                        }
+                    }
+
+                    // Пустой слот не найден, блейте об этом и загружайтесь.
+                    if (OutTextureId == INVALID::ID) {
+                        MFATAL("TextureSystem::ProcessTextureReference — система текстур больше не может содержать текстуры. Настройте конфигурацию, чтобы разрешить больше.");
+                        return false;
+                    } else {
+                        Texture* texture = &state->RegisteredTextures[ref.handle];
+                        // Создайте новую текстуру.
+                        if (SkipLoad) {
+                            MTRACE("Загрузка текстуры «%s» пропущена. Это ожидаемое поведение.");
+                        } else {
+                            if (!LoadTexture(name, texture)) {
+                                OutTextureId = INVALID::ID;
+                                MERROR("Не удалось загрузить текстуру «%s».", name);
+                                return false;
+                            }
+                            texture->id = ref.handle;
+                        }
+                        MTRACE("Текстура «%s» еще не существует. Создано, и ref_count теперь равен %i.", name, ref.ReferenceCount);
+                    }
+                } else {
+                    OutTextureId = ref.handle;
+                    MTRACE("Текстура «%s» уже существует, ref_count увеличен до %i.", name, ref.ReferenceCount);
+                }
+            }
+
+            // В любом случае обновите запись.
+            RegisteredTextureTable.Set(NameCopy, ref);
+            return true;
+        }
+
+        // ПРИМЕЧАНИЕ. Это произойдет только в том случае, если с состоянием что-то пойдет не так.
+        MERROR("TextureSystem::ProcessTextureReference не удалось получить идентификатор для имени «%s». INVALID_ID возвращен.", name);
+        return false;
+    }
+
+    MERROR("TextureSystem::ProcessTextureReference вызывается перед инициализацией системы текстур.");
+    return false;
 }

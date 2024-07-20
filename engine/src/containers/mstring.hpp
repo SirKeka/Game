@@ -156,26 +156,17 @@ public:
     /// @param va_list cписок переменных аргументов.
     /// @return размер записываемых данных.
     static i32 FormatV(char* dest, const char* format, char* va_list);
+
     MString& IntToString(i64 n);
-    template<typename T>
-    T StringToNum(const char* s) {
-        T num = 0;
-        u16 factor = 10;
-	    u32 length = Length(s);
-	    for (u32 i = 1; i <= length; i++) {
-	    	if (i == 1) {
-	    		num += s[length - i] - '0';
-	    	}
-	    	if (i > 1) {
-	    		num += (s[length - i] - '0') * factor;
-	    		factor *= 10;
-	    	}
-	    	/*if (!s++) {
-	    		break;
-	    	}*/
-	    }
-        return num;
-    }
+
+    /// @brief Считывает из строки число и преобразует его в целочисленное 64 битное число.
+    /// @param s строка, которую нужно считать.
+    /// @return целочисленное 64 битное число считанное из строки.
+    i64 StringToI64(const char* s);
+    /// @brief 
+    /// @param s 
+    /// @return 
+    f32 StringToF32(const char* s);
 
     static void Copy(char* dest, const char* source);
     static void Copy(char* dest, const MString& source);
