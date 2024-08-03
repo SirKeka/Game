@@ -1,5 +1,5 @@
 #include "vulkan_api.hpp"
-#include "core/application.hpp"
+//#include "core/application.hpp"
 #include "vulkan_swapchain.hpp"
 #include "vulkan_image.hpp"
 #include "vulkan_platform.hpp"
@@ -50,11 +50,8 @@ const u32 DESC_SET_INDEX_INSTANCE = 1;  // Индекс набора дескр�
 const u32 BINDING_INDEX_UBO       = 0;  // Индекс привязки УБО.
 const u32 BINDING_INDEX_SAMPLER   = 1;  // Индекс привязки сэмплера изображения.
 
-bool VulkanAPI::Load(Shader *shader, u8 RenderpassID, u8 StageCount, const DArray<MString>& StageFilenames, const ShaderStage *stages)
+bool VulkanAPI::Load(Shader *shader, Renderpass* renderpass, u8 StageCount, const DArray<MString>& StageFilenames, const ShaderStage *stages)
 {
-    // ЗАДАЧА: динамические проходы рендеринга
-    VulkanRenderpass* renderpass = RenderpassID == 1 ? &MainRenderpass : &UI_Renderpass;
-
     // Этапы перевода
     VkShaderStageFlags VkStages[VulkanShaderConstants::MaxStages];
     for (u8 i = 0; i < StageCount; ++i) {
@@ -87,7 +84,7 @@ bool VulkanAPI::Load(Shader *shader, u8 RenderpassID, u8 StageCount, const DArra
     shader->ShaderData = new VulkanShader();
     VulkanShader* OutShader = shader->ShaderData;
 
-    OutShader->renderpass = renderpass;
+    OutShader->renderpass = reinterpret_cast<VulkanRenderpass*>(renderpass->InternalData);
 
     // Создайте конфигурацию.
     OutShader->config.MaxDescriptorSetCount = MaxDescriptorAllocateCount;
@@ -123,12 +120,6 @@ bool VulkanAPI::Load(Shader *shader, u8 RenderpassID, u8 StageCount, const DArra
         MString::nCopy(OutShader->config.stages[OutShader->config.StageCount].FileName, StageFilenames[i], 255);
         OutShader->config.StageCount++;
     }
-
-    // Обнуляем массивы и подсчитываем.
-    //MMemory::ZeroMem(OutShader->config.DescriptorSets, sizeof(VulkanDescriptorSetConfig) * 2);
-
-    // Массив атрибутов.
-    //MMemory::ZeroMem(OutShader->config.attributes, sizeof(VkVertexInputAttributeDescription) * VulkanShaderConstants::MaxAttributes);
 
     // На данный момент шейдеры будут иметь только эти два типа пулов дескрипторов.
     OutShader->config.PoolSizes[0] = VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1024};          // HACK: максимальное количество наборов дескрипторов ubo.
@@ -304,7 +295,6 @@ bool VulkanAPI::ShaderInitialize(Shader *shader)
     }
 
     // Создайте макеты наборов дескрипторов.
-    //MMemory::ZeroMem(VkShader->DescriptorSetLayouts, VkShader->config.DescriptorSetCount);
     for (u32 i = 0; i < VkShader->config.DescriptorSetCount; ++i) {
         VkDescriptorSetLayoutCreateInfo LayoutInfo = {VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO};
         LayoutInfo.bindingCount = VkShader->config.DescriptorSets[i].BindingCount;
@@ -333,7 +323,6 @@ bool VulkanAPI::ShaderInitialize(Shader *shader)
     scissor.extent.height = FramebufferHeight;
 
     VkPipelineShaderStageCreateInfo StageCreateIfos[VulkanShaderConstants::MaxStages]{};
-    // MMemory::ZeroMem(StageCreateIfos, sizeof(VkPipelineShaderStageCreateInfo) * VulkanShaderConstants::MaxStages);
     for (u32 i = 0; i < VkShader->config.StageCount; ++i) {
         StageCreateIfos[i] = VkShader->stages[i].ShaderStageCreateInfo;
     }
@@ -648,7 +637,7 @@ bool VulkanAPI::ShaderReleaseInstanceResources(Shader *shader, u32 InstanceID)
     // Дождитесь завершения любых ожидающих операций, использующих набор дескрипторов.
     vkDeviceWaitIdle(Device.LogicalDevice);
 
-    // 3 бесплатных набора дескрипторов (по одному на кадр)
+    // 3 свободных набора дескрипторов (по одному на кадр)
     VkResult result = vkFreeDescriptorSets(
         Device.LogicalDevice,
         VkShader->DescriptorPool,
@@ -673,21 +662,26 @@ bool VulkanAPI::ShaderReleaseInstanceResources(Shader *shader, u32 InstanceID)
     return true;
 }
 
-VulkanAPI::VulkanAPI(MWindow *window, const char *ApplicationName)
+VulkanAPI::VulkanAPI(MWindow *window,  const RendererConfig& config, u8& OutWindowRenderTargetCount)
+: FrameDeltaTime(),
+// Просто установите некоторые значения по умолчанию для буфера кадра на данный момент.
+// На самом деле неважно, что это, потому что они будут переопределены, но они необходимы для создания цепочки обмена.
+FramebufferWidth(800), FramebufferHeight(600), 
+FramebufferSizeGeneration(),
+FramebufferSizeLastGeneration(),
+instance(), allocator(nullptr), surface(),
+Device(), swapchain(),
+RenderpassTableBlock(MMemory::Allocate(sizeof(u32) * VULKAN_MAX_REGISTERED_RENDERPASSES, MemoryTag::Renderer)),
+RenderpassTable(VULKAN_MAX_REGISTERED_RENDERPASSES, false, reinterpret_cast<u32*>(RenderpassTableBlock), true), RegisteredPasses(),
+OnRendertargetRefreshRequired(config.OnRendertargetRefreshRequired)
 {
     // ЗАДАЧА: пользовательский allocator.
     allocator = NULL;
 
-    Application::ApplicationGetFramebufferSize(CachedFramebufferWidth, CachedFramebufferHeight);
-    FramebufferWidth = (CachedFramebufferWidth != 0) ? CachedFramebufferWidth : 800;
-    FramebufferHeight = (CachedFramebufferHeight != 0) ? CachedFramebufferHeight : 600;
-    CachedFramebufferWidth = 0;
-    CachedFramebufferHeight = 0;
-
     // Общая структура информации о приложении.
     VkApplicationInfo AppInfo = {VK_STRUCTURE_TYPE_APPLICATION_INFO};
     AppInfo.apiVersion = VK_API_VERSION_1_2;
-    AppInfo.pApplicationName = ApplicationName;
+    AppInfo.pApplicationName = config.ApplicationName;
     AppInfo.applicationVersion = VK_MAKE_API_VERSION(0, 1, 0, 0);
     AppInfo.pEngineName = "Moon Engine";
     AppInfo.engineVersion = VK_MAKE_API_VERSION(0, 1, 0, 0); 
@@ -796,6 +790,52 @@ VulkanAPI::VulkanAPI(MWindow *window, const char *ApplicationName)
     // Swapchain
     swapchain.Create(this, FramebufferWidth, FramebufferHeight);
 
+    // Сохраните количество имеющихся у нас изображений в качестве необходимого количества целей рендеринга.
+    OutWindowRenderTargetCount = swapchain.ImageCount;
+
+    /* Hold registered renderpasses.
+    for (u32 i = 0; i < VULKAN_MAX_REGISTERED_RENDERPASSES; ++i) {
+        RegisteredPasses[i].id = INVALID_ID_U16;
+    }
+    */
+
+   // Проходы рендеринга
+    for (u32 i = 0; i < config->renderpass_count; ++i) {
+        // ЗАДАЧА: перейти к функции для возможности повторного использования.
+        // Сначала убедитесь, что нет конфликтов с именем.
+        u32 id = INVALID::ID;
+        RenderpassTable.Get(config->PassConfigs[i].name, &id);
+        if (id != INVALID::ID) {
+            MERROR("Столкновение с renderpass с именем '%s'. Инициализация не удалась.", config->PassConfigs[i].name);
+            return false;
+        }
+        // Вырежьте новый идентификатор.
+        for (u32 j = 0; j < VULKAN_MAX_REGISTERED_RENDERPASSES; ++j) {
+            if (RegisteredPasses[j].id == INVALID::U16ID) {
+                // Нашли его.
+                RegisteredPasses[j].id = j;
+                id = j;
+                break;
+            }
+        }
+
+        // Убедитесь, что мы получили идентификатор
+        if (id == INVALID::ID) {
+            MERROR("Не найдено места для нового рендерпасса. Увеличьте VULKAN_MAX_REGISTERED_RENDERPASSES. Инициализация не удалась.");
+            return false;
+        }
+
+        // Настройте renderpass.
+        RegisteredPasses[id].ClearFlags = config->PassConfigs[i].ClearFlags;
+        RegisteredPasses[id].ClearColour = config->PassConfigs[i].ClearColour;
+        RegisteredPasses[id].RenderArea = config->PassConfigs[i].RenderArea;
+
+        RegisteredPasses[id].Create(1.0f, 0, config->PassConfigs[i].PrevName != 0, config->PassConfigs[i].NextName != 0);
+
+        // Обновите таблицу с новым идентификатором.
+        RenderpassTable.Set(config->PassConfigs[i].name, id);
+    }
+
     // World renderpass 
     MainRenderpass.Create(
         this,
@@ -803,7 +843,7 @@ VulkanAPI::VulkanAPI(MWindow *window, const char *ApplicationName)
         Vector4D<f32>(0.0f, 0.0f, 0.2f, 1.0f),  // Темносиний цвет
         1.0f,
         0,
-        static_cast<u8>(RenderpassClearFlag::ColourBufferFlag | RenderpassClearFlag::DepthBufferFlag | RenderpassClearFlag::StencilBufferFlag),
+        static_cast<u8>(RenderpassClearFlag::ColourBuffer | RenderpassClearFlag::DepthBuffer | RenderpassClearFlag::StencilBuffer),
         false, true
     );
 
@@ -814,7 +854,7 @@ VulkanAPI::VulkanAPI(MWindow *window, const char *ApplicationName)
         Vector4D<f32>(0.0f, 0.0f, 0.0f, 0.0f),
         1.0f,
         0,
-        static_cast<u8>(RenderpassClearFlag::NoneFlag),
+        static_cast<u8>(RenderpassClearFlag::None),
         true, false
     );
 
@@ -903,15 +943,19 @@ VulkanAPI::~VulkanAPI()
     }
     GraphicsCommandBuffers.~DArray();
 
-    // Уничтожить кадровые буферы.
+    // Уничтожить цели рендера.
     for (u32 i = 0; i < swapchain.ImageCount; ++i) {
-        vkDestroyFramebuffer(Device.LogicalDevice, WorldFramebuffers[i], allocator);
-        vkDestroyFramebuffer(Device.LogicalDevice, swapchain.framebuffers[i], allocator);
+        WorldRenderTargets[i].Destroy();
+        swapchain.RenderTargets[i].Destroy();
+        //vkDestroyFramebuffer(Device.LogicalDevice, WorldFramebuffers[i], allocator);
+        //vkDestroyFramebuffer(Device.LogicalDevice, swapchain.framebuffers[i], allocator);
     }
 
     // Проход рендеринга (Renderpass)
-    UI_Renderpass.Destroy(this);
-    MainRenderpass.Destroy(this);
+    for (u64 i = 0; i < VULKAN_MAX_REGISTERED_RENDERPASSES; i++) {
+        RegisteredPasses[i].Destroy();
+    }
+    
 
     // Цепочка подкачки (Swapchain)
     swapchain.Destroy(this);
@@ -944,8 +988,8 @@ void VulkanAPI::Resized(u16 width, u16 height)
 {
     // Обновите «генерацию размера кадрового буфера», счетчик, 
     // который указывает, когда размер кадрового буфера был обновлен.
-    CachedFramebufferWidth = width;
-    CachedFramebufferHeight = height;
+    FramebufferWidth = width;
+    FramebufferHeight = height;
     FramebufferSizeGeneration++;
 
     MINFO("API рендеринга Vulkan-> изменен размер: w/h/gen: %i/%i/%llu", width, height, FramebufferSizeGeneration);
@@ -1023,13 +1067,6 @@ bool VulkanAPI::BeginFrame(f32 Deltatime)
     vkCmdSetViewport(GraphicsCommandBuffers[ImageIndex].handle, 0, 1, &viewport);
     vkCmdSetScissor(GraphicsCommandBuffers[ImageIndex].handle, 0, 1, &scissor);
 
-    // Обновляем размеры основного/мирового прохода рендеринга.
-    MainRenderpass.RenderArea.z = FramebufferWidth;
-    MainRenderpass.RenderArea.w = FramebufferHeight;
-    // Также обновите размеры проход рендеринга пользовательского интерфейса.
-    UI_Renderpass.RenderArea.z = FramebufferWidth;
-    UI_Renderpass.RenderArea.w = FramebufferHeight;
-
     return true;
 }
 
@@ -1098,53 +1135,74 @@ bool VulkanAPI::EndFrame(f32 DeltaTime)
     return true;
 }
 
-bool VulkanAPI::BeginRenderpass(u8 RenderpassID)
+bool VulkanAPI::BeginRenderpass(Renderpass* pass, RenderTarget& target)
 {
-    VulkanRenderpass* renderpass = nullptr;
-    VkFramebuffer framebuffer = 0;
     VulkanCommandBuffer& CommandBuffer = GraphicsCommandBuffers[ImageIndex];
 
-    // Выберите рендерпасс на основе идентификатора.
-    switch (RenderpassID) {
-        case static_cast<u8>(BuiltinRenderpass::World):
-            renderpass = &MainRenderpass;
-            framebuffer = WorldFramebuffers[ImageIndex];
-            break;
-        case static_cast<u8>(BuiltinRenderpass::UI):
-            renderpass = &UI_Renderpass;
-            framebuffer = swapchain.framebuffers[ImageIndex];
-            break;
-        default:
-            MERROR("VulkanRenderer::BeginRenderpass вызывается по неизвестному идентификатору renderpass: %#02x", RenderpassID);
-            return false;
+    // Начало этапа рендеринга.
+    VulkanRenderpass* VkRenderpass = (VulkanRenderpass*)pass->InternalData;
+
+    VkRenderPassBeginInfo BeginInfo = {VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
+    BeginInfo.renderPass = VkRenderpass->handle;
+    BeginInfo.framebuffer = target.InternalFramebuffer;
+    BeginInfo.renderArea.offset.x = pass->RenderArea.x;
+    BeginInfo.renderArea.offset.y = pass->RenderArea.y;
+    BeginInfo.renderArea.extent.width = pass->RenderArea.z;
+    BeginInfo.renderArea.extent.height = pass->RenderArea.w;
+
+    BeginInfo.clearValueCount = 0;
+    BeginInfo.pClearValues = 0;
+
+    VkClearValue ClearValues[2]{};
+    bool DoClearColour = (pass->ClearFlags & RenderpassClearFlag::ColourBuffer) != 0;
+    if (DoClearColour) {
+        MMemory::CopyMem(ClearValues[BeginInfo.clearValueCount].color.float32, pass->ClearColour.elements, sizeof(f32) * 4);
+        BeginInfo.clearValueCount++;
     }
 
-    // Начните этап рендеринга.
-    renderpass->Begin(&CommandBuffer, framebuffer);
+    bool DoClearDepth = (pass->ClearFlags & RenderpassClearFlag::DepthBuffer) != 0;
+    if (DoClearDepth) {
+        MMemory::CopyMem(ClearValues[BeginInfo.clearValueCount].color.float32, pass->ClearColour.elements, sizeof(f32) * 4);
+        ClearValues[BeginInfo.clearValueCount].depthStencil.depth = VkRenderpass->depth;
+
+        bool DoClearStencil = (pass->ClearFlags & RenderpassClearFlag::StencilBuffer) != 0;
+        ClearValues[BeginInfo.clearValueCount].depthStencil.stencil = DoClearStencil ? VkRenderpass->stencil : 0;
+        BeginInfo.clearValueCount++;
+    }
+
+    BeginInfo.pClearValues = BeginInfo.clearValueCount > 0 ? ClearValues : 0;
+
+    vkCmdBeginRenderPass(CommandBuffer.handle, &BeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+    CommandBuffer.state = COMMAND_BUFFER_STATE_IN_RENDER_PASS;
 
     return true;
 }
 
-bool VulkanAPI::EndRenderpass(u8 RenderpassID)
+bool VulkanAPI::EndRenderpass(Renderpass* pass)
 {
-    VulkanRenderpass* renderpass = nullptr;
     VulkanCommandBuffer& CommandBuffer = GraphicsCommandBuffers[ImageIndex];
 
-    // Выберите рендерпасс на основе идентификатора.
-    switch (RenderpassID) {
-        case static_cast<u8>(BuiltinRenderpass::World):
-            renderpass = &MainRenderpass;
-            break;
-        case static_cast<u8>(BuiltinRenderpass::UI):
-            renderpass = &UI_Renderpass;
-            break;
-        default:
-            MERROR("VulkanRenderer::EndRenderpass вызывается по неизвестному идентификатору renderpass:  %#02x", RenderpassID);
-            return false;
+    // Завершение рендеринга.
+    vkCmdEndRenderPass(CommandBuffer.handle);
+    CommandBuffer.state = COMMAND_BUFFER_STATE_RECORDING;
+    return true;
+}
+
+Renderpass *VulkanAPI::GetRenderpass(const char *name)
+{
+    if (!name || name[0] == '\0') {
+        MERROR("VulkanAPI::GetRenderpass требует имя. Ничего не будет возвращено.");
+        return nullptr;
     }
 
-    renderpass->End(&CommandBuffer);
-    return true;
+    u32 id = INVALID::ID;
+    RenderpassTable.Get(name, &id);
+    if (id == INVALID::ID) {
+        MWARN("Нет зарегистрированного рендер-пасса с именем «%s».", name);
+        return nullptr;
+    }
+
+    return &RegisteredPasses[id];
 }
 
 void VulkanAPI::Load(const u8* pixels, Texture *texture)
@@ -1453,36 +1511,6 @@ void VulkanAPI::CreateCommandBuffers()
     MDEBUG("Созданы командные буферы Vulkan.");
 }
 
-void VulkanAPI::RegenerateFramebuffers()
-{
-    u32& ImageCount = swapchain.ImageCount;
-    for (u32 i = 0; i < ImageCount; ++i) {
-        VulkanImage& image = *swapchain.RenderTextures[i]->Data;
-        VkImageView WorldAttachments[2] = {image.view, swapchain.DepthAttachment->view};
-        VkFramebufferCreateInfo FramebufferCreateInfo = {VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
-        FramebufferCreateInfo.renderPass = MainRenderpass.handle;
-        FramebufferCreateInfo.attachmentCount = 2;
-        FramebufferCreateInfo.pAttachments = WorldAttachments;
-        FramebufferCreateInfo.width = FramebufferWidth;
-        FramebufferCreateInfo.height = FramebufferHeight;
-        FramebufferCreateInfo.layers = 1;
-
-        VK_CHECK(vkCreateFramebuffer(Device.LogicalDevice, &FramebufferCreateInfo, allocator, &WorldFramebuffers[i]));
-
-        // Кадровые буферы Swapchain (проход пользовательского интерфейса). Выводы в образы swapchain
-        VkImageView UI_Attachments[1] = {image.view};
-        VkFramebufferCreateInfo scFramebufferCreateInfo = {VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
-        scFramebufferCreateInfo.renderPass = UI_Renderpass.handle;
-        scFramebufferCreateInfo.attachmentCount = 1;
-        scFramebufferCreateInfo.pAttachments = UI_Attachments;
-        scFramebufferCreateInfo.width = FramebufferWidth;
-        scFramebufferCreateInfo.height = FramebufferHeight;
-        scFramebufferCreateInfo.layers = 1;
-
-        VK_CHECK(vkCreateFramebuffer(Device.LogicalDevice, &scFramebufferCreateInfo, allocator, &swapchain.framebuffers[i]));
-    }
-}
-
 bool VulkanAPI::CreateBuffers()
 {
     VkMemoryPropertyFlagBits MemoryPropertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
@@ -1610,21 +1638,10 @@ bool VulkanAPI::RecreateSwapchain()
     }
 
     // Поддержка запроса
-    Device.QuerySwapchainSupport(
-        Device.PhysicalDevice,
-        surface,
-        &Device.SwapchainSupport);
-    Device.DetectDepthFormat(&Device);
+    Device.QuerySwapchainSupport(surface);
+    Device.DetectDepthFormat();
 
-    swapchain.Recreate(this, CachedFramebufferWidth, CachedFramebufferHeight);
-
-    // Синхронизируйте размер фреймбуфера с кэшированными размерами.
-    FramebufferWidth = CachedFramebufferWidth;
-    FramebufferHeight = CachedFramebufferHeight;
-    MainRenderpass.RenderArea.z = FramebufferWidth;
-    MainRenderpass.RenderArea.w = FramebufferHeight;
-    CachedFramebufferWidth = 0;
-    CachedFramebufferHeight = 0;
+    swapchain.Recreate(this, FramebufferWidth, FramebufferHeight);
 
     // Обновить генерацию размера кадрового буфера.
     FramebufferSizeLastGeneration = FramebufferSizeGeneration;
@@ -1634,19 +1651,10 @@ bool VulkanAPI::RecreateSwapchain()
         VulkanCommandBufferFree(this, Device.GraphicsCommandPool, &GraphicsCommandBuffers[i]);
     }
 
-    // Буферы кадров.
-    for (u32 i = 0; i < swapchain.ImageCount; ++i) {
-        vkDestroyFramebuffer(Device.LogicalDevice, WorldFramebuffers[i], allocator);
-        vkDestroyFramebuffer(Device.LogicalDevice, swapchain.framebuffers[i], allocator);
+    // Сообщите рендереру, что требуется обновление.
+    if (context.on_rendertarget_refresh_required) {
+        context.on_rendertarget_refresh_required();
     }
-
-    MainRenderpass.RenderArea.x = 0;
-    MainRenderpass.RenderArea.y = 0;
-    MainRenderpass.RenderArea.z = FramebufferWidth;
-    MainRenderpass.RenderArea.w = FramebufferHeight;
-
-    // Восстановить цепочку обмена и мировые фреймбуферы
-    RegenerateFramebuffers();
 
     CreateCommandBuffers();
 
@@ -1721,6 +1729,76 @@ void VulkanAPI::TextureMapReleaseResources(TextureMap *map)
         vkDestroySampler(Device.LogicalDevice, map->sampler, allocator);
         MMemory::ZeroMem(&map->sampler, sizeof(VkSampler)); // map->sampler = 0;
     }
+}
+
+void VulkanAPI::RenderTargetCreate(u8 AttachmentCount, Texture **attachments, Renderpass *pass, u32 width, u32 height, RenderTarget *OutTarget)
+{
+    // Максимальное количество вложений
+    VkImageView AttachmentViews[32];
+    for (u32 i = 0; i < AttachmentCount; ++i) {
+        AttachmentViews[i] = (attachments[i]->Data)->view;
+    }
+
+    // Сделайте копию вложений и посчитайте.
+    OutTarget->AttachmentCount = AttachmentCount;
+    if (!out_target->attachments) {
+        OutTarget->attachments = new Texture*[AttachmentCount];
+    }
+    MMemory::CopyMem(OutTarget->attachments, attachments, sizeof(texture*) * AttachmentCount);
+
+    VkFramebufferCreateInfo FramebufferCreateInfo = {VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
+    FramebufferCreateInfo.renderPass = ((VulkanRenderpass*)pass->InternalData)->handle;
+    FramebufferCreateInfo.attachmentCount = AttachmentCount;
+    FramebufferCreateInfo.pAttachments = AttachmentViews;
+    FramebufferCreateInfo.width = width;
+    FramebufferCreateInfo.height = height;
+    FramebufferCreateInfo.layers = 1;
+
+    VK_CHECK(vkCreateFramebuffer(Device.LogicalDevice, &FramebufferCreateInfo, allocator, (VkFramebuffer*)&OutTarget->InternalFramebuffer));
+}
+
+void VulkanAPI::RenderTargetDestroy(RenderTarget &target, bool FreeInternalMemory)
+{
+    if (target && target.InternalFramebuffer) {
+        vkDestroyFramebuffer(Device.LogicalDevice, (VkFramebuffer)target.InternalFramebuffer, allocator);
+        target.InternalFramebuffer = 0;
+        if (FreeInternalMemory) {
+            delete[] target.attachments;
+            target.attachments = nullptr;
+            target.AttachmentCount = 0;
+        }
+    }
+}
+
+void VulkanAPI::RenderpassCreate(Renderpass *OutRenderpass, f32 depth, u32 stencil, bool HasPrevPass, bool HasNextPass)
+{
+    // VulkanRenderpass* VkRenderpass = new VulkanRenderpass(depth, stencil, HasPrevPass, HasNextPass, this);
+    OutRenderpass->InternalData = new VulkanRenderpass(depth, stencil, HasPrevPass, HasNextPass, this);
+}
+
+void VulkanAPI::RenderpassDestroy(Renderpass *OutRenderpass)
+{
+    reinterpret_cast<VulkanRenderpass*>(OutRenderpass->InternalData)->Destroy();
+}
+
+Texture *VulkanAPI::WindowAttachmentGet(u8 index)
+{
+    if (index >= swapchain.ImageCount) {
+        MFATAL("Попытка получить индекс вложения вне диапазона: %d. Количество вложений: %d", index, swapchain.ImageCount);
+        return nullptr;
+    }
+
+    return swapchain.RenderTextures[index];
+}
+
+Texture *VulkanAPI::DepthAttachmentGet()
+{
+    return swapchain.DepthTexture;
+}
+
+u8 VulkanAPI::WindowAttachmentIndexGet()
+{
+    return ImageIndex;
 }
 
 void *VulkanAPI::operator new(u64 size)

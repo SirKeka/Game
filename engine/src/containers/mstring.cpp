@@ -440,42 +440,85 @@ i64 MString::StringToI64(const char *s)
     return sign ? num / 10 * -1 : num/10;
 }
 
-f32 MString::StringToF32(const char *s)
+bool MString::StringToF32(const char* s, f32& fn1, f32* fn2, f32* fn3, f32* fn4)
 {
-    f32 exponent = 0.F;
-	f32 mantissa = 0.F;
-	u32 factor = 10;
-	bool sign = false;
-	if (*s == '-') {
-		sign = true;
-		s++;
-	}
-	else {
-		exponent += *s - '0';
-		s++;
-	}
-	while (s) {
-		if (*s != '.' && *s != ',' && !mantissa) {
-			exponent *= 10;
-			exponent += *s - '0';
-			s++;
-		}
-		else if (*s == '.' || *s == ',') {
-			s++;
-			mantissa += *s - '0';
-			mantissa *= 10;
-			factor *= 10;
-			s++;
-		}
-		else {
-			mantissa += *s - '0';
-			mantissa *= 10;
-			factor *= 10;
-			s++;
-		}
+    // ЗАДАЧА: Убрать лишние проверки
+    u8 count = 1;
+    if (fn2) {
+        *fn2 = 0;
+    }
+    if (fn3) {
+        *fn3 = 0;
+    }
+    if (fn4) {
+        *fn4 = 0;
+    }
+    f64  buffer   = 0; 
+    u32  factor   = 10;
+    bool sign     = false;
+    bool mantissa = false;
+    auto end      = [&]() {
+        buffer /= factor;
+        if (sign) {
+            buffer *= -1.F;
+        }
+        if (count == 1) {
+            fn1 = buffer;
+            return true;
+        }
+        if (count == 2 && fn2) {
+            *fn2 = buffer;
+            return true;
+        }
+        if (count == 3 && fn3) {
+            *fn3 = buffer;
+            return true;
+        }
+        if (count == 4 && fn4) {
+            *fn4 = buffer;
+            return true;
+        }
+        return false;
+    };
+    fn1 = 0;
+    while (*s != '\0') {
+        switch (*s)
+        {
+        case '-': {
+            sign = true;
+            s++;
+        } break;
+        case '0': case '1': case '2': case '3': case '4':
+        case '5': case '6': case '7': case '8': case '9': {
+            buffer += *s - '0';
+            buffer *= 10;
+            if (mantissa) {
+                factor *= 10;
+            }
+            s++;
+        } break;
+        case '.': case ',': {
+            mantissa = true;
+            s++;
+        } break;
+        case ' ': case '\0': {
+            s++;
+            end();
+            count++;
+            buffer   = 0;
+            factor   = 10;
+            sign     = false;
+            mantissa = false;
 
-	}
-	return sign ? exponent + (mantissa / factor) * -1 : exponent + (mantissa / factor);
+        } break;
+        default: {
+            goto ExitLoop;
+        }
+               break;
+        }
+    }
+ExitLoop:
+    return end();
 }
 
 void MString::Copy(char *dest, const char *source)
@@ -653,7 +696,7 @@ i32 MString::IndexOf(char c)
     return MString::IndexOf(str, c);
 }
 
-bool MString::ToVector4D(char *s, Vector4D<f32> &OutVector)
+bool MString::ToVector(char *s, FVec4 &OutVector)
 {
     if (!s) {
         return false;
@@ -663,29 +706,56 @@ bool MString::ToVector4D(char *s, Vector4D<f32> &OutVector)
     return result != -1;
 }
 
-bool MString::ToVector4D(Vector4D<f32> &OutVector)
-{
-    return MString::ToVector4D(str, OutVector);
-}
-
-bool MString::ToVector3D(char *str, Vector3D<f32> &OutVector)
+bool MString::ToVector(FVec4 &OutVector)
 {
     if (!str) {
         return false;
     }
 
-    i32 result = sscanf(str, "%f %f %f", &OutVector.x, &OutVector.y, &OutVector.z);
-    return result != -1;
+    if (!StringToF32(str, OutVector.x, &OutVector.y, &OutVector.z, &OutVector.w)) {
+        return false;
+    }
+
+    return true;
 }
 
-bool MString::ToVector2D(char *str, Vector2D<f32> &OutVector)
+bool MString::ToVector(char *str, FVec3 &OutVector)
 {
     if (!str) {
         return false;
     }
 
-    i32 result = sscanf(str, "%f %f", &OutVector.x, &OutVector.y);
-    return result != -1;
+    if (!StringToF32(str, OutVector.x, &OutVector.y, &OutVector.z)) {
+        return false;
+    }
+
+    return true;
+}
+
+bool MString::ToVector(FVec3 &OutVector)
+{
+    if (!str) {
+        return false;
+    }
+
+    if (!StringToF32(str, OutVector.x, &OutVector.y, &OutVector.z)) {
+        return false;
+    }
+
+    return true;
+}
+
+bool MString::ToVector(char *str, FVec2 &OutVector)
+{
+    if (!str) {
+        return false;
+    }
+
+    if (!StringToF32(str, OutVector.x, &OutVector.y)) {
+        return false;
+    }
+
+    return true;
 }
 
 bool MString::ToFloat(f32 &f)
@@ -694,9 +764,11 @@ bool MString::ToFloat(f32 &f)
         return false;
     }
 
-    f = 0;
-    i32 result = sscanf(str, "%f", &f);
-    return result != -1;
+    if (!StringToF32(str, f)) {
+        return false;
+    }
+
+    return true;
 }
 
 bool MString::ToFloat(f64 &f)

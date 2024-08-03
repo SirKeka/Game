@@ -1,7 +1,6 @@
 #pragma once
 
 #include <vulkan/vulkan.h>
-#include "containers/darray.hpp"
 
 class VulkanAPI;
 
@@ -17,25 +16,26 @@ struct VulkanSwapchainSupportInfo
 class VulkanDevice
 {
 public:
-    VkPhysicalDevice PhysicalDevice;
-    VkDevice LogicalDevice;
-    VulkanSwapchainSupportInfo SwapchainSupport;
-    i32 GraphicsQueueIndex;
-    i32 PresentQueueIndex;
-    i32 TransferQueueIndex;
-    bool SupportsDeviceLocalHostVisible;
+    VkPhysicalDevice PhysicalDevice;             // Физическое устройство. Это представление самого графического процессора.
+    VkDevice LogicalDevice;                      // Логическое устройство. Это представление устройства приложением, используемое для большинства операций Vulkan.
+    VulkanSwapchainSupportInfo SwapchainSupport; // Информация о поддержке swapchain.
+    i32 GraphicsQueueIndex;                      // Индекс графической очереди.
+    i32 PresentQueueIndex;                       // Индекс текущей очереди.
+    i32 TransferQueueIndex;                      // Индекс очереди передачи.
+    bool SupportsDeviceLocalHostVisible;         // Указывает, поддерживает ли устройство тип памяти, который является как видимым для хоста, так и локальным для устройства.
 
-    VkQueue GraphicsQueue;
-    VkQueue PresentQueue;
-    VkQueue TransferQueue;
+    VkQueue GraphicsQueue;                       // Дескриптор очереди графики.
+    VkQueue PresentQueue;                        // Дескриптор текущей очереди.
+    VkQueue TransferQueue;                       // Дескриптор очереди передачи.
     
-    VkCommandPool GraphicsCommandPool;
+    VkCommandPool GraphicsCommandPool;           // Дескриптор пула команд для графических операций.
 
-    VkPhysicalDeviceProperties properties;
-    VkPhysicalDeviceFeatures features;
-    VkPhysicalDeviceMemoryProperties memory;
+    VkPhysicalDeviceProperties properties;       // Свойства физического устройства.
+    VkPhysicalDeviceFeatures features;           // Функции физического устройства.
+    VkPhysicalDeviceMemoryProperties memory;     // Свойства памяти физического устройства.
 
-    VkFormat DepthFormat;
+    VkFormat DepthFormat;                        // Выбранный поддерживаемый формат глубины.
+    u8 DepthChannelCount;                        // Количество каналов выбранного формата глубины.
 public:
     VulkanDevice() : PhysicalDevice(), LogicalDevice(), SwapchainSupport(), GraphicsQueueIndex(), PresentQueueIndex(), TransferQueueIndex(), SupportsDeviceLocalHostVisible(), 
     GraphicsQueue(), PresentQueue(), TransferQueue(), GraphicsCommandPool(), properties(), features(), memory(), DepthFormat() {}
@@ -45,31 +45,13 @@ public:
 
     void Destroy(VulkanAPI* VkAPI);
 
-    void QuerySwapchainSupport(
-        VkPhysicalDevice PhysicalDevice,
-        VkSurfaceKHR Surface,
-        VulkanSwapchainSupportInfo* OutSupportInfo);
+    void QuerySwapchainSupport(VkSurfaceKHR Surface);
 
-    bool DetectDepthFormat(VulkanDevice* Device);
+    bool DetectDepthFormat();
 
 private:
-
-    struct VulkanPhysicalDeviceRequirements {
-    bool graphics;
-    bool present;
-    bool compute;
-    bool transfer;
-    DArray<const char*> DeviceExtensionNames;
-    bool SamplerAnisotropy;
-    bool DiscreteGPU;
-    };
-
-    struct VulkanPhysicalDeviceQueueFamilyInfo {
-        u32 GraphicsFamilyIndex;
-        u32 PresentFamilyIndex;
-        u32 ComputeFamilyIndex;
-        u32 TransferFamilyIndex;
-    };
+    struct VulkanPhysicalDeviceRequirements;
+    struct VulkanPhysicalDeviceQueueFamilyInfo;
 
     bool SelectPhysicalDevice(VulkanAPI* VkAPI);
     bool PhysicalDeviceMeetsRequirements(

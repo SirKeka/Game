@@ -22,6 +22,7 @@ private:
 // Функции
 public:
     constexpr DArray() : size(), capacity(), data(nullptr) {}
+    constexpr DArray(const T& value) { PushBack(value); }
     constexpr DArray(u64 capacity) : size(), capacity(capacity), data(capacity ? MMemory::TAllocate<T>(MemoryTag::DArray, capacity, true) : nullptr) {}
     constexpr DArray(u64 size, const T& value) {
         if(size > 0) {
@@ -123,7 +124,11 @@ public:
     /// большего или равного NewCap. Если значение NewCap больше текущей capacity(емкости), 
     /// выделяется новое хранилище, в противном случае функция ничего не делает.
     void Reserve(u64 NewCap) {
-        // ЗАДАЧА: добавить std::move()
+        if (NewCap == 0) {
+            MWARN("DArray::Reserve - резерв не был выполнен, т.к. было указан 0.")
+            return;
+        }
+        
         if (capacity == 0) {
             data = MMemory::TAllocate<T>(MemoryTag::DArray, NewCap, true);
             capacity = NewCap;

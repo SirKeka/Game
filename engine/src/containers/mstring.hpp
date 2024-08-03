@@ -1,7 +1,9 @@
 #pragma once
 
 #include "defines.hpp"
-#include "math/vector4d.hpp"
+#include "math/vector2d_fwd.hpp"
+#include "math/vector3d_fwd.hpp"
+#include "math/vector4d_fwd.hpp"
 
 template<typename> class DArray;
 
@@ -163,10 +165,7 @@ public:
     /// @param s строка, которую нужно считать.
     /// @return целочисленное 64 битное число считанное из строки.
     i64 StringToI64(const char* s);
-    /// @brief 
-    /// @param s 
-    /// @return 
-    f32 StringToF32(const char* s);
+    static bool StringToF32(const char* s, f32& fn1, f32* fn2 = nullptr, f32* fn3 = nullptr, f32* fn4 = nullptr);
 
     static void Copy(char* dest, const char* source);
     static void Copy(char* dest, const MString& source);
@@ -220,18 +219,19 @@ public:
     /// @param str Строка для анализа. Должна быть разделена пробелами (т. е. "1.0 2.0 3.0 4.0")
     /// @param OutVector A pointer to the vector to write to.
     /// @return True, если синтаксический анализ прошел успешно; в противном случае false. 
-    static bool ToVector4D(char* str, Vector4D<f32>& OutVector);
-    bool ToVector4D(Vector4D<f32>& OutVector);
+    static bool ToVector(char* str, FVec4& OutVector);
+    bool ToVector(FVec4& OutVector);
     /// @brief Пытается проанализировать вектор из предоставленной строки.
     /// @param str Строка для анализа. Должна быть разделена пробелами (т. е. «1,0 2,0 3,0»)
     /// @param OutVector Ссылка на вектор для записи.
     /// @return True, если синтаксический анализ прошел успешно; в противном случае false.
-    bool ToVector3D(char* str, Vector3D<f32>& OutVector);
+    static bool ToVector(char* str, FVec3& OutVector);
+    bool ToVector(FVec3& OutVector);
     /// @brief Пытается проанализировать вектор из предоставленной строки.
     /// @param str Строка для анализа. Должна быть разделена пробелами (т. е. "1.0 2.0")
     /// @param OutVector A pointer to the vector to write to.
     /// @return True, если синтаксический анализ прошел успешно; в противном случае false.
-    bool ToVector2D(char* str, Vector2D<f32>& OutVector);
+    static bool ToVector(char* str, FVec2& OutVector);
     /// @brief Пытается проанализировать 32-битное число с плавающей запятой из предоставленной строки.
     /// @param str Строка для анализа. *Не* должно иметь постфикс «f».
     /// @param f A pointer to the float to write to.

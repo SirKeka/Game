@@ -34,6 +34,14 @@ private:
     Matrix4D UIView{};
     Vector4D<f32> AmbientColour{};
     Vector3D<f32> ViewPosition{};
+    u8 WindowRenderTargetCount{};   // Количество целей рендеринга. Обычно совпадает с количеством изображений swapchain.
+    u32 FramebufferWidth{};         // Текущая ширина буфера кадра окна.
+    u32 FramebufferHeight{};        // Текущая высота буфера кадра окна.
+
+    Renderpass* WorldRenderpass{};  // Указатель на проход рендеринга мира. ЗАДАЧА: Настраивается через виды.
+    Renderpass* UiRenderpass{};     // Указатель на проход рендеринга пользовательского интерфейса. ЗАДАЧА: Настраивается через виды.
+    bool resizing{};                // Указывает, изменяется ли размер окна в данный момент.
+    u8 FramesSinceResize{};         // Текущее количество кадров с момента последней операции изменения размера. Устанавливается только если resizing = true. В противном случае 0.
 
     static RendererType* ptrRenderer;
 public:
@@ -117,7 +125,7 @@ public:
     /// @param StageFilenames массив имен файлов этапов шейдера, которые будут загружены. Должно соответствовать массиву этапов.
     /// @param stages массив этапов шейдера(ShaderStage), указывающий, какие этапы рендеринга (вершина, фрагмент и т. д.) используются в этом шейдере.
     /// @return true в случае успеха, иначе false.
-    static bool Load(Shader* shader, u8 RenderpassID, u8 StageCount, const DArray<MString>& StageFilenames, const ShaderStage* stages);
+    static bool Load(Shader* shader, Renderpass* renderpass, u8 StageCount, const DArray<MString>& StageFilenames, const ShaderStage* stages);
     /// @brief Уничтожает данный шейдер и освобождает все имеющиеся в нем ресурсы.--------------------------------------------------------------------
     /// @param shader указатель на шейдер, который нужно уничтожить.
     static void Unload(Shader* shader);
@@ -163,6 +171,13 @@ public:
     /// @brief Освобождает внутренние ресурсы для данной карты текстур.
     /// @param map указатель на карту текстур, из которой необходимо освободить ресурсы.
     static void TextureMapReleaseResources(TextureMap* map);
+    static void RenderTargetCreate(u8 AttachmentCount, Texture** attachments, Renderpass* pass, u32 width, u32 height, RenderTarget* OutTarget);
+    static void RenderTargetDestroy(RenderTarget& target, bool FreeInternalMemory);
+    static void RenderpassCreate(Renderpass* OutRenderpass, f32 depth, u32 stencil, bool HasPrevPass, bool HasNextPass);
+    static void RenderpassDestroy(Renderpass* OutRenderpass);
+    static Texture* WindowAttachmentGet(u8 index);
+    static Texture* DepthAttachmentGet();
+    static u8 WindowAttachmentIndexGet();
     /// @brief Устанавливает матрицу представления в средстве визуализации. ПРИМЕЧАНИЕ: Доступен общедоступному API.
     /// @deprecated ВЗЛОМ: это не должно быть выставлено за пределы движка.
     /// @param view Матрица представления, которую необходимо установить.

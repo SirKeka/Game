@@ -5,6 +5,7 @@
  * для каждого буфера. Также нужно указать, как должно обрабатываться содержимое 
  * буферов во время рендеринга. Вся эта информация обернута в объект прохода рендера (render pass).
 */
+// ЗАДАЧА: Перенести все это в фаил vulkan_api.cpp?
 #pragma once
 
 #include "defines.hpp"
@@ -24,78 +25,30 @@ enum class VulkanRenderpassState
     NotAllocated
 };
 
-enum class RenderpassClearFlag : u8 {
-    NoneFlag = 0x0,
-    ColourBufferFlag = 0x1,
-    DepthBufferFlag = 0x2,
-    StencilBufferFlag = 0x4
-};
-MINLINE constexpr u8
-operator&(RenderpassClearFlag x, RenderpassClearFlag y)
+struct VulkanRenderpass
 {
-    return /*static_cast<RenderpassClearFlag>*/
-    (static_cast<u8>(x) & static_cast<u8>(y));
-}
-MINLINE constexpr u8
-operator&(u8 x, RenderpassClearFlag y)
-{
-    return (x & static_cast<u8>(y));
-}
-MINLINE constexpr RenderpassClearFlag
-operator|(RenderpassClearFlag x, RenderpassClearFlag y)
-{
-    return static_cast<RenderpassClearFlag>
-    (static_cast<u8>(x) | static_cast<u8>(y));
-}
+    VkRenderPass handle;         // Внутренний дескриптор прохода рендеринга.
 
-enum class BuiltinRenderpass : u8 {
-    World = 0x01,
-    UI = 0x02
-};
+    f32 depth;                   // Значение очистки глубины.
+    u32 stencil;                 // Значение очистки трафарета.
+    bool HasPrevPass;            // Указывает, есть ли предыдущий проход рендеринга.
+    bool HasNextPass;            // Указывает, есть ли следующий проход рендеринга.
 
-class VulkanRenderpass
-{
-public:
-    VkRenderPass handle;
-    Vector4D<f32> RenderArea;
-    Vector4D<f32> ClearColour;
+    VulkanRenderpassState state; // Указывает состояние прохода рендеринга.
 
-    f32 depth;
-    u32 stencil;
-    u8 ClearFlags;
-    bool HasPrevPass;
-    bool HasNextPass;
-
-    VulkanRenderpassState state;
-public:
-    VulkanRenderpass() : handle(), RenderArea(), ClearColour(), depth(), stencil(), ClearFlags(), HasPrevPass(), HasNextPass() {}
-    VulkanRenderpass(
-        VulkanAPI* VkAPI, 
-        Vector4D<f32> RenderArea,
-        Vector4D<f32> ClearColor,
-        f32 depth,
-        u32 stencil,
-        u8 ClearFlags,
-        bool HasPrevPass,
-        bool HasNextPass);
+    constexpr VulkanRenderpass() : handle(), depth(), stencil(), HasPrevPass(), HasNextPass(), state() {}
+    constexpr VulkanRenderpass(f32 depth, u32 stencil, bool HasPrevPass, bool HasNextPass, VulkanAPI* VkAPI);
+    
     ~VulkanRenderpass() = default;
 
-    void Create(
-        VulkanAPI* VkAPI, 
-        Vector4D<f32> RenderArea,
-        Vector4D<f32> ClearColor,
-        f32 depth,
-        u32 stencil,
-        u8 ClearFlags,
-        bool HasPrevPass,
-        bool HasNextPass);
     void Destroy(VulkanAPI* VkAPI);
 
-    void Begin(
-        VulkanCommandBuffer* CommandBuffer, 
-        VkFramebuffer FrameBuffer);
-
-    void End(VulkanCommandBuffer* CommandBuffer);
+    void* operator new(u64 size) {
+        return MMemory::Allocate(size, MemoryTag::Renderer);
+    }
+    void operator delete(void* ptr, u64 size) {
+        MMemory::Free(ptr, size, MemoryTag::Renderer);
+    }
 };
 
 

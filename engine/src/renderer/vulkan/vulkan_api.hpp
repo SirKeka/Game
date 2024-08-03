@@ -10,12 +10,15 @@
 #include "vulkan_shader.hpp"
 #include "resources/geometry.hpp"
 #include "math/vertex.hpp"
+//#include "containers/hashtable.hpp"
 
 // Проверяет возвращаемое значение данного выражения на соответствие VK_SUCCESS.
 #define VK_CHECK(expr)           \
 {                                \
     MASSERT(expr == VK_SUCCESS); \
 }
+
+constexpr u32 VULKAN_MAX_REGISTERED_RENDERPASSES = 31;
 
 class VulkanAPI : public RendererType
 {
@@ -34,9 +37,10 @@ public:
 #endif
 
     VulkanDevice Device{};                              // Устройство Vulkan.
-    VulkanSwapchain swapchain{};                        // Цепочка подкачки
-    VulkanRenderpass MainRenderpass{};                  // Основной проход рендеринга мира.
-    VulkanRenderpass UI_Renderpass{};                   // Проход рендеринга пользовательского интерфейса.
+    VulkanSwapchain swapchain{};                        // Цепочка подкачки.
+    void* RenderpassTableBlock{nullptr};                // Блок памяти для хештаблицы подпроходов рендера.
+    HashTable<u32> RenderpassTable;                     // Хештаблица подпроходов рендера.
+    Renderpass RegisteredPasses[VULKAN_MAX_REGISTERED_RENDERPASSES]; // Зарегистрированные рендер-проходы
     VulkanBuffer ObjectVertexBuffer{};                  // Буфер вершин объекта, используемый для хранения вершин геометрии.
     VulkanBuffer ObjectIndexBuffer{};                   // Буфер индекса объекта, используемый для хранения индексов геометрии.
     DArray<VulkanCommandBuffer> GraphicsCommandBuffers; // Буферы графических команд, по одному на кадр.
@@ -49,23 +53,23 @@ public:
     u32 CurrentFrame{0};                                // Текущий кадр.
     bool RecreatingSwapchain{false};                    // Указывает, воссоздается ли в данный момент цепочка обмена.
     Geometry geometries[VULKAN_MAX_GEOMETRY_COUNT]{};   // ЗАДАЧА: динамическим, копии геометрий хранятся в системе геометрий, возможно стоит хранить здесь указатели на геометрии
-    VkFramebuffer WorldFramebuffers[3]{};               // Буферы кадров, используемые для рендеринга мира, по одному на кадр.
-
-private:
-    u32 CachedFramebufferWidth{};
-    u32 CachedFramebufferHeight{};
+    RenderTarget WorldRenderTargets[3]{};               // Цели рендера, используемые для рендеринга мира, по одному на кадр.
 
 public:
-    VulkanAPI(class MWindow* window, const char* ApplicationName);
+    /// @brief Инициализирует рендер.
+    /// @param window указатель на общий интерфейс рендера.
+    /// @param config указатель на конфигурацию, которая будет использоваться при инициализации рендераа.
+    /// @param OutWindowRenderTargetCount Указатель для хранения необходимого количества целей рендеринга для проходов рендеринга, нацеленных на окно.
+    VulkanAPI(class MWindow* window, const RendererConfig& config, u8& OutWindowRenderTargetCount);
     ~VulkanAPI();
     
-    // bool Initialize(MWindow* window, const char* ApplicationName) override;
     void ShutDown() override;
     void Resized(u16 width, u16 height) override;
     bool BeginFrame(f32 Deltatime) override;
     bool EndFrame(f32 DeltaTime) override;
-    bool BeginRenderpass(u8 RenderpassID) override;
-    bool EndRenderpass(u8 RenderpassID) override;
+    bool BeginRenderpass(Renderpass* pass, RenderTarget& target) override;
+    bool EndRenderpass(Renderpass* pass) override;
+    Renderpass* GetRenderpass(const char* name) override;
 
     /// @brief Загружает данные текстуры в графический процессор.
     /// @param texture указатель на текстуру которую нужно загрузить.
@@ -98,60 +102,25 @@ public:
     void DrawGeometry(const GeometryRenderData& data) override;
 
     // Методы относящиеся к шейдерам---------------------------------------------------------------------------------------------------------------------------------------------
-    
-    /// @brief Создает внутренние ресурсы шейдера, используя предоставленные параметры.
-    /// @param shader указатель на шейдер.
-    /// @param RenderpassID идентификатор прохода рендеринга, который будет связан с шейдером.
-    /// @param StageCount общее количество этапов.
-    /// @param StageFilenames массив имен файлов этапов шейдера, которые будут загружены. Должно соответствовать массиву этапов.
-    /// @param stages массив этапов шейдера(ShaderStage), указывающий, какие этапы рендеринга (вершина, фрагмент и т. д.) используются в этом шейдере.
-    /// @return true в случае успеха, иначе false.
-    bool Load(Shader* shader, u8 RenderpassID, u8 StageCount, const DArray<MString>& StageFilenames, const ShaderStage* stages) override;
-    /// @brief Уничтожает данный шейдер и освобождает все имеющиеся в нем ресурсы.--------------------------------------------------------------------
-    /// @param shader указатель на шейдер, который нужно уничтожить.
+
+    bool Load(Shader* shader, Renderpass* renderpass, u8 StageCount, const DArray<MString>& StageFilenames, const ShaderStage* stages) override;
     void Unload(Shader* shader) override;
-    /// @brief Инициализирует настроенный шейдер. Будет автоматически уничтожен, если этот шаг не удастся.--------------------------------------------
-    /// Должен быть вызван после Shader::Create().
-    /// @param shader указатель на шейдер, который необходимо инициализировать.
-    /// @return true в случае успеха, иначе false.
     bool ShaderInitialize(Shader* shader) override;
-    /// @brief Использует заданный шейдер, активируя его для обновления атрибутов, униформы и т. д., а также для использования в вызовах отрисовки.---
-    /// @param shader указатель на используемый шейдер.
-    /// @return true в случае успеха, иначе false.
     bool ShaderUse(Shader* shader) override;
-    /// @brief Применяет глобальные данные к универсальному буферу.-----------------------------------------------------------------------------------
-    /// @param shader указатель на шейдер, к которому нужно применить глобальные данные.
-    /// @return true в случае успеха, иначе false.
     bool ShaderApplyGlobals(Shader* shader) override;
-    /// @brief Применяет данные для текущего привязанного экземпляра.---------------------------------------------------------------------------------
-    /// @param shader указатель на шейдер, глобальные значения которого должны быть связаны.
-    /// @param NeedsUpdate указывает на то что нужно обновить униформу шейдера или только привязать.
-    /// @return true в случае успеха, иначе false.
     bool ShaderApplyInstance(Shader* shader, bool NeedsUpdate) override;
-    /// @brief Получает внутренние ресурсы уровня экземпляра и предоставляет идентификатор экземпляра.------------------------------------------------
-    /// @param shader указатель на шейдер, к которому нужно применить данные экземпляра.
-    /// @param maps массив указателей текстурных карт. Должен быть один на текстуру в экземпляре.
-    /// @param OutInstanceID ссылка для хранения нового идентификатора экземпляра.
-    /// @return true в случае успеха, иначе false.
     bool ShaderAcquireInstanceResources(Shader* shader, TextureMap** maps, u32& OutInstanceID) override;
-    /// @brief Освобождает внутренние ресурсы уровня экземпляра для данного идентификатора экземпляра.------------------------------------------------
-    /// @param shader указатель на шейдер, из которого необходимо освободить ресурсы.
-    /// @param InstanceID идентификатор экземпляра, ресурсы которого должны быть освобождены.
-    /// @return true в случае успеха, иначе false.
     bool ShaderReleaseInstanceResources(Shader* shader, u32 InstanceID) override;
-    /// @brief Устанавливает униформу данного шейдера на указанное значение.--------------------------------------------------------------------------
-    /// @param shader указатель на шейдер.
-    /// @param uniform постоянный указатель на униформу.
-    /// @param value указатель на значение, которое необходимо установить.
-    /// @return true в случае успеха, иначе false.
     bool SetUniform(Shader* shader, struct ShaderUniform* uniform, const void* value) override;
-    /// @brief Получает внутренние ресурсы для данной карты текстур.
-    /// @param map указатель на карту текстуры, для которой нужно получить ресурсы.
-    /// @return true в случае успеха; в противном случае false.
     bool TextureMapAcquireResources(TextureMap* map) override;
-    /// @brief Освобождает внутренние ресурсы для данной карты текстур.
-    /// @param map указатель на карту текстур, из которой необходимо освободить ресурсы.
     void TextureMapReleaseResources(TextureMap* map) override;
+    void RenderTargetCreate(u8 AttachmentCount, Texture** attachments, Renderpass* pass, u32 width, u32 height, RenderTarget* OutTarget) override;
+    void RenderTargetDestroy(RenderTarget& target, bool FreeInternalMemory) override;
+    void RenderpassCreate(Renderpass* OutRenderpass, f32 depth, u32 stencil, bool HasPrevPass, bool HasNextPass) override;
+    void RenderpassDestroy(Renderpass* OutRenderpass) override;
+    Texture* WindowAttachmentGet(u8 index) override;
+    Texture* DepthAttachmentGet() override;
+    u8 WindowAttachmentIndexGet() override;
 
     void* operator new(u64 size);
     /// @brief Функция поиска индекса памяти заданного типа и с заданными свойствами.
@@ -162,12 +131,11 @@ public:
 
 private:
     void CreateCommandBuffers();
-    void RegenerateFramebuffers();
     bool RecreateSwapchain();
     bool CreateBuffers();
     bool CreateModule(VulkanShader* shader, const VulkanShaderStageConfig& config, VulkanShaderStage* ShaderStage);
 
     bool UploadDataRange(VkCommandPool pool, VkFence fence, VkQueue queue, VulkanBuffer& buffer, u64& OutOffset, u64 size, const void* data);
     void FreeDataRange(VulkanBuffer* buffer, u64 offset, u64 size);
-    
+    void (*OnRendertargetRefreshRequired)();   // Обратный вызов, который будет выполнен, когда бэкэнд потребует обновления/повторной генерации целей рендеринга.
 };

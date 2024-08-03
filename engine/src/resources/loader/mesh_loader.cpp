@@ -195,7 +195,7 @@ bool ImportObjFile(FileHandle *ObjFile, const char *OutMsmFilename, DArray<Geome
                     // Позиция вершины
                     FVec3 pos;
                     char t[2];
-                    sscanf(LineBuf, "%s %f %f %f", t, &pos.x, &pos.y, &pos.z);
+                    MString::ToVector(LineBuf, pos); //sscanf(LineBuf, "%s %f %f %f", t, &pos.x, &pos.y, &pos.z);
                     //iv++;
                     positions.PushBack(pos);
                 } break;
@@ -203,7 +203,7 @@ bool ImportObjFile(FileHandle *ObjFile, const char *OutMsmFilename, DArray<Geome
                     // Нормали вершины
                     FVec3 norm;
                     char t[2];
-                    sscanf(LineBuf, "%s %f %f %f", t, &norm.x, &norm.y, &norm.z);
+                    MString::ToVector(LineBuf, norm); // sscanf(LineBuf, "%s %f %f %f", t, &norm.x, &norm.y, &norm.z);
                     //in++;
                     normals.PushBack(norm);
                 } break;
@@ -212,7 +212,7 @@ bool ImportObjFile(FileHandle *ObjFile, const char *OutMsmFilename, DArray<Geome
                         FVec2 TexCoord;
                         char t[2];
                         // ПРИМЕЧАНИЕ: Игнорирование Z координаты, если она присутствует.
-                        sscanf( LineBuf, "%s %f %f", t, &TexCoord.x, &TexCoord.y);
+                        MString::ToVector(LineBuf, TexCoord); // sscanf( LineBuf, "%s %f %f", t, &TexCoord.x, &TexCoord.y);
                         //it++;
                         TexCoords.PushBack(TexCoord);
                 } break; 

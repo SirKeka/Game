@@ -1,6 +1,29 @@
 #include "vulkan_device.hpp"
 #include "vulkan_api.hpp"
+#include "containers/darray.hpp"
 #include "containers/mstring.hpp"
+
+struct VulkanPhysicalDeviceRequirements 
+{
+    bool graphics;
+    bool present;
+    bool compute;
+    bool transfer;
+    DArray<const char*> DeviceExtensionNames;
+    bool SamplerAnisotropy;
+    bool DiscreteGPU;
+    constexpr VulkanPhysicalDeviceRequirements()
+    : graphics(), present(), compute(), transfer(), DeviceExtensionNames(), SamplerAnisotropy(), DiscreteGPU() {}
+    constexpr VulkanPhysicalDeviceRequirements(bool graphics, bool present, bool compute, bool transfer, const char* DeviceExtensionNames, bool SamplerAnisotropy, bool DiscreteGPU)
+    : graphics(graphics), present(present), compute(compute), transfer(transfer), DeviceExtensionNames(), SamplerAnisotropy(SamplerAnisotropy), DiscreteGPU(DiscreteGPU) {}
+};
+
+    struct VulkanPhysicalDeviceQueueFamilyInfo {
+        u32 GraphicsFamilyIndex;
+        u32 PresentFamilyIndex;
+        u32 ComputeFamilyIndex;
+        u32 TransferFamilyIndex;
+    };
 
 bool VulkanDevice::Create(VulkanAPI* VkAPI)
 {
@@ -170,54 +193,51 @@ void VulkanDevice::Destroy(VulkanAPI *VkAPI)
     TransferQueueIndex = -1;
 }
 
-void VulkanDevice::QuerySwapchainSupport(
-    VkPhysicalDevice PhysicalDevice, 
-    VkSurfaceKHR Surface, 
-    VulkanSwapchainSupportInfo * OutSupportInfo)
+void VulkanDevice::QuerySwapchainSupport(VkSurfaceKHR Surface)
 {
     // Возможности поверхности
     VK_CHECK(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
         PhysicalDevice,
         Surface,
-        &OutSupportInfo->capabilities));
+        &SwapchainSupport.capabilities));
 
     // Форматы поверхностей
     VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(
         PhysicalDevice,
         Surface,
-        &OutSupportInfo->FormatCount,
-        0));
+        &SwapchainSupport.FormatCount,
+        nullptr));
 
-    if (OutSupportInfo->FormatCount != 0) {
-        if (!OutSupportInfo->formats) { // раскоментировать или закоментировать знак ! если будет ошибка
-            OutSupportInfo->formats = MMemory::TAllocate<VkSurfaceFormatKHR>(MemoryTag::Renderer, OutSupportInfo->FormatCount);
+    if (SwapchainSupport.FormatCount != 0) {
+        if (!SwapchainSupport.formats) { // раскоментировать или закоментировать знак ! если будет ошибка
+            SwapchainSupport.formats = MMemory::TAllocate<VkSurfaceFormatKHR>(MemoryTag::Renderer, SwapchainSupport.FormatCount);
         }
         VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(
             PhysicalDevice,
             Surface,
-            &OutSupportInfo->FormatCount,
-            OutSupportInfo->formats));
+            &SwapchainSupport.FormatCount,
+            SwapchainSupport.formats));
     }
 
     // Существующие режимы
     VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(
         PhysicalDevice,
         Surface,
-        &OutSupportInfo->PresentModeCount,
+        &SwapchainSupport.PresentModeCount,
         0));
-    if (OutSupportInfo->PresentModeCount != 0) {
-        if (!OutSupportInfo->PresentModes) { // раскоментировать или закоментировать знак ! если будет ошибка
-            OutSupportInfo->PresentModes = MMemory::TAllocate<VkPresentModeKHR>(MemoryTag::Renderer, OutSupportInfo->PresentModeCount);
+    if (SwapchainSupport.PresentModeCount != 0) {
+        if (!SwapchainSupport.PresentModes) { // раскоментировать или закоментировать знак ! если будет ошибка
+            SwapchainSupport.PresentModes = MMemory::TAllocate<VkPresentModeKHR>(MemoryTag::Renderer, SwapchainSupport.PresentModeCount);
         }
         VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(
             PhysicalDevice,
             Surface,
-            &OutSupportInfo->PresentModeCount,
-            OutSupportInfo->PresentModes));
+            &SwapchainSupport.PresentModeCount,
+            SwapchainSupport.PresentModes));
     }
 }
 
-bool VulkanDevice::DetectDepthFormat(VulkanDevice* Device)
+bool VulkanDevice::DetectDepthFormat()
 {
     // Формат кандидатов
     const u64 CandidateCount = 3;
@@ -226,16 +246,20 @@ bool VulkanDevice::DetectDepthFormat(VulkanDevice* Device)
         VK_FORMAT_D32_SFLOAT_S8_UINT,
         VK_FORMAT_D24_UNORM_S8_UINT};
 
+        u8 sizes[3] = { 4, 4, 3 };
+
     u32 flags = VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
     for (u64 i = 0; i < CandidateCount; ++i) {
         VkFormatProperties properties;
-        vkGetPhysicalDeviceFormatProperties(Device->PhysicalDevice, candidates[i], &properties);
+        vkGetPhysicalDeviceFormatProperties(PhysicalDevice, candidates[i], &properties);
 
         if ((properties.linearTilingFeatures & flags) == flags) {
-            Device->DepthFormat = candidates[i];
+            DepthFormat = candidates[i];
+            DepthChannelCount = sizes[i];
             return true;
         } else if ((properties.optimalTilingFeatures & flags) == flags) {
-            Device->DepthFormat = candidates[i];
+            DepthFormat = candidates[i];
+            DepthChannelCount = sizes[i];
             return true;
         }
     }
@@ -280,15 +304,17 @@ bool VulkanDevice::SelectPhysicalDevice(VulkanAPI *VkAPI)
     
         // ЗАДАЧА: Эти требования, вероятно, должны определяться движком
         // конфигурация.
-        VulkanPhysicalDeviceRequirements requirements = {};
-        requirements.graphics = true;
-        requirements.present = true;
-        requirements.transfer = true;
-        // ПРИМЕЧАНИЕ: Включите это, если потребуются вычисления.
-        // requirements.compute = true;
-        requirements.SamplerAnisotropy = true;
-        requirements.DiscreteGPU = true;
-        requirements.DeviceExtensionNames.PushBack(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+        VulkanPhysicalDeviceRequirements requirements{
+            true, // graphics
+            true, // present
+            // ПРИМЕЧАНИЕ: Включите это, если потребуются вычисления.
+            // true, // compute
+            VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+            true, // transfer
+            true, // SamplerAnisotropy
+            true  // DiscreteGPU
+        };
+        //requirements.DeviceExtensionNames.PushBack(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
         VulkanPhysicalDeviceQueueFamilyInfo QueueInfo = {};
         bool result = PhysicalDeviceMeetsRequirements(
@@ -298,7 +324,7 @@ bool VulkanDevice::SelectPhysicalDevice(VulkanAPI *VkAPI)
             &features,
             &requirements,
             &QueueInfo,
-            &this->SwapchainSupport);
+            &SwapchainSupport);
 
         if (result) {
             MINFO("Выбранное устройство: '%s'.", properties.deviceName);

@@ -24,7 +24,7 @@ bool MaterialLoader::Load(const char *name, Resource &OutResource)
     OutResource.FullPath = FullFilePath;
 
     // ЗАДАЧА: Здесь следует использовать распределитель.
-    MaterialConfig* ResourceData = new MaterialConfig(name, "Builtin.Material", true, Vector4D<f32>::One());
+    MaterialConfig* ResourceData = new MaterialConfig(name, "Builtin.Material", true, Vector4D<f32>::Zero());
     // Установите некоторые значения по умолчанию.
 
     // Прочтите каждую строку файла.
@@ -76,7 +76,7 @@ bool MaterialLoader::Load(const char *name, Resource &OutResource)
             MString::nCopy(ResourceData->NormalMapName, TrimmedValue, TEXTURE_NAME_MAX_LENGTH);
         } else if (TrimmedVarName.Comparei("diffuse_colour")) {
             // Разобрать цвет
-            if (!TrimmedValue.ToVector4D(ResourceData->DiffuseColour)) {
+            if (!TrimmedValue.ToVector(ResourceData->DiffuseColour)) {
                 MWARN("Ошибка анализа диффузного цвета (diffuse_color) в файле «%s». Вместо этого используется белый цвет по умолчанию.", FullFilePath);
                 // ПРИМЕЧАНИЕ. Уже назначено выше, его здесь нет необходимости.
             } 

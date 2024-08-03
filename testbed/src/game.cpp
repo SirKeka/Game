@@ -23,7 +23,7 @@ bool Game::Initialize()
 
     gameState = reinterpret_cast<GameState*>(state);
     
-    gameState->CameraPosition = FVec3(0, 0, 30.f);
+    gameState->CameraPosition = FVec3(10.5F, 5.0F, 9.5f);
     gameState->CameraEuler = FVec3();
 
     gameState->view = Matrix4D::MakeTranslation(gameState->CameraPosition);

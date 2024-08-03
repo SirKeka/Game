@@ -8,6 +8,8 @@
 
 RendererType *Renderer::ptrRenderer;
 
+void RegenerateRenderTargets();
+
 constexpr bool CriticalInit(bool op, const MString& message)
 {
     if (!op) {
@@ -29,14 +31,70 @@ view(Matrix4D::MakeTranslation(Vector3D<f32>{0, 0, -30.f})),
 UIProjection(Matrix4D::MakeOrthographicProjection(0, 1280.0f, 720.0f, 0, -100.f, 100.0f)),              // Намеренно перевернуто по оси Y.
 UIView(Matrix4D::MakeIdentity()),
 AmbientColour(0.25f, 0.25f, 0.25f, 1.0f),
-ViewPosition()
+ViewPosition(),
+WindowRenderTargetCount(),
+// Размер буфера кадра по умолчанию. Переопределяется при создании окна.
+FramebufferWidth(1280),
+FramebufferHeight(720),
+WorldRenderpass(ptrRenderer->GetRenderpass("Renderpass.Builtin.World")),
+UiRenderpass(ptrRenderer->GetRenderpass("Renderpass.Builtin.UI")),
+resizing(false),
+FramesSinceResize()
 {
     if(type == ERendererType::VULKAN) {
         //ptrRenderer = dynamic_cast<VulkanAPI*> (ptrRenderer);
 
         Event::GetInstance()->Register(EVENT_CODE_SET_RENDER_MODE, this, OnEvent);
 
-        CriticalInit(ptrRenderer = new VulkanAPI(window, ApplicationName), "Систему рендеринга не удалось инициализировать. Выключение.");
+        // Проходы рендеринга. ЗАДАЧА: прочитать конфигурацию из файла.
+        RenderpassConfig RpConfig[2] = {
+            RenderpassConfig(
+                "Renderpass.Builtin.World", 
+                nullptr, 
+                "Renderpass.Builtin.UI", 
+                FVec4(0, 0, 1280, 720), 
+                FVec4(0.0f, 0.0f, 0.2f, 1.0f),
+                RenderpassClearFlag::ColourBuffer | RenderpassClearFlag::DepthBuffer | RenderpassClearFlag::StencilBuffer
+            ),
+            RenderpassConfig(
+                "Renderpass.Builtin.UI",
+                "Renderpass.Builtin.World",
+                nullptr,
+                FVec4(0, 0, 1280, 720), 
+                FVec4(0.0f, 0.0f, 0.2f, 1.0f),
+                RenderpassClearFlag::None
+            )
+        };
+
+        RendererConfig RendererConfig {
+            ApplicationName,
+            2,
+            RpConfig,
+            RegenerateRenderTargets
+        };
+
+        CriticalInit(ptrRenderer = new VulkanAPI(window, RendererConfig, WindowRenderTargetCount), "Систему рендеринга не удалось инициализировать. Выключение.");
+
+        // ЗАДАЧА: Узнаем, как их получить, когда определим представления.
+        WorldRenderpass->RenderTargetCount = WindowRenderTargetCount;
+        WorldRenderpass->targets = new RenderTarget[WindowRenderTargetCount];
+
+        UiRenderpass->RenderTargetCount = WindowRenderTargetCount;
+        UiRenderpass->targets = new RenderTarget[WindowRenderTargetCount];
+
+        RegenerateRenderTargets();
+
+        // Обновите размеры основного/мирового рендерпасса.
+        WorldRenderpass->RenderArea.x = 0;
+        WorldRenderpass->RenderArea.y = 0;
+        WorldRenderpass->RenderArea.z = FramebufferWidth;
+        WorldRenderpass->RenderArea.w = FramebufferHeight;
+
+        // Также обновите размеры рендерпасса пользовательского интерфейса.
+        UiRenderpass->RenderArea.x = 0;
+        UiRenderpass->RenderArea.y = 0;
+        UiRenderpass->RenderArea.z = FramebufferWidth;
+        UiRenderpass->RenderArea.w = FramebufferHeight;
 
         // Shaders
         Resource ConfigResource;
@@ -69,37 +127,27 @@ ViewPosition()
 Renderer::~Renderer()
 {
     delete ptrRenderer;
+    ptrRenderer = nullptr;
 }
-/*
-bool Renderer::Initialize(class MWindow* window, const char *ApplicationName, ERendererType type)
-{
-    switch (type)
-    {
-    case RENDERER_TYPE_VULKAN:
-        //ptrRenderer = dynamic_cast<VulcanAPI> (ptrRenderer);
-        ptrRenderer = new VulcanAPI(ApplicationName);
-        break;
-    case RENDERER_TYPE_DIRECTX:
 
-        break;
-    case RENDERER_TYPE_OPENGL:
-
-        break;
-    }
-    
-}
-*/
 void Renderer::Shutdown()
 {
-    //this->~Renderer();
+    // Уничтожить цели рендеринга.
+    for (u8 i = 0; i < WindowRenderTargetCount; ++i) {
+        ptrRenderer->RenderTargetDestroy(WorldRenderpass->targets[i], true);
+        ptrRenderer->RenderTargetDestroy(UiRenderpass->targets[i], true);
+    }
 }
 
 void Renderer::OnResized(u16 width, u16 height)
 {
     if (ptrRenderer) {
-        projection = Matrix4D::MakeFrustumProjection(Math::DegToRad(45.0f), width / height, NearClip, FarClip);
-        UIProjection = Matrix4D::MakeOrthographicProjection(0, width, height, 0, -100.f, 100.0f);
-        ptrRenderer->Resized(width, height);
+        // Отметить как изменение размера и сохранить изменение, но дождаться повторной генерации.
+        resizing = true;
+        FramebufferWidth = width;
+        FramebufferHeight = height;
+        // Также сбросить количество кадров с момента последней операции изменения размера.
+        FramesSinceResize = 0;
     } else {
         MWARN("Средства визуализации (Renderer) не существует, чтобы принять изменение размера: %i %i", width, height);
     }
@@ -108,10 +156,42 @@ void Renderer::OnResized(u16 width, u16 height)
 bool Renderer::DrawFrame(RenderPacket &packet)
 {
     ptrRenderer->FrameNumber++;
+
+    // Убедитесь, что окно в данный момент не меняет размер, подождав указанное количество кадров после последней операции изменения размера, прежде чем выполнять внутренние обновления.
+    if (resizing) {
+        FramesSinceResize++;
+
+        // Если требуемое количество кадров прошло с момента изменения размера, продолжайте и выполните фактические обновления.
+        if (FramesSinceResize >= 30) {
+            f32 width = FramebufferWidth;
+            f32 height = FramebufferHeight;
+            projection = Matrix4D::MakeFrustumProjection(Math::DegToRad(45.F), width / height, NearClip, FarClip);
+            UIProjection = Matrix4D::MakeOrthographicProjection(0, width, height, 0, -100.f, 100.0f);  // Намеренно перевернуто по оси Y.
+            ptrRenderer->Resized(width, height);
+
+            FramesSinceResize = 0;
+            resizing = false;
+        } else {
+            // Пропустите рендеринг кадра и попробуйте снова в следующий раз.
+            return true;
+        }
+    }
+
+    // ЗАДАЧА: представления
+    // Обновите размеры основного/мирового рендерпасса.
+    WorldRenderpass->RenderArea.z = FramebufferWidth;
+    WorldRenderpass->RenderArea.w = FramebufferHeight;
+
+    // Также обновите размеры рендерпасса пользовательского интерфейса.
+    UiRenderpass->RenderArea.z = FramebufferWidth;
+    UiRenderpass->RenderArea.w = FramebufferHeight;
+
     // Если начальный кадр возвращается успешно, операции в середине кадра могут продолжаться.
     if (ptrRenderer->BeginFrame(packet.DeltaTime)) {
+        const u8& AttachmentIndex = ptrRenderer->WindowAttachmentIndexGet();
         // Мировой проход рендеринга
-        if (!ptrRenderer->BeginRenderpass(static_cast<u8>(BuiltinRenderpass::World))) {
+        // ЗАДАЧА: только рендерпас
+        if (!ptrRenderer->BeginRenderpass(WorldRenderpass, WorldRenderpass->targets[AttachmentIndex])) {
             MERROR("Ошибка Renderer::BeginRenderpass -> BuiltinRenderpass::World. Приложение закрывается...");
             return false;
         }
@@ -274,7 +354,7 @@ bool Renderer::RenderpassID(const MString &name, u8 &OutRenderpassID)
     return false;
 }
 
-bool Renderer::Load(Shader *shader, u8 RenderpassID, u8 StageCount, const DArray<MString>& StageFilenames, const ShaderStage *stages)
+bool Renderer::Load(Shader *shader, Renderpass* renderpass, u8 StageCount, const DArray<MString>& StageFilenames, const ShaderStage *stages)
 {
     return ptrRenderer->Load(shader, RenderpassID, StageCount, StageFilenames, stages);
 }
@@ -327,6 +407,41 @@ bool Renderer::TextureMapAcquireResources(TextureMap *map)
 void Renderer::TextureMapReleaseResources(TextureMap *map)
 {
     ptrRenderer->TextureMapReleaseResources(map);
+}
+
+void Renderer::RenderTargetCreate(u8 AttachmentCount, Texture **attachments, Renderpass *pass, u32 width, u32 height, RenderTarget *OutTarget)
+{
+    ptrRenderer->RenderTargetCreate(AttachmentCount, attachments, pass, width, height, OutTarget);
+}
+
+void Renderer::RenderTargetDestroy(RenderTarget &target, bool FreeInternalMemory)
+{
+    ptrRenderer->RenderTargetDestroy(target, FreeInternalMemory);
+}
+
+void Renderer::RenderpassCreate(Renderpass *OutRenderpass, f32 depth, u32 stencil, bool HasPrevPass, bool HasNextPass)
+{
+    ptrRenderer->RenderpassCreate(OutRenderpass, depth, stencil, HasPrevPass, HasNextPass);
+}
+
+void Renderer::RenderpassDestroy(Renderpass *OutRenderpass)
+{
+    ptrRenderer->RenderpassDestroy(OutRenderpass);
+}
+
+Texture *Renderer::WindowAttachmentGet(u8 index)
+{
+    return ptrRenderer->WindowAttachmentGet(index);
+}
+
+Texture *Renderer::DepthAttachmentGet()
+{
+    return ptrRenderer->DepthAttachmentGet();
+}
+
+u8 Renderer::WindowAttachmentIndexGet()
+{
+    return ptrRenderer->WindowAttachmentIndexGet();
 }
 
 void Renderer::SetView(const Matrix4D& view, const Vector3D<f32>& ViewPosition)
