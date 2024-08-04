@@ -2,6 +2,7 @@
 
 #include "defines.hpp"
 #include <vulkan/vulkan.h>
+#include <renderer/renderpass.hpp>
 
 class VulkanAPI;
 class Texture;

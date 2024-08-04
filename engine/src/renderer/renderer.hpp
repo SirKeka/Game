@@ -113,11 +113,10 @@ public:
     /// @brief Уничтожает заданную геометрию, освобождая ресурсы графического процессора.-------------------------------------------------------------
     /// @param gid указатель на геометрию, которую нужно уничтожить.
     static void Unload(GeometryID* gid);
-    /// @brief Получает идентификатор средства рендеринга с заданным именем.---------------------------------------------------------------------------
-    /// @param name имя средства рендеринга, идентификатор которого требуется получить.
-    /// @param OutRenderpassID указатель для хранения идентификатора renderpass.
-    /// @return true если найден, иначе false.
-    static bool RenderpassID(const MString& name, u8& OutRenderpassID);
+    /// @brief Получает указатель на renderpass, используя предоставленное имя.
+    /// @param name имя renderpass.
+    /// @return Указатель на renderpass, если найден; в противном случае nullptr.
+    static Renderpass* GetRenderpass(const MString& name);
     /// @brief Создает внутренние ресурсы шейдера, используя предоставленные параметры.---------------------------------------------------------------
     /// @param shader указатель на шейдер.
     /// @param RenderpassID идентификатор прохода рендеринга, который будет связан с шейдером.
@@ -171,12 +170,35 @@ public:
     /// @brief Освобождает внутренние ресурсы для данной карты текстур.
     /// @param map указатель на карту текстур, из которой необходимо освободить ресурсы.
     static void TextureMapReleaseResources(TextureMap* map);
-    static void RenderTargetCreate(u8 AttachmentCount, Texture** attachments, Renderpass* pass, u32 width, u32 height, RenderTarget* OutTarget);
+    /// @brief Создает новую цель рендеринга, используя предоставленные данные.
+    /// @param AttachmentCount количество вложений (указателей текстур).
+    /// @param attachments массив вложений (указателей текстур).
+    /// @param pass указатель на проход рендеринга, с которым связана цель рендеринга.
+    /// @param width ширина цели рендеринга в пикселях.
+    /// @param height высота цели рендеринга в пикселях.
+    /// @param OutTarget указатель для хранения новой созданной цели рендеринга.
+    static void RenderTargetCreate(u8 AttachmentCount, Texture** attachments, Renderpass* pass, u32 width, u32 height, RenderTarget& OutTarget);
+    /// @brief Уничтожает предоставленную цель рендеринга.
+    /// @param target указатель на цель рендеринга, которую нужно уничтожить.
+    /// @param FreeInternalMemory указывает, следует ли освободить внутреннюю память.
     static void RenderTargetDestroy(RenderTarget& target, bool FreeInternalMemory);
+    /// @brief Создает новый проход рендеринга.
+    /// @param OutRenderpass указатель на общий проход рендеринга.
+    /// @param depth величина очистки глубины.
+    /// @param stencil значение очистки трафарета.
+    /// @param HasPrevPass указывает, есть ли предыдущий проход рендеринга.
+    /// @param HasNextPass указывает, есть ли следующий проход рендеринга.
     static void RenderpassCreate(Renderpass* OutRenderpass, f32 depth, u32 stencil, bool HasPrevPass, bool HasNextPass);
+    /// @brief Уничтожает указанный renderpass.
+    /// @param OutRenderpass указатель на renderpass, который необходимо уничтожить.
     static void RenderpassDestroy(Renderpass* OutRenderpass);
+    /// @brief Пытается получить цель визуализации окна по указанному индексу.
+    /// @param index индекс вложения для получения. Должен быть в пределах диапазона количества целей визуализации окна.
+    /// @return указатель на вложение текстуры в случае успеха; в противном случае 0.
     static Texture* WindowAttachmentGet(u8 index);
+    /// @return Возвращает указатель на основную цель текстуры глубины.
     static Texture* DepthAttachmentGet();
+    /// @return Возвращает текущий индекс прикрепления окна.
     static u8 WindowAttachmentIndexGet();
     /// @brief Устанавливает матрицу представления в средстве визуализации. ПРИМЕЧАНИЕ: Доступен общедоступному API.
     /// @deprecated ВЗЛОМ: это не должно быть выставлено за пределы движка.
@@ -188,5 +210,6 @@ public:
     // void operator delete(void* ptr);
 private:
     static bool OnEvent(u16 code, void* sender, void* ListenerInst, EventContext context);
+    void RegenerateRenderTargets();
 };
 

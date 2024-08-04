@@ -94,7 +94,7 @@ struct VulkanShader {
     u32 InstanceCount;                                                  // Экземпляр состояния для всех экземпляров. ЗАДАЧА: динамичным */
     VulkanShaderInstanceState InstanceStates[VULKAN_MAX_MATERIAL_COUNT];
 
-    constexpr VulkanShader();
+    VulkanShader();
     // constexpr VulkanShader(VulkanRenderpass* renderpass, );
     ~VulkanShader();
 

@@ -7,6 +7,7 @@
 
 struct StaticMeshData;
 class Texture;
+class Renderer;
 
 namespace RendererDebugViewMode {
     enum RendererDebugViewMode : u32 {
@@ -95,8 +96,23 @@ struct RendererConfig {
     const char* ApplicationName;            // Имя приложения.
     u16 RenderpassCount;                    // Количество указателей на проходы рендеринга.
     struct RenderpassConfig* PassConfigs;   // Массив конфигураций для проходов рендеринга. Будет инициализировано на бэкэнде автоматически.
-    void (*OnRendertargetRefreshRequired)();// Обратный вызов, который будет выполнен, когда бэкэнд потребует обновления/повторной генерации целей рендеринга.
-    constexpr RendererConfig(const char* ApplicationName, u16 RenderpassCount, struct RenderpassConfig* PassConfigs, void (*OnRendertargetRefreshRequired)())
+    // Обратный вызов, который будет выполнен, когда бэкэнд потребует обновления/повторной генерации целей рендеринга.
+    class PFN_Method {
+    public:
+        using PtrCallbackMethod = void(Renderer::*)();
+
+        constexpr PFN_Method(Renderer* ptrCallbackClass, PtrCallbackMethod CallbackMethod)
+        : ptrCallbackClass(ptrCallbackClass), CallbackMethod(CallbackMethod) {}
+        void Run() const {
+            (ptrCallbackClass->*CallbackMethod)();
+        }
+        operator bool() const { return (ptrCallbackClass != nullptr && CallbackMethod != nullptr); }
+    private:
+        Renderer* ptrCallbackClass{nullptr};
+        PtrCallbackMethod CallbackMethod{nullptr};
+    } OnRendertargetRefreshRequired;
+    // void (Renderer::*OnRendertargetRefreshRequired)();
+    constexpr RendererConfig(const char* ApplicationName, u16 RenderpassCount, struct RenderpassConfig* PassConfigs, PFN_Method OnRendertargetRefreshRequired)
     : ApplicationName(ApplicationName), RenderpassCount(RenderpassCount), PassConfigs(PassConfigs), OnRendertargetRefreshRequired(OnRendertargetRefreshRequired) {}
 };
 
@@ -127,7 +143,7 @@ public:
     /// @brief Получает указатель на renderpass, используя предоставленное имя.
     /// @param name имя renderpass.
     /// @return Указатель на renderpass, если найден; в противном случае nullptr.
-    virtual Renderpass* GetRenderpass(const char* name) = 0;
+    virtual Renderpass* GetRenderpass(const MString& name) = 0;
     /// @brief Рисует заданную геометрию. Должен вызываться только внутри прохода рендеринга, внутри кадра.
     /// @param data данные рендеринга геометрии, которая должна быть нарисована.
     virtual void DrawGeometry(const GeometryRenderData& data) = 0;
@@ -222,7 +238,7 @@ public:
     /// @param width ширина цели рендеринга в пикселях.
     /// @param height высота цели рендеринга в пикселях.
     /// @param OutTarget указатель для хранения новой созданной цели рендеринга.
-    virtual void RenderTargetCreate(u8 AttachmentCount, Texture** attachments, Renderpass* pass, u32 width, u32 height, RenderTarget* OutTarget) = 0;
+    virtual void RenderTargetCreate(u8 AttachmentCount, Texture** attachments, Renderpass* pass, u32 width, u32 height, RenderTarget& OutTarget) = 0;
     /// @brief Уничтожает предоставленную цель рендеринга.
     /// @param target указатель на цель рендеринга, которую нужно уничтожить.
     /// @param FreeInternalMemory указывает, следует ли освободить внутреннюю память.

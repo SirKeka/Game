@@ -1,6 +1,8 @@
 #pragma once
 
+#include <defines.hpp>
 #include <vulkan/vulkan.h>
+#include "containers/darray.hpp"
 
 class VulkanAPI;
 
@@ -50,8 +52,28 @@ public:
     bool DetectDepthFormat();
 
 private:
-    struct VulkanPhysicalDeviceRequirements;
-    struct VulkanPhysicalDeviceQueueFamilyInfo;
+    struct VulkanPhysicalDeviceRequirements {
+        bool graphics;
+        bool present;
+        bool compute;
+        bool transfer;
+        DArray<const char*> DeviceExtensionNames;
+        bool SamplerAnisotropy;
+        bool DiscreteGPU;
+        constexpr VulkanPhysicalDeviceRequirements()
+        : graphics(), present(), compute(), transfer(), DeviceExtensionNames(), SamplerAnisotropy(), DiscreteGPU() {}
+        constexpr VulkanPhysicalDeviceRequirements(bool graphics, bool present, bool transfer, const char* DeviceExtensionNames, bool SamplerAnisotropy, bool DiscreteGPU)
+        : graphics(graphics), present(present), compute(), transfer(transfer), DeviceExtensionNames(), SamplerAnisotropy(SamplerAnisotropy), DiscreteGPU(DiscreteGPU) {}
+        constexpr VulkanPhysicalDeviceRequirements(bool graphics, bool present, bool compute, bool transfer, const char* DeviceExtensionNames, bool SamplerAnisotropy, bool DiscreteGPU)
+        : graphics(graphics), present(present), compute(compute), transfer(transfer), DeviceExtensionNames(), SamplerAnisotropy(SamplerAnisotropy), DiscreteGPU(DiscreteGPU) {}
+    };
+
+    struct VulkanPhysicalDeviceQueueFamilyInfo {
+        u32 GraphicsFamilyIndex;
+        u32 PresentFamilyIndex;
+        u32 ComputeFamilyIndex;
+        u32 TransferFamilyIndex;
+    };
 
     bool SelectPhysicalDevice(VulkanAPI* VkAPI);
     bool PhysicalDeviceMeetsRequirements(

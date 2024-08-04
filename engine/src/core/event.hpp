@@ -28,6 +28,18 @@ struct EventContext {
 //using PFN_OnEvent = std::function<bool(u16 code, void* sender, void* ListenerInst, EventContext data)>;
 typedef bool (*PFN_OnEvent)(u16 code, void* sender, void* ListenerInst, EventContext data);
 
+/// @brief Реализация класса инициатора для синхронных действий
+class Executor
+{
+public:
+    void CallbackHandler(int eventID);
+    void operator() (int eventID);
+};
+
+//using ptrCallback = bool(*) (u16, void*, void*, EventContext);
+using PFN_OnEventStatic = bool(*) (u16, void*, void*, EventContext);
+using PFN_OnEventMethod = bool(Executor::*)(u16, void*, void*, EventContext, Executor*);
+
 struct RegisteredEvent {
     void* listener;
     PFN_OnEvent callback;
@@ -149,3 +161,69 @@ enum SystemEventCode {
 
     MAX_EVENT_CODE = 0xFF       // Максимальный код события, который можно использовать внутри.
 };
+
+/*
+void Run(ptrCallback ptrCallback, void* contextData = nullptr)  // (1)
+{
+    int eventID = 0;
+    ptrCallback(eventID, contextData);
+}
+void Run(ptrCallbackStatic ptrCallback, Executor* contextData = nullptr)  // (2)
+{
+    int eventID = 0;
+    ptrCallback(eventID, contextData);
+}
+void Run(Executor* ptrClientCallbackClass, ptrCallbackMethod ptrClientCallbackMethod)  // (3)
+{
+    int eventID = 0;
+    (ptrClientCallbackClass->*ptrClientCallbackMethod)(eventID);
+}
+void Run(Executor callbackHandler)  // (4)
+{
+    int eventID = 0;
+    callbackHandler(eventID);
+}
+
+/// @brief 
+/// @tparam CallbackArgument 
+/// @param callbackHandler 
+template <typename CallbackArgument>
+void run(CallbackArgument callbackHandler)
+{
+    int eventID = 0;
+    //Some actions
+    callbackHandler(eventID);
+}
+
+template<typename Function, typename Context>                                           // (1)
+class CallbackConverter                                                                 // (2)
+{
+public:
+    CallbackConverter (Function argFunction = nullptr, Context argContext = nullptr)    // (3)
+    {
+        ptrFunction = argFunction; context = argContext;
+    }
+    void operator() (int eventID)                                                       // (4)
+    {
+        ptrFunction(eventID, context);                                                  // (5)
+    }
+private:
+    Function ptrFunction;                                                               // (6)
+    Context context;                                                                    // (7)
+};
+
+template<typename ClassName>  // (1)
+class CallbackConverter <void(ClassName::*)(), ClassName>   //
+{
+public:
+    using ClassMethod = void(ClassName::*)();               //
+
+    CallbackConverter(ClassMethod MethodPointer = nullptr, ClassName* ClassPointer = nullptr) { //
+        ptrClass = ClassPointer; ptrMethod = MetodPointer;
+    } // 
+
+    void operator()(int eventID) {
+        ptrClass->*ptrMethod)
+    }
+}
+*/

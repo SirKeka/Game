@@ -3,6 +3,7 @@
 #include "vulkan_device.hpp"
 #include "vulkan_utils.hpp"
 #include "vulkan_renderpass.hpp"
+#include "vulkan_command_buffer.hpp"
 
 bool VulkanPipeline::Create(
     VulkanAPI* VkAPI,

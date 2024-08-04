@@ -1,7 +1,7 @@
 #include "vulkan_shader.hpp"
 #include "core/mmemory.hpp"
 
-constexpr VulkanShader::VulkanShader()
+VulkanShader::VulkanShader()
 :
     MappedUniformBufferBlock(nullptr),
     id(),

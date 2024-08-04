@@ -5,7 +5,6 @@
 #include "core/asserts.hpp"
 #include "vulkan_device.hpp"
 #include "vulkan_swapchain.hpp"
-#include "vulkan_renderpass.hpp"
 #include "vulkan_buffer.hpp"
 #include "vulkan_shader.hpp"
 #include "resources/geometry.hpp"
@@ -69,7 +68,7 @@ public:
     bool EndFrame(f32 DeltaTime) override;
     bool BeginRenderpass(Renderpass* pass, RenderTarget& target) override;
     bool EndRenderpass(Renderpass* pass) override;
-    Renderpass* GetRenderpass(const char* name) override;
+    Renderpass* GetRenderpass(const MString& name) override;
 
     /// @brief Загружает данные текстуры в графический процессор.
     /// @param texture указатель на текстуру которую нужно загрузить.
@@ -114,8 +113,8 @@ public:
     bool SetUniform(Shader* shader, struct ShaderUniform* uniform, const void* value) override;
     bool TextureMapAcquireResources(TextureMap* map) override;
     void TextureMapReleaseResources(TextureMap* map) override;
-    void RenderTargetCreate(u8 AttachmentCount, Texture** attachments, Renderpass* pass, u32 width, u32 height, RenderTarget* OutTarget) override;
-    void RenderTargetDestroy(RenderTarget& target, bool FreeInternalMemory) override;
+    void RenderTargetCreate(u8 AttachmentCount, Texture** attachments, Renderpass* pass, u32 width, u32 height, RenderTarget& OutTarget) override;
+    void RenderTargetDestroy(RenderTarget& target, bool FreeInternalMemory = false) override;
     void RenderpassCreate(Renderpass* OutRenderpass, f32 depth, u32 stencil, bool HasPrevPass, bool HasNextPass) override;
     void RenderpassDestroy(Renderpass* OutRenderpass) override;
     Texture* WindowAttachmentGet(u8 index) override;
@@ -137,5 +136,7 @@ private:
 
     bool UploadDataRange(VkCommandPool pool, VkFence fence, VkQueue queue, VulkanBuffer& buffer, u64& OutOffset, u64 size, const void* data);
     void FreeDataRange(VulkanBuffer* buffer, u64 offset, u64 size);
-    void (*OnRendertargetRefreshRequired)();   // Обратный вызов, который будет выполнен, когда бэкэнд потребует обновления/повторной генерации целей рендеринга.
+    // Обратный вызов, который будет выполнен, когда бэкэнд потребует обновления/повторной генерации целей рендеринга.
+    const RendererConfig::PFN_Method& OnRendertargetRefreshRequired;
+    //void (Renderer::*OnRendertargetRefreshRequired)();   
 };

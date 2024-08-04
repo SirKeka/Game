@@ -1,9 +1,8 @@
 #include "vulkan_renderpass.hpp"
-#include "vulkan_api.hpp"
 
 //#include "core/mmemory.hpp"
-
-constexpr VulkanRenderpass::VulkanRenderpass(f32 depth, u32 stencil, bool HasPrevPass, bool HasNextPass, VulkanAPI* VkAPI)
+/*
+constexpr VulkanRenderpass::VulkanRenderpass(u8 ClearFlags, f32 depth, u32 stencil, bool HasPrevPass, bool HasNextPass, VulkanAPI *VkAPI)
 : handle(), depth(depth), stencil(stencil), HasPrevPass(HasPrevPass), HasNextPass(HasNextPass), state()
 {
     // Главный подпроход
@@ -15,7 +14,7 @@ constexpr VulkanRenderpass::VulkanRenderpass(f32 depth, u32 stencil, bool HasPre
     VkAttachmentDescription AttachmentDescriptions[2];
 
     // Цветное вложение
-    bool DoClearColour = (this->ClearFlags & RenderpassClearFlag::ColourBuffer) != 0;
+    bool DoClearColour = (ClearFlags & RenderpassClearFlag::ColourBuffer) != 0;
     VkAttachmentDescription ColorAttachment;
     ColorAttachment.format = VkAPI->swapchain.ImageFormat.format; // ЗАДАЧА: настроить
     ColorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -41,7 +40,7 @@ constexpr VulkanRenderpass::VulkanRenderpass(f32 depth, u32 stencil, bool HasPre
     subpass.pColorAttachments = &ColorAttachmentReference;
 
     // Приставка по глубине, если она есть.
-    bool DoClearDepth = (this->ClearFlags & RenderpassClearFlag::DepthBuffer) != 0;
+    bool DoClearDepth = (ClearFlags & RenderpassClearFlag::DepthBuffer) != 0;
     if (DoClearDepth){
         VkAttachmentDescription DepthAttachment = {};
         DepthAttachment.format = VkAPI->Device.DepthFormat;
@@ -69,7 +68,7 @@ constexpr VulkanRenderpass::VulkanRenderpass(f32 depth, u32 stencil, bool HasPre
         MMemory::ZeroMem(&AttachmentDescriptions[AttachmentDescriptionCount], sizeof(VkAttachmentDescription));
         subpass.pDepthStencilAttachment = 0;
     }
-    
+
     // Ввод из шейдера
     subpass.inputAttachmentCount = 0;
     subpass.pInputAttachments = 0;
@@ -109,7 +108,7 @@ constexpr VulkanRenderpass::VulkanRenderpass(f32 depth, u32 stencil, bool HasPre
         &this->handle)
     );
 }
-
+*/
 void VulkanRenderpass::Destroy(VulkanAPI *VkAPI)
 {
     if (this->handle) {

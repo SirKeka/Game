@@ -1,8 +1,10 @@
 #include "vulkan_api.hpp"
-//#include "core/application.hpp"
+#include "memory/linear_allocator.hpp"
+#include "vulkan_command_buffer.hpp"
 #include "vulkan_swapchain.hpp"
 #include "vulkan_image.hpp"
 #include "vulkan_platform.hpp"
+#include "vulkan_renderpass.hpp"
 #include "systems/material_system.hpp"
 #include "systems/resource_system.hpp"
 #include "systems/texture_system.hpp"
@@ -800,14 +802,14 @@ OnRendertargetRefreshRequired(config.OnRendertargetRefreshRequired)
     */
 
    // Проходы рендеринга
-    for (u32 i = 0; i < config->renderpass_count; ++i) {
+    for (u32 i = 0; i < config.RenderpassCount; ++i) {
         // ЗАДАЧА: перейти к функции для возможности повторного использования.
         // Сначала убедитесь, что нет конфликтов с именем.
         u32 id = INVALID::ID;
-        RenderpassTable.Get(config->PassConfigs[i].name, &id);
+        RenderpassTable.Get(config.PassConfigs[i].name, &id);
         if (id != INVALID::ID) {
-            MERROR("Столкновение с renderpass с именем '%s'. Инициализация не удалась.", config->PassConfigs[i].name);
-            return false;
+            MERROR("Столкновение с renderpass с именем '%s'. Инициализация не удалась.", config.PassConfigs[i].name);
+            return;
         }
         // Вырежьте новый идентификатор.
         for (u32 j = 0; j < VULKAN_MAX_REGISTERED_RENDERPASSES; ++j) {
@@ -822,44 +824,19 @@ OnRendertargetRefreshRequired(config.OnRendertargetRefreshRequired)
         // Убедитесь, что мы получили идентификатор
         if (id == INVALID::ID) {
             MERROR("Не найдено места для нового рендерпасса. Увеличьте VULKAN_MAX_REGISTERED_RENDERPASSES. Инициализация не удалась.");
-            return false;
+            return;
         }
 
         // Настройте renderpass.
-        RegisteredPasses[id].ClearFlags = config->PassConfigs[i].ClearFlags;
-        RegisteredPasses[id].ClearColour = config->PassConfigs[i].ClearColour;
-        RegisteredPasses[id].RenderArea = config->PassConfigs[i].RenderArea;
+        RegisteredPasses[id].ClearFlags = config.PassConfigs[i].ClearFlags;
+        RegisteredPasses[id].ClearColour = config.PassConfigs[i].ClearColour;
+        RegisteredPasses[id].RenderArea = config.PassConfigs[i].RenderArea;
 
-        RegisteredPasses[id].Create(1.0f, 0, config->PassConfigs[i].PrevName != 0, config->PassConfigs[i].NextName != 0);
+        RenderpassCreate(RegisteredPasses + id, 1.0f, 0, config.PassConfigs[i].PrevName != 0, config.PassConfigs[i].NextName != 0);
 
         // Обновите таблицу с новым идентификатором.
-        RenderpassTable.Set(config->PassConfigs[i].name, id);
+        RenderpassTable.Set(config.PassConfigs[i].name, id);
     }
-
-    // World renderpass 
-    MainRenderpass.Create(
-        this,
-        Vector4D<f32>(0, 0, this->FramebufferWidth, this->FramebufferHeight),
-        Vector4D<f32>(0.0f, 0.0f, 0.2f, 1.0f),  // Темносиний цвет
-        1.0f,
-        0,
-        static_cast<u8>(RenderpassClearFlag::ColourBuffer | RenderpassClearFlag::DepthBuffer | RenderpassClearFlag::StencilBuffer),
-        false, true
-    );
-
-    //UI renderpass
-    UI_Renderpass.Create(
-        this,
-        Vector4D<f32>(0, 0, this->FramebufferWidth, this->FramebufferHeight),
-        Vector4D<f32>(0.0f, 0.0f, 0.0f, 0.0f),
-        1.0f,
-        0,
-        static_cast<u8>(RenderpassClearFlag::None),
-        true, false
-    );
-
-    // Регенерировать цепочку подкачки и мировые фреймбуферы
-    RegenerateFramebuffers();
 
     // Создайте буферы команд.
     CreateCommandBuffers();
@@ -928,8 +905,8 @@ VulkanAPI::~VulkanAPI()
         }
         vkDestroyFence(Device.LogicalDevice, InFlightFences[i], allocator);
     }
-    ImageAvailableSemaphores.~DArray();
-    QueueCompleteSemaphores.~DArray();
+    //ImageAvailableSemaphores.~DArray();
+    //QueueCompleteSemaphores.~DArray();
 
     // Буферы команд
     for (u32 i = 0; i < swapchain.ImageCount; ++i) {
@@ -940,20 +917,15 @@ VulkanAPI::~VulkanAPI()
                 &GraphicsCommandBuffers[i]);
                 GraphicsCommandBuffers[i].handle = 0;
         }
+        // Уничтожить цели рендера.
+        RenderTargetDestroy(WorldRenderTargets[i]);
+        RenderTargetDestroy(swapchain.RenderTargets[i]);
     }
-    GraphicsCommandBuffers.~DArray();
-
-    // Уничтожить цели рендера.
-    for (u32 i = 0; i < swapchain.ImageCount; ++i) {
-        WorldRenderTargets[i].Destroy();
-        swapchain.RenderTargets[i].Destroy();
-        //vkDestroyFramebuffer(Device.LogicalDevice, WorldFramebuffers[i], allocator);
-        //vkDestroyFramebuffer(Device.LogicalDevice, swapchain.framebuffers[i], allocator);
-    }
+    //GraphicsCommandBuffers.~DArray();
 
     // Проход рендеринга (Renderpass)
     for (u64 i = 0; i < VULKAN_MAX_REGISTERED_RENDERPASSES; i++) {
-        RegisteredPasses[i].Destroy();
+        RenderpassDestroy(RegisteredPasses + i);
     }
     
 
@@ -1144,7 +1116,7 @@ bool VulkanAPI::BeginRenderpass(Renderpass* pass, RenderTarget& target)
 
     VkRenderPassBeginInfo BeginInfo = {VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
     BeginInfo.renderPass = VkRenderpass->handle;
-    BeginInfo.framebuffer = target.InternalFramebuffer;
+    BeginInfo.framebuffer = *reinterpret_cast<VkFramebuffer*>(target.InternalFramebuffer);
     BeginInfo.renderArea.offset.x = pass->RenderArea.x;
     BeginInfo.renderArea.offset.y = pass->RenderArea.y;
     BeginInfo.renderArea.extent.width = pass->RenderArea.z;
@@ -1188,7 +1160,7 @@ bool VulkanAPI::EndRenderpass(Renderpass* pass)
     return true;
 }
 
-Renderpass *VulkanAPI::GetRenderpass(const char *name)
+Renderpass *VulkanAPI::GetRenderpass(const MString& name)
 {
     if (!name || name[0] == '\0') {
         MERROR("VulkanAPI::GetRenderpass требует имя. Ничего не будет возвращено.");
@@ -1198,7 +1170,7 @@ Renderpass *VulkanAPI::GetRenderpass(const char *name)
     u32 id = INVALID::ID;
     RenderpassTable.Get(name, &id);
     if (id == INVALID::ID) {
-        MWARN("Нет зарегистрированного рендер-пасса с именем «%s».", name);
+        MWARN("Нет зарегистрированного рендер-пасса с именем «%s».", name.c_str());
         return nullptr;
     }
 
@@ -1652,8 +1624,8 @@ bool VulkanAPI::RecreateSwapchain()
     }
 
     // Сообщите рендереру, что требуется обновление.
-    if (context.on_rendertarget_refresh_required) {
-        context.on_rendertarget_refresh_required();
+    if (OnRendertargetRefreshRequired) {
+        OnRendertargetRefreshRequired.Run();
     }
 
     CreateCommandBuffers();
@@ -1731,7 +1703,7 @@ void VulkanAPI::TextureMapReleaseResources(TextureMap *map)
     }
 }
 
-void VulkanAPI::RenderTargetCreate(u8 AttachmentCount, Texture **attachments, Renderpass *pass, u32 width, u32 height, RenderTarget *OutTarget)
+void VulkanAPI::RenderTargetCreate(u8 AttachmentCount, Texture **attachments, Renderpass *pass, u32 width, u32 height, RenderTarget &OutTarget)
 {
     // Максимальное количество вложений
     VkImageView AttachmentViews[32];
@@ -1740,11 +1712,11 @@ void VulkanAPI::RenderTargetCreate(u8 AttachmentCount, Texture **attachments, Re
     }
 
     // Сделайте копию вложений и посчитайте.
-    OutTarget->AttachmentCount = AttachmentCount;
-    if (!out_target->attachments) {
-        OutTarget->attachments = new Texture*[AttachmentCount];
+    OutTarget.AttachmentCount = AttachmentCount;
+    if (!OutTarget.attachments) {
+        OutTarget.attachments = new Texture*[AttachmentCount];
     }
-    MMemory::CopyMem(OutTarget->attachments, attachments, sizeof(texture*) * AttachmentCount);
+    MMemory::CopyMem(OutTarget.attachments, attachments, sizeof(Texture*) * AttachmentCount);
 
     VkFramebufferCreateInfo FramebufferCreateInfo = {VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
     FramebufferCreateInfo.renderPass = ((VulkanRenderpass*)pass->InternalData)->handle;
@@ -1754,18 +1726,16 @@ void VulkanAPI::RenderTargetCreate(u8 AttachmentCount, Texture **attachments, Re
     FramebufferCreateInfo.height = height;
     FramebufferCreateInfo.layers = 1;
 
-    VK_CHECK(vkCreateFramebuffer(Device.LogicalDevice, &FramebufferCreateInfo, allocator, (VkFramebuffer*)&OutTarget->InternalFramebuffer));
+    VK_CHECK(vkCreateFramebuffer(Device.LogicalDevice, &FramebufferCreateInfo, allocator, (VkFramebuffer*)&OutTarget.InternalFramebuffer));
 }
 
 void VulkanAPI::RenderTargetDestroy(RenderTarget &target, bool FreeInternalMemory)
 {
-    if (target && target.InternalFramebuffer) {
+    if (target.InternalFramebuffer) {
         vkDestroyFramebuffer(Device.LogicalDevice, (VkFramebuffer)target.InternalFramebuffer, allocator);
         target.InternalFramebuffer = 0;
         if (FreeInternalMemory) {
-            delete[] target.attachments;
-            target.attachments = nullptr;
-            target.AttachmentCount = 0;
+            target.~RenderTarget();
         }
     }
 }
@@ -1773,12 +1743,12 @@ void VulkanAPI::RenderTargetDestroy(RenderTarget &target, bool FreeInternalMemor
 void VulkanAPI::RenderpassCreate(Renderpass *OutRenderpass, f32 depth, u32 stencil, bool HasPrevPass, bool HasNextPass)
 {
     // VulkanRenderpass* VkRenderpass = new VulkanRenderpass(depth, stencil, HasPrevPass, HasNextPass, this);
-    OutRenderpass->InternalData = new VulkanRenderpass(depth, stencil, HasPrevPass, HasNextPass, this);
+    OutRenderpass->InternalData = new VulkanRenderpass(OutRenderpass->ClearFlags, depth, stencil, HasPrevPass, HasNextPass, this);
 }
 
 void VulkanAPI::RenderpassDestroy(Renderpass *OutRenderpass)
 {
-    reinterpret_cast<VulkanRenderpass*>(OutRenderpass->InternalData)->Destroy();
+    reinterpret_cast<VulkanRenderpass*>(OutRenderpass->InternalData)->Destroy(this);
 }
 
 Texture *VulkanAPI::WindowAttachmentGet(u8 index)

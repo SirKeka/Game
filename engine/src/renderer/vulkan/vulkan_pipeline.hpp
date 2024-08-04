@@ -1,7 +1,7 @@
 #pragma once
 
 #include "defines.hpp"
-#include "vulkan_command_buffer.hpp"
+#include "vulkan/vulkan.h"
 
 class VulkanPipeline
 {
@@ -31,5 +31,5 @@ public:
 
     void Destroy(class VulkanAPI* VkAPI);
 
-    void Bind(VulkanCommandBuffer& CommandBuffer, VkPipelineBindPoint BindPoint);
+    void Bind(class VulkanCommandBuffer& CommandBuffer, VkPipelineBindPoint BindPoint);
 };

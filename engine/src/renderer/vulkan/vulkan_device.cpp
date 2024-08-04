@@ -1,29 +1,6 @@
 #include "vulkan_device.hpp"
 #include "vulkan_api.hpp"
-#include "containers/darray.hpp"
 #include "containers/mstring.hpp"
-
-struct VulkanPhysicalDeviceRequirements 
-{
-    bool graphics;
-    bool present;
-    bool compute;
-    bool transfer;
-    DArray<const char*> DeviceExtensionNames;
-    bool SamplerAnisotropy;
-    bool DiscreteGPU;
-    constexpr VulkanPhysicalDeviceRequirements()
-    : graphics(), present(), compute(), transfer(), DeviceExtensionNames(), SamplerAnisotropy(), DiscreteGPU() {}
-    constexpr VulkanPhysicalDeviceRequirements(bool graphics, bool present, bool compute, bool transfer, const char* DeviceExtensionNames, bool SamplerAnisotropy, bool DiscreteGPU)
-    : graphics(graphics), present(present), compute(compute), transfer(transfer), DeviceExtensionNames(), SamplerAnisotropy(SamplerAnisotropy), DiscreteGPU(DiscreteGPU) {}
-};
-
-    struct VulkanPhysicalDeviceQueueFamilyInfo {
-        u32 GraphicsFamilyIndex;
-        u32 PresentFamilyIndex;
-        u32 ComputeFamilyIndex;
-        u32 TransferFamilyIndex;
-    };
 
 bool VulkanDevice::Create(VulkanAPI* VkAPI)
 {
@@ -309,8 +286,8 @@ bool VulkanDevice::SelectPhysicalDevice(VulkanAPI *VkAPI)
             true, // present
             // ПРИМЕЧАНИЕ: Включите это, если потребуются вычисления.
             // true, // compute
-            VK_KHR_SWAPCHAIN_EXTENSION_NAME,
             true, // transfer
+            VK_KHR_SWAPCHAIN_EXTENSION_NAME,
             true, // SamplerAnisotropy
             true  // DiscreteGPU
         };
@@ -499,10 +476,7 @@ bool VulkanDevice::PhysicalDeviceMeetsRequirements(
         MTRACE("Compute Family Index:  %i", OutQueueFamilyInfo->ComputeFamilyIndex);
 
         // Запросите поддержку цепочки подкачки(swapchain).
-        QuerySwapchainSupport(
-            device,
-            surface,
-            OutSwapchainSupport);
+        QuerySwapchainSupport(surface);
         
         if (OutSwapchainSupport->FormatCount < 1 || OutSwapchainSupport->PresentModeCount < 1) {
             if (OutSwapchainSupport->formats) {

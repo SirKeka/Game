@@ -1,25 +1,21 @@
 #pragma once
 #include "defines.hpp"
 #include "math/vector4d_fwd.hpp"
-#include "core/mmemory.hpp"
 
 /// @brief Представляет цель рендеринга, которая используется для рендеринга в текстуру или набор текстур.
 struct RenderTarget {
     bool SyncToWindowSize;          // Указывает, следует ли обновлять эту цель рендеринга при изменении размера окна.
     u8 AttachmentCount;             // Количество вложений.
-    class texture** attachments;    // Массив вложений (указателей на текстуры).
+    class Texture** attachments;    // Массив вложений (указателей на текстуры).
     void* InternalFramebuffer;      // Внутренний объект буфера кадра API рендеринга.
 
     constexpr RenderTarget() : SyncToWindowSize(), AttachmentCount(), attachments(nullptr), InternalFramebuffer(nullptr) {}
     constexpr RenderTarget(bool SyncToWindowSize, u8 AttachmentCount) 
     : SyncToWindowSize(SyncToWindowSize), AttachmentCount(AttachmentCount), attachments(nullptr), InternalFramebuffer(nullptr) {}
+    ~RenderTarget();
 
-    void* operator new[] (u64 size) {
-        return MMemory::Allocate(size, MemoryTag::Array);
-    }
-    void operator delete[] (void* ptr, u64 size) {
-        MMemory::Free(ptr, size, MemoryTag::Array);
-    }
+    void* operator new[] (u64 size);
+    void operator delete[] (void* ptr, u64 size);
 };
 
 /// @brief Типы очистки, которые необходимо выполнить на этапе рендеринга. 
@@ -62,7 +58,8 @@ struct Renderpass
     constexpr Renderpass() : id(INVALID::U16ID), RenderArea(), ClearColour(), ClearFlags(), RenderTargetCount(), targets(nullptr), InternalData(nullptr) {}
     constexpr Renderpass(FVec4 RenderArea, FVec4 ClearColour, u8 ClearFlags, u8 RenderTargetCount)
     : id(INVALID::U16ID), RenderArea(RenderArea), ClearColour(ClearColour), ClearFlags(ClearFlags), RenderTargetCount(RenderTargetCount), targets(nullptr), InternalData(nullptr) {}
-    ~Renderpass() {}
+
+    ~Renderpass();
 /*
     void* operator new[] (u64 size) {
         return MMemory::Allocate(size, MemoryTag::Array);

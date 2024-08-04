@@ -238,7 +238,7 @@ void VulkanSwapchain::Create(VulkanAPI *VkAPI, u32 width, u32 height)
     }
 
     // Ресурсы глубины
-    if (!VkAPI->Device.DetectDepthFormat(&VkAPI->Device)) {
+    if (!VkAPI->Device.DetectDepthFormat()) {
         VkAPI->Device.DepthFormat = VK_FORMAT_UNDEFINED;
         MFATAL("Не удалось найти поддерживаемый формат!");
     }

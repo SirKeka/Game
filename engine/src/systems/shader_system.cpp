@@ -97,16 +97,17 @@ bool ShaderSystem::Create(const ShaderConfig *config)
     new(OutShader) Shader(id, config);
 
     u8 RenderpassID = INVALID::U8ID;
-    if (!Renderer::RenderpassID(config->RenderpassName, RenderpassID)) {
+    
+    if (!Renderer::GetRenderpass(config->RenderpassName)) {
         MERROR("Не удалось найти рендерпасс '%s'", config->RenderpassName.c_str());
         return false;
     }
-
+    /*
     if (!Renderer::Load(OutShader, RenderpassID, config->StageCount, config->StageFilenames, config->stages.Data())) {
         MERROR("Ошибка создания шейдера.");
         return false;
     }
-
+*/
     // Готов к инициализации.
     OutShader->state = ShaderState::Uninitialized;
 

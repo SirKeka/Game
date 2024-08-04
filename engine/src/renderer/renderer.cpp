@@ -8,7 +8,7 @@
 
 RendererType *Renderer::ptrRenderer;
 
-void RegenerateRenderTargets();
+void regenerate_render_targets();
 
 constexpr bool CriticalInit(bool op, const MString& message)
 {
@@ -66,14 +66,14 @@ FramesSinceResize()
             )
         };
 
-        RendererConfig RendererConfig {
+        RendererConfig RConfig {
             ApplicationName,
             2,
             RpConfig,
-            RegenerateRenderTargets
+            RendererConfig::PFN_Method(this, &Renderer::RegenerateRenderTargets)
         };
 
-        CriticalInit(ptrRenderer = new VulkanAPI(window, RendererConfig, WindowRenderTargetCount), "Систему рендеринга не удалось инициализировать. Выключение.");
+        CriticalInit(ptrRenderer = new VulkanAPI(window, RConfig, WindowRenderTargetCount), "Систему рендеринга не удалось инициализировать. Выключение.");
 
         // ЗАДАЧА: Узнаем, как их получить, когда определим представления.
         WorldRenderpass->RenderTargetCount = WindowRenderTargetCount;
@@ -235,15 +235,15 @@ bool Renderer::DrawFrame(RenderPacket &packet)
             ptrRenderer->DrawGeometry(packet.geometries[i]);
         }
 
-        if (!ptrRenderer->EndRenderpass(static_cast<u8>(BuiltinRenderpass::World))) {
-            MERROR("Ошибка Renderer::EndRenderpass -> BuiltinRenderpass::World. Приложение закрывается...");
+        if (!ptrRenderer->EndRenderpass(WorldRenderpass)) {
+            MERROR("Ошибка Renderer::EndRenderpass -> WorldRenderpass. Приложение закрывается...");
             return false;
         }
         // Конец рендеринга мира
 
          // UI renderpass
-        if (!ptrRenderer->BeginRenderpass(static_cast<u8>(BuiltinRenderpass::UI))) {
-            MERROR("Ошибка Renderer::BeginRenderpass -> BuiltinRenderpass::UI. Приложение закрывается...");
+        if (!ptrRenderer->BeginRenderpass(UiRenderpass, UiRenderpass->targets[AttachmentIndex])) {
+            MERROR("Ошибка Renderer::BeginRenderpass -> UiRenderpass. Приложение закрывается...");
             return false;
         }
 
@@ -285,8 +285,8 @@ bool Renderer::DrawFrame(RenderPacket &packet)
             ptrRenderer->DrawGeometry(packet.UI_Geometries[i]);
         }
 
-        if (!ptrRenderer->EndRenderpass(static_cast<u8>(BuiltinRenderpass::UI))) {
-            MERROR("Ошибка Renderer::EndRenderpass -> BuiltinRenderpass::UI. Приложение закрывается...");
+        if (!ptrRenderer->EndRenderpass(UiRenderpass)) {
+            MERROR("Ошибка Renderer::EndRenderpass -> UiRenderpass. Приложение закрывается...");
             return false;
         }
         // Завершить рендеринг пользовательского интерфейса
@@ -338,25 +338,14 @@ void Renderer::Unload(GeometryID *gid)
     return ptrRenderer->Unload(gid);
 }
 
-bool Renderer::RenderpassID(const MString &name, u8 &OutRenderpassID)
+Renderpass* Renderer::GetRenderpass(const MString &name)
 {
-    // ЗАДАЧА: HACK: Нужны динамические проходы рендеринга(renderpass) вместо их жесткого кодирования.
-    if (name.Comparei("Renderpass.Builtin.World")) {
-        OutRenderpassID = static_cast<u8>(BuiltinRenderpass::World);
-        return true;
-    } else if (name.Comparei("Renderpass.Builtin.UI")) {
-        OutRenderpassID = static_cast<u8>(BuiltinRenderpass::UI);
-        return true;
-    }
-
-    MERROR("Renderer::RenderpassID: Renderpass не указан '%s'.", name.c_str());
-    OutRenderpassID = INVALID::U8ID;
-    return false;
+    return ptrRenderer->GetRenderpass(name);
 }
 
 bool Renderer::Load(Shader *shader, Renderpass* renderpass, u8 StageCount, const DArray<MString>& StageFilenames, const ShaderStage *stages)
 {
-    return ptrRenderer->Load(shader, RenderpassID, StageCount, StageFilenames, stages);
+    return ptrRenderer->Load(shader, renderpass, StageCount, StageFilenames, stages);
 }
 
 void Renderer::Unload(Shader *shader)
@@ -409,7 +398,7 @@ void Renderer::TextureMapReleaseResources(TextureMap *map)
     ptrRenderer->TextureMapReleaseResources(map);
 }
 
-void Renderer::RenderTargetCreate(u8 AttachmentCount, Texture **attachments, Renderpass *pass, u32 width, u32 height, RenderTarget *OutTarget)
+void Renderer::RenderTargetCreate(u8 AttachmentCount, Texture **attachments, Renderpass *pass, u32 width, u32 height, RenderTarget &OutTarget)
 {
     ptrRenderer->RenderTargetCreate(AttachmentCount, attachments, pass, width, height, OutTarget);
 }
@@ -417,6 +406,39 @@ void Renderer::RenderTargetCreate(u8 AttachmentCount, Texture **attachments, Ren
 void Renderer::RenderTargetDestroy(RenderTarget &target, bool FreeInternalMemory)
 {
     ptrRenderer->RenderTargetDestroy(target, FreeInternalMemory);
+}
+
+void Renderer::RegenerateRenderTargets() {
+    // Создайте цели рендеринга для каждого. ЗАДАЧА: Должны быть настраиваемыми.
+    for (u8 i = 0; i < WindowRenderTargetCount; ++i) {
+        // Сначала уничтожьте старые, если они существуют.
+        ptrRenderer->RenderTargetDestroy(WorldRenderpass->targets[i], false);
+        ptrRenderer->RenderTargetDestroy(UiRenderpass->targets[i], false);
+
+        Texture* WindowTargetTexture = ptrRenderer->WindowAttachmentGet(i);
+        Texture* DepthTargetTexture = ptrRenderer->DepthAttachmentGet();
+
+        // Цели рендеринга мира.
+        Texture* attachments[2] = {WindowTargetTexture, DepthTargetTexture};
+        ptrRenderer->RenderTargetCreate(
+            2,
+            attachments,
+            WorldRenderpass,
+            FramebufferWidth,
+            FramebufferHeight,
+            WorldRenderpass->targets[i]);
+
+        // Цели рендеринга пользовательского интерфейса
+        Texture* UiAttachments[1] = {WindowTargetTexture};
+        ptrRenderer->RenderTargetCreate(
+            1,
+            UiAttachments,
+            UiRenderpass,
+            FramebufferWidth,
+            FramebufferHeight,
+            UiRenderpass->targets[i]);
+
+    }
 }
 
 void Renderer::RenderpassCreate(Renderpass *OutRenderpass, f32 depth, u32 stencil, bool HasPrevPass, bool HasNextPass)

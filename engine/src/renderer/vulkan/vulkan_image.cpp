@@ -1,5 +1,6 @@
 #include "vulkan_image.hpp"
 #include "vulkan_api.hpp"
+#include "vulkan_command_buffer.hpp"
 #include "core/asserts.hpp"
 
 VulkanImage::VulkanImage(
