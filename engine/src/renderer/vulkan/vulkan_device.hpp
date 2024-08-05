@@ -47,7 +47,7 @@ public:
 
     void Destroy(VulkanAPI* VkAPI);
 
-    void QuerySwapchainSupport(VkSurfaceKHR Surface);
+    void QuerySwapchainSupport(VkPhysicalDevice PhysicalDevice, VkSurfaceKHR Surface, VulkanSwapchainSupportInfo* OutSupportInfo);
 
     bool DetectDepthFormat();
 

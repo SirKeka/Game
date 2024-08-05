@@ -122,8 +122,8 @@ void VulkanSwapchain::Create(VulkanAPI *VkAPI, u32 width, u32 height)
         }
     }
 
-    // Запросить поддержку цепочки обмена.
-    VkAPI->Device.QuerySwapchainSupport(VkAPI->surface);
+    // Запросить поддержку цепочки обмена. ЗАДАЧА: переделать
+    VkAPI->Device.QuerySwapchainSupport(VkAPI->Device.PhysicalDevice, VkAPI->surface, &VkAPI->Device.SwapchainSupport);
 
     // Объем цепочки обмена
     if (VkAPI->Device.SwapchainSupport.capabilities.currentExtent.width != UINT32_MAX) {

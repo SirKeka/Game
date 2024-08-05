@@ -30,28 +30,18 @@ public:
     };
 
 	constexpr Vector4D() : x(), y(), z(), w() {};
-	constexpr Vector4D(T x, T y, T z, T w) {
+	constexpr Vector4D(T x, T y, T z, T w) : x(x), y(y), z(z), w(w) {
 #if defined(MUSE_SIMD)
     	data = _mm_setr_ps(x, y, z, w);
-#else
-		this->x = x;
-		this->y = y;
-		this->z = z;
-		this->w = w;
 #endif
 	}
 
 	constexpr Vector4D(const Vector2D<T>& v, f32 z = 0, f32 w = 0): x(v.x), y(v.y), z(z), w(w) {}
-	constexpr Vector4D(const Vector3D<T>& v, f32 w = 0) {
+	constexpr Vector4D(const Vector3D<T>& v, f32 w = 0) : x(v.x), y(v.y), z(v.z), w(w) {
 #if defined(MUSE_SIMD)
     	Vector4D<T> OutVector;
     	OutVector.data = _mm_setr_ps(x, y, z, w);
     	return OutVector;
-#else
-    	this->x = v.x;
-		this->y = v.y;
-		this->z = v.z;
-		this->w = w;
 #endif
 	}
 
@@ -90,6 +80,10 @@ public:
 			return false;
 		}
 		return true;
+	}
+	Vector4D& operator= (const Vector4D& v) {
+		x = v.x; y = v.y; z = v.z; w = v.w;
+		return *this;
 	}
 	
 	Vector4D& Normalize();

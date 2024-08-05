@@ -8,8 +8,6 @@
 
 RendererType *Renderer::ptrRenderer;
 
-void regenerate_render_targets();
-
 constexpr bool CriticalInit(bool op, const MString& message)
 {
     if (!op) {
@@ -36,92 +34,90 @@ WindowRenderTargetCount(),
 // Размер буфера кадра по умолчанию. Переопределяется при создании окна.
 FramebufferWidth(1280),
 FramebufferHeight(720),
-WorldRenderpass(ptrRenderer->GetRenderpass("Renderpass.Builtin.World")),
-UiRenderpass(ptrRenderer->GetRenderpass("Renderpass.Builtin.UI")),
+WorldRenderpass(nullptr),
+UiRenderpass(nullptr),
 resizing(false),
 FramesSinceResize()
 {
-    if(type == ERendererType::VULKAN) {
-        //ptrRenderer = dynamic_cast<VulkanAPI*> (ptrRenderer);
+    Event::GetInstance()->Register(EVENT_CODE_SET_RENDER_MODE, this, OnEvent);
 
-        Event::GetInstance()->Register(EVENT_CODE_SET_RENDER_MODE, this, OnEvent);
+    // Проходы рендеринга. ЗАДАЧА: прочитать конфигурацию из файла.
+    RenderpassConfig RpConfig[2] = {
+        RenderpassConfig(
+            "Renderpass.Builtin.World", 
+            nullptr, 
+            "Renderpass.Builtin.UI", 
+            FVec4(0, 0, 1280, 720), 
+            FVec4(0.0f, 0.0f, 0.2f, 1.0f),
+            RenderpassClearFlag::ColourBuffer | RenderpassClearFlag::DepthBuffer | RenderpassClearFlag::StencilBuffer
+        ),
+        RenderpassConfig(
+            "Renderpass.Builtin.UI",
+            "Renderpass.Builtin.World",
+            nullptr,
+            FVec4(0, 0, 1280, 720), 
+            FVec4(0.0f, 0.0f, 0.2f, 1.0f),
+            RenderpassClearFlag::None
+        )
+    };
 
-        // Проходы рендеринга. ЗАДАЧА: прочитать конфигурацию из файла.
-        RenderpassConfig RpConfig[2] = {
-            RenderpassConfig(
-                "Renderpass.Builtin.World", 
-                nullptr, 
-                "Renderpass.Builtin.UI", 
-                FVec4(0, 0, 1280, 720), 
-                FVec4(0.0f, 0.0f, 0.2f, 1.0f),
-                RenderpassClearFlag::ColourBuffer | RenderpassClearFlag::DepthBuffer | RenderpassClearFlag::StencilBuffer
-            ),
-            RenderpassConfig(
-                "Renderpass.Builtin.UI",
-                "Renderpass.Builtin.World",
-                nullptr,
-                FVec4(0, 0, 1280, 720), 
-                FVec4(0.0f, 0.0f, 0.2f, 1.0f),
-                RenderpassClearFlag::None
-            )
-        };
+    RendererConfig RConfig {
+        ApplicationName,
+        2,
+        RpConfig,
+        RendererConfig::PFN_Method(this, &Renderer::RegenerateRenderTargets)
+    };
 
-        RendererConfig RConfig {
-            ApplicationName,
-            2,
-            RpConfig,
-            RendererConfig::PFN_Method(this, &Renderer::RegenerateRenderTargets)
-        };
+    CriticalInit(ptrRenderer = new VulkanAPI(window, RConfig, WindowRenderTargetCount), "Систему рендеринга не удалось инициализировать. Выключение.");
 
-        CriticalInit(ptrRenderer = new VulkanAPI(window, RConfig, WindowRenderTargetCount), "Систему рендеринга не удалось инициализировать. Выключение.");
+    // ЗАДАЧА: Узнаем, как их получить, когда определим представления.
+    WorldRenderpass = ptrRenderer->GetRenderpass("Renderpass.Builtin.World");
+    WorldRenderpass->RenderTargetCount = WindowRenderTargetCount;
+    WorldRenderpass->targets = new RenderTarget[WindowRenderTargetCount];
+    
+    UiRenderpass = ptrRenderer->GetRenderpass("Renderpass.Builtin.UI");
+    UiRenderpass->RenderTargetCount = WindowRenderTargetCount;
+    UiRenderpass->targets = new RenderTarget[WindowRenderTargetCount];
 
-        // ЗАДАЧА: Узнаем, как их получить, когда определим представления.
-        WorldRenderpass->RenderTargetCount = WindowRenderTargetCount;
-        WorldRenderpass->targets = new RenderTarget[WindowRenderTargetCount];
+    RegenerateRenderTargets();
 
-        UiRenderpass->RenderTargetCount = WindowRenderTargetCount;
-        UiRenderpass->targets = new RenderTarget[WindowRenderTargetCount];
+    // Обновите размеры основного/мирового рендерпасса.
+    WorldRenderpass->RenderArea.x = 0;
+    WorldRenderpass->RenderArea.y = 0;
+    WorldRenderpass->RenderArea.z = FramebufferWidth;
+    WorldRenderpass->RenderArea.w = FramebufferHeight;
 
-        RegenerateRenderTargets();
+    // Также обновите размеры рендерпасса пользовательского интерфейса.
+    UiRenderpass->RenderArea.x = 0;
+    UiRenderpass->RenderArea.y = 0;
+    UiRenderpass->RenderArea.z = FramebufferWidth;
+    UiRenderpass->RenderArea.w = FramebufferHeight;
 
-        // Обновите размеры основного/мирового рендерпасса.
-        WorldRenderpass->RenderArea.x = 0;
-        WorldRenderpass->RenderArea.y = 0;
-        WorldRenderpass->RenderArea.z = FramebufferWidth;
-        WorldRenderpass->RenderArea.w = FramebufferHeight;
+    // Shaders
+    Resource ConfigResource;
+    ShaderConfig* config = nullptr;
 
-        // Также обновите размеры рендерпасса пользовательского интерфейса.
-        UiRenderpass->RenderArea.x = 0;
-        UiRenderpass->RenderArea.y = 0;
-        UiRenderpass->RenderArea.z = FramebufferWidth;
-        UiRenderpass->RenderArea.w = FramebufferHeight;
+    // Встроенный шейдер материала.
+    CriticalInit(
+        ResourceSystem::Instance()->Load(BUILTIN_SHADER_NAME_MATERIAL, ResourceType::Shader, ConfigResource),
+        "Не удалось загрузить встроенный шейдер материала.");
+    config = reinterpret_cast<ShaderConfig*>(ConfigResource.data);
+    CriticalInit(ShaderSystem::GetInstance()->Create(config), "Не удалось загрузить встроенный шейдер материала.");
+    ResourceSystem::Instance()->Unload(ConfigResource);
+    MaterialShaderID = ShaderSystem::GetInstance()->GetID(BUILTIN_SHADER_NAME_MATERIAL);
 
-        // Shaders
-        Resource ConfigResource;
-        ShaderConfig* config = nullptr;
+    // Встроенный шейдер пользовательского интерфейса.
+    CriticalInit(
+        ResourceSystem::Instance()->Load(BUILTIN_SHADER_NAME_UI, ResourceType::Shader, ConfigResource),
+        "Не удалось загрузить встроенный шейдер пользовательского интерфейса.");
+    config = reinterpret_cast<ShaderConfig*>(ConfigResource.data);
+    CriticalInit(ShaderSystem::GetInstance()->Create(config), "Не удалось загрузить встроенный шейдер пользовательского интерфейса.");
+    ResourceSystem::Instance()->Unload(ConfigResource);
+    UIShaderID = ShaderSystem::GetInstance()->GetID(BUILTIN_SHADER_NAME_UI);
 
-        // Встроенный шейдер материала.
-        CriticalInit(
-            ResourceSystem::Instance()->Load(BUILTIN_SHADER_NAME_MATERIAL, ResourceType::Shader, ConfigResource),
-            "Не удалось загрузить встроенный шейдер материала.");
-        config = reinterpret_cast<ShaderConfig*>(ConfigResource.data);
-        CriticalInit(ShaderSystem::GetInstance()->Create(config), "Не удалось загрузить встроенный шейдер материала.");
-        ResourceSystem::Instance()->Unload(ConfigResource);
-        MaterialShaderID = ShaderSystem::GetInstance()->GetID(BUILTIN_SHADER_NAME_MATERIAL);
-
-        // Встроенный шейдер пользовательского интерфейса.
-        CriticalInit(
-            ResourceSystem::Instance()->Load(BUILTIN_SHADER_NAME_UI, ResourceType::Shader, ConfigResource),
-            "Не удалось загрузить встроенный шейдер пользовательского интерфейса.");
-        config = reinterpret_cast<ShaderConfig*>(ConfigResource.data);
-        CriticalInit(ShaderSystem::GetInstance()->Create(config), "Не удалось загрузить встроенный шейдер пользовательского интерфейса.");
-        ResourceSystem::Instance()->Unload(ConfigResource);
-        UIShaderID = ShaderSystem::GetInstance()->GetID(BUILTIN_SHADER_NAME_UI);
-
-        // ЗАДАЧА: настраиваемое начальное положение камеры.
-        view.Inverse();
-        UIView.Inverse();
-    }
+    // ЗАДАЧА: настраиваемое начальное положение камеры.
+    view.Inverse();
+    UIView.Inverse();
 }
 
 Renderer::~Renderer()

@@ -170,47 +170,47 @@ void VulkanDevice::Destroy(VulkanAPI *VkAPI)
     TransferQueueIndex = -1;
 }
 
-void VulkanDevice::QuerySwapchainSupport(VkSurfaceKHR Surface)
+void VulkanDevice::QuerySwapchainSupport(VkPhysicalDevice PhysicalDevice, VkSurfaceKHR Surface, VulkanSwapchainSupportInfo* OutSupportInfo)
 {
     // Возможности поверхности
     VK_CHECK(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
         PhysicalDevice,
         Surface,
-        &SwapchainSupport.capabilities));
+        &OutSupportInfo->capabilities));
 
     // Форматы поверхностей
     VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(
         PhysicalDevice,
         Surface,
-        &SwapchainSupport.FormatCount,
+        &OutSupportInfo->FormatCount,
         nullptr));
 
-    if (SwapchainSupport.FormatCount != 0) {
-        if (!SwapchainSupport.formats) { // раскоментировать или закоментировать знак ! если будет ошибка
-            SwapchainSupport.formats = MMemory::TAllocate<VkSurfaceFormatKHR>(MemoryTag::Renderer, SwapchainSupport.FormatCount);
+    if (OutSupportInfo->FormatCount != 0) {
+        if (!OutSupportInfo->formats) { // раскоментировать или закоментировать знак ! если будет ошибка
+            OutSupportInfo->formats = MMemory::TAllocate<VkSurfaceFormatKHR>(MemoryTag::Renderer, OutSupportInfo->FormatCount);
         }
         VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(
             PhysicalDevice,
             Surface,
-            &SwapchainSupport.FormatCount,
-            SwapchainSupport.formats));
+            &OutSupportInfo->FormatCount,
+            OutSupportInfo->formats));
     }
 
     // Существующие режимы
     VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(
         PhysicalDevice,
         Surface,
-        &SwapchainSupport.PresentModeCount,
+        &OutSupportInfo->PresentModeCount,
         0));
-    if (SwapchainSupport.PresentModeCount != 0) {
-        if (!SwapchainSupport.PresentModes) { // раскоментировать или закоментировать знак ! если будет ошибка
-            SwapchainSupport.PresentModes = MMemory::TAllocate<VkPresentModeKHR>(MemoryTag::Renderer, SwapchainSupport.PresentModeCount);
+    if (OutSupportInfo->PresentModeCount != 0) {
+        if (!OutSupportInfo->PresentModes) { // раскоментировать или закоментировать знак ! если будет ошибка
+            OutSupportInfo->PresentModes = MMemory::TAllocate<VkPresentModeKHR>(MemoryTag::Renderer, OutSupportInfo->PresentModeCount);
         }
         VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(
             PhysicalDevice,
             Surface,
-            &SwapchainSupport.PresentModeCount,
-            SwapchainSupport.PresentModes));
+            &OutSupportInfo->PresentModeCount,
+            OutSupportInfo->PresentModes));
     }
 }
 
@@ -476,7 +476,7 @@ bool VulkanDevice::PhysicalDeviceMeetsRequirements(
         MTRACE("Compute Family Index:  %i", OutQueueFamilyInfo->ComputeFamilyIndex);
 
         // Запросите поддержку цепочки подкачки(swapchain).
-        QuerySwapchainSupport(surface);
+        QuerySwapchainSupport(device, surface, OutSwapchainSupport);
         
         if (OutSwapchainSupport->FormatCount < 1 || OutSwapchainSupport->PresentModeCount < 1) {
             if (OutSwapchainSupport->formats) {

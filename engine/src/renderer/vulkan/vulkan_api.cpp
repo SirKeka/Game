@@ -674,7 +674,8 @@ FramebufferSizeLastGeneration(),
 instance(), allocator(nullptr), surface(),
 Device(), swapchain(),
 RenderpassTableBlock(MMemory::Allocate(sizeof(u32) * VULKAN_MAX_REGISTERED_RENDERPASSES, MemoryTag::Renderer)),
-RenderpassTable(VULKAN_MAX_REGISTERED_RENDERPASSES, false, reinterpret_cast<u32*>(RenderpassTableBlock), true), RegisteredPasses(),
+RenderpassTable(VULKAN_MAX_REGISTERED_RENDERPASSES, false, reinterpret_cast<u32*>(RenderpassTableBlock), true, INVALID::ID), 
+RegisteredPasses(),
 OnRendertargetRefreshRequired(config.OnRendertargetRefreshRequired)
 {
     // ЗАДАЧА: пользовательский allocator.
@@ -794,12 +795,6 @@ OnRendertargetRefreshRequired(config.OnRendertargetRefreshRequired)
 
     // Сохраните количество имеющихся у нас изображений в качестве необходимого количества целей рендеринга.
     OutWindowRenderTargetCount = swapchain.ImageCount;
-
-    /* Hold registered renderpasses.
-    for (u32 i = 0; i < VULKAN_MAX_REGISTERED_RENDERPASSES; ++i) {
-        RegisteredPasses[i].id = INVALID_ID_U16;
-    }
-    */
 
    // Проходы рендеринга
     for (u32 i = 0; i < config.RenderpassCount; ++i) {
@@ -1116,7 +1111,7 @@ bool VulkanAPI::BeginRenderpass(Renderpass* pass, RenderTarget& target)
 
     VkRenderPassBeginInfo BeginInfo = {VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
     BeginInfo.renderPass = VkRenderpass->handle;
-    BeginInfo.framebuffer = *reinterpret_cast<VkFramebuffer*>(target.InternalFramebuffer);
+    BeginInfo.framebuffer = (VkFramebuffer)target.InternalFramebuffer;
     BeginInfo.renderArea.offset.x = pass->RenderArea.x;
     BeginInfo.renderArea.offset.y = pass->RenderArea.y;
     BeginInfo.renderArea.extent.width = pass->RenderArea.z;
@@ -1609,8 +1604,8 @@ bool VulkanAPI::RecreateSwapchain()
         ImagesInFlight[i] = nullptr;
     }
 
-    // Поддержка запроса
-    Device.QuerySwapchainSupport(surface);
+    // Поддержка запроса ЗАДАЧА: переделать
+    Device.QuerySwapchainSupport(Device.PhysicalDevice, surface, &Device.SwapchainSupport);
     Device.DetectDepthFormat();
 
     swapchain.Recreate(this, FramebufferWidth, FramebufferHeight);
