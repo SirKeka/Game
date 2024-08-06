@@ -430,6 +430,7 @@ bool Application::OnResized(u16 code, void *sender, void *ListenerInst, EventCon
                 }
                 State->GameInst->OnResize(width, height);
                 State->Render->OnResized(width, height);
+                return true;
             }
         }
     }

@@ -56,27 +56,27 @@ Matrix4D::Matrix4D(const Quaternion &q, const FVec3 &center)
 
 f32 &Matrix4D::operator()(int i, int j)
 {
-	if((i < 1 || i > 4)) MERROR("Неверный индекс i! Должен быть от 1 до 4");
+	if ((i < 1 || i > 4)) MERROR("Неверный индекс i! Должен быть от 1 до 4");
 	if ((j < 1 || i > 4)) MERROR("Неверный индекс j! Должен быть от 1 до 4");
 	return n[i - 1][j - 1];
 }
 
 const f32& Matrix4D::operator()(int i, int j) const
 {
-	if((i < 1 || i > 4)) MERROR("Неверный индекс i! Должен быть от 1 до 4");
+	if ((i < 1 || i > 4)) MERROR("Неверный индекс i! Должен быть от 1 до 4");
 	if ((j < 1 || i > 4)) MERROR("Неверный индекс j! Должен быть от 1 до 4");
 	return n[i - 1][j - 1];
 }
 
 f32 &Matrix4D::operator()(int i)
 {
-    if((i < 0 || i > 15)) MERROR("Неверный индекс i! Должен быть от 0 до 15");
+    if ((i < 0 || i > 15)) MERROR("Неверный индекс i! Должен быть от 0 до 15");
 	return data[i];
 }
 
 const f32 &Matrix4D::operator()(int i) const
 {
-    if((i < 0 || i > 15)) MERROR("Неверный индекс i! Должен быть от 0 до 15");
+    if ((i < 0 || i > 15)) MERROR("Неверный индекс i! Должен быть от 0 до 15");
 	return data[i];
 }
 
@@ -110,6 +110,11 @@ Matrix4D &Matrix4D::operator*=(const Matrix4D &m)
 		}
 	}
 	return *this;
+}
+
+Matrix4D Matrix4D::operator*(const Matrix4D &m)
+{
+	return *this * m;
 }
 
 /*MINLINE Matrix4D Matrix4D::MakeIdentity()
@@ -187,16 +192,6 @@ MINLINE Matrix4D Matrix4D::MakeTransposed(const Matrix4D &m)
 					FVec4(position,         1.0f));
 }*/
 
-MINLINE FVec3 Matrix4::Up(const Matrix4D& m)
-{
-	return Normalize(FVec3(m(0, 1), m(1, 1), m(2, 2)));
-}
-
-MINLINE FVec3 Matrix4::Down(const Matrix4D& m)
-{
-	return -Normalize(FVec3(m(0, 1), m(1, 1), m(2, 2)));
-}
-
 void Matrix4D::Inverse()
 {
 	*this = Matrix4D::MakeInverse(*this);
@@ -209,7 +204,7 @@ void Matrix4D::Identity()
 
 Matrix4D operator*(const Matrix4D &a, const Matrix4D &b)
 {
-	Matrix4D c {};
+    Matrix4D c {};
     for (int i = 1; i < 5; i++) {
 		for (int j = 1; j < 5; j++) {
 			c(i, j) = a(i, 1) * b(1, j) + 

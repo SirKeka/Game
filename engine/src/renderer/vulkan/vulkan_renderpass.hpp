@@ -10,7 +10,6 @@
 
 #include "defines.hpp"
 #include "vulkan_api.hpp"
-//#include "vulkan_api.hpp"
 
 enum class VulkanRenderpassState 
 {

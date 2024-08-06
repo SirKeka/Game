@@ -28,6 +28,9 @@ public:
 	/// @param q кватернион
 	/// @param v вектор
 	Matrix4D (const Quaternion &q, const FVec3 &center);
+	/// @brief Создает матрицу вращения на основе предоставленных значений вращения по осям x, y и z.
+	/// @param v 
+	constexpr Matrix4D(const FVec3& v);
 
 	f32& operator ()(int i, int j);
 	const f32& operator ()(int i, int j) const;
@@ -37,6 +40,11 @@ public:
 	const FVec4& operator [](int j) const;
 	Matrix4D& operator=(const Matrix4D& m);
 	Matrix4D& operator*=(const Matrix4D& m);
+	/// @brief Умножение матриц 4x4
+	/// @param a матрица 4x4
+	/// @param b матрица 4x4
+	/// @return результат умножения матрицы а на матрицу b
+	Matrix4D operator*(const Matrix4D& m);
 
 	/// @brief Инвертирует текущую матрицу
 	/// @return инвертированную матрицу
@@ -237,20 +245,8 @@ public:
 						   0.f,    0.f,   scale.z, 0.f,
 						   0.f,    0.f,     0.f,   1.f);
 	}
-};
 
-	/// @brief Умножение матриц 4x4
-	/// @param a матрица 4x4
-	/// @param b матрица 4x4
-	/// @return результат умножения матрицы а на матрицу b
-	MAPI Matrix4D operator*(const Matrix4D& a, const Matrix4D& b);
-
-	namespace Matrix4
-	{
-	
-
-	MINLINE Matrix4D MakeEulerX(f32 AngleRadians)
-	{
+	static MINLINE Matrix4D MakeEulerX(f32 AngleRadians) {
 		Matrix4D m = Matrix4D::MakeIdentity();
 		f32 c = Math::cos(AngleRadians);
     	f32 s = Math::sin(AngleRadians);
@@ -263,8 +259,7 @@ public:
     	return m;
 	}
 
-	MAPI MINLINE Matrix4D MakeEulerY(f32 AngleRadians)
-	{
+	static MINLINE Matrix4D MakeEulerY(f32 AngleRadians) {
 		Matrix4D m = Matrix4D::MakeIdentity();
 		f32 c = Math::cos(AngleRadians);
     	f32 s = Math::sin(AngleRadians);
@@ -277,8 +272,7 @@ public:
     	return m;
 	}
 
-	MAPI MINLINE Matrix4D MakeEulerZ(f32 AngleRadians)
-	{
+	static MINLINE Matrix4D MakeEulerZ(f32 AngleRadians) {
 		Matrix4D m = Matrix4D::MakeIdentity();
 		f32 c = Math::cos(AngleRadians);
     	f32 s = Math::sin(AngleRadians);
@@ -290,9 +284,12 @@ public:
 
     	return m;
 	}
-
-	MAPI MINLINE Matrix4D MakeEulerXYZ(f32 X_Radians, f32 Y_Radians, f32 Z_Radians)
-	{
+	/// @brief Создает матрицу вращения на основе предоставленных значений вращения по осям x, y и z.
+	/// @param X_Radians 
+	/// @param Y_Radians 
+	/// @param Z_Radians 
+	/// @return 
+	static MINLINE Matrix4D MakeEulerXYZ(f32 X_Radians, f32 Y_Radians, f32 Z_Radians) {
 		Matrix4D rx = MakeEulerX(X_Radians);
 		Matrix4D ry = MakeEulerY(Y_Radians);
 		Matrix4D rz = MakeEulerZ(Z_Radians);
@@ -302,55 +299,53 @@ public:
     	return m;
 	}
 
-	MAPI MINLINE Matrix4D MakeEulerXYZ(FVec3 v)
-	{
-		Matrix4D rx = MakeEulerX(v.x);
-		Matrix4D ry = MakeEulerY(v.y);
-		Matrix4D rz = MakeEulerZ(v.z);
-		Matrix4D m = rx * ry;
-		m = m * rz;
-
-   		return m;
+	/// @brief Создает матрицу вращения на основе предоставленных значений вращения по осям x, y и z.
+	/// @param v трехмерный вектор на основе которого нужно создать матрицу вращения.
+	/// @return копию матрицы вращения.
+	static MINLINE Matrix4D MakeEulerXYZ(FVec3 v) {
+		return MakeEulerXYZ(v.x, v.y, v.z);
 	}
+
 	/// @brief Возвращает вектор направленный вперед относительно предоставленной матрицы.
 	/// @param m матрица 4х4, на основе которой строится вектор.
 	/// @return трехкомпонентный вектор направления.
-	MINLINE FVec3 Forward(const Matrix4D& m)
-	{
+	static MINLINE FVec3 Forward(const Matrix4D& m) {
 		return -Normalize(FVec3(m(2), m(6), m(10)));
 	}
 	/// @brief Возвращает вектор направленный назад относительно предоставленной матрицы.
 	/// @param m матрица 4х4, на основе которой строится вектор.
 	/// @return трехкомпонентный вектор направления.
-	MINLINE FVec3 Backward(const Matrix4D& m)
-	{
+	static MINLINE FVec3 Backward(const Matrix4D& m) {
 		return Normalize(FVec3(m(2), m(6), m(10)));
 	}
 	/// @brief Возвращает вектор направленный вверх относительно предоставленной матрицы.
 	/// @param m матрица 4х4, на основе которой строится вектор.
 	/// @return трехкомпонентный вектор направления.
-	MINLINE FVec3 Up(const Matrix4D& m);
+	static MINLINE FVec3 Up(const Matrix4D& m) {
+		return Normalize(FVec3(m(1), m(5), m(9)));
+	}
 	/// @brief Возвращает вектор направленный вниз относительно предоставленной матрицы.
 	/// @param m матрица 4х4, на основе которой строится вектор.
 	/// @return трехкомпонентный вектор направления.
-	MINLINE FVec3 Down(const Matrix4D& m);
+	static MINLINE FVec3 Down(const Matrix4D& m) {
+		return -Normalize(FVec3(m(1), m(5), m(9)));
+	}
 	/// @brief Возвращает вектор направленный влево относительно предоставленной матрицы.
 	/// @param m матрица 4х4, на основе которой строится вектор.
 	/// @return трехкомпонентный вектор направления.
-	MINLINE FVec3 Left(const Matrix4D& m)
-	{
+	static MINLINE FVec3 Left(const Matrix4D& m) {
 		return -Normalize(FVec3(m(0), m(4), m(8)));
 	}
 	/// @brief Возвращает вектор направленный вправо относительно предоставленной матрицы.
 	/// @param m матрица 4х4, на основе которой строится вектор.
 	/// @return трехкомпонентный вектор направления.
-	MINLINE FVec3 Right(const Matrix4D& m)
-	{
+	static MINLINE FVec3 Right(const Matrix4D& m) {
 		return Normalize(FVec3(m(0), m(4), m(8)));
 	}
-	} // namespace Matrix4D
-	
-	// 0  1  2  3
-	// 4  5  6  7
-	// 8  9 10 11
-	//12 13 14 15
+};
+
+/// @brief Умножение матриц 4x4
+/// @param a матрица 4x4
+/// @param b матрица 4x4
+/// @return результат умножения матрицы а на матрицу b
+MAPI Matrix4D operator*(const Matrix4D& a, const Matrix4D& b);

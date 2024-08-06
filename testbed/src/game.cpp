@@ -72,23 +72,23 @@ bool Game::Update(f32 DeltaTime)
 
     //Не работает
     if (Input::Instance()->IsKeyDown(Keys::W)) {
-        FVec3 forward = Matrix4::Forward(gameState->view);
+        FVec3 forward = Matrix4D::Forward(gameState->view);
         velocity += forward;
     }
 
     //Не работает
     if (Input::Instance()->IsKeyDown(Keys::S)) {
-        FVec3 backward = Matrix4::Backward(gameState->view);
+        FVec3 backward = Matrix4D::Backward(gameState->view);
         velocity += backward;
     }
 
     if (Input::Instance()->IsKeyDown(Keys::Q)) {
-        FVec3 left = Matrix4::Left(gameState->view);
+        FVec3 left = Matrix4D::Left(gameState->view);
         velocity += left;
     }
 
     if (Input::Instance()->IsKeyDown(Keys::E)) {
-        FVec3 right = Matrix4::Right(gameState->view);
+        FVec3 right = Matrix4D::Right(gameState->view);
         velocity += right;
     }
 
@@ -173,7 +173,7 @@ void Game::operator delete(void *ptr)
 void Game::RecalculateViewMatrix()
 {
     if(gameState->CameraViewDirty) {
-        Matrix4D rotation = Matrix4::MakeEulerXYZ(gameState->CameraEuler);
+        Matrix4D rotation = Matrix4D::MakeEulerXYZ(gameState->CameraEuler);
         Matrix4D translation = Matrix4D::MakeTranslation(gameState->CameraPosition);
 
         gameState->view = rotation * translation;

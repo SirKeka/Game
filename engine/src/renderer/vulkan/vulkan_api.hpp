@@ -9,7 +9,6 @@
 #include "vulkan_shader.hpp"
 #include "resources/geometry.hpp"
 #include "math/vertex.hpp"
-//#include "containers/hashtable.hpp"
 
 // Проверяет возвращаемое значение данного выражения на соответствие VK_SUCCESS.
 #define VK_CHECK(expr)           \
