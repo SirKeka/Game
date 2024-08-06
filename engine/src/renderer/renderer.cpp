@@ -5,6 +5,7 @@
 #include "systems/texture_system.hpp"
 #include "systems/material_system.hpp"
 #include "systems/shader_system.hpp"
+#include "systems/camera_system.hpp"
 
 RendererType *Renderer::ptrRenderer;
 
@@ -19,17 +20,16 @@ constexpr bool CriticalInit(bool op, const MString& message)
 
 Renderer::Renderer(MWindow *window, const char *ApplicationName, ERendererType type)
 : 
+ActiveWorldCamera(),
 NearClip(0.1f), 
 FarClip(1000.f), 
 MaterialShaderID(), 
 UIShaderID(), 
 RenderMode(),
 projection(Matrix4D::MakeFrustumProjection(Math::DegToRad(45.0f), 1280 / 720.0f, NearClip, FarClip)), 
-view(Matrix4D::MakeTranslation(Vector3D<f32>{0, 0, -30.f})), 
 UIProjection(Matrix4D::MakeOrthographicProjection(0, 1280.0f, 720.0f, 0, -100.f, 100.0f)),              // Намеренно перевернуто по оси Y.
 UIView(Matrix4D::MakeIdentity()),
 AmbientColour(0.25f, 0.25f, 0.25f, 1.0f),
-ViewPosition(),
 WindowRenderTargetCount(),
 // Размер буфера кадра по умолчанию. Переопределяется при создании окна.
 FramebufferWidth(1280),
@@ -116,7 +116,6 @@ FramesSinceResize()
     UIShaderID = ShaderSystem::GetInstance()->GetID(BUILTIN_SHADER_NAME_UI);
 
     // ЗАДАЧА: настраиваемое начальное положение камеры.
-    view.Inverse();
     UIView.Inverse();
 }
 
@@ -182,6 +181,11 @@ bool Renderer::DrawFrame(RenderPacket &packet)
     UiRenderpass->RenderArea.z = FramebufferWidth;
     UiRenderpass->RenderArea.w = FramebufferHeight;
 
+    if (!ActiveWorldCamera) {
+        // Просто возьмите камеру по умолчанию.
+        ActiveWorldCamera = CameraSystem::Instance()->GetDefault();
+    }
+
     // Если начальный кадр возвращается успешно, операции в середине кадра могут продолжаться.
     if (ptrRenderer->BeginFrame(packet.DeltaTime)) {
         const u8& AttachmentIndex = ptrRenderer->WindowAttachmentIndexGet();
@@ -198,7 +202,7 @@ bool Renderer::DrawFrame(RenderPacket &packet)
         }
 
         // Apply globals
-        if(!MaterialSystem::Instance()->ApplyGlobal(MaterialShaderID, projection, view, AmbientColour, ViewPosition, RenderMode)) {
+        if(!MaterialSystem::Instance()->ApplyGlobal(MaterialShaderID, projection, ActiveWorldCamera->GetView(), AmbientColour, ActiveWorldCamera->GetPosition(), RenderMode)) {
             MERROR("Не удалось использовать глобальные переменные для шейдера материала. Не удалось выполнить рендеринг кадра.");
             return false;
         }
@@ -460,12 +464,6 @@ Texture *Renderer::DepthAttachmentGet()
 u8 Renderer::WindowAttachmentIndexGet()
 {
     return ptrRenderer->WindowAttachmentIndexGet();
-}
-
-void Renderer::SetView(const Matrix4D& view, const Vector3D<f32>& ViewPosition)
-{
-    this->view = view;
-    this->ViewPosition = ViewPosition;
 }
 
 void *Renderer::operator new(u64 size)

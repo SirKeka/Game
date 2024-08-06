@@ -101,7 +101,7 @@ void Camera::MoveDown(f32 amount)
 
 void Camera::Yaw(f32 amount)
 {
-    EulerRotation += amount;
+    EulerRotation.y += amount;
     IsDirty = true;
 }
 

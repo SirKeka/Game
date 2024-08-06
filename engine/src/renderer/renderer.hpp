@@ -23,17 +23,16 @@ class Shader;
 class Renderer
 {
 private:
+    class Camera* ActiveWorldCamera{};
     f32 NearClip{};
     f32 FarClip{};
     u32 MaterialShaderID{};
     u32 UIShaderID{};
     u32 RenderMode{};
     Matrix4D projection{};
-    Matrix4D view{};
     Matrix4D UIProjection{};
     Matrix4D UIView{};
-    Vector4D<f32> AmbientColour{};
-    Vector3D<f32> ViewPosition{};
+    FVec4 AmbientColour{};
     u8 WindowRenderTargetCount{};   // Количество целей рендеринга. Обычно совпадает с количеством изображений swapchain.
     u32 FramebufferWidth{};         // Текущая ширина буфера кадра окна.
     u32 FramebufferHeight{};        // Текущая высота буфера кадра окна.
@@ -200,11 +199,6 @@ public:
     static Texture* DepthAttachmentGet();
     /// @return Возвращает текущий индекс прикрепления окна.
     static u8 WindowAttachmentIndexGet();
-    /// @brief Устанавливает матрицу представления в средстве визуализации. ПРИМЕЧАНИЕ: Доступен общедоступному API.
-    /// @deprecated ВЗЛОМ: это не должно быть выставлено за пределы движка.
-    /// @param view Матрица представления, которую необходимо установить.
-    MAPI void SetView(const Matrix4D& view, const Vector3D<f32>& ViewPosition);
-
 
     void* operator new(u64 size);
     // void operator delete(void* ptr);

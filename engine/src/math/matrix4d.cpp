@@ -112,9 +112,18 @@ Matrix4D &Matrix4D::operator*=(const Matrix4D &m)
 	return *this;
 }
 
-Matrix4D Matrix4D::operator*(const Matrix4D &m)
+Matrix4D Matrix4D::operator*(const Matrix4D &m) const
 {
-	return *this * m;
+	Matrix4D n;
+	for (int i = 0; i < 4; i++) {
+		for (int j = 0; j < 4; j++) {
+			n.n[i][j] = this->n[i][0] * m.n[0][j] + 
+					    this->n[i][1] * m.n[1][j] + 
+					    this->n[i][2] * m.n[2][j] + 
+					    this->n[i][3] * m.n[3][j];
+		}
+	}
+	return n;
 }
 
 /*MINLINE Matrix4D Matrix4D::MakeIdentity()

@@ -41,32 +41,32 @@ public:
 	}
     /// @brief Вектор указывающий вверх
     /// @return (0, 1, 0)
-    static constexpr Vector3D& Up() noexcept {
+    static constexpr Vector3D Up() noexcept {
 		return Vector3D(0, 1, 0);
 	}
     /// @brief Вектор указывающий вниз
     /// @return (0, -1, 0)
-    static constexpr Vector3D& Down() noexcept {
+    static constexpr Vector3D Down() noexcept {
     	return Vector3D(0, -1, 0);
 	}
     /// @brief Вектор указывающий налево
     /// @return (-1, 0, 0)
-    static constexpr Vector3D& Left() noexcept {
+    static constexpr Vector3D Left() noexcept {
     	return Vector3D(-1, 0, 0);
 	}
     /// @brief Вектор указывающий направо
     /// @return (1, 0, 0)
-    static constexpr Vector3D& Right() noexcept {
+    static constexpr Vector3D Right() noexcept {
     	return Vector3D(1, 0, 0);
 	}
 	/// @brief Вектор указывающий вперед
 	/// @return (0, 0, -1)
-	static constexpr Vector3D& Forward() noexcept {
+	static constexpr Vector3D Forward() noexcept {
     	return Vector3D(0, 0, -1);
 	}
 	/// @brief Вектор указывающий назад
 	/// @return (0, 0, 1)
-	static constexpr Vector3D& Backward() noexcept {
+	static constexpr Vector3D Backward() noexcept {
     	return Vector3D(0, 0, 1);
 	}
 

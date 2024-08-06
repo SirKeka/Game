@@ -26,7 +26,7 @@ public:
     /// @param element элемент
     constexpr HashTable(u32 ElementCount, bool IsPointerType, T* memory, bool fill = false, const T& element = T())
     :
-    memory(memory ? memory : nullptr),
+    memory(memory),
     ElementCount(ElementCount), 
     IsPointerType(IsPointerType)
     {

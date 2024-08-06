@@ -12,7 +12,7 @@
 
 /// @brief Представляет собой камеру, которую можно использовать для различных целей, 
 /// особенно для рендеринга. В идеале они создаются и управляются системой камер.
-class Camera
+class MAPI Camera
 {
 private:
     FVec3 position{};       // Положение этой камеры.
@@ -23,6 +23,8 @@ public:
     /// @brief Создает новую камеру с нулевым положением и вращением по умолчанию, а также единичной матрицей вида. 
     /// В идеале для этого следует использовать систему камер, а не делать это напрямую.
     constexpr Camera() : position(), EulerRotation(), IsDirty(false), ViewMatrix(Matrix4D::MakeIdentity()) {}
+    /*constexpr Camera(FVec3 position, FVec3 EulerRotation)
+     : position(position), EulerRotation(EulerRotation), IsDirty(true), ViewMatrix(Matrix4D::MakeIdentity()) {}*/
     ~Camera() {}
 
     /// @brief Устанавливает для камеры по умолчанию нулевое вращение и положение, а также матрицу вида на идентичность.

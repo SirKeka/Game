@@ -11,19 +11,44 @@
 #include "renderer/camera.hpp"
 
 constexpr const char* DEFAULT_CAMERA_NAME = "default";
+struct CameraLookup;
 
 class CameraSystem
 {
 private:
     u16 MaxCameraCount;             // ПРИМЕЧАНИЕ: Максимальное количество камер, которыми может управлять система.
-    HashTable lookup;
+    HashTable<u16> lookup;
     void* HashtableBlock;
-    struct CameraLookup* cameras;
+    CameraLookup* cameras;
 
     Camera DefaultCamera;           // Незарегистрированная камера по умолчанию, которая всегда существует в качестве запасного варианта.
 
-    static CameraSystem* state;
+    MAPI static CameraSystem* state;
+    CameraSystem(u16 MaxCameraCount, void* HashtableBlock, CameraLookup* cameras);
 public:
-    constexpr CameraSystem();
-    ~CameraSystem();
+    CameraSystem(const CameraSystem&) = delete;
+    CameraSystem& operator= (const CameraSystem&) = delete;
+    ~CameraSystem() {}
+
+    MAPI static MINLINE CameraSystem* Instance() {
+        return state;
+    }
+
+    /// @brief Инициализирует систему камеры.
+    /// 
+    /// @return True в случае успеха, иначе false.
+    static bool Initialize(u16 MaxCameraCount);
+    /// @brief Выключает систему камер.
+    static void Shutdown();
+
+    /// @brief Получает указатель на камеру по имени. Если камера не найдена, создается новая и перенастраивается. Внутренний счетчик ссылок увеличивается.
+    /// @param name имя камеры для получения.
+    /// @return Указатель на камеру в случае успеха; nullptr в случае ошибки.
+    Camera* Acquire(const char* name);
+    /// @brief Освобождает камеру с указанным именем. Внутренний счетчик ссылок уменьшается. Если он достигает 0, камера сбрасывается, и ссылка может использоваться новой камерой.
+    /// @param name Имя камеры для освобождения.
+    void Release(const char* name);
+    /// @brief Получает указатель на камеру по умолчанию.
+    /// @return Указатель на камеру по умолчанию.
+    MAPI Camera* GetDefault();
 };

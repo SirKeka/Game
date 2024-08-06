@@ -28,9 +28,6 @@ public:
 	/// @param q кватернион
 	/// @param v вектор
 	Matrix4D (const Quaternion &q, const FVec3 &center);
-	/// @brief Создает матрицу вращения на основе предоставленных значений вращения по осям x, y и z.
-	/// @param v 
-	constexpr Matrix4D(const FVec3& v);
 
 	f32& operator ()(int i, int j);
 	const f32& operator ()(int i, int j) const;
@@ -44,7 +41,7 @@ public:
 	/// @param a матрица 4x4
 	/// @param b матрица 4x4
 	/// @return результат умножения матрицы а на матрицу b
-	Matrix4D operator*(const Matrix4D& m);
+	Matrix4D operator*(const Matrix4D& m) const;
 
 	/// @brief Инвертирует текущую матрицу
 	/// @return инвертированную матрицу
@@ -348,4 +345,4 @@ public:
 /// @param a матрица 4x4
 /// @param b матрица 4x4
 /// @return результат умножения матрицы а на матрицу b
-MAPI Matrix4D operator*(const Matrix4D& a, const Matrix4D& b);
+//MAPI Matrix4D operator*(const Matrix4D& a, const Matrix4D& b);

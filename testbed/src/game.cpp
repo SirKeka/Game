@@ -1,6 +1,7 @@
 #include "game.hpp"
 
 #include <core/logger.hpp>
+#include <systems/camera_system.hpp>
 #include <renderer/renderer.hpp>
 #include <new>
 
@@ -23,12 +24,8 @@ bool Game::Initialize()
 
     gameState = reinterpret_cast<GameState*>(state);
     
-    gameState->CameraPosition = FVec3(10.5F, 5.0F, 9.5f);
-    gameState->CameraEuler = FVec3();
-
-    gameState->view = Matrix4D::MakeTranslation(gameState->CameraPosition);
-    gameState->view.Inverse();
-    gameState->CameraViewDirty = true;
+    gameState->WorldCamera = CameraSystem::Instance()->GetDefault();
+    gameState->WorldCamera->SetPosition(FVec3(10.5F, 5.0F, 9.5f));
     
     return true;
 }
@@ -52,75 +49,54 @@ bool Game::Update(f32 DeltaTime)
 
     // ВЗЛОМ: временный взлом для перемещения камеры по кругу.
     if (Input::Instance()->IsKeyDown(Keys::A) || Input::Instance()->IsKeyDown(Keys::LEFT)) {
-        CameraYaw(1.0f * DeltaTime);
+        gameState->WorldCamera->Yaw(1.0f * DeltaTime);
     }
 
     if (Input::Instance()->IsKeyDown(Keys::D) || Input::Instance()->IsKeyDown(Keys::RIGHT)) {
-        CameraYaw(-1.0f * DeltaTime);
+        gameState->WorldCamera->Yaw(-1.0f * DeltaTime);
     }
 
     if (Input::Instance()->IsKeyDown(Keys::UP)) {
-        CameraPitch(1.0f * DeltaTime);
+        gameState->WorldCamera->Pitch(1.0f * DeltaTime);
     }
 
     if (Input::Instance()->IsKeyDown(Keys::DOWN)) {
-        CameraPitch(-1.0f * DeltaTime);
+        gameState->WorldCamera->Pitch(-1.0f * DeltaTime);
     }
 
-    f32 TempMoveSpeed = 50.0f;
-    FVec3 velocity = FVec3();
+    static const f32 TempMoveSpeed = 50.0f;
 
-    //Не работает
     if (Input::Instance()->IsKeyDown(Keys::W)) {
-        FVec3 forward = Matrix4D::Forward(gameState->view);
-        velocity += forward;
+        gameState->WorldCamera->MoveForward(TempMoveSpeed * DeltaTime);
     }
 
-    //Не работает
     if (Input::Instance()->IsKeyDown(Keys::S)) {
-        FVec3 backward = Matrix4D::Backward(gameState->view);
-        velocity += backward;
+        gameState->WorldCamera->MoveBackward(TempMoveSpeed * DeltaTime);
     }
 
     if (Input::Instance()->IsKeyDown(Keys::Q)) {
-        FVec3 left = Matrix4D::Left(gameState->view);
-        velocity += left;
+        gameState->WorldCamera->MoveLeft(TempMoveSpeed * DeltaTime);
     }
 
     if (Input::Instance()->IsKeyDown(Keys::E)) {
-        FVec3 right = Matrix4D::Right(gameState->view);
-        velocity += right;
+        gameState->WorldCamera->MoveRight(TempMoveSpeed * DeltaTime);
     }
 
     if (Input::Instance()->IsKeyDown(Keys::SPACE)) {
-        velocity.y += 1.0f;
+        gameState->WorldCamera->MoveUp(TempMoveSpeed * DeltaTime);
     }
 
     if (Input::Instance()->IsKeyDown(Keys::X)) {
-        velocity.y -= 1.0f;
+        gameState->WorldCamera->MoveDown(TempMoveSpeed * DeltaTime);
     }
-
-    FVec3 z = FVec3();
-    if (!Compare(z, velocity, 0.0002f)) {
-        // Обязательно нормализуйте скорость перед применением.
-        velocity.Normalize();
-        gameState->CameraPosition.x += velocity.x * TempMoveSpeed * DeltaTime;
-        gameState->CameraPosition.y += velocity.y * TempMoveSpeed * DeltaTime;
-        gameState->CameraPosition.z += velocity.z * TempMoveSpeed * DeltaTime;
-        gameState->CameraViewDirty = true;
-    }
-
-    RecalculateViewMatrix();
-
-    application->State->Render->SetView(gameState->view, gameState->CameraPosition);
 
     // СДЕЛАТЬ: временно
     if (Input::Instance()->IsKeyUp(Keys::P) && Input::Instance()->WasKeyDown(Keys::P)) {
         MDEBUG(
             "Позиция:[%.2f, %.2f, %.2f",
-            gameState->CameraPosition.x,
-            gameState->CameraPosition.y,
-            gameState->CameraPosition.z);
+            gameState->WorldCamera->GetPosition().x,
+            gameState->WorldCamera->GetPosition().y,
+            gameState->WorldCamera->GetPosition().z);
     }
 
     // RENDERER DEBUG FUNCTIONS
@@ -158,44 +134,4 @@ void Game::OnResize(u32 Width, u32 Height)
 
 Game::~Game()
 {
-}
-
-/*void *Game::operator new(u64 size)
-{   
-    return MMemory::Allocate(size, MemoryTag::Game);
-}
-
-void Game::operator delete(void *ptr)
-{
-    MMemory::Free(ptr,sizeof(Game), MemoryTag::Game);
-}*/
-
-void Game::RecalculateViewMatrix()
-{
-    if(gameState->CameraViewDirty) {
-        Matrix4D rotation = Matrix4D::MakeEulerXYZ(gameState->CameraEuler);
-        Matrix4D translation = Matrix4D::MakeTranslation(gameState->CameraPosition);
-
-        gameState->view = rotation * translation;
-        gameState->view.Inverse();
-
-        gameState->CameraViewDirty = false;
-    }
-}
-
-void Game::CameraYaw(f32 amount)
-{
-    gameState->CameraEuler.y += amount;
-    gameState->CameraViewDirty = true;
-}
-
-void Game::CameraPitch(f32 amount)
-{
-    gameState->CameraEuler.x += amount;
-
-    // Зажмите, чтобы избежать блокировки Gimball.
-    f32 limit = Math::DegToRad(89.0f);
-    gameState->CameraEuler.x = MCLAMP(gameState->CameraEuler.x, -limit, limit);
-
-    gameState->CameraViewDirty = true;
 }

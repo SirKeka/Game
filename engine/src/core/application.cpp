@@ -7,6 +7,7 @@
 #include "systems/geometry_system.hpp"
 #include "systems/resource_system.hpp"
 #include "systems/shader_system.hpp"
+#include "systems/camera_system.hpp"
 
 // ЗАДАЧА: временно
 #include "math/geometry_utils.hpp"
@@ -108,6 +109,13 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
         MFATAL("Не удалось инициализировать систему геометрии. Приложение не может быть продолжено.");
         return false;
     }
+
+    // Система камер
+    if (!CameraSystem::Initialize(61)) {
+        MFATAL("Не удалось инициализировать систему камер. Приложение не может быть продолжено.");
+        return false;
+    }
+    
     
     // ЗАДАЧА: временно
 

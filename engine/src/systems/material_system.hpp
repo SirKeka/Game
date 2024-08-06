@@ -13,7 +13,6 @@
 #include "containers/hashtable.hpp"
 //#include "math/matrix4d.hpp"
 class Matrix4D;
-template<typename T> class Vector4D;
 
 constexpr const char* DEFAULT_MATERIAL_NAME = "default";    // Имя материала по умолчанию.
 
@@ -104,7 +103,7 @@ public:
     /// @param AmbientColour окружающий цвет сцены.
     /// @param ViewPosition позиция камеры.
     /// @return true в случае успеха иначе false.
-    bool ApplyGlobal(u32 ShaderID, const Matrix4D& projection, const Matrix4D& view, const Vector4D<f32>& AmbientColour = Vector4D<f32>(), const Vector3D<f32>& ViewPosition = Vector3D<f32>(), u32 RenderMode = 0);
+    bool ApplyGlobal(u32 ShaderID, const Matrix4D& projection, const Matrix4D& view, const FVec4& AmbientColour = FVec4(), const FVec4& ViewPosition = FVec4(), u32 RenderMode = 0);
     /// @brief Применяет данные материала на уровне экземпляра для данного материала.
     /// @param material указатель на материал, который будет применен.
     /// @return true в случае успеха иначе false.

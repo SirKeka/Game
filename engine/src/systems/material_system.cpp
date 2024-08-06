@@ -222,7 +222,7 @@ void MaterialSystem::Release(const char *name)
         return false;                                       \
     }
 
-bool MaterialSystem::ApplyGlobal(u32 ShaderID, const Matrix4D &projection, const Matrix4D &view, const Vector4D<f32>& AmbientColour, const Vector3D<f32>& ViewPosition, u32 RenderMode)
+bool MaterialSystem::ApplyGlobal(u32 ShaderID, const Matrix4D &projection, const Matrix4D &view, const FVec4& AmbientColour, const FVec4& ViewPosition, u32 RenderMode)
 {
     if (ShaderID == state->MaterialShaderID) {
         MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->UniformSet(state->MaterialLocations.projection, &projection));
