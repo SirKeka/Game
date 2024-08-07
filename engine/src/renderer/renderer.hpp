@@ -22,6 +22,12 @@ class Shader;
 
 class Renderer
 {
+public:
+    enum DebugViewMode : u32 {
+        Default = 0,
+        Lighting = 1,
+        Normals = 2
+    };
 private:
     class Camera* ActiveWorldCamera{};
     f32 NearClip{};
@@ -112,6 +118,18 @@ public:
     /// @brief Уничтожает заданную геометрию, освобождая ресурсы графического процессора.-------------------------------------------------------------
     /// @param gid указатель на геометрию, которую нужно уничтожить.
     static void Unload(GeometryID* gid);
+    /// @brief Рисует заданную геометрию. Должен вызываться только внутри прохода рендеринга, внутри кадра.
+    /// @param data Данные рендеринга геометрии, которая должна быть нарисована.
+    static void DrawGeometry(GeometryRenderData& data);
+    /// @brief Начинает проход рендеринга с указанной целью.
+    /// @param pass указатель на проход рендеринга для начала.
+    /// @param target указатель на цель рендеринга для использования.
+    /// @return тrue в случае успеха иначе false.
+    static bool RenderpassBegin(Renderpass* pass, RenderTarget& target);
+    /// @brief Завершает проход рендеринга с указанным идентификатором.
+    /// @param pass указатель на проход рендеринга для завершения.
+    /// @return тrue в случае успеха иначе false.
+    static bool RenderpassEnd(Renderpass* pass);
     /// @brief Получает указатель на renderpass, используя предоставленное имя.
     /// @param name имя renderpass.
     /// @return Указатель на renderpass, если найден; в противном случае nullptr.

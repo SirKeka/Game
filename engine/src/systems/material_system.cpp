@@ -166,9 +166,9 @@ Material *MaterialSystem::Acquire(const MaterialConfig &config)
 
             // Также используйте дескриптор в качестве идентификатора материала.
             m->id = ref.handle;
-            MTRACE("Материал '%s' еще не существует. Создано, и теперь RefCount %i.", config.name, ref.ReferenceCount);
+            // MTRACE("Материал '%s' еще не существует. Создано, и теперь RefCount %i.", config.name, ref.ReferenceCount);
         } else {
-            MTRACE("Материал '%s' уже существует, RefCount увеличен до %i.", config.name, ref.ReferenceCount);
+            // MTRACE("Материал '%s' уже существует, RefCount увеличен до %i.", config.name, ref.ReferenceCount);
         }
 
         // Обновите запись.
@@ -203,9 +203,9 @@ void MaterialSystem::Release(const char *name)
             // Сбросьте ссылку.
             ref.handle = INVALID::ID;
             ref.AutoRelease = false;
-            MTRACE("Выпущенный материал '%s'., Материал выгружен, поскольку количество ссылок = 0 и AutoRelease = true.", name);
+            // MTRACE("Выпущенный материал '%s'., Материал выгружен, поскольку количество ссылок = 0 и AutoRelease = true.", name);
         } else {
-            MTRACE("Выпущенный материал '%s', теперь имеет счетчик ссылок '%i' (AutoRelease=%s).", name, ref.ReferenceCount, ref.AutoRelease ? "true" : "false");
+            // MTRACE("Выпущенный материал '%s', теперь имеет счетчик ссылок '%i' (AutoRelease=%s).", name, ref.ReferenceCount, ref.AutoRelease ? "true" : "false");
         }
 
         // Обновите запись.

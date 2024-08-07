@@ -191,7 +191,7 @@ bool Renderer::DrawFrame(RenderPacket &packet)
         const u8& AttachmentIndex = ptrRenderer->WindowAttachmentIndexGet();
         // Мировой проход рендеринга
         // ЗАДАЧА: только рендерпас
-        if (!ptrRenderer->BeginRenderpass(WorldRenderpass, WorldRenderpass->targets[AttachmentIndex])) {
+        if (!ptrRenderer->RenderpassBegin(WorldRenderpass, WorldRenderpass->targets[AttachmentIndex])) {
             MERROR("Ошибка Renderer::BeginRenderpass -> BuiltinRenderpass::World. Приложение закрывается...");
             return false;
         }
@@ -235,14 +235,14 @@ bool Renderer::DrawFrame(RenderPacket &packet)
             ptrRenderer->DrawGeometry(packet.geometries[i]);
         }
 
-        if (!ptrRenderer->EndRenderpass(WorldRenderpass)) {
+        if (!ptrRenderer->RenderpassEnd(WorldRenderpass)) {
             MERROR("Ошибка Renderer::EndRenderpass -> WorldRenderpass. Приложение закрывается...");
             return false;
         }
         // Конец рендеринга мира
 
          // UI renderpass
-        if (!ptrRenderer->BeginRenderpass(UiRenderpass, UiRenderpass->targets[AttachmentIndex])) {
+        if (!ptrRenderer->RenderpassBegin(UiRenderpass, UiRenderpass->targets[AttachmentIndex])) {
             MERROR("Ошибка Renderer::BeginRenderpass -> UiRenderpass. Приложение закрывается...");
             return false;
         }
@@ -285,7 +285,7 @@ bool Renderer::DrawFrame(RenderPacket &packet)
             ptrRenderer->DrawGeometry(packet.UI_Geometries[i]);
         }
 
-        if (!ptrRenderer->EndRenderpass(UiRenderpass)) {
+        if (!ptrRenderer->RenderpassEnd(UiRenderpass)) {
             MERROR("Ошибка Renderer::EndRenderpass -> UiRenderpass. Приложение закрывается...");
             return false;
         }
@@ -336,6 +336,21 @@ bool Renderer::Load(GeometryID *gid, u32 VertexSize, u32 VertexCount, const void
 void Renderer::Unload(GeometryID *gid)
 {
     return ptrRenderer->Unload(gid);
+}
+
+void Renderer::DrawGeometry(GeometryRenderData &data)
+{
+    ptrRenderer->DrawGeometry(data);
+}
+
+bool Renderer::RenderpassBegin(Renderpass *pass, RenderTarget &target)
+{
+    return ptrRenderer->RenderpassBegin(pass, target);
+}
+
+bool Renderer::RenderpassEnd(Renderpass *pass)
+{
+    return ptrRenderer->RenderpassEnd(pass);
 }
 
 Renderpass* Renderer::GetRenderpass(const MString &name)

@@ -90,7 +90,7 @@ public:
 	/// @param NearClip расстояние до ближней плоскости отсечения.
 	/// @param FarClip дальнее расстояние от плоскости отсечения.
 	/// @return новая матрица ортогональной проекции.
-	static MINLINE Matrix4D MakeOrthographicProjection(f32 left, f32 right, f32 bottom, f32 top, f32 NearClip, f32 FarClip) {
+	static constexpr Matrix4D MakeOrthographicProjection(f32 left, f32 right, f32 bottom, f32 top, f32 NearClip, f32 FarClip) {
 		Matrix4D m;
 
     	f32 lr = 1.0f / (left - right);

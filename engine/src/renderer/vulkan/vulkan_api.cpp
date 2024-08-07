@@ -1102,7 +1102,7 @@ bool VulkanAPI::EndFrame(f32 DeltaTime)
     return true;
 }
 
-bool VulkanAPI::BeginRenderpass(Renderpass* pass, RenderTarget& target)
+bool VulkanAPI::RenderpassBegin(Renderpass* pass, RenderTarget& target)
 {
     VulkanCommandBuffer& CommandBuffer = GraphicsCommandBuffers[ImageIndex];
 
@@ -1145,7 +1145,7 @@ bool VulkanAPI::BeginRenderpass(Renderpass* pass, RenderTarget& target)
     return true;
 }
 
-bool VulkanAPI::EndRenderpass(Renderpass* pass)
+bool VulkanAPI::RenderpassEnd(Renderpass* pass)
 {
     VulkanCommandBuffer& CommandBuffer = GraphicsCommandBuffers[ImageIndex];
 

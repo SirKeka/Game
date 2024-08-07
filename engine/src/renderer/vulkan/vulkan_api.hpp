@@ -65,8 +65,8 @@ public:
     void Resized(u16 width, u16 height) override;
     bool BeginFrame(f32 Deltatime) override;
     bool EndFrame(f32 DeltaTime) override;
-    bool BeginRenderpass(Renderpass* pass, RenderTarget& target) override;
-    bool EndRenderpass(Renderpass* pass) override;
+    bool RenderpassBegin(Renderpass* pass, RenderTarget& target) override;
+    bool RenderpassEnd(Renderpass* pass) override;
     Renderpass* GetRenderpass(const MString& name) override;
 
     /// @brief Загружает данные текстуры в графический процессор.

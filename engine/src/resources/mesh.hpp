@@ -41,4 +41,10 @@ struct Mesh {
         transform = mesh.transform;
         return *this;
     }
+
+    struct PacketData {
+        u32 MeshCount;
+        Mesh* meshes;
+    };
 };
+

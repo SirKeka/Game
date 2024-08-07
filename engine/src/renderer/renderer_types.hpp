@@ -4,18 +4,11 @@
 #include "math/matrix4d.hpp"
 #include "math/vertex.hpp"
 #include "resources/shader.hpp"
+#include "renderer/views/render_view.hpp"
 
 struct StaticMeshData;
 class Texture;
 class Renderer;
-
-namespace RendererDebugViewMode {
-    enum RendererDebugViewMode : u32 {
-        Default = 0,
-        Lighting = 1,
-        Normals = 2
-};
-}
 
 enum class ERendererType 
 {
@@ -67,28 +60,14 @@ struct GeometryRenderData
     //constexpr GeometryRenderData(GeometryRenderData&& grd) : model(grd.model), gid() {}
 };
 
-/* f32 DeltaTime
- * u32 GeometryCount
- * struct GeometryRenderData* geometries
- * u32 UI_GeometryCount
- * struct GeometryRenderData* UI_Geometries*/
+/// @brief Структура, которая генерируется приложением и отправляется один раз рендереру для рендеринга заданного кадра. 
+/// Состоит из любых требуемых данных, таких как дельта-время и коллекция представлений для рендеринга.
 struct RenderPacket
 {
     f64 DeltaTime;
-    u32 GeometryCount;
-    DArray<GeometryRenderData> geometries;
-    u32 UI_GeometryCount;
-    DArray<GeometryRenderData> UI_Geometries;
-    constexpr RenderPacket() : DeltaTime(), GeometryCount(), geometries(), UI_GeometryCount(), UI_Geometries() {}
-    constexpr RenderPacket(f64 DeltaTime, u32 GeometryCount, GeometryRenderData geometries, u32 UI_GeometryCount, GeometryRenderData UI_Geometries)
-    : DeltaTime(DeltaTime), 
-    GeometryCount(GeometryCount), 
-    geometries(), 
-    UI_GeometryCount(UI_GeometryCount), 
-    UI_Geometries() {
-        this->geometries.PushBack(std::move(geometries));
-        this->UI_Geometries.PushBack(std::move(UI_Geometries));
-    }
+    u16 ViewCount;                      // Количество представлений, которые нужно отобразить. 
+    struct RenderView::Packet* views;   // Массив представлений, которые нужно отобразить.
+    constexpr RenderPacket() : DeltaTime(), ViewCount(), views(nullptr) {}
 };
 
 /// @brief Общая конфигурация для рендерера.
@@ -131,15 +110,18 @@ public:
     virtual void Resized(u16 width, u16 height) = 0;
     virtual bool BeginFrame(f32 Deltatime) = 0;
     virtual bool EndFrame(f32 DeltaTime) = 0;
+    /// @brief Рисует заданную геометрию. Должен вызываться только внутри прохода рендеринга, внутри кадра.
+    /// @param data Данные рендеринга геометрии, которая должна быть нарисована.
+    virtual void DrawGeometry(GeometryRenderData* data) = 0;
     /// @brief Начинает проход рендеринга с указанной целью.
     /// @param pass указатель на проход рендеринга для начала.
     /// @param target указатель на цель рендеринга для использования.
     /// @return тrue в случае успеха иначе false.
-    virtual bool BeginRenderpass(Renderpass* pass, RenderTarget& target) = 0;
+    virtual bool RenderpassBegin(Renderpass* pass, RenderTarget& target) = 0;
     /// @brief Завершает проход рендеринга с указанным идентификатором.
     /// @param pass указатель на проход рендеринга для завершения.
     /// @return тrue в случае успеха иначе false.
-    virtual bool EndRenderpass(Renderpass* pass) = 0;
+    virtual bool RenderpassEnd(Renderpass* pass) = 0;
     /// @brief Получает указатель на renderpass, используя предоставленное имя.
     /// @param name имя renderpass.
     /// @return Указатель на renderpass, если найден; в противном случае nullptr.

@@ -285,17 +285,17 @@ bool Application::ApplicationRun() {
                 for (u32 i = 0; i < State->MeshCount; ++i) {
                     Mesh& m = State->meshes[i];
                     for (u32 j = 0; j < m.GeometryCount; ++j) {
-                        packet.geometries.EmplaceBack(m.transform.GetWorld(), State->meshes[i].geometries[j]);
-                        packet.GeometryCount++;
+                        //packet.geometries.EmplaceBack(m.transform.GetWorld(), State->meshes[i].geometries[j]);
+                        //packet.GeometryCount++;
                     }
                 }
 
-                packet.GeometryCount = packet.geometries.Length();
+                //packet.GeometryCount = packet.geometries.Length();
 
             }
 
-            packet.UI_GeometryCount = 1; 
-            packet.UI_Geometries.EmplaceBack(Matrix4D::MakeTranslation(FVec3()), State->TestUI_Geometry);
+            //packet.UI_GeometryCount = 1; 
+            //packet.UI_Geometries.EmplaceBack(Matrix4D::MakeTranslation(FVec3()), State->TestUI_Geometry);
             // ЗАДАЧА: временно
 
             State->Render->DrawFrame(packet);

@@ -192,17 +192,11 @@ Texture *TextureSystem::GetDefaultTexture(ETextureFlag texture)
     return nullptr;
 }
 
-/*
-void *TextureSystem::operator new(u64 size)
-{
-    return LinearAllocator::Instance().Allocate(size);
-}
-*/
 bool TextureSystem::CreateDefaultTexture()
 {
     // ПРИМЕЧАНИЕ. Создайте текстуру по умолчанию — сине-белую шахматную доску размером 256x256.
     // Это делается в коде для устранения зависимостей активов.
-    MTRACE("Создание текстуры по умолчанию...");
+    // MTRACE("Создание текстуры по умолчанию...");
     const u32 TexDimension = 256;
     const u32 channels = 4;
     const u32 PixelCount = TexDimension * TexDimension;
@@ -241,7 +235,7 @@ bool TextureSystem::CreateDefaultTexture()
     DefaultTexture[ETexture::Diffuse].generation = INVALID::ID;
 
     // Зеркальная текстура.
-    MTRACE("Создание зеркальной текстуры по умолчанию...");
+    // MTRACE("Создание зеркальной текстуры по умолчанию...");
     u8 SpecPixels[16 * 16 * 4]{}; // Карта спецификации по умолчанию черная (без бликов).
     DefaultTexture[ETexture::Specular] = Texture(DEFAULT_SPECULAR_TEXTURE_NAME, 16, 16, 4, 0);
     Renderer::Load(SpecPixels, &DefaultTexture[ETexture::Specular]);
@@ -249,7 +243,7 @@ bool TextureSystem::CreateDefaultTexture()
     DefaultTexture[ETexture::Specular].generation = INVALID::ID;
 
     // Текстура нормалей.
-    MTRACE("Создание текстуры нормалей по умолчанию...");
+    // MTRACE("Создание текстуры нормалей по умолчанию...");
     u8 NormalPixels[16 * 16 * 4]{};  // w * h * channels
     // Каждый пиксель.
     for (u64 row = 0; row < 16; ++row) {
@@ -372,9 +366,9 @@ bool TextureSystem::ProcessTextureReference(const char *name, i8 ReferenceDiff, 
                     // Сбросьте ссылку.
                     ref.handle = INVALID::ID;
                     ref.AutoRelease = false;
-                    MTRACE("Выпущена текстура «%s». Текстура выгружена, поскольку количество ссылок = 0 и AutoRelease = true.", NameCopy);
+                    // MTRACE("Выпущена текстура «%s». Текстура выгружена, поскольку количество ссылок = 0 и AutoRelease = true.", NameCopy);
                 } else {
-                    MTRACE("Выпущена текстура «%s», теперь счетчик ссылок равен «%i» (AutoRelease=%s).", NameCopy, ref.ReferenceCount, ref.AutoRelease ? "true" : "false");
+                    // MTRACE("Выпущена текстура «%s», теперь счетчик ссылок равен «%i» (AutoRelease=%s).", NameCopy, ref.ReferenceCount, ref.AutoRelease ? "true" : "false");
                 }
 
             } else {
@@ -400,7 +394,7 @@ bool TextureSystem::ProcessTextureReference(const char *name, i8 ReferenceDiff, 
                         Texture* texture = &state->RegisteredTextures[ref.handle];
                         // Создайте новую текстуру.
                         if (SkipLoad) {
-                            MTRACE("Загрузка текстуры «%s» пропущена. Это ожидаемое поведение.");
+                            // MTRACE("Загрузка текстуры «%s» пропущена. Это ожидаемое поведение.");
                         } else {
                             if (!LoadTexture(name, texture)) {
                                 OutTextureId = INVALID::ID;
@@ -409,11 +403,11 @@ bool TextureSystem::ProcessTextureReference(const char *name, i8 ReferenceDiff, 
                             }
                             texture->id = ref.handle;
                         }
-                        MTRACE("Текстура «%s» еще не существует. Создано, и ref_count теперь равен %i.", name, ref.ReferenceCount);
+                        // MTRACE("Текстура «%s» еще не существует. Создано, и ref_count теперь равен %i.", name, ref.ReferenceCount);
                     }
                 } else {
                     OutTextureId = ref.handle;
-                    MTRACE("Текстура «%s» уже существует, ref_count увеличен до %i.", name, ref.ReferenceCount);
+                    // MTRACE("Текстура «%s» уже существует, ref_count увеличен до %i.", name, ref.ReferenceCount);
                 }
             }
 
