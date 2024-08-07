@@ -17,9 +17,7 @@ CameraSystem::CameraSystem(u16 MaxCameraCount, void* HashtableBlock, CameraLooku
     HashtableBlock(HashtableBlock),
     cameras(cameras),
     DefaultCamera()
-{
-
-}
+{}
 
 bool CameraSystem::Initialize(u16 MaxCameraCount)
 {

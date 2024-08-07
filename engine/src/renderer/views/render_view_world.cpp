@@ -2,6 +2,7 @@
 #include "renderer/renderer.hpp"
 #include "systems/shader_system.hpp"
 #include "systems/camera_system.hpp"
+#include "systems/material_system.hpp"
 #include "renderer/renderpass.hpp"
 #include "resources/mesh.hpp"
 
@@ -116,5 +117,60 @@ bool RenderViewWorld::BuildPacket(void *data, Packet *OutPacket)
 
 bool RenderViewWorld::Render(const Packet *packet, u64 FrameNumber, u64 RenderTargetIndex)
 {
-    return false;
+    for (u32 p = 0; p < RenderpassCount; ++p) {
+        Renderpass* pass = passes[p];
+        if (!Renderer::RenderpassBegin(pass, pass->targets[RenderTargetIndex])) {
+            MERROR("RenderViewWorld::Render pass index %u не удалось запустить.", p);
+            return false;
+        }
+
+        if (!ShaderSystem::GetInstance()->Use(ShaderID)) {
+            MERROR("Не удалось использовать шейдер материала. Не удалось отрисовать кадр.");
+            return false;
+        }
+
+        // Применить глобальные переменные
+        // ЗАДАЧА: Найти общий способ запроса данных, таких как окружающий цвет (который должен быть из сцены) и режим (из рендерера)
+        if (!MaterialSystem::Instance()->ApplyGlobal(ShaderID, packet->ProjectionMatrix, packet->ViewMatrix, packet->AmbientColour, packet->ViewPosition, RenderMode)) {
+            MERROR("Не удалось использовать применить глобальные переменные для шейдера материала. Не удалось отрисовать кадр.");
+            return false;
+        }
+
+        // Нарисовать геометрию.
+        auto& count = packet->GeometryCount;
+        for (u32 i = 0; i < count; ++i) {
+            Material* m = 0;
+            if (packet->geometries[i].geometry->material) {
+                m = packet->geometries[i].geometry->material;
+            } else {
+                m = MaterialSystem::Instance()->GetDefaultMaterial();
+            }
+
+            // Обновите материал, если он еще не был в этом кадре. 
+            // Это предотвращает многократное обновление одного и того же материала. 
+            // Его все равно нужно привязать в любом случае, поэтому этот результат проверки передается на бэкэнд, 
+            // который либо обновляет внутренние привязки шейдера и привязывает их, либо только привязывает их.
+            bool NeedsUpdate = m->RenderFrameNumber != FrameNumber;
+            if (!MaterialSystem::Instance()->ApplyInstance(m, NeedsUpdate)) {
+                MWARN("Не удалось применить материал '%s'. Пропуск отрисовки.", m->name);
+                continue;
+            } else {
+                // Синхронизируйте номер кадра.
+                m->RenderFrameNumber = FrameNumber;
+            }
+
+            // Примените локальные переменные
+            MaterialSystem::Instance()->ApplyLocal(m, packet->geometries[i].model);
+
+            // Нарисуйте его.
+            Renderer::DrawGeometry(packet->geometries[i]);
+        }
+
+        if (!Renderer::RenderpassEnd(pass)) {
+            MERROR("Не удалось завершить проход RenderViewWorld::Render индекс %u.", p);
+            return false;
+        }
+    }
+
+    return true;
 }

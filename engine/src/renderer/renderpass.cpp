@@ -22,3 +22,13 @@ Renderpass::~Renderpass()
 {
     delete targets;
 }
+
+void *Renderpass::operator new[](u64 size)
+{
+    return MMemory::Allocate(size, MemoryTag::Array);
+}
+
+void Renderpass::operator delete[](void *ptr, u64 size)
+{
+    MMemory::Free(ptr, size, MemoryTag::Array);
+}

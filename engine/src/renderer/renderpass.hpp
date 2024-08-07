@@ -60,12 +60,8 @@ struct Renderpass
     : id(INVALID::U16ID), RenderArea(RenderArea), ClearColour(ClearColour), ClearFlags(ClearFlags), RenderTargetCount(RenderTargetCount), targets(nullptr), InternalData(nullptr) {}
 
     ~Renderpass();
-/*
-    void* operator new[] (u64 size) {
-        return MMemory::Allocate(size, MemoryTag::Array);
-    }
-    void operator delete[] (void* ptr, u64 size) {
-        MMemory::Free(ptr, size, MemoryTag::Array);
-    }
-*/
+
+    void* operator new[] (u64 size);
+    void operator delete[] (void* ptr, u64 size);
+
 };

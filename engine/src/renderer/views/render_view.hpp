@@ -38,7 +38,7 @@ struct Config {
     KnownType type;                               // Известный тип представления. Используется для связи с логикой представления.
     ViewMatrixSource ViewMatrixSource;            // Источник матрицы представления.
     ProjectionMatrixSource ProjectionMatrixSource;// Источник матрицы проекции.
-    u8 Passcount;                                 // Количество проходов рендеринга, используемых в этом представлении.
+    u8 PassCount;                                 // Количество проходов рендеринга, используемых в этом представлении.
     PassConfig* passes;                           // Конфигурация проходов рендеринга, используемых в этом представлении.
 };
 
@@ -58,7 +58,7 @@ protected:
     //void* InternalData;             // Внутренние данные, специфичные для представления, для этого представления.
 public:
     constexpr RenderView()
-     : id(), name(nullptr), width(), height(), type(), RenderpassCount(), passes(nullptr), CustomShaderName(nullptr) {}
+     : id(INVALID::U16ID), name(nullptr), width(), height(), type(), RenderpassCount(), passes(nullptr), CustomShaderName(nullptr) {}
     virtual ~RenderView() {}
 
     /// @brief Указатель на функцию, которая будет вызвана при уничтожении данного представления.
