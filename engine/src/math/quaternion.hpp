@@ -2,7 +2,7 @@
 
 #include "defines.hpp"
 #include "matrix3d.hpp"
-#include "vector3d.hpp"
+#include "vector3d_fwd.hpp"
 
 #include "math.hpp"
 
@@ -31,12 +31,12 @@ public:
 
 	constexpr Quaternion() : x(), y(), z(), w() {}
 	constexpr Quaternion(f32 x, f32 y, f32 z, f32 w) : x(x), y(y), z(z), w(w) {}
-	constexpr Quaternion(const Vector3D<f32>& v, f32 s) : x(v.x), y(v.y), z(v.z), w(s) {}
+	constexpr Quaternion(const FVec3& v, f32 s) : x(v.x), y(v.y), z(v.z), w(s) {}
 	/// @brief 
 	/// @param axis 
 	/// @param angle 
 	/// @param normalize 
-	constexpr Quaternion(const Vector3D<f32>& axis, f32 angle, bool normalize) : x(), y(), z(), w() {
+	constexpr Quaternion(const FVec3& axis, f32 angle, bool normalize) : x(), y(), z(), w() {
 		const f32 HalfAngle = 0.5f * angle;
     	f32 s = Math::sin(HalfAngle);
     	f32 c = Math::cos(HalfAngle);

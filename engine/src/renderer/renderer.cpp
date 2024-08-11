@@ -6,8 +6,10 @@
 #include "systems/material_system.hpp"
 #include "systems/shader_system.hpp"
 #include "systems/camera_system.hpp"
+#include "systems/render_view_system.hpp"
+#include "views/render_view.hpp"
 
-RendererType *Renderer::ptrRenderer;
+RendererType *Renderer::ptrRenderer = nullptr;
 
 constexpr bool CriticalInit(bool op, const MString& message)
 {
@@ -19,17 +21,9 @@ constexpr bool CriticalInit(bool op, const MString& message)
 }
 
 Renderer::Renderer(MWindow *window, const char *ApplicationName, ERendererType type)
-: 
-ActiveWorldCamera(),
-NearClip(0.1f), 
-FarClip(1000.f), 
+:  
 MaterialShaderID(), 
 UIShaderID(), 
-RenderMode(),
-projection(Matrix4D::MakeFrustumProjection(Math::DegToRad(45.0f), 1280 / 720.0f, NearClip, FarClip)), 
-UIProjection(Matrix4D::MakeOrthographicProjection(0, 1280.0f, 720.0f, 0, -100.f, 100.0f)),              // Намеренно перевернуто по оси Y.
-UIView(Matrix4D::MakeIdentity()),
-AmbientColour(0.25f, 0.25f, 0.25f, 1.0f),
 WindowRenderTargetCount(),
 // Размер буфера кадра по умолчанию. Переопределяется при создании окна.
 FramebufferWidth(1280),
@@ -39,8 +33,6 @@ UiRenderpass(nullptr),
 resizing(false),
 FramesSinceResize()
 {
-    Event::GetInstance()->Register(EVENT_CODE_SET_RENDER_MODE, this, OnEvent);
-
     // Проходы рендеринга. ЗАДАЧА: прочитать конфигурацию из файла.
     RenderpassConfig RpConfig[2] = {
         RenderpassConfig(
@@ -114,9 +106,6 @@ FramesSinceResize()
     CriticalInit(ShaderSystem::GetInstance()->Create(config), "Не удалось загрузить встроенный шейдер пользовательского интерфейса.");
     ResourceSystem::Instance()->Unload(ConfigResource);
     UIShaderID = ShaderSystem::GetInstance()->GetID(BUILTIN_SHADER_NAME_UI);
-
-    // ЗАДАЧА: настраиваемое начальное положение камеры.
-    UIView.Inverse();
 }
 
 Renderer::~Renderer()
@@ -148,7 +137,7 @@ void Renderer::OnResized(u16 width, u16 height)
     }
 }
 
-bool Renderer::DrawFrame(RenderPacket &packet)
+bool Renderer::DrawFrame(const RenderPacket &packet)
 {
     ptrRenderer->FrameNumber++;
 
@@ -160,10 +149,8 @@ bool Renderer::DrawFrame(RenderPacket &packet)
         if (FramesSinceResize >= 30) {
             f32 width = FramebufferWidth;
             f32 height = FramebufferHeight;
-            projection = Matrix4D::MakeFrustumProjection(Math::DegToRad(45.F), width / height, NearClip, FarClip);
-            UIProjection = Matrix4D::MakeOrthographicProjection(0, width, height, 0, -100.f, 100.0f);  // Намеренно перевернуто по оси Y.
+            RenderViewSystem::Instance()->OnWindowResize(width, height);
             ptrRenderer->Resized(width, height);
-
             FramesSinceResize = 0;
             resizing = false;
         } else {
@@ -172,124 +159,16 @@ bool Renderer::DrawFrame(RenderPacket &packet)
         }
     }
 
-    // ЗАДАЧА: представления
-    // Обновите размеры основного/мирового рендерпасса.
-    WorldRenderpass->RenderArea.z = FramebufferWidth;
-    WorldRenderpass->RenderArea.w = FramebufferHeight;
-
-    // Также обновите размеры рендерпасса пользовательского интерфейса.
-    UiRenderpass->RenderArea.z = FramebufferWidth;
-    UiRenderpass->RenderArea.w = FramebufferHeight;
-
-    if (!ActiveWorldCamera) {
-        // Просто возьмите камеру по умолчанию.
-        ActiveWorldCamera = CameraSystem::Instance()->GetDefault();
-    }
-
     // Если начальный кадр возвращается успешно, операции в середине кадра могут продолжаться.
     if (ptrRenderer->BeginFrame(packet.DeltaTime)) {
-        const u8& AttachmentIndex = ptrRenderer->WindowAttachmentIndexGet();
-        // Мировой проход рендеринга
-        // ЗАДАЧА: только рендерпас
-        if (!ptrRenderer->RenderpassBegin(WorldRenderpass, WorldRenderpass->targets[AttachmentIndex])) {
-            MERROR("Ошибка Renderer::BeginRenderpass -> BuiltinRenderpass::World. Приложение закрывается...");
-            return false;
-        }
-
-        if(!ShaderSystem::GetInstance()->Use(MaterialShaderID)) {
-            MERROR("Не удалось использовать шейдер материала. Не удалось выполнить рендеринг кадра.");
-            return false;
-        }
-
-        // Apply globals
-        if(!MaterialSystem::Instance()->ApplyGlobal(MaterialShaderID, projection, ActiveWorldCamera->GetView(), AmbientColour, ActiveWorldCamera->GetPosition(), RenderMode)) {
-            MERROR("Не удалось использовать глобальные переменные для шейдера материала. Не удалось выполнить рендеринг кадра.");
-            return false;
-        }
-
-        // Отрисовка геометрии
-        const u32& count = packet.GeometryCount;
-        for (u32 i = 0; i < count; ++i) {
-            Material* m = nullptr;
-            if (packet.geometries[i].gid->material) {
-                m = packet.geometries[i].gid->material;
-            } else {
-                m = MaterialSystem::Instance()->GetDefaultMaterial();
+        const auto& AttachmentIndex = ptrRenderer->WindowAttachmentIndexGet();
+        
+        // Отобразить каждое представление.
+        for (u32 i = 0; i < packet.ViewCount; i++) {
+            if (!RenderViewSystem::Instance()->OnRender(packet.views[i].view, packet.views[i], ptrRenderer->FrameNumber, AttachmentIndex)) {
+                MERROR("Ошибка рендеринга индекса представления %i.", i);
             }
-
-            // Примените материал, если он еще не был в этом кадре. 
-            // Это предотвращает многократное обновление одного и того же материала.
-            bool NeedsUpdate = m->RenderFrameNumber != ptrRenderer->FrameNumber;
-            if (!MaterialSystem::Instance()->ApplyInstance(m, NeedsUpdate)) {
-                MWARN("Не удалось применить материал «%s». Пропуск отрисовки.", m->name);
-                continue;
-            } else {
-                // Синхронизация ноиера кадров.
-                m->RenderFrameNumber = ptrRenderer->FrameNumber;
-            }
-
-            // Приминение locals
-            MaterialSystem::Instance()->ApplyLocal(m, packet.geometries[i].model);
-
-            // Отрисовка.
-            ptrRenderer->DrawGeometry(packet.geometries[i]);
         }
-
-        if (!ptrRenderer->RenderpassEnd(WorldRenderpass)) {
-            MERROR("Ошибка Renderer::EndRenderpass -> WorldRenderpass. Приложение закрывается...");
-            return false;
-        }
-        // Конец рендеринга мира
-
-         // UI renderpass
-        if (!ptrRenderer->RenderpassBegin(UiRenderpass, UiRenderpass->targets[AttachmentIndex])) {
-            MERROR("Ошибка Renderer::BeginRenderpass -> UiRenderpass. Приложение закрывается...");
-            return false;
-        }
-
-        // Обновить глобальное состояние пользовательского интерфейса
-        if(!ShaderSystem::GetInstance()->Use(UIShaderID)) {
-            MERROR("Не удалось использовать шейдер пользовательского интерфейса. Не удалось выполнить рендеринг кадра.");
-            return false;
-        }
-
-        // Применить глобальные переменные
-        if(!MaterialSystem::Instance()->ApplyGlobal(UIShaderID, UIProjection, UIView)) {
-            MERROR("Не удалось использовать глобальные переменные для шейдера пользовательского интерфейса. Не удалось выполнить рендеринг кадра.");
-            return false;
-        }
-
-        // Нарисуйте геометрию пользовательского интерфейса.
-        const u32& UIcount = packet.UI_GeometryCount;
-        for (u32 i = 0; i < UIcount; ++i) {
-            Material* m = nullptr;
-            if (packet.UI_Geometries[i].gid->material) {
-                m = packet.UI_Geometries[i].gid->material;
-            } else {
-                m = MaterialSystem::Instance()->GetDefaultMaterial();
-            }
-            // Приминение материала
-            bool NeedsUpdate = m->RenderFrameNumber != ptrRenderer->FrameNumber;
-            if (!MaterialSystem::Instance()->ApplyInstance(m, NeedsUpdate)) {
-                MWARN("Не удалось применить материал пользовательского интерфейса «%s». Пропуск отрисовки.", m->name);
-                continue;
-            } else {
-                // Синхронизация ноиера кадров.
-                m->RenderFrameNumber = ptrRenderer->FrameNumber;
-            }
-
-            // Приминение locals
-            MaterialSystem::Instance()->ApplyLocal(m, packet.UI_Geometries[i].model);
-
-            // Отрисовка.
-            ptrRenderer->DrawGeometry(packet.UI_Geometries[i]);
-        }
-
-        if (!ptrRenderer->RenderpassEnd(UiRenderpass)) {
-            MERROR("Ошибка Renderer::EndRenderpass -> UiRenderpass. Приложение закрывается...");
-            return false;
-        }
-        // Завершить рендеринг пользовательского интерфейса
 
         // Завершите кадр. Если это не удастся, скорее всего, это будет невозможно восстановить.
         bool result = ptrRenderer->EndFrame(packet.DeltaTime);
@@ -338,7 +217,7 @@ void Renderer::Unload(GeometryID *gid)
     return ptrRenderer->Unload(gid);
 }
 
-void Renderer::DrawGeometry(GeometryRenderData &data)
+void Renderer::DrawGeometry(const GeometryRenderData &data)
 {
     ptrRenderer->DrawGeometry(data);
 }
@@ -484,32 +363,4 @@ u8 Renderer::WindowAttachmentIndexGet()
 void *Renderer::operator new(u64 size)
 {
     return LinearAllocator::Instance().Allocate(size);
-}
-
-bool Renderer::OnEvent(u16 code, void *sender, void *ListenerInst, EventContext context)
-{
-    switch (code) {
-        case EVENT_CODE_SET_RENDER_MODE: {
-            Renderer* state = reinterpret_cast<Renderer*>(ListenerInst);
-            i32 mode = context.data.i32[0];
-            switch (mode) {
-                default:
-                case RendererDebugViewMode::Default:
-                    MDEBUG("Режим рендеринга установлен по умолчанию.");
-                    state->RenderMode = RendererDebugViewMode::Default;
-                    break;
-                case RendererDebugViewMode::Lighting:
-                    MDEBUG("Режим рендерера установлен на освещение.");
-                    state->RenderMode = RendererDebugViewMode::Lighting;
-                    break;
-                case RendererDebugViewMode::Normals:
-                    MDEBUG("Режим рендерера установлен на нормальный.");
-                    state->RenderMode = RendererDebugViewMode::Normals;
-                    break;
-            }
-            return true;
-        }
-    }
-
-    return false;
 }

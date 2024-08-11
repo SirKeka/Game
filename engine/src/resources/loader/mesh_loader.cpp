@@ -451,7 +451,7 @@ void ProcessSubobject(DArray<FVec3>& positions, DArray<FVec3>& normals, DArray<F
 
     // Вычислите центр на основе экстентов.
     for (u8 i = 0; i < 3; ++i) {
-        OutData.Center.elements[i] = (OutData.MinExtents.elements[i] + OutData.MaxExtents.elements[i]) / 2.0f;
+        OutData.center.elements[i] = (OutData.MinExtents.elements[i] + OutData.MaxExtents.elements[i]) / 2.0f;
     }
 
     OutData.VertexCount = vertices.Length();
@@ -691,7 +691,7 @@ bool LoadMsmFile(FileHandle *MsmFile, DArray<GeometryConfig> &OutGeometries)
         Filesystem::Read(MsmFile, sizeof(char) * MNameLength, g.MaterialName, BytesRead);
 
         // Центер
-        Filesystem::Read(MsmFile, sizeof(FVec3), &g.Center, BytesRead);
+        Filesystem::Read(MsmFile, sizeof(FVec3), &g.center, BytesRead);
 
         // Объёмы (мин/maкс)
         Filesystem::Read(MsmFile, sizeof(FVec3), &g.MinExtents, BytesRead);
@@ -757,7 +757,7 @@ bool WriteMsmFile(const char *path, const char *name, u32 GeometryCount, DArray<
         Filesystem::Write(&f, sizeof(char) * MNameLength, g->MaterialName, written);
 
         // Центер
-        Filesystem::Write(&f, sizeof(FVec3), &g->Center, written);
+        Filesystem::Write(&f, sizeof(FVec3), &g->center, written);
 
         // Extents (min/max)
         Filesystem::Write(&f, sizeof(FVec3), &g->MaxExtents, written);

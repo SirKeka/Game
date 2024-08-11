@@ -1,5 +1,6 @@
 #pragma once
 #include "render_view.hpp"
+#include "core/event.hpp"
 
 class RenderViewWorld : public RenderView
 {
@@ -13,12 +14,13 @@ private:
     FVec4 AmbientColour;
     u32 RenderMode;
 public:
-    constexpr RenderViewWorld();
+    RenderViewWorld();
+    RenderViewWorld(u16 id, MString& name, KnownType type, u8 RenderpassCount, const char* CustomShaderName);
     ~RenderViewWorld();
 
     void Resize(u32 width, u32 height) override;
-    bool BuildPacket(void* data, Packet* OutPacket) override;
-    bool Render(const Packet* packet, u64 FrameNumber, u64 RenderTargetIndex) override;
+    bool BuildPacket(void* data, Packet& OutPacket) const override;
+    bool Render(const Packet& packet, u64 FrameNumber, u64 RenderTargetIndex) const override;
 private:
     static bool OnEvent(u16 code, void* sender, void* ListenerInst, EventContext context);
 };

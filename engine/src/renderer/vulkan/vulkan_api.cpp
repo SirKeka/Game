@@ -1374,7 +1374,7 @@ bool VulkanAPI::Load(GeometryID *gid, u32 VertexSize, u32 VertexCount, const voi
         }
     }
 
-    if (gid->generation == INVALID::ID) {
+    if (gid->generation == INVALID::U16ID) {
         gid->generation = 0;
     } else {
         gid->generation++;

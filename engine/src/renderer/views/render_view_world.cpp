@@ -5,6 +5,21 @@
 #include "systems/material_system.hpp"
 #include "renderer/renderpass.hpp"
 #include "resources/mesh.hpp"
+#include "resources/geometry.hpp"
+
+/// @brief Частная структура, используемая для сортировки геометрии по расстоянию от камеры.
+struct GeometryDistance {
+    GeometryRenderData g;   // Данные рендеринга геометрии.
+    f32 distance;           // Расстояние от камеры.
+    constexpr GeometryDistance(GeometryRenderData g, f32 distance) : g(g), distance(distance) {}
+};
+
+/// @brief Частная, рекурсивная, функция сортировки на месте для структур GeometryDistance.
+/// @param arr Массив структур GeometryDistance, которые нужно отсортировать.
+/// @param LowIndex Низкий индекс, с которого нужно начать сортировку (обычно 0)
+/// @param HighIndex Высокий индекс, которым нужно закончить (обычно длина массива - 1)
+/// @param ascending true для сортировки в порядке возрастания; в противном случае - по убыванию.
+static void QuickSort(GeometryDistance arr[], i32 LowIndex, i32 HighIndex, bool ascending);
 
 bool RenderViewWorld::OnEvent(u16 code, void* sender, void* ListenerInst, EventContext context) {
     RenderViewWorld* self = (RenderViewWorld*)ListenerInst;
@@ -38,7 +53,7 @@ bool RenderViewWorld::OnEvent(u16 code, void* sender, void* ListenerInst, EventC
     return false;
 }
 
-constexpr RenderViewWorld::RenderViewWorld()
+RenderViewWorld::RenderViewWorld()
 :
     RenderView(),
     // Получите либо переопределение пользовательского шейдера, либо заданное значение по умолчанию.
@@ -58,8 +73,28 @@ constexpr RenderViewWorld::RenderViewWorld()
     }
 }
 
+RenderViewWorld::RenderViewWorld(u16 id, MString& name, KnownType type, u8 RenderpassCount, const char* CustomShaderName)
+:
+RenderView(id, name, type, RenderpassCount, CustomShaderName),
+ShaderID(ShaderSystem::GetInstance()->GetID(CustomShaderName ? CustomShaderName : "Shader.Builtin.Material")),
+fov(Math::DegToRad(45.F)),
+NearClip(0.1F),
+FarClip(1000.F),
+ProjectionMatrix(Matrix4D::MakeFrustumProjection(fov, 1280 / 720.f, NearClip, FarClip)), // Поумолчанию
+WorldCamera(CameraSystem::Instance()->GetDefault()),
+AmbientColour(0.25F, 0.25F, 0.25F, 1.F),
+RenderMode()
+{
+    // Следите за изменениями режима.
+    if (!Event::GetInstance()->Register(EVENT_CODE_SET_RENDER_MODE, this, OnEvent)) {
+        MERROR("Не удалось прослушать событие установки режима рендеринга, создание не удалось.");
+        return;
+    }
+}
+
 RenderViewWorld::~RenderViewWorld()
 {
+    Event::GetInstance()->Unregister(EVENT_CODE_SET_RENDER_MODE, this, OnEvent);
 }
 
 void RenderViewWorld::Resize(u32 width, u32 height)
@@ -81,41 +116,62 @@ void RenderViewWorld::Resize(u32 width, u32 height)
     }
 }
 
-bool RenderViewWorld::BuildPacket(void *data, Packet *OutPacket)
+bool RenderViewWorld::BuildPacket(void *data, Packet &OutPacket) const
 {
-    if (!data || !OutPacket) {
+    if (!data) {
         MWARN("RenderViewWorld::BuildPacket требует действительный указатель на вид, пакет и данные.");
         return false;
     }
 
     Mesh::PacketData* MeshData = (Mesh::PacketData*)data;
     
-    OutPacket->view = this;
+    OutPacket.view = this;
 
     // Установить матрицы и т. д.
-    OutPacket->ProjectionMatrix = ProjectionMatrix;
-    OutPacket->ViewMatrix = WorldCamera->GetView();
-    OutPacket->ViewPosition = WorldCamera->GetPosition();
-    OutPacket->AmbientColour = AmbientColour;
+    OutPacket.ProjectionMatrix = ProjectionMatrix;
+    OutPacket.ViewMatrix = WorldCamera->GetView();
+    OutPacket.ViewPosition = WorldCamera->GetPosition();
+    OutPacket.AmbientColour = AmbientColour;
 
     // Получить все геометрии из текущей сцены.
-    // Перебрать все сетки и добавить их в коллекцию геометрий пакета
-    for (u32 i = 0; i < mesh_data->mesh_count; ++i) {
+    DArray<GeometryDistance> GeometryDistances;
+    
+    for (u32 i = 0; i < MeshData->MeshCount; ++i) {
         Mesh* m = &MeshData->meshes[i];
+        const auto& model = m->transform.GetWorld();
         for (u32 j = 0; j < m->GeometryCount; ++j) {
-            // Добавлять только сетки с _отсутствием_ прозрачности.
+            //GeometryRenderData { model, m->geometries[j] };
             // ЗАДАЧА: Добавить что-то к материалу для проверки прозрачности.
-            if ((m->geometries[j]->material->diffuse_map.texture->flags & TEXTURE_FLAG_HAS_TRANSPARENCY) == 0) {
-                OutPacket->geometries.EmplaceBack(m->transform.GetWorld(), m->geometries[j]);
-                OutPacket->GeometryCount++;
+            if ((m->geometries[j]->material->DiffuseMap.texture->flags & TextureFlag::HasTransparency) == 0) {
+                OutPacket.geometries.EmplaceBack(m->transform.GetWorld(), m->geometries[j]);
+                OutPacket.GeometryCount++;
+            } else {
+                // Для сеток _с_ прозрачностью добавьте их в отдельный список, чтобы позже отсортировать по расстоянию.
+                // Получите центр, извлеките глобальную позицию из матрицы модели и добавьте ее в центр, 
+                // затем вычислите расстояние между ней и камерой и, наконец, сохраните ее в списке для сортировки.
+                // ПРИМЕЧАНИЕ: это не идеально для полупрозрачных сеток, которые пересекаются, но для наших целей сейчас достаточно.
+                auto center = FVec3::Transform(m->geometries[j]->center, model);
+                auto distance = Distance(center, WorldCamera->GetPosition());
+
+                GeometryDistances.EmplaceBack(GeometryRenderData(model, m->geometries[j]), Math::abs(distance));
             }
         }
+    }
+
+    // Сортировать расстояния
+    u32 GeometryCount = GeometryDistances.Length();
+    QuickSort(GeometryDistances.Data(), 0, GeometryCount - 1, false);
+
+    // Добавьте их в геометрию пакета.
+    for (u32 i = 0; i < GeometryCount; ++i) {
+        OutPacket.geometries.PushBack(GeometryDistances[i].g);
+        OutPacket.GeometryCount++;
     }
 
     return true;
 }
 
-bool RenderViewWorld::Render(const Packet *packet, u64 FrameNumber, u64 RenderTargetIndex)
+bool RenderViewWorld::Render(const Packet &packet, u64 FrameNumber, u64 RenderTargetIndex) const
 {
     for (u32 p = 0; p < RenderpassCount; ++p) {
         Renderpass* pass = passes[p];
@@ -131,17 +187,17 @@ bool RenderViewWorld::Render(const Packet *packet, u64 FrameNumber, u64 RenderTa
 
         // Применить глобальные переменные
         // ЗАДАЧА: Найти общий способ запроса данных, таких как окружающий цвет (который должен быть из сцены) и режим (из рендерера)
-        if (!MaterialSystem::Instance()->ApplyGlobal(ShaderID, packet->ProjectionMatrix, packet->ViewMatrix, packet->AmbientColour, packet->ViewPosition, RenderMode)) {
+        if (!MaterialSystem::Instance()->ApplyGlobal(ShaderID, FrameNumber, packet.ProjectionMatrix, packet.ViewMatrix, packet.AmbientColour, packet.ViewPosition, RenderMode)) {
             MERROR("Не удалось использовать применить глобальные переменные для шейдера материала. Не удалось отрисовать кадр.");
             return false;
         }
 
         // Нарисовать геометрию.
-        auto& count = packet->GeometryCount;
+        auto& count = packet.GeometryCount;
         for (u32 i = 0; i < count; ++i) {
             Material* m = 0;
-            if (packet->geometries[i].geometry->material) {
-                m = packet->geometries[i].geometry->material;
+            if (packet.geometries[i].gid->material) {
+                m = packet.geometries[i].gid->material;
             } else {
                 m = MaterialSystem::Instance()->GetDefaultMaterial();
             }
@@ -160,10 +216,10 @@ bool RenderViewWorld::Render(const Packet *packet, u64 FrameNumber, u64 RenderTa
             }
 
             // Примените локальные переменные
-            MaterialSystem::Instance()->ApplyLocal(m, packet->geometries[i].model);
+            MaterialSystem::Instance()->ApplyLocal(m, packet.geometries[i].model);
 
             // Нарисуйте его.
-            Renderer::DrawGeometry(packet->geometries[i]);
+            Renderer::DrawGeometry(packet.geometries[i]);
         }
 
         if (!Renderer::RenderpassEnd(pass)) {
@@ -173,4 +229,42 @@ bool RenderViewWorld::Render(const Packet *packet, u64 FrameNumber, u64 RenderTa
     }
 
     return true;
+}
+
+static void Swap(GeometryDistance& a, GeometryDistance& b) {
+    GeometryDistance temp = a;
+    a = b;
+    b = temp;
+}
+
+static i32 Partition(GeometryDistance arr[], i32 LowIndex, i32 HighIndex, bool ascending) {
+    GeometryDistance pivot = arr[HighIndex];
+    i32 i = (LowIndex - 1);
+
+    for (i32 j = LowIndex; j <= HighIndex - 1; ++j) {
+        if (ascending) {
+            if (arr[j].distance < pivot.distance) {
+                ++i;
+                Swap(arr[i], arr[j]);
+            }
+        } else {
+            if (arr[j].distance > pivot.distance) {
+                ++i;
+                Swap(arr[i], arr[j]);
+            }
+        }
+    }
+    Swap(arr[i + 1], arr[HighIndex]);
+    return i + 1;
+}
+
+void QuickSort(GeometryDistance arr[], i32 LowIndex, i32 HighIndex, bool ascending)
+{
+    if (LowIndex < HighIndex) {
+        i32 partitionIndex = Partition(arr, LowIndex, HighIndex, ascending);
+
+        // Независимая сортировка элементов до и после индекса раздела.
+        QuickSort(arr, LowIndex, partitionIndex - 1, ascending);
+        QuickSort(arr, partitionIndex + 1, HighIndex, ascending);
+    }
 }

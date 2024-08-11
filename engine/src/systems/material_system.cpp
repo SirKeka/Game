@@ -137,25 +137,25 @@ Material *MaterialSystem::Acquire(const MaterialConfig &config)
             Shader* s = ShaderSystem::GetInstance()->GetShader(m->ShaderID);
             // Сохраните местоположения известных типов для быстрого поиска.
             if (MaterialShaderID == INVALID::ID && config.ShaderName == BUILTIN_SHADER_NAME_MATERIAL) {
-                MaterialShaderID = s->id;
-                MaterialLocations.projection = ShaderSystem::GetInstance()->UniformIndex(s, "projection");
-                MaterialLocations.view = ShaderSystem::GetInstance()->UniformIndex(s, "view");
-                MaterialLocations.AmbientColour = ShaderSystem::GetInstance()->UniformIndex(s, "ambient_colour");
-                MaterialLocations.ViewPosition = ShaderSystem::GetInstance()->UniformIndex(s, "view_position");
-                MaterialLocations.DiffuseColour = ShaderSystem::GetInstance()->UniformIndex(s, "diffuse_colour");
-                MaterialLocations.DiffuseTexture = ShaderSystem::GetInstance()->UniformIndex(s, "diffuse_texture");
-                MaterialLocations.SpecularTexture = ShaderSystem::GetInstance()->UniformIndex(s, "specular_texture");
-                MaterialLocations.NormalTexture = ShaderSystem::GetInstance()->UniformIndex(s, "normal_texture");
-                MaterialLocations.specular = ShaderSystem::GetInstance()->UniformIndex(s, "specular");
-                MaterialLocations.model = ShaderSystem::GetInstance()->UniformIndex(s, "model");
-                MaterialLocations.RenderMode = ShaderSystem::GetInstance()->UniformIndex(s, "mode");
+                MaterialShaderID                    = s->id;
+                MaterialLocations.projection        = ShaderSystem::GetInstance()->UniformIndex(s, "projection");
+                MaterialLocations.view              = ShaderSystem::GetInstance()->UniformIndex(s, "view");
+                MaterialLocations.AmbientColour     = ShaderSystem::GetInstance()->UniformIndex(s, "ambient_colour");
+                MaterialLocations.ViewPosition      = ShaderSystem::GetInstance()->UniformIndex(s, "view_position");
+                MaterialLocations.DiffuseColour     = ShaderSystem::GetInstance()->UniformIndex(s, "diffuse_colour");
+                MaterialLocations.DiffuseTexture    = ShaderSystem::GetInstance()->UniformIndex(s, "diffuse_texture");
+                MaterialLocations.SpecularTexture   = ShaderSystem::GetInstance()->UniformIndex(s, "specular_texture");
+                MaterialLocations.NormalTexture     = ShaderSystem::GetInstance()->UniformIndex(s, "normal_texture");
+                MaterialLocations.specular          = ShaderSystem::GetInstance()->UniformIndex(s, "specular");
+                MaterialLocations.model             = ShaderSystem::GetInstance()->UniformIndex(s, "model");
+                MaterialLocations.RenderMode        = ShaderSystem::GetInstance()->UniformIndex(s, "mode");
             } else if (UI_ShaderID == INVALID::ID && config.ShaderName == BUILTIN_SHADER_NAME_UI) {
                 UI_ShaderID = s->id;
-                UI_Locations.projection = ShaderSystem::GetInstance()->UniformIndex(s, "projection");
-                UI_Locations.view = ShaderSystem::GetInstance()->UniformIndex(s, "view");
-                UI_Locations.DiffuseColour = ShaderSystem::GetInstance()->UniformIndex(s, "diffuse_colour");
-                UI_Locations.DiffuseTexture = ShaderSystem::GetInstance()->UniformIndex(s, "diffuse_texture");
-                UI_Locations.model = ShaderSystem::GetInstance()->UniformIndex(s, "model");
+                UI_Locations.projection             = ShaderSystem::GetInstance()->UniformIndex(s, "projection");
+                UI_Locations.view                   = ShaderSystem::GetInstance()->UniformIndex(s, "view");
+                UI_Locations.DiffuseColour          = ShaderSystem::GetInstance()->UniformIndex(s, "diffuse_colour");
+                UI_Locations.DiffuseTexture         = ShaderSystem::GetInstance()->UniformIndex(s, "diffuse_texture");
+                UI_Locations.model                  = ShaderSystem::GetInstance()->UniformIndex(s, "model");
             }
 
             if (m->generation == INVALID::ID) {
@@ -222,8 +222,17 @@ void MaterialSystem::Release(const char *name)
         return false;                                       \
     }
 
-bool MaterialSystem::ApplyGlobal(u32 ShaderID, const Matrix4D &projection, const Matrix4D &view, const FVec4& AmbientColour, const FVec4& ViewPosition, u32 RenderMode)
+bool MaterialSystem::ApplyGlobal(u32 ShaderID, u64 RenderFrameNumber, const Matrix4D &projection, const Matrix4D &view, const FVec4& AmbientColour, const FVec4& ViewPosition, u32 RenderMode)
 {
+    Shader* shader = ShaderSystem::GetInstance()->GetShader(ShaderID);
+    if (!shader) {
+        return false;
+    }
+
+    if (shader->RenderFrameNumber == RenderFrameNumber) {
+        return true;
+    }
+    
     if (ShaderID == state->MaterialShaderID) {
         MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->UniformSet(state->MaterialLocations.projection, &projection));
         MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->UniformSet(state->MaterialLocations.view, &view));
@@ -238,6 +247,8 @@ bool MaterialSystem::ApplyGlobal(u32 ShaderID, const Matrix4D &projection, const
         return false;
     }
     MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->ApplyGlobal());
+    // Синхронизация номера кадра
+    shader->RenderFrameNumber = RenderFrameNumber;
     return true;
 }
 

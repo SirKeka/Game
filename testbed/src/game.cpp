@@ -102,19 +102,19 @@ bool Game::Update(f32 DeltaTime)
     // RENDERER DEBUG FUNCTIONS
     if (Input::Instance()->IsKeyUp(Keys::KEY_1) && Input::Instance()->WasKeyDown(Keys::KEY_1)) {
         EventContext data = {};
-        data.data.i32[0] = RendererDebugViewMode::Lighting;
+        data.data.i32[0] = Renderer::Lighting;
         Event::GetInstance()->Fire(EVENT_CODE_SET_RENDER_MODE, this, data);
     }
 
     if (Input::Instance()->IsKeyUp(Keys::KEY_2) && Input::Instance()->WasKeyDown(Keys::KEY_2)) {
         EventContext data = {};
-        data.data.i32[0] = RendererDebugViewMode::Normals;
+        data.data.i32[0] = Renderer::Normals;
         Event::GetInstance()->Fire(EVENT_CODE_SET_RENDER_MODE, this, data);
     }
 
     if (Input::Instance()->IsKeyUp(Keys::KEY_0) && Input::Instance()->WasKeyDown(Keys::KEY_0)) {
         EventContext data = {};
-        data.data.i32[0] = RendererDebugViewMode::Default;
+        data.data.i32[0] = Renderer::Default;
         Event::GetInstance()->Fire(EVENT_CODE_SET_RENDER_MODE, this, data);
     }
     // СДЕЛАТЬ: временно

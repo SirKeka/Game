@@ -5,7 +5,7 @@
 #include "vector4d_fwd.hpp"
 #include "quaternion.hpp"
 
-template<typename T> class Vector4D;
+//template<typename T> class Vector4D;
 
 class MAPI Matrix4D
 {

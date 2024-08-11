@@ -21,6 +21,7 @@ shaders(shaders)
     // Делаем недействительными все идентификаторы шейдеров.
     for (u32 i = 0; i < MaxShaderCount; ++i) {
         this->shaders[i].id = INVALID::ID;
+        this->shaders[i].RenderFrameNumber = INVALID::U64ID;
     }
 }
 

@@ -3,9 +3,11 @@
 #include "renderer/renderpass.hpp"
 #include "resources/mesh.hpp"
 #include "renderer/renderer.hpp"
+#include "renderer/renderpass.hpp"
 #include "systems/material_system.hpp"
+#include "resources/geometry.hpp"
 
-constexpr RenderViewUI::RenderViewUI()
+RenderViewUI::RenderViewUI()
     : 
     RenderView(), 
     ShaderID(ShaderSystem::GetInstance()->GetID(CustomShaderName ? CustomShaderName : "Shader.Builtin.UI")), 
@@ -15,6 +17,21 @@ constexpr RenderViewUI::RenderViewUI()
     ViewMatrix(Matrix4D::MakeIdentity()) 
     /*RenderMode(),*/ 
 {}
+
+RenderViewUI::RenderViewUI(u16 id, MString& name, KnownType type, u8 RenderpassCount, const char* CustomShaderName)
+:
+RenderView(id, name, type, RenderpassCount, CustomShaderName),
+ShaderID(ShaderSystem::GetInstance()->GetID(CustomShaderName ? CustomShaderName : "Shader.Builtin.UI")), 
+NearClip(-100.F), 
+FarClip(100.F), 
+ProjectionMatrix(Matrix4D::MakeOrthographicProjection(0.F, 1280.F, 720.F, 0.F, NearClip, FarClip)), 
+ViewMatrix(Matrix4D::MakeIdentity()) 
+/*RenderMode(),*/ 
+{}
+
+RenderViewUI::~RenderViewUI()
+{
+}
 
 void RenderViewUI::Resize(u32 width, u32 height)
 {
@@ -34,38 +51,39 @@ void RenderViewUI::Resize(u32 width, u32 height)
     }
 }
 
-bool RenderViewUI::BuildPacket(void *data, Packet *OutPacket)
+bool RenderViewUI::BuildPacket(void *data, Packet &OutPacket) const
 {
-    if (!data || !OutPacket) {
+    if (!data) {
         MWARN("RenderViewUI::BuildPacket требует действительный указатель на представление, пакет и данные.");
         return false;
     }
 
     Mesh::PacketData* MeshData = (Mesh::PacketData*)data;
 
-    OutPacket->view = this;
+    OutPacket.view = this;
 
     // Установить матрицы и т. д.
-    OutPacket->ProjectionMatrix = ProjectionMatrix;
-    OutPacket->ViewMatrix = ViewMatrix;
+    OutPacket.ProjectionMatrix = ProjectionMatrix;
+    OutPacket.ViewMatrix = ViewMatrix;
 
     // Получить все геометрии из текущей сцены.
     // Итерировать все сетки и добавить их в коллекцию геометрий пакета
     for (u32 i = 0; i < MeshData->MeshCount; ++i) {
         Mesh* m = &MeshData->meshes[i];
-        for (u32 j = 0; j < m->geometry_count; ++j) {
-            OutPacket->geometries.EmplaceBack(m->transform.GetWorld(), m->geometries[j]);
-            OutPacket->GeometryCount++;
+        for (u32 j = 0; j < m->GeometryCount; ++j) {
+            OutPacket.geometries.EmplaceBack(m->transform.GetWorld(), m->geometries[j]);
+            OutPacket.GeometryCount++;
         }
     }
+    return true;
 }
 
-bool RenderViewUI::Render(const Packet *packet, u64 FrameNumber, u64 RenderTargetIndex)
+bool RenderViewUI::Render(const Packet &packet, u64 FrameNumber, u64 RenderTargetIndex) const
 {
 
     for (u32 p = 0; p < RenderpassCount; ++p) {
         Renderpass* pass = passes[p];
-        if (!Renderer::RenderpassBegin(pass, &pass->targets[RenderTargetIndex])) {
+        if (!Renderer::RenderpassBegin(pass, pass->targets[RenderTargetIndex])) {
             MERROR("RenderViewUI::Render pass index %u не удалось запустить.", p);
             return false;
         }
@@ -76,17 +94,17 @@ bool RenderViewUI::Render(const Packet *packet, u64 FrameNumber, u64 RenderTarge
         }
 
         // Применить глобальные переменные
-        if (!MaterialSystem::Instance()->ApplyGlobal(ShaderID, packet->ProjectionMatrix, packet->ViewMatrix)) {
+        if (!MaterialSystem::Instance()->ApplyGlobal(ShaderID, FrameNumber, packet.ProjectionMatrix, packet.ViewMatrix)) {
             MERROR("Не удалось использовать применение глобальных переменных для шейдера материала. Не удалось отрисовать кадр.");
             return false;
         }
 
         // Нарисовать геометрию.
-        u32 count = packet->GeometryCount;
+        u32 count = packet.GeometryCount;
         for (u32 i = 0; i < count; ++i) {
             Material* m = 0;
-            if (packet->geometries[i].geometry->material) {
-                m = packet->geometries[i].geometry->material;
+            if (packet.geometries[i].gid->material) {
+                m = packet.geometries[i].gid->material;
             } else {
                 m = MaterialSystem::Instance()->GetDefaultMaterial();
             }
@@ -106,10 +124,10 @@ bool RenderViewUI::Render(const Packet *packet, u64 FrameNumber, u64 RenderTarge
             }
 
             // Примените локальные
-            MaterialSystem::Instance()->ApplyLocal(m, packet->geometries[i].model);
+            MaterialSystem::Instance()->ApplyLocal(m, packet.geometries[i].model);
 
             // Нарисуйте его.
-            Renderer::DrawGeometry(packet->geometries[i]);
+            Renderer::DrawGeometry(packet.geometries[i]);
         }
 
         if (!Renderer::RenderpassEnd(pass)) {

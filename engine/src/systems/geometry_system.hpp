@@ -14,15 +14,48 @@ struct GeometryConfig {
     char name[GEOMETRY_NAME_MAX_LENGTH];
     char MaterialName[MATERIAL_NAME_MAX_LENGTH];
 
-    FVec3 Center;
+    FVec3 center;
     FVec3 MinExtents;
     FVec3 MaxExtents;
 
     constexpr GeometryConfig() 
-    : VertexSize(), VertexCount(), vertices(nullptr), IndexSize(), IndexCount(), indices(nullptr), name(), MaterialName(), Center(), MinExtents(), MaxExtents() {}
-
+    : VertexSize(), VertexCount(), vertices(nullptr), IndexSize(), IndexCount(), indices(nullptr), name(), MaterialName(), center(), MinExtents(), MaxExtents() {}
     constexpr GeometryConfig(u32 VertexSize, u32 VertexCount, void* vertices, u32 IndexSize, u32 IndexCount, void* indices, const char* name, const char* MaterialName)
-    : VertexSize(VertexSize), VertexCount(VertexCount), vertices(vertices), IndexSize(IndexSize), IndexCount(IndexCount), indices(indices), name(), MaterialName(), Center(), MinExtents(), MaxExtents()  {
+    : VertexSize(VertexSize), 
+    VertexCount(VertexCount), 
+    vertices(vertices), 
+    IndexSize(IndexSize), 
+    IndexCount(IndexCount), 
+    indices(indices), 
+    name(), 
+    MaterialName() {
+        for (u64 i = 0, j = 0; i < 256;) {
+            if(name[i]) {
+                this->name[i] = name[i];
+                i++;
+            }
+            if(MaterialName[j]) {
+                this->MaterialName[j] = MaterialName[j];
+                j++;
+            }
+            if (!name[i] && !MaterialName[j]) {
+                break;
+            }
+        }
+    }
+    constexpr GeometryConfig(u32 VertexSize, u32 VertexCount, void* vertices, u32 IndexSize, u32 IndexCount, void* indices, const char* name, const char* MaterialName, FVec3 center, FVec3 MinExtents, FVec3 MaxExtents)
+    : 
+    VertexSize(VertexSize), 
+    VertexCount(VertexCount), 
+    vertices(vertices), 
+    IndexSize(IndexSize), 
+    IndexCount(IndexCount), 
+    indices(indices), 
+    name(), 
+    MaterialName(), 
+    center(center), 
+    MinExtents(MinExtents), 
+    MaxExtents(MaxExtents)  {
         for (u64 i = 0, j = 0; i < 256;) {
             if(name[i]) {
                 this->name[i] = name[i];
@@ -38,12 +71,12 @@ struct GeometryConfig {
         }
     }
     constexpr GeometryConfig(const GeometryConfig& conf)
-    : VertexSize(conf.VertexSize), VertexCount(conf.VertexCount), vertices(MMemory::Allocate(VertexCount * VertexSize, MemoryTag::Array)), IndexSize(conf.IndexSize), IndexCount(conf.IndexCount), indices(MMemory::Allocate(IndexCount * IndexSize, MemoryTag::Array)), name(), MaterialName(), Center(conf.Center), MinExtents(conf.MinExtents), MaxExtents(conf.MaxExtents) {
+    : VertexSize(conf.VertexSize), VertexCount(conf.VertexCount), vertices(MMemory::Allocate(VertexCount * VertexSize, MemoryTag::Array)), IndexSize(conf.IndexSize), IndexCount(conf.IndexCount), indices(MMemory::Allocate(IndexCount * IndexSize, MemoryTag::Array)), name(), MaterialName(), center(conf.center), MinExtents(conf.MinExtents), MaxExtents(conf.MaxExtents) {
         MMemory::CopyMem(vertices, conf.vertices, VertexCount * VertexSize);
         MMemory::CopyMem(indices, conf.indices, IndexCount * IndexSize);
         CopyNames(conf.name, conf.MaterialName);
     }
-    constexpr GeometryConfig(GeometryConfig&& conf) : VertexSize(conf.VertexSize), VertexCount(conf.VertexCount), vertices(conf.vertices), IndexSize(conf.IndexSize), IndexCount(conf.IndexCount), indices(conf.indices), name(), MaterialName(), Center(conf.Center), MinExtents(conf.MinExtents), MaxExtents(conf.MaxExtents) {
+    constexpr GeometryConfig(GeometryConfig&& conf) : VertexSize(conf.VertexSize), VertexCount(conf.VertexCount), vertices(conf.vertices), IndexSize(conf.IndexSize), IndexCount(conf.IndexCount), indices(conf.indices), name(), MaterialName(), center(conf.center), MinExtents(conf.MinExtents), MaxExtents(conf.MaxExtents) {
         CopyNames(conf.name, conf.MaterialName);
         conf.VertexSize = 0;
         conf.VertexCount = 0;
@@ -51,7 +84,7 @@ struct GeometryConfig {
         conf.IndexSize = 0;
         conf.IndexCount = 0;
         conf.indices = nullptr;
-        conf.Center = FVec3();
+        conf.center = FVec3();
         conf.MinExtents = FVec3();
         conf.MaxExtents = FVec3();
     }
@@ -65,7 +98,7 @@ struct GeometryConfig {
         indices = MMemory::Allocate(IndexCount * IndexSize, MemoryTag::Array);
         MMemory::CopyMem(indices, conf.indices, IndexCount * IndexSize);
         CopyNames(conf.name, conf.MaterialName);
-        Center = conf.Center;
+        center = conf.center;
         MinExtents = conf.MinExtents;
         MaxExtents = conf.MaxExtents;
         return *this;
@@ -78,7 +111,7 @@ struct GeometryConfig {
         IndexCount = conf.IndexCount;
         indices = conf.indices;
         CopyNames(conf.name, conf.MaterialName);
-        Center = conf.Center;
+        center = conf.center;
         MinExtents = conf.MinExtents;
         MaxExtents = conf.MaxExtents;
 
@@ -88,7 +121,7 @@ struct GeometryConfig {
         conf.IndexSize = 0;
         conf.IndexCount = 0;
         conf.indices = nullptr;
-        conf.Center = FVec3();
+        conf.center = FVec3();
         conf.MinExtents = FVec3();
         conf.MaxExtents = FVec3();
 

@@ -29,16 +29,8 @@ public:
         Normals = 2
     };
 private:
-    class Camera* ActiveWorldCamera{};
-    f32 NearClip{};
-    f32 FarClip{};
     u32 MaterialShaderID{};
     u32 UIShaderID{};
-    u32 RenderMode{};
-    Matrix4D projection{};
-    Matrix4D UIProjection{};
-    Matrix4D UIView{};
-    FVec4 AmbientColour{};
     u8 WindowRenderTargetCount{};   // Количество целей рендеринга. Обычно совпадает с количеством изображений swapchain.
     u32 FramebufferWidth{};         // Текущая ширина буфера кадра окна.
     u32 FramebufferHeight{};        // Текущая высота буфера кадра окна.
@@ -72,7 +64,7 @@ public:
     /// @brief Рисует следующий кадр, используя данные, предоставленные в пакете рендеринга.
     /// @param packet Указатель на пакет рендеринга, который содержит данные о том, что должно быть визуализировано.
     /// @return true в случае успеха; в противном случае false.
-    bool DrawFrame(RenderPacket& packet);
+    bool DrawFrame(const RenderPacket& packet);
 
     /// @brief Функция/метод предоставляющая доступ к самому отрисовщику.
     /// @return указатель на отрисовщик вулкан.
@@ -120,7 +112,7 @@ public:
     static void Unload(GeometryID* gid);
     /// @brief Рисует заданную геометрию. Должен вызываться только внутри прохода рендеринга, внутри кадра.
     /// @param data Данные рендеринга геометрии, которая должна быть нарисована.
-    static void DrawGeometry(GeometryRenderData& data);
+    static void DrawGeometry(const GeometryRenderData& data);
     /// @brief Начинает проход рендеринга с указанной целью.
     /// @param pass указатель на проход рендеринга для начала.
     /// @param target указатель на цель рендеринга для использования.
@@ -221,7 +213,6 @@ public:
     void* operator new(u64 size);
     // void operator delete(void* ptr);
 private:
-    static bool OnEvent(u16 code, void* sender, void* ListenerInst, EventContext context);
     void RegenerateRenderTargets();
 };
 

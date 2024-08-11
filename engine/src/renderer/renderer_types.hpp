@@ -9,6 +9,7 @@
 struct StaticMeshData;
 class Texture;
 class Renderer;
+struct GeometryID;
 
 enum class ERendererType 
 {
@@ -53,10 +54,10 @@ struct VulkanUI_ShaderInstanceUniformObject {
 struct GeometryRenderData 
 {
     Matrix4D model;
-    struct GeometryID* gid;
+    GeometryID* gid;
 
     constexpr GeometryRenderData() : model(), gid(nullptr) {}
-    constexpr GeometryRenderData(const Matrix4D& model, struct GeometryID* gid) : model(model), gid(gid) {}
+    constexpr GeometryRenderData(const Matrix4D& model, GeometryID* gid) : model(model), gid(gid) {}
     //constexpr GeometryRenderData(GeometryRenderData&& grd) : model(grd.model), gid() {}
 };
 
@@ -65,9 +66,11 @@ struct GeometryRenderData
 struct RenderPacket
 {
     f64 DeltaTime;
-    u16 ViewCount;                      // Количество представлений, которые нужно отобразить. 
-    struct RenderView::Packet* views;   // Массив представлений, которые нужно отобразить.
+    u16 ViewCount;              // Количество представлений, которые нужно отобразить. 
+    RenderView::Packet* views;  // Массив представлений, которые нужно отобразить.
     constexpr RenderPacket() : DeltaTime(), ViewCount(), views(nullptr) {}
+    constexpr RenderPacket(f64 DeltaTime, u16 ViewCount, RenderView::Packet* views)
+    : DeltaTime(DeltaTime), ViewCount(ViewCount), views(views) {}
 };
 
 /// @brief Общая конфигурация для рендерера.
@@ -110,9 +113,6 @@ public:
     virtual void Resized(u16 width, u16 height) = 0;
     virtual bool BeginFrame(f32 Deltatime) = 0;
     virtual bool EndFrame(f32 DeltaTime) = 0;
-    /// @brief Рисует заданную геометрию. Должен вызываться только внутри прохода рендеринга, внутри кадра.
-    /// @param data Данные рендеринга геометрии, которая должна быть нарисована.
-    virtual void DrawGeometry(GeometryRenderData* data) = 0;
     /// @brief Начинает проход рендеринга с указанной целью.
     /// @param pass указатель на проход рендеринга для начала.
     /// @param target указатель на цель рендеринга для использования.

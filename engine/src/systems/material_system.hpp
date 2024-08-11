@@ -30,32 +30,33 @@ private:
         u32 handle;
         bool AutoRelease;
         constexpr MaterialReference() : ReferenceCount(), handle(), AutoRelease(false) {}
-        constexpr MaterialReference(u64 ReferenceCount, u32 handle, bool AutoRelease) : ReferenceCount(ReferenceCount), handle(handle), AutoRelease(AutoRelease) {}
+        constexpr MaterialReference(u64 ReferenceCount, u32 handle, bool AutoRelease) 
+        : ReferenceCount(ReferenceCount), handle(handle), AutoRelease(AutoRelease) {}
     };
     
     HashTable<MaterialReference> RegisteredMaterialTable;   // Хэш-таблица для поиска материалов.
 
     struct MaterialShaderUniformLocations {
-        u16 projection{INVALID::U16ID};
-        u16 view{INVALID::U16ID};
-        u16 AmbientColour{INVALID::U16ID};
-        u16 ViewPosition{INVALID::U16ID};
-        u16 specular{INVALID::U16ID};
-        u16 DiffuseColour{INVALID::U16ID};
-        u16 DiffuseTexture{INVALID::U16ID};
-        u16 SpecularTexture{INVALID::U16ID};
-        u16 NormalTexture{INVALID::U16ID};
-        u16 model{INVALID::U16ID};
-        u16 RenderMode{INVALID::U16ID};
+        u16 projection      {INVALID::U16ID};
+        u16 view            {INVALID::U16ID};
+        u16 AmbientColour   {INVALID::U16ID};
+        u16 ViewPosition    {INVALID::U16ID};
+        u16 specular        {INVALID::U16ID};
+        u16 DiffuseColour   {INVALID::U16ID};
+        u16 DiffuseTexture  {INVALID::U16ID};
+        u16 SpecularTexture {INVALID::U16ID};
+        u16 NormalTexture   {INVALID::U16ID};
+        u16 model           {INVALID::U16ID};
+        u16 RenderMode      {INVALID::U16ID};
     } MaterialLocations;                                    // Известные местоположения шейдера материала.
     u32 MaterialShaderID;
 
     struct UI_ShaderUniformLocations {
-        u16 projection{INVALID::U16ID};
-        u16 view{INVALID::U16ID};
-        u16 DiffuseColour{INVALID::U16ID};
-        u16 DiffuseTexture{INVALID::U16ID};
-        u16 model{INVALID::U16ID};
+        u16 projection      {INVALID::U16ID};
+        u16 view            {INVALID::U16ID};
+        u16 DiffuseColour   {INVALID::U16ID};
+        u16 DiffuseTexture  {INVALID::U16ID};
+        u16 model           {INVALID::U16ID};
     } UI_Locations;
     u32 UI_ShaderID;
 
@@ -98,12 +99,13 @@ public:
     void Release(const char* name);
     /// @brief Применяет данные глобального уровня для идентификатора шейдера материала.
     /// @param ShaderID идентификатор шейдера, к которому применяются глобальные переменные.
+    /// @param RenderFrameNumber текущий номер кадра рендерера.
     /// @param projection константная ссылка на матрицу проекции.
     /// @param view константная ссылка на матрицу представления.
     /// @param AmbientColour окружающий цвет сцены.
     /// @param ViewPosition позиция камеры.
     /// @return true в случае успеха иначе false.
-    bool ApplyGlobal(u32 ShaderID, const Matrix4D& projection, const Matrix4D& view, const FVec4& AmbientColour = FVec4(), const FVec4& ViewPosition = FVec4(), u32 RenderMode = 0);
+    bool ApplyGlobal(u32 ShaderID, u64 RenderFrameNumber, const Matrix4D& projection, const Matrix4D& view, const FVec4& AmbientColour = FVec4(), const FVec4& ViewPosition = FVec4(), u32 RenderMode = 0);
     /// @brief Применяет данные материала на уровне экземпляра для данного материала.
     /// @param material указатель на материал, который будет применен.
     /// @return true в случае успеха иначе false.

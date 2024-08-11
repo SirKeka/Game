@@ -3,7 +3,7 @@
 #include "math/transform.hpp"
 #include "core/mmemory.hpp"
 
-class GeometryID;
+struct GeometryID;
 
 struct Mesh {
     u16 GeometryCount{};
@@ -45,6 +45,8 @@ struct Mesh {
     struct PacketData {
         u32 MeshCount;
         Mesh* meshes;
+        constexpr PacketData() : MeshCount(), meshes(nullptr) {}
+        constexpr PacketData(u32 MeshCount, Mesh* meshes) : MeshCount(MeshCount), meshes(meshes) {}
     };
 };
 

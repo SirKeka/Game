@@ -44,11 +44,13 @@ STATIC_ASSERT(sizeof(f64) == 8, "Ожидается, что f64 будет им�
 // недействительным и фактически не указывающим на реальный объект.
 namespace INVALID
 {   
-    constexpr u8  U8ID = 255u;
-    constexpr u16 U16ID = 65535u;
-    constexpr u32 ID = 4294967295u;
+    constexpr u8  U8ID = 255U;
+    constexpr u16 U16ID = 65535U;
+    constexpr u32 ID = 4294967295U;
+    constexpr u64 U64ID = 18446744073709551615UL;
 } // namespace INVALID
 
+//#define INVALID_ID_U64 18446744073709551615UL
 //#define INVALID_ID 4294967295U
 //#define INVALID_ID_U16 65535U
 //#define INVALID_ID_U8 255U

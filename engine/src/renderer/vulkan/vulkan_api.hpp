@@ -21,11 +21,11 @@ constexpr u32 VULKAN_MAX_REGISTERED_RENDERPASSES = 31;
 class VulkanAPI : public RendererType
 {
 public:
-    f32 FrameDeltaTime{0};                              // Время в секундах с момента последнего кадра.
-    u32 FramebufferWidth{0};                            // Текущая ширина фреймбуфера.
-    u32 FramebufferHeight{0};                           // Текущая высота фреймбуфера.
-    u64 FramebufferSizeGeneration{0};                   // Текущее поколение размера кадрового буфера. Если он не соответствует FramebufferSizeLastGeneration, необходимо создать новый.
-    u64 FramebufferSizeLastGeneration{0};               // Генерация кадрового буфера при его последнем создании. При обновлении установите значение FramebufferSizeGeneration.
+    f32 FrameDeltaTime{};                               // Время в секундах с момента последнего кадра.
+    u32 FramebufferWidth{};                             // Текущая ширина фреймбуфера.
+    u32 FramebufferHeight{};                            // Текущая высота фреймбуфера.
+    u64 FramebufferSizeGeneration{};                    // Текущее поколение размера кадрового буфера. Если он не соответствует FramebufferSizeLastGeneration, необходимо создать новый.
+    u64 FramebufferSizeLastGeneration{};                // Генерация кадрового буфера при его последнем создании. При обновлении установите значение FramebufferSizeGeneration.
     VkInstance instance{};                              // Дескриптор внутреннего экземпляра Vulkan.
     VkAllocationCallbacks* allocator{nullptr};          // Внутренний распределитель Vulkan.
     VkSurfaceKHR surface{};                             // Внутренняя поверхность Vulkan, на которой будет отображаться окно.
@@ -47,8 +47,8 @@ public:
     u32 InFlightFenceCount{};                           // Текущее количество бортовых ограждений.
     VkFence InFlightFences[2]{};                        // Бортовые ограждения, используемые для указания приложению, когда кадр занят/готов.
     VkFence ImagesInFlight[3]{};                        // Содержит указатели на заборы, которые существуют и находятся в собственности в другом месте, по одному на кадр.
-    u32 ImageIndex{0};                                  // Индекс текущего изображения.
-    u32 CurrentFrame{0};                                // Текущий кадр.
+    u32 ImageIndex{};                                   // Индекс текущего изображения.
+    u32 CurrentFrame{};                                 // Текущий кадр.
     bool RecreatingSwapchain{false};                    // Указывает, воссоздается ли в данный момент цепочка обмена.
     Geometry geometries[VULKAN_MAX_GEOMETRY_COUNT]{};   // ЗАДАЧА: динамическим, копии геометрий хранятся в системе геометрий, возможно стоит хранить здесь указатели на геометрии
     RenderTarget WorldRenderTargets[3]{};               // Цели рендера, используемые для рендеринга мира, по одному на кадр.

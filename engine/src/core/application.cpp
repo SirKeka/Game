@@ -8,6 +8,7 @@
 #include "systems/resource_system.hpp"
 #include "systems/shader_system.hpp"
 #include "systems/camera_system.hpp"
+#include "systems/render_view_system.hpp"
 
 // ЗАДАЧА: временно
 #include "math/geometry_utils.hpp"
@@ -116,6 +117,37 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
         return false;
     }
     
+    // Система визуадизаций
+    if (!RenderViewSystem::Initialize(251)) {
+        MFATAL("Не удалось инициализировать систему визуализаций. Приложение не может быть продолжено.");
+        return false;
+    }
+
+    RenderView::PassConfig passes[1] { "Renderpass.Builtin.World" };
+    
+    RenderView::Config OpaqueWorldConfig {
+        "world_opaque", 
+        0, 0, 
+        RenderView::KnownTypeWorld, 
+        RenderView::ViewMatrixSourceSceneCamera, 
+        1, passes
+    };
+    if (!RenderViewSystem::Instance()->Create(OpaqueWorldConfig)) {
+        MFATAL("Не удалось создать представление. Отмена приложения.");
+        return false;
+    }
+    RenderView::PassConfig UIPasses[1] { "Renderpass.Builtin.UI" };
+    RenderView::Config UIViewConfig {
+        "ui",
+        0, 0,
+        RenderView::KnownTypeUI,
+        RenderView::ViewMatrixSourceUiCamera,
+        1, UIPasses
+    };
+    if (!RenderViewSystem::Instance()->Create(UIViewConfig)) {
+        MFATAL("Не удалось создать представление. Отмена приложения.");
+        return false;
+    }
     
     // ЗАДАЧА: временно
 
@@ -207,7 +239,10 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
     GeometryConfig UI_Config {sizeof(Vertex2D), 4, uiverts, sizeof(u32), 6, uiindices, "test_ui_geometry", "test_ui_material"};
 
     // Получите геометрию пользовательского интерфейса из конфигурации.
-    State->TestUI_Geometry = GeometrySystem::Instance()->Acquire(UI_Config, true);
+    State->UIMeshCount = 1;
+    State->UIMeshes[0].GeometryCount = 1;
+    State->UIMeshes[0].geometries = new GeometryID*[1];
+    State->UIMeshes[0].geometries[0] = GeometrySystem::Instance()->Acquire(UI_Config, true);
 
     // Загрузите геометрию по умолчанию.
     // AppState->TestGeometry = GeometrySystem::Instance()->GetDefault();
@@ -259,12 +294,7 @@ bool Application::ApplicationRun() {
                 break;
             }
 
-            // ЗАДАЧА: переделать создание пакета
-            RenderPacket packet;
-            packet.DeltaTime = delta;
-
             if (State->MeshCount > 0) {
-
                 // Выполните небольшой поворот на первой сетке.
                 Quaternion rotation( FVec3(0.f, 1.f, 0.f), 0.5f * delta, false );
                 State->meshes[0].transform.Rotate(rotation);
@@ -280,22 +310,29 @@ bool Application::ApplicationRun() {
                     // «Родительский» второй куб по отношению к первому.
                     State->meshes[2].transform.Rotate(rotation);
                 }
-
-                // Перебрать все сетки и добавить их в коллекцию геометрий пакета.
-                for (u32 i = 0; i < State->MeshCount; ++i) {
-                    Mesh& m = State->meshes[i];
-                    for (u32 j = 0; j < m.GeometryCount; ++j) {
-                        //packet.geometries.EmplaceBack(m.transform.GetWorld(), State->meshes[i].geometries[j]);
-                        //packet.GeometryCount++;
-                    }
-                }
-
-                //packet.GeometryCount = packet.geometries.Length();
-
             }
 
-            //packet.UI_GeometryCount = 1; 
-            //packet.UI_Geometries.EmplaceBack(Matrix4D::MakeTranslation(FVec3()), State->TestUI_Geometry);
+            RenderView::Packet views[2]{};
+            RenderPacket packet {
+                delta, 
+                //ЗАДАЧА: Прочтите конфигурацию фрейма.
+                2, views
+            };
+
+            // Мир 
+            Mesh::PacketData WorldMeshData {State->MeshCount, State->meshes};
+            // ЗАДАЧА: выполняет поиск в каждом кадре.
+            if (!RenderViewSystem::Instance()->BuildPacket(RenderViewSystem::Instance()->Get("world_opaque"), &WorldMeshData, packet.views[0])) {
+                MERROR("Не удалось построить пакет для представления «world_opaque».");
+                return false;
+            }
+
+            // пользовательский интерфейс
+            Mesh::PacketData UIMeshData = {State->UIMeshCount, State->UIMeshes};
+            if (!RenderViewSystem::Instance()->BuildPacket(RenderViewSystem::Instance()->Get("ui"), &UIMeshData, packet.views[1])) {
+                MERROR("Не удалось построить пакет для представления «ui».");
+                return false;
+            }
             // ЗАДАЧА: временно
 
             State->Render->DrawFrame(packet);

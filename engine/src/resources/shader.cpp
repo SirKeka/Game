@@ -29,6 +29,7 @@ constexpr Shader::Shader()
     PushConstantRangeCount(), 
     PushConstantRanges(), 
     AttributeStride(), 
+    RenderFrameNumber(),
     ShaderData(nullptr) 
 {}
 
@@ -59,6 +60,7 @@ Shader::Shader(u32 id, const ShaderConfig *config)
     PushConstantRangeCount(), 
     PushConstantRanges(), 
     AttributeStride(), 
+    RenderFrameNumber(INVALID::U64ID),
     ShaderData(nullptr)
 {
     if (this->id == INVALID::ID) {

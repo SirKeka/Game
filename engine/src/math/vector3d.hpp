@@ -6,6 +6,7 @@
 #include "vector2d.hpp"
 
 template<typename T> class Vector4D;
+class Matrix4D;
 
 template<typename T>
 class Vector3D
@@ -75,14 +76,54 @@ public:
 	Vector3D& operator +=(const Vector3D& v) {
 		x += v.x; y += v.y; z += v.z; return *this;
 	}
-	Vector3D& operator +=(const T s);
-	Vector3D& operator -=(const Vector3D& v);
-	Vector3D& operator -=(const T s);
-	Vector3D& operator *=(const Vector3D& v);
-	Vector3D& operator *=(const T s);
-	Vector3D& operator /=(const Vector3D& v);
-	Vector3D& operator /=(const T s);
-	Vector3D<f32>& operator-();
+	Vector3D& operator +=(const T s) {
+		x += s;
+		y += s;
+		z += s;
+		return *this;
+	}
+	Vector3D& operator -=(const Vector3D& v) {
+		x -= v.x;
+		y -= v.y;
+		z -= z.y;
+		return *this;
+	}
+	Vector3D& operator -=(const T s) {
+		x -= s;
+		y -= s;
+		z -= s;
+		return *this;
+	}
+	Vector3D& operator *=(const Vector3D& v) {
+		x *= v.x;
+		y *= v.y;
+		z *= v.y;
+		return *this;
+	}
+	Vector3D& operator *=(const T s) {
+		x *= s;
+		y *= s;
+		z *= s;
+		return *this;
+	}
+	Vector3D& operator /=(const Vector3D& v) {
+		x /= v.x;
+		y /= v.y;
+		z /= z.y;
+		return *this;
+	}
+	Vector3D& operator /=(const T s) {
+		x /= s;
+		y /= s;
+		z /= s;
+		return *this;
+	}
+	Vector3D& operator-() {
+		x = -x;
+		y = -y;
+		z = -z;
+		return *this;
+	}
 	//explicit operator bool() const;
 	const bool operator==(const Vector3D& v) const {
 		if (Math::abs(x - v.x) > M_FLOAT_EPSILON) {
@@ -99,6 +140,28 @@ public:
 
 	Vector3D& Normalize() {
     	return *this /= VectorLenght<T>(*this);
+	}
+
+	/// @brief 
+	/// @param m 
+	/// @return 
+	/*Vector3D& Transform(const Matrix4D& m) {
+		x = x * m.data[0 + 0] + y * m.data[4 + 0] + z * m.data[8 + 0] + 1.F * m.data[12 + 0];
+    	y = x * m.data[0 + 1] + y * m.data[4 + 1] + z * m.data[8 + 1] + 1.F * m.data[12 + 1];
+    	z = x * m.data[0 + 2] + y * m.data[4 + 2] + z * m.data[8 + 2] + 1.F * m.data[12 + 2];
+		return *this;
+	}*/
+
+	/// @brief Преобразовать v по m. ПРИМЕЧАНИЕ: эта функция предполагает, что вектор v является точкой, а не направлением, и вычисляется так, как если бы там был компонент w со значением 1.0f.
+	/// @param v Вектор для преобразования.
+	/// @param m Матрица для преобразования.
+	/// @return Преобразованная копия v.
+	static MINLINE Vector3D Transform(const Vector3D& v, const Matrix4D& m) {
+		Vector3D out;
+		out.x = v.x * m.data[0 + 0] + v.y * m.data[4 + 0] + v.z * m.data[8 + 0] + 1.0f * m.data[12 + 0];
+    	out.y = v.x * m.data[0 + 1] + v.y * m.data[4 + 1] + v.z * m.data[8 + 1] + 1.0f * m.data[12 + 1];
+    	out.z = v.x * m.data[0 + 2] + v.y * m.data[4 + 2] + v.z * m.data[8 + 2] + 1.0f * m.data[12 + 2];
+		return out;
 	}
 };
 
@@ -205,7 +268,7 @@ MINLINE Vector3D<T> Cross(const Vector3D<T>& a, const Vector3D<T>& b)
 }
 
 template<typename T>
-MINLINE Vector3D<T>& Distance(const Vector3D<T>& a, const Vector3D<T>& b)
+MINLINE T Distance(const Vector3D<T>& a, const Vector3D<T>& b)
 {
 	return VectorLenght(a - b);
 }
@@ -226,94 +289,4 @@ template<typename T>
 MINLINE Vector3D<T>& Reject(const Vector3D<T>& a, const Vector3D<T>& b)
 {
 	return Vector3D<T>(a - b * (Dot(a, b) / Dot(b, b)));
-}
-
-template <typename T>
-MINLINE Vector3D<T> &Vector3D<T>::operator+=(const T s)
-{
-    this->x += s;
-	this->y += s;
-	this->z += s;
-	return *this;
-}
-
-template <typename T>
-MINLINE Vector3D<T> &Vector3D<T>::operator-=(const Vector3D<T> &v)
-{
-    x -= v.x;
-	y -= v.y;
-	z -= z.y;
-	return *this;
-}
-
-template <typename T>
-MINLINE Vector3D<T> &Vector3D<T>::operator-=(const T s)
-{
-    x -= s;
-	y -= s;
-	z -= s;
-	return *this;
-}
-
-template <typename T>
-MINLINE Vector3D<T> &Vector3D<T>::operator*=(const Vector3D<T> &v)
-{
-    x *= v.x;
-	y *= v.y;
-	z *= v.y;
-	return *this;
-}
-
-template <typename T>
-MINLINE Vector3D<T> &Vector3D<T>::operator*=(const T s)
-{
-    x *= s;
-	y *= s;
-	z *= s;
-	return *this;
-}
-
-template <typename T>
-MINLINE Vector3D<T> &Vector3D<T>::operator/=(const Vector3D<T> &v)
-{
-    x /= v.x;
-	y /= v.y;
-	z /= z.y;
-	return *this;
-}
-
-template <typename T>
-MINLINE Vector3D<T> &Vector3D<T>::operator/=(const T s)
-{
-    x /= s;
-	y /= s;
-	z /= s;
-	return *this;
-}
-
-template <typename T>
-MINLINE Vector3D<f32> &Vector3D<T>::operator-()
-{
-	x = -x;
-	y = -y;
-	z = -z;
-
-    return *this;
-}
-
-template <typename T>
-MINLINE const bool Compare(const Vector3D<T> &v1, const Vector3D<T> &v2, f32 tolerance) {
-    if (Math::abs(v1.x - v2.x) > tolerance) {
-        return false;
-    }
-
-    if (Math::abs(v1.y - v2.y) > tolerance) {
-        return false;
-    }
-
-    if (Math::abs(v1.z - v2.z) > tolerance) {
-        return false;
-    }
-
-    return true;
 }

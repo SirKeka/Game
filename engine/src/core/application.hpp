@@ -34,7 +34,9 @@ struct ApplicationState {
     // ЗАДАЧА: временно
     Mesh meshes[10];
     u32 MeshCount{};
-    struct GeometryID* TestUI_Geometry;
+
+    Mesh UIMeshes[10];
+    u32 UIMeshCount;
     // ЗАДАЧА: временно
 
 };

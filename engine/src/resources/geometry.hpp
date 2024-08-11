@@ -2,6 +2,7 @@
 #include "containers/mstring.hpp"
 #include "math/vertex.hpp"
 #include "systems/material_system.hpp"
+#include "math/extents.hpp"
 
 constexpr int GEOMETRY_NAME_MAX_LENGTH = 256;
 
@@ -12,11 +13,13 @@ constexpr int VULKAN_MAX_GEOMETRY_COUNT = 4096;
 struct GeometryID {
     u32 id;
     u32 InternalID;
-    u32 generation;
+    u16 generation;
+    FVec3 center;
+    Extents3D extents;
     char name[GEOMETRY_NAME_MAX_LENGTH];
     class Material* material;
-    GeometryID(u32 id, u32 generation) : id(id), InternalID(INVALID::ID), generation(generation), name(), material(nullptr) {}
-    GeometryID(const char* name) : id(INVALID::ID), InternalID(INVALID::ID), generation(INVALID::ID), material(nullptr) {MMemory::CopyMem(this->name, name, GEOMETRY_NAME_MAX_LENGTH);}
+    GeometryID(u32 id, u16 generation) : id(id), InternalID(INVALID::ID), generation(generation), name(), material(nullptr) {}
+    GeometryID(const char* name) : id(INVALID::ID), InternalID(INVALID::ID), generation(INVALID::U16ID), material(nullptr) {MMemory::CopyMem(this->name, name, GEOMETRY_NAME_MAX_LENGTH);}
     void* operator new[](u64 size) { return MMemory::Allocate(size, MemoryTag::Array); }
     void operator delete[](void* ptr, u64 size) { MMemory::Free(ptr, size, MemoryTag::Array); }
 };

@@ -26,7 +26,7 @@ GeometrySystem::GeometrySystem(u32 MaxGeometryCount, GeometryReference* Register
     for (u32 i = 0; i < MaxGeometryCount; ++i) {
         this->RegisteredGeometries[i].gid.id = INVALID::ID;
         this->RegisteredGeometries[i].gid.InternalID = INVALID::ID;
-        this->RegisteredGeometries[i].gid.generation = INVALID::ID;
+        this->RegisteredGeometries[i].gid.generation = INVALID::U16ID;
     }
 }
 
@@ -163,6 +163,10 @@ GeometryConfig GeometrySystem::GenerateCubeConfig(f32 width, f32 height, f32 dep
         TileY = 1.0f;
     }
 
+    f32 HalfWidth = width * 0.5f;
+    f32 HalfHeight = height * 0.5f;
+    f32 HalfDepth = depth * 0.5f;
+
     GeometryConfig config{
         sizeof(Vertex3D), 
         4 * 6, // 4 вершины на сторону, 6 сторон
@@ -171,18 +175,11 @@ GeometryConfig GeometrySystem::GenerateCubeConfig(f32 width, f32 height, f32 dep
         6 * 6, // 6 индексов на каждой стороне, 6 сторон
         MMemory::Allocate(6 * 6 * sizeof(u32), MemoryTag::Array, true), 
         MString::Length(name) ? name : DEFAULT_GEOMETRY_NAME,
-        MString::Length(MaterialName) ? MaterialName : DEFAULT_MATERIAL_NAME
-        };
+        MString::Length(MaterialName) ? MaterialName : DEFAULT_MATERIAL_NAME,
+        FVec3(), FVec3(-HalfWidth, -HalfHeight, -HalfDepth),
+        FVec3(HalfWidth, HalfHeight, HalfDepth)
+    };
 
-    f32 HalfWidth = width * 0.5f;
-    f32 HalfHeight = height * 0.5f;
-    f32 HalfDepth = depth * 0.5f;
-    f32 MinX = -HalfWidth;
-    f32 MinY = -HalfHeight;
-    f32 MinZ = -HalfDepth;
-    f32 MaxX = HalfWidth;
-    f32 MaxY = HalfHeight;
-    f32 MaxZ = HalfDepth;
     f32 MinUVx = 0.f;
     f32 MinUVy = 0.f;
     f32 MaxUVx = TileX;
@@ -190,35 +187,35 @@ GeometryConfig GeometrySystem::GenerateCubeConfig(f32 width, f32 height, f32 dep
 
     Vertex3D* vertex = reinterpret_cast<Vertex3D*>(config.vertices);
     // Передняя поверхность
-    vertex[0]  = Vertex3D(MinX, MinY, MaxZ, 0.f, 0.f, 1.f, MinUVx, MinUVy);
-    vertex[1]  = Vertex3D(MaxX, MaxY, MaxZ, 0.f, 0.f, 1.f, MaxUVx, MaxUVy);
-    vertex[2]  = Vertex3D(MinX, MaxY, MaxZ, 0.f, 0.f, 1.f, MinUVx, MaxUVy);
-    vertex[3]  = Vertex3D(MaxX, MinY, MaxZ, 0.f, 0.f, 1.f, MaxUVx, MinUVy);
+    vertex[0]  = Vertex3D(-HalfWidth, -HalfHeight,  HalfDepth,  0.F, 0.F, 1.F, MinUVx, MinUVy);
+    vertex[1]  = Vertex3D( HalfWidth,  HalfHeight,  HalfDepth,  0.F, 0.F, 1.F, MaxUVx, MaxUVy);
+    vertex[2]  = Vertex3D(-HalfWidth,  HalfHeight,  HalfDepth,  0.F, 0.F, 1.F, MinUVx, MaxUVy);
+    vertex[3]  = Vertex3D( HalfWidth, -HalfHeight,  HalfDepth,  0.F, 0.F, 1.F, MaxUVx, MinUVy);
     // Задняя поверхность
-    vertex[4]  = Vertex3D(MaxX, MinY, MinZ, 0.f, 0.f, -1.f, MinUVx, MinUVy);
-    vertex[5]  = Vertex3D(MinX, MaxY, MinZ, 0.f, 0.f, -1.f, MaxUVx, MaxUVy);
-    vertex[6]  = Vertex3D(MaxX, MaxY, MinZ, 0.f, 0.f, -1.f, MinUVx, MaxUVy);
-    vertex[7]  = Vertex3D(MinX, MinY, MinZ, 0.f, 0.f, -1.f, MaxUVx, MinUVy);
+    vertex[4]  = Vertex3D( HalfWidth, -HalfHeight, -HalfDepth, 0.F, 0.F, -1.F, MinUVx, MinUVy);
+    vertex[5]  = Vertex3D(-HalfWidth,  HalfHeight, -HalfDepth, 0.F, 0.F, -1.F, MaxUVx, MaxUVy);
+    vertex[6]  = Vertex3D( HalfWidth,  HalfHeight, -HalfDepth, 0.F, 0.F, -1.F, MinUVx, MaxUVy);
+    vertex[7]  = Vertex3D(-HalfWidth, -HalfHeight, -HalfDepth, 0.F, 0.F, -1.F, MaxUVx, MinUVy);
     // Левая поверхность
-    vertex[8]  = Vertex3D(MinX, MinY, MinZ, -1.f, 0.f, 0.f, MinUVx, MinUVy);
-    vertex[9]  = Vertex3D(MinX, MaxY, MaxZ, -1.f, 0.f, 0.f, MaxUVx, MaxUVy);
-    vertex[10] = Vertex3D(MinX, MaxY, MinZ, -1.f, 0.f, 0.f, MinUVx, MaxUVy);
-    vertex[11] = Vertex3D(MinX, MinY, MaxZ, -1.f, 0.f, 0.f, MaxUVx, MinUVy);
+    vertex[8]  = Vertex3D(-HalfWidth, -HalfHeight, -HalfDepth, -1.F, 0.F, 0.F, MinUVx, MinUVy);
+    vertex[9]  = Vertex3D(-HalfWidth,  HalfHeight,  HalfDepth, -1.F, 0.F, 0.F, MaxUVx, MaxUVy);
+    vertex[10] = Vertex3D(-HalfWidth,  HalfHeight, -HalfDepth, -1.F, 0.F, 0.F, MinUVx, MaxUVy);
+    vertex[11] = Vertex3D(-HalfWidth, -HalfHeight,  HalfDepth, -1.F, 0.F, 0.F, MaxUVx, MinUVy);
     // Правая поверхность
-    vertex[12] = Vertex3D(MaxX, MinY, MaxZ, 1.f, 0.f, 0.f, MinUVx, MinUVy);
-    vertex[13] = Vertex3D(MaxX, MaxY, MinZ, 1.f, 0.f, 0.f, MaxUVx, MaxUVy);
-    vertex[14] = Vertex3D(MaxX, MaxY, MaxZ, 1.f, 0.f, 0.f, MinUVx, MaxUVy);
-    vertex[15] = Vertex3D(MaxX, MinY, MinZ, 1.f, 0.f, 0.f, MaxUVx, MinUVy);
+    vertex[12] = Vertex3D( HalfWidth, -HalfHeight,  HalfDepth,  1.F, 0.F, 0.F, MinUVx, MinUVy);
+    vertex[13] = Vertex3D( HalfWidth,  HalfHeight, -HalfDepth,  1.F, 0.F, 0.F, MaxUVx, MaxUVy);
+    vertex[14] = Vertex3D( HalfWidth,  HalfHeight,  HalfDepth,  1.F, 0.F, 0.F, MinUVx, MaxUVy);
+    vertex[15] = Vertex3D( HalfWidth, -HalfHeight, -HalfDepth,  1.F, 0.F, 0.F, MaxUVx, MinUVy);
     // Нижняя поверхность
-    vertex[16] = Vertex3D(MaxX, MinY, MaxZ, 0.f, -1.f, 0.f, MinUVx, MinUVy);
-    vertex[17] = Vertex3D(MinX, MinY, MinZ, 0.f, -1.f, 0.f, MaxUVx, MaxUVy);
-    vertex[18] = Vertex3D(MaxX, MinY, MinZ, 0.f, -1.f, 0.f, MinUVx, MaxUVy);
-    vertex[19] = Vertex3D(MinX, MinY, MaxZ, 0.f, -1.f, 0.f, MaxUVx, MinUVy);
+    vertex[16] = Vertex3D( HalfWidth, -HalfHeight,  HalfDepth, 0.F, -1.F, 0.F, MinUVx, MinUVy);
+    vertex[17] = Vertex3D(-HalfWidth, -HalfHeight, -HalfDepth, 0.F, -1.F, 0.F, MaxUVx, MaxUVy);
+    vertex[18] = Vertex3D( HalfWidth, -HalfHeight, -HalfDepth, 0.F, -1.F, 0.F, MinUVx, MaxUVy);
+    vertex[19] = Vertex3D(-HalfWidth, -HalfHeight,  HalfDepth, 0.F, -1.F, 0.F, MaxUVx, MinUVy);
     // Верхняя поверхность
-    vertex[20] = Vertex3D(MinX, MaxY, MaxZ, 0.f, 1.f, 0.f, MinUVx, MinUVy);
-    vertex[21] = Vertex3D(MaxX, MaxY, MinZ, 0.f, 1.f, 0.f, MaxUVx, MaxUVy);
-    vertex[22] = Vertex3D(MinX, MaxY, MinZ, 0.f, 1.f, 0.f, MinUVx, MaxUVy);
-    vertex[23] = Vertex3D(MaxX, MaxY, MaxZ, 0.f, 1.f, 0.f, MaxUVx, MinUVy);
+    vertex[20] = Vertex3D(-HalfWidth,  HalfHeight,  HalfDepth,  0.F, 1.F, 0.F, MinUVx, MinUVy);
+    vertex[21] = Vertex3D( HalfWidth,  HalfHeight, -HalfDepth,  0.F, 1.F, 0.F, MaxUVx, MaxUVy);
+    vertex[22] = Vertex3D(-HalfWidth,  HalfHeight, -HalfDepth,  0.F, 1.F, 0.F, MinUVx, MaxUVy);
+    vertex[23] = Vertex3D( HalfWidth,  HalfHeight,  HalfDepth,  0.F, 1.F, 0.F, MaxUVx, MinUVy);
 
     u32* indices = reinterpret_cast<u32*>(config.indices);
     for (u32 i = 0; i < 6; ++i) {
@@ -250,11 +247,16 @@ bool GeometrySystem::CreateGeometry(const GeometryConfig &config, GeometryID *gi
         this->RegisteredGeometries[gid->id].ReferenceCount = 0;
         this->RegisteredGeometries[gid->id].AutoRelease = false;
         gid->id = INVALID::ID;
-        gid->generation = INVALID::ID;
+        gid->generation = INVALID::U16ID;
         gid->InternalID = INVALID::ID;
 
         return false;
     }
+
+    // Копирование экстентов, центра и т.д.
+    gid->center = config.center;
+    gid->extents.MinSize = config.MinExtents;
+    gid->extents.MaxSize = config.MaxExtents;
 
     // Получить материал
     if (MString::Length(config.MaterialName) > 0) {
@@ -273,7 +275,7 @@ void GeometrySystem::DestroyGeometry(GeometryID *gid)
 
     gid->id = INVALID::ID; 
     gid->InternalID = INVALID::ID;
-    gid->generation = INVALID::ID; 
+    gid->generation = INVALID::U16ID; 
     MMemory::SetMemory(gid->name, 0, GEOMETRY_NAME_MAX_LENGTH);
     if (gid->material && MString::Length(gid->material->name) > 0) {
     MaterialSystem::Instance()->Release(gid->material->name);
@@ -423,9 +425,7 @@ void GeometrySystem::Release(GeometryID *gid)
 
 GeometryID *GeometrySystem::GetDefault()
 {
-    //if (this) {
-        return &this->DefaultGeometry;
-    //}
+    return &DefaultGeometry;
 
     MFATAL("GeometrySystem::GetDefault вызывается перед инициализацией системы. Возвращение nullptr.");
     return nullptr;
@@ -433,16 +433,8 @@ GeometryID *GeometrySystem::GetDefault()
 
 GeometryID *GeometrySystem::GetDefault2D()
 {
-    return &this->Default2dGeometry;
+    return &Default2dGeometry;
 }
-/*
-void *GeometrySystem::operator new(u64 size)
-{
-    // Блок памяти будет содержать структуру состояния, затем блок массива, затем блок хеш-таблицы.
-    u64 ArrayRequirement = sizeof(GeometryReference) * MaxGeometryCount;
-    return LinearAllocator::Instance().Allocate(size + ArrayRequirement);
-}
-*/
 
 void GeometryConfig::Dispose()
 {
