@@ -5,7 +5,7 @@ struct Skybox
 {
 private:
     TextureMap cubemap;
-    class Geometry* g;
+    GeometryID* g;
     u32 InstanceID;
     u64 RenderFrameNumber;  // Синхронизируется с текущим номером кадра рендерера, когда материал был применен к этому кадру.
 public:

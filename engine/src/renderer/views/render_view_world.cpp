@@ -133,6 +133,7 @@ bool RenderViewWorld::BuildPacket(void *data, Packet &OutPacket) const
     OutPacket.ViewPosition = WorldCamera->GetPosition();
     OutPacket.AmbientColour = AmbientColour;
 
+    // ЗАДАЧА: перенести сортировку в динамический массив.
     // Получить все геометрии из текущей сцены.
     DArray<GeometryDistance> GeometryDistances;
     

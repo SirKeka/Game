@@ -58,7 +58,7 @@ bool RenderViewUI::BuildPacket(void *data, Packet &OutPacket) const
         return false;
     }
 
-    Mesh::PacketData* MeshData = (Mesh::PacketData*)data;
+    Mesh::PacketData* MeshData = reinterpret_cast<Mesh::PacketData*>(data);
 
     OutPacket.view = this;
 

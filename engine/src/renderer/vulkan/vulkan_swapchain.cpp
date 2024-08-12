@@ -245,7 +245,7 @@ void VulkanSwapchain::Create(VulkanAPI *VkAPI, u32 width, u32 height)
 
     // Создайте изображение глубины и его вид.
     VulkanImage* image = new VulkanImage(VkAPI,
-        VK_IMAGE_TYPE_2D,
+        TextureType::_2D,
         SwapchainExtent.width,
         SwapchainExtent.height,
         VkAPI->Device.DepthFormat,
