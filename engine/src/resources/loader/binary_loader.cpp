@@ -2,9 +2,7 @@
 #include "systems/resource_system.hpp"
 #include "loader_utils.hpp"
 
-// BinaryLoader::BinaryLoader() : ResourceLoader(ResourceType::Binary, nullptr, "") {}
-
-bool BinaryLoader::Load(const char *name, Resource &OutResource)
+bool BinaryLoader::Load(const char *name, void* params, Resource &OutResource)
 {
      if (!name) {
         return false;

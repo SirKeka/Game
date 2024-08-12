@@ -13,6 +13,6 @@ public:
     // BinaryLoader();
     //~BinaryLoader() {};
 private:
-    bool Load(const char* name, struct Resource& OutResource) override;
+    bool Load(const char* name, void* params, struct Resource& OutResource) override;
     void Unload(struct Resource& resource) override;
 };

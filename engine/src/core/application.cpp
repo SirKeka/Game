@@ -181,7 +181,7 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
     // Тестовая модель загружается из файла
     Mesh& CarMesh = State->meshes[State->MeshCount];
     Resource CarMeshResource;
-    if (!ResourceSystem::Instance()->Load("falcon", ResourceType::Mesh, CarMeshResource)) {
+    if (!ResourceSystem::Instance()->Load("falcon", ResourceType::Mesh, nullptr, CarMeshResource)) {
         MERROR("Не удалось загрузить тестовую модель машины!");
     } else {
         GeometryConfig* configs = reinterpret_cast<GeometryConfig*>(CarMeshResource.data);
@@ -197,7 +197,7 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
 
     Mesh& SponzaMesh = State->meshes[State->MeshCount];
     Resource SponzaMeshResource;
-    if (!ResourceSystem::Instance()->Load("sponza", ResourceType::Mesh, SponzaMeshResource)) {
+    if (!ResourceSystem::Instance()->Load("sponza", ResourceType::Mesh, nullptr, SponzaMeshResource)) {
         MERROR("Не удалось загрузить тестовую модель машины!");
     } else {
         GeometryConfig* configs = reinterpret_cast<GeometryConfig*>(SponzaMeshResource.data);

@@ -13,6 +13,7 @@
 #include "resources/shader.hpp"
 #include "resources/texture.hpp"
 
+constexpr const char* BUILTIN_SHADER_NAME_SKYBOX = "Shader.Builtin.Skybox";
 constexpr const char* BUILTIN_SHADER_NAME_MATERIAL = "Shader.Builtin.Material";
 constexpr const char* BUILTIN_SHADER_NAME_UI = "Shader.Builtin.UI";
 

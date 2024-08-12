@@ -17,6 +17,7 @@ bool VulkanPipeline::Create(
     VkPipelineShaderStageCreateInfo* stages,
     VkViewport viewport,
     VkRect2D scissor,
+    FaceCullMode CullMode,
     bool IsWireframe,
     bool DepthTest,
     u32 PushConstantRangeCount,
@@ -35,6 +36,21 @@ bool VulkanPipeline::Create(
     RasterizerCreateInfo.rasterizerDiscardEnable = VK_FALSE;
     RasterizerCreateInfo.polygonMode = IsWireframe ? VK_POLYGON_MODE_LINE : VK_POLYGON_MODE_FILL;
     RasterizerCreateInfo.lineWidth = 1.0f;
+    switch (CullMode) {
+        case FaceCullMode::None:
+            RasterizerCreateInfo.cullMode = VK_CULL_MODE_NONE;
+            break;
+        case FaceCullMode::Front:
+            RasterizerCreateInfo.cullMode = VK_CULL_MODE_FRONT_BIT;
+            break;
+        default:
+        case FaceCullMode::Back:
+            RasterizerCreateInfo.cullMode = VK_CULL_MODE_BACK_BIT;
+            break;
+        case FaceCullMode::FrontAndBack:
+            RasterizerCreateInfo.cullMode = VK_CULL_MODE_FRONT_AND_BACK;
+            break;
+    }
     RasterizerCreateInfo.cullMode = VK_CULL_MODE_BACK_BIT;
     RasterizerCreateInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
     RasterizerCreateInfo.depthBiasEnable = VK_FALSE;

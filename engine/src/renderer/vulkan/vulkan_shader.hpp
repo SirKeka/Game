@@ -37,6 +37,7 @@ struct VulkanShaderStage {
 struct VulkanDescriptorSetConfig {
     u8 BindingCount;                                                                    // Количество привязок в этом наборе.
     VkDescriptorSetLayoutBinding bindings[VulkanShaderConstants::MaxBindings];          // Массив макетов привязки для этого набора.
+    u8 SamplerBindingIndex;                                                             // Индекс привязки сэмплера.
 };
 
 /// @brief Конфигурация внутреннего шейдера, созданная с помощью VulkanShader:Create().
@@ -48,7 +49,8 @@ struct VulkanShaderConfig {
     u8 DescriptorSetCount;                                                              // Общее количество наборов дескрипторов, настроенных для этого шейдера. Имеет значение 1, если используются только глобальные униформы/сэмплеры; иначе 2.
     VulkanDescriptorSetConfig DescriptorSets[2];                                        // Наборы дескрипторов, максимум 2. Индекс 0 = глобальный, 1 = экземпляр.
     VkVertexInputAttributeDescription attributes[VulkanShaderConstants::MaxAttributes]; // Массив описаний атрибутов для этого шейдера.
-    constexpr VulkanShaderConfig() : StageCount(), stages(), PoolSizes(), MaxDescriptorSetCount(), DescriptorSetCount(), DescriptorSets(), attributes() {}
+    FaceCullMode CullMode;                                                              // Режим отбраковки лиц, предоставляемый фронтендом.
+    constexpr VulkanShaderConfig() : StageCount(), stages(), PoolSizes(), MaxDescriptorSetCount(), DescriptorSetCount(), DescriptorSets(), attributes(), CullMode() {}
 
 };
  
@@ -93,6 +95,11 @@ struct VulkanShader {
     VulkanPipeline pipeline;                                            // Конвейер, связанный с этим шейдером.
     u32 InstanceCount;                                                  // Экземпляр состояния для всех экземпляров. ЗАДАЧА: динамичным */
     VulkanShaderInstanceState InstanceStates[VULKAN_MAX_MATERIAL_COUNT];
+    u8 GlobalUniformCount;                                              // Количество глобальных не-семплерных униформ.
+    u8 GlobalUniformSamplerCount;                                       // Количество глобальных семплерных униформ.
+    u8 InstanceUniformCount;                                            // Количество экземплярных не-семплерных униформ.
+    u8 InstanceUniformsamplerCount;                                     // Количество экземплярных семплерных униформ.
+    u8 LocalUniformCount;                                               // Количество локальных не-семплерных униформ.    
 
     VulkanShader();
     // constexpr VulkanShader(VulkanRenderpass* renderpass, );

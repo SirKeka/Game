@@ -91,7 +91,7 @@ FramesSinceResize()
 
     // Встроенный шейдер материала.
     CriticalInit(
-        ResourceSystem::Instance()->Load(BUILTIN_SHADER_NAME_MATERIAL, ResourceType::Shader, ConfigResource),
+        ResourceSystem::Instance()->Load(BUILTIN_SHADER_NAME_MATERIAL, ResourceType::Shader, nullptr, ConfigResource),
         "Не удалось загрузить встроенный шейдер материала.");
     config = reinterpret_cast<ShaderConfig*>(ConfigResource.data);
     CriticalInit(ShaderSystem::GetInstance()->Create(config), "Не удалось загрузить встроенный шейдер материала.");
@@ -100,7 +100,7 @@ FramesSinceResize()
 
     // Встроенный шейдер пользовательского интерфейса.
     CriticalInit(
-        ResourceSystem::Instance()->Load(BUILTIN_SHADER_NAME_UI, ResourceType::Shader, ConfigResource),
+        ResourceSystem::Instance()->Load(BUILTIN_SHADER_NAME_UI, ResourceType::Shader, nullptr, ConfigResource),
         "Не удалось загрузить встроенный шейдер пользовательского интерфейса.");
     config = reinterpret_cast<ShaderConfig*>(ConfigResource.data);
     CriticalInit(ShaderSystem::GetInstance()->Create(config), "Не удалось загрузить встроенный шейдер пользовательского интерфейса.");
@@ -237,9 +237,9 @@ Renderpass* Renderer::GetRenderpass(const MString &name)
     return ptrRenderer->GetRenderpass(name);
 }
 
-bool Renderer::Load(Shader *shader, Renderpass* renderpass, u8 StageCount, const DArray<MString>& StageFilenames, const ShaderStage *stages)
+bool Renderer::Load(Shader *shader, const ShaderConfig& config, Renderpass* renderpass, u8 StageCount, const DArray<MString>& StageFilenames, const ShaderStage *stages)
 {
-    return ptrRenderer->Load(shader, renderpass, StageCount, StageFilenames, stages);
+    return ptrRenderer->Load(shader, config, renderpass, StageCount, StageFilenames, stages);
 }
 
 void Renderer::Unload(Shader *shader)

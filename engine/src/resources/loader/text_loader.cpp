@@ -2,9 +2,7 @@
 #include "systems/resource_system.hpp"
 #include "loader_utils.hpp"
 
-// TextLoader::TextLoader() : ResourceLoader(ResourceType::Text, nullptr, "") {}
-
-bool TextLoader::Load(const char *name, Resource &OutResource)
+bool TextLoader::Load(const char *name, void* params, Resource &OutResource)
 {
     if (!name) {
         return false;

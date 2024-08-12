@@ -25,7 +25,8 @@ void Texture::Destroy()
 
 Texture::Texture(const Texture &t)
     : 
-    id(t.id), 
+    id(t.id),
+    type(t.type), 
     width(t.width), 
     height(t.height), 
     ChannelCount(t.ChannelCount), 
@@ -39,6 +40,7 @@ Texture::Texture(const Texture &t)
 Texture &Texture::operator=(const Texture &t)
 {
     id = t.id;
+    type = t.type;
     width = t.width;
     height = t.height;
     ChannelCount = t.ChannelCount;
@@ -52,6 +54,7 @@ Texture &Texture::operator=(const Texture &t)
 Texture &Texture::operator=(Texture &&t)
 {
     id = t.id;
+    type = t.type;
     width = t.width;
     height = t.height;
     ChannelCount = t.ChannelCount;
@@ -61,6 +64,7 @@ Texture &Texture::operator=(Texture &&t)
     Data = t.Data;
 
     t.id = 0;
+    t.type = 0;
     t.width = 0;
     t.height = 0;
     t.ChannelCount = 0;

@@ -5,7 +5,7 @@
 
 VulkanImage::VulkanImage(
     VulkanAPI *VkAPI, 
-    VkImageType ImageType, 
+    TextureType type, 
     u32 width, 
     u32 height, 
     VkFormat format, 
@@ -15,7 +15,7 @@ VulkanImage::VulkanImage(
     b32 CreateView, 
     VkImageAspectFlags ViewAspectFlags)
 {
-    Create(VkAPI, ImageType, width, height, format, tiling, usage, MemoryFlags, CreateView, ViewAspectFlags);
+    Create(VkAPI, type, width, height, format, tiling, usage, MemoryFlags, CreateView, ViewAspectFlags);
 }
 
 VulkanImage::~VulkanImage()
@@ -27,7 +27,7 @@ VulkanImage::~VulkanImage()
     height = 0;
 }
 
-void VulkanImage::Create(VulkanAPI *VkAPI, VkImageType ImageType, u32 width, u32 height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags MemoryFlags, b32 CreateView, VkImageAspectFlags ViewAspectFlags)
+void VulkanImage::Create(VulkanAPI *VkAPI, TextureType type, u32 width, u32 height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags MemoryFlags, b32 CreateView, VkImageAspectFlags ViewAspectFlags)
 {
     // Копировать параметры
     this->width = width;
@@ -35,18 +35,27 @@ void VulkanImage::Create(VulkanAPI *VkAPI, VkImageType ImageType, u32 width, u32
 
     // Информация о создании.
     VkImageCreateInfo ImageCreateInfo = {VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
-    ImageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
+    switch (type) {
+        default:
+        case TextureType::_2D:
+        case TextureType::Cube:  // Тип изображения куба намеренно не предусмотрен.
+            ImageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
+            break;
+    }
     ImageCreateInfo.extent.width = width;
     ImageCreateInfo.extent.height = height;
-    ImageCreateInfo.extent.depth = 1;  // ЗАДАЧА: Поддержка настраиваемой глубины.
-    ImageCreateInfo.mipLevels = 4;     // ЗАДАЧА: Поддержка мип-маппинга
-    ImageCreateInfo.arrayLayers = 1;   // ЗАДАЧА: Поддержка количества слоев изображения.
+    ImageCreateInfo.extent.depth = 1;                                   // ЗАДАЧА: Поддержка настраиваемой глубины.
+    ImageCreateInfo.mipLevels = 4;                                      // ЗАДАЧА: Поддержка мип-маппинга
+    ImageCreateInfo.arrayLayers = type == TextureType::Cube ? 6 : 1;    // ЗАДАЧА: Поддержка количества слоев изображения.
     ImageCreateInfo.format = format;
     ImageCreateInfo.tiling = tiling;
     ImageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     ImageCreateInfo.usage = usage;
     ImageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;          // ЗАДАЧА: Настраиваемое количество образцов.
     ImageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;  // ЗАДАЧА: Настраиваемый режим обмена.
+    if (type == TextureType::Cube) {
+        ImageCreateInfo.flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+    }
 
     VK_CHECK(vkCreateImage(VkAPI->Device.LogicalDevice, &ImageCreateInfo, VkAPI->allocator, &this->handle));
 
@@ -71,15 +80,23 @@ void VulkanImage::Create(VulkanAPI *VkAPI, VkImageType ImageType, u32 width, u32
     // Создать представление
     if (CreateView) {
         this->view = 0;
-        ViewCreate(VkAPI, format, ViewAspectFlags);
+        ViewCreate(VkAPI, type, format, ViewAspectFlags);
     }
 }
 
-void VulkanImage::ViewCreate(VulkanAPI *VkAPI, VkFormat format, VkImageAspectFlags AspectFlags)
+void VulkanImage::ViewCreate(VulkanAPI *VkAPI, TextureType type, VkFormat format, VkImageAspectFlags AspectFlags)
 {
     VkImageViewCreateInfo ViewCreateInfo = {VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
     ViewCreateInfo.image = this->handle;
-    ViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;  // ЗАДАЧА: Сделать настраиваемым.
+    switch (type) {
+        case TextureType::Cube:
+            ViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_CUBE;
+            break;
+        default:
+        case TextureType::_2D:
+            ViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+            break;
+    }
     ViewCreateInfo.format = format;
     ViewCreateInfo.subresourceRange.aspectMask = AspectFlags;
 
@@ -87,13 +104,14 @@ void VulkanImage::ViewCreate(VulkanAPI *VkAPI, VkFormat format, VkImageAspectFla
     ViewCreateInfo.subresourceRange.baseMipLevel = 0;
     ViewCreateInfo.subresourceRange.levelCount = 1;
     ViewCreateInfo.subresourceRange.baseArrayLayer = 0;
-    ViewCreateInfo.subresourceRange.layerCount = 1;
+    ViewCreateInfo.subresourceRange.layerCount = type == TextureType::Cube ? 6 : 1;
 
     VK_CHECK(vkCreateImageView(VkAPI->Device.LogicalDevice, &ViewCreateInfo, VkAPI->allocator, &this->view));
 }
 
 void VulkanImage::TransitionLayout(
     VulkanAPI *VkAPI, 
+    TextureType type,
     VulkanCommandBuffer *CommandBuffer, 
     VkFormat format, 
     VkImageLayout OldLayout, 
@@ -109,7 +127,7 @@ void VulkanImage::TransitionLayout(
     barrier.subresourceRange.baseMipLevel = 0;
     barrier.subresourceRange.levelCount = 1;
     barrier.subresourceRange.baseArrayLayer = 0;
-    barrier.subresourceRange.layerCount = 1;
+    barrier.subresourceRange.layerCount = type == TextureType::Cube ? 6 : 1;
 
     VkPipelineStageFlags SourceStage;
     VkPipelineStageFlags DestStage;
@@ -150,6 +168,7 @@ void VulkanImage::TransitionLayout(
 
 void VulkanImage::CopyFromBuffer(
     VulkanAPI *VkAPI, 
+    TextureType type,
     VkBuffer buffer, 
     VulkanCommandBuffer *CommandBuffer)
 {
@@ -163,7 +182,7 @@ void VulkanImage::CopyFromBuffer(
     region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     region.imageSubresource.mipLevel = 0;
     region.imageSubresource.baseArrayLayer = 0;
-    region.imageSubresource.layerCount = 1;
+    region.imageSubresource.layerCount = type == TextureType::Cube ? 6 : 1;
 
     region.imageExtent.width = this->width;
     region.imageExtent.height = this->height;

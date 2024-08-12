@@ -13,25 +13,12 @@ struct Resource {
     constexpr Resource() : LoaderID(), name(), FullPath(), DataSize(), data(nullptr) {}
 };
 
-struct ImageResourceData {
-    u8 ChannelCount;
-    u32 width;
-    u32 height;
-    u8* pixels;
-
-    constexpr ImageResourceData(u8 ChannelCount, u32 width, u32 height, u8* pixels)
-    : ChannelCount(ChannelCount), width(width), height(height), pixels(pixels) {}
-    void* operator new(u64 size) { return MMemory::Allocate(size, MemoryTag::Texture); }
-    void operator delete(void* ptr, u64 size) { MMemory::Free(ptr, size, MemoryTag::Texture); }
-};
-
-// ЗАДАЧА: Сделать шаблонной
+// ЗАДАЧА: переделать
 class ResourceSystem
 {
 private:
     u32 MaxLoaderCount;
-    // Относительный базовый путь для активов.
-    const char* AssetBasePath;
+    const char* AssetBasePath;              // Относительный базовый путь для активов.
 
     class ResourceLoader* RegisteredLoaders;
 
@@ -46,15 +33,34 @@ public:
     static void Shutdown();
 
     template<typename T>
-    bool RegisterLoader(ResourceType type, const MString& CustomType, const MString& TypePath);
-    bool Load(const char* name, ResourceType type, Resource& OutResource);
-    bool Load(const char* name, const char* CustomType, Resource& OutResource);
-    void Unload(Resource& resource);
-    const char* BasePath();
+    /// @brief Регистрирует указанный загрузчик ресурсов в системе.
+    /// @param type
+    /// @param CustomType пользовательский тип ресурса.
+    /// @param TypePath 
+    /// @return 
+    MAPI bool RegisterLoader(ResourceType type, const MString& CustomType, const MString& TypePath);
+    /// @brief Загружает ресурс с указанным именем.
+    /// @param name имя ресурса для загрузки.
+    /// @param type тип ресурса для загрузки.
+    /// @param params параметры, передаваемые загрузчику, или nullptr.
+    /// @param OutResource ссылка на недавно загруженный ресурс.
+    /// @return true в случае успеха; в противном случае false.
+    MAPI bool Load(const char* name, ResourceType type, void* params, Resource& OutResource);
+    /// @brief Загружает ресурс с указанным именем и пользовательского типа.
+    /// @param name имя ресурса для загрузки.
+    /// @param CustomType пользовательский тип ресурса.
+    /// @param params параметры, передаваемые загрузчику, или nullptr.
+    /// @param OutResource ссылка на недавно загруженный ресурс.
+    /// @return true в случае успеха; в противном случае false.
+    MAPI bool Load(const char* name, const char* CustomType, void* params, Resource& OutResource);
+    /// @brief Выгружает указанный ресурс.
+    /// @param resource ссылка на ресурс который нужно выгрузить.
+    MAPI void Unload(Resource& resource);
+    MAPI const char* BasePath();
 
     static MINLINE ResourceSystem* Instance() { return state; }
 private:
-    bool Load(const char* name, ResourceLoader* loader, Resource& OutResource);
+    bool Load(const char* name, ResourceLoader* loader, void* params, Resource& OutResource);
 public:
     // void* operator new(u64 size);
 };

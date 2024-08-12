@@ -4,9 +4,7 @@
 #include "core/mmemory.hpp"
 #include "loader_utils.hpp"
 
-// ShaderLoader::ShaderLoader() : ResourceLoader(ResourceType::Shader, nullptr, "shaders") {}
-
-bool ShaderLoader::Load(const char *name, Resource &OutResource)
+bool ShaderLoader::Load(const char *name, void* params, Resource &OutResource)
 {
     if (!name) {
         return false;
@@ -103,10 +101,14 @@ bool ShaderLoader::Load(const char *name, Resource &OutResource)
             } else if (ResourceData->StageCount != count) {
                 MERROR("ShaderLoader::Load: Неверный макет файла. Подсчитайте несоответствие между именами этапов и именами файлов этапов.");
             }
-        } else if (TrimmedVarName.Comparei("use_instance")) {
-            TrimmedValue.ToBool(ResourceData->UseInstances);
-        } else if (TrimmedVarName.Comparei("use_local")) {
-            TrimmedValue.ToBool(ResourceData->UseLocal);
+        } else if (TrimmedVarName.Comparei("cull_back")) {
+            if (TrimmedVarName.Comparei("front")) {
+                ResourceData->CullMode = FaceCullMode::Front;
+            } else if (TrimmedVarName.Comparei("front_and_back")) {
+            ResourceData->CullMode = FaceCullMode::FrontAndBack;
+            } else if (TrimmedVarName.Comparei("none")) {
+                ResourceData->CullMode = FaceCullMode::None;
+            }
         } else if (TrimmedVarName.Comparei("attribute")) {
             // Анализ атрибута.
             DArray<MString>fields{2};

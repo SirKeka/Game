@@ -8,6 +8,7 @@
 
 #include "containers/darray.hpp"
 #include "containers/hashtable.hpp"
+#include "resources/texture.hpp"
 
 /// @brief Стадии шейдера, доступные в системе.
 enum class ShaderStage {
@@ -115,20 +116,19 @@ struct ShaderUniformConfig {
 /// @brief Конфигурация шейдера. Обычно создается и уничтожается загрузчиком
 /// ресурсов шейдера и задается свойствами, найденными в файле ресурсов .shadercfg.
 struct ShaderConfig {
-    MString name{};                               // Имя создаваемого шейдера.
-    bool UseInstances{false};                     // Указывает, использует ли шейдер униформы уровня экземпляра.
-    bool UseLocal{false};                         // Указывает, использует ли шейдер униформы локального уровня.
-    u8 AttributeCount{};                          // Количество атрибутов.
-    DArray<ShaderAttributeConfig> attributes{};   // Коллекция атрибутов.
-    u8 UniformCount{};                            // Учёт униформы.
-    DArray<ShaderUniformConfig> uniforms{};       // Коллекция униформы.
-    MString RenderpassName{};                     // Имя прохода рендеринга, используемого этим шейдером.
-    u8 StageCount{};                              // Количество этапов, присутствующих в шейдере.
-    DArray<ShaderStage> stages{};                 // Сборник этапов.
-    DArray<MString> StageNames{};                 // Коллекция сценических имен. Должно соответствовать массиву этапов.
-    DArray<MString> StageFilenames{};             // Коллекция имен файлов этапов, которые необходимо загрузить (по одному на этап). Должно соответствовать массиву этапов.
+    MString name{};                             // Имя создаваемого шейдера.
+    FaceCullMode CullMode{};                    // Режим отбраковки лица, который будет использоваться. По умолчанию BACK, если не указано иное.
+    u8 AttributeCount{};                        // Количество атрибутов.
+    DArray<ShaderAttributeConfig> attributes{}; // Коллекция атрибутов.
+    u8 UniformCount{};                          // Учёт униформы.
+    DArray<ShaderUniformConfig> uniforms{};     // Коллекция униформы.
+    MString RenderpassName{};                   // Имя прохода рендеринга, используемого этим шейдером.
+    u8 StageCount{};                            // Количество этапов, присутствующих в шейдере.
+    DArray<ShaderStage> stages{};               // Сборник этапов.
+    DArray<MString> StageNames{};               // Коллекция сценических имен. Должно соответствовать массиву этапов.
+    DArray<MString> StageFilenames{};           // Коллекция имен файлов этапов, которые необходимо загрузить (по одному на этап). Должно соответствовать массиву этапов.
 
-    ShaderConfig() : name(), UseInstances(false), UseLocal(false), AttributeCount(), attributes(), UniformCount(), uniforms(), RenderpassName(), StageCount(), stages(), StageNames(), StageFilenames() {}
+    ShaderConfig() : name(), CullMode(FaceCullMode::Back), AttributeCount(), attributes(), UniformCount(), uniforms(), RenderpassName(), StageCount(), stages(), StageNames(), StageFilenames() {}
     //~ShaderConfig() {}
     void* operator new(u64 size) {return MMemory::Allocate(size, MemoryTag::Resource);}
     void operator delete(void* ptr, u64 size) {MMemory::Free(ptr, size, MemoryTag::Resource);}

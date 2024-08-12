@@ -101,7 +101,7 @@ public:
 
     // Методы относящиеся к шейдерам---------------------------------------------------------------------------------------------------------------------------------------------
 
-    bool Load(Shader* shader, Renderpass* renderpass, u8 StageCount, const DArray<MString>& StageFilenames, const ShaderStage* stages) override;
+    bool Load(Shader* shader, const ShaderConfig& config, Renderpass* renderpass, u8 StageCount, const DArray<MString>& StageFilenames, const ShaderStage* stages) override;
     void Unload(Shader* shader) override;
     bool ShaderInitialize(Shader* shader) override;
     bool ShaderUse(Shader* shader) override;

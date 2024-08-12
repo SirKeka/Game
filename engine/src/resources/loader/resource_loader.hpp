@@ -29,7 +29,7 @@ public:
     };
     MINLINE void Destroy() { this->~ResourceLoader(); }
 
-    virtual bool Load(const char* name, struct Resource& OutResource) {
+    virtual bool Load(const char* name, void* params, struct Resource& OutResource) {
         MERROR("Вызывается не инициализированный загрузчик");
         return false;
     }

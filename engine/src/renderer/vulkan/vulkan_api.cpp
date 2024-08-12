@@ -52,7 +52,7 @@ const u32 DESC_SET_INDEX_INSTANCE = 1;  // Индекс набора дескр�
 const u32 BINDING_INDEX_UBO       = 0;  // Индекс привязки УБО.
 const u32 BINDING_INDEX_SAMPLER   = 1;  // Индекс привязки сэмплера изображения.
 
-bool VulkanAPI::Load(Shader *shader, Renderpass* renderpass, u8 StageCount, const DArray<MString>& StageFilenames, const ShaderStage *stages)
+bool VulkanAPI::Load(Shader *shader, const ShaderConfig& config, Renderpass* renderpass, u8 StageCount, const DArray<MString>& StageFilenames, const ShaderStage *stages)
 {
     // Этапы перевода
     VkShaderStageFlags VkStages[VulkanShaderConstants::MaxStages];
@@ -1517,7 +1517,7 @@ bool VulkanAPI::CreateModule(VulkanShader *shader, const VulkanShaderStageConfig
 {
     // Прочтите ресурс.
     Resource BinaryResource;
-    if (!ResourceSystem::Instance()->Load(config.FileName, ResourceType::Binary, BinaryResource)) {
+    if (!ResourceSystem::Instance()->Load(config.FileName, ResourceType::Binary, nullptr, BinaryResource)) {
         MERROR("Невозможно прочитать модуль шейдера: %s.", config.FileName);
         return false;
     }

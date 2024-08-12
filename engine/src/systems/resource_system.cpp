@@ -84,14 +84,14 @@ bool ResourceSystem::RegisterLoader(ResourceType type, const MString& CustomType
     return false;
 }
 
-bool ResourceSystem::Load(const char *name, ResourceType type, Resource &OutResource)
+bool ResourceSystem::Load(const char *name, ResourceType type, void* params, Resource &OutResource)
 {
     if (type != ResourceType::Custom) {
         // Выбор загрузчика.
         for (u32 i = 0; i < MaxLoaderCount; ++i) {
             ResourceLoader* l = &RegisteredLoaders[i];
             if (l->id != INVALID::ID && l->type == type) {
-                return Load(name, l, OutResource);
+                return Load(name, l, params, OutResource);
             }
         }
     }
@@ -101,14 +101,14 @@ bool ResourceSystem::Load(const char *name, ResourceType type, Resource &OutReso
     return false;
 }
 
-bool ResourceSystem::Load(const char *name, const char *CustomType, Resource &OutResource)
+bool ResourceSystem::Load(const char *name, const char *CustomType, void* params, Resource &OutResource)
 {
     if (CustomType && MString::Length(CustomType) > 0) {
         // Выбор загрузчика.
         for (u32 i = 0; i < MaxLoaderCount; ++i) {
             ResourceLoader* l = &RegisteredLoaders[i];
             if (l->id != INVALID::ID && l->type == ResourceType::Custom && l->CustomType.Comparei(CustomType)) {
-                return Load(name, l, OutResource);
+                return Load(name, l, params, OutResource);
             }
         }
     }
@@ -138,7 +138,7 @@ const char *ResourceSystem::BasePath()
     return "";
 }
 
-bool ResourceSystem::Load(const char *name, ResourceLoader *loader, Resource &OutResource)
+bool ResourceSystem::Load(const char *name, ResourceLoader *loader, void* params, Resource &OutResource)
 {
     if (!name || !loader) {
         OutResource.LoaderID = INVALID::ID;
@@ -146,7 +146,7 @@ bool ResourceSystem::Load(const char *name, ResourceLoader *loader, Resource &Ou
     }
 
     OutResource.LoaderID = loader->id;
-    return loader->Load(name, OutResource);
+    return loader->Load(name, params, OutResource);
 }
 /*
 void *ResourceSystem::operator new(u64 size)

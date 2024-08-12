@@ -75,7 +75,7 @@ Material *MaterialSystem::Acquire(const char *name)
 { 
     // Загрузить конфигурацию материала из ресурса.
     Resource MaterialResource;
-    if (!ResourceSystem::Instance()->Load(name, ResourceType::Material, MaterialResource)) {
+    if (!ResourceSystem::Instance()->Load(name, ResourceType::Material, nullptr, MaterialResource)) {
         MERROR("Не удалось загрузить ресурс материала, возвращается значение nullptr.");
         return nullptr;
     }

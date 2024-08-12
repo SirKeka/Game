@@ -163,12 +163,13 @@ public:
 
     /// @brief Создает внутренние ресурсы шейдера, используя предоставленные параметры.
     /// @param shader указатель на шейдер.
+    /// @param config константная ссылка на конфигурацию шейдера.
     /// @param renderpass указатель на проход рендеринга, который будет связан с шейдером.
     /// @param StageCount общее количество этапов.
     /// @param StageFilenames массив имен файлов этапов шейдера, которые будут загружены. Должно соответствовать массиву этапов.
     /// @param stages массив этапов шейдера(ShaderStage), указывающий, какие этапы рендеринга (вершина, фрагмент и т. д.) используются в этом шейдере.
     /// @return true в случае успеха, иначе false.
-    virtual bool Load(Shader* shader, Renderpass* renderpass, u8 StageCount, const DArray<MString>& StageFilenames, const ShaderStage* stages) = 0;
+    virtual bool Load(Shader* shader, const ShaderConfig& config, Renderpass* renderpass, u8 StageCount, const DArray<MString>& StageFilenames, const ShaderStage* stages) = 0;
     /// @brief Уничтожает данный шейдер и освобождает все имеющиеся в нем ресурсы.--------------------------------------------------------------------
     /// @param shader указатель на шейдер, который нужно уничтожить.
     virtual void Unload(Shader* shader) = 0;

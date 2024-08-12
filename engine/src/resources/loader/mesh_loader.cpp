@@ -57,7 +57,7 @@ bool LoadMsmFile(FileHandle* MsmFile, DArray<GeometryConfig>& OutGeometries);
 bool WriteMsmFile(const char* path, const char* name, u32 GeometryCount, DArray<GeometryConfig>& geometries);
 bool WriteMmtFile(const char* MtlFilePath, MaterialConfig& config);
 
-bool MeshLoader::Load(const char *name, Resource &OutResource)
+bool MeshLoader::Load(const char *name, void* params, Resource &OutResource)
 {
     if (!name) {
         return false;

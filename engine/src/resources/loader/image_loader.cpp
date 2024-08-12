@@ -6,17 +6,17 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "vendor/stb_image.h"
 
-// ImageLoader::ImageLoader() : ResourceLoader(ResourceType::Image, nullptr, "textures") {}
-
-bool ImageLoader::Load(const char *name, Resource &OutResource)
+bool ImageLoader::Load(const char *name, void* params, Resource &OutResource)
 {
     if (!name) {
         return false;
     }
 
+    auto TypeParams = reinterpret_cast<ImageResourceParams*>(params);
+
     const char* FormatStr = "%s/%s/%s%s";
     const i32 RequiredChannelCount = 4;
-    stbi_set_flip_vertically_on_load(true);
+    stbi_set_flip_vertically_on_load(TypeParams->FlipY);
     char FullFilePath[512];
 
     // попробуйте разные расширения
@@ -47,20 +47,8 @@ bool ImageLoader::Load(const char *name, Resource &OutResource)
         &width,
         &height,
         &СhannelСount,
-        RequiredChannelCount);
-
-    // Проверьте причину сбоя. Если он есть, прервать выполнение, очистить память, если она выделена, вернуть false.
-    /*const char* FailReason = stbi_failure_reason();
-    if (FailReason) {
-        MERROR("Загрузчику ресурсов изображения не удалось загрузить файл '%s': %s", FullFilePath, FailReason);
-        // Устраните ошибку, чтобы следующая загрузка не завершилась неудачно.
-        stbi__err(0, 0);
-
-        if (data) {
-            stbi_image_free(data);
-        }
-        return false;
-    }*/
+        RequiredChannelCount
+    );
 
     if (!data) {
         MERROR("Загрузчику ресурсов изображения не удалось загрузить файл '%s'.", FullFilePath);
@@ -82,6 +70,7 @@ bool ImageLoader::Load(const char *name, Resource &OutResource)
 
 void ImageLoader::Unload(Resource &resource)
 {
+    stbi_image_free(reinterpret_cast<ImageResourceData*>(resource.data)->pixels);
     if (!LoaderUtils::ResourceUnload(this, resource, MemoryTag::Texture)) {
         MWARN("ImageLoader: Выгрузка вызывается со значением nullptr для себя или ресурса.");
         return;

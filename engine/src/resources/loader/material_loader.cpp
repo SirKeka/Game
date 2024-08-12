@@ -4,7 +4,7 @@
 #include "systems/resource_system.hpp"
 #include "loader_utils.hpp"
 
-bool MaterialLoader::Load(const char *name, Resource &OutResource)
+bool MaterialLoader::Load(const char *name, void* params, Resource &OutResource)
 {
     if (!name) {
         return false;
@@ -93,7 +93,7 @@ bool MaterialLoader::Load(const char *name, Resource &OutResource)
         // ЗАДАЧА: больше полей.
 
         // Очистите буфер строк.
-        MMemory::ZeroMem(LineBuf, sizeof(char) * 512);
+        MString::Zero(LineBuf);
         LineNumber++;
     }
 
