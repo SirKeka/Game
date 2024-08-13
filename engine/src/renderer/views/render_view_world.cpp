@@ -108,10 +108,7 @@ void RenderViewWorld::Resize(u32 width, u32 height)
         ProjectionMatrix = Matrix4D::MakeFrustumProjection(fov, aspect, NearClip, FarClip);
 
         for (u32 i = 0; i < RenderpassCount; ++i) {
-            passes[i]->RenderArea.x = 0;
-            passes[i]->RenderArea.y = 0;
-            passes[i]->RenderArea.z = width;
-            passes[i]->RenderArea.w = height;
+            passes[i]->RenderArea = FVec4(0, 0, width, height);
         }
     }
 }
@@ -123,7 +120,7 @@ bool RenderViewWorld::BuildPacket(void *data, Packet &OutPacket) const
         return false;
     }
 
-    Mesh::PacketData* MeshData = (Mesh::PacketData*)data;
+    auto MeshData = reinterpret_cast<Mesh::PacketData*>(data);
     
     OutPacket.view = this;
 
@@ -174,6 +171,7 @@ bool RenderViewWorld::BuildPacket(void *data, Packet &OutPacket) const
 
 bool RenderViewWorld::Render(const Packet &packet, u64 FrameNumber, u64 RenderTargetIndex) const
 {
+    auto MaterialSystemInst = MaterialSystem::Instance();
     for (u32 p = 0; p < RenderpassCount; ++p) {
         Renderpass* pass = passes[p];
         if (!Renderer::RenderpassBegin(pass, pass->targets[RenderTargetIndex])) {
@@ -188,7 +186,7 @@ bool RenderViewWorld::Render(const Packet &packet, u64 FrameNumber, u64 RenderTa
 
         // Применить глобальные переменные
         // ЗАДАЧА: Найти общий способ запроса данных, таких как окружающий цвет (который должен быть из сцены) и режим (из рендерера)
-        if (!MaterialSystem::Instance()->ApplyGlobal(ShaderID, FrameNumber, packet.ProjectionMatrix, packet.ViewMatrix, packet.AmbientColour, packet.ViewPosition, RenderMode)) {
+        if (!MaterialSystemInst->ApplyGlobal(ShaderID, FrameNumber, packet.ProjectionMatrix, packet.ViewMatrix, packet.AmbientColour, packet.ViewPosition, RenderMode)) {
             MERROR("Не удалось использовать применить глобальные переменные для шейдера материала. Не удалось отрисовать кадр.");
             return false;
         }
@@ -200,7 +198,7 @@ bool RenderViewWorld::Render(const Packet &packet, u64 FrameNumber, u64 RenderTa
             if (packet.geometries[i].gid->material) {
                 m = packet.geometries[i].gid->material;
             } else {
-                m = MaterialSystem::Instance()->GetDefaultMaterial();
+                m = MaterialSystemInst->GetDefaultMaterial();
             }
 
             // Обновите материал, если он еще не был в этом кадре. 
@@ -208,7 +206,7 @@ bool RenderViewWorld::Render(const Packet &packet, u64 FrameNumber, u64 RenderTa
             // Его все равно нужно привязать в любом случае, поэтому этот результат проверки передается на бэкэнд, 
             // который либо обновляет внутренние привязки шейдера и привязывает их, либо только привязывает их.
             bool NeedsUpdate = m->RenderFrameNumber != FrameNumber;
-            if (!MaterialSystem::Instance()->ApplyInstance(m, NeedsUpdate)) {
+            if (!MaterialSystemInst->ApplyInstance(m, NeedsUpdate)) {
                 MWARN("Не удалось применить материал '%s'. Пропуск отрисовки.", m->name);
                 continue;
             } else {
@@ -217,7 +215,7 @@ bool RenderViewWorld::Render(const Packet &packet, u64 FrameNumber, u64 RenderTa
             }
 
             // Примените локальные переменные
-            MaterialSystem::Instance()->ApplyLocal(m, packet.geometries[i].model);
+            MaterialSystemInst->ApplyLocal(m, packet.geometries[i].model);
 
             // Нарисуйте его.
             Renderer::DrawGeometry(packet.geometries[i]);
@@ -233,13 +231,13 @@ bool RenderViewWorld::Render(const Packet &packet, u64 FrameNumber, u64 RenderTa
 }
 
 static void Swap(GeometryDistance& a, GeometryDistance& b) {
-    GeometryDistance temp = a;
+    auto temp = a;
     a = b;
     b = temp;
 }
 
 static i32 Partition(GeometryDistance arr[], i32 LowIndex, i32 HighIndex, bool ascending) {
-    GeometryDistance pivot = arr[HighIndex];
+    auto pivot = arr[HighIndex];
     i32 i = (LowIndex - 1);
 
     for (i32 j = LowIndex; j <= HighIndex - 1; ++j) {

@@ -14,6 +14,8 @@ struct TextureReference {
     constexpr TextureReference(u64 ReferenceCount, u32 handle, bool AutoRelease) : ReferenceCount(ReferenceCount), handle(handle), AutoRelease(AutoRelease) {}
 };
 
+bool LoadCubeTextures(const char* name, const char TextureNames[6][TEXTURE_NAME_MAX_LENGTH], Texture* t);
+
 TextureSystem* TextureSystem::state = nullptr;
 
 TextureSystem::TextureSystem(u32 MaxTextureCount, Texture* RegisteredTextures, TextureReference* HashtableBlock) 
@@ -78,11 +80,30 @@ Texture *TextureSystem::Acquire(const char* name, bool AutoRelease)
 
     u32 id = INVALID::ID;
     // ПРИМЕЧАНИЕ: Увеличивает счетчик ссылок или создает новую запись.
-    if (!ProcessTextureReference(name, 1, AutoRelease, false, id)) {
+    if (!ProcessTextureReference(name, TextureType::_2D, 1, AutoRelease, false, id)) {
         MERROR("TextSystem::Acquire не удалось получить новый идентификатор текстуры.");
         return nullptr;
     }
     return &state->RegisteredTextures[id];
+}
+
+Texture *TextureSystem::AcquireCube(const char *name, bool AutoRelease)
+{
+    // Возвращать текстуру по умолчанию, но предупреждать об этом, так как она должна быть возвращена через GetDefaultTexture();
+    // ЗАДАЧА: Проверить по другим именам текстур по умолчанию?
+    if (MString::Comparei(name, DEFAULT_TEXTURE_NAME)) {
+        MWARN("TextureSystem::AcquireCube вызван для текстуры по умолчанию. Использовать TextureSystem::GetDefaultTexture для текстуры 'default'.");
+        return &DefaultTexture[ETexture::Default];
+    }
+
+    u32 id = INVALID::ID;
+    // ПРИМЕЧАНИЕ: Увеличивает количество ссылок или создает новую запись.
+    if (!ProcessTextureReference(name, TextureType::Cube, 1, AutoRelease, false, id)) {
+        MERROR("TextureSystem::AcquireCube не удалось получить новый идентификатор текстуры.");
+        return nullptr;
+    }
+
+    return &RegisteredTextures[id];
 }
 
 Texture *TextureSystem::AquireWriteable(const char *name, u32 width, u32 height, u8 ChannelCount, bool HasTransparency)
@@ -90,7 +111,7 @@ Texture *TextureSystem::AquireWriteable(const char *name, u32 width, u32 height,
     u32 id = INVALID::ID;
     // ПРИМЕЧАНИЕ. Обернутые текстуры никогда не выпускаются автоматически, поскольку это означает, 
     // что их ресурсы создаются и управляются где-то во внутренних компонентах средства рендеринга.
-    if (!ProcessTextureReference(name, 1, false, true, id)) {
+    if (!ProcessTextureReference(name, TextureType::_2D, 1, false, true, id)) {
         MERROR("TextureSystem::AquireWriteable не удалось получить новый идентификатор текстуры.");
         return nullptr;
     }
@@ -99,7 +120,7 @@ Texture *TextureSystem::AquireWriteable(const char *name, u32 width, u32 height,
     TextureFlagBits flags = 0;
     flags |= HasTransparency ? TextureFlag::HasTransparency : 0;
     flags |= TextureFlag::IsWriteable;
-    texture = Texture(id, width, height, ChannelCount, flags, name, nullptr);
+    texture = Texture(id, TextureType::_2D, width, height, ChannelCount, flags, name, nullptr);
     Renderer::LoadTextureWriteable(&texture);
     return &texture;
 }
@@ -113,47 +134,11 @@ void TextureSystem::Release(const char *name)
     }
     u32 id = INVALID::ID;
     // ПРИМЕЧАНИЕ: Уменьшите счетчик ссылок.
-    if (!ProcessTextureReference(name, -1, false, false, id)) {
+    if (!ProcessTextureReference(name, TextureType::_2D, -1, false, false, id)) {
         MERROR("TextureSystem::Release не удалось должным образом освободить текстуру «%s».", name);
     }
 }
-/*
-template<typename T>
-Texture *TextureSystem::WrapInternal(const char *name, u32 width, u32 height, u8 ChannelCount, bool HasTransparency, bool IsWriteable, bool RegisterTexture, T *InternalData)
-{
-    u32 id = INVALID::ID;
-    Texture* texture = nullptr;
-    if (RegisterTexture) {
-        // ПРИМЕЧАНИЕ: Обернутые текстуры никогда не выпускаются автоматически, поскольку это означает, 
-        // что их ресурсы создаются и управляются где-то во внутренних компонентах средства рендеринга.
-        if (!ProcessTextureReference(name, 1, false, true, id)) {
-            MERROR("ТекстурнойСистеме::WrapInternal не удалось получить новый идентификатор текстуры.");
-            return nullptr;
-        }
-        texture = &state->RegisteredTextures[id];
-    } else {
-        texture = new Texture();
-        MTRACE("TextureSystem::WrapInternal создала текстуру «%s», но не зарегистрировалась, что привело к выделению. Освобождение этой памяти зависит от вызывающего абонента.", name);
-    } 
-    TextureFlagBits flag = 0;
-    flag |= HasTransparency ? TextureFlag::HasTransparency : 0;
-    flag |= IsWriteable ? TextureFlag::IsWriteable : 0;
-    flag |= TextureFlag::IsWrapped;
-    *texture = Texture(id, width, height, ChannelCount, flag, name, InternalData);
-    return texture;
-}
 
-template<typename T>
-bool TextureSystem::SetInternal(Texture *texture, T *InternalData)
-{
-    if (texture) {
-        texture->Data = InternalData;
-        texture->generation++;
-        return true;
-    }
-    return false;
-}
-*/
 bool TextureSystem::Resize(Texture *texture, u32 width, u32 height, bool RegenerateInternalData)
 {
     if (texture) {
@@ -221,7 +206,7 @@ bool TextureSystem::CreateDefaultTexture()
             }
         }
     }
-    DefaultTexture[ETexture::Default] = Texture(DEFAULT_TEXTURE_NAME, TexDimension, TexDimension, 4, 0);
+    DefaultTexture[ETexture::Default] = Texture(DEFAULT_TEXTURE_NAME, TextureType::_2D, TexDimension, TexDimension, 4, 0);
     Renderer::Load(pixels, &DefaultTexture[ETexture::Default]);
 
     // Вручную установите недействительную генерацию текстуры, поскольку это текстура по умолчанию.
@@ -230,14 +215,14 @@ bool TextureSystem::CreateDefaultTexture()
     // Диффузная текстура
     u8 DiffPixels[16 * 16 * 4];
     MMemory::SetMemory(DiffPixels, 255, 16 * 16 * 4);
-    DefaultTexture[ETexture::Diffuse] = Texture(DEFAULT_DIFFUSE_TEXTURE_NAME, 16, 16, 4, 0);
+    DefaultTexture[ETexture::Diffuse] = Texture(DEFAULT_DIFFUSE_TEXTURE_NAME, TextureType::_2D, 16, 16, 4, 0);
     Renderer::Load(DiffPixels, &DefaultTexture[ETexture::Diffuse]);
     DefaultTexture[ETexture::Diffuse].generation = INVALID::ID;
 
     // Зеркальная текстура.
     // MTRACE("Создание зеркальной текстуры по умолчанию...");
     u8 SpecPixels[16 * 16 * 4]{}; // Карта спецификации по умолчанию черная (без бликов).
-    DefaultTexture[ETexture::Specular] = Texture(DEFAULT_SPECULAR_TEXTURE_NAME, 16, 16, 4, 0);
+    DefaultTexture[ETexture::Specular] = Texture(DEFAULT_SPECULAR_TEXTURE_NAME, TextureType::_2D, 16, 16, 4, 0);
     Renderer::Load(SpecPixels, &DefaultTexture[ETexture::Specular]);
     // Вручную установите недействительное поколение текстуры, поскольку это текстура по умолчанию.
     DefaultTexture[ETexture::Specular].generation = INVALID::ID;
@@ -257,7 +242,7 @@ bool TextureSystem::CreateDefaultTexture()
             NormalPixels[IndexBpp + 3] = 255;
         }
     }
-    DefaultTexture[ETexture::Normal] = Texture(DEFAULT_NORMAL_TEXTURE_NAME, 16, 16, 4, 0);
+    DefaultTexture[ETexture::Normal] = Texture(DEFAULT_NORMAL_TEXTURE_NAME, TextureType::_2D, 16, 16, 4, 0);
     Renderer::Load(NormalPixels, &DefaultTexture[ETexture::Normal]);
     DefaultTexture[ETexture::Normal].generation = INVALID::ID;
 
@@ -323,7 +308,7 @@ bool TextureSystem::LoadTexture(const char* TextureName, Texture *t)
 
 }
 
-bool TextureSystem::ProcessTextureReference(const char *name, i8 ReferenceDiff, bool AutoRelease, bool SkipLoad, u32 &OutTextureId)
+bool TextureSystem::ProcessTextureReference(const char *name, TextureType type, i8 ReferenceDiff, bool AutoRelease, bool SkipLoad, u32 &OutTextureId)
 {
     OutTextureId = INVALID::ID;
     if (state) {
@@ -392,16 +377,33 @@ bool TextureSystem::ProcessTextureReference(const char *name, i8 ReferenceDiff, 
                         return false;
                     } else {
                         Texture* texture = &state->RegisteredTextures[ref.handle];
+                        texture->type = type;
                         // Создайте новую текстуру.
                         if (SkipLoad) {
                             // MTRACE("Загрузка текстуры «%s» пропущена. Это ожидаемое поведение.");
                         } else {
-                            if (!LoadTexture(name, texture)) {
-                                OutTextureId = INVALID::ID;
-                                MERROR("Не удалось загрузить текстуру «%s».", name);
-                                return false;
+                            if (type == TextureType::Cube) {
+                                char TextureNames[6][TEXTURE_NAME_MAX_LENGTH];
+                                // +X,-X,+Y,-Y,+Z,-Z в пространстве _cubemap_, которое является LH y-down
+                                MString::Format(TextureNames[0], "%s_r", name);  // Правая текстура
+                                MString::Format(TextureNames[1], "%s_l", name);  // Левая текстура
+                                MString::Format(TextureNames[2], "%s_u", name);  // Верхняя текстура
+                                MString::Format(TextureNames[3], "%s_d", name);  // Нижняя текстура
+                                MString::Format(TextureNames[4], "%s_f", name);  // Передняя текстура
+                                MString::Format(TextureNames[5], "%s_b", name);  // Задняя текстура
+                                if (!LoadCubeTextures(name, TextureNames, t)) {
+                                    OutTextureId = INVALID::ID;
+                                    MERROR("Не удалось загрузить текстуру куба «%s».", name);
+                                    return false;
+                                }
+                            } else {
+                                if (!LoadTexture(name, texture)) {
+                                    OutTextureId = INVALID::ID;
+                                    MERROR("Не удалось загрузить текстуру «%s».", name);
+                                    return false;
+                                }
+                                texture->id = ref.handle;
                             }
-                            texture->id = ref.handle;
                         }
                         // MTRACE("Текстура «%s» еще не существует. Создано, и ref_count теперь равен %i.", name, ref.ReferenceCount);
                     }
@@ -423,4 +425,58 @@ bool TextureSystem::ProcessTextureReference(const char *name, i8 ReferenceDiff, 
 
     MERROR("TextureSystem::ProcessTextureReference вызывается перед инициализацией системы текстур.");
     return false;
+}
+
+bool LoadCubeTextures(const char *name, const char TextureNames[6][TEXTURE_NAME_MAX_LENGTH], Texture *t)
+{
+    u8* pixels = nullptr;
+    u64 ImageSize = 0;
+    auto ResourceSystemInst = ResourceSystem::Instance();
+    for (u8 i = 0; i < 6; ++i) {
+        ImageResourceParams params { false };
+
+        Resource ImgResource;
+        if (!ResourceSystemInst->Load(TextureNames[i], ResourceType::Image, &params, ImgResource)) {
+            MERROR("LoadCubeTextures() - Не удалось загрузить ресурс изображения для текстуры «%s»", TextureNames[i]);
+            return false;
+        }
+
+        auto ResourceData = reinterpret_cast<ImageResourceData*>(ImgResource.data);
+        if (!pixels) {
+            t->width = ResourceData->width;
+            t->height = ResourceData->height;
+            t->ChannelCount = ResourceData->ChannelCount;
+            t->flags = 0;
+            t->generation = 0;
+            // Сделайте копию имени.
+            MString::nCopy(t->name, name, TEXTURE_NAME_MAX_LENGTH);
+
+            ImageSize = t->width * t->height * t->ChannelCount;
+            // ПРИМЕЧАНИЕ: в кубических картах прозрачность не нужна, поэтому ее не проверяем.
+
+            pixels = MMemory::TAllocate(MemoryTag::Array, ImageSize * 6);
+        } else {
+            // Убедитесь, что все текстуры имеют одинаковый размер.
+            if (t->width != ResourceData->width || t->height != ResourceData->height || t->channel_count != ResourceData->channel_count) {
+                MERROR("LoadCubeTextures - Все текстуры должны иметь одинаковое разрешение и битовую глубину.");
+                MMemory::Free(pixels, sizeof(u8) * ImageSize * 6, MemoryTag::Array);
+                pixels = 0;
+                return false;
+            }
+        }
+
+        // Копировать в соответствующую часть массива.
+        MMemory::CopyMem(pixels + ImageSize * i, ResourceData->pixels, ImageSize);
+
+        // Очистить данные.
+        ResourceSystemInst->Unload(ImgResource);
+    }
+
+    // Получить внутренние ресурсы текстур и загрузить их в графический процессор.
+    Renderer::Load(pixels, t);
+
+    MMemory::Free(pixels, sizeof(u8) * ImageSize * 6, MemoryTag::Array);
+    pixels = 0;
+
+    return true;
 }

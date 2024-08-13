@@ -49,7 +49,11 @@ struct VulkanRenderpass
         VkAttachmentDescription ColorAttachment;
         ColorAttachment.format = VkAPI->swapchain.ImageFormat.format; // ЗАДАЧА: настроить
         ColorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-        ColorAttachment.loadOp = DoClearColour ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
+        if (HasPrevPass) {
+            ColorAttachment.loadOp = DoClearColour ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
+        } else {
+            ColorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        }
         ColorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
         ColorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
         ColorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;

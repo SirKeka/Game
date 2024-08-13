@@ -1,5 +1,7 @@
 #pragma once
 #include "render_view.hpp"
+#include "systems/shader_system.hpp"
+#include "systems/camera_system.hpp"
 
 class RenderViewSkybox : public RenderView
 {
@@ -16,12 +18,10 @@ private:
     u16 CubeMapLocation;
 public:
     constexpr RenderViewSkybox() : RenderView(), ShaderID(), fov(), NearClip(), FarClip(), ProjectionMatrix(), WorldCamera(nullptr), /*locations(),*/ ProjectionLocation(), ViewLocation(), CubeMapLocation() {}
-    constexpr RenderViewSkybox(u16 id, MString& name, KnownType type, u8 RenderpassCount, const char* CustomShaderName) 
-    : RenderView(id, name, type, RenderpassCount, CustomShaderName),  {}
+    RenderViewSkybox(u16 id, MString& name, KnownType type, u8 RenderpassCount, const char* CustomShaderName);
     ~RenderViewSkybox();
 
-    //void render_view_skybox_on_destroy(struct render_view* self);
     void Resize(u32 width, u32 height) override;
-    bool BuildPacket(void* data, Packet& OutPacket) override;
-    bool Render(const Packet& packet, u64 FrameNumber, u64 RenderTargetIndex) override;
+    bool BuildPacket(void* data, Packet& OutPacket) const override;
+    bool Render(const Packet& packet, u64 FrameNumber, u64 RenderTargetIndex) const override;
 };

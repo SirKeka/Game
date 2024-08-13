@@ -23,6 +23,7 @@ struct ImageResourceData {
 /// @brief Параметры, используемые при загрузке изображения.
 struct ImageResourceParams {
     bool FlipY; // Указывает, следует ли переворачивать изображение по оси Y при загрузке.
+    constexpr ImageResourceParams(bool FlipY) : FlipY(FlipY) {}
 };
 
 /// @brief Определяет режим отсечения граней во время рендеринга.
@@ -87,14 +88,14 @@ public:
 public:
     constexpr Texture() 
     : id(INVALID::ID), type(), width(0), height(0), ChannelCount(0), flags(), generation(INVALID::ID), name(), Data(nullptr) {}
-    constexpr Texture(u32 id, u32 width, u32 height, u8 ChannelCount, TextureFlagBits flags, const char* name, VulkanImage* Data)
-    : id(id), type(), width(width), height(height), ChannelCount(ChannelCount), flags(flags), generation(INVALID::ID), name(), Data(Data) {
+    constexpr Texture(u32 id, TextureType type, u32 width, u32 height, u8 ChannelCount, TextureFlagBits flags, const char* name, VulkanImage* Data)
+    : id(id), type(type), width(width), height(height), ChannelCount(ChannelCount), flags(flags), generation(INVALID::ID), name(), Data(Data) {
         MString::nCopy(this->name, name, TEXTURE_NAME_MAX_LENGTH);
     }
-    constexpr Texture(const char* name, i32 width, i32 height, i32 ChannelCount, TextureFlagBits flags)
+    constexpr Texture(const char* name, TextureType type, i32 width, i32 height, i32 ChannelCount, TextureFlagBits flags)
     :
         id(), 
-        type(),
+        type(type),
         width(width), 
         height(height), 
         ChannelCount(ChannelCount), 

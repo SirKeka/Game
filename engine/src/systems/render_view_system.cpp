@@ -6,6 +6,7 @@
 // ЗАДАЧА: временно - создайте фабрику и зарегистрируйтесь.
 #include "renderer/views/render_view_world.hpp"
 #include "renderer/views/render_view_ui.hpp"
+#include "renderer/views/render_view_skybox.hpp"
 
 RenderViewSystem* RenderViewSystem::state = nullptr;
 
@@ -89,6 +90,12 @@ bool RenderViewSystem::Create(RenderView::Config &config)
         if (!(RegisteredViews[id] = new RenderViewUI(id, config.name, config.type, config.PassCount, config.CustomShaderName))) {
             MERROR("Не удалось создать представление.");
         }
+        break;
+    case RenderView::KnownTypeSkybox:
+        if (!(RegisteredViews[id] = new RenderViewSkybox(id, config.name, config.type, config.PassCount, config.CustomShaderName))) {
+            MERROR("Не удалось создать представление.");
+        }
+        break;
     default:
         break;
     }
@@ -146,6 +153,6 @@ bool RenderViewSystem::OnRender(const RenderView *view, const RenderView::Packet
         return view->Render(packet, FrameNumber, RenderTargetIndex);
     }
 
-    MERROR("RenderViewSystem::OnRender требует действительных указателей на представление и пакет.");
+    MERROR("RenderViewSystem::Render требует действительный указатель на данные.");
     return false;
 }

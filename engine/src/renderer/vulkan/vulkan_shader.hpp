@@ -98,7 +98,7 @@ struct VulkanShader {
     u8 GlobalUniformCount;                                              // Количество глобальных не-семплерных униформ.
     u8 GlobalUniformSamplerCount;                                       // Количество глобальных семплерных униформ.
     u8 InstanceUniformCount;                                            // Количество экземплярных не-семплерных униформ.
-    u8 InstanceUniformsamplerCount;                                     // Количество экземплярных семплерных униформ.
+    u8 InstanceUniformSamplerCount;                                     // Количество экземплярных семплерных униформ.
     u8 LocalUniformCount;                                               // Количество локальных не-семплерных униформ.    
 
     VulkanShader();

@@ -29,12 +29,12 @@ public:
 	/// @param v вектор
 	Matrix4D (const Quaternion &q, const FVec3 &center);
 
-	f32& operator ()(int i, int j);
-	const f32& operator ()(int i, int j) const;
-	f32& operator ()(int i);
-	const f32& operator ()(int i) const;
-	FVec4& operator [](int j);
-	const FVec4& operator [](int j) const;
+	f32& operator ()(u8 i, u8 j);
+	const f32& operator ()(u8 i, u8 j) const;
+	f32& operator ()(u8 i);
+	const f32& operator ()(u8 i) const;
+	FVec4& operator [](u8 j);
+	const FVec4& operator [](u8 j) const;
 	Matrix4D& operator=(const Matrix4D& m);
 	Matrix4D& operator*=(const Matrix4D& m);
 	/// @brief Умножение матриц 4x4

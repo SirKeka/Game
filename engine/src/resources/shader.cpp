@@ -5,9 +5,7 @@
 constexpr Shader::Shader()
     :
     id(), 
-    name(), 
-    UseInstances(false), 
-    UseLocals(false), 
+    name(),  
     RequiredUboAlignment(), 
     GlobalUboSize(), 
     GlobalUboStride(), 
@@ -37,8 +35,6 @@ Shader::Shader(u32 id, const ShaderConfig *config)
     : 
     id(id), 
     name(config->name), 
-    UseInstances(config->UseInstances), 
-    UseLocals(config->UseLocal), 
     RequiredUboAlignment(), 
     GlobalUboSize(), 
     GlobalUboStride(), 
@@ -86,8 +82,6 @@ bool Shader::Create(u32 id, const ShaderConfig *config)
     }
     this->state = ShaderState::NotCreated;
     this->name = config->name;
-    this->UseInstances = config->UseInstances;
-    this->UseLocals = config->UseLocal;
     this->PushConstantRangeCount = 0;
     MMemory::ZeroMem(this->PushConstantRanges, sizeof(Range) * 32);
     this->BoundInstanceID = INVALID::ID;
@@ -194,10 +188,6 @@ bool Shader::UniformAdd(const MString &UniformName, u32 size, ShaderUniformType 
                                                   : UboSize;
         entry.size = IsSampler ? 0 : size;
     } else {
-        if (entry.scope == ShaderScope::Local && !UseLocals) {
-            MERROR("Shader::UniformAdd: Невозможно добавить локальную форму для шейдера, который не поддерживает локальные параметры.");
-            return false;
-        }
         // Вставьте новый выровненный диапазон (выровняйте по 4, как того требует спецификация Vulkan).
         entry.SetIndex = INVALID::U8ID;
         Range range{PushConstantSize, size, 4};

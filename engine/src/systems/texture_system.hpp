@@ -46,6 +46,25 @@ public:
     /// @param AutoRelease Указывает, должна ли текстура автоматически освобождаться, когда ее счетчик ссылок равен 0. Вступает в силу только при первом получении текстуры.
     /// @return Указатель на загруженную текстуру. Может быть указателем на текстуру по умолчанию, если она не найдена.
     Texture* Acquire(const char* name, bool AutoRelease);
+    /// @brief Пытается получить текстуру кубической карты с указанным именем. 
+    /// Если она еще не загружена, это запускает ее загрузку. 
+    /// Если текстура не найдена, возвращается указатель на текстуру по умолчанию. 
+    /// Если текстура _найдена_ и загружена, ее счетчик ссылок увеличивается. 
+    /// Требуются текстуры с именем в качестве базы, по одной для каждой стороны куба, в следующем порядке:
+    /// - name_f Front
+    /// - name_b Back
+    /// - name_u Up
+    /// - name_d Down
+    /// - name_r Right
+    /// - name_l Left
+    ///
+    /// Например, «skybox_f.png», «skybox_b.png» и т. д., где имя — «skybox».
+    ///
+    /// @param name имя текстуры для поиска. Используется как базовая строка для фактических имен текстур.
+    /// @param AutoRelease указывает, должна ли текстура автоматически освобождаться, когда ее счетчик ссылок равен 0.
+    /// Вступает в силу только при первом получении текстуры.
+    /// @return Указатель на загруженную текстуру. Может быть указателем на текстуру по умолчанию, если она не найдена.
+    Texture* AcquireCube(const char* name, bool AutoRelease);
     /// @brief Пытается получить записываемую текстуру с заданным именем. 
     /// Это не указывает на попытку загрузки файла текстуры и не пытается его загрузить. Также увеличивает счетчик ссылок. 
     /// ПРИМЕЧАНИЕ: Текстуры, доступные для записи, не выгружвются автоматически.
@@ -79,7 +98,7 @@ public:
         if (RegisterTexture) {
             // ПРИМЕЧАНИЕ: Обернутые текстуры никогда не выпускаются автоматически, поскольку это означает, 
             // что их ресурсы создаются и управляются где-то во внутренних компонентах средства рендеринга.
-            if (!ProcessTextureReference(name, 1, false, true, id)) {
+            if (!ProcessTextureReference(name, TextureType::_2D, 1, false, true, id)) {
                 MERROR("ТекстурнойСистеме::WrapInternal не удалось получить новый идентификатор текстуры.");
                 return nullptr;
             }
@@ -92,7 +111,7 @@ public:
         flag |= HasTransparency ? TextureFlag::HasTransparency : 0;
         flag |= IsWriteable ? TextureFlag::IsWriteable : 0;
         flag |= TextureFlag::IsWrapped;
-        *texture = Texture(id, width, height, ChannelCount, flag, name, InternalData);
+        *texture = Texture(id, TextureType::_2D, width, height, ChannelCount, flag, name, InternalData);
         return texture;
     }
     /// @brief Устанавливает внутренние данные текстуры. Полезно, например, для замены внутренних данных внутри средства рендеринга для обернутых текстур.
@@ -131,7 +150,7 @@ private:
     bool CreateDefaultTexture();
     void DestroyDefaultTexture();
     static bool LoadTexture(const char* TextureName, Texture* t);
-    bool ProcessTextureReference(const char *name, i8 ReferenceDiff, bool AutoRelease, bool SkipLoad, u32 &OutTextureId);
+    bool ProcessTextureReference(const char *name, TextureType type, i8 ReferenceDiff, bool AutoRelease, bool SkipLoad, u32 &OutTextureId);
 };
 
 

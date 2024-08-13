@@ -43,10 +43,7 @@ void RenderViewUI::Resize(u32 width, u32 height)
         ProjectionMatrix = Matrix4D::MakeOrthographicProjection(0.0f, (f32)this->width, (f32)this->height, 0.0f, NearClip, FarClip);
 
         for (u32 i = 0; i < RenderpassCount; ++i) {
-            passes[i]->RenderArea.x = 0;
-            passes[i]->RenderArea.y = 0;
-            passes[i]->RenderArea.z = width;
-            passes[i]->RenderArea.w = height;
+            passes[i]->RenderArea = FVec4(0, 0, width, height);
         }
     }
 }
@@ -80,7 +77,7 @@ bool RenderViewUI::BuildPacket(void *data, Packet &OutPacket) const
 
 bool RenderViewUI::Render(const Packet &packet, u64 FrameNumber, u64 RenderTargetIndex) const
 {
-
+    MaterialSystem* MaterialSystemInst = MaterialSystem::Instance();
     for (u32 p = 0; p < RenderpassCount; ++p) {
         Renderpass* pass = passes[p];
         if (!Renderer::RenderpassBegin(pass, pass->targets[RenderTargetIndex])) {
@@ -94,7 +91,7 @@ bool RenderViewUI::Render(const Packet &packet, u64 FrameNumber, u64 RenderTarge
         }
 
         // Применить глобальные переменные
-        if (!MaterialSystem::Instance()->ApplyGlobal(ShaderID, FrameNumber, packet.ProjectionMatrix, packet.ViewMatrix)) {
+        if (!MaterialSystemInst->ApplyGlobal(ShaderID, FrameNumber, packet.ProjectionMatrix, packet.ViewMatrix)) {
             MERROR("Не удалось использовать применение глобальных переменных для шейдера материала. Не удалось отрисовать кадр.");
             return false;
         }
@@ -106,7 +103,7 @@ bool RenderViewUI::Render(const Packet &packet, u64 FrameNumber, u64 RenderTarge
             if (packet.geometries[i].gid->material) {
                 m = packet.geometries[i].gid->material;
             } else {
-                m = MaterialSystem::Instance()->GetDefaultMaterial();
+                m = MaterialSystemInst->GetDefaultMaterial();
             }
 
             // Обновить материал, если он еще не был в этом кадре. 
@@ -115,7 +112,7 @@ bool RenderViewUI::Render(const Packet &packet, u64 FrameNumber, u64 RenderTarge
             // поэтому результат этой проверки передается на бэкэнд, 
             // который либо обновляет внутренние привязки шейдера и привязывает их, либо только привязывает их.
             bool NeedsUpdate = m->RenderFrameNumber != FrameNumber;
-            if (!MaterialSystem::Instance()->ApplyInstance(m, NeedsUpdate)) {
+            if (!MaterialSystemInst->ApplyInstance(m, NeedsUpdate)) {
                 MWARN("Не удалось применить материал '%s'. Пропуск рисования.", m->name);
                 continue;
             } else {
@@ -124,7 +121,7 @@ bool RenderViewUI::Render(const Packet &packet, u64 FrameNumber, u64 RenderTarge
             }
 
             // Примените локальные
-            MaterialSystem::Instance()->ApplyLocal(m, packet.geometries[i].model);
+            MaterialSystemInst->ApplyLocal(m, packet.geometries[i].model);
 
             // Нарисуйте его.
             Renderer::DrawGeometry(packet.geometries[i]);

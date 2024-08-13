@@ -103,7 +103,7 @@ bool ShaderSystem::Create(const ShaderConfig *config)
         return false;
     }
     
-    if (!Renderer::Load(OutShader, renderpass, config->StageCount, config->StageFilenames, config->stages.Data())) {
+    if (!Renderer::Load(OutShader, config, renderpass, config->StageCount, config->StageFilenames, config->stages.Data())) {
         MERROR("Ошибка создания шейдера.");
         return false;
     }
@@ -258,11 +258,6 @@ bool ShaderSystem::BindInstance(u32 InstanceID)
 
 bool ShaderSystem::AddSampler(Shader *shader, const ShaderUniformConfig &config)
 {
-    if (config.scope == ShaderScope::Instance && !shader->UseInstances) {
-        MERROR("Shader::AddSampler невозможно добавить сэмплер экземпляра для шейдера, который не использует экземпляры.");
-        return false;
-    }
-
     // Образцы нельзя использовать для push-констант.
     if (config.scope == ShaderScope::Local) {
         MERROR("Shader::AddSampler невозможно добавить сэмплер в локальной области.");

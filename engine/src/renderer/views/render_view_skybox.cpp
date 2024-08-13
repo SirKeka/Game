@@ -5,6 +5,22 @@
 #include "systems/shader_system.hpp"
 #include "resources/skybox.hpp"
 
+RenderViewSkybox::RenderViewSkybox(u16 id, MString &name, KnownType type, u8 RenderpassCount, const char *CustomShaderName)
+: RenderView(id, name, type, RenderpassCount, CustomShaderName), 
+ShaderID(ShaderSystem::GetInstance()->GetID(CustomShaderName ? CustomShaderName : "Shader.Builtin.Skybox")),
+fov(Math::DegToRad(45.F)), NearClip(0.1F), FarClip(1000.F), 
+ProjectionMatrix(Matrix4D::MakeFrustumProjection(fov, 1280 / 720.F, NearClip, FarClip)), 
+WorldCamera(CameraSystem::Instance()->GetDefault()), 
+// locations(),
+ProjectionLocation(), ViewLocation(), CubeMapLocation() 
+{
+    ShaderSystem* ShaderSystemInst = ShaderSystem::GetInstance();
+    Shader* SkyboxShader = ShaderSystemInst->GetShader(CustomShaderName ? CustomShaderName : "Shader.Builtin.Skybox");
+    ProjectionLocation = ShaderSystemInst->UniformIndex(SkyboxShader, "projection");
+    ViewLocation = ShaderSystemInst->UniformIndex(SkyboxShader, "view");
+    CubeMapLocation = ShaderSystemInst->UniformIndex(SkyboxShader, "cube_texture");
+}
+
 RenderViewSkybox::~RenderViewSkybox()
 {
 }
@@ -25,7 +41,7 @@ void RenderViewSkybox::Resize(u32 width, u32 height)
     }
 }
 
-bool RenderViewSkybox::BuildPacket(void *data, Packet &OutPacket)
+bool RenderViewSkybox::BuildPacket(void *data, Packet &OutPacket) const
 {
     SkyboxPacketData* SkyboxData = reinterpret_cast<SkyboxPacketData*>(data);
 
@@ -41,10 +57,11 @@ bool RenderViewSkybox::BuildPacket(void *data, Packet &OutPacket)
     return true;
 }
 
-bool RenderViewSkybox::Render(const Packet &packet, u64 FrameNumber, u64 RenderTargetIndex)
+bool RenderViewSkybox::Render(const Packet &packet, u64 FrameNumber, u64 RenderTargetIndex) const
 {
 
     SkyboxPacketData* SkyboxData = reinterpret_cast<SkyboxPacketData*>(packet.ExtendedData);
+    ShaderSystem* ShaderSystemInst = ShaderSystem::GetInstance();
 
     for (u32 p = 0; p < RenderpassCount; ++p) {
         Renderpass* pass = passes[p];
@@ -53,45 +70,43 @@ bool RenderViewSkybox::Render(const Packet &packet, u64 FrameNumber, u64 RenderT
             return false;
         }
 
-        if (!ShaderSystem::GetInstance()->Use(ShaderID)) {
+        if (!ShaderSystemInst->Use(ShaderID)) {
             MERROR("Не удалось использовать шейдер скайбокса. Не удалось отрисовать кадр.");
             return false;
         }
 
         // Получить матрицу вида, но обнулить позицию, чтобы скайбокс остался на экране.
         Matrix4D ViewMatrix = WorldCamera->GetView();
-        ViewMatrix.data[12] = 0.0f;
-        ViewMatrix.data[13] = 0.0f;
-        ViewMatrix.data[14] = 0.0f;
+        ViewMatrix(12) = ViewMatrix(13) = ViewMatrix(14) = 0.f;
 
         // Применить глобальные переменные
         // TODO: Это ужасно. Нужно привязать по идентификатору.
-        ShaderSystem::GetInstance()->GetShader(ShaderID)->BindGlobals();
-        if (!ShaderSystem::GetInstance()->UniformSet(ProjectionLocation, &packet.ProjectionMatrix)) {
+        ShaderSystemInst->GetShader(ShaderID)->BindGlobals();
+        if (!ShaderSystemInst->UniformSet(ProjectionLocation, &packet.ProjectionMatrix)) {
             MERROR("Не удалось применить единообразие проекции скайбокса.");
             return false;
         }
-        if (!ShaderSystem::GetInstance()->UniformSet(ViewLocation, &ViewMatrix)) {
+        if (!ShaderSystemInst->UniformSet(ViewLocation, &ViewMatrix)) {
             MERROR("Не удалось применить единообразие вида скайбокса.");
             return false;
         }
-        ShaderSystem::GetInstance()->ApplyGlobal();
+        ShaderSystemInst->ApplyGlobal();
 
         // Экземпляр
-        ShaderSystem::GetInstance()->BindInstance(SkyboxData->sb->InstanceID);
-        if (!ShaderSystem::GetInstance()->UniformSet(CubeMapLocation, &SkyboxData->sb->cubemap)) {
+        ShaderSystemInst->BindInstance(SkyboxData->sb->InstanceID);
+        if (!ShaderSystemInst->UniformSet(CubeMapLocation, &SkyboxData->sb->cubemap)) {
             MERROR("Не удалось применить единообразие кубической карты скайбокса.");
             return false;
         }
         bool NeedsUpdate = SkyboxData->sb->RenderFrameNumber != FrameNumber;
-        ShaderSystem::GetInstance()->ApplyInstance(NeedsUpdate);
+        ShaderSystemInst->ApplyInstance(NeedsUpdate);
 
         // Синхронизировать номер кадра.
         SkyboxData->sb->RenderFrameNumber = FrameNumber;
 
         // Нарисовать его.
         GeometryRenderData RenderData = {};
-        RenderData.geometry = SkyboxData->sb->g;
+        RenderData.gid = SkyboxData->sb->g;
         Renderer::DrawGeometry(RenderData);
 
         if (!Renderer::RenderpassEnd(pass)) {

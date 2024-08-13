@@ -54,38 +54,38 @@ Matrix4D::Matrix4D(const Quaternion &q, const FVec3 &center)
 	n[3][0] = 0.0f; n[3][1] = 0.0f; n[3][2] = 0.0f; n[3][3] = 1.0f;
 }
 
-f32 &Matrix4D::operator()(int i, int j)
+f32 &Matrix4D::operator()(u8 i, u8 j)
 {
 	if ((i < 1 || i > 4)) MERROR("Неверный индекс i! Должен быть от 1 до 4");
 	if ((j < 1 || i > 4)) MERROR("Неверный индекс j! Должен быть от 1 до 4");
 	return n[i - 1][j - 1];
 }
 
-const f32& Matrix4D::operator()(int i, int j) const
+const f32& Matrix4D::operator()(u8 i, u8 j) const
 {
 	if ((i < 1 || i > 4)) MERROR("Неверный индекс i! Должен быть от 1 до 4");
 	if ((j < 1 || i > 4)) MERROR("Неверный индекс j! Должен быть от 1 до 4");
 	return n[i - 1][j - 1];
 }
 
-f32 &Matrix4D::operator()(int i)
+f32 &Matrix4D::operator()(u8 i)
 {
     if ((i < 0 || i > 15)) MERROR("Неверный индекс i! Должен быть от 0 до 15");
 	return data[i];
 }
 
-const f32 &Matrix4D::operator()(int i) const
+const f32 &Matrix4D::operator()(u8 i) const
 {
     if ((i < 0 || i > 15)) MERROR("Неверный индекс i! Должен быть от 0 до 15");
 	return data[i];
 }
 
-FVec4& Matrix4D::operator[](int j)
+FVec4& Matrix4D::operator[](u8 j)
 {
 	return *reinterpret_cast<FVec4*>(n[j]);
 }
 
-const FVec4& Matrix4D::operator[](int j) const
+const FVec4& Matrix4D::operator[](u8 j) const
 {
 	return *reinterpret_cast<const FVec4*>(n[j]);
 }

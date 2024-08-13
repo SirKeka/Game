@@ -19,19 +19,21 @@ enum class ShaderStage {
 };
 
 /// @brief Доступные типы атрибутов.
-enum class ShaderAttributeType {
-    Float32   =  0U,
-    Float32_2 =  1U,
-    Float32_3 =  2U,
-    Float32_4 =  3U,
-    Matrix4   =  4U,
-    Int8      =  5U,
-    UInt8     =  6U,
-    Int16     =  7U,
-    UInt16    =  8U,
-    Int32     =  9U,
-    UInt32    = 10U
-};
+namespace ShaderAttributeType {
+    enum ShaderAttributeType {
+        Float32   =  0U,
+        Float32_2 =  1U,
+        Float32_3 =  2U,
+        Float32_4 =  3U,
+        Matrix4   =  4U,
+        Int8      =  5U,
+        UInt8     =  6U,
+        Int16     =  7U,
+        UInt16    =  8U,
+        Int32     =  9U,
+        UInt32    = 10U
+    };
+}
 
 /// @brief Доступные виды униформы.
 enum class ShaderUniformType {

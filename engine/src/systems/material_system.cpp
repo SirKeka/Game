@@ -72,10 +72,11 @@ void MaterialSystem::Shutdown()
 }
 
 Material *MaterialSystem::Acquire(const char *name)
-{ 
+{
+    auto ResourceSystemInst = ResourceSystem::Instance();
     // Загрузить конфигурацию материала из ресурса.
     Resource MaterialResource;
-    if (!ResourceSystem::Instance()->Load(name, ResourceType::Material, nullptr, MaterialResource)) {
+    if (!ResourceSystemInst->Load(name, ResourceType::Material, nullptr, MaterialResource)) {
         MERROR("Не удалось загрузить ресурс материала, возвращается значение nullptr.");
         return nullptr;
     }
@@ -86,7 +87,7 @@ Material *MaterialSystem::Acquire(const char *name)
     }
 
     // Clean up
-    ResourceSystem::Instance()->Unload(MaterialResource);
+    ResourceSystemInst->Unload(MaterialResource);
 
     if (!m) {
         MERROR("Не удалось загрузить ресурс материала, возвращается значение nullptr.");
@@ -133,29 +134,30 @@ Material *MaterialSystem::Acquire(const MaterialConfig &config)
                 return nullptr;
             }
 
+            auto ShaderSystemInst = ShaderSystem::GetInstance();
             // Получите единые индексы.
-            Shader* s = ShaderSystem::GetInstance()->GetShader(m->ShaderID);
+            Shader* s = ShaderSystemInst->GetShader(m->ShaderID);
             // Сохраните местоположения известных типов для быстрого поиска.
             if (MaterialShaderID == INVALID::ID && config.ShaderName == BUILTIN_SHADER_NAME_MATERIAL) {
-                MaterialShaderID                    = s->id;
-                MaterialLocations.projection        = ShaderSystem::GetInstance()->UniformIndex(s, "projection");
-                MaterialLocations.view              = ShaderSystem::GetInstance()->UniformIndex(s, "view");
-                MaterialLocations.AmbientColour     = ShaderSystem::GetInstance()->UniformIndex(s, "ambient_colour");
-                MaterialLocations.ViewPosition      = ShaderSystem::GetInstance()->UniformIndex(s, "view_position");
-                MaterialLocations.DiffuseColour     = ShaderSystem::GetInstance()->UniformIndex(s, "diffuse_colour");
-                MaterialLocations.DiffuseTexture    = ShaderSystem::GetInstance()->UniformIndex(s, "diffuse_texture");
-                MaterialLocations.SpecularTexture   = ShaderSystem::GetInstance()->UniformIndex(s, "specular_texture");
-                MaterialLocations.NormalTexture     = ShaderSystem::GetInstance()->UniformIndex(s, "normal_texture");
-                MaterialLocations.specular          = ShaderSystem::GetInstance()->UniformIndex(s, "specular");
-                MaterialLocations.model             = ShaderSystem::GetInstance()->UniformIndex(s, "model");
-                MaterialLocations.RenderMode        = ShaderSystem::GetInstance()->UniformIndex(s, "mode");
+                MaterialShaderID                  = s->id;
+                MaterialLocations.projection      = ShaderSystemInst->UniformIndex(s, "projection");
+                MaterialLocations.view            = ShaderSystemInst->UniformIndex(s, "view");
+                MaterialLocations.AmbientColour   = ShaderSystemInst->UniformIndex(s, "ambient_colour");
+                MaterialLocations.ViewPosition    = ShaderSystemInst->UniformIndex(s, "view_position");
+                MaterialLocations.DiffuseColour   = ShaderSystemInst->UniformIndex(s, "diffuse_colour");
+                MaterialLocations.DiffuseTexture  = ShaderSystemInst->UniformIndex(s, "diffuse_texture");
+                MaterialLocations.SpecularTexture = ShaderSystemInst->UniformIndex(s, "specular_texture");
+                MaterialLocations.NormalTexture   = ShaderSystemInst->UniformIndex(s, "normal_texture");
+                MaterialLocations.specular        = ShaderSystemInst->UniformIndex(s, "specular");
+                MaterialLocations.model           = ShaderSystemInst->UniformIndex(s, "model");
+                MaterialLocations.RenderMode      = ShaderSystemInst->UniformIndex(s, "mode");
             } else if (UI_ShaderID == INVALID::ID && config.ShaderName == BUILTIN_SHADER_NAME_UI) {
                 UI_ShaderID = s->id;
-                UI_Locations.projection             = ShaderSystem::GetInstance()->UniformIndex(s, "projection");
-                UI_Locations.view                   = ShaderSystem::GetInstance()->UniformIndex(s, "view");
-                UI_Locations.DiffuseColour          = ShaderSystem::GetInstance()->UniformIndex(s, "diffuse_colour");
-                UI_Locations.DiffuseTexture         = ShaderSystem::GetInstance()->UniformIndex(s, "diffuse_texture");
-                UI_Locations.model                  = ShaderSystem::GetInstance()->UniformIndex(s, "model");
+                UI_Locations.projection           = ShaderSystemInst->UniformIndex(s, "projection");
+                UI_Locations.view                 = ShaderSystemInst->UniformIndex(s, "view");
+                UI_Locations.DiffuseColour        = ShaderSystemInst->UniformIndex(s, "diffuse_colour");
+                UI_Locations.DiffuseTexture       = ShaderSystemInst->UniformIndex(s, "diffuse_texture");
+                UI_Locations.model                = ShaderSystemInst->UniformIndex(s, "model");
             }
 
             if (m->generation == INVALID::ID) {
@@ -176,7 +178,7 @@ Material *MaterialSystem::Acquire(const MaterialConfig &config)
         return &this->RegisteredMaterials[ref.handle];
     }
 
-    // ПРИМЕЧАНИЕ. Это произойдет только в том случае, если что-то пойдет не так с состоянием.
+    // ПРИМЕЧАНИЕ: Это произойдет только в том случае, если что-то пойдет не так с состоянием.
     MERROR("MaterialSystem::Acquire не удалось получить материал '%s'. Нулевой указатель будет возвращен.", config.name);
     return nullptr;
 }
@@ -224,7 +226,8 @@ void MaterialSystem::Release(const char *name)
 
 bool MaterialSystem::ApplyGlobal(u32 ShaderID, u64 RenderFrameNumber, const Matrix4D &projection, const Matrix4D &view, const FVec4& AmbientColour, const FVec4& ViewPosition, u32 RenderMode)
 {
-    Shader* shader = ShaderSystem::GetInstance()->GetShader(ShaderID);
+    auto ShaderSystemInst = ShaderSystem::GetInstance();
+    Shader* shader = ShaderSystemInst->GetShader(ShaderID);
     if (!shader) {
         return false;
     }
@@ -234,19 +237,19 @@ bool MaterialSystem::ApplyGlobal(u32 ShaderID, u64 RenderFrameNumber, const Matr
     }
     
     if (ShaderID == state->MaterialShaderID) {
-        MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->UniformSet(state->MaterialLocations.projection, &projection));
-        MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->UniformSet(state->MaterialLocations.view, &view));
-        MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->UniformSet(state->MaterialLocations.AmbientColour, &AmbientColour));
-        MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->UniformSet(state->MaterialLocations.ViewPosition, &ViewPosition));
-        MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->UniformSet(state->MaterialLocations.RenderMode, &RenderMode));
+        MATERIAL_APPLY_OR_FAIL(ShaderSystemInst->UniformSet(state->MaterialLocations.projection, &projection));
+        MATERIAL_APPLY_OR_FAIL(ShaderSystemInst->UniformSet(state->MaterialLocations.view, &view));
+        MATERIAL_APPLY_OR_FAIL(ShaderSystemInst->UniformSet(state->MaterialLocations.AmbientColour, &AmbientColour));
+        MATERIAL_APPLY_OR_FAIL(ShaderSystemInst->UniformSet(state->MaterialLocations.ViewPosition, &ViewPosition));
+        MATERIAL_APPLY_OR_FAIL(ShaderSystemInst->UniformSet(state->MaterialLocations.RenderMode, &RenderMode));
     } else if (ShaderID == state->UI_ShaderID) {
-        MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->UniformSet(state->UI_Locations.projection, &projection));
-        MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->UniformSet(state->UI_Locations.view, &view));
+        MATERIAL_APPLY_OR_FAIL(ShaderSystemInst->UniformSet(state->UI_Locations.projection, &projection));
+        MATERIAL_APPLY_OR_FAIL(ShaderSystemInst->UniformSet(state->UI_Locations.view, &view));
     } else {
         MERROR("MaterialSystem::ApplyGlobal(): Неизвестный идентификатор шейдера '%d' ", ShaderID);
         return false;
     }
-    MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->ApplyGlobal());
+    MATERIAL_APPLY_OR_FAIL(ShaderSystemInst->ApplyGlobal());
     // Синхронизация номера кадра
     shader->RenderFrameNumber = RenderFrameNumber;
     return true;
@@ -254,26 +257,27 @@ bool MaterialSystem::ApplyGlobal(u32 ShaderID, u64 RenderFrameNumber, const Matr
 
 bool MaterialSystem::ApplyInstance(Material *material, bool NeedsUpdate)
 {
+    auto ShaderSystemInst = ShaderSystem::GetInstance();
     // Примените униформу на уровне экземпляра.
-    MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->BindInstance(material->InternalId));
+    MATERIAL_APPLY_OR_FAIL(ShaderSystemInst->BindInstance(material->InternalId));
     if(NeedsUpdate) {
         if (material->ShaderID == state->MaterialShaderID) {
             // Шейдер материала
-            MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->UniformSet(state->MaterialLocations.DiffuseColour, &material->DiffuseColour));
-            MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->UniformSet(state->MaterialLocations.DiffuseTexture, &material->DiffuseMap));
-            MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->UniformSet(state->MaterialLocations.SpecularTexture, &material->SpecularMap));
-            MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->UniformSet(state->MaterialLocations.specular, &material->specular));
-            MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->UniformSet(state->MaterialLocations.NormalTexture, &material->NormalMap));
+            MATERIAL_APPLY_OR_FAIL(ShaderSystemInst->UniformSet(state->MaterialLocations.DiffuseColour, &material->DiffuseColour));
+            MATERIAL_APPLY_OR_FAIL(ShaderSystemInst->UniformSet(state->MaterialLocations.DiffuseTexture, &material->DiffuseMap));
+            MATERIAL_APPLY_OR_FAIL(ShaderSystemInst->UniformSet(state->MaterialLocations.SpecularTexture, &material->SpecularMap));
+            MATERIAL_APPLY_OR_FAIL(ShaderSystemInst->UniformSet(state->MaterialLocations.specular, &material->specular));
+            MATERIAL_APPLY_OR_FAIL(ShaderSystemInst->UniformSet(state->MaterialLocations.NormalTexture, &material->NormalMap));
         } else if (material->ShaderID == state->UI_ShaderID) {
             // шейдер пользовательского интерфейса
-            MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->UniformSet(state->UI_Locations.DiffuseColour, &material->DiffuseColour));
-            MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->UniformSet(state->UI_Locations.DiffuseTexture, &material->DiffuseMap));
+            MATERIAL_APPLY_OR_FAIL(ShaderSystemInst->UniformSet(state->UI_Locations.DiffuseColour, &material->DiffuseColour));
+            MATERIAL_APPLY_OR_FAIL(ShaderSystemInst->UniformSet(state->UI_Locations.DiffuseTexture, &material->DiffuseMap));
         } else {
             MERROR("MaterialSystem::ApplyInstance(): Нераспознанный идентификатор шейдера «%d» в шейдере «%s».", material->ShaderID, material->name);
             return false;
         }
     }
-    MATERIAL_APPLY_OR_FAIL(ShaderSystem::GetInstance()->ApplyInstance(NeedsUpdate));
+    MATERIAL_APPLY_OR_FAIL(ShaderSystemInst->ApplyInstance(NeedsUpdate));
 
     return true;
 }
@@ -290,10 +294,11 @@ Material *MaterialSystem::GetDefaultMaterial()
 
 bool MaterialSystem::ApplyLocal(Material *material, const Matrix4D &model)
 {
+    auto ShaderSystemInst = ShaderSystem::GetInstance();
     if (material->ShaderID == state->MaterialShaderID) {
-        return ShaderSystem::GetInstance()->UniformSet(state->MaterialLocations.model, &model);
+        return ShaderSystemInst->UniformSet(state->MaterialLocations.model, &model);
     } else if (material->ShaderID == state->UI_ShaderID) {
-        return ShaderSystem::GetInstance()->UniformSet(state->UI_Locations.model, &model);
+        return ShaderSystemInst->UniformSet(state->UI_Locations.model, &model);
     }
 
     MERROR("Неизвестный идентификатор шейдера «%d»", material->ShaderID);
@@ -335,18 +340,19 @@ bool MaterialSystem::LoadMaterial(const MaterialConfig &config, Material *m)
         MERROR("Невозможно получить ресурсы для карты диффузных текстур.");
         return false;
     }
-    
+
+    auto TextureSystemInst = TextureSystem::Instance();
     if (MString::Length(config.DiffuseMapName) > 0) {
         m->DiffuseMap.use = TextureUse::MapDiffuse;
-        m->DiffuseMap.texture = TextureSystem::Instance()->Acquire(config.DiffuseMapName, true);
+        m->DiffuseMap.texture = TextureSystemInst->Acquire(config.DiffuseMapName, true);
         if (!m->DiffuseMap.texture) {
             MWARN("Невозможно загрузить текстуру '%s' для материала '%s', используется значение по умолчанию.", config.DiffuseMapName, m->name);
-            m->DiffuseMap.texture = TextureSystem::Instance()->GetDefaultTexture(ETexture::Diffuse);
+            m->DiffuseMap.texture = TextureSystemInst->GetDefaultTexture(ETexture::Diffuse);
         }
     } else {
         // ПРИМЕЧАНИЕ. Устанавливается только для ясности, поскольку вызов MMemory::ZeroMem выше уже делает это.
         m->DiffuseMap.use = TextureUse::MapDiffuse;
-        m->DiffuseMap.texture = TextureSystem::Instance()->GetDefaultTexture(ETexture::Diffuse);
+        m->DiffuseMap.texture = TextureSystemInst->GetDefaultTexture(ETexture::Diffuse);
     }
 
     // Карта блеска
@@ -358,15 +364,15 @@ bool MaterialSystem::LoadMaterial(const MaterialConfig &config, Material *m)
     }
     if (MString::Length(config.SpecularMapName) > 0) {
         m->SpecularMap.use = TextureUse::MapSpecular;
-        m->SpecularMap.texture = TextureSystem::Instance()->Acquire(config.SpecularMapName, true);
+        m->SpecularMap.texture = TextureSystemInst->Acquire(config.SpecularMapName, true);
         if (!m->SpecularMap.texture) {
             MWARN("Невозможно загрузить текстуру «%s» для материала «%s», используется значение по умолчанию.", config.SpecularMapName, m->name);
-            m->SpecularMap.texture = TextureSystem::Instance()->GetDefaultTexture(ETexture::Specular);
+            m->SpecularMap.texture = TextureSystemInst->GetDefaultTexture(ETexture::Specular);
         }
     } else {
         // ПРИМЕЧАНИЕ: Устанавливается только для ясности, поскольку вызов MMemory::Zero() выше уже делает это.
         m->SpecularMap.use = TextureUse::MapSpecular;
-        m->SpecularMap.texture = TextureSystem::Instance()->GetDefaultTexture(ETexture::Specular);
+        m->SpecularMap.texture = TextureSystemInst->GetDefaultTexture(ETexture::Specular);
     }
 
     // Карта нормалей
@@ -378,15 +384,15 @@ bool MaterialSystem::LoadMaterial(const MaterialConfig &config, Material *m)
     }
     if (MString::Length(config.NormalMapName) > 0) {
         m->NormalMap.use = TextureUse::MapNormal;
-        m->NormalMap.texture = TextureSystem::Instance()->Acquire(config.NormalMapName, true);
+        m->NormalMap.texture = TextureSystemInst->Acquire(config.NormalMapName, true);
         if (!m->NormalMap.texture) {
             MWARN("Невозможно загрузить текстуру нормалей «%s» для материала «%s», используется значение по умолчанию.", config.NormalMapName, m->name);
-            m->SpecularMap.texture = TextureSystem::Instance()->GetDefaultTexture(ETexture::Normal);
+            m->SpecularMap.texture = TextureSystemInst->GetDefaultTexture(ETexture::Normal);
         }
     } else {
         // Использование по умолчанию.
         m->NormalMap.use = TextureUse::MapNormal;
-        m->NormalMap.texture = TextureSystem::Instance()->GetDefaultTexture(ETexture::Normal);
+        m->NormalMap.texture = TextureSystemInst->GetDefaultTexture(ETexture::Normal);
     }
     
     // ЗАДАЧА: другие карты
@@ -409,17 +415,18 @@ bool MaterialSystem::LoadMaterial(const MaterialConfig &config, Material *m)
 
 void MaterialSystem::DestroyMaterial(Material *m)
 {
+    auto TextureSystemInst = TextureSystem::Instance();
     // Выпустите ссылки на текстуры.
     if (m->DiffuseMap.texture) {
-        TextureSystem::Instance()->Release(m->DiffuseMap.texture->name);
+        TextureSystemInst->Release(m->DiffuseMap.texture->name);
     }
 
     if (m->SpecularMap.texture) {
-        TextureSystem::Instance()->Release(m->SpecularMap.texture->name);
+        TextureSystemInst->Release(m->SpecularMap.texture->name);
     }
 
     if (m->NormalMap.texture) {
-        TextureSystem::Instance()->Release(m->NormalMap.texture->name);
+        TextureSystemInst->Release(m->NormalMap.texture->name);
     }
 
     // Освободите ресурсы карт текстур.
