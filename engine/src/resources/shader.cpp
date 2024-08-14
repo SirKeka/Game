@@ -115,26 +115,26 @@ bool Shader::AddAttribute(const ShaderAttributeConfig &config)
 {
     u32 size = 0;
     switch (config.type) {
-        case ShaderAttributeType::Int8:
-        case ShaderAttributeType::UInt8:
+        case EShaderAttribute::Int8:
+        case EShaderAttribute::UInt8:
             size = 1;
             break;
-        case ShaderAttributeType::Int16:
-        case ShaderAttributeType::UInt16:
+        case EShaderAttribute::Int16:
+        case EShaderAttribute::UInt16:
             size = 2;
             break;
-        case ShaderAttributeType::Float32:
-        case ShaderAttributeType::Int32:
-        case ShaderAttributeType::UInt32:
+        case EShaderAttribute::Float32:
+        case EShaderAttribute::Int32:
+        case EShaderAttribute::UInt32:
             size = 4;
             break;
-        case ShaderAttributeType::Float32_2:
+        case EShaderAttribute::Float32_2:
             size = 8;
             break;
-        case ShaderAttributeType::Float32_3:
+        case EShaderAttribute::Float32_3:
             size = 12;
             break;
-        case ShaderAttributeType::Float32_4:
+        case EShaderAttribute::Float32_4:
             size = 16;
             break;
         default:

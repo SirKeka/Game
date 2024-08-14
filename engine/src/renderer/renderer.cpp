@@ -33,19 +33,32 @@ UiRenderpass(nullptr),
 resizing(false),
 FramesSinceResize()
 {
+
+    const char* SkyboxRenderpassName = "Renderpass.Builtin.Skybox";
+    const char* WorldRenderpassName = "Renderpass.Builtin.World";
+    const char* UiRenderpassName = "Renderpass.Builtin.UI";
+    
     // Проходы рендеринга. ЗАДАЧА: прочитать конфигурацию из файла.
-    RenderpassConfig RpConfig[2] = {
+    RenderpassConfig RpConfig[3] = {
         RenderpassConfig(
-            "Renderpass.Builtin.World", 
-            nullptr, 
-            "Renderpass.Builtin.UI", 
-            FVec4(0, 0, 1280, 720), 
+            SkyboxRenderpassName,
+            nullptr,
+            WorldRenderpassName,
+            FVec4(0, 0, 1280, 720),
             FVec4(0.0f, 0.0f, 0.2f, 1.0f),
-            RenderpassClearFlag::ColourBuffer | RenderpassClearFlag::DepthBuffer | RenderpassClearFlag::StencilBuffer
+            RenderpassClearFlag::ColourBuffer
         ),
         RenderpassConfig(
-            "Renderpass.Builtin.UI",
-            "Renderpass.Builtin.World",
+            WorldRenderpassName, 
+            SkyboxRenderpassName, 
+            UiRenderpassName, 
+            FVec4(0, 0, 1280, 720), 
+            FVec4(0.0f, 0.0f, 0.2f, 1.0f),
+            RenderpassClearFlag::DepthBuffer | RenderpassClearFlag::StencilBuffer
+        ),
+        RenderpassConfig(
+            UiRenderpassName,
+            WorldRenderpassName,
             nullptr,
             FVec4(0, 0, 1280, 720), 
             FVec4(0.0f, 0.0f, 0.2f, 1.0f),
@@ -55,7 +68,7 @@ FramesSinceResize()
 
     RendererConfig RConfig {
         ApplicationName,
-        2,
+        3,
         RpConfig,
         RendererConfig::PFN_Method(this, &Renderer::RegenerateRenderTargets)
     };
@@ -63,49 +76,61 @@ FramesSinceResize()
     CriticalInit(ptrRenderer = new VulkanAPI(window, RConfig, WindowRenderTargetCount), "Систему рендеринга не удалось инициализировать. Выключение.");
 
     // ЗАДАЧА: Узнаем, как их получить, когда определим представления.
-    WorldRenderpass = ptrRenderer->GetRenderpass("Renderpass.Builtin.World");
+    SkyboxRenderpass = ptrRenderer->GetRenderpass(SkyboxRenderpassName);
+    SkyboxRenderpass->RenderTargetCount = WindowRenderTargetCount;
+    SkyboxRenderpass->targets = new RenderTarget[WindowRenderTargetCount];
+
+    WorldRenderpass = ptrRenderer->GetRenderpass(WorldRenderpassName);
     WorldRenderpass->RenderTargetCount = WindowRenderTargetCount;
     WorldRenderpass->targets = new RenderTarget[WindowRenderTargetCount];
     
-    UiRenderpass = ptrRenderer->GetRenderpass("Renderpass.Builtin.UI");
+    UiRenderpass = ptrRenderer->GetRenderpass(UiRenderpassName);
     UiRenderpass->RenderTargetCount = WindowRenderTargetCount;
     UiRenderpass->targets = new RenderTarget[WindowRenderTargetCount];
 
     RegenerateRenderTargets();
 
+    // Обновите размеры рендерпасса скайбокса.
+    SkyboxRenderpass->RenderArea = FVec4(0, 0, FramebufferWidth, FramebufferHeight);
+
     // Обновите размеры основного/мирового рендерпасса.
-    WorldRenderpass->RenderArea.x = 0;
-    WorldRenderpass->RenderArea.y = 0;
-    WorldRenderpass->RenderArea.z = FramebufferWidth;
-    WorldRenderpass->RenderArea.w = FramebufferHeight;
+    WorldRenderpass->RenderArea = FVec4(0, 0, FramebufferWidth, FramebufferHeight);
 
     // Также обновите размеры рендерпасса пользовательского интерфейса.
-    UiRenderpass->RenderArea.x = 0;
-    UiRenderpass->RenderArea.y = 0;
-    UiRenderpass->RenderArea.z = FramebufferWidth;
-    UiRenderpass->RenderArea.w = FramebufferHeight;
+    UiRenderpass->RenderArea = FVec4(0, 0, FramebufferWidth, FramebufferHeight);
 
     // Shaders
     Resource ConfigResource;
     ShaderConfig* config = nullptr;
 
+    auto ResourceSystemInst = ResourceSystem::Instance();
+    auto ShaderSystemInst = ShaderSystem::GetInstance();
+    // Встроенный шейдер скайбокса.
+    CriticalInit(
+        ResourceSystemInst->Load(BUILTIN_SHADER_NAME_SKYBOX, ResourceType::Shader, nullptr, ConfigResource),
+        "Не удалось загрузить встроенный шейдер скайбокса.");
+    config = reinterpret_cast<ShaderConfig*>(ConfigResource.data);
+    CriticalInit(ShaderSystemInst->Create(config), "Не удалось загрузить встроенный шейдер скайбокса.");
+    ResourceSystemInst->Unload(ConfigResource);
+    SkyboxShaderID = ShaderSystemInst->GetID(BUILTIN_SHADER_NAME_SKYBOX);
+
     // Встроенный шейдер материала.
     CriticalInit(
-        ResourceSystem::Instance()->Load(BUILTIN_SHADER_NAME_MATERIAL, ResourceType::Shader, nullptr, ConfigResource),
+        ResourceSystemInst->Load(BUILTIN_SHADER_NAME_MATERIAL, ResourceType::Shader, nullptr, ConfigResource),
         "Не удалось загрузить встроенный шейдер материала.");
     config = reinterpret_cast<ShaderConfig*>(ConfigResource.data);
-    CriticalInit(ShaderSystem::GetInstance()->Create(config), "Не удалось загрузить встроенный шейдер материала.");
-    ResourceSystem::Instance()->Unload(ConfigResource);
-    MaterialShaderID = ShaderSystem::GetInstance()->GetID(BUILTIN_SHADER_NAME_MATERIAL);
+    CriticalInit(ShaderSystemInst->Create(config), "Не удалось загрузить встроенный шейдер материала.");
+    ResourceSystemInst->Unload(ConfigResource);
+    MaterialShaderID = ShaderSystemInst->GetID(BUILTIN_SHADER_NAME_MATERIAL);
 
     // Встроенный шейдер пользовательского интерфейса.
     CriticalInit(
-        ResourceSystem::Instance()->Load(BUILTIN_SHADER_NAME_UI, ResourceType::Shader, nullptr, ConfigResource),
+        ResourceSystemInst->Load(BUILTIN_SHADER_NAME_UI, ResourceType::Shader, nullptr, ConfigResource),
         "Не удалось загрузить встроенный шейдер пользовательского интерфейса.");
     config = reinterpret_cast<ShaderConfig*>(ConfigResource.data);
-    CriticalInit(ShaderSystem::GetInstance()->Create(config), "Не удалось загрузить встроенный шейдер пользовательского интерфейса.");
-    ResourceSystem::Instance()->Unload(ConfigResource);
-    UIShaderID = ShaderSystem::GetInstance()->GetID(BUILTIN_SHADER_NAME_UI);
+    CriticalInit(ShaderSystemInst->Create(config), "Не удалось загрузить встроенный шейдер пользовательского интерфейса.");
+    ResourceSystemInst->Unload(ConfigResource);
+    UIShaderID = ShaderSystemInst->GetID(BUILTIN_SHADER_NAME_UI);
 }
 
 Renderer::~Renderer()
@@ -118,6 +143,7 @@ void Renderer::Shutdown()
 {
     // Уничтожить цели рендеринга.
     for (u8 i = 0; i < WindowRenderTargetCount; ++i) {
+        ptrRenderer->RenderTargetDestroy(SkyboxRenderpass->targets[i], true);
         ptrRenderer->RenderTargetDestroy(WorldRenderpass->targets[i], true);
         ptrRenderer->RenderTargetDestroy(UiRenderpass->targets[i], true);
     }
@@ -140,6 +166,7 @@ void Renderer::OnResized(u16 width, u16 height)
 bool Renderer::DrawFrame(const RenderPacket &packet)
 {
     ptrRenderer->FrameNumber++;
+    auto RenderViewSystemInst = RenderViewSystem::Instance();
 
     // Убедитесь, что окно в данный момент не меняет размер, подождав указанное количество кадров после последней операции изменения размера, прежде чем выполнять внутренние обновления.
     if (resizing) {
@@ -149,7 +176,7 @@ bool Renderer::DrawFrame(const RenderPacket &packet)
         if (FramesSinceResize >= 30) {
             f32 width = FramebufferWidth;
             f32 height = FramebufferHeight;
-            RenderViewSystem::Instance()->OnWindowResize(width, height);
+            RenderViewSystemInst->OnWindowResize(width, height);
             ptrRenderer->Resized(width, height);
             FramesSinceResize = 0;
             resizing = false;
@@ -165,7 +192,7 @@ bool Renderer::DrawFrame(const RenderPacket &packet)
         
         // Отобразить каждое представление.
         for (u32 i = 0; i < packet.ViewCount; i++) {
-            if (!RenderViewSystem::Instance()->OnRender(packet.views[i].view, packet.views[i], ptrRenderer->FrameNumber, AttachmentIndex)) {
+            if (!RenderViewSystemInst->OnRender(packet.views[i].view, packet.views[i], ptrRenderer->FrameNumber, AttachmentIndex)) {
                 MERROR("Ошибка рендеринга индекса представления %i.", i);
             }
         }
@@ -282,7 +309,7 @@ bool Renderer::SetUniform(Shader *shader, ShaderUniform *uniform, const void *va
     return ptrRenderer->SetUniform(shader, uniform, value);
 }
 
-bool Renderer::TextureMapAcquireResources(TextureMap *map)
+bool Renderer::TextureMapAcquireResources(TextureMap &map)
 {
     return ptrRenderer->TextureMapAcquireResources(map);
 }
@@ -306,11 +333,23 @@ void Renderer::RegenerateRenderTargets() {
     // Создайте цели рендеринга для каждого. ЗАДАЧА: Должны быть настраиваемыми.
     for (u8 i = 0; i < WindowRenderTargetCount; ++i) {
         // Сначала уничтожьте старые, если они существуют.
+        ptrRenderer->RenderTargetDestroy(SkyboxRenderpass->targets[i], false);
         ptrRenderer->RenderTargetDestroy(WorldRenderpass->targets[i], false);
         ptrRenderer->RenderTargetDestroy(UiRenderpass->targets[i], false);
 
-        Texture* WindowTargetTexture = ptrRenderer->WindowAttachmentGet(i);
-        Texture* DepthTargetTexture = ptrRenderer->DepthAttachmentGet();
+        auto WindowTargetTexture = ptrRenderer->WindowAttachmentGet(i);
+        auto DepthTargetTexture = ptrRenderer->DepthAttachmentGet();
+
+        // Цели рендеринга скайбокса
+        Texture* SkyboxAttachments[1] = {WindowTargetTexture};
+        ptrRenderer->RenderTargetCreate(
+            1,
+            SkyboxAttachments,
+            SkyboxRenderpass,
+            FramebufferWidth,
+            FramebufferHeight,
+            SkyboxRenderpass->targets[i]
+        );
 
         // Цели рендеринга мира.
         Texture* attachments[2] = {WindowTargetTexture, DepthTargetTexture};
@@ -320,7 +359,8 @@ void Renderer::RegenerateRenderTargets() {
             WorldRenderpass,
             FramebufferWidth,
             FramebufferHeight,
-            WorldRenderpass->targets[i]);
+            WorldRenderpass->targets[i]
+        );
 
         // Цели рендеринга пользовательского интерфейса
         Texture* UiAttachments[1] = {WindowTargetTexture};
@@ -330,7 +370,8 @@ void Renderer::RegenerateRenderTargets() {
             UiRenderpass,
             FramebufferWidth,
             FramebufferHeight,
-            UiRenderpass->targets[i]);
+            UiRenderpass->targets[i]
+        );
 
     }
 }

@@ -1,6 +1,7 @@
 #include "image_loader.hpp"
 #include "systems/resource_system.hpp"
 #include "loader_utils.hpp"
+#include "resources/texture.hpp"
 
 // ЗАДАЧА: загрузчик ресурсов.
 #define STB_IMAGE_IMPLEMENTATION

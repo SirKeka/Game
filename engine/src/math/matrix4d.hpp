@@ -7,6 +7,12 @@
 
 //template<typename T> class Vector4D;
 
+/// @brief Умножение матриц 4x4
+/// @param a матрица 4x4
+/// @param b матрица 4x4
+/// @return результат умножения матрицы а на матрицу b
+MAPI Matrix4D operator*(Matrix4D a, const Matrix4D& b);
+
 class MAPI Matrix4D
 {
 public:
@@ -23,7 +29,7 @@ public:
 					   f32 n31, f32 n32, f32 n33, f32 n34,
 					   f32 n41, f32 n42, f32 n43, f32 n44);
 	constexpr Matrix4D(const FVec4& a, const FVec4& b, const FVec4& c, const FVec4& d);
-	Matrix4D (const Quaternion& q);
+	constexpr Matrix4D (const Quaternion& q);
 	/// @brief Вычисляет матрицу поворота на основе кватерниона и пройденной центральной точки.
 	/// @param q кватернион
 	/// @param v вектор
@@ -37,11 +43,6 @@ public:
 	const FVec4& operator [](u8 j) const;
 	Matrix4D& operator=(const Matrix4D& m);
 	Matrix4D& operator*=(const Matrix4D& m);
-	/// @brief Умножение матриц 4x4
-	/// @param a матрица 4x4
-	/// @param b матрица 4x4
-	/// @return результат умножения матрицы а на матрицу b
-	Matrix4D operator*(const Matrix4D& m) const;
 
 	/// @brief Инвертирует текущую матрицу
 	/// @return инвертированную матрицу
@@ -340,9 +341,3 @@ public:
 		return Normalize(FVec3(m(0), m(4), m(8)));
 	}
 };
-
-/// @brief Умножение матриц 4x4
-/// @param a матрица 4x4
-/// @param b матрица 4x4
-/// @return результат умножения матрицы а на матрицу b
-//MAPI Matrix4D operator*(const Matrix4D& a, const Matrix4D& b);

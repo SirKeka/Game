@@ -174,8 +174,8 @@ GeometryConfig GeometrySystem::GenerateCubeConfig(f32 width, f32 height, f32 dep
         sizeof(u32), 
         6 * 6, // 6 индексов на каждой стороне, 6 сторон
         MMemory::Allocate(6 * 6 * sizeof(u32), MemoryTag::Array, true), 
-        MString::Length(name) ? name : DEFAULT_GEOMETRY_NAME,
-        MString::Length(MaterialName) ? MaterialName : DEFAULT_MATERIAL_NAME,
+        name ? name : DEFAULT_GEOMETRY_NAME,
+        MaterialName ? MaterialName : DEFAULT_MATERIAL_NAME,
         FVec3(), FVec3(-HalfWidth, -HalfHeight, -HalfDepth),
         FVec3(HalfWidth, HalfHeight, HalfDepth)
     };

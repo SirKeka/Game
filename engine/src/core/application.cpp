@@ -110,6 +110,7 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
         MFATAL("Не удалось инициализировать систему геометрии. Приложение не может быть продолжено.");
         return false;
     }
+    auto GeometrySystemInst = GeometrySystem::Instance();
 
     // Система камер
     if (!CameraSystem::Initialize(61)) {
@@ -122,9 +123,22 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
         MFATAL("Не удалось инициализировать систему визуализаций. Приложение не может быть продолжено.");
         return false;
     }
+    State->RenderViewSystemInst = RenderViewSystem::Instance();
 
-    RenderView::PassConfig passes[1] { "Renderpass.Builtin.World" };
+    RenderView::PassConfig SkyboxPasses[1] { "Renderpass.Builtin.Skybox" };
+    RenderView::Config SkyboxConfig {
+        "skybox",
+        0, 0, 
+        RenderView::KnownTypeSkybox,
+        RenderView::ViewMatrixSourceSceneCamera,
+        1, SkyboxPasses
+    };
+    if (!State->RenderViewSystemInst->Create(SkyboxConfig)) {
+        MFATAL("Не удалось создать представление скайбокса. Отмена приложения.");
+        return false;
+    }
     
+    RenderView::PassConfig passes[1] { "Renderpass.Builtin.World" };
     RenderView::Config OpaqueWorldConfig {
         "world_opaque", 
         0, 0, 
@@ -132,8 +146,8 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
         RenderView::ViewMatrixSourceSceneCamera, 
         1, passes
     };
-    if (!RenderViewSystem::Instance()->Create(OpaqueWorldConfig)) {
-        MFATAL("Не удалось создать представление. Отмена приложения.");
+    if (!State->RenderViewSystemInst->Create(OpaqueWorldConfig)) {
+        MFATAL("Не удалось создать представление мира. Отмена приложения.");
         return false;
     }
     RenderView::PassConfig UIPasses[1] { "Renderpass.Builtin.UI" };
@@ -144,18 +158,40 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
         RenderView::ViewMatrixSourceUiCamera,
         1, UIPasses
     };
-    if (!RenderViewSystem::Instance()->Create(UIViewConfig)) {
-        MFATAL("Не удалось создать представление. Отмена приложения.");
+    if (!State->RenderViewSystemInst->Create(UIViewConfig)) {
+        MFATAL("Не удалось создать представление пользовательского интерфейса. Отмена приложения.");
         return false;
     }
     
     // ЗАДАЧА: временно
+    // Skybox
+    auto& CubeMap = State->sb.cubemap;
+    CubeMap.FilterMagnify = CubeMap.FilterMinify = TextureFilter::ModeLinear;
+    CubeMap.RepeatU = CubeMap.RepeatV = CubeMap.RepeatW = TextureRepeat::ClampToEdge;
+    CubeMap.use = TextureUse::Cubemap;
+    if (!Renderer::TextureMapAcquireResources(CubeMap)) {
+        MFATAL("Unable to acquire resources for cube map texture.");
+        return false;
+    }
+    CubeMap.texture = TextureSystem::Instance()->AcquireCube("skybox", true);
+    auto SkyboxCubeConfig = GeometrySystemInst->GenerateCubeConfig(10.0f, 10.0f, 10.0f, 1.0f, 1.0f, "skybox_cube", nullptr);
+    // Удалите название материала.
+    SkyboxCubeConfig.MaterialName[0] = '\0';
+    State->sb.g = GeometrySystemInst->Acquire(SkyboxCubeConfig, true);
+    State->sb.RenderFrameNumber = INVALID::U64ID;
+    Shader* SkyboxShader = ShaderSystem::GetInstance()->GetShader(BUILTIN_SHADER_NAME_SKYBOX);
+    TextureMap* maps[1] = {&State->sb.cubemap};
+    if (!Renderer::ShaderAcquireInstanceResources(SkyboxShader, maps, State->sb.InstanceID)) {
+        MFATAL("Невозможно получить ресурсы шейдера для текстуры скайбокса.");
+        return false;
+    }
 
+    // Мировые сетки
     // Загрузите конфигурацию и загрузите из нее геометрию.
     Mesh& CubeMesh = State->meshes[State->MeshCount];
     CubeMesh = Mesh(1, new GeometryID*[1], Transform());
-    GeometryConfig gConfig = GeometrySystem::Instance()->GenerateCubeConfig(10.f, 10.f, 10.f, 1.f, 1.f, "test_cube", "test_material");
-    CubeMesh.geometries[0] = GeometrySystem::Instance()->Acquire(gConfig, true);
+    GeometryConfig gConfig = GeometrySystemInst->GenerateCubeConfig(10.f, 10.f, 10.f, 1.f, 1.f, "test_cube", "test_material");
+    CubeMesh.geometries[0] = GeometrySystemInst->Acquire(gConfig, true);
 
     State->MeshCount++;
     // Очистите места для конфигурации геометрии.
@@ -163,8 +199,8 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
 
     Mesh& CubeMesh2 = State->meshes[State->MeshCount];
     CubeMesh2 = Mesh(1, new GeometryID*[1], Transform(FVec3(10.f, 0.f, 1.f)));
-    gConfig = GeometrySystem::Instance()->GenerateCubeConfig(5.f, 5.f, 5.f, 1.f, 1.f, "test_cube2", "test_material");
-    CubeMesh2.geometries[0] = GeometrySystem::Instance()->Acquire(gConfig, true);
+    gConfig = GeometrySystemInst->GenerateCubeConfig(5.f, 5.f, 5.f, 1.f, 1.f, "test_cube2", "test_material");
+    CubeMesh2.geometries[0] = GeometrySystemInst->Acquire(gConfig, true);
     CubeMesh2.transform.SetParent(&CubeMesh.transform);
     State->MeshCount++;
     // Очистите места для конфигурации геометрии.
@@ -172,8 +208,8 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
 
     Mesh& CubeMesh3 = State->meshes[State->MeshCount];
     CubeMesh3 = Mesh(1, new GeometryID*[1], Transform(FVec3(5.f, 0.f, 1.f)));
-    gConfig = GeometrySystem::Instance()->GenerateCubeConfig(2.f, 2.f, 2.f, 1.f, 1.f, "test_cube3", "test_material");
-    CubeMesh3.geometries[0] = GeometrySystem::Instance()->Acquire(gConfig, true);
+    gConfig = GeometrySystemInst->GenerateCubeConfig(2.f, 2.f, 2.f, 1.f, 1.f, "test_cube3", "test_material");
+    CubeMesh3.geometries[0] = GeometrySystemInst->Acquire(gConfig, true);
     CubeMesh3.transform.SetParent(&CubeMesh2.transform);
     State->MeshCount++;
     // Очистите места для конфигурации геометрии.
@@ -188,7 +224,7 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
         CarMesh.GeometryCount = CarMeshResource.DataSize;
         CarMesh.geometries = new GeometryID*[CarMesh.GeometryCount];
         for (u64 i = 0; i < CarMesh.GeometryCount; i++) {
-            CarMesh.geometries[i] = GeometrySystem::Instance()->Acquire(configs[i], true);
+            CarMesh.geometries[i] = GeometrySystemInst->Acquire(configs[i], true);
         }
         CarMesh.transform = Transform(FVec3(15.f, 0.f, 1.f));
         ResourceSystem::Instance()->Unload(CarMeshResource);
@@ -204,7 +240,7 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
         SponzaMesh.GeometryCount = SponzaMeshResource.DataSize;
         SponzaMesh.geometries = new GeometryID*[SponzaMesh.GeometryCount];
         for (u64 i = 0; i < SponzaMesh.GeometryCount; i++) {
-            SponzaMesh.geometries[i] = GeometrySystem::Instance()->Acquire(configs[i], true);
+            SponzaMesh.geometries[i] = GeometrySystemInst->Acquire(configs[i], true);
         }
         SponzaMesh.transform = Transform(FVec3(), Quaternion::Identity(), FVec3(0.05, 0.05, 0.05));
         ResourceSystem::Instance()->Unload(SponzaMeshResource);
@@ -242,10 +278,10 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
     State->UIMeshCount = 1;
     State->UIMeshes[0].GeometryCount = 1;
     State->UIMeshes[0].geometries = new GeometryID*[1];
-    State->UIMeshes[0].geometries[0] = GeometrySystem::Instance()->Acquire(UI_Config, true);
+    State->UIMeshes[0].geometries[0] = GeometrySystemInst->Acquire(UI_Config, true);
 
     // Загрузите геометрию по умолчанию.
-    // AppState->TestGeometry = GeometrySystem::Instance()->GetDefault();
+    // AppState->TestGeometry = GeometrySystemInst->GetDefault();
     // ЗАДАЧА: временно 
 
     // Инициализируйте игру.
@@ -322,14 +358,14 @@ bool Application::ApplicationRun() {
             // Мир 
             Mesh::PacketData WorldMeshData {State->MeshCount, State->meshes};
             // ЗАДАЧА: выполняет поиск в каждом кадре.
-            if (!RenderViewSystem::Instance()->BuildPacket(RenderViewSystem::Instance()->Get("world_opaque"), &WorldMeshData, packet.views[0])) {
+            if (!State->RenderViewSystemInst->BuildPacket(State->RenderViewSystemInst->Get("world_opaque"), &WorldMeshData, packet.views[0])) {
                 MERROR("Не удалось построить пакет для представления «world_opaque».");
                 return false;
             }
 
             // пользовательский интерфейс
             Mesh::PacketData UIMeshData = {State->UIMeshCount, State->UIMeshes};
-            if (!RenderViewSystem::Instance()->BuildPacket(RenderViewSystem::Instance()->Get("ui"), &UIMeshData, packet.views[1])) {
+            if (!State->RenderViewSystemInst->BuildPacket(State->RenderViewSystemInst->Get("ui"), &UIMeshData, packet.views[1])) {
                 MERROR("Не удалось построить пакет для представления «ui».");
                 return false;
             }

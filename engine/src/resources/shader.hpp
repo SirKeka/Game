@@ -19,8 +19,8 @@ enum class ShaderStage {
 };
 
 /// @brief Доступные типы атрибутов.
-namespace ShaderAttributeType {
-    enum ShaderAttributeType {
+namespace EShaderAttribute {
+    enum Type {
         Float32   =  0U,
         Float32_2 =  1U,
         Float32_3 =  2U,
@@ -63,12 +63,11 @@ enum class ShaderScope {
 struct ShaderAttributeConfig {
     MString name;                               // Имя атрибута.
     u8 size;                                    // Размер атрибута.
-    ShaderAttributeType type;                   // Тип атрибута.
+    EShaderAttribute::Type type;                // Тип атрибута.
     
     constexpr ShaderAttributeConfig() : name(), size(), type() {}
     constexpr ShaderAttributeConfig(ShaderAttributeConfig&& sac) : name(std::move(sac.name)), size(sac.size), type(sac.type) {
         size = 0;
-        type = static_cast<ShaderAttributeType>(0);
     }
     ShaderAttributeConfig& operator =(const ShaderAttributeConfig& sac) {
         name = sac.name;
@@ -159,10 +158,10 @@ struct ShaderUniform {
 /// @brief Представляет один атрибут вершины шейдера.
 struct ShaderAttribute {
     MString name;                               // Имя атрибута.
-    ShaderAttributeType type;                   // Тип атрибута.
+    EShaderAttribute::Type type;                   // Тип атрибута.
     u32 size;                                   // Размер атрибута в байтах.
     constexpr ShaderAttribute() : name(), type(), size() {}
-    constexpr ShaderAttribute(const MString& name, ShaderAttributeType type, u32 size) : name(name), type(type), size(size) {}
+    constexpr ShaderAttribute(const MString& name, EShaderAttribute::Type type, u32 size) : name(name), type(type), size(size) {}
     constexpr ShaderAttribute(const ShaderAttribute& sa) : name(sa.name), type(sa.type), size(sa.size) {}
 };  
 

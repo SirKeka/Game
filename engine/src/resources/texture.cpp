@@ -64,7 +64,7 @@ Texture &Texture::operator=(Texture &&t)
     Data = t.Data;
 
     t.id = 0;
-    t.type = 0;
+    //t.type = 0;
     t.width = 0;
     t.height = 0;
     t.ChannelCount = 0;

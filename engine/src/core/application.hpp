@@ -9,7 +9,7 @@
 #include "input.hpp"
 #include "clock.hpp"
 #include "resources/mesh.hpp"
-
+#include "resources/skybox.hpp"
 
 struct ApplicationState {
     //LinearAllocator SystemAllocator;
@@ -25,6 +25,7 @@ struct ApplicationState {
 
     //Системы
     //TextureSystem* TexSys;
+    class RenderViewSystem* RenderViewSystemInst{nullptr};
     
     u32 width;
     u32 height;
@@ -32,6 +33,8 @@ struct ApplicationState {
     f64 LastTime;
 
     // ЗАДАЧА: временно
+    Skybox sb;
+
     Mesh meshes[10];
     u32 MeshCount{};
 

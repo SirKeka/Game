@@ -119,39 +119,39 @@ bool ShaderLoader::Load(const char *name, void* params, Resource &OutResource)
                 ShaderAttributeConfig attribute;
                 // Анализ field type
                 if (fields[0].Comparei("f32")) {
-                    attribute.type = ShaderAttributeType::Float32;
+                    attribute.type = EShaderAttribute::Float32;
                     attribute.size = 4;
                 } else if (fields[0].Comparei("vec2")) {
-                    attribute.type = ShaderAttributeType::Float32_2;
+                    attribute.type = EShaderAttribute::Float32_2;
                     attribute.size = 8;
                 } else if (fields[0].Comparei("vec3")) {
-                    attribute.type = ShaderAttributeType::Float32_3;
+                    attribute.type = EShaderAttribute::Float32_3;
                     attribute.size = 12;
                 } else if (fields[0].Comparei("vec4")) {
-                    attribute.type = ShaderAttributeType::Float32_4;
+                    attribute.type = EShaderAttribute::Float32_4;
                     attribute.size = 16;
                 } else if (fields[0].Comparei("u8")) {
-                    attribute.type = ShaderAttributeType::UInt8;
+                    attribute.type = EShaderAttribute::UInt8;
                     attribute.size = 1;
                 } else if (fields[0].Comparei("u16")) {
-                    attribute.type = ShaderAttributeType::UInt16;
+                    attribute.type = EShaderAttribute::UInt16;
                     attribute.size = 2;
                 } else if (fields[0].Comparei("u32")) {
-                    attribute.type = ShaderAttributeType::UInt32;
+                    attribute.type = EShaderAttribute::UInt32;
                     attribute.size = 4;
                 } else if (fields[0].Comparei("i8")) {
-                    attribute.type = ShaderAttributeType::Int8;
+                    attribute.type = EShaderAttribute::Int8;
                     attribute.size = 1;
                 } else if (fields[0].Comparei("i16")) {
-                    attribute.type = ShaderAttributeType::Int16;
+                    attribute.type = EShaderAttribute::Int16;
                     attribute.size = 2;
                 } else if (fields[0].Comparei("i32")) {
-                    attribute.type = ShaderAttributeType::Int32;
+                    attribute.type = EShaderAttribute::Int32;
                     attribute.size = 4;
                 } else {
                     MERROR("ShaderLoader::Load: Недопустимый макет файла. Тип атрибута должен быть f32, Vector2D, Vector3D, Vector4D, i8, i16, i32, u8, u16 или u32.");
                     MWARN("По умолчанию f32.");
-                    attribute.type = ShaderAttributeType::Float32;
+                    attribute.type = EShaderAttribute::Float32;
                     attribute.size = 4;
                 }
 

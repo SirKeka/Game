@@ -29,12 +29,14 @@ public:
         Normals = 2
     };
 private:
+    u32 SkyboxShaderID{};
     u32 MaterialShaderID{};
     u32 UIShaderID{};
     u8 WindowRenderTargetCount{};   // Количество целей рендеринга. Обычно совпадает с количеством изображений swapchain.
     u32 FramebufferWidth{};         // Текущая ширина буфера кадра окна.
     u32 FramebufferHeight{};        // Текущая высота буфера кадра окна.
 
+    Renderpass* SkyboxRenderpass{}; // Указатель на проход рендеринга скайбокса. ЗАДАЧА: Настраивается через представления.
     Renderpass* WorldRenderpass{};  // Указатель на проход рендеринга мира. ЗАДАЧА: Настраивается через виды.
     Renderpass* UiRenderpass{};     // Указатель на проход рендеринга пользовательского интерфейса. ЗАДАЧА: Настраивается через виды.
     bool resizing{};                // Указывает, изменяется ли размер окна в данный момент.
@@ -175,7 +177,7 @@ public:
     /// @brief Получает внутренние ресурсы для данной карты текстур.
     /// @param map указатель на карту текстуры, для которой нужно получить ресурсы.
     /// @return true в случае успеха; в противном случае false.
-    static bool TextureMapAcquireResources(TextureMap* map);
+    static bool TextureMapAcquireResources(TextureMap& map);
     /// @brief Освобождает внутренние ресурсы для данной карты текстур.
     /// @param map указатель на карту текстур, из которой необходимо освободить ресурсы.
     static void TextureMapReleaseResources(TextureMap* map);

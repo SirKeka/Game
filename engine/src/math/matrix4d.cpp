@@ -11,7 +11,7 @@ constexpr Matrix4D::Matrix4D(const FVec4& a, const FVec4& b, const FVec4& c, con
 : data{a.x, a.y, a.z, a.w, b.x, b.y, b.z, b.w, c.x, c.y, c.z, c.w, d.x, d.y, d.z, d.w}
 {}
 
-Matrix4D::Matrix4D(const Quaternion &q)
+constexpr Matrix4D::Matrix4D(const Quaternion &q) : data()
 {
 	// https://stackoverflow.com/questions/1556260/convert-quaternion-rotation-to-rotation-matrix
 	Quaternion nq = Normalize(q);
@@ -101,29 +101,16 @@ Matrix4D &Matrix4D::operator=(const Matrix4D &m)
 
 Matrix4D &Matrix4D::operator*=(const Matrix4D &m)
 {
+	Matrix4D t;
     for (int i = 0; i < 4; i++) {
 		for (int j = 0; j < 4; j++) {
-			n[i][j] = n[i][0] * m.n[0][j] + 
-					  n[i][1] * m.n[1][j] + 
-					  n[i][2] * m.n[2][j] + 
-					  n[i][3] * m.n[3][j];
+			t.n[i][j] = n[i][0] * m.n[0][j] + 
+					  	n[i][1] * m.n[1][j] + 
+					  	n[i][2] * m.n[2][j] + 
+					  	n[i][3] * m.n[3][j];
 		}
 	}
-	return *this;
-}
-
-Matrix4D Matrix4D::operator*(const Matrix4D &m) const
-{
-	Matrix4D n;
-	for (int i = 0; i < 4; i++) {
-		for (int j = 0; j < 4; j++) {
-			n.n[i][j] = this->n[i][0] * m.n[0][j] + 
-					    this->n[i][1] * m.n[1][j] + 
-					    this->n[i][2] * m.n[2][j] + 
-					    this->n[i][3] * m.n[3][j];
-		}
-	}
-	return n;
+	return (*this = t);
 }
 
 /*MINLINE Matrix4D Matrix4D::MakeIdentity()
@@ -211,16 +198,7 @@ void Matrix4D::Identity()
 	data[0] = data[5] = data[10] = data[15] = 1.f;
 }
 
-Matrix4D operator*(const Matrix4D &a, const Matrix4D &b)
+Matrix4D operator*(Matrix4D a, const Matrix4D &b)
 {
-    Matrix4D c {};
-    for (int i = 1; i < 5; i++) {
-		for (int j = 1; j < 5; j++) {
-			c(i, j) = a(i, 1) * b(1, j) + 
-					  a(i, 2) * b(2, j) + 
-					  a(i, 3) * b(3, j) + 
-					  a(i, 4) * b(4, j);
-		}
-	}
-	return c;
+	return a *= b;
 }

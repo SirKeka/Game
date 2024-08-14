@@ -91,7 +91,7 @@ Texture *TextureSystem::AcquireCube(const char *name, bool AutoRelease)
 {
     // Возвращать текстуру по умолчанию, но предупреждать об этом, так как она должна быть возвращена через GetDefaultTexture();
     // ЗАДАЧА: Проверить по другим именам текстур по умолчанию?
-    if (MString::Comparei(name, DEFAULT_TEXTURE_NAME)) {
+    if (MString::Equali(name, DEFAULT_TEXTURE_NAME)) {
         MWARN("TextureSystem::AcquireCube вызван для текстуры по умолчанию. Использовать TextureSystem::GetDefaultTexture для текстуры 'default'.");
         return &DefaultTexture[ETexture::Default];
     }
@@ -258,8 +258,10 @@ void TextureSystem::DestroyDefaultTexture()
 
 bool TextureSystem::LoadTexture(const char* TextureName, Texture *t)
 {
+    auto ResourceSystemInst = ResourceSystem::Instance();
+    ImageResourceParams params { false };
     Resource ImgResource;
-    if (!ResourceSystem::Instance()->Load(TextureName, ResourceType::Image, ImgResource)) {
+    if (!ResourceSystemInst->Load(TextureName, ResourceType::Image, &params, ImgResource)) {
         MERROR("Не удалось загрузить ресурс изображения для текстуры. '%s'", TextureName);
         return false;
     }
@@ -289,7 +291,8 @@ bool TextureSystem::LoadTexture(const char* TextureName, Texture *t)
 
     // Получите внутренние ресурсы текстур и загрузите их в графический процессор.
     *t = Texture(
-        TextureName, 
+        TextureName,
+        TextureType::_2D,
         ResourceData->width, 
         ResourceData->height, 
         ResourceData->ChannelCount, 
@@ -303,7 +306,7 @@ bool TextureSystem::LoadTexture(const char* TextureName, Texture *t)
     }
 
     // Очистите данные.
-    ResourceSystem::Instance()->Unload(ImgResource);
+    ResourceSystemInst->Unload(ImgResource);
     return true;
 
 }
@@ -391,7 +394,7 @@ bool TextureSystem::ProcessTextureReference(const char *name, TextureType type, 
                                 MString::Format(TextureNames[3], "%s_d", name);  // Нижняя текстура
                                 MString::Format(TextureNames[4], "%s_f", name);  // Передняя текстура
                                 MString::Format(TextureNames[5], "%s_b", name);  // Задняя текстура
-                                if (!LoadCubeTextures(name, TextureNames, t)) {
+                                if (!LoadCubeTextures(name, TextureNames, texture)) {
                                     OutTextureId = INVALID::ID;
                                     MERROR("Не удалось загрузить текстуру куба «%s».", name);
                                     return false;
@@ -454,10 +457,10 @@ bool LoadCubeTextures(const char *name, const char TextureNames[6][TEXTURE_NAME_
             ImageSize = t->width * t->height * t->ChannelCount;
             // ПРИМЕЧАНИЕ: в кубических картах прозрачность не нужна, поэтому ее не проверяем.
 
-            pixels = MMemory::TAllocate(MemoryTag::Array, ImageSize * 6);
+            pixels = MMemory::TAllocate<u8>(MemoryTag::Array, ImageSize * 6);
         } else {
             // Убедитесь, что все текстуры имеют одинаковый размер.
-            if (t->width != ResourceData->width || t->height != ResourceData->height || t->channel_count != ResourceData->channel_count) {
+            if (t->width != ResourceData->width || t->height != ResourceData->height || t->ChannelCount != ResourceData->ChannelCount) {
                 MERROR("LoadCubeTextures - Все текстуры должны иметь одинаковое разрешение и битовую глубину.");
                 MMemory::Free(pixels, sizeof(u8) * ImageSize * 6, MemoryTag::Array);
                 pixels = 0;

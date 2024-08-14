@@ -110,7 +110,7 @@ public:
     bool ShaderAcquireInstanceResources(Shader* shader, TextureMap** maps, u32& OutInstanceID) override;
     bool ShaderReleaseInstanceResources(Shader* shader, u32 InstanceID) override;
     bool SetUniform(Shader* shader, struct ShaderUniform* uniform, const void* value) override;
-    bool TextureMapAcquireResources(TextureMap* map) override;
+    bool TextureMapAcquireResources(TextureMap& map) override;
     void TextureMapReleaseResources(TextureMap* map) override;
     void RenderTargetCreate(u8 AttachmentCount, Texture** attachments, Renderpass* pass, u32 width, u32 height, RenderTarget& OutTarget) override;
     void RenderTargetDestroy(RenderTarget& target, bool FreeInternalMemory = false) override;

@@ -103,7 +103,7 @@ bool ShaderSystem::Create(const ShaderConfig *config)
         return false;
     }
     
-    if (!Renderer::Load(OutShader, config, renderpass, config->StageCount, config->StageFilenames, config->stages.Data())) {
+    if (!Renderer::Load(OutShader, *config, renderpass, config->StageCount, config->StageFilenames, config->stages.Data())) {
         MERROR("Ошибка создания шейдера.");
         return false;
     }

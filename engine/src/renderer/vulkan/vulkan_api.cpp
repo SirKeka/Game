@@ -134,14 +134,14 @@ bool VulkanAPI::Load(Shader *shader, const ShaderConfig& config, Renderpass* ren
     for (u32 i = 0; i < TotalCount; ++i) {
         switch (config.uniforms[i].scope) {
             case ShaderScope::Global:
-                if (config->uniforms[i].type == ShaderUniformType::Sampler) {
+                if (config.uniforms[i].type == ShaderUniformType::Sampler) {
                     OutShader->GlobalUniformSamplerCount++;
                 } else {
                     OutShader->GlobalUniformCount++;
                 }
                 break;
             case ShaderScope::Instance:
-                if (config->uniforms[i].type == ShaderUniformType::Sampler){
+                if (config.uniforms[i].type == ShaderUniformType::Sampler){
                     OutShader->InstanceUniformSamplerCount++;
                 } else {
                     OutShader->InstanceUniformCount++;
@@ -163,7 +163,7 @@ bool VulkanAPI::Load(Shader *shader, const ShaderConfig& config, Renderpass* ren
         auto& SetConfig = OutShader->config.DescriptorSets[OutShader->config.DescriptorSetCount];
 
         // При наличии глобального UBO-привязки он является первым.
-        if (){
+        if (OutShader->GlobalUniformCount > 0) {
             const u8& BindingIndex = SetConfig.BindingCount;
             SetConfig.bindings[BindingIndex].binding = BindingIndex;
             SetConfig.bindings[BindingIndex].descriptorCount = 1;
@@ -180,7 +180,7 @@ bool VulkanAPI::Load(Shader *shader, const ShaderConfig& config, Renderpass* ren
             SetConfig.bindings[BindingIndex].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
             SetConfig.bindings[BindingIndex].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
             SetConfig.SamplerBindingIndex = BindingIndex;
-            SetConfig.binding_count++;
+            SetConfig.BindingCount++;
         }
 
         // Увеличить установленный счетчик.
@@ -293,16 +293,16 @@ bool VulkanAPI::ShaderInitialize(Shader *shader)
     static VkFormat* types = nullptr;
     static VkFormat t[11];
     if (!types) {
-        t[ShaderAttributeType::Float32]   = VK_FORMAT_R32_SFLOAT;
-        t[ShaderAttributeType::Float32_2] = VK_FORMAT_R32G32_SFLOAT;
-        t[ShaderAttributeType::Float32_3] = VK_FORMAT_R32G32B32_SFLOAT;
-        t[ShaderAttributeType::Float32_4] = VK_FORMAT_R32G32B32A32_SFLOAT;
-        t[ShaderAttributeType::Int8]      = VK_FORMAT_R8_SINT;
-        t[ShaderAttributeType::UInt8]     = VK_FORMAT_R8_UINT;
-        t[ShaderAttributeType::Int16]     = VK_FORMAT_R16_SINT;
-        t[ShaderAttributeType::UInt16]    = VK_FORMAT_R16_UINT;
-        t[ShaderAttributeType::Int32]     = VK_FORMAT_R32_SINT;
-        t[ShaderAttributeType::UInt32]    = VK_FORMAT_R32_UINT;
+        t[EShaderAttribute::Float32]   = VK_FORMAT_R32_SFLOAT;
+        t[EShaderAttribute::Float32_2] = VK_FORMAT_R32G32_SFLOAT;
+        t[EShaderAttribute::Float32_3] = VK_FORMAT_R32G32B32_SFLOAT;
+        t[EShaderAttribute::Float32_4] = VK_FORMAT_R32G32B32A32_SFLOAT;
+        t[EShaderAttribute::Int8]      = VK_FORMAT_R8_SINT;
+        t[EShaderAttribute::UInt8]     = VK_FORMAT_R8_UINT;
+        t[EShaderAttribute::Int16]     = VK_FORMAT_R16_SINT;
+        t[EShaderAttribute::UInt16]    = VK_FORMAT_R16_UINT;
+        t[EShaderAttribute::Int32]     = VK_FORMAT_R32_SINT;
+        t[EShaderAttribute::UInt32]    = VK_FORMAT_R32_UINT;
         types = t;
     }
 
@@ -1303,7 +1303,7 @@ void VulkanAPI::TextureResize(Texture *texture, u32 NewWidth, u32 NewHeight)
 
 void VulkanAPI::TextureWriteData(Texture *texture, u32 offset, u32 size, const u8 *pixels)
 {
-    VkDeviceSize ImageSize = texture->width * texture->height * texture->ChannelCount * (t->type == TextureType::Cube ? 6 : 1);
+    VkDeviceSize ImageSize = texture->width * texture->height * texture->ChannelCount * (texture->type == TextureType::Cube ? 6 : 1);
 
     VkFormat ImageFormat = ChannelCountToFormat(texture->ChannelCount, VK_FORMAT_R8G8B8A8_UNORM);
 
@@ -1322,7 +1322,7 @@ void VulkanAPI::TextureWriteData(Texture *texture, u32 offset, u32 size, const u
     texture->Data->TransitionLayout(this, texture->type, &TempBuffer, ImageFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
     // Скопируйте данные из буфера.
-    texture->Data->CopyFromBuffer(this, vtexture->type, staging.handle, &TempBuffer);
+    texture->Data->CopyFromBuffer(this, texture->type, staging.handle, &TempBuffer);
 
     // Переход от оптимального для приема данных к оптимальному макету, доступному только для чтения шейдеров.
     texture->Data->TransitionLayout(
@@ -1703,17 +1703,17 @@ bool VulkanAPI::SetUniform(Shader *shader, ShaderUniform *uniform, const void *v
     return true;
 }
 
-bool VulkanAPI::TextureMapAcquireResources(TextureMap *map)
+bool VulkanAPI::TextureMapAcquireResources(TextureMap &map)
 {
     // Создайте сэмплер для текстуры
     VkSamplerCreateInfo SamplerInfo = {VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
 
-    SamplerInfo.minFilter = ConvertFilterType("min", map->FilterMinify);
-    SamplerInfo.magFilter = ConvertFilterType("mag", map->FilterMagnify);
+    SamplerInfo.minFilter = ConvertFilterType("min", map.FilterMinify);
+    SamplerInfo.magFilter = ConvertFilterType("mag", map.FilterMagnify);
 
-    SamplerInfo.addressModeU = ConvertRepeatType("U", map->RepeatU);
-    SamplerInfo.addressModeV = ConvertRepeatType("V", map->RepeatV);
-    SamplerInfo.addressModeW = ConvertRepeatType("W", map->RepeatW);
+    SamplerInfo.addressModeU = ConvertRepeatType("U", map.RepeatU);
+    SamplerInfo.addressModeV = ConvertRepeatType("V", map.RepeatV);
+    SamplerInfo.addressModeW = ConvertRepeatType("W", map.RepeatW);
 
     // ЗАДАЧА: Настраивается
     SamplerInfo.anisotropyEnable = VK_TRUE;
@@ -1727,7 +1727,7 @@ bool VulkanAPI::TextureMapAcquireResources(TextureMap *map)
     SamplerInfo.minLod = 0.F;
     SamplerInfo.maxLod = 0.F;
 
-    VkResult result = vkCreateSampler(Device.LogicalDevice, &SamplerInfo, allocator, &map->sampler);
+    VkResult result = vkCreateSampler(Device.LogicalDevice, &SamplerInfo, allocator, &map.sampler);
     if (!VulkanResultIsSuccess(VK_SUCCESS)) {
         MERROR("Ошибка создания сэмплера текстуры: %s.", VulkanResultString(result, true));
         return false;
