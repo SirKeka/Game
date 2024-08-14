@@ -177,7 +177,7 @@ public:
     /// @brief Получает внутренние ресурсы для данной карты текстур.
     /// @param map указатель на карту текстуры, для которой нужно получить ресурсы.
     /// @return true в случае успеха; в противном случае false.
-    static bool TextureMapAcquireResources(TextureMap& map);
+    static bool TextureMapAcquireResources(TextureMap* map);
     /// @brief Освобождает внутренние ресурсы для данной карты текстур.
     /// @param map указатель на карту текстур, из которой необходимо освободить ресурсы.
     static void TextureMapReleaseResources(TextureMap* map);

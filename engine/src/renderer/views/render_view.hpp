@@ -5,6 +5,8 @@
 struct Renderpass;
 struct SkyboxPacketData {
     class Skybox* sb;
+    constexpr SkyboxPacketData() : sb(nullptr) {}
+    constexpr SkyboxPacketData(Skybox* sb) : sb(sb) {}
 };
 
 class RenderView

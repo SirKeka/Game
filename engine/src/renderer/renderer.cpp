@@ -309,7 +309,7 @@ bool Renderer::SetUniform(Shader *shader, ShaderUniform *uniform, const void *va
     return ptrRenderer->SetUniform(shader, uniform, value);
 }
 
-bool Renderer::TextureMapAcquireResources(TextureMap &map)
+bool Renderer::TextureMapAcquireResources(TextureMap *map)
 {
     return ptrRenderer->TextureMapAcquireResources(map);
 }

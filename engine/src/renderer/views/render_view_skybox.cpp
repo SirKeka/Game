@@ -60,11 +60,11 @@ bool RenderViewSkybox::BuildPacket(void *data, Packet &OutPacket) const
 bool RenderViewSkybox::Render(const Packet &packet, u64 FrameNumber, u64 RenderTargetIndex) const
 {
 
-    SkyboxPacketData* SkyboxData = reinterpret_cast<SkyboxPacketData*>(packet.ExtendedData);
-    ShaderSystem* ShaderSystemInst = ShaderSystem::GetInstance();
+    auto SkyboxData = reinterpret_cast<SkyboxPacketData*>(packet.ExtendedData);
+    auto ShaderSystemInst = ShaderSystem::GetInstance();
 
     for (u32 p = 0; p < RenderpassCount; ++p) {
-        Renderpass* pass = passes[p];
+        auto pass = passes[p];
         if (!Renderer::RenderpassBegin(pass, pass->targets[RenderTargetIndex])) {
             MERROR("RenderViewSkybox::Render индекс прохода %u ошибка запуска.", p);
             return false;
@@ -76,7 +76,7 @@ bool RenderViewSkybox::Render(const Packet &packet, u64 FrameNumber, u64 RenderT
         }
 
         // Получить матрицу вида, но обнулить позицию, чтобы скайбокс остался на экране.
-        Matrix4D ViewMatrix = WorldCamera->GetView();
+        auto ViewMatrix = WorldCamera->GetView();
         ViewMatrix(12) = ViewMatrix(13) = ViewMatrix(14) = 0.f;
 
         // Применить глобальные переменные

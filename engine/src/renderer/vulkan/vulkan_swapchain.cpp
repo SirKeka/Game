@@ -212,18 +212,18 @@ void VulkanSwapchain::Create(VulkanAPI *VkAPI, u32 width, u32 height)
         }
     }
     VkImage SwapchainImages[32];
-    VK_CHECK(vkGetSwapchainImagesKHR(VkAPI->Device.LogicalDevice, handle, &this->ImageCount, SwapchainImages));
+    VK_CHECK(vkGetSwapchainImagesKHR(VkAPI->Device.LogicalDevice, handle, &ImageCount, SwapchainImages));
     for (u32 i = 0; i < this->ImageCount; ++i) {
         // Обновите внутренний образ для каждого.
-        VulkanImage& image = *RenderTextures[i]->Data;
+        auto& image = *RenderTextures[i]->Data;
         image.handle = SwapchainImages[i];
         image.width = SwapchainExtent.width;
         image.height = SwapchainExtent.height;
     }
 
     // Views
-    for (u32 i = 0; i < this->ImageCount; ++i) {
-        VulkanImage& image = *RenderTextures[i]->Data;
+    for (u32 i = 0; i < ImageCount; ++i) {
+        auto& image = *RenderTextures[i]->Data;
         VkImageViewCreateInfo ViewInfo = {VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
         ViewInfo.image = image.handle;
         ViewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;

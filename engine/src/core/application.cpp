@@ -79,6 +79,7 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
         MFATAL("Не удалось инициализировать систему ресурсов. Приложение не может быть продолжено.");
         return false;
     }
+    State->ResourceSystemInst = ResourceSystem::Instance();
 
     // Система шейдеров
     if(!ShaderSystem::Initialize(1024, 128, 31, 31)) {
@@ -165,15 +166,15 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
     
     // ЗАДАЧА: временно
     // Skybox
-    auto& CubeMap = State->sb.cubemap;
-    CubeMap.FilterMagnify = CubeMap.FilterMinify = TextureFilter::ModeLinear;
-    CubeMap.RepeatU = CubeMap.RepeatV = CubeMap.RepeatW = TextureRepeat::ClampToEdge;
-    CubeMap.use = TextureUse::Cubemap;
+    auto* CubeMap = &State->sb.cubemap;
+    CubeMap->FilterMagnify = CubeMap->FilterMinify = TextureFilter::ModeLinear;
+    CubeMap->RepeatU = CubeMap->RepeatV = CubeMap->RepeatW = TextureRepeat::ClampToEdge;
+    CubeMap->use = TextureUse::Cubemap;
     if (!Renderer::TextureMapAcquireResources(CubeMap)) {
-        MFATAL("Unable to acquire resources for cube map texture.");
+        MFATAL("Невозможно получить ресурсы для текстуры кубической карты.");
         return false;
     }
-    CubeMap.texture = TextureSystem::Instance()->AcquireCube("skybox", true);
+    CubeMap->texture = TextureSystem::Instance()->AcquireCube("skybox", true);
     auto SkyboxCubeConfig = GeometrySystemInst->GenerateCubeConfig(10.0f, 10.0f, 10.0f, 1.0f, 1.0f, "skybox_cube", nullptr);
     // Удалите название материала.
     SkyboxCubeConfig.MaterialName[0] = '\0';
@@ -217,7 +218,7 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
     // Тестовая модель загружается из файла
     Mesh& CarMesh = State->meshes[State->MeshCount];
     Resource CarMeshResource;
-    if (!ResourceSystem::Instance()->Load("falcon", ResourceType::Mesh, nullptr, CarMeshResource)) {
+    if (!State->ResourceSystemInst->Load("falcon", ResourceType::Mesh, nullptr, CarMeshResource)) {
         MERROR("Не удалось загрузить тестовую модель машины!");
     } else {
         GeometryConfig* configs = reinterpret_cast<GeometryConfig*>(CarMeshResource.data);
@@ -227,13 +228,13 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
             CarMesh.geometries[i] = GeometrySystemInst->Acquire(configs[i], true);
         }
         CarMesh.transform = Transform(FVec3(15.f, 0.f, 1.f));
-        ResourceSystem::Instance()->Unload(CarMeshResource);
+        State->ResourceSystemInst->Unload(CarMeshResource);
         State->MeshCount++;
     }
 
     Mesh& SponzaMesh = State->meshes[State->MeshCount];
     Resource SponzaMeshResource;
-    if (!ResourceSystem::Instance()->Load("sponza", ResourceType::Mesh, nullptr, SponzaMeshResource)) {
+    if (!State->ResourceSystemInst->Load("sponza", ResourceType::Mesh, nullptr, SponzaMeshResource)) {
         MERROR("Не удалось загрузить тестовую модель машины!");
     } else {
         GeometryConfig* configs = reinterpret_cast<GeometryConfig*>(SponzaMeshResource.data);
@@ -243,7 +244,7 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
             SponzaMesh.geometries[i] = GeometrySystemInst->Acquire(configs[i], true);
         }
         SponzaMesh.transform = Transform(FVec3(), Quaternion::Identity(), FVec3(0.05, 0.05, 0.05));
-        ResourceSystem::Instance()->Unload(SponzaMeshResource);
+        State->ResourceSystemInst->Unload(SponzaMeshResource);
         State->MeshCount++;
     }
 
@@ -348,24 +349,31 @@ bool Application::ApplicationRun() {
                 }
             }
 
-            RenderView::Packet views[2]{};
+            RenderView::Packet views[3]{};
             RenderPacket packet {
                 delta, 
                 //ЗАДАЧА: Прочтите конфигурацию фрейма.
-                2, views
+                3, views
             };
+
+            // Скайбокс
+            SkyboxPacketData SkyboxData { &State->sb };
+            if (!State->RenderViewSystemInst->BuildPacket(State->RenderViewSystemInst->Get("skybox"), &SkyboxData, packet.views[0])) {
+                MERROR("Не удалось построить пакет для представления «skybox».");
+                return false;
+            }
 
             // Мир 
             Mesh::PacketData WorldMeshData {State->MeshCount, State->meshes};
             // ЗАДАЧА: выполняет поиск в каждом кадре.
-            if (!State->RenderViewSystemInst->BuildPacket(State->RenderViewSystemInst->Get("world_opaque"), &WorldMeshData, packet.views[0])) {
+            if (!State->RenderViewSystemInst->BuildPacket(State->RenderViewSystemInst->Get("world_opaque"), &WorldMeshData, packet.views[1])) {
                 MERROR("Не удалось построить пакет для представления «world_opaque».");
                 return false;
             }
 
             // пользовательский интерфейс
             Mesh::PacketData UIMeshData = {State->UIMeshCount, State->UIMeshes};
-            if (!State->RenderViewSystemInst->BuildPacket(State->RenderViewSystemInst->Get("ui"), &UIMeshData, packet.views[1])) {
+            if (!State->RenderViewSystemInst->BuildPacket(State->RenderViewSystemInst->Get("ui"), &UIMeshData, packet.views[2])) {
                 MERROR("Не удалось построить пакет для представления «ui».");
                 return false;
             }
@@ -416,8 +424,14 @@ bool Application::ApplicationRun() {
     GeometrySystem::Instance()->Shutdown();
     MaterialSystem::Shutdown();
     TextureSystem::Instance()->Shutdown();
+
+    // ЗАДАЧА: Временное
+    // ЗАДАЧА: реализовать уничтожение скайбокса.
+    Renderer::TextureMapReleaseResources(&State->sb.cubemap);
+    // ЗАДАЧА: Конец временного
+
     ShaderSystem::Shutdown();
-    ResourceSystem::Instance()->Shutdown();
+    State->ResourceSystemInst->Shutdown();
     State->Render->Shutdown();
 
     State->Window->Close();

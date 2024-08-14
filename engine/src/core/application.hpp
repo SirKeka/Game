@@ -26,6 +26,7 @@ struct ApplicationState {
     //Системы
     //TextureSystem* TexSys;
     class RenderViewSystem* RenderViewSystemInst{nullptr};
+    class ResourceSystem* ResourceSystemInst{nullptr};
     
     u32 width;
     u32 height;

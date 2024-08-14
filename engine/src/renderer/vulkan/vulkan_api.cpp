@@ -28,8 +28,8 @@ void VulkanAPI::DrawGeometry(const GeometryRenderData& data)
         return;
     }
 
-    Geometry BufferData = this->geometries[data.gid->InternalID];
-    VulkanCommandBuffer& CommandBuffer = this->GraphicsCommandBuffers[this->ImageIndex];
+    auto BufferData = geometries[data.gid->InternalID];
+    auto& CommandBuffer = GraphicsCommandBuffers[ImageIndex];
 
     // Привязка буфера вершин к смещению.
     VkDeviceSize offsets[1] = {BufferData.VertexBufferOffset};
@@ -38,7 +38,7 @@ void VulkanAPI::DrawGeometry(const GeometryRenderData& data)
     // Рисовать индексированные или неиндексированные.
     if (BufferData.IndexCount > 0) {
         // Привязать индексный буфер по смещению.
-        vkCmdBindIndexBuffer(CommandBuffer.handle, this->ObjectIndexBuffer.handle, BufferData.IndexBufferOffset, VK_INDEX_TYPE_UINT32);
+        vkCmdBindIndexBuffer(CommandBuffer.handle, ObjectIndexBuffer.handle, BufferData.IndexBufferOffset, VK_INDEX_TYPE_UINT32);
 
         // Issue the draw.
         vkCmdDrawIndexed(CommandBuffer.handle, BufferData.IndexCount, 1, 0, 0, 0);
@@ -447,9 +447,9 @@ bool VulkanAPI::ShaderUse(Shader *shader)
 
 bool VulkanAPI::ShaderApplyGlobals(Shader *shader)
 {
-    VulkanShader* VkShader = shader->ShaderData;
-    VkCommandBuffer& CommandBuffer = GraphicsCommandBuffers[ImageIndex].handle;
-    VkDescriptorSet& GlobalDescriptor = VkShader->GlobalDescriptorSets[ImageIndex];
+    auto VkShader = shader->ShaderData;
+    auto& CommandBuffer = GraphicsCommandBuffers[ImageIndex].handle;
+    auto& GlobalDescriptor = VkShader->GlobalDescriptorSets[ImageIndex];
 
     // Сначала примените UBO
     VkDescriptorBufferInfo BufferInfo;
@@ -544,7 +544,7 @@ bool VulkanAPI::ShaderApplyInstance(Shader *shader, bool NeedsUpdate)
                 Texture* t = map->texture;
                 ImageInfos[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
                 ImageInfos[i].imageView = t->Data->view;
-                ImageInfos[i].sampler = map->sampler;
+                ImageInfos[i].sampler = reinterpret_cast<VkSampler>(map->sampler);
     
                 // ЗАДАЧА: измените состояние дескриптора, чтобы справиться с этим должным образом.
                 // Синхронизировать генерацию кадров, если не используется текстура по умолчанию.
@@ -1145,10 +1145,10 @@ bool VulkanAPI::EndFrame(f32 DeltaTime)
 
 bool VulkanAPI::RenderpassBegin(Renderpass* pass, RenderTarget& target)
 {
-    VulkanCommandBuffer& CommandBuffer = GraphicsCommandBuffers[ImageIndex];
+    auto& CommandBuffer = GraphicsCommandBuffers[ImageIndex];
 
     // Начало этапа рендеринга.
-    VulkanRenderpass* VkRenderpass = (VulkanRenderpass*)pass->InternalData;
+    auto VkRenderpass = reinterpret_cast<VulkanRenderpass*>(pass->InternalData);
 
     VkRenderPassBeginInfo BeginInfo = {VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
     BeginInfo.renderPass = VkRenderpass->handle;
@@ -1703,17 +1703,17 @@ bool VulkanAPI::SetUniform(Shader *shader, ShaderUniform *uniform, const void *v
     return true;
 }
 
-bool VulkanAPI::TextureMapAcquireResources(TextureMap &map)
+bool VulkanAPI::TextureMapAcquireResources(TextureMap *map)
 {
     // Создайте сэмплер для текстуры
     VkSamplerCreateInfo SamplerInfo = {VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
 
-    SamplerInfo.minFilter = ConvertFilterType("min", map.FilterMinify);
-    SamplerInfo.magFilter = ConvertFilterType("mag", map.FilterMagnify);
+    SamplerInfo.minFilter = ConvertFilterType("min", map->FilterMinify);
+    SamplerInfo.magFilter = ConvertFilterType("mag", map->FilterMagnify);
 
-    SamplerInfo.addressModeU = ConvertRepeatType("U", map.RepeatU);
-    SamplerInfo.addressModeV = ConvertRepeatType("V", map.RepeatV);
-    SamplerInfo.addressModeW = ConvertRepeatType("W", map.RepeatW);
+    SamplerInfo.addressModeU = ConvertRepeatType("U", map->RepeatU);
+    SamplerInfo.addressModeV = ConvertRepeatType("V", map->RepeatV);
+    SamplerInfo.addressModeW = ConvertRepeatType("W", map->RepeatW);
 
     // ЗАДАЧА: Настраивается
     SamplerInfo.anisotropyEnable = VK_TRUE;
@@ -1727,7 +1727,7 @@ bool VulkanAPI::TextureMapAcquireResources(TextureMap &map)
     SamplerInfo.minLod = 0.F;
     SamplerInfo.maxLod = 0.F;
 
-    VkResult result = vkCreateSampler(Device.LogicalDevice, &SamplerInfo, allocator, &map.sampler);
+    VkResult result = vkCreateSampler(Device.LogicalDevice, &SamplerInfo, allocator, reinterpret_cast<VkSampler*>(&map->sampler));
     if (!VulkanResultIsSuccess(VK_SUCCESS)) {
         MERROR("Ошибка создания сэмплера текстуры: %s.", VulkanResultString(result, true));
         return false;
@@ -1739,8 +1739,9 @@ bool VulkanAPI::TextureMapAcquireResources(TextureMap &map)
 void VulkanAPI::TextureMapReleaseResources(TextureMap *map)
 {
     if (map) {
-        vkDestroySampler(Device.LogicalDevice, map->sampler, allocator);
-        MMemory::ZeroMem(&map->sampler, sizeof(VkSampler)); // map->sampler = 0;
+        vkDestroySampler(Device.LogicalDevice, reinterpret_cast<VkSampler>(map->sampler), allocator);
+        MMemory::ZeroMem(&map->sampler, sizeof(VkSampler)); 
+        map->sampler = nullptr;
     }
 }
 

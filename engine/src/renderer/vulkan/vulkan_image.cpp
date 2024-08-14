@@ -87,7 +87,7 @@ void VulkanImage::Create(VulkanAPI *VkAPI, TextureType type, u32 width, u32 heig
 void VulkanImage::ViewCreate(VulkanAPI *VkAPI, TextureType type, VkFormat format, VkImageAspectFlags AspectFlags)
 {
     VkImageViewCreateInfo ViewCreateInfo = {VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
-    ViewCreateInfo.image = this->handle;
+    ViewCreateInfo.image = handle;
     switch (type) {
         case TextureType::Cube:
             ViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_CUBE;

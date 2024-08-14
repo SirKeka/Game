@@ -405,8 +405,8 @@ bool TextureSystem::ProcessTextureReference(const char *name, TextureType type, 
                                     MERROR("Не удалось загрузить текстуру «%s».", name);
                                     return false;
                                 }
-                                texture->id = ref.handle;
                             }
+                            texture->id = ref.handle;
                         }
                         // MTRACE("Текстура «%s» еще не существует. Создано, и ref_count теперь равен %i.", name, ref.ReferenceCount);
                     }

@@ -9,5 +9,4 @@ struct Skybox
     u64 RenderFrameNumber;  // Синхронизируется с текущим номером кадра рендерера, когда материал был применен к этому кадру.
 
     constexpr Skybox(/* args */) : cubemap(), g(), InstanceID(), RenderFrameNumber(INVALID::U64ID) {}
-
 };
