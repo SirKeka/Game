@@ -53,3 +53,7 @@ void PlatformConsoleWriteError(const char* message, u8 colour);
 // Следует использовать только для возврата времени ОС для неиспользованной мощности обновления.
 // Поэтому его не экспортируем.
 void PlatformSleep(u64 ms);
+
+/// @brief Получает количество логических ядер процессора.
+/// @return Количество логических ядер процессора.
+i32 PlatformGetProcessorCount();

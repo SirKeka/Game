@@ -1,11 +1,11 @@
-#pragma once
+#define _CRT_SECURE_NO_WARNINGS
 #include <core/logger.hpp>
 
 // Для выполнения команд оболочки.
 #include <stdlib.h>
 
 void PrintHelp();
-i32 ProcessShaders(i32 argc, char** argv);
+i32 ProcessShaders(i32 argc, char const *argv[]);
 
 i32 main(i32 argc, char const *argv[])
 {
@@ -28,7 +28,7 @@ i32 main(i32 argc, char const *argv[])
     return 0;
 }
 
-i32 ProcessShaders(i32 argc, char **argv)
+i32 ProcessShaders(i32 argc, char const *argv[])
 {
     if (argc < 3) {
         MERROR("Для режима шейдеров сборки требуется как минимум один дополнительный аргумент.");

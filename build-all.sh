@@ -41,4 +41,4 @@ then
 echo "Error:"$ERRORLEVEL && exit
 fi
 
-echo "All assemblies built successfully."
+echo "Все сборки выполнены успешно."

@@ -6,6 +6,8 @@
 #include "core/logger.hpp"
 #include "core/event.hpp"
 #include "core/input.hpp"
+#include "core/mthread.hpp"
+#include "core/mmutex.hpp"
 
 #include "containers/darray.hpp"
 
@@ -21,6 +23,9 @@
 #else
 #include <unistd.h>  // usleep
 #endif
+#include <pthread.h>
+#include <errno.h>        // Для сообщения об ошибках
+#include <sys/sysinfo.h>  // Информация о процессоре
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -30,7 +35,7 @@
 #define VK_USE_PLATFORM_XCB_KHR
 #include <vulkan/vulkan.h>
 #include "renderer/vulkan/vulkan_types.inl"
-
+#include "mthread.hpp"
 
 struct PlatformState {
     Display* display;
@@ -327,6 +332,130 @@ void PlatformSleep(u64 ms) {
     usleep((ms % 1000) * 1000);
 #endif
 }
+
+i32 PlatformGetProcessorCount()
+{
+    // Загрузить информацию о процессоре.
+    i32 ProcessorCount = get_nprocs_conf();
+    i32 ProcessorsAvailable = get_nprocs();
+    MINFO("Обнаружено %i ядер процессора, доступно %i ядер.", ProcessorCount, ProcessorsAvailable);
+    return ProcessorsAvailable;
+}
+
+// ПРИМЕЧАНИЕ: Начало потоков.
+
+constexpr MThread::MThread(PFN_ThreadStart StartFunctionPtr, void *params, bool AutoDetach)
+{
+    if (!StartFunctionPtr) {
+        return;
+    }
+
+    // MThread::MThread использует указатель на функцию, которая возвращает void*, поэтому выполняется холодное приведение к этому типу.
+    i32 result = pthread_create((pthread_t*)&out_thread->thread_id, 0, (void* (*)(void*))StartFunctionPtr, params);
+    if (result != 0) {
+        switch (result) {
+            case EAGAIN:
+                MERROR("Не удалось создать поток: недостаточно ресурсов для создания другого потока.");
+                return;
+            case EINVAL:
+                MERROR("Не удалось создать поток: в атрибутах переданы недопустимые настройки.");
+                return;
+            default:
+                MERROR("Не удалось создать поток: произошла необработанная ошибка. errno=%i", result);
+                return;
+        }
+    }
+    MDEBUG("Запуск процесса на идентификаторе потока: %#x", ThreadID);
+
+    // Сохраняйте только вне дескриптора, если не выполняется автоматическое отсоединение.
+    if (!AutoDetach) {
+        data = platform_allocate(sizeof(u64),);
+        *(u64*)data = ThreadID;
+    } else {
+        // Если выполняется немедленное отсоединение, убедитесь, что операция прошла успешно.
+        result = pthread_detach(ThreadID);
+        if (result != 0) {
+            switch (result) {
+                case EINVAL:
+                    MERROR("Не удалось отсоединить недавно созданный поток: поток не является присоединяемым потоком.");
+                    return;
+                case ESRCH:
+                    MERROR("Не удалось отсоединить недавно созданный поток: поток с идентификатором %#x не найден.", ThreadID);
+                    return;
+                default:
+                    MERROR("Не удалось отсоединить недавно созданный поток: произошла неизвестная ошибка. errno=%i", result);
+                    return;
+            }
+        }
+    }
+
+    return true;
+}
+
+MThread::~MThread()
+{
+    this->Cancel();
+}
+
+void MThread::Detach()
+{
+    if (data) {
+        i32 result = pthread_detach(*(pthread_t*)data);
+        if (result != 0) {
+            switch (result) {
+                case EINVAL:
+                    MERROR("Не удалось отсоединить поток: поток не является присоединяемым потоком.");
+                    break;
+                case ESRCH:
+                    MERROR("Не удалось отсоединить поток: поток с идентификатором %#x не найден.", ThreadID);
+                    break;
+                default:
+                    MERROR("Не удалось отсоединить поток: произошла неизвестная ошибка. errno=%i", result);
+                    break;
+            }
+        }
+        platform_free(data, false);
+        data = 0;
+    }
+}
+
+void MThread::Cancel()
+{
+    if (data) {
+        i32 result = pthread_cancel(*(pthread_t*)data);
+        if (result != 0) {
+            switch (result) {
+                case ESRCH:
+                    MERROR("Не удалось отменить поток: поток с идентификатором %#x не найден.", ThreadID);
+                    break;
+                default:
+                    MERROR("Не удалось отменить поток: произошла неизвестная ошибка. errno=%i", result);
+                    break;
+            }
+        }
+        platform_free(data, false);
+        data = 0;
+        ThreadID = 0;
+    }
+}
+
+bool MThread::IsActive()
+{
+    // ЗАДАЧА: Найдите лучший способ проверить это.
+    return data != 0;
+}
+
+void MThread::Sleep(u64 ms)
+{
+    PlatformSleep(ms);
+}
+
+u64 MThread::GetThreadID()
+{
+    return (u64)pthread_self();
+}
+
+// Конец потоков
 
 void PlatformGetRequiredExtensionNames(DArray<const char*>& NameDarray) {
     NameDarray.PushBack("VK_KHR_xcb_surface"); // VK_KHR_xlib_surface?
