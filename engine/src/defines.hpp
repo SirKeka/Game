@@ -109,7 +109,7 @@ namespace INVALID
 #endif
 #endif
 
-#define MCLAMP(value, min, max) (value <= min) ? min : (value >= max) ? max : value;
+#define MCLAMP(value, min, max) ((value <= min) ? min : (value >= max) ? max : value)
 
 // Встраивание
 #ifdef _MSC_VER

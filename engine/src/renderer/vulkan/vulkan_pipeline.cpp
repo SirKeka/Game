@@ -51,7 +51,6 @@ bool VulkanPipeline::Create(
             RasterizerCreateInfo.cullMode = VK_CULL_MODE_FRONT_AND_BACK;
             break;
     }
-    RasterizerCreateInfo.cullMode = VK_CULL_MODE_BACK_BIT;
     RasterizerCreateInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
     RasterizerCreateInfo.depthBiasEnable = VK_FALSE;
     RasterizerCreateInfo.depthBiasConstantFactor = 0.0f;

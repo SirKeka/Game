@@ -22,7 +22,7 @@ void Event::Shutdown()
             // state.registered[i].events = 0;
         }
     }*/
-    delete event;
+    //delete event;
 }
 
 bool Event::Register(u16 code, void *listener, PFN_OnEvent OnEvent)

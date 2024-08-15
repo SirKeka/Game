@@ -95,6 +95,7 @@ public:
     /// @brief Выгружает данные текстуры из графического процессора.
     /// @param texture указатель на текстуру которую нужно выгрузить.
     void Unload(Texture* texture) override;
+    
     bool Load(GeometryID* gid, u32 VertexSize, u32 VertexCount, const void* vertices, u32 IndexSize, u32 IndexCount, const void* indices) override;
     void Unload(GeometryID* gid) override;
     void DrawGeometry(const GeometryRenderData& data) override;

@@ -51,7 +51,7 @@ public:
     MAPI static ApplicationState* State; //ЗАДАЧА: убрать MAPI 
 public:
     Application() = default;
-    ~Application();
+    ~Application() {}
 
     MAPI bool ApplicationCreate(GameTypes* GameInst);
 

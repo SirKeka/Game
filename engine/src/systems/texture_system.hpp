@@ -105,7 +105,7 @@ public:
             texture = &state->RegisteredTextures[id];
         } else {
             texture = new Texture();
-            MTRACE("TextureSystem::WrapInternal создала текстуру «%s», но не зарегистрировалась, что привело к выделению. Освобождение этой памяти зависит от вызывающего абонента.", name);
+            // MTRACE("TextureSystem::WrapInternal создала текстуру «%s», но не зарегистрировалась, что привело к выделению. Освобождение этой памяти зависит от вызывающего абонента.", name);
         } 
         TextureFlagBits flag = 0;
         flag |= HasTransparency ? TextureFlag::HasTransparency : 0;

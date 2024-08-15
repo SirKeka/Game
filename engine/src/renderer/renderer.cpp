@@ -22,12 +22,14 @@ constexpr bool CriticalInit(bool op, const MString& message)
 
 Renderer::Renderer(MWindow *window, const char *ApplicationName, ERendererType type)
 :  
+SkyboxShaderID(),
 MaterialShaderID(), 
 UIShaderID(), 
 WindowRenderTargetCount(),
 // Размер буфера кадра по умолчанию. Переопределяется при создании окна.
 FramebufferWidth(1280),
 FramebufferHeight(720),
+SkyboxRenderpass(),
 WorldRenderpass(nullptr),
 UiRenderpass(nullptr),
 resizing(false),
@@ -188,7 +190,7 @@ bool Renderer::DrawFrame(const RenderPacket &packet)
 
     // Если начальный кадр возвращается успешно, операции в середине кадра могут продолжаться.
     if (ptrRenderer->BeginFrame(packet.DeltaTime)) {
-        const auto& AttachmentIndex = ptrRenderer->WindowAttachmentIndexGet();
+        const u8& AttachmentIndex = ptrRenderer->WindowAttachmentIndexGet();
         
         // Отобразить каждое представление.
         for (u32 i = 0; i < packet.ViewCount; i++) {

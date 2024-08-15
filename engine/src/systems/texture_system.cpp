@@ -259,7 +259,7 @@ void TextureSystem::DestroyDefaultTexture()
 bool TextureSystem::LoadTexture(const char* TextureName, Texture *t)
 {
     auto ResourceSystemInst = ResourceSystem::Instance();
-    ImageResourceParams params { false };
+    ImageResourceParams params { true };
     Resource ImgResource;
     if (!ResourceSystemInst->Load(TextureName, ResourceType::Image, &params, ImgResource)) {
         MERROR("Не удалось загрузить ресурс изображения для текстуры. '%s'", TextureName);
@@ -339,7 +339,7 @@ bool TextureSystem::ProcessTextureReference(const char *name, TextureType type, 
             ref.ReferenceCount += ReferenceDiff;
 
             // Возьмите копию имени, поскольку в случае уничтожения оно будет уничтожено (поскольку имя передается как указатель на фактическое имя текстуры).
-            char NameCopy[TEXTURE_NAME_MAX_LENGTH];
+            char NameCopy[TEXTURE_NAME_MAX_LENGTH]{};
             MString::nCopy(NameCopy, name, TEXTURE_NAME_MAX_LENGTH);
 
             // Если уменьшается, это означает освобождение.

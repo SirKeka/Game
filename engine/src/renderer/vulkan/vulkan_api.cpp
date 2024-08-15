@@ -82,7 +82,7 @@ bool VulkanAPI::Load(Shader *shader, const ShaderConfig& config, Renderpass* ren
 
     // Скопируйте указатель на контекст.
     shader->ShaderData = new VulkanShader();
-    VulkanShader* OutShader = shader->ShaderData;
+    auto OutShader = shader->ShaderData;
 
     OutShader->renderpass = reinterpret_cast<VulkanRenderpass*>(renderpass->InternalData);
 
@@ -215,12 +215,6 @@ bool VulkanAPI::Load(Shader *shader, const ShaderConfig& config, Renderpass* ren
         // Увеличьте счетчик набора.
         OutShader->config.DescriptorSetCount++;
     }
-
-    // Сделайте недействительными все состояния экземпляра.
-    // ЗАДАЧА: динамическим
-    /*for (u32 i = 0; i < 1024; ++i) {
-        OutShader->InstanceStates[i].id = INVALID::ID;
-    }*/
 
    // Сохраните копию режима отбраковки.
     OutShader->config.CullMode = config.CullMode;

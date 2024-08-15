@@ -14,8 +14,8 @@ WorldCamera(CameraSystem::Instance()->GetDefault()),
 // locations(),
 ProjectionLocation(), ViewLocation(), CubeMapLocation() 
 {
-    ShaderSystem* ShaderSystemInst = ShaderSystem::GetInstance();
-    Shader* SkyboxShader = ShaderSystemInst->GetShader(CustomShaderName ? CustomShaderName : "Shader.Builtin.Skybox");
+    auto ShaderSystemInst = ShaderSystem::GetInstance();
+    auto SkyboxShader = ShaderSystemInst->GetShader(CustomShaderName ? CustomShaderName : "Shader.Builtin.Skybox");
     ProjectionLocation = ShaderSystemInst->UniformIndex(SkyboxShader, "projection");
     ViewLocation = ShaderSystemInst->UniformIndex(SkyboxShader, "view");
     CubeMapLocation = ShaderSystemInst->UniformIndex(SkyboxShader, "cube_texture");
@@ -59,7 +59,6 @@ bool RenderViewSkybox::BuildPacket(void *data, Packet &OutPacket) const
 
 bool RenderViewSkybox::Render(const Packet &packet, u64 FrameNumber, u64 RenderTargetIndex) const
 {
-
     auto SkyboxData = reinterpret_cast<SkyboxPacketData*>(packet.ExtendedData);
     auto ShaderSystemInst = ShaderSystem::GetInstance();
 

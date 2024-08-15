@@ -101,12 +101,12 @@ bool ShaderLoader::Load(const char *name, void* params, Resource &OutResource)
             } else if (ResourceData->StageCount != count) {
                 MERROR("ShaderLoader::Load: Неверный макет файла. Подсчитайте несоответствие между именами этапов и именами файлов этапов.");
             }
-        } else if (TrimmedVarName.Comparei("cull_back")) {
-            if (TrimmedVarName.Comparei("front")) {
+        } else if (TrimmedVarName.Comparei("cull_mode")) {
+            if (TrimmedValue.Comparei("front")) {
                 ResourceData->CullMode = FaceCullMode::Front;
-            } else if (TrimmedVarName.Comparei("front_and_back")) {
+            } else if (TrimmedValue.Comparei("front_and_back")) {
             ResourceData->CullMode = FaceCullMode::FrontAndBack;
-            } else if (TrimmedVarName.Comparei("none")) {
+            } else if (TrimmedValue.Comparei("none")) {
                 ResourceData->CullMode = FaceCullMode::None;
             }
         } else if (TrimmedVarName.Comparei("attribute")) {

@@ -371,13 +371,12 @@ GeometryID *GeometrySystem::Acquire(u32 id)
 GeometryID *GeometrySystem::Acquire(const GeometryConfig& config, bool AutoRelease)
 {
     GeometryID* g = nullptr;
-    //GeometryReference* buf = this->RegisteredGeometries; // После функции CreateGeometries слетает указатель RegisteredGeometries по этому мы адрес на который он указывает сохраняем в буфере
-    for (u32 i = 0; i < this->MaxGeometryCount; ++i) {
-        if (this->RegisteredGeometries[i].gid.id == INVALID::ID) {
+    for (u32 i = 0; i < MaxGeometryCount; ++i) {
+        if (RegisteredGeometries[i].gid.id == INVALID::ID) {
             // Поиск пустого слота.
-            this->RegisteredGeometries[i].AutoRelease = AutoRelease;
-            this->RegisteredGeometries[i].ReferenceCount = 1;
-            g = &this->RegisteredGeometries[i].gid;
+            RegisteredGeometries[i].AutoRelease = AutoRelease;
+            RegisteredGeometries[i].ReferenceCount = 1;
+            g = &RegisteredGeometries[i].gid;
             g->id = i;
             break;
         }
