@@ -49,11 +49,7 @@ struct VulkanRenderpass
         VkAttachmentDescription ColorAttachment;
         ColorAttachment.format = VkAPI->swapchain.ImageFormat.format; // ЗАДАЧА: настроить
         ColorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-        if (HasPrevPass) {
-            ColorAttachment.loadOp = DoClearColour ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
-        } else {
-            ColorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-        }
+        ColorAttachment.loadOp = DoClearColour ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
         ColorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
         ColorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
         ColorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -80,7 +76,11 @@ struct VulkanRenderpass
             VkAttachmentDescription DepthAttachment = {};
             DepthAttachment.format = VkAPI->Device.DepthFormat;
             DepthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-            DepthAttachment.loadOp = DoClearDepth ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
+            if (HasPrevPass) {
+                DepthAttachment.loadOp = DoClearDepth ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
+            } else {
+                DepthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+            }
             DepthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
             DepthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
             DepthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -140,7 +140,7 @@ struct VulkanRenderpass
             VkAPI->Device.LogicalDevice,
             &RenderPassCreateInfo,
             VkAPI->allocator,
-            &this->handle)
+            &handle)
         );
     }
     
@@ -149,10 +149,10 @@ struct VulkanRenderpass
     void Destroy(VulkanAPI* VkAPI);
 
     void* operator new(u64 size) {
-        return MMemory::Allocate(size, MemoryTag::Renderer);
+        return MMemory::Allocate(size, Memory::Renderer);
     }
     void operator delete(void* ptr, u64 size) {
-        MMemory::Free(ptr, size, MemoryTag::Renderer);
+        MMemory::Free(ptr, size, Memory::Renderer);
     }
 };
 

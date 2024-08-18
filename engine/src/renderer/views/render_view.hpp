@@ -74,10 +74,10 @@ public:
     constexpr RenderView()
     : id(INVALID::U16ID), name(nullptr), width(), height(), type(), RenderpassCount(), passes(nullptr), CustomShaderName(nullptr) {}
     constexpr RenderView(u16 id, MString& name, KnownType type, u8 RenderpassCount, const char* CustomShaderName) 
-    : id(id), name(std::move(name)), width(), height(), type(type), RenderpassCount(RenderpassCount), passes(MMemory::TAllocate<Renderpass*>(MemoryTag::Renderer, RenderpassCount)), CustomShaderName(CustomShaderName) {}
+    : id(id), name(std::move(name)), width(), height(), type(type), RenderpassCount(RenderpassCount), passes(MMemory::TAllocate<Renderpass*>(Memory::Renderer, RenderpassCount)), CustomShaderName(CustomShaderName) {}
     constexpr RenderView(u16 id, MString& name, u16 width, u16 height, KnownType type, u8 RenderpassCount, const char* CustomShaderName)
-    : id(id), name(std::move(name)), width(width), height(height), type(type), RenderpassCount(RenderpassCount), passes(MMemory::TAllocate<Renderpass*>(MemoryTag::Renderer, RenderpassCount)), CustomShaderName(CustomShaderName) {}
-    virtual ~RenderView() { MMemory::Free(passes, sizeof(Renderpass*) * RenderpassCount, MemoryTag::Renderer); }
+    : id(id), name(std::move(name)), width(width), height(height), type(type), RenderpassCount(RenderpassCount), passes(MMemory::TAllocate<Renderpass*>(Memory::Renderer, RenderpassCount)), CustomShaderName(CustomShaderName) {}
+    virtual ~RenderView() { MMemory::Free(passes, sizeof(Renderpass*) * RenderpassCount, Memory::Renderer); }
 
     /// @brief Измененяет размер владельца этого представления (например, окна).
     /// @param width новая ширина в пикселях.

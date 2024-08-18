@@ -82,7 +82,7 @@ bool MeshLoader::Load(const char *name, void* params, Resource &OutResource)
     for (u32 i = 0; i < SUPPORTED_FILETYPE_COUNT; ++i) {
         MString::Format(FullFilePath, FormatString, ResourceSystem::Instance()->BasePath(), TypePath.c_str(), name, SupportedFiletypes[i].extension.c_str());
         // Если файл существует, откройте его и перестаньте искать.
-        if (!Filesystem::Exists(FullFilePath)) {
+        if (Filesystem::Exists(FullFilePath)) {
             if (Filesystem::Open(FullFilePath, FileModes::Read, SupportedFiletypes[i].IsBinary, &f)) {
                 type = SupportedFiletypes[i].type;
                 break;
@@ -140,7 +140,7 @@ void MeshLoader::Unload(Resource &resource)
         GeometryConfig* config = &(reinterpret_cast<GeometryConfig*>(resource.data))[i];
         config->Dispose();
     }
-    MMemory::Free(resource.data, resource.DataSize * sizeof(GeometryConfig), MemoryTag::DArray);
+    MMemory::Free(resource.data, resource.DataSize * sizeof(GeometryConfig), Memory::DArray);
     resource.data = nullptr;
     resource.DataSize = 0;
 }
@@ -671,13 +671,13 @@ bool LoadMsmFile(FileHandle *MsmFile, DArray<GeometryConfig> &OutGeometries)
         // Вершины (размер/количество/массив)
         Filesystem::Read(MsmFile, sizeof(u32), &g.VertexSize, BytesRead);
         Filesystem::Read(MsmFile, sizeof(u32), &g.VertexCount, BytesRead);
-        g.vertices = MMemory::Allocate(g.VertexSize * g.VertexCount, MemoryTag::Array);
+        g.vertices = MMemory::Allocate(g.VertexSize * g.VertexCount, Memory::Array);
         Filesystem::Read(MsmFile, g.VertexSize * g.VertexCount, g.vertices, BytesRead);
 
         // Индексы (размер/количество/массив)
         Filesystem::Read(MsmFile, sizeof(u32), &g.IndexSize, BytesRead);
         Filesystem::Read(MsmFile, sizeof(u32), &g.IndexCount, BytesRead);
-        g.indices = MMemory::Allocate(g.IndexSize * g.IndexCount, MemoryTag::Array);
+        g.indices = MMemory::Allocate(g.IndexSize * g.IndexCount, Memory::Array);
         Filesystem::Read(MsmFile, g.IndexSize * g.IndexCount, g.indices, BytesRead);
 
         // Имя

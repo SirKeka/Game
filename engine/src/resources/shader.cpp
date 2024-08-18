@@ -48,7 +48,7 @@ Shader::Shader(u32 id, const ShaderConfig *config)
     BoundScope(), 
     BoundInstanceID(INVALID::ID), 
     BoundUboOffset(), 
-    HashtableBlock(MMemory::Allocate(1024 * sizeof(u16), MemoryTag::Renderer, true)), 
+    HashtableBlock(MMemory::Allocate(1024 * sizeof(u16), Memory::Renderer, true)), 
     UniformLookup(1024, false, reinterpret_cast<u16*>(HashtableBlock), true, INVALID::U16ID), 
     uniforms(config->UniformCount), 
     attributes(), 
@@ -91,7 +91,7 @@ bool Shader::Create(u32 id, const ShaderConfig *config)
     // Это обеспечивает прямой индекс массива «uniforms», хранящегося в шейдере, для быстрого поиска по имени.
     u64 ElementSize = sizeof(u16);  // Индексы хранятся как u16.
     u64 ElementCount = 1024;        // Это больше униформ, чем нам когда-либо понадобится, но стол большего размера снижает вероятность столкновений.
-    this->HashtableBlock = MMemory::Allocate(ElementSize * ElementCount, MemoryTag::HashTable);
+    this->HashtableBlock = MMemory::Allocate(ElementSize * ElementCount, Memory::HashTable);
     this->UniformLookup.Create(ElementCount, false, reinterpret_cast<u16*>(this->HashtableBlock));
 
     // Сделайте недействительными все места в хеш-таблице.

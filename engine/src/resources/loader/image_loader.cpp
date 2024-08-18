@@ -26,7 +26,7 @@ bool ImageLoader::Load(const char *name, void* params, Resource &OutResource)
     const char* extensions[IMAGE_EXTENSION_COUNT] = {".tga", ".png", ".jpg", ".bmp"};
     for (u32 i = 0; i < IMAGE_EXTENSION_COUNT; ++i) {
         MString::Format(FullFilePath, FormatStr, ResourceSystem::Instance()->BasePath(), TypePath.c_str(), name, extensions[i]);
-        if (!Filesystem::Exists(FullFilePath)) {
+        if (Filesystem::Exists(FullFilePath)) {
             found = true;
             break;
         }
@@ -72,7 +72,7 @@ bool ImageLoader::Load(const char *name, void* params, Resource &OutResource)
 void ImageLoader::Unload(Resource &resource)
 {
     stbi_image_free(reinterpret_cast<ImageResourceData*>(resource.data)->pixels);
-    if (!LoaderUtils::ResourceUnload(this, resource, MemoryTag::Texture)) {
+    if (!LoaderUtils::ResourceUnload(this, resource, Memory::Texture)) {
         MWARN("ImageLoader: Выгрузка вызывается со значением nullptr для себя или ресурса.");
         return;
     }

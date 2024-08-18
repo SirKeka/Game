@@ -16,8 +16,8 @@ struct ImageResourceData {
 
     constexpr ImageResourceData(u8 ChannelCount, u32 width, u32 height, u8* pixels)
     : ChannelCount(ChannelCount), width(width), height(height), pixels(pixels) {}
-    void* operator new(u64 size) { return MMemory::Allocate(size, MemoryTag::Texture); }
-    void operator delete(void* ptr, u64 size) { MMemory::Free(ptr, size, MemoryTag::Texture); }
+    void* operator new(u64 size) { return MMemory::Allocate(size, Memory::Texture); }
+    void operator delete(void* ptr, u64 size) { MMemory::Free(ptr, size, Memory::Texture); }
 };
 
 /// @brief Параметры, используемые при загрузке изображения.

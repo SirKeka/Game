@@ -97,20 +97,20 @@ Texture::operator bool() const
 
 void *Texture::operator new(u64 size)
 {
-    return MMemory::Allocate(size, MemoryTag::Texture);
+    return MMemory::Allocate(size, Memory::Texture);
 }
 
 void *Texture::operator new[](u64 size)
 {
-    return MMemory::Allocate(size, MemoryTag::Renderer);
+    return MMemory::Allocate(size, Memory::Renderer);
 }
 
 void Texture::operator delete(void *ptr, u64 size)
 {
-    MMemory::Free(ptr, size, MemoryTag::Texture);
+    MMemory::Free(ptr, size, Memory::Texture);
 }
 
 void Texture::operator delete[](void *ptr, u64 size)
 {
-    MMemory::Free(ptr, size, MemoryTag::Renderer);
+    MMemory::Free(ptr, size, Memory::Renderer);
 }

@@ -38,13 +38,13 @@ struct Vertex3D
     : position(PositionX, positionY), normal(), texcoord(TexcoordX, TexcoordY), colour(), tangent() {}
     constexpr Vertex3D(f32 PositionX, f32 positionY, f32 PositionZ, f32 NormalX, f32 NormalY, f32 NormalZ, f32 TexcoordX, f32 TexcoordY)
     : position(PositionX, positionY, PositionZ), normal(NormalX, NormalY, NormalZ), texcoord(TexcoordX, TexcoordY), colour(), tangent() {}
-    //void* operator new(u64 size) { return MMemory::Allocate(size, MemoryTag::Array); }
-    //void operator delete(void* ptr, u64 size) { MMemory::Free(ptr, size, MemoryTag::Array); }
+    //void* operator new(u64 size) { return MMemory::Allocate(size, Memory::Array); }
+    //void operator delete(void* ptr, u64 size) { MMemory::Free(ptr, size, Memory::Array); }
     void* operator new[](u64 size) { 
-        return MMemory::Allocate(size, MemoryTag::Array); 
+        return MMemory::Allocate(size, Memory::Array); 
         }
     void operator delete[](void* ptr, u64 size) { 
-        MMemory::Free(ptr, size, MemoryTag::Array); 
+        MMemory::Free(ptr, size, Memory::Array); 
         }
 };
 

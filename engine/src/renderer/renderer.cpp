@@ -29,13 +29,12 @@ WindowRenderTargetCount(),
 // Размер буфера кадра по умолчанию. Переопределяется при создании окна.
 FramebufferWidth(1280),
 FramebufferHeight(720),
-SkyboxRenderpass(),
+SkyboxRenderpass(nullptr),
 WorldRenderpass(nullptr),
 UiRenderpass(nullptr),
 resizing(false),
 FramesSinceResize()
 {
-
     const char* SkyboxRenderpassName = "Renderpass.Builtin.Skybox";
     const char* WorldRenderpassName = "Renderpass.Builtin.World";
     const char* UiRenderpassName = "Renderpass.Builtin.UI";
@@ -80,15 +79,15 @@ FramesSinceResize()
     // ЗАДАЧА: Узнаем, как их получить, когда определим представления.
     SkyboxRenderpass = ptrRenderer->GetRenderpass(SkyboxRenderpassName);
     SkyboxRenderpass->RenderTargetCount = WindowRenderTargetCount;
-    SkyboxRenderpass->targets = new RenderTarget[WindowRenderTargetCount];
+    SkyboxRenderpass->targets = MMemory::TAllocate<RenderTarget>(Memory::Array, WindowRenderTargetCount);
 
     WorldRenderpass = ptrRenderer->GetRenderpass(WorldRenderpassName);
     WorldRenderpass->RenderTargetCount = WindowRenderTargetCount;
-    WorldRenderpass->targets = new RenderTarget[WindowRenderTargetCount];
+    WorldRenderpass->targets = MMemory::TAllocate<RenderTarget>(Memory::Array, WindowRenderTargetCount);
     
     UiRenderpass = ptrRenderer->GetRenderpass(UiRenderpassName);
     UiRenderpass->RenderTargetCount = WindowRenderTargetCount;
-    UiRenderpass->targets = new RenderTarget[WindowRenderTargetCount];
+    UiRenderpass->targets = MMemory::TAllocate<RenderTarget>(Memory::Array, WindowRenderTargetCount);
 
     RegenerateRenderTargets();
 

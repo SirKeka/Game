@@ -7,7 +7,7 @@ private:
     void* data;
 public:
     /// @brief Создает мьютекс.
-    constexpr MMutex();
+    MMutex();
     /// @brief Уничтожает мьютекс.
     ~MMutex();
 
@@ -20,4 +20,11 @@ public:
     /// @param mutex Мьютекс для разблокировки.
     /// @returns True, если блокировка прошла успешно; в противном случае false.
     bool Unlock();
+
+    operator bool() {
+        if (!data) {
+            return false;
+        }
+        return true;
+    }
 };

@@ -3,32 +3,34 @@
 
 RenderTarget::~RenderTarget()
 {
-    delete[] attachments;
-    attachments = nullptr;
-    AttachmentCount = 0;
+    if (attachments) {
+        MMemory::Free(attachments, sizeof(Texture*) * AttachmentCount, Memory::Array); // delete[] attachments;
+        attachments = nullptr;
+        AttachmentCount = 0;
+    }
 }
 
 void *RenderTarget::operator new[](u64 size)
 {
-    return MMemory::Allocate(size, MemoryTag::Array);
+    return MMemory::Allocate(size, Memory::Array);
 }
 
 void RenderTarget::operator delete[](void *ptr, u64 size)
 {
-    MMemory::Free(ptr, size, MemoryTag::Array);
+    MMemory::Free(ptr, size, Memory::Array);
 }
 
 Renderpass::~Renderpass()
 {
-    delete targets;
+    MMemory::Free(targets, sizeof(RenderTarget) * RenderTargetCount, Memory::Array); // delete targets;
 }
 
 void *Renderpass::operator new[](u64 size)
 {
-    return MMemory::Allocate(size, MemoryTag::Array);
+    return MMemory::Allocate(size, Memory::Array);
 }
 
 void Renderpass::operator delete[](void *ptr, u64 size)
 {
-    MMemory::Free(ptr, size, MemoryTag::Array);
+    MMemory::Free(ptr, size, Memory::Array);
 }

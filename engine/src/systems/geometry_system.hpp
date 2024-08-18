@@ -71,7 +71,7 @@ struct GeometryConfig {
         }
     }
     constexpr GeometryConfig(const GeometryConfig& conf)
-    : VertexSize(conf.VertexSize), VertexCount(conf.VertexCount), vertices(MMemory::Allocate(VertexCount * VertexSize, MemoryTag::Array)), IndexSize(conf.IndexSize), IndexCount(conf.IndexCount), indices(MMemory::Allocate(IndexCount * IndexSize, MemoryTag::Array)), name(), MaterialName(), center(conf.center), MinExtents(conf.MinExtents), MaxExtents(conf.MaxExtents) {
+    : VertexSize(conf.VertexSize), VertexCount(conf.VertexCount), vertices(MMemory::Allocate(VertexCount * VertexSize, Memory::Array)), IndexSize(conf.IndexSize), IndexCount(conf.IndexCount), indices(MMemory::Allocate(IndexCount * IndexSize, Memory::Array)), name(), MaterialName(), center(conf.center), MinExtents(conf.MinExtents), MaxExtents(conf.MaxExtents) {
         MMemory::CopyMem(vertices, conf.vertices, VertexCount * VertexSize);
         MMemory::CopyMem(indices, conf.indices, IndexCount * IndexSize);
         CopyNames(conf.name, conf.MaterialName);
@@ -91,11 +91,11 @@ struct GeometryConfig {
     GeometryConfig& operator =(const GeometryConfig& conf) {
         VertexSize = conf.VertexSize;
         VertexCount = conf.VertexCount;
-        vertices = MMemory::Allocate(VertexCount * VertexSize, MemoryTag::Array);
+        vertices = MMemory::Allocate(VertexCount * VertexSize, Memory::Array);
         MMemory::CopyMem(vertices, conf.vertices, VertexCount * VertexSize);
         IndexSize = conf.IndexSize;
         IndexCount = conf.IndexCount;
-        indices = MMemory::Allocate(IndexCount * IndexSize, MemoryTag::Array);
+        indices = MMemory::Allocate(IndexCount * IndexSize, Memory::Array);
         MMemory::CopyMem(indices, conf.indices, IndexCount * IndexSize);
         CopyNames(conf.name, conf.MaterialName);
         center = conf.center;

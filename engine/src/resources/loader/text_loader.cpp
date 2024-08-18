@@ -29,7 +29,7 @@ bool TextLoader::Load(const char *name, void* params, Resource &OutResource)
     }
 
     // ЗАДАЧА: Здесь следует использовать распределитель.
-    char* ResourceData = MMemory::TAllocate<char>(MemoryTag::Array, FileSize);
+    char* ResourceData = MMemory::TAllocate<char>(Memory::Array, FileSize);
     u64 ReadSize = 0;
     if (!Filesystem::ReadAllText(&f, ResourceData, ReadSize)) {
         MERROR("Невозможно прочитать текст файла: %s.", FullFilePath);
@@ -48,7 +48,7 @@ bool TextLoader::Load(const char *name, void* params, Resource &OutResource)
 
 void TextLoader::Unload(Resource &resource)
 {
-    if (!LoaderUtils::ResourceUnload(this, resource, MemoryTag::Array)) {
+    if (!LoaderUtils::ResourceUnload(this, resource, Memory::Array)) {
         MWARN("TextLoader::Unload вызывается с nullptr для ресурса.");
         return;
     }

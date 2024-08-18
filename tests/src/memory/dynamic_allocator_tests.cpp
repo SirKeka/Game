@@ -15,7 +15,7 @@ u8 DynamicAllocatorShouldCreateAndDestroy() {
     ExpectToBeTrue(result);
 
     // Собственно создайте распределитель.
-    void* memory = MMemory::Allocate(MemoryRequirement, MemoryTag::Application);
+    void* memory = MMemory::Allocate(MemoryRequirement, Memory::Application);
     result = alloc.Create(1024, memory);
     ExpectToBeTrue(result);
     ExpectShouldNotBe(0, (bool)alloc);
@@ -25,7 +25,7 @@ u8 DynamicAllocatorShouldCreateAndDestroy() {
     // Уничтожить распределитель.
     alloc.Destroy();
     ExpectShouldBe(0, (bool)alloc);
-    MMemory::Free(memory, MemoryRequirement, MemoryTag::Application);
+    MMemory::Free(memory, MemoryRequirement, Memory::Application);
     return true;
 }
 
@@ -37,7 +37,7 @@ u8 DynamicAllocatorSingleAllocationAllSpace() {
     ExpectToBeTrue(result);
 
     // Собственно создайте распределитель.
-    void* memory = MMemory::Allocate(MemoryRequirement, MemoryTag::Application);
+    void* memory = MMemory::Allocate(MemoryRequirement, Memory::Application);
     result = alloc.Create(1024, memory);
     ExpectToBeTrue(result);
     ExpectShouldNotBe(0, (bool)alloc);
@@ -62,7 +62,7 @@ u8 DynamicAllocatorSingleAllocationAllSpace() {
     // Уничтожить распределитель.
     alloc.Destroy();
     ExpectShouldBe(0, (bool)alloc);
-    MMemory::Free(memory, MemoryRequirement, MemoryTag::Application);
+    MMemory::Free(memory, MemoryRequirement, Memory::Application);
     return true;
 }
 
@@ -74,7 +74,7 @@ u8 DynamicAllocatorMultiAllocationAllSpace() {
     ExpectToBeTrue(result);
 
     // Собственно создайте распределитель.
-    void* memory = MMemory::Allocate(MemoryRequirement, MemoryTag::Application);
+    void* memory = MMemory::Allocate(MemoryRequirement, Memory::Application);
     result = alloc.Create(1024, memory);
     ExpectToBeTrue(result);
     ExpectShouldNotBe(0, (bool)alloc);
@@ -129,7 +129,7 @@ u8 DynamicAllocatorMultiAllocationAllSpace() {
     // Уничтожить распределитель.
     alloc.Destroy();
     ExpectShouldBe(0, (bool)alloc);
-    MMemory::Free(memory, MemoryRequirement, MemoryTag::Application);
+    MMemory::Free(memory, MemoryRequirement, Memory::Application);
     return true;
 }
 
@@ -141,7 +141,7 @@ u8 DynamicAllocatorMultiAllocationOverAllocate() {
     ExpectToBeTrue(result);
 
     // Собственно создайте распределитель.
-    void* memory = MMemory::Allocate(MemoryRequirement, MemoryTag::Application);
+    void* memory = MMemory::Allocate(MemoryRequirement, Memory::Application);
     result = alloc.Create(1024, memory);
     ExpectToBeTrue(result);
     ExpectShouldNotBe(0, (bool)alloc);
@@ -184,7 +184,7 @@ u8 DynamicAllocatorMultiAllocationOverAllocate() {
     // Уничтожить распределитель.
     alloc.Destroy();
     ExpectShouldBe(0, (bool)alloc);
-    MMemory::Free(memory, MemoryRequirement, MemoryTag::Application);
+    MMemory::Free(memory, MemoryRequirement, Memory::Application);
     return true;
 }
 
@@ -197,7 +197,7 @@ DynamicAllocator alloc;
     ExpectToBeTrue(result);
 
     // Собственно создайте распределитель.
-    void* memory = MMemory::Allocate(MemoryRequirement, MemoryTag::Application);
+    void* memory = MMemory::Allocate(MemoryRequirement, Memory::Application);
     result = alloc.Create(1024, memory);
     ExpectToBeTrue(result);
     ExpectShouldNotBe(0, (bool)alloc);
@@ -240,7 +240,7 @@ DynamicAllocator alloc;
     // Уничтожить распределитель.
     alloc.Destroy();
     ExpectShouldBe(0, (bool)alloc);
-    MMemory::Free(memory, MemoryRequirement, MemoryTag::Application);
+    MMemory::Free(memory, MemoryRequirement, Memory::Application);
     return true;
 }
 

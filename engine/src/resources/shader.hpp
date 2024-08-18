@@ -131,8 +131,8 @@ struct ShaderConfig {
 
     ShaderConfig() : name(), CullMode(FaceCullMode::Back), AttributeCount(), attributes(), UniformCount(), uniforms(), RenderpassName(), StageCount(), stages(), StageNames(), StageFilenames() {}
     //~ShaderConfig() {}
-    void* operator new(u64 size) {return MMemory::Allocate(size, MemoryTag::Resource);}
-    void operator delete(void* ptr, u64 size) {MMemory::Free(ptr, size, MemoryTag::Resource);}
+    void* operator new(u64 size) {return MMemory::Allocate(size, Memory::Resource);}
+    void operator delete(void* ptr, u64 size) {MMemory::Free(ptr, size, Memory::Resource);}
 };
 
 /// @brief Представляет текущее состояние данного шейдера.

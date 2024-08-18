@@ -5,7 +5,7 @@
 #include <string>
 #include <stdarg.h>
 
-constexpr MString::MString(u16 length) : length(length + 1), str(MMemory::TAllocate<char>(MemoryTag::String, this->length)) {}
+constexpr MString::MString(u16 length) : length(length + 1), str(MMemory::TAllocate<char>(Memory::String, this->length)) {}
 
 constexpr MString::MString(const char *str1, const char *str2)
     : length(Length(str1) + Length(str2) + 1), str(Concat(str1, str2, length)) {}
@@ -53,7 +53,7 @@ MString &MString::operator=(const MString &s)
 
     if (length != s.length) {
         length = s.length;
-        str = MMemory::TAllocate<char>(MemoryTag::String, length);
+        str = MMemory::TAllocate<char>(Memory::String, length);
     } 
 
     nCopy(s, length);
@@ -87,7 +87,7 @@ MString &MString::operator=(const char *s)
     }
     length = slength;
     if (!str) {
-        str = MMemory::TAllocate<char>(MemoryTag::String, length);
+        str = MMemory::TAllocate<char>(Memory::String, length);
     }
     
     Copy(this->str, s);
@@ -97,7 +97,7 @@ MString &MString::operator=(const char *s)
 
 MString &MString::operator+=(const MString &s)
 {
-    char* NewString = MMemory::TAllocate<char>(MemoryTag::String, length + s.length - 1);
+    char* NewString = MMemory::TAllocate<char>(Memory::String, length + s.length - 1);
     for (u64 i = 0, j = 0; i < length + s.length - 1; i++) {
         if (i < length - 1) {
            NewString[i] = str[i];
@@ -132,10 +132,10 @@ MString &MString::operator+=(bool b)
     const char* bl = nullptr;
     if (b) {
         bl = "true";
-        NewString = MMemory::TAllocate<char>(MemoryTag::String, length + 4);
+        NewString = MMemory::TAllocate<char>(Memory::String, length + 4);
     } else {
         bl = "false";
-        NewString = MMemory::TAllocate<char>(MemoryTag::String, length + 5);
+        NewString = MMemory::TAllocate<char>(Memory::String, length + 5);
     }
     for (u64 i = 0, j = 0; i < length + 5; i++) {
         if(str[i]) {
@@ -173,7 +173,7 @@ MString &MString::FilenameFromPath(const char *path)
         Clear();
     }
     this->length = length + 1;
-    str = MMemory::TAllocate<char>(MemoryTag::String, this->length);
+    str = MMemory::TAllocate<char>(Memory::String, this->length);
     for (i32 i = length; i >= 0; --i) {
         char c = path[i];
         if (c == '/' || c == '\\') {
@@ -354,7 +354,7 @@ const bool MString::nComparei(const char *string1, const char *string2, u64 leng
 char *MString::Duplicate(const char *s)
 {
     u64 length = Length(s);
-    char* copy = MMemory::TAllocate<char>(MemoryTag::String, length + 1);
+    char* copy = MMemory::TAllocate<char>(Memory::String, length + 1);
     nCopy(copy, s, length);
     copy[length] = '\0';
     return copy;
@@ -414,7 +414,7 @@ MString& MString::IntToString(i64 n)
         Clear();
     }
     this->length = length + 1;
-    str = MMemory::TAllocate<char>(MemoryTag::String, this->length);
+    str = MMemory::TAllocate<char>(Memory::String, this->length);
     str[length] = '\0';
     
 
@@ -578,7 +578,7 @@ void MString::nCopy(char *dest, const MString &source, u64 length)
 char* MString::Copy(const char *source, u64 lenght)
 {
     if(source && lenght) {
-        str = MMemory::TAllocate<char>(MemoryTag::String, length); 
+        str = MMemory::TAllocate<char>(Memory::String, length); 
         Copy(str, source);
         return str;
     }
@@ -590,7 +590,7 @@ char *MString::Copy(const MString &source)
     if (!source) {
         return nullptr;
     }
-    str = MMemory::TAllocate<char>(MemoryTag::String, length); 
+    str = MMemory::TAllocate<char>(Memory::String, length); 
     nCopy(source, length);
     return str;
 }
@@ -598,7 +598,7 @@ char *MString::Copy(const MString &source)
 constexpr char* MString::Concat(const char *str1, const char *str2, u64 length)
 {
     if(!str) {
-        str = MMemory::TAllocate<char>(MemoryTag::String, length);
+        str = MMemory::TAllocate<char>(Memory::String, length);
     }
     u64 j = 0;
     for (u64 i = 0; i < length; i++) {
@@ -947,7 +947,7 @@ u32 MString::Split(char delimiter, DArray<MString> &darray, bool TrimEntries, bo
 void MString::Clear()
 {
     if (str) {
-        MMemory::Free(str, length, MemoryTag::String);  
+        MMemory::Free(str, length, Memory::String);  
         length = 0;
         str = nullptr;
     }
@@ -955,22 +955,22 @@ void MString::Clear()
 /*
 void *MString::operator new(u64 size)
 {
-    return MMemory::Allocate(size, MemoryTag::String);
+    return MMemory::Allocate(size, Memory::String);
 }
 
 void MString::operator delete(void *ptr, u64 size)
 {
-    MMemory::Free(ptr, size, MemoryTag::String);
+    MMemory::Free(ptr, size, Memory::String);
 }
 
 void *MString::operator new[](u64 size)
 {
-    return MMemory::Allocate(size, MemoryTag::String);
+    return MMemory::Allocate(size, Memory::String);
 }
 
 void MString::operator delete[](void *ptr, u64 size)
 {
-    MMemory::Free(ptr, size, MemoryTag::String);
+    MMemory::Free(ptr, size, Memory::String);
 }
 */
 bool MString::Equal(const char *strL, const char *strR)

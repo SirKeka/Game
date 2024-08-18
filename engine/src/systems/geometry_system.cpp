@@ -92,10 +92,10 @@ GeometryConfig GeometrySystem::GeneratePlaneConfig(f32 width, f32 height, u32 xS
     GeometryConfig config{
         sizeof(Vertex3D), 
         VertexCount,  
-        MMemory::Allocate(VertexCount * sizeof(Vertex3D), MemoryTag::Array, true),
+        MMemory::Allocate(VertexCount * sizeof(Vertex3D), Memory::Array, true),
         sizeof(u32),
         IndexCount,
-        MMemory::Allocate(IndexCount * sizeof(u32), MemoryTag::Array, true),
+        MMemory::Allocate(IndexCount * sizeof(u32), Memory::Array, true),
         MString::Length(name) ? name : DEFAULT_GEOMETRY_NAME,
         MString::Length(MaterialName) ? MaterialName : DEFAULT_MATERIAL_NAME
         };
@@ -170,10 +170,10 @@ GeometryConfig GeometrySystem::GenerateCubeConfig(f32 width, f32 height, f32 dep
     GeometryConfig config{
         sizeof(Vertex3D), 
         4 * 6, // 4 вершины на сторону, 6 сторон
-        MMemory::Allocate(4 * 6 * sizeof(Vertex3D), MemoryTag::Array, true), 
+        MMemory::Allocate(4 * 6 * sizeof(Vertex3D), Memory::Array, true), 
         sizeof(u32), 
         6 * 6, // 6 индексов на каждой стороне, 6 сторон
-        MMemory::Allocate(6 * 6 * sizeof(u32), MemoryTag::Array, true), 
+        MMemory::Allocate(6 * 6 * sizeof(u32), Memory::Array, true), 
         name ? name : DEFAULT_GEOMETRY_NAME,
         MaterialName ? MaterialName : DEFAULT_MATERIAL_NAME,
         FVec3(), FVec3(-HalfWidth, -HalfHeight, -HalfDepth),
@@ -438,10 +438,10 @@ GeometryID *GeometrySystem::GetDefault2D()
 void GeometryConfig::Dispose()
 {
     if (vertices) {
-        MMemory::Free(vertices, VertexSize * VertexCount, MemoryTag::Array);
+        MMemory::Free(vertices, VertexSize * VertexCount, Memory::Array);
     }
     if (indices) {
-        MMemory::Free(indices, IndexSize * IndexCount, MemoryTag::Array);
+        MMemory::Free(indices, IndexSize * IndexCount, Memory::Array);
     }
     MMemory::ZeroMem(this, sizeof(GeometryConfig));
 }

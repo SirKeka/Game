@@ -23,12 +23,12 @@ private:
 public:
     constexpr DArray() : size(), capacity(), data(nullptr) {}
     constexpr DArray(const T& value) { PushBack(value); }
-    constexpr DArray(u64 capacity) : size(), capacity(capacity), data(capacity ? MMemory::TAllocate<T>(MemoryTag::DArray, capacity, true) : nullptr) {}
+    constexpr DArray(u64 capacity) : size(), capacity(capacity), data(capacity ? MMemory::TAllocate<T>(Memory::DArray, capacity, true) : nullptr) {}
     constexpr DArray(u64 size, const T& value) {
         if(size > 0) {
             this->size = size;
             this->capacity = size;
-            data = MMemory::TAllocate<T>(MemoryTag::DArray, capacity, true);
+            data = MMemory::TAllocate<T>(Memory::DArray, capacity, true);
             for (u64 i = 0; i < size; i++) {
                 data[i] = value;
             }
@@ -38,7 +38,7 @@ public:
     /// @brief Конструктор копирования
     /// @param other динамический массив из которого нужно копировать данные
     constexpr DArray(const DArray& other) : size(other.size), capacity(other.capacity), data() {
-        data = MMemory::TAllocate<T>(MemoryTag::DArray, capacity);
+        data = MMemory::TAllocate<T>(Memory::DArray, capacity);
         for (u64 i = 0; i < size; i++) {
             data[i] = other.data[i];
         }
@@ -54,7 +54,7 @@ public:
     ~DArray() {
         if(this->data) {
             Clear();
-            MMemory::Free(data, sizeof(T) * capacity, MemoryTag::DArray);
+            MMemory::Free(data, sizeof(T) * capacity, Memory::DArray);
             size = capacity = 0;
             data = nullptr;
         }
@@ -65,8 +65,8 @@ public:
     DArray& operator=(const DArray& darr) {
         Clear();
         if (data && capacity < darr.capacity) {
-            MMemory::Free(data, capacity * sizeof(T), MemoryTag::DArray);
-            data = MMemory::TAllocate<T>(MemoryTag::DArray, darr.capacity);
+            MMemory::Free(data, capacity * sizeof(T), Memory::DArray);
+            data = MMemory::TAllocate<T>(Memory::DArray, darr.capacity);
             size = darr.size;
             capacity = darr.capacity;
         }
@@ -130,15 +130,15 @@ public:
         }
         
         if (capacity == 0) {
-            data = MMemory::TAllocate<T>(MemoryTag::DArray, NewCap, true);
+            data = MMemory::TAllocate<T>(Memory::DArray, NewCap, true);
             capacity = NewCap;
         }
         else if (NewCap > capacity) {
-            T* ptrNew = MMemory::TAllocate<T>(MemoryTag::DArray, NewCap, true);
+            T* ptrNew = MMemory::TAllocate<T>(Memory::DArray, NewCap, true);
             for (u64 i = 0; i < size; i++) {
                 ptrNew[i] = std::move(data[i]);
             }
-            MMemory::Free(data, sizeof(T) * capacity, MemoryTag::DArray);
+            MMemory::Free(data, sizeof(T) * capacity, Memory::DArray);
             data = ptrNew;
             capacity = NewCap;
         }

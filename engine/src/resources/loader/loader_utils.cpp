@@ -2,7 +2,7 @@
 #include "core/logger.hpp"
 #include "defines.hpp"
 
-bool LoaderUtils::ResourceUnload(ResourceLoader *self, Resource &resource, MemoryTag tag)
+bool LoaderUtils::ResourceUnload(ResourceLoader *self, Resource &resource, Memory::Tag tag)
 {
     if (!self) {
         MWARN("ResourceUnload вызывается с nullptr для себя или ресурса.");

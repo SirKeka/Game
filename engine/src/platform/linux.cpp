@@ -36,6 +36,7 @@
 #include <vulkan/vulkan.h>
 #include "renderer/vulkan/vulkan_types.inl"
 #include "mthread.hpp"
+#include "mmutex.hpp"
 
 struct PlatformState {
     Display* display;
@@ -369,7 +370,7 @@ constexpr MThread::MThread(PFN_ThreadStart StartFunctionPtr, void *params, bool 
 
     // Сохраняйте только вне дескриптора, если не выполняется автоматическое отсоединение.
     if (!AutoDetach) {
-        data = platform_allocate(sizeof(u64),);
+        data = PlatformAllocate(sizeof(u64),);
         *(u64*)data = ThreadID;
     } else {
         // Если выполняется немедленное отсоединение, убедитесь, что операция прошла успешно.
@@ -414,8 +415,8 @@ void MThread::Detach()
                     break;
             }
         }
-        platform_free(data, false);
-        data = 0;
+        PlatformFree(data, false);
+        data = nullptr;
     }
 }
 
@@ -433,7 +434,7 @@ void MThread::Cancel()
                     break;
             }
         }
-        platform_free(data, false);
+        PlatformFree(data, false);
         data = 0;
         ThreadID = 0;
     }
@@ -456,8 +457,103 @@ u64 MThread::GetThreadID()
 }
 
 // Конец потоков
+// Начало мьютекс
 
-void PlatformGetRequiredExtensionNames(DArray<const char*>& NameDarray) {
+constexpr MMutex::MMutex()
+{
+    // Инициализация
+    pthread_mutex_t mutex;
+    i32 result = pthread_mutex_init(&mutex, 0);
+    if (result != 0) {
+        MERROR("Ошибка создания мьютекса!");
+        return;
+    }
+    
+    // Сохраните дескриптор мьютекса.
+    data = PlatformAllocate(sizeof(pthread_mutex_t), false);
+    *(pthread_mutex_t*)data = mutex;
+
+    return true;
+}
+
+MMutex::~MMutex()
+{
+    if (data) {
+        i32 result = pthread_mutex_destroy((pthread_mutex_t*)data);
+        switch (result) {
+            case 0:
+                // MTRACE("Mutex destroyed.");
+                break;
+            case EBUSY:
+                MERROR("Невозможно уничтожить мьютекс: мьютекс заблокирован или на него есть ссылка.");
+                break;
+            case EINVAL:
+                MERROR("Невозможно уничтожить мьютекс: значение, указанное мьютексом, недопустимо.");
+                break;
+            default:
+                MERROR("При уничтожении мьютекса произошла обработанная ошибка: errno=%i", result);
+                break;
+        }
+
+        PlatformFree(data, false);
+        data = nullptr;
+    }
+}
+
+bool MMutex::Lock()
+{
+    // Lock
+    i32 result = pthread_mutex_lock((pthread_mutex_t*)data);
+    switch (result) {
+        case 0:
+            // Успех, все остальное — неудача.
+            // MTRACE("Получена блокировка мьютекса.");
+            return true;
+        case EOWNERDEAD:
+            MERROR("Владеющий поток завершен, пока мьютекс все еще активен.");
+            return false;
+        case EAGAIN:
+            MERROR("Невозможно получить блокировку мьютекса: достигнуто максимальное количество рекурсивных блокировок мьютекса.");
+            return false;
+        case EBUSY:
+            MERROR("Невозможно получить блокировку мьютекса: блокировка мьютекса уже существует.");
+            return false;
+        case EDEADLK:
+            MERROR("Невозможно получить блокировку мьютекса: обнаружена взаимоблокировка мьютекса.");
+            return false;
+        default:
+            MERROR("Произошла обработанная ошибка при получении блокировки мьютекса: errno=%i", result);
+            return false;
+    }
+}
+
+bool MMutex::Unlock()
+{
+    if (data) {
+        i32 result = pthread_mutex_unlock((pthread_mutex_t*)data);
+        switch (result) {
+            case 0:
+                // MTRACE("Освобождена блокировка мьютекса.");
+                return true;
+            case EOWNERDEAD:
+                MERROR("Невозможно разблокировать мьютекс: поток-владелец завершен, пока мьютекс все еще активен.");
+                return false;
+            case EPERM:
+                MERROR("Невозможно разблокировать мьютекс: мьютекс не принадлежит текущему потоку.");
+                return false;
+            default:
+                MERROR("Произошла обработанная ошибка при разблокировке блокировки мьютекса: errno=%i", result);
+                return false;
+        }
+    }
+
+    return false;
+}
+
+// ПРИМЕЧАНИЕ: Конец мьютекса
+
+void PlatformGetRequiredExtensionNames(DArray<const char *> &NameDarray)
+{
     NameDarray.PushBack("VK_KHR_xcb_surface"); // VK_KHR_xlib_surface?
 }
 

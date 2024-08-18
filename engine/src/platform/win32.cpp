@@ -6,6 +6,8 @@
 #include "core/logger.hpp"
 #include "core/application.hpp"
 #include "core/input.hpp"
+#include "core/mthread.hpp"
+#include "core/mmutex.hpp"
 
 #include <windowsx.h>  // извлечение входных параметров
 #include <windows.h>
@@ -222,6 +224,141 @@ void PlatformConsoleWriteError(const char *message, u8 colour) {
 void PlatformSleep(u64 ms) {
     Sleep(ms);
 }
+
+i32 PlatformGetProcessorCount()
+{
+    SYSTEM_INFO sysinfo;
+    GetSystemInfo(&sysinfo);
+    MINFO("Обнаружено %i ядер процессора.", sysinfo.dwNumberOfProcessors);
+    return sysinfo.dwNumberOfProcessors;
+}
+
+// ПРИМЕЧАНИЕ: начало потоков---------------------------------------------------------------------------------------------
+
+constexpr MThread::MThread(PFN_ThreadStart StartFunctionPtr, void *params, bool AutoDetach) : data(), ThreadID()
+{
+    if (!StartFunctionPtr) {
+        return;
+    }
+
+    data = CreateThread(
+        0,
+        0,                                          // Размер стека по умолчанию
+        (LPTHREAD_START_ROUTINE)StartFunctionPtr,   // указатель на функцию
+        params,                                     // параметр для передачи потоку
+        0,
+        (DWORD *)&ThreadID);
+    MDEBUG("Запуск процесса в потоке с идентификатором: %#x", ThreadID);
+    if (!data) {
+        return;
+    }
+    if (StartFunctionPtr) {
+        CloseHandle(data);
+    }
+}
+
+MThread::~MThread()
+{
+    if (data) {
+        DWORD ExitCode;
+        GetExitCodeThread(data, &ExitCode);
+        // if (exit_code == STILL_ACTIVE) {
+        //     TerminateThread(data, 0);  // 0 = failure
+        // }
+        CloseHandle((HANDLE)data);
+        data = nullptr;
+        ThreadID = 0;
+    }
+}
+
+void MThread::Detach()
+{
+    if (data) {
+        CloseHandle(data);
+        data = nullptr;
+    }
+}
+
+void MThread::Cancel()
+{
+    if (data) {
+        TerminateThread(data, 0);
+        data = nullptr;
+    }
+}
+
+bool MThread::IsActive()
+{
+    if (data) {
+        DWORD ExitCode = WaitForSingleObject(data, 0);
+        if (ExitCode == WAIT_TIMEOUT) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void MThread::Sleep(u64 ms)
+{
+    PlatformSleep(ms);
+}
+
+u64 MThread::GetThreadID()
+{
+    return (u64)GetCurrentThreadId();
+}
+
+// ПРИМЕЧАНИЕ: конец потоков----------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------------------------
+// ПРИМЕЧАНИЕ: начало мьютксов--------------------------------------------------------------------------------------------
+
+MMutex::MMutex() : data (CreateMutex(0, 0, 0))
+{
+    if (!data) {
+        MERROR("Невозможно создать мьютекс.");
+        return;
+    }
+    // MTRACE("Создан мьютекс.");
+}
+
+MMutex::~MMutex()
+{
+    if (data) {
+        CloseHandle(data);
+        // MTRACE("Мьютекс уничтожен.");
+        data = nullptr;
+    }
+}
+
+bool MMutex::Lock()
+{
+    DWORD result = WaitForSingleObject(data, INFINITE);
+    switch (result) {
+        // Поток получил право собственности на мьютекс
+        case WAIT_OBJECT_0:
+            // MTRACE("Мьютекс заблокирован.");
+            return true;
+
+            // Поток получил право собственности на заброшенный мьютекс.
+        case WAIT_ABANDONED:
+            MERROR("Блокировка мьютекса не удалась.");
+            return false;
+    }
+    // MTRACE("Мьютекс заблокирован.");
+    return true;
+}
+
+bool MMutex::Unlock()
+{
+    if (!data) {
+        return false;
+    }
+    i32 result = ReleaseMutex(data);
+    // MTRACE("Мьютекс разблокирован.");
+    return result != 0;  // 0 — это неудача
+}
+
+// ПРИМЕЧАНИЕ: конец мьютексов
 
 void PlatformGetRequiredExtensionNames(DArray<const char*>& NameDarray)
 {

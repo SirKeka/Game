@@ -108,7 +108,7 @@ bool MaterialLoader::Load(const char *name, void* params, Resource &OutResource)
 
 void MaterialLoader::Unload(Resource &resource)
 {
-    if (!LoaderUtils::ResourceUnload(this, resource, MemoryTag::MaterialInstance)) {
+    if (!LoaderUtils::ResourceUnload(this, resource, Memory::MaterialInstance)) {
         MWARN("MaterialLoader::Unload вызывается с nullptr для себя или ресурса.");
         return;
     }

@@ -16,35 +16,37 @@
 #include "core/logger.hpp"
 #include "containers/mstring.hpp"
 #include "memory/dynamic_allocator.hpp"
+#include "mmutex.hpp"
 
 
 /// @brief Теги, указывающие на использование выделенной памяти в этой системе.
-enum class MemoryTag 
-{
-    // Для временного использования. Должно быть присвоено одно из следующих значений или создан новый тег.
-    Unknown,
-    Array,
-    LinearAllocator,
-    DArray,
-    Dict,
-    RingQueue,
-    BST,
-    String,
-    Application,
-    Job,
-    Texture,
-    MaterialInstance,
-    Renderer,
-    Game,
-    Transform,
-    Entity,
-    EntityNode,
-    Scene,
-    HashTable,
-    Resource,
+namespace Memory { 
+    enum Tag {
+        // Для временного использования. Должно быть присвоено одно из следующих значений или создан новый тег.
+        Unknown,
+        Array,
+        LinearAllocator,
+        DArray,
+        Dict,
+        RingQueue,
+        BST,
+        String,
+        Application,
+        Job,
+        Texture,
+        MaterialInstance,
+        Renderer,
+        Game,
+        Transform,
+        Entity,
+        EntityNode,
+        Scene,
+        HashTable,
+        Resource,
 
-    MaxTags
-};
+        MaxTags
+    };
+}
 
 class MAPI MMemory
 {
@@ -57,15 +59,8 @@ private:
     };*/
 
     //static DArray<SharPtr> ptr;
-    static struct MemoryState {
-        u64 TotalAllocSize{}; // Общий размер памяти в байтах, используемый внутренним распределителем для этой системы.
-        u64 TotalAllocated{};
-        u64 TaggedAllocations[static_cast<u32>(MemoryTag::MaxTags)]{};
-        u64 AllocCount{};
-        u64 AllocatorMemoryRequirement{};
-        DynamicAllocator allocator{};
-        void* AllocatorBlock{nullptr};
-    }* state;
+    
+    static struct MemoryState* state;
     
 public:
     constexpr MMemory() = default;
@@ -83,10 +78,10 @@ public:
     /// @param tag название(тег) для каких нужд используется память
     /// @param def использовать стандартный new при выделении памяти. Поумолчанию false
     /// @return указатель на выделенный блок памяти
-    static void* Allocate(u64 bytes, MemoryTag tag, bool nullify = false, bool def = false);
+    static void* Allocate(u64 bytes, Memory::Tag tag, bool nullify = false, bool def = false);
 
     template<typename T>
-    static constexpr T* TAllocate(MemoryTag tag, u64 size = 1, bool nullify = false, bool def = false) {
+    static constexpr T* TAllocate(Memory::Tag tag, u64 size = 1, bool nullify = false, bool def = false) {
         return (reinterpret_cast<T*>(Allocate(sizeof(T) * size, tag, nullify, def)));
     }
     /// @brief Функция освобождает память
@@ -94,7 +89,7 @@ public:
     /// @param bytes размер блока памяти в байтах
     /// @param tag название(тег) для чего использовалась память
     /// @param def использовать стандартный new при выделении памяти. Если при выделении памяти использовался. Поумолчанию false
-    static void Free(void* block, u64 bytes, MemoryTag tag, bool def = false);
+    static void Free(void* block, u64 bytes, Memory::Tag tag, bool def = false);
     /// @brief Функция зануляет выделенный блок памяти
     /// @param block указатель на блок памяти, который нужно обнулить
     /// @param bytes размер блока памяти в байтах

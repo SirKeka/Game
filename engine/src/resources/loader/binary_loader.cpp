@@ -29,7 +29,7 @@ bool BinaryLoader::Load(const char *name, void* params, Resource &OutResource)
     }
 
     // ЗАДАЧА: Здесь следует использовать распределитель.
-    u8* ResourceData = MMemory::TAllocate<u8>(MemoryTag::Array, FileSize);
+    u8* ResourceData = MMemory::TAllocate<u8>(Memory::Array, FileSize);
     u64 ReadSize = 0;
     if (!Filesystem::ReadAllBytes(&f, ResourceData, ReadSize)) {
         MERROR("Невозможно прочитать файл в двоичном формате: %s.", FullFilePath);
@@ -48,7 +48,7 @@ bool BinaryLoader::Load(const char *name, void* params, Resource &OutResource)
 
 void BinaryLoader::Unload(Resource &resource)
 {
-    if (!LoaderUtils::ResourceUnload(this, resource, MemoryTag::Array)) {
+    if (!LoaderUtils::ResourceUnload(this, resource, Memory::Array)) {
         MWARN("BinaryLoader::Unload вызывается с nullptr для себя или ресурса.");
     }
 }

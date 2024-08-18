@@ -457,12 +457,12 @@ bool LoadCubeTextures(const char *name, const char TextureNames[6][TEXTURE_NAME_
             ImageSize = t->width * t->height * t->ChannelCount;
             // ПРИМЕЧАНИЕ: в кубических картах прозрачность не нужна, поэтому ее не проверяем.
 
-            pixels = MMemory::TAllocate<u8>(MemoryTag::Array, ImageSize * 6);
+            pixels = MMemory::TAllocate<u8>(Memory::Array, ImageSize * 6);
         } else {
             // Убедитесь, что все текстуры имеют одинаковый размер.
             if (t->width != ResourceData->width || t->height != ResourceData->height || t->ChannelCount != ResourceData->ChannelCount) {
                 MERROR("LoadCubeTextures - Все текстуры должны иметь одинаковое разрешение и битовую глубину.");
-                MMemory::Free(pixels, sizeof(u8) * ImageSize * 6, MemoryTag::Array);
+                MMemory::Free(pixels, sizeof(u8) * ImageSize * 6, Memory::Array);
                 pixels = 0;
                 return false;
             }
@@ -478,7 +478,7 @@ bool LoadCubeTextures(const char *name, const char TextureNames[6][TEXTURE_NAME_
     // Получить внутренние ресурсы текстур и загрузить их в графический процессор.
     Renderer::Load(pixels, t);
 
-    MMemory::Free(pixels, sizeof(u8) * ImageSize * 6, MemoryTag::Array);
+    MMemory::Free(pixels, sizeof(u8) * ImageSize * 6, Memory::Array);
     pixels = 0;
 
     return true;

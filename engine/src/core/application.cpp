@@ -31,8 +31,8 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
         return false;
     }
 
-    GameInst->state = MMemory::Allocate(GameInst->StateMemoryRequirement, MemoryTag::Application);
-    GameInst->application->State = MMemory::TAllocate<ApplicationState>(MemoryTag::Application);
+    GameInst->state = MMemory::Allocate(GameInst->StateMemoryRequirement, Memory::Application);
+    GameInst->application->State = MMemory::TAllocate<ApplicationState>(Memory::Application);
     State = GameInst->application->State;
     State->GameInst = GameInst;
 
@@ -85,6 +85,22 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
     if(!ShaderSystem::Initialize(1024, 128, 31, 31)) {
         MFATAL("Не удалось инициализировать шейдерную систему. Прерывание приложения.");
         return false;
+    }
+
+    // Это действительно количество ядер. Вычтите 1, чтобы учесть, что основной поток уже используется.
+    i32 ThreadCount = PlatformGetProcessorCount() - 1;
+    if (ThreadCount < 1) {
+        MFATAL("Ошибка: платформа сообщила количество процессоров (минус один для основного потока) как %i. Нужен как минимум один дополнительный поток для системы заданий.", ThreadCount);
+        return false;
+    } else {
+        MTRACE("Доступные потоки: %i", ThreadCount);
+    }
+
+    // Ограничьте количество нитей.
+    const i32 MaxThreadCount = 15;
+    if (ThreadCount > MaxThreadCount) {
+        MTRACE("Доступные потоки в системе — %i, но будут ограничены %i.", ThreadCount, MaxThreadCount);
+        ThreadCount = MaxThreadCount;
     }
 
     State->Render = new Renderer(State->Window, GameInst->AppConfig.name, ERendererType::VULKAN);
@@ -291,6 +307,8 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
         return false;
     }
 
+    // Вызовите resize один раз, чтобы убедиться, что установлен правильный размер.
+    State->Render->OnResized(State->width, State->height);
     GameInst->OnResize(State->width, State->height);
 
     return true;
@@ -449,12 +467,12 @@ void Application::ApplicationGetFramebufferSize(u32 & width, u32 & height)
 
 void *Application::operator new(u64 size)
 {
-    return MMemory::Allocate(size, MemoryTag::Application);
+    return MMemory::Allocate(size, Memory::Application);
 }
 
 void Application::operator delete(void *ptr)
 {
-    return MMemory::Free(ptr, sizeof(Application), MemoryTag::Application);
+    return MMemory::Free(ptr, sizeof(Application), Memory::Application);
 }
 
 bool Application::OnEvent(u16 code, void *sender, void *ListenerInst, EventContext context)

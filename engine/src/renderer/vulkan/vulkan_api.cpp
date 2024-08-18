@@ -264,7 +264,7 @@ void VulkanAPI::Unload(Shader *shader)
         MMemory::ZeroMem(&VkShader->config, sizeof(VulkanShaderConfig));
 
         // Освободите внутреннюю память данных.
-        MMemory::Free(shader->ShaderData, sizeof(VulkanShader), MemoryTag::Renderer);
+        MMemory::Free(shader->ShaderData, sizeof(VulkanShader), Memory::Renderer);
         shader->ShaderData = 0;
     }
 }
@@ -620,7 +620,7 @@ bool VulkanAPI::ShaderAcquireInstanceResources(Shader *shader, TextureMap** maps
     const u8& SamplerBindingIndex = VkShader->config.DescriptorSets[DESC_SET_INDEX_INSTANCE].SamplerBindingIndex;
     const u32& InstanceTextureCount = VkShader->config.DescriptorSets[DESC_SET_INDEX_INSTANCE].bindings[SamplerBindingIndex].descriptorCount;
     // Очистите память всего массива, даже если она не вся использована.
-    InstanceState.InstanceTexturesMaps = MMemory::TAllocate<TextureMap*>(MemoryTag::Array, shader->InstanceTextureCount);
+    InstanceState.InstanceTexturesMaps = MMemory::TAllocate<TextureMap*>(Memory::Array, shader->InstanceTextureCount);
     Texture* DefaultTexture = TextureSystem::Instance()->GetDefaultTexture(ETexture::Default);
     MMemory::CopyMem(InstanceState.InstanceTexturesMaps, maps, sizeof(TextureMap*) * shader->InstanceTextureCount);
     // Установите для всех указателей текстур значения по умолчанию, пока они не будут назначены.
@@ -695,7 +695,7 @@ bool VulkanAPI::ShaderReleaseInstanceResources(Shader *shader, u32 InstanceID)
     MMemory::ZeroMem(InstanceState.DescriptorSetState.DescriptorStates, sizeof(VulkanDescriptorState) * VulkanShaderConstants::MaxBindings);
 
     if (InstanceState.InstanceTexturesMaps) {
-        MMemory::Free(InstanceState.InstanceTexturesMaps, sizeof(TextureMap*) * shader->InstanceTextureCount, MemoryTag::Array);
+        MMemory::Free(InstanceState.InstanceTexturesMaps, sizeof(TextureMap*) * shader->InstanceTextureCount, Memory::Array);
         InstanceState.InstanceTexturesMaps = nullptr;
     }
 
@@ -715,7 +715,7 @@ FramebufferSizeGeneration(),
 FramebufferSizeLastGeneration(),
 instance(), allocator(nullptr), surface(),
 Device(), swapchain(),
-RenderpassTableBlock(MMemory::Allocate(sizeof(u32) * VULKAN_MAX_REGISTERED_RENDERPASSES, MemoryTag::Renderer)),
+RenderpassTableBlock(MMemory::Allocate(sizeof(u32) * VULKAN_MAX_REGISTERED_RENDERPASSES, Memory::Renderer)),
 RenderpassTable(VULKAN_MAX_REGISTERED_RENDERPASSES, false, reinterpret_cast<u32*>(RenderpassTableBlock), true, INVALID::ID), 
 RegisteredPasses(),
 OnRendertargetRefreshRequired(config.OnRendertargetRefreshRequired)
@@ -869,7 +869,7 @@ OnRendertargetRefreshRequired(config.OnRendertargetRefreshRequired)
         RegisteredPasses[id].ClearColour = config.PassConfigs[i].ClearColour;
         RegisteredPasses[id].RenderArea = config.PassConfigs[i].RenderArea;
 
-        RenderpassCreate(RegisteredPasses + id, 1.0f, 0, config.PassConfigs[i].PrevName != 0, config.PassConfigs[i].NextName != 0);
+        RenderpassCreate(&RegisteredPasses[id], 1.0f, 0, config.PassConfigs[i].PrevName != 0, config.PassConfigs[i].NextName != 0);
 
         // Обновите таблицу с новым идентификатором.
         RenderpassTable.Set(config.PassConfigs[i].name, id);
@@ -1146,7 +1146,7 @@ bool VulkanAPI::RenderpassBegin(Renderpass* pass, RenderTarget& target)
 
     VkRenderPassBeginInfo BeginInfo = {VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
     BeginInfo.renderPass = VkRenderpass->handle;
-    BeginInfo.framebuffer = (VkFramebuffer)target.InternalFramebuffer;
+    BeginInfo.framebuffer = reinterpret_cast<VkFramebuffer>(target.InternalFramebuffer);
     BeginInfo.renderArea.offset.x = pass->RenderArea.x;
     BeginInfo.renderArea.offset.y = pass->RenderArea.y;
     BeginInfo.renderArea.extent.width = pass->RenderArea.z;
@@ -1750,12 +1750,12 @@ void VulkanAPI::RenderTargetCreate(u8 AttachmentCount, Texture **attachments, Re
     // Сделайте копию вложений и посчитайте.
     OutTarget.AttachmentCount = AttachmentCount;
     if (!OutTarget.attachments) {
-        OutTarget.attachments = new Texture*[AttachmentCount];
+        OutTarget.attachments = MMemory::TAllocate<Texture*>(Memory::Array, AttachmentCount);
     }
     MMemory::CopyMem(OutTarget.attachments, attachments, sizeof(Texture*) * AttachmentCount);
 
     VkFramebufferCreateInfo FramebufferCreateInfo = {VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
-    FramebufferCreateInfo.renderPass = ((VulkanRenderpass*)pass->InternalData)->handle;
+    FramebufferCreateInfo.renderPass = reinterpret_cast<VulkanRenderpass*>(pass->InternalData)->handle;
     FramebufferCreateInfo.attachmentCount = AttachmentCount;
     FramebufferCreateInfo.pAttachments = AttachmentViews;
     FramebufferCreateInfo.width = width;
@@ -1778,7 +1778,6 @@ void VulkanAPI::RenderTargetDestroy(RenderTarget &target, bool FreeInternalMemor
 
 void VulkanAPI::RenderpassCreate(Renderpass *OutRenderpass, f32 depth, u32 stencil, bool HasPrevPass, bool HasNextPass)
 {
-    // VulkanRenderpass* VkRenderpass = new VulkanRenderpass(depth, stencil, HasPrevPass, HasNextPass, this);
     OutRenderpass->InternalData = new VulkanRenderpass(OutRenderpass->ClearFlags, depth, stencil, HasPrevPass, HasNextPass, this);
 }
 

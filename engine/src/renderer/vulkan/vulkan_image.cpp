@@ -215,10 +215,10 @@ void VulkanImage::Destroy(VulkanAPI *VkAPI)
 
 void *VulkanImage::operator new(u64 size)
 {
-    return MMemory::Allocate(size, MemoryTag::Texture);
+    return MMemory::Allocate(size, Memory::Texture);
 }
 
 void VulkanImage::operator delete(void *ptr, u64 size)
 {
-    MMemory::Free(ptr, size, MemoryTag::Texture);
+    MMemory::Free(ptr, size, Memory::Texture);
 }

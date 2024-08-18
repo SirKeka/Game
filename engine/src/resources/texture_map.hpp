@@ -40,9 +40,9 @@ struct TextureMap {
     }
 
     void* operator new(u64 size) {
-        return MMemory::Allocate(size, MemoryTag::Renderer);
+        return MMemory::Allocate(size, Memory::Renderer);
     }
     void operator delete(void* ptr, u64 size) {
-        MMemory::Free(ptr, size, MemoryTag::Renderer);
+        MMemory::Free(ptr, size, Memory::Renderer);
     }
 };

@@ -55,7 +55,7 @@ bool VulkanDevice::Create(VulkanAPI* VkAPI)
     VkExtensionProperties* AvailableExtensions = 0;
     VK_CHECK(vkEnumerateDeviceExtensionProperties(VkAPI->Device.PhysicalDevice, 0, &AvailableExtensionCount, 0));
     if (AvailableExtensionCount != 0) {
-        AvailableExtensions = MMemory::TAllocate<VkExtensionProperties>(MemoryTag::Renderer, AvailableExtensionCount);
+        AvailableExtensions = MMemory::TAllocate<VkExtensionProperties>(Memory::Renderer, AvailableExtensionCount);
         VK_CHECK(vkEnumerateDeviceExtensionProperties(VkAPI->Device.PhysicalDevice, 0, &AvailableExtensionCount, AvailableExtensions));
         for (u32 i = 0; i < AvailableExtensionCount; ++i) {
             if (MString::Equal(AvailableExtensions[i].extensionName, "VK_KHR_portability_subset")) {
@@ -65,7 +65,7 @@ bool VulkanDevice::Create(VulkanAPI* VkAPI)
             }
         }
     }
-    MMemory::Free(AvailableExtensions, sizeof(VkExtensionProperties) * AvailableExtensionCount, MemoryTag::Renderer);
+    MMemory::Free(AvailableExtensions, sizeof(VkExtensionProperties) * AvailableExtensionCount, Memory::Renderer);
 
     u32 ExtensionCount = PortabilityRequired ? 2 : 1;
     const char** ExtensionNames = PortabilityRequired
@@ -150,13 +150,13 @@ void VulkanDevice::Destroy(VulkanAPI *VkAPI)
     PhysicalDevice = 0;
 
     if (SwapchainSupport.formats) {
-        MMemory::Free(SwapchainSupport.formats, sizeof(VkSurfaceFormatKHR) * SwapchainSupport.FormatCount, MemoryTag::Renderer);
+        MMemory::Free(SwapchainSupport.formats, sizeof(VkSurfaceFormatKHR) * SwapchainSupport.FormatCount, Memory::Renderer);
         SwapchainSupport.formats = nullptr;
         SwapchainSupport.FormatCount = 0;
     }
 
     if (SwapchainSupport.PresentModes) {
-        MMemory::Free(SwapchainSupport.PresentModes, sizeof(VkPresentModeKHR) * SwapchainSupport.PresentModeCount, MemoryTag::Renderer);
+        MMemory::Free(SwapchainSupport.PresentModes, sizeof(VkPresentModeKHR) * SwapchainSupport.PresentModeCount, Memory::Renderer);
         SwapchainSupport.PresentModes = nullptr;
         SwapchainSupport.PresentModeCount = 0;
     }
@@ -187,7 +187,7 @@ void VulkanDevice::QuerySwapchainSupport(VkPhysicalDevice PhysicalDevice, VkSurf
 
     if (OutSupportInfo->FormatCount != 0) {
         if (!OutSupportInfo->formats) { // раскоментировать или закоментировать знак ! если будет ошибка
-            OutSupportInfo->formats = MMemory::TAllocate<VkSurfaceFormatKHR>(MemoryTag::Renderer, OutSupportInfo->FormatCount);
+            OutSupportInfo->formats = MMemory::TAllocate<VkSurfaceFormatKHR>(Memory::Renderer, OutSupportInfo->FormatCount);
         }
         VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(
             PhysicalDevice,
@@ -204,7 +204,7 @@ void VulkanDevice::QuerySwapchainSupport(VkPhysicalDevice PhysicalDevice, VkSurf
         0));
     if (OutSupportInfo->PresentModeCount != 0) {
         if (!OutSupportInfo->PresentModes) { // раскоментировать или закоментировать знак ! если будет ошибка
-            OutSupportInfo->PresentModes = MMemory::TAllocate<VkPresentModeKHR>(MemoryTag::Renderer, OutSupportInfo->PresentModeCount);
+            OutSupportInfo->PresentModes = MMemory::TAllocate<VkPresentModeKHR>(Memory::Renderer, OutSupportInfo->PresentModeCount);
         }
         VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(
             PhysicalDevice,
@@ -480,10 +480,10 @@ bool VulkanDevice::PhysicalDeviceMeetsRequirements(
         
         if (OutSwapchainSupport->FormatCount < 1 || OutSwapchainSupport->PresentModeCount < 1) {
             if (OutSwapchainSupport->formats) {
-                MMemory::Free(OutSwapchainSupport->formats, OutSwapchainSupport->FormatCount * sizeof(VkSurfaceFormatKHR), MemoryTag::Renderer);
+                MMemory::Free(OutSwapchainSupport->formats, OutSwapchainSupport->FormatCount * sizeof(VkSurfaceFormatKHR), Memory::Renderer);
             }
             if (OutSwapchainSupport->PresentModes) {
-                MMemory::Free(OutSwapchainSupport->PresentModes, OutSwapchainSupport->PresentModeCount * sizeof(VkPresentModeKHR), MemoryTag::Renderer);
+                MMemory::Free(OutSwapchainSupport->PresentModes, OutSwapchainSupport->PresentModeCount * sizeof(VkPresentModeKHR), Memory::Renderer);
             }
             MINFO("Требуемая поддержка swapchain отсутствует, устройство пропускается.");
             return false;
@@ -499,7 +499,7 @@ bool VulkanDevice::PhysicalDeviceMeetsRequirements(
                 &AvailableExtensionCount,
                 0));
             if (AvailableExtensionCount != 0) {
-                AvailableExtensions = MMemory::TAllocate<VkExtensionProperties>(MemoryTag::Renderer, AvailableExtensionCount);
+                AvailableExtensions = MMemory::TAllocate<VkExtensionProperties>(Memory::Renderer, AvailableExtensionCount);
                 VK_CHECK(vkEnumerateDeviceExtensionProperties(
                     device,
                     0,
@@ -518,12 +518,12 @@ bool VulkanDevice::PhysicalDeviceMeetsRequirements(
 
                     if (!found) {
                         MINFO("Требуемое расширение не найдено: '%s', устройство пропускается.", requirements->DeviceExtensionNames[i]);
-                        MMemory::Free(AvailableExtensions, AvailableExtensionCount * sizeof(VkExtensionProperties), MemoryTag::Renderer);
+                        MMemory::Free(AvailableExtensions, AvailableExtensionCount * sizeof(VkExtensionProperties), Memory::Renderer);
                         return false;
                     }
                 }
             }
-            MMemory::Free(AvailableExtensions, AvailableExtensionCount * sizeof(VkExtensionProperties), MemoryTag::Renderer);
+            MMemory::Free(AvailableExtensions, AvailableExtensionCount * sizeof(VkExtensionProperties), Memory::Renderer);
         }
 
         // Sampler anisotropy

@@ -20,8 +20,8 @@ struct GeometryID {
     class Material* material;
     GeometryID(u32 id, u16 generation) : id(id), InternalID(INVALID::ID), generation(generation), name(), material(nullptr) {}
     GeometryID(const char* name) : id(INVALID::ID), InternalID(INVALID::ID), generation(INVALID::U16ID), material(nullptr) {MMemory::CopyMem(this->name, name, GEOMETRY_NAME_MAX_LENGTH);}
-    void* operator new[](u64 size) { return MMemory::Allocate(size, MemoryTag::Array); }
-    void operator delete[](void* ptr, u64 size) { MMemory::Free(ptr, size, MemoryTag::Array); }
+    void* operator new[](u64 size) { return MMemory::Allocate(size, Memory::Array); }
+    void operator delete[](void* ptr, u64 size) { MMemory::Free(ptr, size, Memory::Array); }
 };
 
 /// @brief Представляет фактическую геометрию в мире.
