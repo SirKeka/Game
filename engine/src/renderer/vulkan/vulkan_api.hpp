@@ -115,7 +115,7 @@ public:
     void TextureMapReleaseResources(TextureMap* map) override;
     void RenderTargetCreate(u8 AttachmentCount, Texture** attachments, Renderpass* pass, u32 width, u32 height, RenderTarget& OutTarget) override;
     void RenderTargetDestroy(RenderTarget& target, bool FreeInternalMemory = false) override;
-    void RenderpassCreate(Renderpass* OutRenderpass, f32 depth, u32 stencil, bool HasPrevPass, bool HasNextPass) override;
+    void RenderpassCreate(Renderpass& OutRenderpass, f32 depth, u32 stencil, bool HasPrevPass, bool HasNextPass) override;
     void RenderpassDestroy(Renderpass* OutRenderpass) override;
     Texture* WindowAttachmentGet(u8 index) override;
     Texture* DepthAttachmentGet() override;
@@ -137,6 +137,6 @@ private:
     bool UploadDataRange(VkCommandPool pool, VkFence fence, VkQueue queue, VulkanBuffer& buffer, u64& OutOffset, u64 size, const void* data);
     void FreeDataRange(VulkanBuffer* buffer, u64 offset, u64 size);
     // Обратный вызов, который будет выполнен, когда бэкэнд потребует обновления/повторной генерации целей рендеринга.
-    const RendererConfig::PFN_Method& OnRendertargetRefreshRequired;
+    const RendererConfig::PFN_Method OnRendertargetRefreshRequired;
     //void (Renderer::*OnRendertargetRefreshRequired)();   
 };

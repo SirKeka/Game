@@ -79,15 +79,15 @@ FramesSinceResize()
     // ЗАДАЧА: Узнаем, как их получить, когда определим представления.
     SkyboxRenderpass = ptrRenderer->GetRenderpass(SkyboxRenderpassName);
     SkyboxRenderpass->RenderTargetCount = WindowRenderTargetCount;
-    SkyboxRenderpass->targets = MMemory::TAllocate<RenderTarget>(Memory::Array, WindowRenderTargetCount);
+    SkyboxRenderpass->targets = MMemory::TAllocate<RenderTarget>(Memory::Array, WindowRenderTargetCount, true);
 
     WorldRenderpass = ptrRenderer->GetRenderpass(WorldRenderpassName);
     WorldRenderpass->RenderTargetCount = WindowRenderTargetCount;
-    WorldRenderpass->targets = MMemory::TAllocate<RenderTarget>(Memory::Array, WindowRenderTargetCount);
+    WorldRenderpass->targets = MMemory::TAllocate<RenderTarget>(Memory::Array, WindowRenderTargetCount, true);
     
     UiRenderpass = ptrRenderer->GetRenderpass(UiRenderpassName);
     UiRenderpass->RenderTargetCount = WindowRenderTargetCount;
-    UiRenderpass->targets = MMemory::TAllocate<RenderTarget>(Memory::Array, WindowRenderTargetCount);
+    UiRenderpass->targets = MMemory::TAllocate<RenderTarget>(Memory::Array, WindowRenderTargetCount, true);
 
     RegenerateRenderTargets();
 
@@ -379,7 +379,7 @@ void Renderer::RegenerateRenderTargets() {
 
 void Renderer::RenderpassCreate(Renderpass *OutRenderpass, f32 depth, u32 stencil, bool HasPrevPass, bool HasNextPass)
 {
-    ptrRenderer->RenderpassCreate(OutRenderpass, depth, stencil, HasPrevPass, HasNextPass);
+    ptrRenderer->RenderpassCreate(*OutRenderpass, depth, stencil, HasPrevPass, HasNextPass);
 }
 
 void Renderer::RenderpassDestroy(Renderpass *OutRenderpass)

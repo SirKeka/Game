@@ -869,7 +869,7 @@ OnRendertargetRefreshRequired(config.OnRendertargetRefreshRequired)
         RegisteredPasses[id].ClearColour = config.PassConfigs[i].ClearColour;
         RegisteredPasses[id].RenderArea = config.PassConfigs[i].RenderArea;
 
-        RenderpassCreate(&RegisteredPasses[id], 1.0f, 0, config.PassConfigs[i].PrevName != 0, config.PassConfigs[i].NextName != 0);
+        RenderpassCreate(RegisteredPasses[id], 1.0f, 0, config.PassConfigs[i].PrevName != 0, config.PassConfigs[i].NextName != 0);
 
         // Обновите таблицу с новым идентификатором.
         RenderpassTable.Set(config.PassConfigs[i].name, id);
@@ -1762,7 +1762,7 @@ void VulkanAPI::RenderTargetCreate(u8 AttachmentCount, Texture **attachments, Re
     FramebufferCreateInfo.height = height;
     FramebufferCreateInfo.layers = 1;
 
-    VK_CHECK(vkCreateFramebuffer(Device.LogicalDevice, &FramebufferCreateInfo, allocator, (VkFramebuffer*)&OutTarget.InternalFramebuffer));
+    VK_CHECK(vkCreateFramebuffer(Device.LogicalDevice, &FramebufferCreateInfo, allocator, reinterpret_cast<VkFramebuffer*>(&OutTarget.InternalFramebuffer)));
 }
 
 void VulkanAPI::RenderTargetDestroy(RenderTarget &target, bool FreeInternalMemory)
@@ -1776,9 +1776,9 @@ void VulkanAPI::RenderTargetDestroy(RenderTarget &target, bool FreeInternalMemor
     }
 }
 
-void VulkanAPI::RenderpassCreate(Renderpass *OutRenderpass, f32 depth, u32 stencil, bool HasPrevPass, bool HasNextPass)
+void VulkanAPI::RenderpassCreate(Renderpass& OutRenderpass, f32 depth, u32 stencil, bool HasPrevPass, bool HasNextPass)
 {
-    OutRenderpass->InternalData = new VulkanRenderpass(OutRenderpass->ClearFlags, depth, stencil, HasPrevPass, HasNextPass, this);
+    OutRenderpass.InternalData = new VulkanRenderpass(OutRenderpass.ClearFlags, depth, stencil, HasPrevPass, HasNextPass, this);
 }
 
 void VulkanAPI::RenderpassDestroy(Renderpass *OutRenderpass)

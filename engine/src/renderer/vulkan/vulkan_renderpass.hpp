@@ -8,7 +8,6 @@
 // ЗАДАЧА: Перенести все это в фаил vulkan_api.cpp?
 #pragma once
 
-#include "defines.hpp"
 #include "vulkan_api.hpp"
 
 enum class VulkanRenderpassState 
@@ -87,7 +86,7 @@ struct VulkanRenderpass
             DepthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
             DepthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-            AttachmentDescriptions[AttachmentDescriptionCount] = DepthAttachment;
+           AttachmentDescriptions[AttachmentDescriptionCount] = DepthAttachment;
             AttachmentDescriptionCount++;
 
             // Указание глубины
@@ -148,12 +147,8 @@ struct VulkanRenderpass
 
     void Destroy(VulkanAPI* VkAPI);
 
-    void* operator new(u64 size) {
-        return MMemory::Allocate(size, Memory::Renderer);
-    }
-    void operator delete(void* ptr, u64 size) {
-        MMemory::Free(ptr, size, Memory::Renderer);
-    }
+    void* operator new(u64 size);
+    void operator delete(void* ptr, u64 size);
 };
 
 

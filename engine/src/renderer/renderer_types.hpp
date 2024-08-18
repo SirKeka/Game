@@ -232,7 +232,7 @@ public:
     /// @param stencil значение очистки трафарета.
     /// @param HasPrevPass указывает, есть ли предыдущий проход рендеринга.
     /// @param HasNextPass указывает, есть ли следующий проход рендеринга.
-    virtual void RenderpassCreate(Renderpass* OutRenderpass, f32 depth, u32 stencil, bool HasPrevPass, bool HasNextPass) = 0;
+    virtual void RenderpassCreate(Renderpass& OutRenderpass, f32 depth, u32 stencil, bool HasPrevPass, bool HasNextPass) = 0;
     /// @brief Уничтожает указанный renderpass.
     /// @param OutRenderpass указатель на renderpass, который необходимо уничтожить.
     virtual void RenderpassDestroy(Renderpass* OutRenderpass) = 0;

@@ -77,9 +77,10 @@ void VulkanSwapchain::Destroy(VulkanAPI *VkAPI)
 
     vkDestroySwapchainKHR(VkAPI->Device.LogicalDevice, handle, VkAPI->allocator);
 
-    for (u32 i = 0; i < ImageCount; i++) {
+    /*for (u32 i = 0; i < ImageCount; i++) {
         delete RenderTextures[i]->Data;
-    }
+        RenderTextures[i]->Data = nullptr;
+    }*/
 }
 
 VulkanSwapchain::VulkanSwapchain(VulkanAPI *VkAPI, u32 width, u32 height)

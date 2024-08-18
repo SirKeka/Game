@@ -1,13 +1,12 @@
 #pragma once
-#include "defines.hpp"
 #include "math/vector4d_fwd.hpp"
 
 /// @brief Представляет цель рендеринга, которая используется для рендеринга в текстуру или набор текстур.
 struct RenderTarget {
-    bool SyncToWindowSize;          // Указывает, следует ли обновлять эту цель рендеринга при изменении размера окна.
-    u8 AttachmentCount;             // Количество вложений.
-    class Texture** attachments;    // Массив вложений (указателей на текстуры).
-    void* InternalFramebuffer;      // Внутренний объект буфера кадра API рендеринга.
+    bool SyncToWindowSize;              // Указывает, следует ли обновлять эту цель рендеринга при изменении размера окна.
+    u8 AttachmentCount;                 // Количество вложений.
+    class Texture** attachments;        // Массив вложений (указателей на текстуры).
+    void* InternalFramebuffer;          // Внутренний объект буфера кадра API рендеринга.
 
     constexpr RenderTarget() : SyncToWindowSize(), AttachmentCount(), attachments(nullptr), InternalFramebuffer(nullptr) {}
     constexpr RenderTarget(bool SyncToWindowSize, u8 AttachmentCount) 
