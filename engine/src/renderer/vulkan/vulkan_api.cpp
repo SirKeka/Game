@@ -718,7 +718,8 @@ Device(), swapchain(),
 RenderpassTableBlock(MMemory::Allocate(sizeof(u32) * VULKAN_MAX_REGISTERED_RENDERPASSES, Memory::Renderer)),
 RenderpassTable(VULKAN_MAX_REGISTERED_RENDERPASSES, false, reinterpret_cast<u32*>(RenderpassTableBlock), true, INVALID::ID), 
 RegisteredPasses(),
-OnRendertargetRefreshRequired(config.OnRendertargetRefreshRequired)
+OnRendertargetRefreshRequired(config.OnRendertargetRefreshRequired),
+MultithreadingEnabled(false)
 {
     // ЗАДАЧА: пользовательский allocator.
     allocator = NULL;
@@ -797,6 +798,8 @@ OnRendertargetRefreshRequired(config.OnRendertargetRefreshRequired)
 
     VK_CHECK(vkCreateInstance(&CreateInfo, allocator, &instance));
     MINFO("Создан экземпляр Vulkan.");
+
+    // ЗАДАЧА: реализовать многопоточность.
 
      // Debugger
 #if defined(_DEBUG)
@@ -1491,6 +1494,11 @@ i32 VulkanAPI::FindMemoryIndex(u32 TypeFilter, VkMemoryPropertyFlags PropertyFla
 
     MWARN("Не удалось найти подходящий тип памяти!");
     return -1;
+}
+
+bool VulkanAPI::IsMultithreaded()
+{
+    return MultithreadingEnabled;
 }
 
 void VulkanAPI::CreateCommandBuffers()

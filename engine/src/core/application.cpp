@@ -2,6 +2,7 @@
 //#include "memory/linear_allocator.hpp"
 #include "game_types.hpp"
 #include "renderer/renderer.hpp"
+
 #include "systems/texture_system.hpp"
 #include "systems/material_system.hpp"
 #include "systems/geometry_system.hpp"
@@ -9,6 +10,7 @@
 #include "systems/shader_system.hpp"
 #include "systems/camera_system.hpp"
 #include "systems/render_view_system.hpp"
+#include "systems/job_systems.hpp"
 
 // ЗАДАЧА: временно
 #include "math/geometry_utils.hpp"

@@ -341,7 +341,7 @@ bool ImportObjFile(FileHandle *ObjFile, const char *OutMsmFilename, DArray<Geome
 
     if (MString::Length(MaterialFileName) > 0) {
         // Загрузите файл материала
-        char FullMtlPath[512];
+        char FullMtlPath[512]{};
         MString::DirectoryFromPath(FullMtlPath, OutMsmFilename);
         MString::Append(FullMtlPath, MaterialFileName);
 

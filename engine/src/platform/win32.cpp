@@ -303,7 +303,7 @@ void MThread::Sleep(u64 ms)
     PlatformSleep(ms);
 }
 
-u64 MThread::GetThreadID()
+u64 GetThreadID()
 {
     return (u64)GetCurrentThreadId();
 }

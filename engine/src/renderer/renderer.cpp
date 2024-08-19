@@ -402,6 +402,11 @@ u8 Renderer::WindowAttachmentIndexGet()
     return ptrRenderer->WindowAttachmentIndexGet();
 }
 
+bool Renderer::IsMultithreaded()
+{
+    return ptrRenderer->IsMultithreaded();
+}
+
 void *Renderer::operator new(u64 size)
 {
     return LinearAllocator::Instance().Allocate(size);

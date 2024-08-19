@@ -32,6 +32,6 @@ public:
     /// @param ms время сна потока в миллисекундах
     void Sleep(u64 ms);
 
-    u64 GetThreadID();
 };
 
+u64 GetThreadID();

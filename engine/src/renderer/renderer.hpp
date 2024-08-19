@@ -211,6 +211,8 @@ public:
     static Texture* DepthAttachmentGet();
     /// @return Возвращает текущий индекс прикрепления окна.
     static u8 WindowAttachmentIndexGet();
+    /// @brief Указывает, поддерживает ли рендерер многопоточность.
+    static bool IsMultithreaded();
 
     void* operator new(u64 size);
     // void operator delete(void* ptr);

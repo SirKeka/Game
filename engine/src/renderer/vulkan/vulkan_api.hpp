@@ -52,6 +52,7 @@ public:
     bool RecreatingSwapchain{false};                    // Указывает, воссоздается ли в данный момент цепочка обмена.
     Geometry geometries[VULKAN_MAX_GEOMETRY_COUNT]{};   // ЗАДАЧА: динамическим, копии геометрий хранятся в системе геометрий, возможно стоит хранить здесь указатели на геометрии
     RenderTarget WorldRenderTargets[3]{};               // Цели рендера, используемые для рендеринга мира, по одному на кадр.
+    bool MultithreadingEnabled;                         // Указывает, поддерживает ли данное устройство многопоточность.
 
 public:
     /// @brief Инициализирует рендер.
@@ -127,6 +128,8 @@ public:
     /// @param PropertyFlags обязательные свойства, которые должны присутствовать.
     /// @return Индекс найденного типа памяти. Возвращает -1, если не найден.
     i32 FindMemoryIndex(u32 TypeFilter, VkMemoryPropertyFlags PropertyFlags);
+    /// @brief Указывает, поддерживает ли рендерер многопоточность.
+    bool IsMultithreaded() override;
 
 private:
     void CreateCommandBuffers();

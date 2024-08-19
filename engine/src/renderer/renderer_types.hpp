@@ -244,5 +244,6 @@ public:
     virtual Texture* DepthAttachmentGet() = 0;
     /// @return Возвращает текущий индекс прикрепления окна.
     virtual u8 WindowAttachmentIndexGet() = 0;
-
+    /// @brief Указывает, поддерживает ли рендерер многопоточность.
+    virtual bool IsMultithreaded() = 0;
     };
