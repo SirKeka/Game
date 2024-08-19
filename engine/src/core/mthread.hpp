@@ -9,15 +9,17 @@ typedef u32 (*PFN_ThreadStart)(void *);
 /// Это вызывает реализацию потока, специфичную для платформы.
 class MThread
 {
+friend class JobSystem;
 private:
     void* data;
     u32 ThreadID;
 public:
+    constexpr MThread() : data(nullptr), ThreadID() {}
     /// @brief Создает новый поток, немедленно вызывая указанную функцию.
     /// @param StartFunctionPtr указатель на функцию, которая будет вызвана немедленно. Обязательно.
     /// @param params указатель на любые данные, которые будут переданы в StartFunctionPtr. Необязательно. Передайте nullptr, если не используется.
     /// @param AutoDetach указывает, должен ли поток немедленно освободить свои ресурсы после завершения работы. Если true, out_thread не устанавливается.
-    constexpr MThread(PFN_ThreadStart StartFunctionPtr, void *params, bool AutoDetach);
+    MThread(PFN_ThreadStart StartFunctionPtr, void *params, bool AutoDetach);
     /// @brief Уничтожает поток
     ~MThread();
 
@@ -31,7 +33,13 @@ public:
     /// @brief Поток приостанавливает свою работу на указанное количество миллисекунд.
     /// @param ms время сна потока в миллисекундах
     void Sleep(u64 ms);
-
+    const u32& GetID() const { return ThreadID; }
+    operator bool() {
+        if (!data) {
+            return false;
+        }
+        return true;
+    }
 };
 
 u64 GetThreadID();

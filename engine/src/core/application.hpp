@@ -25,6 +25,7 @@ struct ApplicationState {
 
     //Системы
     //TextureSystem* TexSys;
+    class JobSystem* JobSystemInst{nullptr};
     class RenderViewSystem* RenderViewSystemInst{nullptr};
     class ResourceSystem* ResourceSystemInst{nullptr};
     

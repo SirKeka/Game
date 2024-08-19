@@ -112,6 +112,35 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
         return false;
     }
 
+    bool RendererMultithreaded = State->Render->IsMultithreaded();
+
+    // Инициализируйте систему заданий.
+    // Требует знания поддержки многопоточности рендеринга, поэтому следует инициализировать здесь.
+    u32 JobThreadTypes[15];
+    for (u32 i = 0; i < 15; ++i) {
+        JobThreadTypes[i] = JobType::General;
+    }
+
+    if (MaxThreadCount == 1 || !RendererMultithreaded) {
+        // Все в одном потоке заданий.
+        JobThreadTypes[0] |= (JobType::GPUResource | JobType::ResourceLoad);
+    } else if (MaxThreadCount == 2) {
+        // Разделите вещи между 2 потоками
+        JobThreadTypes[0] |= JobType::GPUResource;
+        JobThreadTypes[1] |= JobType::ResourceLoad;
+    } else {
+        // Выделите первые 2 потока этим вещам, передайте общие задачи другим потокам.
+        JobThreadTypes[0] = JobType::GPUResource;
+        JobThreadTypes[1] = JobType::ResourceLoad;
+    }
+
+    // Система заданий(потоков)
+    if (!JobSystem::Initialize(ThreadCount, JobThreadTypes)) {
+        MFATAL("Не удалось инициализировать систему заданий. Отмена приложения.");
+        return false;
+    }
+    State->JobSystemInst = JobSystem::Instance();
+
     // Система текстур.
     if (!TextureSystem::Initialize(65536)) {
         MFATAL("Не удалось инициализировать систему текстур. Приложение не может быть продолжено.");
@@ -338,6 +367,9 @@ bool Application::ApplicationRun() {
                 f64 delta = (CurrentTime - State->LastTime);
                 f64 FrameStartTime = MWindow::PlatformGetAbsoluteTime();
 
+                // Обновлление системы работы(потоков)
+                State->JobSystemInst->Update();
+
             if (!State->GameInst->Update(delta)) {
                 MFATAL("Ошибка обновления игры, выключение.");
                 State->IsRunning = false;
@@ -451,8 +483,9 @@ bool Application::ApplicationRun() {
     // ЗАДАЧА: Конец временного
 
     ShaderSystem::Shutdown();
-    State->ResourceSystemInst->Shutdown();
     State->Render->Shutdown();
+    ResourceSystem::Shutdown();
+    JobSystem::Shutdown();
 
     State->Window->Close();
     State->logger->Shutdown();

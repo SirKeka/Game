@@ -235,12 +235,11 @@ i32 PlatformGetProcessorCount()
 
 // ПРИМЕЧАНИЕ: начало потоков---------------------------------------------------------------------------------------------
 
-constexpr MThread::MThread(PFN_ThreadStart StartFunctionPtr, void *params, bool AutoDetach) : data(), ThreadID()
+MThread::MThread(PFN_ThreadStart StartFunctionPtr, void *params, bool AutoDetach) : data(), ThreadID()
 {
     if (!StartFunctionPtr) {
         return;
     }
-
     data = CreateThread(
         0,
         0,                                          // Размер стека по умолчанию
@@ -248,7 +247,7 @@ constexpr MThread::MThread(PFN_ThreadStart StartFunctionPtr, void *params, bool 
         params,                                     // параметр для передачи потоку
         0,
         (DWORD *)&ThreadID);
-    MDEBUG("Запуск процесса в потоке с идентификатором: %#x", ThreadID);
+    // MDEBUG("Запуск процесса в потоке с идентификатором: %#x", ThreadID);
     if (!data) {
         return;
     }

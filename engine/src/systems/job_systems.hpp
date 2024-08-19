@@ -3,6 +3,7 @@
 #include "containers/ring_queue.hpp"
 #include "core/mmutex.hpp"
 #include "core/mthread.hpp"
+#include "core/mmemory.hpp"
 
 constexpr i32 MAX_JOB_RESULTS = 512; // Максимальное количество результатов задания, которые можно сохранить одновременно.
 
@@ -76,14 +77,15 @@ class JobSystem
         PFN_JobOnComplete callback{nullptr};
         u32 ParamSize{};
         void* params{nullptr};
+        constexpr JobResultEntry() : id(), callback(nullptr), ParamSize(), params(nullptr) {}
         constexpr JobResultEntry(u16 id, PFN_JobOnComplete callback, u32 ParamSize, void* params)
         : id(id), callback(callback), ParamSize(ParamSize), params(params) {
-            if (entry.ParamSize > 0) {
+            if (ParamSize > 0) {
                 // Сделайте копию, так как после этого задание будет уничтожено.
-                entry.params = MMemory::Allocate(ParamSize, Memory::Job);
-                MMemory::CopyMem(entry.params, params, ParamSize);
+                this->params = MMemory::Allocate(ParamSize, Memory::Job);
+                MMemory::CopyMem(this->params, params, ParamSize);
             } else {
-                entry.params = nullptr;
+                this->params = nullptr;
             }
         }
     };
@@ -107,7 +109,7 @@ private:
 
     static JobSystem* state;
 
-    constexpr JobSystem(u8 ThreadCount, u32 TypeMasks[]);
+    JobSystem(u8 ThreadCount, u32 TypeMasks[]);
     ~JobSystem();
 public:
     JobSystem(const JobSystem&) = delete;
@@ -123,26 +125,7 @@ public:
     /// @brief Отправляет предоставленное задание в очередь на выполнение.
     /// @param info Описание задания, которое должно быть выполнено.
     MAPI void Submit(JobInfo& info);
-    /// @brief Создает новое задание с типом по умолчанию (Generic) и приоритетом (Normal).
-    /// @param EntryPoint указатель на функцию, которая будет вызвана при запуске задания. Обязательно.
-    /// @param OnSuccess указатель на функцию, которая будет вызвана при успешном завершении задания. Необязательно.
-    /// @param OnFail указатель на функцию, которая будет вызвана при сбое задания. Необязательно.
-    /// @param ParamData данные, которые будут переданы в точку входа при выполнении.
-    /// @param ParamDataSize данные, которые будут переданы в обратный вызов EntryPoint. Передайте 0, если не используются.
-    /// @param ResultDataSize размер данных результата, которые будут переданы в обратный вызов success. Передайте 0, если не используются.
-    /// @return Информация о вновь созданном задании, которая будет отправлена ​​на выполнение.
-    MAPI JobInfo JobCreate(PFN_JobStart EntryPoint, PFN_JobOnComplete OnSuccess, PFN_JobOnComplete OnFail, void* ParamData, u32 ParamDataSize, u32 ResultDataSize);
-    /// @brief Создает новое задание с приоритетом по умолчанию (Normal).
-    /// @param EntryPoint указатель на функцию, которая будет вызвана при запуске задания. Обязательно.
-    /// @param OnSuccess указатель на функцию, которая будет вызвана при успешном завершении задания. Необязательно.
-    /// @param OnFail указатель на функцию, которая будет вызвана при сбое задания. Необязательно.
-    /// @param ParamData данные, которые будут переданы в точку входа при выполнении.
-    /// @param ParamDataSize данные, которые будут переданы в обратный вызов EntryPoint. Передайте 0, если не используются.
-    /// @param ResultDataSize размер данных результата, которые будут переданы в обратный вызов success. Передайте 0, если не используются.
-    /// @param type тип задания. Используется для определения того, в каком потоке выполняется задание.
-    /// @return Информация о вновь созданном задании, которая будет отправлена ​​на выполнение.
-    MAPI JobInfo JobCreate(PFN_JobStart EntryPoint, PFN_JobOnComplete OnSuccess, PFN_JobOnComplete OnFail, void* ParamData, u32 ParamDataSize, u32 ResultDataSize, JobType::E type);
-    /// @brief Создает новое задание с указанным приоритетом.
+    /// @brief Создает новое задание. По умолчанию тиип (General), а приоритет (Normal).
     /// @param EntryPoint указатель на функцию, которая будет вызвана при запуске задания. Обязательно.
     /// @param OnSuccess указатель на функцию, которая будет вызвана при успешном завершении задания. Необязательно.
     /// @param OnFail указатель на функцию, которая будет вызвана при сбое задания. Необязательно.
@@ -152,9 +135,9 @@ public:
     /// @param type тип задания. Используется для определения того, в каком потоке выполняется задание.
     /// @param priority приоритет этого задания. Задания с более высоким приоритетом, очевидно, выполняются раньше.
     /// @return Информация о вновь созданном задании, которая будет отправлена ​​на выполнение.
-    MAPI JobInfo JobCreate(PFN_JobStart EntryPoint, PFN_JobOnComplete OnSuccess, PFN_JobOnComplete OnFail, void* ParamData, u32 ParamDataSize, u32 ResultDataSize, JobType::E type, JobPriority priority);
+    MAPI JobInfo JobCreate(PFN_JobStart EntryPoint, PFN_JobOnComplete OnSuccess, PFN_JobOnComplete OnFail, void* ParamData, u32 ParamDataSize, u32 ResultDataSize, JobType::E type = JobType::General, JobPriority::E priority = JobPriority::Normal);
 private:
-    u32 JobThreadRun(void* params);
+    static u32 JobThreadRun(void* params);
     void StoreResult(PFN_JobOnComplete callback, u32 ParamSize, void* params);
     void ProcessQueue(RingQueue& queue, MMutex& QueueMutex);
 };

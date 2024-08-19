@@ -3,6 +3,7 @@
 #include "core/mmemory.hpp"
 #include "core/mthread.hpp"
 #include "core/mmutex.hpp"
+#include <new>
 
 JobSystem *JobSystem::state = nullptr;
 
@@ -29,9 +30,9 @@ void JobSystem::StoreResult(PFN_JobOnComplete callback, u32 ParamSize, void* par
 u32 JobSystem::JobThreadRun(void *params)
 {
     const u32& index = *(u32*)params;
-    auto& thread = JobThreads[index];
-    const u64& ThreadID = thread->thread.ThreadID;
-    MTRACE("Запуск потока заданий #%i (id=%#x, type=%#x).", thread->index, ThreadID, thread->TypeMask);
+    auto& thread = state->JobThreads[index];
+    u32 ThreadID = thread.thread.GetID();
+    MTRACE("Запуск потока заданий #%i (id=%#x, type=%#x).", thread.index, ThreadID, thread.TypeMask);
 
     // Мьютекс для блокировки информации для этого потока.
     if (!thread.InfoMutex) {
@@ -41,7 +42,7 @@ u32 JobSystem::JobThreadRun(void *params)
 
     // Работать вечно, ожидая заданий.
     while (true) {
-        if (!state || !state->running || !thread) {
+        if (!state || !state->running) {
             break;
         }
 
@@ -61,16 +62,16 @@ u32 JobSystem::JobThreadRun(void *params)
             // Обратите внимание, что StoreResult принимает копию ResultData, 
             // поэтому ее больше не нужно удерживать в этом потоке.
             if (result && info.OnSuccess) {
-                StoreResult(info.OnSuccess, info.ResultDataSize, info.ResultData);
+                state->StoreResult(info.OnSuccess, info.ResultDataSize, info.ResultData);
             } else if (!result && info.OnFail) {
-                StoreResult(info.OnFail, info.ResultDataSize, info.ResultData);
+                state->StoreResult(info.OnFail, info.ResultDataSize, info.ResultData);
             }
 
             // Очистите данные параметров и результаты.
-            if (info.param_data) {
+            if (info.ParamData) {
                 MMemory::Free(info.ParamData, info.ParamDataSize, Memory::Job);
             }
-            if (info.result_data) {
+            if (info.ResultData) {
                 MMemory::Free(info.ResultData, info.ParamDataSize, Memory::Job);
             }
 
@@ -84,7 +85,7 @@ u32 JobSystem::JobThreadRun(void *params)
             }
         }
 
-        if (running) {
+        if (state->running) {
             // ЗАДАЧА: Вероятно, следует найти лучший способ сделать это, например, 
             // заснуть, пока не поступит запрос на новое задание.
             thread.thread.Sleep(10);
@@ -98,7 +99,7 @@ u32 JobSystem::JobThreadRun(void *params)
     return 1;
 }
 
-constexpr JobSystem::JobSystem(u8 ThreadCount, u32 TypeMasks[])
+JobSystem::JobSystem(u8 ThreadCount, u32 TypeMasks[])
 : 
     running             (true),
     ThreadCount         (ThreadCount),
@@ -115,13 +116,16 @@ constexpr JobSystem::JobSystem(u8 ThreadCount, u32 TypeMasks[])
     PendingResults      (),
     ResultMutex         ()
 {
+    MDEBUG("Основной идентификатор потока: %#x", GetThreadID());
+
+    MDEBUG("Создание %i потоков заданий.", ThreadCount);
     for (u8 i = 0; i < ThreadCount; ++i) {
         JobThreads[i].index = i;
         JobThreads[i].TypeMask = TypeMasks[i];
         auto& jThread = JobThreads[i];
-        if (!jThread.thread = MThread(JobThreadRun, &jThread.index, false, &jThread.thread)) {
+        if (!(jThread.thread = MThread(JobThreadRun, &jThread.index, false))) {
             MFATAL("Ошибка ОС при создании потока заданий. Приложение не может продолжать работу.");
-            return false;
+            return;
         }
         MMemory::ZeroMem(&jThread.info, sizeof(JobInfo));
     }
@@ -152,31 +156,27 @@ JobSystem::~JobSystem()
 bool JobSystem::Initialize(u8 MaxJobThreadCount, u32 TypeMasks[])
 {
     void* MemBlock = LinearAllocator::Instance().Allocate(sizeof(JobSystem));
-    state = new(MemBlock) JobSystem(MaxJobThreadCount);
+    state = new(MemBlock) JobSystem(MaxJobThreadCount, TypeMasks);
 
     // Аннулировать все слоты результатов
     for (u16 i = 0; i < MAX_JOB_RESULTS; ++i) {
         state->PendingResults[i].id = INVALID::U16ID;
     }
 
-    MDEBUG("Основной идентификатор потока: %#x", GetThreadID());
-
-    MDEBUG("Создание %i потоков заданий.", state->ThreadCount);
-
     // Проверка создались ли мьютексы
-    if (!ResultMutex) {
+    if (!state->ResultMutex) {
         MERROR("Не удалось создать мьютекс результата!.");
         return false;
     }
-    if (!LowPriQueueMutex) {
+    if (!state->LowPriQueueMutex) {
         MERROR("Не удалось создать мьютекс очереди с низким приоритетом!.");
         return false;
     }
-    if (!NormalPriQueueMutex) {
+    if (!state->NormalPriQueueMutex) {
         MERROR("Не удалось создать мьютекс очереди с обычным приоритетом!.");
         return false;
     }
-    if (!HighPriQueueMutex) {
+    if (!state->HighPriQueueMutex) {
         MERROR("Не удалось создать мьютекс очереди с высоким приоритетом!.");
         return false;
     }
@@ -194,7 +194,7 @@ void JobSystem::Shutdown()
 
 void JobSystem::ProcessQueue(RingQueue& queue, MMutex& QueueMutex) {
     // Сначала проверьте наличие свободной темы.
-    while (queue.length > 0) {
+    while (queue.Length() > 0) {
         JobInfo info;
         if (!queue.Peek(&info)) {
             break;
@@ -221,7 +221,7 @@ void JobSystem::ProcessQueue(RingQueue& queue, MMutex& QueueMutex) {
                     MERROR("Не удалось снять блокировку мьютекса очереди!");
                 }
                 thread.info = info;
-                MTRACE("Назначение задания потоку: %u", thread->index);
+                MTRACE("Назначение задания потоку: %u", thread.index);
                 ThreadFound = true;
             }
             if (!thread.InfoMutex.Unlock()) {
@@ -248,9 +248,9 @@ void JobSystem::Update()
         return;
     }
 
-    ProcessQueue(&LowPriorityQueue, &HighPriQueueMutex);
-    ProcessQueue(&NormalPriorityQueue, &NormalPriQueueMutex);
-    ProcessQueue(&HighPriorityQueue, &LowPriQueueMutex);
+    ProcessQueue(LowPriorityQueue, HighPriQueueMutex);
+    ProcessQueue(NormalPriorityQueue, NormalPriQueueMutex);
+    ProcessQueue(HighPriorityQueue, LowPriQueueMutex);
 
     // Обработка ожидающих результатов.
     for (u16 i = 0; i < MAX_JOB_RESULTS; ++i) {
@@ -335,19 +335,7 @@ MAPI void JobSystem::Submit(JobInfo &info)
     MTRACE("Задание поставлено в очередь.");
 }
 
-JobInfo JobSystem::JobCreate(PFN_JobStart EntryPoint, PFN_JobOnComplete OnSuccess, PFN_JobOnComplete OnFail, void *ParamData, u32 ParamDataSize, u32 ResultDataSize)
+JobInfo JobSystem::JobCreate(PFN_JobStart EntryPoint, PFN_JobOnComplete OnSuccess, PFN_JobOnComplete OnFail, void *ParamData, u32 ParamDataSize, u32 ResultDataSize, JobType::E type, JobPriority::E priority)
 {
-    return JobCreate(EntryPoint, OnSuccess, OnFail, ParamData, ParamDataSize, ResultDataSize, JobType::General, JobPriority::Normal);
-}
-
-JobInfo JobSystem::JobCreate(PFN_JobStart EntryPoint, PFN_JobOnComplete OnSuccess, PFN_JobOnComplete OnFail, void *ParamData, u32 ParamDataSize, u32 ResultDataSize, JobType::E type)
-{
-    return JobCreate(EntryPoint, OnSuccess, OnFail, ParamData, ParamDataSize, ResultDataSize, type, JobPriority::Normal);
-}
-
-JobInfo JobSystem::JobCreate(PFN_JobStart EntryPoint, PFN_JobOnComplete OnSuccess, PFN_JobOnComplete OnFail, void *ParamData, u32 ParamDataSize, u32 ResultDataSize, JobType::E type, JobPriority priority)
-{
-    
-
-    return JobInfo { type, priority, EntryPoint, OnSuccess, OnFail, ParamDataSize, ResultDataSize };
+    return JobInfo { type, priority, EntryPoint, OnSuccess, OnFail, ParamData, ParamDataSize, ResultDataSize };
 }

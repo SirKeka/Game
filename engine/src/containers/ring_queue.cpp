@@ -1,15 +1,4 @@
 #include "ring_queue.hpp"
-#include "core/mmemory.hpp"
-
-constexpr RingQueue::RingQueue(u32 stride, u32 capacity, void *memory)
-:
-length(),
-stride(stride),
-capacity(capacity),
-block(memory ? memory : MMemory::Allocate(capacity * stride, Memory::RingQueue)),
-OwnsMemory(memory ? false : true),
-head(),
-tail(-1) {}
 
 RingQueue::~RingQueue()
 {
