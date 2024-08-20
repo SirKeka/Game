@@ -19,9 +19,25 @@ public:
     /// @param StartFunctionPtr указатель на функцию, которая будет вызвана немедленно. Обязательно.
     /// @param params указатель на любые данные, которые будут переданы в StartFunctionPtr. Необязательно. Передайте nullptr, если не используется.
     /// @param AutoDetach указывает, должен ли поток немедленно освободить свои ресурсы после завершения работы. Если true, out_thread не устанавливается.
-    MThread(PFN_ThreadStart StartFunctionPtr, void *params, bool AutoDetach);
+    constexpr MThread(PFN_ThreadStart StartFunctionPtr, void *params, bool AutoDetach) : data(nullptr), ThreadID() {
+        Create(StartFunctionPtr, params, AutoDetach);
+    }
+    /*constexpr MThread(MThread&& mt) : data(mt.data), ThreadID(mt.ThreadID) {
+        mt.data = nullptr;
+        mt.ThreadID = 0;
+    }*/
     /// @brief Уничтожает поток
     ~MThread();
+
+    /*MThread& operator=(MThread&& mt) {
+        data = mt.data;
+        ThreadID = mt.ThreadID;
+        mt.data = nullptr;
+        mt.ThreadID = 0;
+        return *this;
+    }*/
+
+    bool Create(PFN_ThreadStart StartFunctionPtr, void *params, bool AutoDetach);
 
     /// @brief Отсоединяет поток, автоматически освобождая ресурсы после завершения работы.
     void Detach();

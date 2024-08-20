@@ -29,9 +29,9 @@ void JobSystem::StoreResult(PFN_JobOnComplete callback, u32 ParamSize, void* par
 
 u32 JobSystem::JobThreadRun(void *params)
 {
-    const u32& index = *(u32*)params;
+    u32 index = *(u32*)params;
     auto& thread = state->JobThreads[index];
-    u32 ThreadID = thread.thread.GetID();
+    const u64& ThreadID = thread.thread.ThreadID;
     MTRACE("Запуск потока заданий #%i (id=%#x, type=%#x).", thread.index, ThreadID, thread.TypeMask);
 
     // Мьютекс для блокировки информации для этого потока.
@@ -72,7 +72,7 @@ u32 JobSystem::JobThreadRun(void *params)
                 MMemory::Free(info.ParamData, info.ParamDataSize, Memory::Job);
             }
             if (info.ResultData) {
-                MMemory::Free(info.ResultData, info.ParamDataSize, Memory::Job);
+                MMemory::Free(info.ResultData, info.ResultDataSize, Memory::Job);
             }
 
             // Заблокируйте и сбросьте информационный объект потока
@@ -103,7 +103,6 @@ JobSystem::JobSystem(u8 ThreadCount, u32 TypeMasks[])
 : 
     running             (true),
     ThreadCount         (ThreadCount),
-    JobThreads          (),
 
     LowPriorityQueue    (sizeof(JobInfo), 1024, nullptr),
     NormalPriorityQueue (sizeof(JobInfo), 1024, nullptr),
@@ -112,9 +111,9 @@ JobSystem::JobSystem(u8 ThreadCount, u32 TypeMasks[])
     LowPriQueueMutex    (),
     NormalPriQueueMutex (),
     HighPriQueueMutex   (),
-
     PendingResults      (),
     ResultMutex         ()
+
 {
     MDEBUG("Основной идентификатор потока: %#x", GetThreadID());
 
@@ -123,11 +122,11 @@ JobSystem::JobSystem(u8 ThreadCount, u32 TypeMasks[])
         JobThreads[i].index = i;
         JobThreads[i].TypeMask = TypeMasks[i];
         auto& jThread = JobThreads[i];
-        if (!(jThread.thread = MThread(JobThreadRun, &jThread.index, false))) {
+        if (!(jThread.thread.Create(JobThreadRun, &jThread.index, false))) {
             MFATAL("Ошибка ОС при создании потока заданий. Приложение не может продолжать работу.");
             return;
         }
-        MMemory::ZeroMem(&jThread.info, sizeof(JobInfo));
+        //MMemory::ZeroMem(&jThread.info, sizeof(JobInfo));
     }
 }
 
@@ -155,8 +154,8 @@ JobSystem::~JobSystem()
 
 bool JobSystem::Initialize(u8 MaxJobThreadCount, u32 TypeMasks[])
 {
-    void* MemBlock = LinearAllocator::Instance().Allocate(sizeof(JobSystem));
-    state = new(MemBlock) JobSystem(MaxJobThreadCount, TypeMasks);
+    state = reinterpret_cast<JobSystem*>(LinearAllocator::Instance().Allocate(sizeof(JobSystem)));
+    new(state) JobSystem(MaxJobThreadCount, TypeMasks);
 
     // Аннулировать все слоты результатов
     for (u16 i = 0; i < MAX_JOB_RESULTS; ++i) {
@@ -187,7 +186,6 @@ bool JobSystem::Initialize(u8 MaxJobThreadCount, u32 TypeMasks[])
 void JobSystem::Shutdown()
 {
     if (state) {
-        delete state;
         state = nullptr;
     }
 }
@@ -286,13 +284,13 @@ void JobSystem::Update()
 
 MAPI void JobSystem::Submit(JobInfo &info)
 {
-    auto& queue = NormalPriorityQueue;
-    auto& QueueMutex = NormalPriQueueMutex;
+    auto* queue = &NormalPriorityQueue;
+    auto* QueueMutex = &NormalPriQueueMutex;
 
     // Если задание имеет высокий приоритет, попробуйте немедленно его запустить.
     if (info.priority == JobPriority::High) {
-        queue = HighPriorityQueue;
-        QueueMutex = HighPriQueueMutex;
+        queue = &HighPriorityQueue;
+        QueueMutex = &HighPriQueueMutex;
 
         // Сначала проверьте наличие свободного потока, который поддерживает тип задания.
         for (u8 i = 0; i < ThreadCount; ++i) {
@@ -320,16 +318,16 @@ MAPI void JobSystem::Submit(JobInfo &info)
     // Если эта точка достигнута, все потоки заняты (если высокий) или он может ждать кадр.
     // Добавить в очередь и повторить попытку в следующем цикле.
     if (info.priority == JobPriority::Low) {
-        queue = LowPriorityQueue;
-        QueueMutex = LowPriQueueMutex;
+        queue = &LowPriorityQueue;
+        QueueMutex = &LowPriQueueMutex;
     }
 
     // ПРИМЕЧАНИЕ: Блокировка здесь на случай, если задание отправлено из другого задания/потока.
-    if (!QueueMutex.Lock()) {
+    if (!QueueMutex->Lock()) {
         MERROR("Не удалось получить блокировку на мьютексе очереди!");
     }
-    queue.Enqueue(&info);
-    if (!QueueMutex.Unlock()) {
+    queue->Enqueue(&info);
+    if (!QueueMutex->Unlock()) {
         MERROR("Не удалось снять блокировку на мьютексе очереди!");
     }
     MTRACE("Задание поставлено в очередь.");

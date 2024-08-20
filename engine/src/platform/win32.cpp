@@ -235,10 +235,10 @@ i32 PlatformGetProcessorCount()
 
 // ПРИМЕЧАНИЕ: начало потоков---------------------------------------------------------------------------------------------
 
-MThread::MThread(PFN_ThreadStart StartFunctionPtr, void *params, bool AutoDetach) : data(), ThreadID()
+bool MThread::Create(PFN_ThreadStart StartFunctionPtr, void *params, bool AutoDetach)
 {
     if (!StartFunctionPtr) {
-        return;
+        return false;
     }
     data = CreateThread(
         0,
@@ -247,13 +247,14 @@ MThread::MThread(PFN_ThreadStart StartFunctionPtr, void *params, bool AutoDetach
         params,                                     // параметр для передачи потоку
         0,
         (DWORD *)&ThreadID);
-    // MDEBUG("Запуск процесса в потоке с идентификатором: %#x", ThreadID);
+    MDEBUG("Запуск процесса в потоке с идентификатором: %#x", ThreadID);
     if (!data) {
-        return;
+        return false;
     }
-    if (StartFunctionPtr) {
+    if (AutoDetach) {
         CloseHandle(data);
     }
+    return true;
 }
 
 MThread::~MThread()
@@ -311,10 +312,9 @@ u64 GetThreadID()
 //------------------------------------------------------------------------------------------------------------------------
 // ПРИМЕЧАНИЕ: начало мьютксов--------------------------------------------------------------------------------------------
 
-MMutex::MMutex() : data (CreateMutex(0, 0, 0))
-{
+MMutex::MMutex() : data(CreateMutex(0, 0, 0)) {
     if (!data) {
-        MERROR("Невозможно создать мьютекс.");
+        MERROR("Создать мьютекс не удалось.");
         return;
     }
     // MTRACE("Создан мьютекс.");

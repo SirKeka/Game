@@ -62,14 +62,14 @@ struct JobInfo {
 class JobSystem
 {
     struct JobThread {
-        u8 index{};
-        MThread thread{};
-        JobInfo info{};
+        u8 index;
+        MThread thread;
+        JobInfo info;
         // Мьютекс для защиты доступа к информации этого потока.
-        MMutex InfoMutex{};
+        MMutex InfoMutex;
 
         // Типы задач, которые может выполнять этот поток.
-        u32 TypeMask{};
+        u32 TypeMask;
     };
 
     struct JobResultEntry {
