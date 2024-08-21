@@ -7,8 +7,8 @@ Texture::~Texture()
 {
     if(Data) {
         delete Data;
+        Data = nullptr;
     }
-    Data = nullptr;
 }
 
 void Texture::Destroy()

@@ -16,7 +16,8 @@ public:
     u32 width = 0;
     u32 height = 0;
 public:
-    VulkanImage() = default;
+    constexpr VulkanImage() : handle(), memory(), view(), width(), height() {}
+    constexpr VulkanImage(const VulkanImage& vi) : handle(vi.handle), memory(vi.memory), view(vi.view), width(vi.width), height(vi.height) {}
     /// @brief Создает новое изображение Vulkan.
     /// @param VkAPI указатель на контекст Vulkan.
     /// @param type тип текстуры. Дает подсказки по созданию.

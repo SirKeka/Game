@@ -233,7 +233,7 @@ bool Application::Create(GameTypes *GameInst)
     SkyboxCubeConfig.MaterialName[0] = '\0';
     State->sb.g = GeometrySystemInst->Acquire(SkyboxCubeConfig, true);
     State->sb.RenderFrameNumber = INVALID::U64ID;
-    Shader* SkyboxShader = ShaderSystem::GetInstance()->GetShader(BUILTIN_SHADER_NAME_SKYBOX);
+    auto* SkyboxShader = ShaderSystem::GetInstance()->GetShader(BUILTIN_SHADER_NAME_SKYBOX);
     TextureMap* maps[1] = {&State->sb.cubemap};
     if (!Renderer::ShaderAcquireInstanceResources(SkyboxShader, maps, State->sb.InstanceID)) {
         MFATAL("Невозможно получить ресурсы шейдера для текстуры скайбокса.");
@@ -249,7 +249,7 @@ bool Application::Create(GameTypes *GameInst)
 
     u8 MeshCount = 0;
     // Загрузите конфигурацию и загрузите из нее геометрию.
-    Mesh& CubeMesh = State->meshes[MeshCount];
+    auto& CubeMesh = State->meshes[MeshCount];
     CubeMesh = Mesh(1, new GeometryID*[1], Transform());
     GeometryConfig gConfig = GeometrySystemInst->GenerateCubeConfig(10.f, 10.f, 10.f, 1.f, 1.f, "test_cube", "test_material");
     CubeMesh.geometries[0] = GeometrySystemInst->Acquire(gConfig, true);
@@ -259,7 +259,7 @@ bool Application::Create(GameTypes *GameInst)
     // Очистите места для конфигурации геометрии.
     gConfig.Dispose();
 
-    Mesh& CubeMesh2 = State->meshes[MeshCount];
+    auto& CubeMesh2 = State->meshes[MeshCount];
     CubeMesh2 = Mesh(1, new GeometryID*[1], Transform(FVec3(10.f, 0.f, 1.f)));
     gConfig = GeometrySystemInst->GenerateCubeConfig(5.f, 5.f, 5.f, 1.f, 1.f, "test_cube2", "test_material");
     CubeMesh2.geometries[0] = GeometrySystemInst->Acquire(gConfig, true);
@@ -269,7 +269,7 @@ bool Application::Create(GameTypes *GameInst)
     // Очистите места для конфигурации геометрии.
     gConfig.Dispose();
 
-    Mesh& CubeMesh3 = State->meshes[MeshCount];
+    auto& CubeMesh3 = State->meshes[MeshCount];
     CubeMesh3 = Mesh(1, new GeometryID*[1], Transform(FVec3(5.f, 0.f, 1.f)));
     gConfig = GeometrySystemInst->GenerateCubeConfig(2.f, 2.f, 2.f, 1.f, 1.f, "test_cube3", "test_material");
     CubeMesh3.geometries[0] = GeometrySystemInst->Acquire(gConfig, true);
@@ -279,16 +279,15 @@ bool Application::Create(GameTypes *GameInst)
     // Очистите места для конфигурации геометрии.
     gConfig.Dispose();
     // Тестовая модель загружается из файла
-    Mesh& CarMesh = State->meshes[MeshCount];
+    State->CarMesh = &State->meshes[MeshCount];
     
-    CarMesh.transform = Transform(FVec3(15.f, 0.f, 1.f));
+    State->CarMesh->transform = Transform(FVec3(15.f, 0.f, 1.f));
     MeshCount++;
 
-    Mesh& SponzaMesh = State->meshes[MeshCount];
+    State->SponzaMesh = &State->meshes[MeshCount];
 
-    SponzaMesh.transform = Transform(FVec3(), Quaternion::Identity(), FVec3(0.05, 0.05, 0.05));
+    State->SponzaMesh->transform = Transform(FVec3(), Quaternion::Identity(), FVec3(0.05, 0.05, 0.05));
     MeshCount++;
-
 
     const f32 w = 128.f;
     const f32 h = 49.f;
@@ -321,6 +320,7 @@ bool Application::Create(GameTypes *GameInst)
     State->UIMeshes[0].GeometryCount = 1;
     State->UIMeshes[0].geometries = new GeometryID*[1];
     State->UIMeshes[0].geometries[0] = GeometrySystemInst->Acquire(UI_Config, true);
+    State->UIMeshes[0].transform = Transform();
     State->UIMeshes[0].generation = 0;
 
     // Загрузите геометрию по умолчанию.
@@ -611,7 +611,7 @@ bool Application::OnDebugEvent(u16 code, void *sender, void *ListenerInst, Event
         choice %= 3;
 
         // Просто замените материал на первой сетке, если она существует.
-        GeometryID* g = State->meshes[0].geometries[0];
+        auto& g = State->meshes[0].geometries[0];
         if (g) {
             // Приобретите новый материал.
             g->material = MaterialSystem::Instance()->Acquire(names[choice]);

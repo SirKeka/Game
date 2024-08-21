@@ -17,14 +17,14 @@ struct TextureReference {
 
 // Также используется как ResultData из задания.
 struct TextureLoadParams {
-    MString ResourceName;
+    char* ResourceName;
     Texture* OutTexture;
     Texture TempTexture;
     u32 CurrentGeneration;
     Resource ImageResource;
     constexpr TextureLoadParams() : ResourceName(), OutTexture(), TempTexture(), CurrentGeneration(), ImageResource() {}
     TextureLoadParams(const char* ResourceName, Texture* OutTexture, Texture TempTexture, u32 CurrentGeneration, Resource ImageResource)
-    : ResourceName(ResourceName), OutTexture(OutTexture), TempTexture(TempTexture), CurrentGeneration(CurrentGeneration), ImageResource(ImageResource) {}
+    : ResourceName(MString::Duplicate(ResourceName)), OutTexture(OutTexture), TempTexture(TempTexture), CurrentGeneration(CurrentGeneration), ImageResource(ImageResource) {}
 };
 
 bool LoadCubeTextures(const char* name, const char TextureNames[6][TEXTURE_NAME_MAX_LENGTH], Texture* t);
@@ -295,13 +295,14 @@ void LoadJobSuccess(void* params)
         TextureParams->OutTexture->generation = TextureParams->CurrentGeneration + 1;
     }
 
-    MTRACE("Текстура «%s» успешно загружена.", TextureParams->ResourceName.c_str());
+    MTRACE("Текстура «%s» успешно загружена.", TextureParams->ResourceName);
 
     // Очистите данные.
     ResourceSystem::Instance()->Unload(TextureParams->ImageResource);
     if (TextureParams->ResourceName) {
-        //u32 length = MString::Length(TextureParams->ResourceName);
-        TextureParams->ResourceName.Clear();
+        u32 length = MString::Length(TextureParams->ResourceName);
+        MMemory::Free(TextureParams->ResourceName, length + 1, Memory::String);
+        TextureParams->ResourceName = nullptr;
     }
 }
 
@@ -309,7 +310,7 @@ void LoadJobFail(void *params)
 {
     auto TextureParams = reinterpret_cast<TextureLoadParams*>(params);
 
-    MERROR("Не удалось загрузить текстуру «%s».", TextureParams->ResourceName.c_str());
+    MERROR("Не удалось загрузить текстуру «%s».", TextureParams->ResourceName);
 
     ResourceSystem::Instance()->Unload(TextureParams->ImageResource);
 }
@@ -321,7 +322,7 @@ bool LoadJobStart(void *params, void *ResultData)
 
     ImageResourceParams ResourceParams{ true };
 
-    bool result = ResourceSystem::Instance()->Load(LoadParams->ResourceName.c_str(), ResourceType::Image, &ResourceParams, LoadParams->ImageResource);
+    bool result = ResourceSystem::Instance()->Load(LoadParams->ResourceName, ResourceType::Image, &ResourceParams, LoadParams->ImageResource);
 
     auto ResourceData = reinterpret_cast<ImageResourceData*>(LoadParams->ImageResource.data);
 
@@ -341,7 +342,7 @@ bool LoadJobStart(void *params, void *ResultData)
 
     // Используйте временную текстуру для загрузки.
     TempTexture.Create(
-        LoadParams->ResourceName.c_str(), 
+        LoadParams->ResourceName, 
         ResourceData->width,
         ResourceData->height,
         ResourceData->ChannelCount,

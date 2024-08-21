@@ -173,7 +173,7 @@ bool RenderViewWorld::Render(const Packet &packet, u64 FrameNumber, u64 RenderTa
 {
     auto MaterialSystemInst = MaterialSystem::Instance();
     for (u32 p = 0; p < RenderpassCount; ++p) {
-        auto pass = passes[p];
+        auto& pass = passes[p];
         if (!Renderer::RenderpassBegin(pass, pass->targets[RenderTargetIndex])) {
             MERROR("RenderViewWorld::Render pass index %u не удалось запустить.", p);
             return false;

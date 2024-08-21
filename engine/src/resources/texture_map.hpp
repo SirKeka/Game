@@ -35,8 +35,7 @@ struct TextureMap {
     RepeatV(tm.RepeatV), 
     RepeatW(tm.RepeatW), 
     sampler(tm.sampler) {
-        texture = new Texture();
-        *texture = *tm.texture;
+        texture = new Texture(*tm.texture);
     }
 
     void* operator new(u64 size) {

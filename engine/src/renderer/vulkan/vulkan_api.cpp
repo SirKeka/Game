@@ -1367,6 +1367,7 @@ void VulkanAPI::Unload(Texture *texture)
         texture->Data->Destroy(this);
 
         delete texture->Data;
+        texture->Data = nullptr;
     }
     //kzero_memory(texture, sizeof(struct texture));
 }
