@@ -5,6 +5,8 @@
 
 // ЗАДАЧА: загрузчик ресурсов.
 #define STB_IMAGE_IMPLEMENTATION
+// Использовать нашу собственную файловую систему.
+#define STBI_NO_STDIO
 #include "vendor/stb_image.h"
 
 bool ImageLoader::Load(const char *name, void* params, Resource &OutResource)
@@ -17,7 +19,7 @@ bool ImageLoader::Load(const char *name, void* params, Resource &OutResource)
 
     const char* FormatStr = "%s/%s/%s%s";
     const i32 RequiredChannelCount = 4;
-    stbi_set_flip_vertically_on_load(TypeParams->FlipY);
+    stbi_set_flip_vertically_on_load_thread(TypeParams->FlipY);
     char FullFilePath[512];
 
     // попробуйте разные расширения
@@ -32,8 +34,26 @@ bool ImageLoader::Load(const char *name, void* params, Resource &OutResource)
         }
     }
 
+    // Сначала скопируйте полный путь и имя ресурса.
+    OutResource.FullPath = FullFilePath;
+    OutResource.name = name;
+
     if (!found) {
         MERROR("Загрузчику ресурсов изображения не удалось найти файл «%s».", FullFilePath);
+        return false;
+    }
+
+    FileHandle f;
+    if (!Filesystem::Open(FullFilePath, FileModes::Read, true, &f)) {
+        MERROR("Невозможно прочитать файл: %s.", FullFilePath);
+        Filesystem::Close(&f);
+        return false;
+    }
+
+    u64 FileSize = 0;
+    if (!Filesystem::Size(&f, FileSize)) {
+        MERROR("Невозможно получить размер файла: %s.", FullFilePath);
+        Filesystem::Close(&f);
         return false;
     }
 
@@ -41,30 +61,41 @@ bool ImageLoader::Load(const char *name, void* params, Resource &OutResource)
     i32 height;
     i32 СhannelСount;
 
-    // А пока предположим, что 8 бит на канал, 4 канала.
-    // ЗАДАЧА: extend this to make it configurable.
-    u8* data = stbi_load(
-        FullFilePath,
-        &width,
-        &height,
-        &СhannelСount,
-        RequiredChannelCount
-    );
+    u8* RawData = MMemory::TAllocate<u8>(Memory::Texture, FileSize);
+    if (!RawData) {
+        MERROR("Невозможно прочитать файл «%s».", FullFilePath);
+        Filesystem::Close(&f);
+        return false;
+    }
+
+    u64 BytesRead = 0;
+    bool ReadResult = Filesystem::ReadAllBytes(&f, RawData, BytesRead);
+    Filesystem::Close(&f);
+
+    if (!ReadResult) {
+        MERROR("Невозможно прочитать файл: '%s'", FullFilePath);
+        return false;
+    }
+
+    if (BytesRead != FileSize) {
+        MERROR("Размер файла, если %llu не соответствует ожидаемому: %llu", BytesRead, FileSize);
+        return false;
+    }
+
+    u8* data = stbi_load_from_memory(RawData, FileSize, &width, &height, &СhannelСount, RequiredChannelCount);
 
     if (!data) {
         MERROR("Загрузчику ресурсов изображения не удалось загрузить файл '%s'.", FullFilePath);
         return false;
     }
 
-    // ЗАДАЧА: Здесь следует использовать распределитель.
-    OutResource.FullPath = FullFilePath;
+    MMemory::Free(RawData, FileSize, Memory::Texture);
 
     // ЗАДАЧА: Здесь следует использовать распределитель.
     ImageResourceData* ResourceData = new ImageResourceData(RequiredChannelCount, width, height, data);
 
     OutResource.data = ResourceData;
     OutResource.DataSize = sizeof(ImageResourceData);
-    OutResource.name = name;
 
     return true;
 }

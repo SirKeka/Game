@@ -79,7 +79,7 @@ public:
     u32 width;                          // Ширина текстуры.
     u32 height;                         // Высота текстуры.
     u8 ChannelCount;                    // Количество каналов в текстуре.
-    TextureFlagBits flags;              //Содержит битовые флаги для текстур.
+    TextureFlagBits flags;              // Содержит битовые флаги для текстур.
     u32 generation;                     // Генерация текстур. Увеличивается каждый раз при перезагрузке данных.
     char name[TEXTURE_NAME_MAX_LENGTH]; // Имя текстуры.
 
@@ -130,10 +130,10 @@ public:
         const char* name, 
         i32 width, 
         i32 height, 
-        i32 ChannelCount, 
-        const u8* pixels, 
+        i32 ChannelCount,  
         TextureFlagBits flags);
 
+    void Clear();
 
     explicit operator bool() const;
     void* operator new(u64 size);

@@ -135,7 +135,7 @@ bool RenderViewWorld::BuildPacket(void *data, Packet &OutPacket) const
     DArray<GeometryDistance> GeometryDistances;
     
     for (u32 i = 0; i < MeshData->MeshCount; ++i) {
-        Mesh* m = &MeshData->meshes[i];
+        Mesh* m = MeshData->meshes[i];
         const auto& model = m->transform.GetWorld();
         for (u32 j = 0; j < m->GeometryCount; ++j) {
             //GeometryRenderData { model, m->geometries[j] };
@@ -173,7 +173,7 @@ bool RenderViewWorld::Render(const Packet &packet, u64 FrameNumber, u64 RenderTa
 {
     auto MaterialSystemInst = MaterialSystem::Instance();
     for (u32 p = 0; p < RenderpassCount; ++p) {
-        Renderpass* pass = passes[p];
+        auto pass = passes[p];
         if (!Renderer::RenderpassBegin(pass, pass->targets[RenderTargetIndex])) {
             MERROR("RenderViewWorld::Render pass index %u не удалось запустить.", p);
             return false;
@@ -194,7 +194,7 @@ bool RenderViewWorld::Render(const Packet &packet, u64 FrameNumber, u64 RenderTa
         // Нарисовать геометрию.
         auto& count = packet.GeometryCount;
         for (u32 i = 0; i < count; ++i) {
-            Material* m = 0;
+            Material* m = nullptr;
             if (packet.geometries[i].gid->material) {
                 m = packet.geometries[i].gid->material;
             } else {

@@ -7,9 +7,11 @@ private:
     void* data;
 public:
     /// @brief Создает мьютекс.
-    MMutex();
+    constexpr MMutex() : data(Create()) {}
     /// @brief Уничтожает мьютекс.
     ~MMutex();
+    
+    void* Create();
 
     /// Создает блокировку мьютекса.
     /// @param mutex Указатель на мьютекс.

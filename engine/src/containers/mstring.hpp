@@ -10,8 +10,8 @@ template<typename> class DArray;
 class MAPI MString
 {
 private:
-    u16 length = 0;
-    char* str = nullptr;
+    u16 length        {};
+    char* str  {nullptr};
 
 public:
    constexpr MString() : length(), str(nullptr) {}

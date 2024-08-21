@@ -149,7 +149,7 @@ public:
 private:
     bool CreateDefaultTexture();
     void DestroyDefaultTexture();
-    static bool LoadTexture(const char* TextureName, Texture* t);
+    bool LoadTexture(const char* TextureName, Texture* t);
     bool ProcessTextureReference(const char *name, TextureType type, i8 ReferenceDiff, bool AutoRelease, bool SkipLoad, u32 &OutTextureId);
 };
 

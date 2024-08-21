@@ -67,8 +67,8 @@ public:
     Event(const Event&) = delete;
     Event& operator= (const Event&) = delete;
 
-    bool Initialize();
-    void Shutdown();
+    static bool Initialize();
+    static void Shutdown();
 
     /// @brief Зарегистрируйте, следить за отправкой событий с предоставленным кодом. 
     /// События с повторяющимися комбинациями прослушивателя и обратного вызова не будут регистрироваться снова 
@@ -96,9 +96,9 @@ public:
     bool Fire(u16 code, void* sender, EventContext context);
 
     static MINLINE Event* GetInstance() {
-        if (!event) {
+        /*if (!event) {
             MERROR("Функция Event::GetInstance вызывается перед инициализацией!");
-        }
+        }*/
         
         return event;
     }

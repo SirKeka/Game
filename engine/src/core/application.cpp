@@ -19,7 +19,7 @@
 
 ApplicationState* Application::State = nullptr;
 
-bool Application::ApplicationCreate(GameTypes *GameInst)
+bool Application::Create(GameTypes *GameInst)
 {
     if (GameInst->application) {
         MERROR("ApplicationCreate вызывался более одного раза.");
@@ -43,7 +43,7 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
 
     // Инициализируйте подсистемы.
     State->logger = new Logger();
-    if (!State->logger->Initialize()) { // AppState->logger->Initialize();
+    if (!State->logger->Initialize()) { // State->logger->Initialize();
         MERROR("Не удалось инициализировать систему ведения журнала; завершение работы.");
         return false;
     }
@@ -53,18 +53,24 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
     State->IsRunning = true;
     State->IsSuspended = false;
 
-    //AppState->Events = new Event();
-    if (!Event::GetInstance()->Initialize()) {
+    // ЗАДАЧА: temp debug
+    State->ModelsLoaded = false;
+    // ЗАДАЧА: end temp debug
+
+    
+    if (!Event::Initialize()) {
         MERROR("Система событий не смогла инициализироваться. Приложение не может быть продолжено.");
         return false;
     }
+    State->Events = Event::GetInstance();
 
-    Event::GetInstance()->Register(EVENT_CODE_APPLICATION_QUIT, nullptr, OnEvent);
-    Event::GetInstance()->Register(EVENT_CODE_KEY_PRESSED, nullptr, OnKey);
-    Event::GetInstance()->Register(EVENT_CODE_KEY_RELEASED, nullptr, OnKey);
-    Event::GetInstance()->Register(EVENT_CODE_RESIZED, nullptr, OnResized);
+    State->Events->Register(EVENT_CODE_APPLICATION_QUIT, nullptr, OnEvent);
+    State->Events->Register(EVENT_CODE_KEY_PRESSED, nullptr, OnKey);
+    State->Events->Register(EVENT_CODE_KEY_RELEASED, nullptr, OnKey);
+    State->Events->Register(EVENT_CODE_RESIZED, nullptr, OnResized);
     //ЗАДАЧА: временно
-    Event::GetInstance()->Register(EVENT_CODE_DEBUG0, nullptr, OnDebugEvent);
+    State->Events->Register(EVENT_CODE_DEBUG0, nullptr, OnDebugEvent);
+    State->Events->Register(EVENT_CODE_DEBUG1, nullptr, OnDebugEvent);
     //ЗАДАЧА: временно
     State->Window = new MWindow(GameInst->AppConfig.name,
                         GameInst->AppConfig.StartPosX, 
@@ -89,6 +95,15 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
         return false;
     }
 
+    State->Render = new Renderer(State->Window, GameInst->AppConfig.name, ERendererType::VULKAN);
+    // Запуск рендерера
+    if (!State->Render) {
+        MFATAL("Не удалось инициализировать средство визуализации. Прерывание приложения.");
+        return false;
+    }
+
+    bool RendererMultithreaded = State->Render->IsMultithreaded();
+
     // Это действительно количество ядер. Вычтите 1, чтобы учесть, что основной поток уже используется.
     i32 ThreadCount = PlatformGetProcessorCount() - 1;
     if (ThreadCount < 1) {
@@ -104,15 +119,6 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
         MTRACE("Доступные потоки в системе — %i, но будут ограничены %i.", ThreadCount, MaxThreadCount);
         ThreadCount = MaxThreadCount;
     }
-
-    State->Render = new Renderer(State->Window, GameInst->AppConfig.name, ERendererType::VULKAN);
-    // Запуск рендерера
-    if (!State->Render) {
-        MFATAL("Не удалось инициализировать средство визуализации. Прерывание приложения.");
-        return false;
-    }
-
-    bool RendererMultithreaded = State->Render->IsMultithreaded();
 
     // Инициализируйте систему заданий.
     // Требует знания поддержки многопоточности рендеринга, поэтому следует инициализировать здесь.
@@ -235,65 +241,54 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
     }
 
     // Мировые сетки
+    // Отменить все сетки.
+    for (u32 i = 0; i < 10; ++i) {
+        State->meshes[i].generation = INVALID::U8ID;
+        State->UIMeshes[i].generation = INVALID::U8ID;
+    }
+
+    u8 MeshCount = 0;
     // Загрузите конфигурацию и загрузите из нее геометрию.
-    Mesh& CubeMesh = State->meshes[State->MeshCount];
+    Mesh& CubeMesh = State->meshes[MeshCount];
     CubeMesh = Mesh(1, new GeometryID*[1], Transform());
     GeometryConfig gConfig = GeometrySystemInst->GenerateCubeConfig(10.f, 10.f, 10.f, 1.f, 1.f, "test_cube", "test_material");
     CubeMesh.geometries[0] = GeometrySystemInst->Acquire(gConfig, true);
 
-    State->MeshCount++;
+    MeshCount++;
+    CubeMesh.generation = 0;
     // Очистите места для конфигурации геометрии.
     gConfig.Dispose();
 
-    Mesh& CubeMesh2 = State->meshes[State->MeshCount];
+    Mesh& CubeMesh2 = State->meshes[MeshCount];
     CubeMesh2 = Mesh(1, new GeometryID*[1], Transform(FVec3(10.f, 0.f, 1.f)));
     gConfig = GeometrySystemInst->GenerateCubeConfig(5.f, 5.f, 5.f, 1.f, 1.f, "test_cube2", "test_material");
     CubeMesh2.geometries[0] = GeometrySystemInst->Acquire(gConfig, true);
     CubeMesh2.transform.SetParent(&CubeMesh.transform);
-    State->MeshCount++;
+    MeshCount++;
+    CubeMesh2.generation = 0;
     // Очистите места для конфигурации геометрии.
     gConfig.Dispose();
 
-    Mesh& CubeMesh3 = State->meshes[State->MeshCount];
+    Mesh& CubeMesh3 = State->meshes[MeshCount];
     CubeMesh3 = Mesh(1, new GeometryID*[1], Transform(FVec3(5.f, 0.f, 1.f)));
     gConfig = GeometrySystemInst->GenerateCubeConfig(2.f, 2.f, 2.f, 1.f, 1.f, "test_cube3", "test_material");
     CubeMesh3.geometries[0] = GeometrySystemInst->Acquire(gConfig, true);
     CubeMesh3.transform.SetParent(&CubeMesh2.transform);
-    State->MeshCount++;
+    MeshCount++;
+    CubeMesh3.generation = 0;
     // Очистите места для конфигурации геометрии.
     gConfig.Dispose();
     // Тестовая модель загружается из файла
-    Mesh& CarMesh = State->meshes[State->MeshCount];
-    Resource CarMeshResource;
-    if (!State->ResourceSystemInst->Load("falcon", ResourceType::Mesh, nullptr, CarMeshResource)) {
-        MERROR("Не удалось загрузить тестовую модель машины!");
-    } else {
-        GeometryConfig* configs = reinterpret_cast<GeometryConfig*>(CarMeshResource.data);
-        CarMesh.GeometryCount = CarMeshResource.DataSize;
-        CarMesh.geometries = new GeometryID*[CarMesh.GeometryCount];
-        for (u64 i = 0; i < CarMesh.GeometryCount; i++) {
-            CarMesh.geometries[i] = GeometrySystemInst->Acquire(configs[i], true);
-        }
-        CarMesh.transform = Transform(FVec3(15.f, 0.f, 1.f));
-        State->ResourceSystemInst->Unload(CarMeshResource);
-        State->MeshCount++;
-    }
+    Mesh& CarMesh = State->meshes[MeshCount];
+    
+    CarMesh.transform = Transform(FVec3(15.f, 0.f, 1.f));
+    MeshCount++;
 
-    Mesh& SponzaMesh = State->meshes[State->MeshCount];
-    Resource SponzaMeshResource;
-    if (!State->ResourceSystemInst->Load("sponza", ResourceType::Mesh, nullptr, SponzaMeshResource)) {
-        MERROR("Не удалось загрузить тестовую модель машины!");
-    } else {
-        GeometryConfig* configs = reinterpret_cast<GeometryConfig*>(SponzaMeshResource.data);
-        SponzaMesh.GeometryCount = SponzaMeshResource.DataSize;
-        SponzaMesh.geometries = new GeometryID*[SponzaMesh.GeometryCount];
-        for (u64 i = 0; i < SponzaMesh.GeometryCount; i++) {
-            SponzaMesh.geometries[i] = GeometrySystemInst->Acquire(configs[i], true);
-        }
-        SponzaMesh.transform = Transform(FVec3(), Quaternion::Identity(), FVec3(0.05, 0.05, 0.05));
-        State->ResourceSystemInst->Unload(SponzaMeshResource);
-        State->MeshCount++;
-    }
+    Mesh& SponzaMesh = State->meshes[MeshCount];
+
+    SponzaMesh.transform = Transform(FVec3(), Quaternion::Identity(), FVec3(0.05, 0.05, 0.05));
+    MeshCount++;
+
 
     const f32 w = 128.f;
     const f32 h = 49.f;
@@ -323,13 +318,13 @@ bool Application::ApplicationCreate(GameTypes *GameInst)
     GeometryConfig UI_Config {sizeof(Vertex2D), 4, uiverts, sizeof(u32), 6, uiindices, "test_ui_geometry", "test_ui_material"};
 
     // Получите геометрию пользовательского интерфейса из конфигурации.
-    State->UIMeshCount = 1;
     State->UIMeshes[0].GeometryCount = 1;
     State->UIMeshes[0].geometries = new GeometryID*[1];
     State->UIMeshes[0].geometries[0] = GeometrySystemInst->Acquire(UI_Config, true);
+    State->UIMeshes[0].generation = 0;
 
     // Загрузите геометрию по умолчанию.
-    // AppState->TestGeometry = GeometrySystemInst->GetDefault();
+    // State->TestGeometry = GeometrySystemInst->GetDefault();
     // ЗАДАЧА: временно 
 
     // Инициализируйте игру.
@@ -383,23 +378,17 @@ bool Application::ApplicationRun() {
                 break;
             }
 
-            if (State->MeshCount > 0) {
-                // Выполните небольшой поворот на первой сетке.
-                Quaternion rotation( FVec3(0.f, 1.f, 0.f), 0.5f * delta, false );
-                State->meshes[0].transform.Rotate(rotation);
+            // Выполните небольшой поворот на первой сетке.
+            Quaternion rotation( FVec3(0.f, 1.f, 0.f), 0.5f * delta, false );
+            State->meshes[0].transform.Rotate(rotation);
 
-                // Выполняем аналогичное вращение для второй сетки, если она существует.
-                if (State->MeshCount > 1) {
-                    // «Родительский» второй куб по отношению к первому.
-                    State->meshes[1].transform.Rotate(rotation);
-                }
+            // Выполняем аналогичное вращение для второй сетки, если она существует.
+            // «Родительский» второй куб по отношению к первому.
+            State->meshes[1].transform.Rotate(rotation);
 
-                // Выполняем аналогичное вращение для второй сетки, если она существует.
-                if (State->MeshCount > 2) {
-                    // «Родительский» второй куб по отношению к первому.
-                    State->meshes[2].transform.Rotate(rotation);
-                }
-            }
+            // Выполняем аналогичное вращение для второй сетки, если она существует.
+            // «Родительский» второй куб по отношению к первому.
+            State->meshes[2].transform.Rotate(rotation);
 
             RenderView::Packet views[3]{};
             RenderPacket packet {
@@ -416,7 +405,16 @@ bool Application::ApplicationRun() {
             }
 
             // Мир 
-            Mesh::PacketData WorldMeshData {State->MeshCount, State->meshes};
+            u32 MeshCount = 0;
+            Mesh* meshes[10];
+            // ЗАДАЧА: массив гибкого размера
+            for (u32 i = 0; i < 10; ++i) {
+                if (State->meshes[i].generation != INVALID::U8ID) {
+                    meshes[MeshCount] = &State->meshes[i];
+                    MeshCount++;
+                }
+            }
+            Mesh::PacketData WorldMeshData {MeshCount, meshes};
             // ЗАДАЧА: выполняет поиск в каждом кадре.
             if (!State->RenderViewSystemInst->BuildPacket(State->RenderViewSystemInst->Get("world_opaque"), &WorldMeshData, packet.views[1])) {
                 MERROR("Не удалось построить пакет для представления «world_opaque».");
@@ -424,7 +422,16 @@ bool Application::ApplicationRun() {
             }
 
             // пользовательский интерфейс
-            Mesh::PacketData UIMeshData = {State->UIMeshCount, State->UIMeshes};
+            u32 UIMeshCount = 0;
+            Mesh* UIMeshes[10];
+            // ЗАДАЧА: массив гибкого размера
+            for (u32 i = 0; i < 10; ++i) {
+                if (State->UIMeshes[i].generation != INVALID::U8ID) {
+                    UIMeshes[UIMeshCount] = &State->UIMeshes[i];
+                    UIMeshCount++;
+                }
+            }
+            Mesh::PacketData UIMeshData = {UIMeshCount, UIMeshes};
             if (!State->RenderViewSystemInst->BuildPacket(State->RenderViewSystemInst->Get("ui"), &UIMeshData, packet.views[2])) {
                 MERROR("Не удалось построить пакет для представления «ui».");
                 return false;
@@ -464,14 +471,14 @@ bool Application::ApplicationRun() {
     State->IsRunning = false;
 
     // Отключение системы событий.
-    Event::GetInstance()->Unregister(EVENT_CODE_APPLICATION_QUIT, nullptr, OnEvent);
-    Event::GetInstance()->Unregister(EVENT_CODE_KEY_PRESSED, nullptr, OnKey);
-    Event::GetInstance()->Unregister(EVENT_CODE_KEY_RELEASED, nullptr, OnKey);
-    Event::GetInstance()->Unregister(EVENT_CODE_RESIZED, nullptr, OnResized);
+    State->Events->Unregister(EVENT_CODE_APPLICATION_QUIT, nullptr, OnEvent);
+    State->Events->Unregister(EVENT_CODE_KEY_PRESSED, nullptr, OnKey);
+    State->Events->Unregister(EVENT_CODE_KEY_RELEASED, nullptr, OnKey);
+    State->Events->Unregister(EVENT_CODE_RESIZED, nullptr, OnResized);
     //ЗАДАЧА: временно
-    Event::GetInstance()->Unregister(EVENT_CODE_DEBUG0, nullptr, OnDebugEvent);
+    State->Events->Unregister(EVENT_CODE_DEBUG0, nullptr, OnDebugEvent);
     //ЗАДАЧА: временно
-    Event::GetInstance()->Shutdown(); // ЗАДАЧА: при удалении указателя на систему событий происходит ошибка
+    State->Events->Shutdown(); // ЗАДАЧА: при удалении указателя на систему событий происходит ошибка
     Input::Instance()->Sutdown();
     GeometrySystem::Instance()->Shutdown();
     MaterialSystem::Shutdown();
@@ -589,32 +596,47 @@ bool Application::OnResized(u16 code, void *sender, void *ListenerInst, EventCon
 // ЗАДАЧА: временно
 bool Application::OnDebugEvent(u16 code, void *sender, void *ListenerInst, EventContext context)
 {
-    const char* names[3] = {
-        "Ice",
-        "Sand",
-        "Rope"
-    };
-    static i8 choice = 2;
+    if (code == EVENT_CODE_DEBUG0) {
+        const char* names[3] = {
+            "Ice",
+            "Sand",
+            "Rope"
+        };
+        static i8 choice = 2;
 
-    // Сохраните старое имя.
-    MString OldName = names[choice];
+        // Сохраните старое имя.
+        MString OldName = names[choice];
 
-    choice++;
-    choice %= 3;
+        choice++;
+        choice %= 3;
 
-    // Просто замените материал на первой сетке, если она существует.
-    GeometryID* g = State->meshes[0].geometries[0];
-    if (g) {
-        // Приобретите новый материал.
-        g->material = MaterialSystem::Instance()->Acquire(names[choice]);
+        // Просто замените материал на первой сетке, если она существует.
+        GeometryID* g = State->meshes[0].geometries[0];
+        if (g) {
+            // Приобретите новый материал.
+            g->material = MaterialSystem::Instance()->Acquire(names[choice]);
 
-    if (!g->material) {
-            MWARN("Application::OnDebugEvent: материал не найден! Использование материала по умолчанию.");
-            g->material = MaterialSystem::Instance()->GetDefaultMaterial();
+        if (!g->material) {
+                MWARN("Application::OnDebugEvent: материал не найден! Использование материала по умолчанию.");
+                g->material = MaterialSystem::Instance()->GetDefaultMaterial();
+            }
+
+            // Освободите старый рассеянный материал.
+            MaterialSystem::Instance()->Release(OldName.c_str());
         }
-
-        // Освободите старый рассеянный материал.
-        MaterialSystem::Instance()->Release(OldName.c_str());
+        return true;
+    } else if (code == EVENT_CODE_DEBUG1) {
+        if (!State->ModelsLoaded) {
+            MDEBUG("Загружаем модели...");
+            State->ModelsLoaded = true;
+            if (!State->CarMesh->LoadFromResource("falcon")) {
+                MERROR("Не удалось загрузить Falcon Mesh!");
+            }
+            if (!State->SponzaMesh->LoadFromResource("sponza")) {
+                MERROR("Не удалось загрузить Falcon Mesh!");
+            }
+        }
+        return true;
     }
 
     return true;

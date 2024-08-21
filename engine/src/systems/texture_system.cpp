@@ -2,6 +2,7 @@
 #include "containers/mstring.hpp"
 #include "renderer/renderer.hpp"
 #include "systems/resource_system.hpp"
+#include "systems/job_systems.hpp"
 
 #include "memory/linear_allocator.hpp"
 #include <new>
@@ -12,6 +13,18 @@ struct TextureReference {
     bool AutoRelease{false};
     constexpr TextureReference() : ReferenceCount(), handle(), AutoRelease() {}
     constexpr TextureReference(u64 ReferenceCount, u32 handle, bool AutoRelease) : ReferenceCount(ReferenceCount), handle(handle), AutoRelease(AutoRelease) {}
+};
+
+// Также используется как ResultData из задания.
+struct TextureLoadParams {
+    MString ResourceName;
+    Texture* OutTexture;
+    Texture TempTexture;
+    u32 CurrentGeneration;
+    Resource ImageResource;
+    constexpr TextureLoadParams() : ResourceName(), OutTexture(), TempTexture(), CurrentGeneration(), ImageResource() {}
+    TextureLoadParams(const char* ResourceName, Texture* OutTexture, Texture TempTexture, u32 CurrentGeneration, Resource ImageResource)
+    : ResourceName(ResourceName), OutTexture(OutTexture), TempTexture(TempTexture), CurrentGeneration(CurrentGeneration), ImageResource(ImageResource) {}
 };
 
 bool LoadCubeTextures(const char* name, const char TextureNames[6][TEXTURE_NAME_MAX_LENGTH], Texture* t);
@@ -256,25 +269,69 @@ void TextureSystem::DestroyDefaultTexture()
         }
 }
 
-bool TextureSystem::LoadTexture(const char* TextureName, Texture *t)
+void LoadJobSuccess(void* params)
 {
-    auto ResourceSystemInst = ResourceSystem::Instance();
-    ImageResourceParams params { true };
-    Resource ImgResource;
-    if (!ResourceSystemInst->Load(TextureName, ResourceType::Image, &params, ImgResource)) {
-        MERROR("Не удалось загрузить ресурс изображения для текстуры. '%s'", TextureName);
-        return false;
+    auto TextureParams = reinterpret_cast<TextureLoadParams*>(params);
+
+    // Это также управляет загрузкой графического процессора. Невозможно выполнить задание, пока средство визуализации не станет многопоточным.
+    auto ResourceData = reinterpret_cast<ImageResourceData*>(TextureParams->ImageResource.data);
+
+    // Получить внутренние ресурсы текстуры и загрузить в GPU. Не может быть определено, пока рендерер не станет многопоточным.
+    Renderer::Load(ResourceData->pixels, &TextureParams->TempTexture);
+
+    // Сделать копию старой текстуры.
+    auto old = *TextureParams->OutTexture;
+
+    // Назначить временную текстуру указателю.
+    *TextureParams->OutTexture = TextureParams->TempTexture;
+
+    // Уничтожить старую текстуру.
+    Renderer::Unload(&old);
+    old.Clear();
+
+    if (TextureParams->CurrentGeneration == INVALID::ID) {
+        TextureParams->OutTexture->generation = 0;
+    } else {
+        TextureParams->OutTexture->generation = TextureParams->CurrentGeneration + 1;
     }
 
-    ImageResourceData* ResourceData = reinterpret_cast<ImageResourceData*>(ImgResource.data);
+    MTRACE("Текстура «%s» успешно загружена.", TextureParams->ResourceName.c_str());
 
-    u32 CurrentGeneration = t->generation;
-    t->generation = INVALID::ID;
+    // Очистите данные.
+    ResourceSystem::Instance()->Unload(TextureParams->ImageResource);
+    if (TextureParams->ResourceName) {
+        //u32 length = MString::Length(TextureParams->ResourceName);
+        TextureParams->ResourceName.Clear();
+    }
+}
 
-    u64 TotalSize = ResourceData->width * ResourceData->height * ResourceData->ChannelCount;
+void LoadJobFail(void *params)
+{
+    auto TextureParams = reinterpret_cast<TextureLoadParams*>(params);
+
+    MERROR("Не удалось загрузить текстуру «%s».", TextureParams->ResourceName.c_str());
+
+    ResourceSystem::Instance()->Unload(TextureParams->ImageResource);
+}
+
+bool LoadJobStart(void *params, void *ResultData)
+{
+    auto LoadParams = reinterpret_cast<TextureLoadParams*>(params);
+    auto& TempTexture = LoadParams->TempTexture;
+
+    ImageResourceParams ResourceParams{ true };
+
+    bool result = ResourceSystem::Instance()->Load(LoadParams->ResourceName.c_str(), ResourceType::Image, &ResourceParams, LoadParams->ImageResource);
+
+    auto ResourceData = reinterpret_cast<ImageResourceData*>(LoadParams->ImageResource.data);
+
+    LoadParams->CurrentGeneration = LoadParams->OutTexture->generation;
+    LoadParams->OutTexture->generation = INVALID::ID;
+
+    u64 TotalSize = LoadParams->TempTexture.width * LoadParams->TempTexture.height * LoadParams->TempTexture.ChannelCount;
     // Проверка прозрачности
     b32 HasTransparency = false;
-    for (u64 i = 0; i < TotalSize; i += ResourceData->ChannelCount) {
+    for (u64 i = 0; i < TotalSize; i += LoadParams->TempTexture.ChannelCount) {
         u8 a = ResourceData->pixels[i + 3];
         if (a < 255) {
             HasTransparency = true;
@@ -282,33 +339,32 @@ bool TextureSystem::LoadTexture(const char* TextureName, Texture *t)
         }
     }
 
-    // Скопируйте старую текстуру.
-    // Texture old = *t;
-    if (t->Data) {
-        // Уничтожьте старую текстуру.
-        Renderer::Unload(t);
-    }
+    // Используйте временную текстуру для загрузки.
+    TempTexture.Create(
+        LoadParams->ResourceName.c_str(), 
+        ResourceData->width,
+        ResourceData->height,
+        ResourceData->ChannelCount,
+        TempTexture.flags |= HasTransparency ? TextureFlag::HasTransparency : 0
+    );
 
-    // Получите внутренние ресурсы текстур и загрузите их в графический процессор.
-    *t = Texture(
-        TextureName,
-        TextureType::_2D,
-        ResourceData->width, 
-        ResourceData->height, 
-        ResourceData->ChannelCount, 
-        HasTransparency ? TextureFlag::HasTransparency : 0);
-    Renderer::Load(ResourceData->pixels, t);
+    TempTexture.generation = INVALID::ID;
 
-    if (CurrentGeneration == INVALID::ID) {
-        t->generation = 0;
-    } else {
-        t->generation = CurrentGeneration + 1;
-    }
+    // ПРИМЕЧАНИЕ: Параметры загрузки также используются здесь в качестве результирующих данных, теперь заполняется только поле image_resource.
+    MMemory::CopyMem(ResultData, LoadParams, sizeof(TextureLoadParams));
 
-    // Очистите данные.
-    ResourceSystemInst->Unload(ImgResource);
+    return result;
+}
+
+bool TextureSystem::LoadTexture(const char *TextureName, Texture *t)
+{
+    // Запустить задание по загрузке текстур. Обрабатывает только загрузку с диска в ЦП. 
+    // Загрузка в ГП выполняется после завершения этого задания.
+    TextureLoadParams params { TextureName, t, Texture(), t->generation, Resource() };
+
+    JobInfo job { LoadJobStart, LoadJobSuccess, LoadJobFail, &params, sizeof(TextureLoadParams), sizeof(TextureLoadParams) };
+    JobSystem::Instance()->Submit(job);
     return true;
-
 }
 
 bool TextureSystem::ProcessTextureReference(const char *name, TextureType type, i8 ReferenceDiff, bool AutoRelease, bool SkipLoad, u32 &OutTextureId)

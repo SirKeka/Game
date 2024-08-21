@@ -9,10 +9,12 @@ bool LoaderUtils::ResourceUnload(ResourceLoader *self, Resource &resource, Memor
         return false;
     }
 
-    /*u32 PathLength = resource->FullPath.Length();
-    if (PathLength) {
-        resource->FullPath.Destroy();
-    }*/
+    if (resource.FullPath) {
+        u16 PathLength = resource.FullPath.Length();
+        if (PathLength) {
+            resource.FullPath.Clear();
+        }
+    }
 
     if (resource.data) {
         //MMemory::Free(resource.data, resource.DataSize, tag);

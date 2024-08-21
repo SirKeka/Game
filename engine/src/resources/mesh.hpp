@@ -6,21 +6,23 @@
 struct GeometryID;
 
 struct Mesh {
+    u8 generation;
     u16 GeometryCount{};
     GeometryID** geometries{nullptr};
     Transform transform{};
 
-    constexpr Mesh() : GeometryCount(), geometries(nullptr), transform() {}
+    constexpr Mesh() : generation(), GeometryCount(), geometries(nullptr), transform() {}
     constexpr Mesh(u16 GeometryCount, GeometryID** geometries, const Transform& transform)
-    : GeometryCount(GeometryCount), geometries(geometries), transform(transform) {}
+    : generation(), GeometryCount(GeometryCount), geometries(geometries), transform(transform) {}
     Mesh(const Mesh& mesh)
     : GeometryCount(mesh.GeometryCount), geometries(new GeometryID*[GeometryCount]), transform(mesh.transform) {
         for (u64 i = 0; i < GeometryCount; i++) {
             geometries[i] = mesh.geometries[i];
         }
     }
-    constexpr Mesh(Mesh&& mesh) : GeometryCount(mesh.GeometryCount), geometries(mesh.geometries), transform(mesh.transform)
+    constexpr Mesh(Mesh&& mesh) : generation(mesh.generation), GeometryCount(mesh.GeometryCount), geometries(mesh.geometries), transform(mesh.transform)
     {
+        mesh.generation = 0;
         mesh.GeometryCount = 0;
         mesh.geometries = nullptr;
         mesh.transform = Transform();
@@ -44,9 +46,12 @@ struct Mesh {
 
     struct PacketData {
         u32 MeshCount;
-        Mesh* meshes;
+        Mesh** meshes;
         constexpr PacketData() : MeshCount(), meshes(nullptr) {}
-        constexpr PacketData(u32 MeshCount, Mesh* meshes) : MeshCount(MeshCount), meshes(meshes) {}
+        constexpr PacketData(u32 MeshCount, Mesh** meshes) : MeshCount(MeshCount), meshes(meshes) {}
     };
+
+    bool LoadFromResource(const char* ResourceName);
+    void Unload();
 };
 

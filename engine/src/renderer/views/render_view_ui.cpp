@@ -66,7 +66,7 @@ bool RenderViewUI::BuildPacket(void *data, Packet &OutPacket) const
     // Получить все геометрии из текущей сцены.
     // Итерировать все сетки и добавить их в коллекцию геометрий пакета
     for (u32 i = 0; i < MeshData->MeshCount; ++i) {
-        Mesh* m = &MeshData->meshes[i];
+        Mesh* m = MeshData->meshes[i];
         for (u32 j = 0; j < m->GeometryCount; ++j) {
             OutPacket.geometries.EmplaceBack(m->transform.GetWorld(), m->geometries[j]);
             OutPacket.GeometryCount++;
@@ -77,9 +77,9 @@ bool RenderViewUI::BuildPacket(void *data, Packet &OutPacket) const
 
 bool RenderViewUI::Render(const Packet &packet, u64 FrameNumber, u64 RenderTargetIndex) const
 {
-    MaterialSystem* MaterialSystemInst = MaterialSystem::Instance();
+    auto MaterialSystemInst = MaterialSystem::Instance();
     for (u32 p = 0; p < RenderpassCount; ++p) {
-        Renderpass* pass = passes[p];
+        auto pass = passes[p];
         if (!Renderer::RenderpassBegin(pass, pass->targets[RenderTargetIndex])) {
             MERROR("RenderViewUI::Render pass index %u не удалось запустить.", p);
             return false;
@@ -99,7 +99,7 @@ bool RenderViewUI::Render(const Packet &packet, u64 FrameNumber, u64 RenderTarge
         // Нарисовать геометрию.
         u32 count = packet.GeometryCount;
         for (u32 i = 0; i < count; ++i) {
-            Material* m = 0;
+            Material* m = nullptr;
             if (packet.geometries[i].gid->material) {
                 m = packet.geometries[i].gid->material;
             } else {

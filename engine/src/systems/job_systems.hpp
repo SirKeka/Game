@@ -44,7 +44,16 @@ struct JobInfo {
     u32           ResultDataSize;   // Размер данных, передаваемых в функцию успеха/неудачи.
     constexpr JobInfo() 
     : type(), priority(), EntryPoint(), OnSuccess(), OnFail(), ParamData(), ParamDataSize(), ResultData(), ResultDataSize() {}
-    constexpr JobInfo(JobType::E type, JobPriority::E priority, PFN_JobStart EntryPoint, PFN_JobOnComplete OnSuccess, PFN_JobOnComplete OnFail, void* ParamData, u32 ParamDataSize, u32 ResultDataSize)
+    /// @brief Создает новое задание. По умолчанию тиип (General), а приоритет (Normal).
+    /// @param EntryPoint указатель на функцию, которая будет вызвана при запуске задания. Обязательно.
+    /// @param OnSuccess указатель на функцию, которая будет вызвана при успешном завершении задания. Необязательно.
+    /// @param OnFail указатель на функцию, которая будет вызвана при сбое задания. Необязательно.
+    /// @param ParamData данные, которые будут переданы в точку входа при выполнении.
+    /// @param ParamDataSize данные, которые будут переданы в обратный вызов entry_point. Передайте 0, если не используются.
+    /// @param ResultDataSize размер данных результата, которые будут переданы в обратный вызов success. Передайте 0, если не используются.
+    /// @param type тип задания. Используется для определения того, в каком потоке выполняется задание.
+    /// @param priority приоритет этого задания. Задания с более высоким приоритетом, очевидно, выполняются раньше.
+    constexpr JobInfo(PFN_JobStart EntryPoint, PFN_JobOnComplete OnSuccess, PFN_JobOnComplete OnFail, void* ParamData, u32 ParamDataSize, u32 ResultDataSize, JobType::E type = JobType::General, JobPriority::E priority = JobPriority::Normal)
     : type(type), priority(priority), 
     EntryPoint(EntryPoint), OnSuccess(OnSuccess), OnFail(OnFail), 
     ParamData(), ParamDataSize(ParamDataSize), 
@@ -125,17 +134,6 @@ public:
     /// @brief Отправляет предоставленное задание в очередь на выполнение.
     /// @param info Описание задания, которое должно быть выполнено.
     MAPI void Submit(JobInfo& info);
-    /// @brief Создает новое задание. По умолчанию тиип (General), а приоритет (Normal).
-    /// @param EntryPoint указатель на функцию, которая будет вызвана при запуске задания. Обязательно.
-    /// @param OnSuccess указатель на функцию, которая будет вызвана при успешном завершении задания. Необязательно.
-    /// @param OnFail указатель на функцию, которая будет вызвана при сбое задания. Необязательно.
-    /// @param ParamData данные, которые будут переданы в точку входа при выполнении.
-    /// @param ParamDataSize данные, которые будут переданы в обратный вызов entry_point. Передайте 0, если не используются.
-    /// @param ResultDataSize размер данных результата, которые будут переданы в обратный вызов success. Передайте 0, если не используются.
-    /// @param type тип задания. Используется для определения того, в каком потоке выполняется задание.
-    /// @param priority приоритет этого задания. Задания с более высоким приоритетом, очевидно, выполняются раньше.
-    /// @return Информация о вновь созданном задании, которая будет отправлена ​​на выполнение.
-    MAPI JobInfo JobCreate(PFN_JobStart EntryPoint, PFN_JobOnComplete OnSuccess, PFN_JobOnComplete OnFail, void* ParamData, u32 ParamDataSize, u32 ResultDataSize, JobType::E type = JobType::General, JobPriority::E priority = JobPriority::Normal);
 private:
     static u32 JobThreadRun(void* params);
     void StoreResult(PFN_JobOnComplete callback, u32 ParamSize, void* params);

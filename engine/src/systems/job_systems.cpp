@@ -332,8 +332,3 @@ MAPI void JobSystem::Submit(JobInfo &info)
     }
     MTRACE("Задание поставлено в очередь.");
 }
-
-JobInfo JobSystem::JobCreate(PFN_JobStart EntryPoint, PFN_JobOnComplete OnSuccess, PFN_JobOnComplete OnFail, void *ParamData, u32 ParamDataSize, u32 ResultDataSize, JobType::E type, JobPriority::E priority)
-{
-    return JobInfo { type, priority, EntryPoint, OnSuccess, OnFail, ParamData, ParamDataSize, ResultDataSize };
-}

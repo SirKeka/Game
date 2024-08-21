@@ -16,7 +16,7 @@ struct ApplicationState {
     //MMemory* mem;
     Logger* logger;
     //Input Inputs;
-    //Event Events;
+    Event* Events;
     bool IsRunning;
     bool IsSuspended;
     MWindow* Window;
@@ -38,10 +38,11 @@ struct ApplicationState {
     Skybox sb;
 
     Mesh meshes[10];
-    u32 MeshCount{};
-
+    Mesh* CarMesh;
+    Mesh* SponzaMesh;
+    bool ModelsLoaded;
     Mesh UIMeshes[10];
-    u32 UIMeshCount;
+
     // ЗАДАЧА: временно
 
 };
@@ -54,7 +55,7 @@ public:
     Application() = default;
     ~Application() {}
 
-    MAPI bool ApplicationCreate(GameTypes* GameInst);
+    MAPI bool Create(GameTypes* GameInst);
 
     MAPI bool ApplicationRun();
 

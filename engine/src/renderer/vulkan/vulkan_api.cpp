@@ -530,12 +530,33 @@ bool VulkanAPI::ShaderApplyInstance(Shader *shader, bool NeedsUpdate)
         if (VkShader->InstanceUniformSamplerCount > 0) {
             const u8& SamplerBindingIndex = VkShader->config.DescriptorSets[DESC_SET_INDEX_INSTANCE].SamplerBindingIndex;
             const u32& TotalSamplerCount = VkShader->config.DescriptorSets[DESC_SET_INDEX_INSTANCE].bindings[SamplerBindingIndex].descriptorCount;
+            auto TextureSystemInst = TextureSystem::Instance();
             u32 UpdateSamplerCount = 0;
             VkDescriptorImageInfo ImageInfos[VulkanShaderConstants::MaxGlobalTextures]{};
             for (u32 i = 0; i < TotalSamplerCount; ++i) {
                 // ЗАДАЧА: обновляйте список только в том случае, если оно действительно необходимо.
                 TextureMap* map = VkShader->InstanceStates[shader->BoundInstanceID].InstanceTexturesMaps[i];
                 Texture* t = map->texture;
+
+                // Убедитесь, что текстура верна.
+                if (t->generation == INVALID::ID) {
+                    switch (map->use) {
+                        case TextureUse::MapDiffuse:
+                            t = TextureSystemInst->GetDefaultTexture(ETexture::Default);
+                            break;
+                        case TextureUse::MapSpecular:
+                            t = TextureSystemInst->GetDefaultTexture(ETexture::Specular);
+                            break;
+                        case TextureUse::MapNormal:
+                            t = TextureSystemInst->GetDefaultTexture(ETexture::Normal);
+                            break;
+                        default:
+                            MWARN("Использование неопределенной текстуры %d", map->use);
+                            t = TextureSystemInst->GetDefaultTexture(ETexture::Default);
+                            break;
+                    }
+                }
+
                 ImageInfos[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
                 ImageInfos[i].imageView = t->Data->view;
                 ImageInfos[i].sampler = reinterpret_cast<VkSampler>(map->sampler);

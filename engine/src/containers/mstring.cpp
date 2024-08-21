@@ -5,12 +5,14 @@
 #include <string>
 #include <stdarg.h>
 
-constexpr MString::MString(u16 length) : length(length + 1), str(MMemory::TAllocate<char>(Memory::String, this->length)) {}
+constexpr MString::MString(u16 length) 
+: length(length + 1), str(MMemory::TAllocate<char>(Memory::String, this->length)) {}
 
 constexpr MString::MString(const char *str1, const char *str2)
-    : length(Length(str1) + Length(str2) + 1), str(Concat(str1, str2, length)) {}
+: length(Length(str1) + Length(str2) + 1), str(Concat(str1, str2, length)) {}
 
-constexpr MString::MString(const MString &str1, const MString &str2) : length(str1.length + str2.length - 1), str(Concat(str1.str, str2.str, length)) {}
+constexpr MString::MString(const MString &str1, const MString &str2) 
+: length(str1.length + str2.length - 1), str(Concat(str1.str, str2.str, length)) {}
 
 constexpr MString::MString(const char *s) : length(Len(s)), str(Copy(s, length)) {}
 

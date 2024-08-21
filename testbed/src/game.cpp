@@ -32,66 +32,68 @@ bool Game::Initialize()
 
 bool Game::Update(f32 DeltaTime)
 {
+    auto InputInst = Input::Instance();
+    auto EventIns  = Event::GetInstance();
     u64 AllocCount = 0;
     u64 PrevAllocCount = AllocCount;
     AllocCount = MMemory::GetMemoryAllocCount(); // TODO: проверить странные значения
-    if (Input::Instance()->Instance()->IsKeyUp(Keys::M) && Input::Instance()->WasKeyDown(Keys::M)) {
+    if (InputInst->IsKeyUp(Keys::M) && InputInst->WasKeyDown(Keys::M)) {
         MDEBUG("Распределено: %llu (%llu в этом кадре)", AllocCount, AllocCount - PrevAllocCount);
     }
 
     // TODO: temp
-    if (Input::Instance()->IsKeyUp(Keys::T) && Input::Instance()->WasKeyDown(Keys::T)) {
+    if (InputInst->IsKeyUp(Keys::T) && InputInst->WasKeyDown(Keys::T)) {
         MDEBUG("Swapping texture!");
         EventContext context = {};
-        Event::GetInstance()->Fire(EVENT_CODE_DEBUG0, this, context);
+        EventIns->Fire(EVENT_CODE_DEBUG0, this, context);
     }
     // TODO: end temp
 
     // ВЗЛОМ: временный взлом для перемещения камеры по кругу.
-    if (Input::Instance()->IsKeyDown(Keys::A) || Input::Instance()->IsKeyDown(Keys::LEFT)) {
+    if (InputInst->IsKeyDown(Keys::A) || InputInst->IsKeyDown(Keys::LEFT)) {
         gameState->WorldCamera->Yaw(1.0f * DeltaTime);
     }
 
-    if (Input::Instance()->IsKeyDown(Keys::D) || Input::Instance()->IsKeyDown(Keys::RIGHT)) {
+    if (InputInst->IsKeyDown(Keys::D) || InputInst->IsKeyDown(Keys::RIGHT)) {
         gameState->WorldCamera->Yaw(-1.0f * DeltaTime);
     }
 
-    if (Input::Instance()->IsKeyDown(Keys::UP)) {
+    if (InputInst->IsKeyDown(Keys::UP)) {
         gameState->WorldCamera->Pitch(1.0f * DeltaTime);
     }
 
-    if (Input::Instance()->IsKeyDown(Keys::DOWN)) {
+    if (InputInst->IsKeyDown(Keys::DOWN)) {
         gameState->WorldCamera->Pitch(-1.0f * DeltaTime);
     }
 
     static const f32 TempMoveSpeed = 50.0f;
 
-    if (Input::Instance()->IsKeyDown(Keys::W)) {
+    if (InputInst->IsKeyDown(Keys::W)) {
         gameState->WorldCamera->MoveForward(TempMoveSpeed * DeltaTime);
     }
 
-    if (Input::Instance()->IsKeyDown(Keys::S)) {
+    if (InputInst->IsKeyDown(Keys::S)) {
         gameState->WorldCamera->MoveBackward(TempMoveSpeed * DeltaTime);
     }
 
-    if (Input::Instance()->IsKeyDown(Keys::Q)) {
+    if (InputInst->IsKeyDown(Keys::Q)) {
         gameState->WorldCamera->MoveLeft(TempMoveSpeed * DeltaTime);
     }
 
-    if (Input::Instance()->IsKeyDown(Keys::E)) {
+    if (InputInst->IsKeyDown(Keys::E)) {
         gameState->WorldCamera->MoveRight(TempMoveSpeed * DeltaTime);
     }
 
-    if (Input::Instance()->IsKeyDown(Keys::SPACE)) {
+    if (InputInst->IsKeyDown(Keys::SPACE)) {
         gameState->WorldCamera->MoveUp(TempMoveSpeed * DeltaTime);
     }
 
-    if (Input::Instance()->IsKeyDown(Keys::X)) {
+    if (InputInst->IsKeyDown(Keys::X)) {
         gameState->WorldCamera->MoveDown(TempMoveSpeed * DeltaTime);
     }
 
     // СДЕЛАТЬ: временно
-    if (Input::Instance()->IsKeyUp(Keys::P) && Input::Instance()->WasKeyDown(Keys::P)) {
+    if (InputInst->IsKeyUp(Keys::P) && InputInst->WasKeyDown(Keys::P)) {
         MDEBUG(
             "Позиция:[%.2f, %.2f, %.2f",
             gameState->WorldCamera->GetPosition().x,
@@ -100,24 +102,32 @@ bool Game::Update(f32 DeltaTime)
     }
 
     // RENDERER DEBUG FUNCTIONS
-    if (Input::Instance()->IsKeyUp(Keys::KEY_1) && Input::Instance()->WasKeyDown(Keys::KEY_1)) {
+    if (InputInst->IsKeyUp(Keys::KEY_1) && InputInst->WasKeyDown(Keys::KEY_1)) {
         EventContext data = {};
         data.data.i32[0] = Renderer::Lighting;
-        Event::GetInstance()->Fire(EVENT_CODE_SET_RENDER_MODE, this, data);
+        EventIns->Fire(EVENT_CODE_SET_RENDER_MODE, this, data);
     }
 
-    if (Input::Instance()->IsKeyUp(Keys::KEY_2) && Input::Instance()->WasKeyDown(Keys::KEY_2)) {
+    if (InputInst->IsKeyUp(Keys::KEY_2) && InputInst->WasKeyDown(Keys::KEY_2)) {
         EventContext data = {};
         data.data.i32[0] = Renderer::Normals;
-        Event::GetInstance()->Fire(EVENT_CODE_SET_RENDER_MODE, this, data);
+        EventIns->Fire(EVENT_CODE_SET_RENDER_MODE, this, data);
     }
 
-    if (Input::Instance()->IsKeyUp(Keys::KEY_0) && Input::Instance()->WasKeyDown(Keys::KEY_0)) {
+    if (InputInst->IsKeyUp(Keys::KEY_0) && InputInst->WasKeyDown(Keys::KEY_0)) {
         EventContext data = {};
         data.data.i32[0] = Renderer::Default;
-        Event::GetInstance()->Fire(EVENT_CODE_SET_RENDER_MODE, this, data);
+        EventIns->Fire(EVENT_CODE_SET_RENDER_MODE, this, data);
     }
-    // СДЕЛАТЬ: временно
+
+    // ЗАДАЧА: временно
+    // Привяжите клавишу для загрузки некоторых данных.
+    if (InputInst->IsKeyUp(Keys::L) && InputInst->WasKeyDown(Keys::L)) {
+        EventContext context = {};
+        EventIns->Fire(EVENT_CODE_DEBUG1, this, context);
+    }
+
+    // ЗАДАЧА: временно
 
     return true;
 }

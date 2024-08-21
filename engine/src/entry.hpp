@@ -23,7 +23,7 @@ int main(void) {
     }
     
     // Инициализация.
-    if (!GameInst->application->ApplicationCreate(GameInst)) {
+    if (!GameInst->application->Create(GameInst)) {
         MINFO("Приложение не удалось создать!");
         return 1;
     }
