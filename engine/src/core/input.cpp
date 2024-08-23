@@ -191,7 +191,7 @@ void Input::ProcessMouseWheel(i8 z_delta)
 
     // Запустите событие.
     EventContext context;
-    context.data.u8[0] = z_delta;
+    context.data.i8[0] = z_delta;
     Event::GetInstance()->Fire(EVENT_CODE_MOUSE_WHEEL, 0, context);
 }
 

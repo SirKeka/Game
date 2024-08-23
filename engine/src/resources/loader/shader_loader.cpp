@@ -38,6 +38,7 @@ bool ShaderLoader::Load(const char *name, void* params, Resource &OutResource)
 
         // Пропускайте пустые строки и комментарии.
         if (LineLength < 1 || line[0] == '#') {
+            MString::Zero(LineBuf);
             LineNumber++;
             continue;
         }
@@ -69,7 +70,6 @@ bool ShaderLoader::Load(const char *name, void* params, Resource &OutResource)
             ResourceData->RenderpassName = std::move(TrimmedValue);
         } else if (TrimmedVarName.Comparei("stages")) {
             // Разбор этапов
-            // char** StageNames = darray_create(char*);
             u32 count = TrimmedValue.Split(',', ResourceData->StageNames, true, true);
             // Убедитесь, что имя этапа и количество имен файлов этапа одинаковы, поскольку они должны совпадать.
             if (ResourceData->StageCount == 0) {
@@ -93,7 +93,6 @@ bool ShaderLoader::Load(const char *name, void* params, Resource &OutResource)
             }
         } else if (TrimmedVarName.Comparei("stagefiles")) {
             // Разобрать имена файлов сцены
-            // ResourceData->stage_filenames = darray_create(char*);
             u32 count = TrimmedValue.Split(',', ResourceData->StageFilenames, true, true);
             // Убедитесь, что имя этапа и количество имен файлов этапа одинаковы, поскольку они должны совпадать.
             if (ResourceData->StageCount == 0) {
@@ -242,7 +241,7 @@ bool ShaderLoader::Load(const char *name, void* params, Resource &OutResource)
         // ЗАДАЧА: больше полей.
 
         // Очистите буфер строки.
-        MMemory::ZeroMem(LineBuf, sizeof(char) * 512); //ЗАДАЧА: заменить
+        MString::Zero(LineBuf);
         LineNumber++;
     }
 

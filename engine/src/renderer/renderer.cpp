@@ -1,5 +1,6 @@
 #include "renderer.hpp"
 #include "memory/linear_allocator.hpp"
+#include "platform/platform.hpp"
 #include "renderer/vulkan/vulkan_api.hpp"
 #include "systems/resource_system.hpp"
 #include "systems/texture_system.hpp"
@@ -183,6 +184,8 @@ bool Renderer::DrawFrame(const RenderPacket &packet)
             resizing = false;
         } else {
             // Пропустите рендеринг кадра и попробуйте снова в следующий раз.
+            // ПРИМЕЧАНИЕ: Имитация «отрисовки» кадра со скоростью 60 кадров в секунду.
+            PlatformSleep(16);
             return true;
         }
     }

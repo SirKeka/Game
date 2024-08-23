@@ -60,7 +60,7 @@ public:
 
     static MINLINE ResourceSystem* Instance() { return state; }
 private:
-    bool Load(const char* name, ResourceLoader* loader, void* params, Resource& OutResource);
+    bool Load(const char* name, ResourceLoader& loader, void* params, Resource& OutResource);
 public:
     // void* operator new(u64 size);
 };

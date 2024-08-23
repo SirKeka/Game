@@ -316,7 +316,7 @@ void PlatformConsoleWriteError(const char* message, u8 colour) {
 
 f64 PlatformGetAbsoluteTime() {
     struct timespec now;
-    clock_gettime(CLOCK_MONOTONIC, &now);
+    clock_gettime(CLOCK_MONOTONIC_RAW, &now);
     return now.tv_sec + now.tv_nsec * 0.000000001;
 }
 

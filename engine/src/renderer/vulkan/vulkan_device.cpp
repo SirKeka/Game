@@ -253,6 +253,20 @@ bool VulkanDevice::SelectPhysicalDevice(VulkanAPI *VkAPI)
         return false;
     }
 
+    // ЗАДАЧА: Эти требования, вероятно, должны определяться движком
+    // конфигурация.
+    VulkanPhysicalDeviceRequirements requirements{
+        true, // graphics
+        true, // present
+        // ПРИМЕЧАНИЕ: Включите это, если потребуются вычисления.
+        // true, // compute
+        true, // transfer
+        VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+        true, // SamplerAnisotropy
+        true  // DiscreteGPU
+    };
+
+    // Переберите физические устройства, чтобы найти то, которое подходит под ваши требования.
     VkPhysicalDevice PhysicalDevices[32];
     VK_CHECK(vkEnumeratePhysicalDevices(VkAPI->instance, &PhysicalDeviceCount, PhysicalDevices));
     for (auto &&device : PhysicalDevices) {
@@ -278,20 +292,6 @@ bool VulkanDevice::SelectPhysicalDevice(VulkanAPI *VkAPI)
                 break;
             }
         }
-    
-        // ЗАДАЧА: Эти требования, вероятно, должны определяться движком
-        // конфигурация.
-        VulkanPhysicalDeviceRequirements requirements{
-            true, // graphics
-            true, // present
-            // ПРИМЕЧАНИЕ: Включите это, если потребуются вычисления.
-            // true, // compute
-            true, // transfer
-            VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-            true, // SamplerAnisotropy
-            true  // DiscreteGPU
-        };
-        //requirements.DeviceExtensionNames.PushBack(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
         VulkanPhysicalDeviceQueueFamilyInfo QueueInfo = {};
         bool result = PhysicalDeviceMeetsRequirements(

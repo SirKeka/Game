@@ -176,7 +176,7 @@ struct Mouse
     // ЗАДАЧА: исправить на i32 если мы хотим добавить поддержку нескольких мониторов с высоким разрешением
     i16 PosX;
     i16 PosY;
-    u8 Buttons[static_cast<u32>(Buttons::Max)];
+    bool Buttons[static_cast<u32>(Buttons::Max)];
 };
 
 class MAPI Input
@@ -219,7 +219,7 @@ public:
 
     void ProcessButton(Buttons button, bool pressed);
     void ProcessMouseMove(i16 x, i16 y);
-    void ProcessMouseWheel(i8 z_delta);
+    void ProcessMouseWheel(i8 Zdelta);
 
     static Input* Instance();
     void* operator new(u64 size);

@@ -420,7 +420,7 @@ bool TextureSystem::ProcessTextureReference(const char *name, TextureType type, 
                 // Увеличение. Проверьте, новый дескриптор или нет.
                 if (ref.handle == INVALID::ID) {
                     // Это означает, что здесь нет текстуры. Сначала найдите свободный индекс.
-                    u32 count = state->MaxTextureCount;
+                    const u32& count = state->MaxTextureCount;
 
                     for (u32 i = 0; i < count; ++i) {
                         if (state->RegisteredTextures[i].id == INVALID::ID) {

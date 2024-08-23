@@ -51,7 +51,6 @@ struct VulkanShaderConfig {
     VkVertexInputAttributeDescription attributes[VulkanShaderConstants::MaxAttributes]; // Массив описаний атрибутов для этого шейдера.
     FaceCullMode CullMode;                                                              // Режим отбраковки лиц, предоставляемый фронтендом.
     constexpr VulkanShaderConfig() : StageCount(), stages(), PoolSizes(), MaxDescriptorSetCount(), DescriptorSetCount(), DescriptorSets(), attributes(), CullMode() {}
-
 };
  
 /// @brief Представляет состояние данного дескриптора. 
@@ -75,8 +74,8 @@ struct VulkanShaderInstanceState {
     u32 id;                                             // Идентификатор экземпляра. INVALID::ID, если не используется.
     u64 offset;                                         // Смещение в байтах в универсальном буфере экземпляра. 
     VulkanShaderDescriptorSetState DescriptorSetState;  // Состояние набора дескрипторов. 
-    class TextureMap** InstanceTexturesMaps;             // Указатели экземпляров текстурных карт, которые используются во время рендеринга. Они устанавливаются вызовами SetSampler.
-    constexpr VulkanShaderInstanceState() : id(INVALID::ID), offset(), DescriptorSetState(), InstanceTexturesMaps(nullptr) {}
+    class TextureMap** InstanceTextureMaps;             // Указатели экземпляров текстурных карт, которые используются во время рендеринга. Они устанавливаются вызовами SetSampler.
+    constexpr VulkanShaderInstanceState() : id(INVALID::ID), offset(), DescriptorSetState(), InstanceTextureMaps(nullptr) {}
 };
  
 /// @brief Представляет универсальный шейдер Vulkan. 

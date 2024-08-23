@@ -34,9 +34,13 @@ public:
         VkFence fence,
         u32* OutImageIndex);
 
+    /// @brief 
+    /// @param VkAPI 
+    /// @param PresentQueue 
+    /// @param RenderCompleteSemaphore 
+    /// @param PresentImageIndex 
     void Present(
         VulkanAPI* VkAPI,
-        VkQueue GraphicsQueue,
         VkQueue PresentQueue,
         VkSemaphore RenderCompleteSemaphore,
         u32 PresentImageIndex);

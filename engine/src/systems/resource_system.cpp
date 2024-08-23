@@ -89,8 +89,8 @@ bool ResourceSystem::Load(const char *name, ResourceType type, void* params, Res
     if (type != ResourceType::Custom) {
         // Выбор загрузчика.
         for (u32 i = 0; i < MaxLoaderCount; ++i) {
-            ResourceLoader* l = &RegisteredLoaders[i];
-            if (l->id != INVALID::ID && l->type == type) {
+            auto& l = RegisteredLoaders[i];
+            if (l.id != INVALID::ID && l.type == type) {
                 return Load(name, l, params, OutResource);
             }
         }
@@ -106,8 +106,8 @@ bool ResourceSystem::Load(const char *name, const char *CustomType, void* params
     if (CustomType && MString::Length(CustomType) > 0) {
         // Выбор загрузчика.
         for (u32 i = 0; i < MaxLoaderCount; ++i) {
-            ResourceLoader* l = &RegisteredLoaders[i];
-            if (l->id != INVALID::ID && l->type == ResourceType::Custom && l->CustomType.Comparei(CustomType)) {
+            auto& l = RegisteredLoaders[i];
+            if (l.id != INVALID::ID && l.type == ResourceType::Custom && l.CustomType.Comparei(CustomType)) {
                 return Load(name, l, params, OutResource);
             }
         }
@@ -138,15 +138,15 @@ const char *ResourceSystem::BasePath()
     return "";
 }
 
-bool ResourceSystem::Load(const char *name, ResourceLoader *loader, void* params, Resource &OutResource)
+bool ResourceSystem::Load(const char *name, ResourceLoader &loader, void* params, Resource &OutResource)
 {
-    if (!name || !loader) {
+    if (!name) {
         OutResource.LoaderID = INVALID::ID;
         return false;
     }
 
-    OutResource.LoaderID = loader->id;
-    return loader->Load(name, params, OutResource);
+    OutResource.LoaderID = loader.id;
+    return loader.Load(name, params, OutResource);
 }
 /*
 void *ResourceSystem::operator new(u64 size)

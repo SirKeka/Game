@@ -20,10 +20,7 @@ Material::~Material()
 {
     MTRACE("Уничтожение материала '%s'...", name);
     MMemory::ZeroMem(this, sizeof(Material));
-    id                = INVALID::ID;
-    generation        = INVALID::ID;
-    InternalId        = INVALID::ID;
-    RenderFrameNumber = INVALID::ID;
+    id = generation = InternalId = RenderFrameNumber = INVALID::ID;
 }
 
 /*const bool Material::operator ! (Material& m)
@@ -41,9 +38,7 @@ Material::~Material()
 
 void Material::Reset()
 {
-    id         = 0;        
-    generation = 0;
-    InternalId = 0;
+    id = generation = InternalId = RenderFrameNumber = 0;
 }
 
 void Material::SetName(const char *name)

@@ -641,7 +641,7 @@ char *MString::Trim(char *s)
     return s;
 }
 
-void MString::Zero(char *string)
+/*void MString::Zero(char *string)
 {
     if (string) {
         while (*string) {
@@ -649,7 +649,7 @@ void MString::Zero(char *string)
             string++;
         }
     }
-}
+}*/
 
 void MString::Mid(char *dest, const MString &source, i32 start, i32 length)
 {

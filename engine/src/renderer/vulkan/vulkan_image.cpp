@@ -20,11 +20,11 @@ VulkanImage::VulkanImage(
 
 VulkanImage::~VulkanImage()
 {
-    handle = 0;
+    /*handle = 0;
     memory = 0;
     view = 0;
     width = 0;
-    height = 0;
+    height = 0;*/
 }
 
 void VulkanImage::Create(VulkanAPI *VkAPI, TextureType type, u32 width, u32 height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags MemoryFlags, b32 CreateView, VkImageAspectFlags ViewAspectFlags)

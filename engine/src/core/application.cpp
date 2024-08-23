@@ -94,14 +94,15 @@ bool Application::Create(GameTypes *GameInst)
         MFATAL("Не удалось инициализировать шейдерную систему. Прерывание приложения.");
         return false;
     }
-
+    auto ShaderSystemInst = ShaderSystem::GetInstance(); // ЗАДАЧА: для отладки
+    
     State->Render = new Renderer(State->Window, GameInst->AppConfig.name, ERendererType::VULKAN);
     // Запуск рендерера
     if (!State->Render) {
         MFATAL("Не удалось инициализировать средство визуализации. Прерывание приложения.");
         return false;
     }
-
+    auto s = ShaderSystemInst->GetShader("Shader.Builtin.Material");
     bool RendererMultithreaded = State->Render->IsMultithreaded();
 
     // Это действительно количество ядер. Вычтите 1, чтобы учесть, что основной поток уже используется.
@@ -347,7 +348,7 @@ bool Application::ApplicationRun() {
     f64 RunningTime = 0;
     u8 FrameCount = 0;
     f64 TargetFrameSeconds = 1.0f / 60;
-
+    auto ShaderSystemInst = ShaderSystem::GetInstance(); // ЗАДАЧА: для отладки
     MINFO(MMemory::GetMemoryUsageStr());
 
     while (State->IsRunning) {
@@ -423,7 +424,7 @@ bool Application::ApplicationRun() {
 
             // пользовательский интерфейс
             u32 UIMeshCount = 0;
-            Mesh* UIMeshes[10];
+            Mesh* UIMeshes[10]{};
             // ЗАДАЧА: массив гибкого размера
             for (u32 i = 0; i < 10; ++i) {
                 if (State->UIMeshes[i].generation != INVALID::U8ID) {
@@ -605,24 +606,25 @@ bool Application::OnDebugEvent(u16 code, void *sender, void *ListenerInst, Event
         static i8 choice = 2;
 
         // Сохраните старое имя.
-        MString OldName = names[choice];
+        const char* OldName = names[choice];
 
         choice++;
         choice %= 3;
 
+        auto MaterialSystemInst = MaterialSystem::Instance();
         // Просто замените материал на первой сетке, если она существует.
         auto& g = State->meshes[0].geometries[0];
         if (g) {
             // Приобретите новый материал.
-            g->material = MaterialSystem::Instance()->Acquire(names[choice]);
+            g->material = MaterialSystemInst->Acquire(names[choice]);
 
         if (!g->material) {
                 MWARN("Application::OnDebugEvent: материал не найден! Использование материала по умолчанию.");
-                g->material = MaterialSystem::Instance()->GetDefaultMaterial();
+                g->material = MaterialSystemInst->GetDefaultMaterial();
             }
 
             // Освободите старый рассеянный материал.
-            MaterialSystem::Instance()->Release(OldName.c_str());
+            MaterialSystemInst->Release(OldName);
         }
         return true;
     } else if (code == EVENT_CODE_DEBUG1) {

@@ -177,10 +177,19 @@ public:
     /// @param arr ссылка на статический массив
     template<u64 N>
     static void Zero(char (&arr)[N]) {
-        for (u64 i = 0; i < N; i++) {
-            if(arr[i]) {
-                arr[i] = '\0';
-            } else break;
+        if ((N % 4) == 0) {
+            u64 count = N / 4;
+            for(u64 i = 0; i < count; i += 4) {
+                if (arr[i]) {
+                    arr[i] = arr[i + 1] = arr[i + 2] = arr[i + 3] = '\0';
+                } else break;
+            }
+        } else {
+            for (u64 i = 0; i < N; i++) {
+                if(arr[i]) {
+                    arr[i] = '\0';
+                } else break;
+            }
         }
     }
     // static char* Concat();
@@ -194,7 +203,7 @@ public:
 
     /// @brief Функция зануляет строку
     /// @param string Строка которую нужно занулить
-    static void Zero(char* string);
+    //static void Zero(char* string);
 
     /// @brief Получает подстроку исходной строки между началом и длиной или до конца строки. 
     /// Если длина отрицательна или равна 0, переходит к концу строки. 

@@ -33,8 +33,8 @@ bool Event::Register(u16 code, void *listener, PFN_OnEvent OnEvent)
 
     u64 RegisteredCount = registered[code].events.Length();
     for(u64 i = 0; i < RegisteredCount; ++i) {
-        if(registered[code].events[i].listener == listener) {
-            // ЗАДАЧА: warn
+        if(registered[code].events[i].listener == listener && registered[code].events[i].callback == OnEvent) {
+            MWARN("Событие уже зарегистрировано с кодом %hu и обратным вызовом %p", code, OnEvent);
             return false;
         }
     }

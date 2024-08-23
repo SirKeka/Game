@@ -1,7 +1,6 @@
 #include "vulkan_swapchain.hpp"
 
 #include "vulkan_api.hpp"
-//#include "vulkan_device.hpp"
 #include "vulkan_image.hpp"
 #include "systems/texture_system.hpp"
 
@@ -34,7 +33,6 @@ bool VulkanSwapchain::AcquireNextImageIndex(
 
 void VulkanSwapchain::Present(
     VulkanAPI *VkAPI, 
-    VkQueue GraphicsQueue, 
     VkQueue PresentQueue, 
     VkSemaphore RenderCompleteSemaphore, 
     u32 PresentImageIndex)

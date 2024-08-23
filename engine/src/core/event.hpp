@@ -139,7 +139,7 @@ enum SystemEventCode {
 
     //Мышь перемещена.
     /* Использование контекста:
-     * u8 z_delta = data.data.u8[0]; */
+     * i8 z_delta = data.data.i8[0]; */
     EVENT_CODE_MOUSE_WHEEL = 0x07,
 
     // Изменен размер/разрешение из ОС.

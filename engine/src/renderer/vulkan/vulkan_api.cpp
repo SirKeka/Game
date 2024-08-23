@@ -287,16 +287,16 @@ bool VulkanAPI::ShaderInitialize(Shader *shader)
     static VkFormat* types = nullptr;
     static VkFormat t[11];
     if (!types) {
-        t[EShaderAttribute::Float32]   = VK_FORMAT_R32_SFLOAT;
-        t[EShaderAttribute::Float32_2] = VK_FORMAT_R32G32_SFLOAT;
-        t[EShaderAttribute::Float32_3] = VK_FORMAT_R32G32B32_SFLOAT;
+        t[EShaderAttribute::Float32]   =          VK_FORMAT_R32_SFLOAT;
+        t[EShaderAttribute::Float32_2] =       VK_FORMAT_R32G32_SFLOAT;
+        t[EShaderAttribute::Float32_3] =    VK_FORMAT_R32G32B32_SFLOAT;
         t[EShaderAttribute::Float32_4] = VK_FORMAT_R32G32B32A32_SFLOAT;
-        t[EShaderAttribute::Int8]      = VK_FORMAT_R8_SINT;
-        t[EShaderAttribute::UInt8]     = VK_FORMAT_R8_UINT;
-        t[EShaderAttribute::Int16]     = VK_FORMAT_R16_SINT;
-        t[EShaderAttribute::UInt16]    = VK_FORMAT_R16_UINT;
-        t[EShaderAttribute::Int32]     = VK_FORMAT_R32_SINT;
-        t[EShaderAttribute::UInt32]    = VK_FORMAT_R32_UINT;
+        t[EShaderAttribute::Int8]      =             VK_FORMAT_R8_SINT;
+        t[EShaderAttribute::UInt8]     =             VK_FORMAT_R8_UINT;
+        t[EShaderAttribute::Int16]     =            VK_FORMAT_R16_SINT;
+        t[EShaderAttribute::UInt16]    =            VK_FORMAT_R16_UINT;
+        t[EShaderAttribute::Int32]     =            VK_FORMAT_R32_SINT;
+        t[EShaderAttribute::UInt32]    =            VK_FORMAT_R32_UINT;
         types = t;
     }
 
@@ -498,6 +498,7 @@ bool VulkanAPI::ShaderApplyInstance(Shader *shader, bool NeedsUpdate)
         VkWriteDescriptorSet DescriptorWrites[2] {};  // Всегда максимум два набора дескрипторов.
         u32 DescriptorCount = 0;
         u32 DescriptorIndex = 0;
+        VkDescriptorBufferInfo BufferInfo;
     
         // Дескриптор 0 — универсальный буфер
         if (VkShader->InstanceUniformCount > 0) {
@@ -505,7 +506,6 @@ bool VulkanAPI::ShaderApplyInstance(Shader *shader, bool NeedsUpdate)
             u8& InstanceUboGeneration = ObjectState.DescriptorSetState.DescriptorStates[DescriptorIndex].generations[ImageIndex];
             // ЗАДАЧА: определить, требуется ли обновление.
             if (InstanceUboGeneration == INVALID::U8ID /*|| *global_ubo_generation != material->generation*/) {
-                VkDescriptorBufferInfo BufferInfo;
                 BufferInfo.buffer = VkShader->UniformBuffer.handle;
                 BufferInfo.offset = ObjectState.offset;
                 BufferInfo.range = shader->UboStride;
@@ -535,8 +535,8 @@ bool VulkanAPI::ShaderApplyInstance(Shader *shader, bool NeedsUpdate)
             VkDescriptorImageInfo ImageInfos[VulkanShaderConstants::MaxGlobalTextures]{};
             for (u32 i = 0; i < TotalSamplerCount; ++i) {
                 // ЗАДАЧА: обновляйте список только в том случае, если оно действительно необходимо.
-                TextureMap* map = VkShader->InstanceStates[shader->BoundInstanceID].InstanceTexturesMaps[i];
-                Texture* t = map->texture;
+                auto map = VkShader->InstanceStates[shader->BoundInstanceID].InstanceTextureMaps[i];
+                auto t = map->texture;
 
                 // Убедитесь, что текстура верна.
                 if (t->generation == INVALID::ID) {
@@ -641,13 +641,13 @@ bool VulkanAPI::ShaderAcquireInstanceResources(Shader *shader, TextureMap** maps
     const u8& SamplerBindingIndex = VkShader->config.DescriptorSets[DESC_SET_INDEX_INSTANCE].SamplerBindingIndex;
     const u32& InstanceTextureCount = VkShader->config.DescriptorSets[DESC_SET_INDEX_INSTANCE].bindings[SamplerBindingIndex].descriptorCount;
     // Очистите память всего массива, даже если она не вся использована.
-    InstanceState.InstanceTexturesMaps = MMemory::TAllocate<TextureMap*>(Memory::Array, shader->InstanceTextureCount);
+    InstanceState.InstanceTextureMaps = MMemory::TAllocate<TextureMap*>(Memory::Array, shader->InstanceTextureCount, true);
     Texture* DefaultTexture = TextureSystem::Instance()->GetDefaultTexture(ETexture::Default);
-    MMemory::CopyMem(InstanceState.InstanceTexturesMaps, maps, sizeof(TextureMap*) * shader->InstanceTextureCount);
+    MMemory::CopyMem(InstanceState.InstanceTextureMaps, maps, sizeof(TextureMap*) * shader->InstanceTextureCount);
     // Установите для всех указателей текстур значения по умолчанию, пока они не будут назначены.
     for (u32 i = 0; i < InstanceTextureCount; ++i) {
         if (!maps[i]->texture) {
-            InstanceState.InstanceTexturesMaps[i]->texture = DefaultTexture;
+            InstanceState.InstanceTextureMaps[i]->texture = DefaultTexture;
         }
     }
 
@@ -715,9 +715,9 @@ bool VulkanAPI::ShaderReleaseInstanceResources(Shader *shader, u32 InstanceID)
     // Уничтожить состояния дескриптора.
     MMemory::ZeroMem(InstanceState.DescriptorSetState.DescriptorStates, sizeof(VulkanDescriptorState) * VulkanShaderConstants::MaxBindings);
 
-    if (InstanceState.InstanceTexturesMaps) {
-        MMemory::Free(InstanceState.InstanceTexturesMaps, sizeof(TextureMap*) * shader->InstanceTextureCount, Memory::Array);
-        InstanceState.InstanceTexturesMaps = nullptr;
+    if (InstanceState.InstanceTextureMaps) {
+        MMemory::Free(InstanceState.InstanceTextureMaps, sizeof(TextureMap*) * shader->InstanceTextureCount, Memory::Array);
+        InstanceState.InstanceTextureMaps = nullptr;
     }
 
     VkShader->UniformBuffer.Free(shader->UboStride, InstanceState.offset);
@@ -1152,7 +1152,6 @@ bool VulkanAPI::EndFrame(f32 DeltaTime)
     // Верните изображение обратно в swapchain.
     swapchain.Present(
         this,
-        Device.GraphicsQueue,
         Device.PresentQueue,
         QueueCompleteSemaphores[CurrentFrame],
         ImageIndex
@@ -1708,7 +1707,7 @@ bool VulkanAPI::SetUniform(Shader *shader, ShaderUniform *uniform, const void *v
         if (uniform->scope == ShaderScope::Global) {
             shader->GlobalTextureMaps[uniform->location] = (TextureMap*)value;
         } else {
-            VkShader->InstanceStates[shader->BoundInstanceID].InstanceTexturesMaps[uniform->location] = (TextureMap*)value;
+            VkShader->InstanceStates[shader->BoundInstanceID].InstanceTextureMaps[uniform->location] = (TextureMap*)value;
         }
     } else {
         if (uniform->scope == ShaderScope::Local) {
