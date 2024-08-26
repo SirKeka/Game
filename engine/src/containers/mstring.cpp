@@ -5,28 +5,32 @@
 #include <string>
 #include <stdarg.h>
 
-constexpr MString::MString(u16 length) 
-: length(length + 1), str(MMemory::TAllocate<char>(Memory::String, this->length)) {}
+constexpr MString::MString(u16 length, bool autorelease) 
+: length(length + 1), autorelease(autorelease), str(MMemory::TAllocate<char>(Memory::String, this->length)) {}
 
-constexpr MString::MString(const char *str1, const char *str2)
-: length(Length(str1) + Length(str2) + 1), str(Concat(str1, str2, length)) {}
+constexpr MString::MString(const char *str1, const char *str2, bool autorelease)
+: length(Length(str1) + Length(str2) + 1), autorelease(autorelease), str(Concat(str1, str2, length)) {}
 
-constexpr MString::MString(const MString &str1, const MString &str2) 
-: length(str1.length + str2.length - 1), str(Concat(str1.str, str2.str, length)) {}
+constexpr MString::MString(const MString &str1, const MString &str2, bool autorelease) 
+: length(str1.length + str2.length - 1), autorelease(autorelease), str(Concat(str1.str, str2.str, length)) {}
 
-constexpr MString::MString(const char *s) : length(Len(s)), str(Copy(s, length)) {}
+constexpr MString::MString(const char *s, bool autorelease) 
+: length(Len(s)), autorelease(autorelease), str(Copy(s, length)) {}
 
-constexpr MString::MString(const MString &s) : length(s.length), str(Copy(s)) {}
+constexpr MString::MString(const MString &s) : length(s.length), autorelease(s.autorelease), str(Copy(s)) {}
 
-constexpr MString::MString(MString &&s) : length(s.length), str(s.str) 
+constexpr MString::MString(MString &&s) : length(s.length), autorelease(s.autorelease), str(s.str) 
 {
     s.str = nullptr;
     s.length = 0;
+    s.autorelease = false;
 }
 
 MString::~MString()
 {
-    Clear();
+    if (autorelease) {
+        Clear();
+    }
 }
 /*
 char MString::operator[](u64 i)

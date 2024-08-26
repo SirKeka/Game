@@ -1702,7 +1702,7 @@ bool VulkanAPI::RecreateSwapchain()
 
 bool VulkanAPI::SetUniform(Shader *shader, ShaderUniform *uniform, const void *value)
 {
-    VulkanShader* VkShader = shader->ShaderData;
+    auto VkShader = shader->ShaderData;
     if (uniform->type == ShaderUniformType::Sampler) {
         if (uniform->scope == ShaderScope::Global) {
             shader->GlobalTextureMaps[uniform->location] = (TextureMap*)value;

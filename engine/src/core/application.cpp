@@ -94,7 +94,6 @@ bool Application::Create(GameTypes *GameInst)
         MFATAL("Не удалось инициализировать шейдерную систему. Прерывание приложения.");
         return false;
     }
-    auto ShaderSystemInst = ShaderSystem::GetInstance(); // ЗАДАЧА: для отладки
     
     State->Render = new Renderer(State->Window, GameInst->AppConfig.name, ERendererType::VULKAN);
     // Запуск рендерера
@@ -102,7 +101,6 @@ bool Application::Create(GameTypes *GameInst)
         MFATAL("Не удалось инициализировать средство визуализации. Прерывание приложения.");
         return false;
     }
-    auto s = ShaderSystemInst->GetShader("Shader.Builtin.Material");
     bool RendererMultithreaded = State->Render->IsMultithreaded();
 
     // Это действительно количество ядер. Вычтите 1, чтобы учесть, что основной поток уже используется.
@@ -348,7 +346,7 @@ bool Application::ApplicationRun() {
     f64 RunningTime = 0;
     u8 FrameCount = 0;
     f64 TargetFrameSeconds = 1.0f / 60;
-    auto ShaderSystemInst = ShaderSystem::GetInstance(); // ЗАДАЧА: для отладки
+
     MINFO(MMemory::GetMemoryUsageStr());
 
     while (State->IsRunning) {

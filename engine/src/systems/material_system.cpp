@@ -227,7 +227,7 @@ void MaterialSystem::Release(const char *name)
 bool MaterialSystem::ApplyGlobal(u32 ShaderID, u64 RenderFrameNumber, const Matrix4D &projection, const Matrix4D &view, const FVec4& AmbientColour, const FVec4& ViewPosition, u32 RenderMode)
 {
     auto ShaderSystemInst = ShaderSystem::GetInstance();
-    Shader* shader = ShaderSystemInst->GetShader(ShaderID);
+    auto shader = ShaderSystemInst->GetShader(ShaderID);
     if (!shader) {
         return false;
     }
@@ -266,8 +266,9 @@ bool MaterialSystem::ApplyInstance(Material *material, bool NeedsUpdate)
             MATERIAL_APPLY_OR_FAIL(ShaderSystemInst->UniformSet(state->MaterialLocations.DiffuseColour, &material->DiffuseColour));
             MATERIAL_APPLY_OR_FAIL(ShaderSystemInst->UniformSet(state->MaterialLocations.DiffuseTexture, &material->DiffuseMap));
             MATERIAL_APPLY_OR_FAIL(ShaderSystemInst->UniformSet(state->MaterialLocations.SpecularTexture, &material->SpecularMap));
-            MATERIAL_APPLY_OR_FAIL(ShaderSystemInst->UniformSet(state->MaterialLocations.specular, &material->NormalMap)); 
-            MATERIAL_APPLY_OR_FAIL(ShaderSystemInst->UniformSet(state->MaterialLocations.NormalTexture, &material->specular));
+            MATERIAL_APPLY_OR_FAIL(ShaderSystemInst->UniformSet(state->MaterialLocations.NormalTexture, &material->NormalMap));
+            MATERIAL_APPLY_OR_FAIL(ShaderSystemInst->UniformSet(state->MaterialLocations.specular, &material->specular));
+            
         } else if (material->ShaderID == state->UI_ShaderID) {
             // шейдер пользовательского интерфейса
             MATERIAL_APPLY_OR_FAIL(ShaderSystemInst->UniformSet(state->UI_Locations.DiffuseColour, &material->DiffuseColour));

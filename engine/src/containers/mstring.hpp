@@ -10,21 +10,23 @@ template<typename> class DArray;
 class MAPI MString
 {
 private:
-    u16 length        {};
-    char* str  {nullptr};
+    u16 length           {};
+    bool autorelease{false};
+    char* str     {nullptr};
 
 public:
-   constexpr MString() : length(), str(nullptr) {}
+   constexpr MString() : length(), autorelease(false), str(nullptr) {}
    /// @brief Создает нулевую строку с зарезервированной памятью под нужное количество символов + 1 для терминального ноля
    /// @param length длина строки
-   constexpr MString(u16 length);
+   /// @param autorealease указывает нужно ли удалять данные строки или нет ПРИМЕЧАНИЕ: по умолчанию true
+   constexpr MString(u16 length, bool autorelease = true);
    /// @brief Создает строку из двух строк
    /// @param str1 первая строка
    /// @param str2 вторая строка
-   constexpr MString(const char *str1, const char *str2);
-   constexpr MString(const MString &str1, const MString &str2);
-   //constexpr MString()
-   constexpr MString(const char *s);
+   /// @param autorealease указывает нужно ли удалять данные строки или нет ПРИМЕЧАНИЕ: по умолчанию true
+   constexpr MString(const char *str1, const char *str2, bool autorelease = true);
+   constexpr MString(const MString &str1, const MString &str2, bool autorelease = true);
+   constexpr MString(const char *s, bool autorelease = true);
    constexpr MString(const MString &s);
    constexpr MString(MString&& s);
     ~MString();
@@ -76,6 +78,7 @@ public:
     bool operator== (const MString& rhs) const;
     bool operator== (const char* s) const;
 
+    void SetAutoRealease(bool autorealease) { this->autorelease = autorealease; }
     /// @brief Получает длину заданной строки.
     /// @return Длину(количество символов в строке)
     constexpr u16 Length() const noexcept;

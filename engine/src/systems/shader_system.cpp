@@ -214,8 +214,8 @@ bool ShaderSystem::UniformSet(const char *UniformName, const void *value)
 
 bool ShaderSystem::UniformSet(u16 index, const void *value)
 {
-    Shader& shader = state->shaders[state->CurrentShaderID];
-    ShaderUniform& uniform = shader.uniforms[index];
+    auto& shader = state->shaders[state->CurrentShaderID];
+    auto& uniform = shader.uniforms[index];
     if (shader.BoundScope != uniform.scope) {
         if (uniform.scope == ShaderScope::Global) {
             shader.BindGlobals();

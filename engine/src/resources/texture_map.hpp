@@ -11,7 +11,7 @@ struct TextureMap {
     TextureRepeat RepeatV;                  // Режим повтора по оси V (или Y, или T)
     TextureRepeat RepeatW;                  // Режим повтора по оси W (или Z, или U)
     //ЗАДАЧА: пока нет directx используем VkSampler
-    void* sampler;                      // Указатель на внутренние данные, специфичные для API. Обычно внутренний сэмплер.
+    void* sampler;                          // Указатель на внутренние данные, специфичные для API. Обычно внутренний сэмплер.
     
     constexpr TextureMap() 
     : 

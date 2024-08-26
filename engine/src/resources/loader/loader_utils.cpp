@@ -10,8 +10,8 @@ bool LoaderUtils::ResourceUnload(ResourceLoader *self, Resource &resource, Memor
     }
 
     if (resource.FullPath) {
-        u16 PathLength = resource.FullPath.Length();
-        if (PathLength) {
+        //u16 PathLength = resource.FullPath.Length();
+        if (resource.FullPath) {
             resource.FullPath.Clear();
         }
     }
