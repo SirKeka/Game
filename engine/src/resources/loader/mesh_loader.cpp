@@ -140,6 +140,7 @@ void MeshLoader::Unload(Resource &resource)
         GeometryConfig* config = &(reinterpret_cast<GeometryConfig*>(resource.data))[i];
         config->Dispose();
     }
+    if(resource.FullPath) resource.FullPath.Clear();
     MMemory::Free(resource.data, resource.DataSize * sizeof(GeometryConfig), Memory::DArray);
     resource.data = nullptr;
     resource.DataSize = 0;

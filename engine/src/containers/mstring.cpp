@@ -508,19 +508,22 @@ bool MString::StringToF32(const char* s, f32& fn1, f32* fn2, f32* fn3, f32* fn4)
             s++;
         } break;
         case ' ': case '\0': {
+            if (buffer) {
+                end();
+                count++;
+                buffer   = 0;
+                factor   = 10;
+                sign     = false;
+                mantissa = false;
+            }
             s++;
-            end();
-            count++;
-            buffer   = 0;
-            factor   = 10;
-            sign     = false;
-            mantissa = false;
-
         } break;
-        default: {
+        /*case '\0': {
             goto ExitLoop;
-        }
-               break;
+        } break;*/
+        default: {
+            s++;
+        } break;
         }
     }
 ExitLoop:
