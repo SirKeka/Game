@@ -72,7 +72,7 @@ protected:
     //void* data;                     // Внутренние данные, специфичные для представления, для этого представления.
 public:
     constexpr RenderView()
-    : id(INVALID::U16ID), name(nullptr), width(), height(), type(), RenderpassCount(), passes(nullptr), CustomShaderName(nullptr) {}
+    : id(INVALID::U16ID), name(), width(), height(), type(), RenderpassCount(), passes(nullptr), CustomShaderName(nullptr) {}
     constexpr RenderView(u16 id, MString& name, KnownType type, u8 RenderpassCount, const char* CustomShaderName) 
     : id(id), name(std::move(name)), width(), height(), type(type), RenderpassCount(RenderpassCount), passes(MMemory::TAllocate<Renderpass*>(Memory::Renderer, RenderpassCount)), CustomShaderName(CustomShaderName) {}
     constexpr RenderView(u16 id, MString& name, u16 width, u16 height, KnownType type, u8 RenderpassCount, const char* CustomShaderName)

@@ -43,6 +43,13 @@ namespace Memory {
         Scene,
         HashTable,
         Resource,
+        Vulkan,
+        // "Внешние" выделения vulkan, только для целей отчетности.
+        VulkanEXT,
+        Direct3D,
+        Opengl,
+        // Представление GPU-local/vram
+        GpuLocal,
 
         MaxTags
     };
@@ -79,6 +86,16 @@ public:
     /// @param def использовать стандартный new при выделении памяти. Поумолчанию false
     /// @return указатель на выделенный блок памяти
     static void* Allocate(u64 bytes, Memory::Tag tag, bool nullify = false, bool def = false);
+    /// @brief Выполняет выровненное выделение памяти из хоста указанного размера и выравнивания. Выделение отслеживается для предоставленного тега. ПРИМЕЧАНИЕ: Память, выделенная таким образом, должна быть освобождена с помощью FreeAligned.
+    /// @param size размер выделения.
+    /// @param alignment Выравнивание в байтах.
+    /// @param tag указывает на использование выделенного блока.
+    /// @return В случае успеха указатель на блок выделенной памяти; в противном случае 0.
+    static void* AllocateAligned(u64 bytes, u16 alignment, Memory::Tag tag, bool nullify = false, bool def = false);
+    /// @brief Сообщает о выделении, связанном с приложением, но выполненном извне. Это можно сделать для элементов, выделенных в библиотеках сторонних поставщиков, например, для отслеживания выделений, но не их выполнения.
+    /// @param size размер выделения.
+    /// @param tag указывает на использование выделенного блока.
+    static void AllocateReport(u64 size, Memory::Tag tag);
 
     template<typename T>
     static constexpr T* TAllocate(Memory::Tag tag, u64 size = 1, bool nullify = false, bool def = false) {
@@ -90,6 +107,22 @@ public:
     /// @param tag название(тег) для чего использовалась память
     /// @param def использовать стандартный new при выделении памяти. Если при выделении памяти использовался. Поумолчанию false
     static void Free(void* block, u64 bytes, Memory::Tag tag, bool def = false);
+    /// @brief Освобождает указанный блок и отменяет отслеживание его размера из указанного тега.
+    /// @param block указатель на блок памяти, который необходимо освободить.
+    /// @param size размер блока, который необходимо освободить.
+    /// @param alignment 
+    /// @param tag Тег, указывающий использование блока.
+    static void FreeAligned(void* block, u64 size, u16 alignment, Memory::Tag tag, bool def = false);
+    /// @brief Сообщает об освобождении, связанном с приложением, но выполненном извне. Это можно сделать для элементов, выделенных в сторонних библиотеках, например, для отслеживания освобождений, но не их выполнения.
+    /// @param size Размер в байтах.
+    /// @param tag Тег, указывающий использование блока.
+    static void FreeReport(u64 size, Memory::Tag tag);
+    /// @brief Возвращает размер и выравнивание указанного блока памяти. ПРИМЕЧАНИЕ: Неудача в результате этого метода, скорее всего, указывает на повреждение кучи.
+    /// @param block блок памяти.
+    /// @param OutSize ссылка для хранения размера блока.
+    /// @param OutAlignment ссылка для хранения выравнивания блока.
+    /// @return True в случае успеха; в противном случае false.
+    static bool GetSizeAlignment(void* block, u64& OutSize, u16& OutAlignment);
     /// @brief Функция зануляет выделенный блок памяти
     /// @param block указатель на блок памяти, который нужно обнулить
     /// @param bytes размер блока памяти в байтах

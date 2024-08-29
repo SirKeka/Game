@@ -2,6 +2,12 @@
 #include "core/logger.hpp"
 #include "core/mmemory.hpp"
 
+struct AllocHeader {
+    u64 size;
+    u16 alignment;
+    u16 AlignmentOffset;
+};
+
 DynamicAllocator::~DynamicAllocator()
 {
     //if (state) {
@@ -88,43 +94,76 @@ bool DynamicAllocator::Destroy()
 
 void *DynamicAllocator::Allocate(u64 size)
 {
+    return AllocateAligned(size, 1);
+}
+
+void *DynamicAllocator::AllocateAligned(u64 size, u16 alignment)
+{
     if (state->MemoryBlock && size) {
         u64 offset = 0;
+
+        // Учитывайте место для заголовка.
+        u64 ActualSize = size + sizeof(AllocHeader);
+        u16 AlignmentOffset = 0;
+
         // Попытайтесь выделить из свободного списка.
-        if (state->list.AllocateBlock(size, offset)) {
-            // Используйте это смещение относительно блока базовой памяти, чтобы получить блок.
-            u8* block = (reinterpret_cast<u8*>(state->MemoryBlock) + offset);
-            return block;
+        void* block = nullptr;
+        if (state->list.AllocateBlockAligned(ActualSize, alignment, offset, AlignmentOffset)) {
+            // Установите информацию заголовка.
+            auto header = reinterpret_cast<AllocHeader*>(((u8*)state->MemoryBlock) + offset);
+            header->alignment = alignment;
+            header->AlignmentOffset = AlignmentOffset;
+            header->size = size;  // Сохраните фактический размер здесь.
+            // Блок — это state->memoryblock, затем offset, затем после заголовка.
+            block = reinterpret_cast<void*>(((u8*)state->MemoryBlock) + offset + sizeof(AllocHeader));
         } else {
-            MERROR("DynamicAllocator::Allocate нет блоков памяти, достаточно больших для выделения.");
+            MERROR("DynamicAllocator::AllocateBlockAligned нет блоков памяти, достаточно больших для выделения.");
             u64 available = state->list.FreeSpace();
             MERROR("Запрошенный размер: %llu, общее доступное пространство: %llu", size, available);
             // ЗАДАЧА: Report fragmentation?
-            return nullptr;
+            block = nullptr;
         }
+        return block;
     }
-    MERROR("DynamicAllocator::Allocate требуется размер.");
+    MERROR("DynamicAllocator::AllocateBlockAligned требуется размер.");
     return nullptr;
 }
 
 bool DynamicAllocator::Free(void *block, u64 size)
 {
+    return FreeAligned(block);
+}
+
+bool DynamicAllocator::FreeAligned(void *block)
+{
     if (!block) {
-        MERROR("DynamicAllocator::Free требует освобождения блока (0x%p).", block);
+        MERROR("DynamicAllocator::FreeAligned требует освобождения блока (0x%p).", block);
         return false;
     }
 
     // DynamicAllocatorState* state = allocator->memory;
     if (block < state->MemoryBlock || block > reinterpret_cast<u8*>(state->MemoryBlock) + state->TotalSize) {
         void* EndOfBlock = reinterpret_cast<u8*>(state->MemoryBlock) + state->TotalSize;
-        MERROR("DynamicAllocator::Free попытка освободить блок (0x%p) за пределами диапазона распределителя (0x%p)-(0x%p).", block, state->MemoryBlock, EndOfBlock);
+        MERROR("DynamicAllocator::FreeAligned попытка освободить блок (0x%p) за пределами диапазона распределителя (0x%p)-(0x%p).", block, state->MemoryBlock, EndOfBlock);
         return false;
     }
+    // Получите заголовок.
+    auto header = reinterpret_cast<AllocHeader*>(((u8*)block) - sizeof(AllocHeader));
+    u64 ActualSize = header->size + sizeof(AllocHeader);
     u64 offset = (reinterpret_cast<u8*>(block) - reinterpret_cast<u8*>(state->MemoryBlock));
-    if (!state->list.FreeBlock(size, offset)) {
-        MERROR("DynamicAllocator::Free failed.");
+    if (!state->list.FreeBlockAligned(ActualSize, offset - sizeof(AllocHeader), header->AlignmentOffset)) {
+        MERROR("DynamicAllocator::FreeAligned failed.");
         return false;
     }
+    return true;
+}
+
+bool DynamicAllocator::GetSizeAlignment(void *block, u64 &OutSize, u16 &OutAlignment)
+{
+    // Получите заголовок.
+    auto header = reinterpret_cast<AllocHeader*>((u8*)block - sizeof(AllocHeader));
+    OutSize = header->size;
+    OutAlignment = header->alignment;
     return true;
 }
 

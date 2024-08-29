@@ -48,7 +48,12 @@ static const char* MemoryTagStrings[Memory::MaxTags] = {
     "ENTITY NODE",
     "SCENE      ",
     "HASHTABLE  ",
-    "RESOURCE   "};
+    "RESOURCE   ",
+    "VULKAN     ",
+    "VULKAN_EXT ",
+    "DIRECT3D   ",
+    "OPENGL     ",
+    "GPU_LOCAL  "};
 
 MemoryState* MMemory::state = nullptr;
 
@@ -117,8 +122,13 @@ MINLINE void MMemory::Shutdown()
 
 void *MMemory::Allocate(u64 bytes, Memory::Tag tag, bool nullify, bool def)
 {
+    return AllocateAligned(bytes, 1, tag, nullify, def);
+}
+
+void *MMemory::AllocateAligned(u64 bytes, u16 alignment, Memory::Tag tag, bool nullify, bool def)
+{
     if (tag == Memory::Unknown) {
-        MWARN("allocate вызывается с использованием MemoryTag::Unknown. Переклассифицировать это распределение.");
+        MWARN("MMemory::AllocateAligned вызывается с использованием MemoryTag::Unknown. Переклассифицировать это распределение.");
     }
 
     // Либо выделяйте из системного распределителя, либо из ОС. Последнее никогда не должно произойти.
@@ -133,12 +143,12 @@ void *MMemory::Allocate(u64 bytes, Memory::Tag tag, bool nullify, bool def)
         state->TotalAllocated += bytes;
         state->TaggedAllocations[tag] += bytes;
         state->AllocCount++;
-        block = reinterpret_cast<u8*>(state->allocator.Allocate(bytes));
+        block = reinterpret_cast<u8*>(state->allocator.AllocateAligned(bytes, alignment));
         state->AllocationMutex.Unlock();
     } else {
         if (!state) {
             // Если система еще не запустилась, предупредите об этом, но дайте пока память.
-            MWARN("Memory::Allocate вызывается перед инициализацией системы памяти.");
+            MWARN("Memory::AllocateAligned вызывается перед инициализацией системы памяти.");
         }
         // ЗАДАЧА: Memory alignment
         block = new u8[bytes]; //platform_allocate(size, false);
@@ -151,11 +161,29 @@ void *MMemory::Allocate(u64 bytes, Memory::Tag tag, bool nullify, bool def)
         return block;
     }
     
-    MFATAL("MMemory::Allocate не удалось успешно распределить.");
+    MFATAL("MMemory::AllocateAligned не удалось успешно распределить.");
     return nullptr;
 }
 
+void MMemory::AllocateReport(u64 size, Memory::Tag tag)
+{
+    // Убедитесь, что многопоточные запросы не подавляют друг друга.
+    if (!state->AllocationMutex.Lock()) {
+        MFATAL("Ошибка получения блокировки мьютекса во время отчета о распределении.");
+        return;
+    }
+    state->TotalAllocated += size;
+    state->TaggedAllocations[tag] += size;
+    state->AllocCount++;
+    state->AllocationMutex.Unlock();
+}
+
 void MMemory::Free(void *block, u64 bytes, Memory::Tag tag, bool def)
+{
+    FreeAligned(block, bytes, 1, tag, def);
+}
+
+void MMemory::FreeAligned(void *block, u64 size, u16 alignment, Memory::Tag tag, bool def)
 {
     if (block) {
         if (tag == Memory::Unknown) {
@@ -166,10 +194,10 @@ void MMemory::Free(void *block, u64 bytes, Memory::Tag tag, bool def)
                 MFATAL("Невозможно получить блокировку мьютекса для операции освобождения. Вероятно повреждение кучи.");
                 return;
             }
-            state->TotalAllocated -= bytes;
-            state->TaggedAllocations[tag] -= bytes;
+            state->TotalAllocated -= size;
+            state->TaggedAllocations[tag] -= size;
             state->AllocCount--;
-            bool result = state->allocator.Free(block, bytes);
+            bool result = state->allocator.Free(block, size);
             block = nullptr;
             // Если освобождение не удалось, возможно, это связано с тем, что выделение было выполнено до запуска этой системы. 
             // Поскольку это абсолютно должно быть исключением из правил, попробуйте освободить его на уровне платформы. 
@@ -187,7 +215,25 @@ void MMemory::Free(void *block, u64 bytes, Memory::Tag tag, bool def)
     }
 }
 
-void* MMemory::ZeroMem(void* block, u64 bytes)
+void MMemory::FreeReport(u64 size, Memory::Tag tag)
+{
+    // Убедитесь, что многопоточные запросы не подавляют друг друга.
+    if (!state->AllocationMutex.Lock()) {
+        MFATAL("Ошибка получения блокировки мьютекса во время отчета о распределении.");
+        return;
+    }
+    state->TotalAllocated -= size;
+    state->TaggedAllocations[tag] -= size;
+    state->AllocCount--;
+    state->AllocationMutex.Unlock();
+}
+
+bool MMemory::GetSizeAlignment(void *block, u64 &OutSize, u16 &OutAlignment)
+{
+    return DynamicAllocator::GetSizeAlignment(block, OutSize, OutAlignment);
+}
+
+void *MMemory::ZeroMem(void *block, u64 bytes)
 {
     return memset(block, 0, bytes);
 }
@@ -242,7 +288,7 @@ char* MMemory::GetMemoryUsageStr()
         i32 length = snprintf(buffer + offset, 8000, "  %s: %.2f%s\n", MemoryTagStrings[i], amount, unit);
         offset += length;
     }
-    char* Out = MString::Duplicate(buffer);
+    char* Out = MString::Duplicate(buffer); // ЗАДАЧА: переделать
     return Out;
 }
 

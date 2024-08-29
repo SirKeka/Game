@@ -21,12 +21,12 @@ constexpr ResourceSystem::ResourceSystem(u32 MaxLoaderCount, const char* BasePat
     // new (RegisteredLoaders) ResourceLoader[MaxLoaderCount]();
 
     // ПРИМЕЧАНИЕ: Здесь можно автоматически зарегистрировать известные типы загрузчиков.
-    RegisterLoader<TextLoader>(ResourceType::Text, nullptr, "");
-    RegisterLoader<BinaryLoader>(ResourceType::Binary, nullptr, "");
-    RegisterLoader<ImageLoader>(ResourceType::Image, nullptr, "textures");
-    RegisterLoader<MaterialLoader>(ResourceType::Material, nullptr, "materials");
-    RegisterLoader<ShaderLoader>(ResourceType::Shader, nullptr, "shaders");
-    RegisterLoader<MeshLoader>(ResourceType::Mesh, nullptr, "models");
+    RegisterLoader<TextLoader>(ResourceType::Text, MString(), "");
+    RegisterLoader<BinaryLoader>(ResourceType::Binary, MString(), "");
+    RegisterLoader<ImageLoader>(ResourceType::Image, MString(), "textures");
+    RegisterLoader<MaterialLoader>(ResourceType::Material, MString(), "materials");
+    RegisterLoader<ShaderLoader>(ResourceType::Shader, MString(), "shaders");
+    RegisterLoader<MeshLoader>(ResourceType::Mesh, MString(), "models");
 }
 
 bool ResourceSystem::Initialize(u32 MaxLoaderCount, const char* BasePath)
