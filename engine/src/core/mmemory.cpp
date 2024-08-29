@@ -259,7 +259,7 @@ inline void MMemory::Construct(U *ptr, Args &&...args)
     new(start) U(std::forward<Args>(args)...);
 }
 
-char* MMemory::GetMemoryUsageStr()
+MString& MMemory::GetMemoryUsageStr()
 {
     const u64 gib = 1024 * 1024 * 1024;
     const u64 mib = 1024 * 1024;
@@ -288,7 +288,7 @@ char* MMemory::GetMemoryUsageStr()
         i32 length = snprintf(buffer + offset, 8000, "  %s: %.2f%s\n", MemoryTagStrings[i], amount, unit);
         offset += length;
     }
-    char* Out = MString::Duplicate(buffer); // ЗАДАЧА: переделать
+    MString Out { buffer }; // ЗАДАЧА: переделать
     return Out;
 }
 

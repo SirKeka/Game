@@ -147,7 +147,7 @@ public:
     template<class U, class... Args>
     void Construct (U* ptr, Args && ...args);
 
-    static char* GetMemoryUsageStr();
+    static MString& GetMemoryUsageStr();
 
     //void* operator new(u64 size);
 };
