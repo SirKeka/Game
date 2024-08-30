@@ -120,16 +120,16 @@ namespace INVALID
 #define MNOINLINE
 #endif
 
-#define GIBIBYTES(amount) amount * 1024 * 1024 * 1024   // Получает количество байтов из количества гибибайтов (GiB) (1024*1024*1024)
-#define MEBIBYTES(amount) amount * 1024 * 1024          // Получает количество байтов из количества мебибайтов (MiB) (1024*1024)
-#define KIBIBYTES(amount) amount * 1024                 // Получает количество байтов из количества кибибайтов (KiB) (1024)
+constexpr u64 GIBIBYTES(u64 amount) { return amount * 1024 * 1024 * 1024; } // Получает количество байтов из количества гибибайтов (GiB) (1024*1024*1024)
+constexpr u64 MEBIBYTES(u64 amount) { return amount * 1024 * 1024;        } // Получает количество байтов из количества мебибайтов (MiB) (1024*1024)
+constexpr u64 KIBIBYTES(u64 amount) { return amount * 1024;               } // Получает количество байтов из количества кибибайтов (KiB) (1024)
 
-#define GIGABYTES(amount) amount * 1000 * 1000 * 1000   // Получает количество байтов из количества гигабайт    (GB) (1000*1000*1000)
-#define MEGABYTES(amount) amount * 1000 * 1000          // Получает количество байтов из количества мегабайт    (MB) (1000*1000)
-#define KILOBYTES(amount) amount * 1000                 // Получает количество байтов из количества килобайт    (KB) (1000)
+constexpr u64 GIGABYTES(u64 amount) { return amount * 1000 * 1000 * 1000; } // Получает количество байтов из количества гигабайт   (GB) (1000*1000*1000)
+constexpr u64 MEGABYTES(u64 amount) { return amount * 1000 * 1000;        } // Получает количество байтов из количества мегабайт   (MB) (1000*1000)
+constexpr u64 KILOBYTES(u64 amount) { return amount * 1000;               } // Получает количество байтов из количества килобайт   (KB) (1000)
 
-#define VARIABLE_TO_STRING(Variable) (void(Variable),#Variable)   // Проверяет существует ли переменная, если да, то преобразует в строку.
-#define TYPE_TO_STRING(Type) (void(sizeof(Type)),#Type)           // Проверяет существует ли тип, если да, то преобразует в строку.
+#define VARIABLE_TO_STRING(Variable) (void(Variable),#Variable)      // Проверяет существует ли переменная, если да, то преобразует в строку.
+#define TYPE_TO_STRING(Type) (void(sizeof(Type)),#Type)              // Проверяет существует ли тип, если да, то преобразует в строку.
 
 //ЗАДАЧА: возможно здесь этому не место
 /// @brief Диапазон, обычной памяти

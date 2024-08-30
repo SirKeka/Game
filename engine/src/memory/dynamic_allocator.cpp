@@ -1,12 +1,15 @@
 #include "dynamic_allocator.hpp"
+#include "core/asserts.hpp"
 #include "core/logger.hpp"
 #include "core/mmemory.hpp"
 
 struct AllocHeader {
-    u64 size;
+    void* start;
     u16 alignment;
-    u16 AlignmentOffset;
 };
+
+// Размер хранилища в байтах размера блока пользовательской памяти узла
+constexpr auto SIZE_STORAGE = sizeof(u32);
 
 DynamicAllocator::~DynamicAllocator()
 {
@@ -100,30 +103,45 @@ void *DynamicAllocator::Allocate(u64 size)
 void *DynamicAllocator::AllocateAligned(u64 size, u16 alignment)
 {
     if (state->MemoryBlock && size) {
-        u64 offset = 0;
+        // Требуемый размер рассчитывается на основе запрошенного размера, а также выравнивания, 
+        // заголовка и u32 для хранения размера для быстрого/легкого поиска.
+        u64 RequiredSize = alignment + sizeof(AllocHeader) + SIZE_STORAGE + size;
+        // ПРИМЕЧАНИЕ: Это преобразование действительно будет проблемой только при выделениях более ~4ГиБ, так что... не делайте этого.
+        MASSERT_MSG(RequiredSize < 4294967295U, "DynamicAllocator::AllocateAligned вызывается с требуемым размером > 4ГиБ. Не делайте этого.");
 
-        // Учитывайте место для заголовка.
-        u64 ActualSize = size + sizeof(AllocHeader);
-        u16 AlignmentOffset = 0;
+        u64 BaseOffset = 0;
+        if (state->list.AllocateBlock(RequiredSize, BaseOffset)) {
+            /*
+            Схема памяти:
+            x bytes/void заполнение
+            4 bytes/u32 размер пользовательского блока
+            x bytes/void блок пользовательской памяти
+            alloc_header
 
-        // Попытайтесь выделить из свободного списка.
-        void* block = nullptr;
-        if (state->list.AllocateBlockAligned(ActualSize, alignment, offset, AlignmentOffset)) {
-            // Установите информацию заголовка.
-            auto header = reinterpret_cast<AllocHeader*>(((u8*)state->MemoryBlock) + offset);
+            */
+            // Получить базовый указатель или невыровненный блок памяти.
+            auto ptr = reinterpret_cast<void*>((u64)state->MemoryBlock + BaseOffset);
+            // Начните выравнивание после достаточного пространства 
+            // для хранения u32. Это позволяет хранить u32 непосредственно 
+            // перед блоком пользователя, сохраняя при этом выравнивание на указанном блоке пользователя.
+            u64 AlignedBlockOffset = Range::GetAligned((u64)ptr + BaseOffset + SIZE_STORAGE, alignment);
+            // Сохраните размер непосредственно перед блоком пользовательских данных
+            u32* BlockSize = reinterpret_cast<u32*>(AlignedBlockOffset - SIZE_STORAGE);
+            *BlockSize = (u32)size;
+            // Сохраните заголовок непосредственно после пользовательского блока.
+            auto header = reinterpret_cast<AllocHeader*>(AlignedBlockOffset + size);
+            header->start = ptr;
             header->alignment = alignment;
-            header->AlignmentOffset = AlignmentOffset;
-            header->size = size;  // Сохраните фактический размер здесь.
-            // Блок — это state->memoryblock, затем offset, затем после заголовка.
-            block = reinterpret_cast<void*>(((u8*)state->MemoryBlock) + offset + sizeof(AllocHeader));
+
+            return reinterpret_cast<void*>(AlignedBlockOffset);
+
         } else {
             MERROR("DynamicAllocator::AllocateBlockAligned нет блоков памяти, достаточно больших для выделения.");
             u64 available = state->list.FreeSpace();
             MERROR("Запрошенный размер: %llu, общее доступное пространство: %llu", size, available);
             // ЗАДАЧА: Report fragmentation?
-            block = nullptr;
+            return nullptr;
         }
-        return block;
     }
     MERROR("DynamicAllocator::AllocateBlockAligned требуется размер.");
     return nullptr;
@@ -147,11 +165,12 @@ bool DynamicAllocator::FreeAligned(void *block)
         MERROR("DynamicAllocator::FreeAligned попытка освободить блок (0x%p) за пределами диапазона распределителя (0x%p)-(0x%p).", block, state->MemoryBlock, EndOfBlock);
         return false;
     }
-    // Получите заголовок.
-    auto header = reinterpret_cast<AllocHeader*>(((u8*)block) - sizeof(AllocHeader));
-    u64 ActualSize = header->size + sizeof(AllocHeader);
-    u64 offset = (reinterpret_cast<u8*>(block) - reinterpret_cast<u8*>(state->MemoryBlock));
-    if (!state->list.FreeBlockAligned(ActualSize, offset - sizeof(AllocHeader), header->AlignmentOffset)) {
+
+    u32* BlockSize = reinterpret_cast<u32*>((u64)block - SIZE_STORAGE);
+    auto header = reinterpret_cast<AllocHeader*>((u64)block + *BlockSize);
+    u64 required_size = header->alignment + sizeof(AllocHeader) + SIZE_STORAGE + *BlockSize;
+    u64 offset = (u64)header->start - (u64)state->MemoryBlock;
+    if (!state->list.FreeBlock(required_size, offset)) {
         MERROR("DynamicAllocator::FreeAligned failed.");
         return false;
     }
@@ -161,8 +180,8 @@ bool DynamicAllocator::FreeAligned(void *block)
 bool DynamicAllocator::GetSizeAlignment(void *block, u64 &OutSize, u16 &OutAlignment)
 {
     // Получите заголовок.
-    auto header = reinterpret_cast<AllocHeader*>((u8*)block - sizeof(AllocHeader));
-    OutSize = header->size;
+    OutSize = *reinterpret_cast<u32*>((u64)block - SIZE_STORAGE);
+    auto header = reinterpret_cast<AllocHeader*>((u64)block + OutSize);
     OutAlignment = header->alignment;
     return true;
 }
@@ -170,6 +189,11 @@ bool DynamicAllocator::GetSizeAlignment(void *block, u64 &OutSize, u16 &OutAlign
 u64 DynamicAllocator::FreeSpace()
 {
     return state->list.FreeSpace();
+}
+
+u64 DynamicAllocator::TotalSpace()
+{
+    return state->TotalSize;
 }
 
 DynamicAllocator::operator bool() const

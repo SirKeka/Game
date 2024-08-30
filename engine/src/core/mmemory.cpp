@@ -259,37 +259,62 @@ inline void MMemory::Construct(U *ptr, Args &&...args)
     new(start) U(std::forward<Args>(args)...);
 }
 
+<<<<<<< Updated upstream
 MString& MMemory::GetMemoryUsageStr()
+=======
+MString MMemory::GetMemoryUsageStr()
+>>>>>>> Stashed changes
 {
-    const u64 gib = 1024 * 1024 * 1024;
-    const u64 mib = 1024 * 1024;
-    const u64 kib = 1024;
-
     char buffer[8000] = "Использование системной памяти (с тегами):\n";
     u64 offset = MString::Length(buffer);
     for (u32 i = 0; i < Memory::MaxTags; ++i) {
-        char unit[4] = "XiB";
-        float amount = 1.0f;
-        if (state->TaggedAllocations[i] >= gib) {
-            unit[0] = 'G';
-            amount = state->TaggedAllocations[i] / (float)gib;
-        } else if (state->TaggedAllocations[i] >= mib) {
-            unit[0] = 'M';
-            amount = state->TaggedAllocations[i] / (float)mib;
-        } else if (state->TaggedAllocations[i] >= kib) {
-            unit[0] = 'K';
-            amount = state->TaggedAllocations[i] / (float)kib;
-        } else {
-            unit[0] = 'B';
-            unit[1] = 0;
-            amount = (float)state->TaggedAllocations[i];
-        }
+        f32 amount = 1.F;
+        const char* unit = GetUnitForSize(state->TaggedAllocations[i], amount);
 
         i32 length = snprintf(buffer + offset, 8000, "  %s: %.2f%s\n", MemoryTagStrings[i], amount, unit);
         offset += length;
     }
+<<<<<<< Updated upstream
     MString Out { buffer }; // ЗАДАЧА: переделать
     return Out;
+=======
+    {
+        // Рассчет общего использования памяти
+        u64 TotalSpace = state->allocator.TotalSpace();
+        u64 FreeSpace = state->allocator.FreeSpace();
+        u64 UsedSpace = TotalSpace - FreeSpace;
+
+        f32 UsedAmount = 1.F;
+        const char* UsedUnit = GetUnitForSize(UsedSpace, UsedAmount);
+
+        f32 TotalAmount = 1.F;
+        const char* TotalUnit = GetUnitForSize(TotalSpace, TotalAmount);
+
+        f64 PercentUsed = (f64)(UsedSpace) / TotalSpace;
+
+        i32 length = snprintf(buffer + offset, 8000, "Total memory usage: %.2f%s of %.2f%s (%.2f%%)\n", UsedAmount, UsedUnit, TotalAmount, TotalUnit, PercentUsed);
+        offset += length;
+    }
+    
+    return buffer;
+}
+
+const char* MMemory::GetUnitForSize(u64 SizeBytes, f32 &OutAmount)
+{
+    if (SizeBytes >= GIBIBYTES(1)) {
+        OutAmount = SizeBytes / GIBIBYTES(1);
+        return "GiB";
+    } else if (SizeBytes >= MEBIBYTES(1)) {
+        OutAmount = SizeBytes / MEBIBYTES(1);
+        return "MiB";
+    } else if (SizeBytes >= KIBIBYTES(1)) {
+        OutAmount = SizeBytes / KIBIBYTES(1);
+        return "KiB";
+    } else {
+        OutAmount = (f32)SizeBytes;
+        return "B";
+    }
+>>>>>>> Stashed changes
 }
 
 /*void * MMemory::operator new(u64 size)

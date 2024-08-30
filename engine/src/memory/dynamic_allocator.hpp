@@ -52,6 +52,9 @@ public:
     /// @return True в случае успеха; в противном случае false.
     static bool GetSizeAlignment(void* block, u64& OutSize, u16& OutAlignment);
     u64 FreeSpace();
+    /// @brief Получает объем общего пространства, изначально доступного в предоставленном распределителе.
+    /// @return Общий объем пространства, изначально доступного в байтах.
+    u64 TotalSpace();
 
     operator bool() const;
 private:

@@ -147,7 +147,13 @@ public:
     template<class U, class... Args>
     void Construct (U* ptr, Args && ...args);
 
+<<<<<<< Updated upstream
     static MString& GetMemoryUsageStr();
+=======
+    static MString GetMemoryUsageStr();
+>>>>>>> Stashed changes
 
-    //void* operator new(u64 size);
+    static const char* GetUnitForSize(u64 SizeBytes, f32& OutAmount);
+
+    // void* operator new(u64 size);
 };

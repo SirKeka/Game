@@ -69,27 +69,13 @@ void FreeList::Create(u64 TotalSize, void *memory)
 
 bool FreeList::AllocateBlock(u64 size, u64 &OutOffset)
 {
-    u16 RubbishAlignmentOffset = 0;
-    return AllocateBlockAligned(size, 1, OutOffset, RubbishAlignmentOffset);
-}
-
-bool FreeList::AllocateBlockAligned(u64 size, u16 alignment, u64 &OutOffset, u16 &OutAlignmentOffset)
-{
     FreelistNode* node = state->head;
     FreelistNode* previous = nullptr;
     while (node) {
-        // Получить выровненное смещение для узла.
-        u64 AlignedOffset = Range::GetAligned(node->offset, alignment);
-        // Количество байтов, необходимых для выполнения выравнивания.
-        u64 AlignmentOffset = AlignedOffset - node->offset;
-        // Общий размер, требуемый выровненным распределением.
-        u64 AlignedSize = size + AlignmentOffset;
-
-        if (node->size == AlignedSize && AlignedOffset == 0) {
+        if (node->size == size) {
             // Точное совпадение. Просто верните узел *если он также правильно выровнен*.
             // Если не выровнен, этого будет недостаточно.  
-            OutOffset = AlignedOffset;
-            OutAlignmentOffset = 0;
+            OutOffset = node->offset;
             FreelistNode* NodeToReturn = nullptr;
             if (previous) {
                 previous->next = node->next;
@@ -102,13 +88,12 @@ bool FreeList::AllocateBlockAligned(u64 size, u16 alignment, u64 &OutOffset, u16
             }
             ReturnNode(NodeToReturn);
             return true;
-        } else if (node->size > AlignedSize) {
+        } else if (node->size > size) {
             // Узел больше, чем требование + смещение выравнивания.
             // Вычтите из него память и переместите смещение на эту величину.
-            OutOffset = AlignedOffset;
-            OutAlignmentOffset = AlignmentOffset;
-            node->size -= AlignedSize;
-            node->offset += AlignedSize;
+            OutOffset = node->offset;
+            node->size -= size;
+            node->offset += size;
             return true;
         }
 
@@ -123,11 +108,6 @@ bool FreeList::AllocateBlockAligned(u64 size, u16 alignment, u64 &OutOffset, u16
 
 bool FreeList::FreeBlock(u64 size, u64 offset)
 {
-    return FreeBlockAligned(size, offset, 0);
-}
-
-bool FreeList::FreeBlockAligned(u64 size, u64 offset, u16 AlignmentOffset)
-{
     if (!size) {
         return false;
     }
@@ -135,23 +115,20 @@ bool FreeList::FreeBlockAligned(u64 size, u64 offset, u16 AlignmentOffset)
     FreelistNode* node = state->head;
     FreelistNode* previous = nullptr;
 
-    u64 UnalignedOffset = offset - AlignmentOffset;
-    u64 UnalignedSize = size + AlignmentOffset;
-
     if (!node) {
         // Проверка случая, когда выделено все.
         // В этом случае во главе необходим новый узел.
         FreelistNode* NewNode = GetNode();
-        NewNode->offset = UnalignedOffset;
-        NewNode->size = UnalignedSize;
+        NewNode->offset = offset;
+        NewNode->size = size;
         NewNode->next = nullptr;
         state->head = NewNode;
         return true;
     } else {
         while (node) {
-            if (node->offset + node->size == UnalignedOffset || node->offset == UnalignedOffset + UnalignedSize) { 
+            if (node->offset + node->size == offset || node->offset == offset + size) { 
                 // Можно просто добавить к этому узлу.
-                node->size += UnalignedSize;
+                node->size += size;
                 if (node->offset == offset + size) {
                     node->offset = offset;
                 }
@@ -165,16 +142,16 @@ bool FreeList::FreeBlockAligned(u64 size, u64 offset, u16 AlignmentOffset)
                     ReturnNode(next);
                 }
                 return true;
-            } else if(node->offset == UnalignedOffset) {
+            } else if(node->offset == offset) {
                 // Если есть точное совпадение, это означает, что точный блок памяти
                 // который уже свободен, освобождается снова.
                 MFATAL("Попытка освободить уже освобожденный блок памяти со смещением %llu", node->offset);
                 return false;
-            } else if (node->offset > UnalignedOffset) {
+            } else if (node->offset > offset) {
                 // Выходит за пределы освобождаемого пространства. Нужен новый узел.
                 FreelistNode* NewNode = GetNode();
-                NewNode->offset = UnalignedOffset;
-                NewNode->size = UnalignedSize;
+                NewNode->offset = offset;
+                NewNode->size = size;
 
                 // Если существует предыдущий узел, новый узел должен быть вставлен между этим и ним.
                 if (previous) {

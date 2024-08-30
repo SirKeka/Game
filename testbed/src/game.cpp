@@ -37,7 +37,12 @@ bool Game::Update(f32 DeltaTime)
     static u64 AllocCount = 0;
     u64 PrevAllocCount = AllocCount;
     AllocCount = MMemory::GetMemoryAllocCount(); // TODO: проверить странные значения
+<<<<<<< Updated upstream
     if (InputInst->IsKeyUp(Keys::M) && InputInst->WasKeyDown(Keys::M)) {        
+=======
+    if (InputInst->IsKeyUp(Keys::M) && InputInst->WasKeyDown(Keys::M)) {
+        
+>>>>>>> Stashed changes
         MINFO(MMemory::GetMemoryUsageStr().c_str());
         MDEBUG("Распределено: %llu (%llu в этом кадре)", AllocCount, AllocCount - PrevAllocCount);
     }
