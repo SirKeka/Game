@@ -259,11 +259,7 @@ inline void MMemory::Construct(U *ptr, Args &&...args)
     new(start) U(std::forward<Args>(args)...);
 }
 
-<<<<<<< Updated upstream
-MString& MMemory::GetMemoryUsageStr()
-=======
 MString MMemory::GetMemoryUsageStr()
->>>>>>> Stashed changes
 {
     char buffer[8000] = "Использование системной памяти (с тегами):\n";
     u64 offset = MString::Length(buffer);
@@ -274,10 +270,6 @@ MString MMemory::GetMemoryUsageStr()
         i32 length = snprintf(buffer + offset, 8000, "  %s: %.2f%s\n", MemoryTagStrings[i], amount, unit);
         offset += length;
     }
-<<<<<<< Updated upstream
-    MString Out { buffer }; // ЗАДАЧА: переделать
-    return Out;
-=======
     {
         // Рассчет общего использования памяти
         u64 TotalSpace = state->allocator.TotalSpace();
@@ -292,7 +284,7 @@ MString MMemory::GetMemoryUsageStr()
 
         f64 PercentUsed = (f64)(UsedSpace) / TotalSpace;
 
-        i32 length = snprintf(buffer + offset, 8000, "Total memory usage: %.2f%s of %.2f%s (%.2f%%)\n", UsedAmount, UsedUnit, TotalAmount, TotalUnit, PercentUsed);
+        i32 length = snprintf(buffer + offset, 8000, " Total memory usage: %.2f%s of %.2f%s (%.2f%%)\n", UsedAmount, UsedUnit, TotalAmount, TotalUnit, PercentUsed);
         offset += length;
     }
     
@@ -314,7 +306,6 @@ const char* MMemory::GetUnitForSize(u64 SizeBytes, f32 &OutAmount)
         OutAmount = (f32)SizeBytes;
         return "B";
     }
->>>>>>> Stashed changes
 }
 
 /*void * MMemory::operator new(u64 size)
