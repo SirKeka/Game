@@ -23,13 +23,15 @@ FreeList::~FreeList()
 
 u64 FreeList::GetMemoryRequirement(u64 TotalSize)
 {
-    // Если требуемая память слишком мала, следует предупредить о нерациональном использовании.
-    u64 MemMin = (sizeof(FreeListState) + sizeof(FreelistNode)) * 8;
-    if (TotalSize < MemMin) {
-        MWARN("Списки свободной памяти очень неэффективны при объеме памяти менее %iбайт; в этом случае рекомендуется не использовать данную структуру.", MemMin);
-    }
     // Достаточно места для хранения состояния плюс массив для всех узлов.
     u64 MaxNodes = TotalSize / (sizeof(void*) * sizeof(FreelistNode));  // ПРИМЕЧАНИЕ: Может быть остаток, но это нормально.
+
+    // Поймайте крайний случай, когда у вас действительно небольшой объем памяти для управления и очень мало записей. 
+    // Всегда убеждайтесь, что у вас есть по крайней мере приличный объем, около 20.
+    if (MaxNodes < 20) {
+        MaxNodes = 20;
+    }
+
     return (sizeof(FreeListState) + (sizeof(FreelistNode) * MaxNodes));
 }
 
@@ -54,6 +56,14 @@ void FreeList::GetMemoryRequirement(u64 TotalSize, u64 &MemoryRequirement)
 void FreeList::Create(u64 TotalSize, void *memory)
 {
     u64 MaxNodes = TotalSize / (sizeof(void*) * sizeof(FreelistNode));  // ПРИМЕЧАНИЕ: Может быть остаток, но это нормально.
+
+    // Если требуемая память слишком мала, следует предупредить о нерациональном использовании.
+    u64 MemMin = (sizeof(FreeListState) + sizeof(FreelistNode)) * 8;
+    
+    if (TotalSize < MemMin) {
+        MWARN("Списки свободной памяти очень неэффективны при объеме памяти менее %iбайт; в этом случае рекомендуется не использовать данную структуру.", MemMin);
+    }
+
     // Компоновка блока начинается с головы*, затем массива доступных узлов.
     // MMemory::ZeroMem(memory, sizeof(FreeListState) + (sizeof(FreelistNode) * MaxNodes));
     state = reinterpret_cast<FreeListState*>(memory);

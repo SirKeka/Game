@@ -49,7 +49,7 @@ namespace Memory {
         Direct3D,
         Opengl,
         // Представление GPU-local/vram
-        GpuLocal,
+        GPULocal,
 
         MaxTags
     };

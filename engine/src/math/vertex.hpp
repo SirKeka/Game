@@ -15,14 +15,14 @@ struct Vertex2D
 /// FVec3 normal   - Нормаль вершины
 /// FVec2 texcoord - Текстурные коорднаты
 /// FVec4 colour   - Цвет вершины
-/// FVec4 tangent  - Касательная вершины.
+/// FVec3 tangent  - Касательная вершины.
 struct Vertex3D
 {
     FVec3 position; // Позиция вершины
     FVec3 normal;   // Нормаль вершины
     FVec2 texcoord; // Текстурные коорднаты
     FVec4 colour;   // Цвет вершины
-    FVec4 tangent;  // Касательная вершины.
+    FVec3 tangent;  // Касательная вершины.
 
     const bool operator==(const Vertex3D& v3d) {
         if (position == v3d.position && normal == v3d.normal && texcoord == v3d.texcoord && colour == v3d.colour && tangent == v3d.tangent) {

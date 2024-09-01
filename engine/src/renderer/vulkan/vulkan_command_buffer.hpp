@@ -58,12 +58,12 @@ void VulkanCommandBufferReset(VulkanCommandBuffer* CommandBuffer);
 void VulkanCommandBufferAllocateAndBeginSingleUse(
     VulkanAPI* VkAPI,
     VkCommandPool pool,
-    VulkanCommandBuffer* OutCommandBuffer
+    VulkanCommandBuffer& OutCommandBuffer
 );
 
 // Завершает запись, передает и ожидает операции очереди и освобождает предоставленный командный буфер.
 void VulkanCommandBufferEndSingleUse(
     VulkanAPI* VkAPI,
     VkCommandPool pool,
-    VulkanCommandBuffer* CommandBuffer,
+    VulkanCommandBuffer& CommandBuffer,
     VkQueue queue);

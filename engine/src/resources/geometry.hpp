@@ -51,6 +51,7 @@ public:
     Geometry& operator= (const Geometry& g);
     Geometry& operator= (const Geometry* g);
 
+    void SetVertexIndex(u32 VertexCount, u32 VertexElementSize, u32 IndexCount);
     void SetVertexData(u32 VertexCount, u32 ElementSize, u64 VertexBufferOffset);
     void SetIndexData(u32 IndexCount, u64 IndexBufferOffset);
 

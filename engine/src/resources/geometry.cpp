@@ -56,7 +56,15 @@ Geometry &Geometry::operator=(const Geometry *g)
     return *this;
 }
 
-void Geometry::SetVertexData(u32 VertexCount, u32 ElementSize, u64 VertexBufferOffset) 
+void Geometry::SetVertexIndex(u32 VertexCount, u32 VertexElementSize, u32 IndexCount)
+{
+    this->VertexCount = VertexCount;
+    this->VertexElementSize = VertexElementSize;
+    this->IndexCount = IndexCount;
+    this->IndexElementSize = sizeof(u32);
+}
+
+void Geometry::SetVertexData(u32 VertexCount, u32 ElementSize, u64 VertexBufferOffset)
 {
     this->VertexCount = VertexCount;
     this->VertexElementSize = ElementSize;

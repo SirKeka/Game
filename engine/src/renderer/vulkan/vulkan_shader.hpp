@@ -1,7 +1,7 @@
 #pragma once
 #include "defines.hpp"
 #include "vulkan_pipeline.hpp"
-#include "vulkan_buffer.hpp"
+#include "renderer/renderbuffer.hpp"
 
 /// @todo ЗАДАЧА: сделать настраиваемым
 constexpr int VULKAN_MAX_UI_COUNT = 1024;       // Максимальное количество экземпляров элемента управления пользовательского интерфейса
@@ -90,7 +90,7 @@ struct VulkanShader {
     VkDescriptorPool DescriptorPool;                                    // Пул дескрипторов, используемый для этого шейдера.
     VkDescriptorSetLayout DescriptorSetLayouts[2];                      // Макеты набора дескрипторов, максимум 2. Индекс 0 = глобальный, 1 = экземпляр.
     VkDescriptorSet GlobalDescriptorSets[3];                            // Наборы глобальных дескрипторов, по одному на кадр.
-    VulkanBuffer UniformBuffer;                                         // Универсальный буфер, используемый этим шейдером.
+    RenderBuffer UniformBuffer;                                         // Универсальный буфер, используемый этим шейдером.
     VulkanPipeline pipeline;                                            // Конвейер, связанный с этим шейдером.
     u32 InstanceCount;                                                  // Экземпляр состояния для всех экземпляров. ЗАДАЧА: динамичным */
     VulkanShaderInstanceState InstanceStates[VULKAN_MAX_MATERIAL_COUNT];

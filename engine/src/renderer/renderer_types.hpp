@@ -5,6 +5,7 @@
 #include "math/vertex.hpp"
 #include "resources/shader.hpp"
 #include "renderer/views/render_view.hpp"
+#include "renderbuffer.hpp"
 
 struct StaticMeshData;
 class Texture;
@@ -130,6 +131,10 @@ public:
     /// @param data данные рендеринга геометрии, которая должна быть нарисована.
     virtual void DrawGeometry(const GeometryRenderData& data) = 0;
 
+    //////////////////////////////////////////////////////////////////////
+    //                             Texture                              //
+    //////////////////////////////////////////////////////////////////////
+
     /// @brief Загружает данные текстуры в графический процессор.
     /// @param texture указатель на текстуру которую нужно загрузить.
     /// @param pixels Необработанные данные изображения, которые будут загружены в графический процессор.
@@ -159,7 +164,10 @@ public:
 
     virtual bool Load(struct GeometryID* gid, u32 VertexSize, u32 VertexCount, const void* vertices, u32 IndexSize, u32 IndexCount, const void* indices) = 0;
     virtual void Unload(struct GeometryID* gid) = 0;
-    // Методы относящиеся к шейдерам---------------------------------------------------------------------------------------------------------------------------------------------
+
+    //////////////////////////////////////////////////////////////////////
+    //                              Shader                              //
+    //////////////////////////////////////////////////////////////////////
 
     /// @brief Создает внутренние ресурсы шейдера, используя предоставленные параметры.
     /// @param shader указатель на шейдер.
@@ -214,6 +222,99 @@ public:
     /// @param value указатель на значение, которое необходимо установить.
     /// @return true в случае успеха, иначе false.
     virtual bool SetUniform(Shader* shader, struct ShaderUniform* uniform, const void* value) = 0;
+
+    //////////////////////////////////////////////////////////////////////
+    //                           RenderBuffer                           //
+    //////////////////////////////////////////////////////////////////////
+
+    /// @brief Создает и назначает буфер, специфичный для бэкэнда рендерера.
+    ///
+    /// @param buffer Указатель для создания внутреннего буфера.
+    /// @returns True в случае успеха; в противном случае false.
+    virtual bool RenderBufferCreateInternal(RenderBuffer& buffer) = 0;
+
+    /// @brief Уничтожает указанный буфер.
+    ///
+    /// @param buffer Указатель на буфер, который необходимо уничтожить.
+    virtual void RenderBufferDestroyInternal(RenderBuffer& buffer) = 0;
+
+    /// @brief Связывает заданный буфер с указанным смещением.
+    ///
+    /// @param buffer Указатель на буфер для привязки.
+    /// @param offset Смещение в байтах от начала буфера.
+    /// @returns True в случае успеха; в противном случае false.
+    virtual bool RenderBufferBind(RenderBuffer& buffer, u64 offset) = 0;
+    /// @brief Отменяет привязку указанного буфера.
+    ///
+    /// @param buffer Указатель на буфер, который необходимо отменить.
+    /// @returns True в случае успеха; в противном случае false.
+    virtual bool RenderBufferUnbind(RenderBuffer& buffer) = 0;
+
+    /// @brief Отображает память из указанного буфера в предоставленном диапазоне в блок памяти и возвращает его. 
+    /// Эта память должна считаться недействительной после отмены отображения.
+    /// @param buffer Указатель на буфер для отображения.
+    /// @param offset Количество байтов от начала буфера для отображения.
+    /// @param size Объем памяти в буфере для отображения.
+    /// @returns Отображенный блок памяти. Освобожден и недействителен после отмены отображения.
+    virtual void* RenderBufferMapMemory(RenderBuffer& buffer, u64 offset, u64 size) = 0;
+    /// @brief Отменяет отображение памяти из указанного буфера в предоставленном диапазоне в блок памяти. 
+    /// Эта память должна считаться недействительной после отмены отображения.
+    /// @param buffer Указатель на буфер для отмены отображения.
+    /// @param offset Количество байтов от начала буфера для отмены отображения.
+    /// @param size Объем памяти в буфере для отмены отображения.
+    virtual void RenderBufferUnmapMemory(RenderBuffer& buffer, u64 offset, u64 size) = 0;
+
+    /// @brief Очищает буферную память в указанном диапазоне. Должно быть сделано после записи.
+    /// @param buffer Указатель на буфер для отмены отображения.
+    /// @param offset Количество байтов от начала буфера для очистки.
+    /// @param size Объем памяти в буфере для очистки.
+    /// @returns True в случае успеха; в противном случае false.
+    virtual bool RenderBufferFlush(RenderBuffer& buffer, u64 offset, u64 size) = 0;
+
+    /// @brief Считывает память из предоставленного буфера в указанном диапазоне в выходную переменную.
+    /// @param buffer указатель на буфер для чтения.
+    /// @param offset количество байтов от начала буфера для чтения.
+    /// @param size объем памяти в буфере для чтения.
+    /// @param out_memory указатель на блок памяти для чтения. Должен быть соответствующего размера.
+    /// @returns True в случае успеха; в противном случае false.
+    virtual bool RenderBufferRead(RenderBuffer& buffer, u64 offset, u64 size, void** OutMemory) = 0;
+
+    /// @brief Изменяет размер указанного буфера на NewTotalSize. NewTotalSize должен быть больше текущего размера буфера. Данные из старого внутреннего буфера копируются.
+    ///
+    /// @param buffer указатель на буфер, размер которого необходимо изменить.
+    /// @param NewTotalSize новый размер в байтах. Должен быть больше текущего размера.
+    /// @returns True в случае успеха; в противном случае false.
+    virtual bool RenderBufferResize(RenderBuffer& buffer, u64 NewTotalSize) = 0;
+
+    /// @brief Загружает предоставленные данные в указанный диапазон указанного буфера.
+    ///
+    /// @param buffer указатель на буфер, в который нужно загрузить данные.
+    /// @param offset смещение в байтах от начала буфера.
+    /// @param size размер данных в байтах для загрузки.
+    /// @param data данные для загрузки.
+    /// @returns True в случае успеха; в противном случае false.
+    virtual bool RenderBufferLoadRange(RenderBuffer& buffer, u64 offset, u64 size, const void* data) = 0;
+
+    /// @brief Копирует данные в указанном диапазоне из исходного буфера в целевой буфер.
+    ///
+    /// @param source указатель на исходный буфер, из которого копируются данные.
+    /// @param SourceOffset смещение в байтах от начала исходного буфера.
+    /// @param dest указатель на целевой буфер, в который копируются данные.
+    /// @param DestOffset смещение в байтах от начала целевого буфера.
+    /// @param size размер копируемых данных в байтах.
+    /// @returns True в случае успеха; в противном случае false.
+    virtual bool RenderBufferCopyRange(RenderBuffer& source, u64 SourceOffset, RenderBuffer& dest, u64 DestOffset, u64 size) = 0;
+
+    /// @brief Пытается нарисовать содержимое предоставленного буфера с указанным смещением и количеством элементов. 
+    /// Предназначено только для использования с буферами вершин и индексов.
+    ///
+    /// @param buffer указатель на буфер для рисования.
+    /// @param offset смещение в байтах от начала буфера.
+    /// @param ElementCount количество элементов для рисования.
+    /// @param BindOnly только связывает буфер, но не вызывает draw.
+    /// @return True в случае успеха; в противном случае false.
+    virtual bool RenderBufferDraw(RenderBuffer& buffer, u64 offset, u32 ElementCount, bool BindOnly) = 0;
+    
     /// @brief Создает новую цель рендеринга, используя предоставленные данные.
     /// @param AttachmentCount количество вложений (указателей текстур).
     /// @param attachments массив вложений (указателей текстур).

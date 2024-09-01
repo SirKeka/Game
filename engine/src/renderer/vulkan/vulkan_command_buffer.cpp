@@ -67,26 +67,26 @@ void VulkanCommandBufferReset(VulkanCommandBuffer *CommandBuffer)
     CommandBuffer->state = COMMAND_BUFFER_STATE_READY;
 }
 
-void VulkanCommandBufferAllocateAndBeginSingleUse(VulkanAPI *VkAPI, VkCommandPool pool, VulkanCommandBuffer *OutCommandBuffer)
+void VulkanCommandBufferAllocateAndBeginSingleUse(VulkanAPI *VkAPI, VkCommandPool pool, VulkanCommandBuffer &OutCommandBuffer)
 {
-    VulkanCommandBufferAllocate(VkAPI, pool, true, OutCommandBuffer);
-    VulkanCommandBufferBegin(OutCommandBuffer, true, false, false);
+    VulkanCommandBufferAllocate(VkAPI, pool, true, &OutCommandBuffer);
+    VulkanCommandBufferBegin(&OutCommandBuffer, true, false, false);
 }
 
-void VulkanCommandBufferEndSingleUse(VulkanAPI *VkAPI, VkCommandPool pool, VulkanCommandBuffer *CommandBuffer, VkQueue queue)
+void VulkanCommandBufferEndSingleUse(VulkanAPI *VkAPI, VkCommandPool pool, VulkanCommandBuffer &CommandBuffer, VkQueue queue)
 {
     // Завершить буфер команд.
-    VulkanCommandBufferEnd(CommandBuffer);
+    VulkanCommandBufferEnd(&CommandBuffer);
 
     // Отправить очередь
     VkSubmitInfo SubmitInfo = {VK_STRUCTURE_TYPE_SUBMIT_INFO};
     SubmitInfo.commandBufferCount = 1;
-    SubmitInfo.pCommandBuffers = &CommandBuffer->handle;
+    SubmitInfo.pCommandBuffers = &CommandBuffer.handle;
     VK_CHECK(vkQueueSubmit(queue, 1, &SubmitInfo, 0));
 
     // Подождите, пока это закончится
     VK_CHECK(vkQueueWaitIdle(queue));
 
     // Освободите буфер команд.v
-    VulkanCommandBufferFree(VkAPI, pool, CommandBuffer);
+    VulkanCommandBufferFree(VkAPI, pool, &CommandBuffer);
 }

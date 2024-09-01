@@ -410,6 +410,81 @@ bool Renderer::IsMultithreaded()
     return ptrRenderer->IsMultithreaded();
 }
 
+bool Renderer::RenderBufferCreate(RenderBuffer &buffer)
+{
+    // Создайте внутренний буфер из бэкэнда.
+    if (!ptrRenderer->RenderBufferCreateInternal(buffer)) {
+        MFATAL("Невозможно создать резервный буфер для рендербуфера. Приложение не может продолжать работу.");
+        return false;
+    }
+    return true;
+}
+
+void Renderer::RenderBufferDestroy(RenderBuffer &buffer)
+{
+    // Освободите внутренние ресурсы.
+    ptrRenderer->RenderBufferDestroyInternal(buffer);
+    buffer.data = nullptr;
+}
+
+bool Renderer::RenderBufferBind(RenderBuffer &buffer, u64 offset)
+{
+    return ptrRenderer->RenderBufferBind(buffer, offset);
+}
+
+bool Renderer::RenderBufferUnbind(RenderBuffer &buffer)
+{
+    return ptrRenderer->RenderBufferUnbind(buffer);
+}
+
+void *Renderer::RenderBufferMapMemory(RenderBuffer &buffer, u64 offset, u64 size)
+{
+    return ptrRenderer->RenderBufferMapMemory(buffer, offset, size);
+}
+
+void Renderer::RenderBufferUnmapMemory(RenderBuffer &buffer, u64 offset, u64 size)
+{
+    ptrRenderer->RenderBufferUnmapMemory(buffer, offset, size);
+}
+
+bool Renderer::RenderBufferFlush(RenderBuffer &buffer, u64 offset, u64 size)
+{
+    return ptrRenderer->RenderBufferFlush(buffer, offset, size);
+}
+
+bool Renderer::RenderBufferRead(RenderBuffer &buffer, u64 offset, u64 size, void **OutMemory)
+{
+    return ptrRenderer->RenderBufferRead(buffer, offset, size, OutMemory);
+}
+
+bool Renderer::RenderBufferResize(RenderBuffer &buffer, u64 NewTotalSize)
+{
+    buffer.Resize(NewTotalSize);
+
+    bool result = ptrRenderer->RenderBufferResize(buffer, NewTotalSize);
+    if (result) {
+        buffer.TotalSize = NewTotalSize;
+    } else {
+        MERROR("Не удалось изменить размер внутренних ресурсов буфера визуализации.");
+    }
+    return result;
+}
+
+bool Renderer::RenderBufferLoadRange(RenderBuffer &buffer, u64 offset, u64 size, const void *data)
+{
+    return ptrRenderer->RenderBufferLoadRange(buffer, offset, size, data);
+}
+
+bool Renderer::RenderBufferCopyRange(RenderBuffer &source, u64 SourceOffset, RenderBuffer &dest, u64 DestOffset, u64 size)
+{
+    return ptrRenderer->RenderBufferCopyRange(source, SourceOffset, dest, DestOffset, size);
+}
+
+bool Renderer::RenderBufferDraw(RenderBuffer &buffer, u64 offset, u32 ElementCount, bool BindOnly)
+{
+    return ptrRenderer->RenderBufferDraw(buffer, offset, ElementCount, BindOnly);
+}
+
 void *Renderer::operator new(u64 size)
 {
     return LinearAllocator::Instance().Allocate(size);

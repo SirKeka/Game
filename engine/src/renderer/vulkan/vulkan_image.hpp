@@ -7,17 +7,20 @@
 class VulkanAPI;
 class VulkanCommandBuffer;
 
+/// @brief Представление изображения Vulkan. Его можно рассматривать как текстуру. Также содержит вид и память, используемые внутренним изображением.
 class VulkanImage
 {
 public:
-    VkImage handle{};
-    VkDeviceMemory memory{};
-    VkImageView view{};
-    u32 width = 0;
-    u32 height = 0;
+    VkImage handle{};                           // Дескриптор внутреннего объекта изображения.
+    VkDeviceMemory memory{};                    // Память, используемая изображением.
+    VkImageView view{};                         // Вид для изображения, который используется для доступа к изображению.
+    VkMemoryRequirements MemoryRequirements;    // Требования к памяти графического процессора для этого изображения.
+    VkMemoryPropertyFlags MemoryFlags;          // Флаги свойств памяти
+    u32 width = 0;                              // Ширина изображения.
+    u32 height = 0;                             // Высота изображения.
 public:
-    constexpr VulkanImage() : handle(), memory(), view(), width(), height() {}
-    constexpr VulkanImage(const VulkanImage& vi) : handle(vi.handle), memory(vi.memory), view(vi.view), width(vi.width), height(vi.height) {}
+    constexpr VulkanImage() : handle(), memory(), view(), MemoryRequirements(), MemoryFlags(), width(), height() {}
+    constexpr VulkanImage(const VulkanImage& vi) : handle(vi.handle), memory(vi.memory), view(vi.view), MemoryRequirements(vi.MemoryRequirements), MemoryFlags(vi.MemoryFlags), width(vi.width), height(vi.height) {}
     /// @brief Создает новое изображение Vulkan.
     /// @param VkAPI указатель на контекст Vulkan.
     /// @param type тип текстуры. Дает подсказки по созданию.
