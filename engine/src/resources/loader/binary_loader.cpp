@@ -24,7 +24,7 @@ bool BinaryLoader::Load(const char *name, void* params, Resource &OutResource)
     u64 FileSize = 0;
     if (!Filesystem::Size(&f, FileSize)) {
         MERROR("Невозможно прочитать файл в двоичном формате: %s.", FullFilePath);
-        Filesystem::Close(&f);
+        Filesystem::Close(f);
         return false;
     }
 
@@ -33,11 +33,11 @@ bool BinaryLoader::Load(const char *name, void* params, Resource &OutResource)
     u64 ReadSize = 0;
     if (!Filesystem::ReadAllBytes(&f, ResourceData, ReadSize)) {
         MERROR("Невозможно прочитать файл в двоичном формате: %s.", FullFilePath);
-        Filesystem::Close(&f);
+        Filesystem::Close(f);
         return false;
     }
 
-    Filesystem::Close(&f);
+    Filesystem::Close(f);
 
     OutResource.data = ResourceData;
     OutResource.DataSize = ReadSize;

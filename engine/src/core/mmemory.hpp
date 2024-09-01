@@ -50,6 +50,8 @@ namespace Memory {
         Opengl,
         // Представление GPU-local/vram
         GPULocal,
+        BitmapFont,
+        SystemFont,
 
         MaxTags
     };

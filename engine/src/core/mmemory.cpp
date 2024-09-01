@@ -53,7 +53,9 @@ static const char* MemoryTagStrings[Memory::MaxTags] = {
     "VULKAN_EXT ",
     "DIRECT3D   ",
     "OPENGL     ",
-    "GPU_LOCAL  "};
+    "GPU_LOCAL  ",
+    "BITMAP_FONT",
+    "SYSTEM_FONT"};
 
 MemoryState* MMemory::state = nullptr;
 

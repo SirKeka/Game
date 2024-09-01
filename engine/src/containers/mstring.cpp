@@ -271,6 +271,77 @@ const u16 MString::Length(const char *s)
     return len;
 }
 
+const u32 MString::UTF8Length(const char *str)
+{
+    u32 length = 0;
+    for (u32 i = 0; i < __UINT32_MAX__; ++i, ++length) {
+        i32 c = (i32)str[i];
+        if (c == '\0') {
+            break;
+        }
+        if (c >= 0 && c < 127) {
+            // Обычный символ ascii, не увеличивать снова.
+            // i += 0; // В основном это так.
+        } else if ((c & 0xE0) == 0xC0) {
+            // Двухбайтовый символ, увеличить еще раз.
+            i += 1;
+        } else if ((c & 0xF0) == 0xE0) {
+            // Трехбайтовый символ, увеличить еще вдвое.
+            i += 2;
+        } else if ((c & 0xF8) == 0xF0) {
+            // 4-байтовый символ, увеличить еще втрое.
+            i += 3;
+        } else {
+            // ПРИМЕЧАНИЕ: Не поддерживаются 5- и 6-байтовые символы; возвращается как недопустимый UTF-8.
+            MERROR("MString::UTF8Length - Не поддерживаются 5- и 6-байтовые символы; Недопустимый UTF-8.");
+            return 0;
+        }
+    }
+
+    return length;
+}
+
+bool MString::BytesToCodepoint(const char *bytes, u32 offset, i32 &OutCodepoint, u8 *OutAdvance)
+{
+    i32 codepoint = (i32)bytes[offset];
+    if (codepoint >= 0 && codepoint < 0x7F) {
+        // Обычный однобайтовый символ ascii.
+        *OutAdvance = 1;
+        OutCodepoint = codepoint;
+        return true;
+    } else if ((codepoint & 0xE0) == 0xC0) {
+        // Двухбайтовый символ
+        codepoint = ((bytes[offset + 0] & 0b00011111) << 6) +
+                    (bytes[offset + 1] & 0b00111111);
+        *OutAdvance = 2;
+        OutCodepoint = codepoint;
+        return true;
+    } else if ((codepoint & 0xF0) == 0xE0) {
+        // Трехбайтовый символ
+        codepoint = ((bytes[offset + 0] & 0b00001111) << 12) +
+                    ((bytes[offset + 1] & 0b00111111) << 6) +
+                    (bytes[offset + 2] & 0b00111111);
+        *OutAdvance = 3;
+        OutCodepoint = codepoint;
+        return true;
+    } else if ((codepoint & 0xF8) == 0xF0) {
+        // 4-байтовый символ
+        codepoint = ((bytes[offset + 0] & 0b00000111) << 18) +
+                    ((bytes[offset + 1] & 0b00111111) << 12) +
+                    ((bytes[offset + 2] & 0b00111111) << 6) +
+                    (bytes[offset + 3] & 0b00111111);
+        *OutAdvance = 4;
+        OutCodepoint = codepoint;
+        return true;
+    } else {
+        // ПРИМЕЧАНИЕ: Не поддерживаются 5- и 6-байтовые символы; возвращается как недопустимый UTF-8.
+        *OutAdvance = 0;
+        OutCodepoint = 0;
+        MERROR("kstring bytes_to_codepoint() - Not supporting 5 and 6-byte characters; Invalid UTF-8.");
+        return false;
+    }
+}
+
 u16 MString::Len(const char *s)
 {
     u16 len = Length(s);

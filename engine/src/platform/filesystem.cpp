@@ -48,12 +48,12 @@ bool Filesystem::Open(const char *path, FileModes mode, bool binary, FileHandle 
     return true;
 }
 
-void Filesystem::Close(FileHandle *handle)
+void Filesystem::Close(FileHandle &handle)
 {
-    if (handle->handle) {
-        fclose(reinterpret_cast<FILE*>(handle->handle));
-        handle->handle = 0;
-        handle->IsValid = false;
+    if (handle.handle) {
+        fclose(reinterpret_cast<FILE*>(handle.handle));
+        handle.handle = nullptr;
+        handle.IsValid = false;
     }
 }
 

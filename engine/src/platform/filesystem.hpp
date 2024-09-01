@@ -17,11 +17,23 @@ enum class FileModes {
 };
 
 MINLINE constexpr i32
-  operator&(FileModes x, FileModes y)
-  {
-    return /*static_cast<FileModes>*/
-      (static_cast<i32>(x) & static_cast<i32>(y));
-  }
+operator&(FileModes x, FileModes y)
+{
+  return /*static_cast<FileModes>*/
+    (static_cast<i32>(x) & static_cast<i32>(y));
+}
+
+/// @brief Если func возвращает false, закрывает предоставленный дескриптор файла и регистрирует ошибку. 
+/// Также возвращает false, поэтому вызывающая функция должна возвращать логическое значение. Вызывающий файл должен #include "core/logger.h".
+/// @param func Функция, результатом которой является логическое значение.
+/// @param handle Дескриптор файла, который должен быть закрыт при ложном результате функции.
+/// @returns False, если предоставленная функция завершается неудачей.
+#define CLOSE_IF_FAILED(func, handle)           \
+    if (!func) {                                \
+        MERROR("Операция с файлом не удалась.");\
+        Filesystem::Close(handle);              \
+        return false;                           \
+    }
 
 namespace Filesystem 
 {
@@ -40,7 +52,7 @@ namespace Filesystem
 
     /// Закрывает предоставленный дескриптор файла.
     /// @param handle указатель на структуру FileHandle, которая содержит дескриптор, подлежащий закрытию.
-    MAPI void Close(FileHandle* handle);
+    MAPI void Close(FileHandle& handle);
 
     /// @brief Пытается прочитать размер файла, к которому прикреплен дескриптор.
     /// @param handle Дескриптор файла.

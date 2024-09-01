@@ -97,7 +97,7 @@ bool MaterialLoader::Load(const char *name, void* params, Resource &OutResource)
         LineNumber++;
     }
 
-    Filesystem::Close(&f);
+    Filesystem::Close(f);
 
     OutResource.data = ResourceData;
     OutResource.DataSize = sizeof(MaterialConfig);

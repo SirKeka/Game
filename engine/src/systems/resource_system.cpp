@@ -7,6 +7,7 @@
 #include "resources/loader/text_loader.hpp"
 #include "resources/loader/shader_loader.hpp"
 #include "resources/loader/mesh_loader.hpp"
+#include "resources/loader/bitmap_font_loader.hpp"
 
 #include "core/mmemory.hpp"
 #include <new>
@@ -27,6 +28,7 @@ constexpr ResourceSystem::ResourceSystem(u32 MaxLoaderCount, const char* BasePat
     RegisterLoader<MaterialLoader>(ResourceType::Material, MString(), "materials");
     RegisterLoader<ShaderLoader>(ResourceType::Shader, MString(), "shaders");
     RegisterLoader<MeshLoader>(ResourceType::Mesh, MString(), "models");
+    RegisterLoader<BitmapFontLoader>(ResourceType::BitmapFont, MString(), "fonts");
 }
 
 bool ResourceSystem::Initialize(u32 MaxLoaderCount, const char* BasePath)
