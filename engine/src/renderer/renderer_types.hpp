@@ -232,6 +232,7 @@ public:
     /// @param buffer Указатель для создания внутреннего буфера.
     /// @returns True в случае успеха; в противном случае false.
     virtual bool RenderBufferCreateInternal(RenderBuffer& buffer) = 0;
+    virtual bool RenderBufferCreate(RenderBufferType type, u64 TotalSize, bool UseFreelist, RenderBuffer &buffer) = 0;
 
     /// @brief Уничтожает указанный буфер.
     ///

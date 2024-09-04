@@ -28,7 +28,7 @@ public:
     /// @param CustomType пользовательский тип ресурса.
     /// @param TypePath 
     /// @return 
-    MAPI bool RegisterLoader(ResourceType type, const MString& CustomType, const MString& TypePath);
+    MAPI bool RegisterLoader(ResourceType type, const MString& CustomType, const char* TypePath);
     /// @brief Загружает ресурс с указанным именем.
     /// @param name имя ресурса для загрузки.
     /// @param type тип ресурса для загрузки.

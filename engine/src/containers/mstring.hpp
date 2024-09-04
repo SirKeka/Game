@@ -11,11 +11,11 @@ class MAPI MString
 {
 private:
     u16 length           {};
-    bool autorelease{false};
+    bool autorelease{true};
     char* str     {nullptr};
 
 public:
-   constexpr MString() : length(), autorelease(false), str(nullptr) {}
+   constexpr MString() : length(), autorelease(true), str(nullptr) {}
    /// @brief Создает нулевую строку с зарезервированной памятью под нужное количество символов + 1 для терминального ноля
    /// @param length длина строки
    /// @param autorealease указывает нужно ли удалять данные строки или нет ПРИМЕЧАНИЕ: по умолчанию true

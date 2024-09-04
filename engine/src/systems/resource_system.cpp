@@ -59,7 +59,7 @@ void ResourceSystem::Shutdown()
 }
 
 template<typename T>
-bool ResourceSystem::RegisterLoader(ResourceType type, const MString& CustomType, const MString& TypePath)
+bool ResourceSystem::RegisterLoader(ResourceType type, const MString &CustomType, const char *TypePath)
 {
     // Убедитесь, что загрузчики данного типа еще не существуют.
     for (u32 i = 0; i < MaxLoaderCount; ++i) {
@@ -68,7 +68,7 @@ bool ResourceSystem::RegisterLoader(ResourceType type, const MString& CustomType
             if (l->type == type) {
                 MERROR("ResourceSystem::RegisterLoader — загрузчик типа %d уже существует и не будет зарегистрирован.", type);
                 return false;
-            } else if (CustomType && CustomType.Length() > 0 && l->CustomType.Comparei(CustomType)) {
+            } else if (CustomType && CustomType.Length() > 0 && l->CustomType == CustomType) {
                 MERROR("ResourceSystem::RegisterLoader — загрузчик пользовательского типа %s уже существует и не будет зарегистрирован.", CustomType.c_str());
                 return false;
             }

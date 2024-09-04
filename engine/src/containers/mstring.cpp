@@ -6,13 +6,13 @@
 #include <stdarg.h>
 
 constexpr MString::MString(u16 length, bool autorelease) 
-: length(length + 1), autorelease(autorelease), str(MMemory::TAllocate<char>(Memory::String, this->length)) {}
+: length(length), autorelease(autorelease), str(MMemory::TAllocate<char>(Memory::String, this->length)) {}
 
 constexpr MString::MString(const char *str1, const char *str2, bool autorelease)
-: length(Length(str1) + Length(str2) + 1), autorelease(autorelease), str(Concat(str1, str2, length)) {}
+: length(Length(str1) + Length(str2)), autorelease(autorelease), str(Concat(str1, str2, length)) {}
 
 constexpr MString::MString(const MString &str1, const MString &str2, bool autorelease) 
-: length(str1.length + str2.length - 1), autorelease(autorelease), str(Concat(str1.str, str2.str, length)) {}
+: length(str1.length + str2.length), autorelease(autorelease), str(Concat(str1.str, str2.str, length)) {}
 
 constexpr MString::MString(const char *s, bool autorelease) 
 : length(Len(s)), autorelease(autorelease), str(Copy(s, length)) {}
@@ -249,7 +249,7 @@ bool MString::operator==(const char *s) const
 constexpr u16 MString::Length() const noexcept
 {
     if (length) {
-        return length - 1;
+        return length;
     }
     return length;
 }
@@ -345,7 +345,7 @@ bool MString::BytesToCodepoint(const char *bytes, u32 offset, i32 &OutCodepoint,
 u16 MString::Len(const char *s)
 {
     u16 len = Length(s);
-    return len ? len + 1 : 0;
+    return len ? len : 0;
 }
 
 const char *MString::c_str() const noexcept
@@ -611,7 +611,7 @@ void MString::Copy(char *dest, const char *source)
             }
             source++;
         }
-        *dest = '\0';
+        //*dest = '\0';
     }
 }
 
@@ -659,7 +659,7 @@ char* MString::Copy(const char *source, u64 lenght)
 {
     if(source && lenght) {
         str = MMemory::TAllocate<char>(Memory::String, length); 
-        Copy(str, source);
+        nCopy(str, source, length);
         return str;
     }
     return nullptr;

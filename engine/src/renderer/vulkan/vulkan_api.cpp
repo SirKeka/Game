@@ -2003,6 +2003,23 @@ bool VulkanBufferIsHostCoherent(VulkanBuffer* buffer)
     return (buffer->MemoryPropertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) == VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 }
 
+bool VulkanAPI::RenderBufferCreate(RenderBufferType type, u64 TotalSize, bool UseFreelist, RenderBuffer &buffer)
+{
+    buffer.type = type;
+    buffer.TotalSize = TotalSize;
+    if (UseFreelist) {
+        buffer.FreelistMemoryRequirement = FreeList::GetMemoryRequirement(TotalSize);
+        buffer.FreelistBlock = MMemory::Allocate(buffer.FreelistMemoryRequirement, Memory::Renderer);
+        buffer.BufferFreelist.Create(TotalSize, buffer.FreelistBlock);
+    }
+    if (!RenderBufferCreateInternal(buffer)) {
+        MERROR("VulkanAPI::RenderBufferCreate не удалось создать RenderBuffer.");
+        return false;
+    }
+    
+    return true;
+}
+
 bool VulkanAPI::RenderBufferCreateInternal(RenderBuffer &buffer)
 {
     VulkanBuffer InternalBuffer;
@@ -2381,23 +2398,6 @@ bool VulkanAPI::VulkanBufferCopyRangeInternal(VkBuffer source, u64 SourceOffset,
     // Отправьте буфер на выполнение и дождитесь его завершения.
     VulkanCommandBufferEndSingleUse(this, Device.GraphicsCommandPool, TempCommandBuffer, queue);
 
-    return true;
-}
-
-bool VulkanAPI::RenderBufferCreate(RenderBufferType type, u64 TotalSize, bool UseFreelist, RenderBuffer &buffer)
-{
-    buffer.type = type;
-    buffer.TotalSize = TotalSize;
-    if (UseFreelist) {
-        buffer.FreelistMemoryRequirement = FreeList::GetMemoryRequirement(TotalSize);
-        buffer.FreelistBlock = MMemory::Allocate(buffer.FreelistMemoryRequirement, Memory::Renderer);
-        buffer.BufferFreelist.Create(TotalSize, buffer.FreelistBlock);
-    }
-    if (!RenderBufferCreateInternal(buffer)) {
-        MERROR("VulkanAPI::RenderBufferCreate не удалось создать RenderBuffer.");
-        return false;
-    }
-    
     return true;
 }
 

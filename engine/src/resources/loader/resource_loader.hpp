@@ -25,7 +25,7 @@ struct Resource {
  * using CustomResource = Resource<>;
 */
 
-enum class ResourceType {
+enum class ResourceType : u8 {
     Invalid,    // 
     Text,       // Тип ресурса Text.
     Binary,     // Тип ресурса Binary.

@@ -45,16 +45,16 @@ bool ImageLoader::Load(const char *name, void* params, Resource &OutResource)
     }
 
     FileHandle f;
-    if (!Filesystem::Open(FullFilePath, FileModes::Read, true, &f)) {
+    if (!Filesystem::Open(FullFilePath, FileModes::Read, true, f)) {
         MERROR("Невозможно прочитать файл: %s.", FullFilePath);
-        Filesystem::Close(&f);
+        Filesystem::Close(f);
         return false;
     }
 
     u64 FileSize = 0;
-    if (!Filesystem::Size(&f, FileSize)) {
+    if (!Filesystem::Size(f, FileSize)) {
         MERROR("Невозможно получить размер файла: %s.", FullFilePath);
-        Filesystem::Close(&f);
+        Filesystem::Close(f);
         return false;
     }
 
@@ -65,13 +65,13 @@ bool ImageLoader::Load(const char *name, void* params, Resource &OutResource)
     u8* RawData = MMemory::TAllocate<u8>(Memory::Texture, FileSize);
     if (!RawData) {
         MERROR("Невозможно прочитать файл «%s».", FullFilePath);
-        Filesystem::Close(&f);
+        Filesystem::Close(f);
         return false;
     }
 
     u64 BytesRead = 0;
-    bool ReadResult = Filesystem::ReadAllBytes(&f, RawData, BytesRead);
-    Filesystem::Close(&f);
+    bool ReadResult = Filesystem::ReadAllBytes(f, RawData, BytesRead);
+    Filesystem::Close(f);
 
     if (!ReadResult) {
         MERROR("Невозможно прочитать файл: '%s'", FullFilePath);

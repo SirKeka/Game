@@ -48,7 +48,7 @@ namespace Filesystem
     /// @param binary указывает, следует ли открывать файл в двоичном режиме.
     /// @param OutHandle указатель на структуру FileHandle, которая содержит информацию о дескрипторе.
     /// @returns true, если открыто успешно; в противном случае false.   
-    MAPI bool Open(const char* path, FileModes mode, bool binary, FileHandle* OutHandle);
+    MAPI bool Open(const char* path, FileModes mode, bool binary, FileHandle& OutHandle);
 
     /// Закрывает предоставленный дескриптор файла.
     /// @param handle указатель на структуру FileHandle, которая содержит дескриптор, подлежащий закрытию.
@@ -58,19 +58,19 @@ namespace Filesystem
     /// @param handle Дескриптор файла.
     /// @param OutSize Указатель на размер файла.
     /// @return 
-    MAPI bool Size(FileHandle* handle, u64& OutSize);
+    MAPI bool Size(FileHandle& handle, u64& OutSize);
 
     /// Считывает до новой строки или EOF. Выделяет *LineBuf, который должен быть освобожден вызывающей стороной.
     /// @param handle указатель на структуру FileHandle.
     /// @param LineBuf указатель на массив символов, который будет выделен и заполнен этим методом.
     /// @returns true в случае успеха; в противном случае false.
-    MAPI bool ReadLine(FileHandle* handle, u64 MaxLength, char** LineBuf, u64& OutLineLength);
+    MAPI bool ReadLine(FileHandle& handle, u64 MaxLength, char** LineBuf, u64& OutLineLength);
  
     /// Записывает текст в предоставленный файл, добавляя после этого '\n'.
     /// @param handle указатель на структуру FileHandle.
     /// @param text текст, который должен быть написан.
     /// @returns true в случае успеха; в противном случае false.
-    MAPI bool WriteLine(FileHandle* handle, const char* text);
+    MAPI bool WriteLine(FileHandle& handle, const char* text);
 
     /// Считывает данные размером до DataSize в OutBytesRead. 
     /// Выделяет *OutData, который должен быть освобожден вызывающей стороной.
@@ -79,15 +79,15 @@ namespace Filesystem
     /// @param OutData указатель на блок памяти, который будет заполнен этим методом.
     /// @param OutBytesRead указатель на число, которое будет заполнено количеством байт, фактически считанных из файла.
     /// @returns true в случае успеха; в противном случае false.
-    MAPI bool Read(FileHandle* handle, u64 DataSize, void* OutData, u64& OutBytesRead);
+    MAPI bool Read(FileHandle& handle, u64 DataSize, void* OutData, u64& OutBytesRead);
 
     /// Считывает все байты данных в OutBytes. 
     /// @param handle указатель на структуру FileHandle.
     /// @param OutBytes указатель на массив байтов, который будет выделен и заполнен этим методом.
     /// @param OutBytesRead указатель на число, которое будет заполнено количеством байт, фактически считанных из файла.
     /// @returns true в случае успеха; в противном случае false.
-    MAPI bool ReadAllBytes(FileHandle* handle, u8* OutBytes, u64& OutBytesRead);
-    MAPI bool ReadAllText(FileHandle* handle, char* OutText, u64& OutBytesRead);
+    MAPI bool ReadAllBytes(FileHandle& handle, u8* OutBytes, u64& OutBytesRead);
+    MAPI bool ReadAllText(FileHandle& handle, char* OutText, u64& OutBytesRead);
  
     /// Записывает предоставленные данные в файл.
     /// @param handle Указатель на структуру FileHandle.
@@ -95,5 +95,5 @@ namespace Filesystem
     /// @param data данные, подлежащие записи.
     /// @param OutBytesWritten указатель на число, которое будет заполнено количеством байт, фактически записанных в файл.
     /// @returns true в случае успеха; в противном случае false.
-    MAPI bool Write(FileHandle* handle, u64 DataSize, const void* data, u64& OutBytesWritten);
+    MAPI bool Write(FileHandle& handle, u64 DataSize, const void* data, u64& OutBytesWritten);
 } // namespace Filesystem

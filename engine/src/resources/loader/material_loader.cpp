@@ -15,7 +15,7 @@ bool MaterialLoader::Load(const char *name, void* params, Resource &OutResource)
     MString::Format(FullFilePath, FormatStr, ResourceSystem::Instance()->BasePath(), TypePath.c_str(), name, ".mmt");
 
     FileHandle f;
-    if (!Filesystem::Open(FullFilePath, FileModes::Read, false, &f)) {
+    if (!Filesystem::Open(FullFilePath, FileModes::Read, false, f)) {
         MERROR("MaterialLoader::Load - невозможно открыть файл материала для чтения: '%s'.", FullFilePath);
         return false;
     }
@@ -32,7 +32,7 @@ bool MaterialLoader::Load(const char *name, void* params, Resource &OutResource)
     char* p = &LineBuf[0];
     u64 LineLength = 0;
     u32 LineNumber = 1;
-    while (Filesystem::ReadLine(&f, 511, &p, LineLength)) {
+    while (Filesystem::ReadLine(f, 511, &p, LineLength)) {
         // Обрезаем строку.
         MString trimmed { LineBuf };
 

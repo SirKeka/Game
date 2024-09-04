@@ -12,14 +12,11 @@
 
 RendererType *Renderer::ptrRenderer = nullptr;
 
-constexpr bool CriticalInit(bool op, const MString& message)
-{
-    if (!op) {
-        MERROR(message.c_str());
-        return false;
+#define CriticalInit(op, message)\
+    if (!op) {                   \
+        MERROR(message);         \
+        return;                  \
     }
-    return true;
-}
 
 Renderer::Renderer(MWindow *window, const char *ApplicationName, ERendererType type)
 :  
@@ -75,7 +72,7 @@ FramesSinceResize()
         RendererConfig::PFN_Method(this, &Renderer::RegenerateRenderTargets)
     };
 
-    CriticalInit(ptrRenderer = new VulkanAPI(window, RConfig, WindowRenderTargetCount), "Систему рендеринга не удалось инициализировать. Выключение.");
+    CriticalInit((ptrRenderer = new VulkanAPI(window, RConfig, WindowRenderTargetCount)), "Систему рендеринга не удалось инициализировать. Выключение.");
 
     // ЗАДАЧА: Узнаем, как их получить, когда определим представления.
     SkyboxRenderpass = ptrRenderer->GetRenderpass(SkyboxRenderpassName);
@@ -418,6 +415,11 @@ bool Renderer::RenderBufferCreate(RenderBuffer &buffer)
         return false;
     }
     return true;
+}
+
+bool Renderer::RenderBufferCreate(RenderBufferType type, u64 TotalSize, bool UseFreelist, RenderBuffer &buffer)
+{
+    return ptrRenderer->RenderBufferCreate(type, TotalSize, UseFreelist, buffer);
 }
 
 void Renderer::RenderBufferDestroy(RenderBuffer &buffer)

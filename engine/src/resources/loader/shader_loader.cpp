@@ -15,7 +15,7 @@ bool ShaderLoader::Load(const char *name, void* params, Resource &OutResource)
     MString::Format(FullFilePath, FormatStr, ResourceSystem::Instance()->BasePath(), TypePath.c_str(), name, ".shadercfg");
 
     FileHandle f;
-    if (!Filesystem::Open(FullFilePath, FileModes::Read, false, &f)) {
+    if (!Filesystem::Open(FullFilePath, FileModes::Read, false, f)) {
         MERROR("ShaderLoader::Load - невозможно открыть файл шейдера для чтения: '%s'.", FullFilePath);
         return false;
     }
@@ -29,7 +29,7 @@ bool ShaderLoader::Load(const char *name, void* params, Resource &OutResource)
     char* p = &LineBuf[0];
     u64 LineLength = 0;
     u32 LineNumber = 1; // 4 и 72 строка
-    while (Filesystem::ReadLine(&f, 511, &p, LineLength)) {
+    while (Filesystem::ReadLine(f, 511, &p, LineLength)) {
         // Обрежьте строку.
         MString line{LineBuf}; // MString::Trim(LineBuf)
 
@@ -245,7 +245,7 @@ bool ShaderLoader::Load(const char *name, void* params, Resource &OutResource)
         LineNumber++;
     }
 
-    Filesystem::Close(&f);
+    Filesystem::Close(f);
 
     OutResource.data = ResourceData;
     OutResource.DataSize = sizeof(ShaderConfig);

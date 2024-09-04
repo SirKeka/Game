@@ -16,28 +16,28 @@ bool TextLoader::Load(const char *name, void* params, Resource &OutResource)
     OutResource.FullPath = FullFilePath;
 
     FileHandle f;
-    if (!Filesystem::Open(FullFilePath, FileModes::Read, false, &f)) {
+    if (!Filesystem::Open(FullFilePath, FileModes::Read, false, f)) {
         MERROR("TextLoader::Load - невозможно открыть файл для чтения текста: '%s'.", FullFilePath);
         return false;
     }
 
     u64 FileSize = 0;
-    if (!Filesystem::Size(&f, FileSize)) {
+    if (!Filesystem::Size(f, FileSize)) {
         MERROR("Невозможно прочитать текст файла: %s.", FullFilePath);
-        Filesystem::Close(&f);
+        Filesystem::Close(f);
         return false;
     }
 
     // ЗАДАЧА: Здесь следует использовать распределитель.
     char* ResourceData = MMemory::TAllocate<char>(Memory::Array, FileSize);
     u64 ReadSize = 0;
-    if (!Filesystem::ReadAllText(&f, ResourceData, ReadSize)) {
+    if (!Filesystem::ReadAllText(f, ResourceData, ReadSize)) {
         MERROR("Невозможно прочитать текст файла: %s.", FullFilePath);
-        Filesystem::Close(&f);
+        Filesystem::Close(f);
         return false;
     }
 
-    Filesystem::Close(&f);
+    Filesystem::Close(f);
 
     OutResource.data = ResourceData;
     OutResource.DataSize = ReadSize;
