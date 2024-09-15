@@ -2,7 +2,7 @@
 @ECHO OFF
 SetLocal EnableDelayedExpansion
 
-REM Get a list of all the .c files.
+REM Get a list of all the .cpp files.
 SET cFilenames=
 FOR /R %%f in (*.cpp) do (
     SET cFilenames=!cFilenames! %%f

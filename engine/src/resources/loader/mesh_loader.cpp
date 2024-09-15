@@ -50,9 +50,11 @@ struct MeshGroupData {
 };
 
 bool ImportObjFile(FileHandle& ObjFile, const char* OutMsmFilename, DArray<GeometryConfig>& OutGeometries);
+bool ImportObjFile(FileHandle& ObjFile, const char* OutMsmFilename, DArray<GeometryConfig>& OutGeometries);
 void ProcessSubobject(DArray<FVec3>& positions, DArray<FVec3>& normals, DArray<FVec2>& TexCoords, DArray<Face>& faces, GeometryConfig& OutData);
 bool ImportObjMaterialLibraryFile(const char* MtlFilePath);
 
+bool LoadMsmFile(FileHandle& MsmFile, DArray<GeometryConfig>& OutGeometries);
 bool LoadMsmFile(FileHandle& MsmFile, DArray<GeometryConfig>& OutGeometries);
 bool WriteMsmFile(const char* path, const char* name, u32 GeometryCount, DArray<GeometryConfig>& geometries);
 bool WriteMmtFile(const char* MtlFilePath, MaterialConfig& config);
@@ -83,6 +85,7 @@ bool ResourceLoader::Load(const char *name, void* params, MeshResource &OutResou
         MString::Format(FullFilePath, FormatString, ResourceSystem::Instance()->BasePath(), TypePath.c_str(), name, SupportedFiletypes[i].extension.c_str());
         // Если файл существует, откройте его и перестаньте искать.
         if (Filesystem::Exists(FullFilePath)) {
+            if (Filesystem::Open(FullFilePath, FileModes::Read, SupportedFiletypes[i].IsBinary, f)) {
             if (Filesystem::Open(FullFilePath, FileModes::Read, SupportedFiletypes[i].IsBinary, f)) {
                 type = SupportedFiletypes[i].type;
                 break;
@@ -117,6 +120,7 @@ bool ResourceLoader::Load(const char *name, void* params, MeshResource &OutResou
             break;
     }
 
+    Filesystem::Close(f);
     Filesystem::Close(f);
 
     if (!result) {
@@ -155,6 +159,7 @@ void ResourceLoader::Unload(MeshResource &resource)
 /// @param OutKsmFilename Путь к файлу ksm, в который будет производиться запись.
 /// @param OutGeometries Массив геометрий, проанализированных из файла.
 /// @return true в случае успеха; в противном случае false.
+bool ImportObjFile(FileHandle &ObjFile, const char *OutMsmFilename, DArray<GeometryConfig> &OutGeometries)
 bool ImportObjFile(FileHandle &ObjFile, const char *OutMsmFilename, DArray<GeometryConfig> &OutGeometries)
 {
     DArray<FVec3> positions { 16384 };
@@ -476,6 +481,7 @@ bool ImportObjMaterialLibraryFile(const char *MtlFilePath)
     // Возьмите файл .mtl, если он существует, и прочитайте информацию о материале.
     FileHandle MtlFile;
     if (!Filesystem::Open(MtlFilePath, FileModes::Read, false, MtlFile)) {
+    if (!Filesystem::Open(MtlFilePath, FileModes::Read, false, MtlFile)) {
         MERROR("Невозможно открыть файл MTL: %s", MtlFilePath);
         return false;
     }
@@ -489,6 +495,7 @@ bool ImportObjMaterialLibraryFile(const char *MtlFilePath)
     char* p = &LineBuffer[0];
     u64 LineLength = 0;
     while (true) {
+        if (!Filesystem::ReadLine(MtlFile, 512, &p, LineLength)) {
         if (!Filesystem::ReadLine(MtlFile, 512, &p, LineLength)) {
             break;
         }
@@ -644,9 +651,11 @@ bool ImportObjMaterialLibraryFile(const char *MtlFilePath)
     }
 
     Filesystem::Close(MtlFile);
+    Filesystem::Close(MtlFile);
     return true;
 }
 
+bool LoadMsmFile(FileHandle &MsmFile, DArray<GeometryConfig> &OutGeometries)
 bool LoadMsmFile(FileHandle &MsmFile, DArray<GeometryConfig> &OutGeometries)
 {
     // версия

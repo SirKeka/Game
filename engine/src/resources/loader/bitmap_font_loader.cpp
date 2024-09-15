@@ -4,6 +4,9 @@
 #include "core/mmemory.hpp"
 
 #include <stdio.h>  //sscanf
+#include "core/mmemory.hpp"
+
+#include <stdio.h>  //sscanf
 
 enum class BitmapFontFileType {
     NotFound,
@@ -22,6 +25,7 @@ struct SupportedBitmapFontFiletype {
 
 bool ImportFntFile(FileHandle& FntFile, const char* OutMbfFilename, BitmapFontResourceData& OutData);
 bool ReadMbfFile(FileHandle& MbfFile, BitmapFontResourceData& data);
+bool WriteMbfFile(const char* path, BitmapFontResourceData& data);
 bool WriteMbfFile(const char* path, BitmapFontResourceData& data);
 
 bool ResourceLoader::Load(const char *name, void *params, BitmapFontResource &OutResource)
@@ -46,11 +50,13 @@ bool ResourceLoader::Load(const char *name, void *params, BitmapFontResource &Ou
     auto ResourceSystemInst = ResourceSystem::Instance();
     char FullFilePath[512];
     BitmapFontFileType type = BitmapFontFileType::NotFound;
+    BitmapFontFileType type = BitmapFontFileType::NotFound;
     // Попробуйте каждое поддерживаемое расширение.
     for (u32 i = 0; i < SUPPORTED_FILETYPE_COUNT; ++i) {
         MString::Format(FullFilePath, FormatStr, ResourceSystemInst->BasePath(), TypePath.c_str(), name, SupportedFiletypes[i].extension.c_str());
         // Если файл существует, откройте его и прекратите поиск.
         if (Filesystem::Exists(FullFilePath)) {
+            if (Filesystem::Open(FullFilePath, FileModes::Read, SupportedFiletypes[i].IsBinary, f)) {
             if (Filesystem::Open(FullFilePath, FileModes::Read, SupportedFiletypes[i].IsBinary, f)) {
                 type = SupportedFiletypes[i].type;
                 break;
