@@ -12,8 +12,6 @@
 #include "resources/skybox.hpp"
 #include "resources/ui_text.hpp"
 
-#include "core/application.hpp"
-
 struct ApplicationState {
     //LinearAllocator SystemAllocator;
     //MMemory* mem;

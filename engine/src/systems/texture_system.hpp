@@ -19,7 +19,7 @@ using ETextureFlag = u8;
 
 class TextureSystem
 {
-public:
+private:
     u32 MaxTextureCount{};
     Texture DefaultTexture[4]{}; // DefaultTexture, DefaultDiffuseTexture, DefaultSpecularTexture, DefaultNormalTexture
 
@@ -140,7 +140,7 @@ public:
     /// @param size количество байтов, которые необходимо записать.
     /// @param data указатель на данные, которые необходимо записать.
     /// @return true в случае успеха, иначе false.
-    bool WriteData(Texture* texture, u32 offset, u32 size, void* data);
+    bool WriteData(Texture* texture, u32 offset, u32 size, u8* pixels);
     /// @brief Функция для получения стандартной текстуры.
     /// @return указатель на стандартную текстуру.
     Texture* GetDefaultTexture(ETextureFlag texture);

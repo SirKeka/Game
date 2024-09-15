@@ -18,7 +18,6 @@
 #include "memory/dynamic_allocator.hpp"
 #include "mmutex.hpp"
 
-
 /// @brief Теги, указывающие на использование выделенной памяти в этой системе.
 namespace Memory { 
     enum Tag {

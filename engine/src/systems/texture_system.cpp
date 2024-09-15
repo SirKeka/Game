@@ -175,8 +175,12 @@ bool TextureSystem::Resize(Texture *texture, u32 width, u32 height, bool Regener
     return false;
 }
 
-bool TextureSystem::WriteData(Texture *texture, u32 offset, u32 size, void *data)
+bool TextureSystem::WriteData(Texture *texture, u32 offset, u32 size, u8* pixels)
 {
+    if (texture) {
+        Renderer::TextureWriteData(texture, offset, size, pixels);
+        return true;
+    }
     return false;
 }
 
