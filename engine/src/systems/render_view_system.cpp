@@ -59,7 +59,7 @@ bool RenderViewSystem::Create(RenderView::Config &config)
 
     u16 id = INVALID::U16ID;
     // Убедитесь, что запись с таким именем еще не зарегистрирована.
-    lookup.Get(config.name, &id);
+    lookup.Get(config.name.c_str(), &id);
     if (id != INVALID::U16ID) {
         MERROR("RenderViewSystem::Create - Вид с именем '%s' уже существует. Новый не будет создан.", config.name.c_str());
         return false;
@@ -110,7 +110,7 @@ bool RenderViewSystem::Create(RenderView::Config &config)
     }
 
     // Обновите запись хэш-таблицы.
-    lookup.Set(view->name, id);
+    lookup.Set(view->name.c_str(), id);
 
     return true;
 }

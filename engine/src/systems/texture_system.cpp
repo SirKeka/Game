@@ -21,10 +21,10 @@ struct TextureLoadParams {
     Texture* OutTexture;
     Texture TempTexture;
     u32 CurrentGeneration;
-    Resource ImageResource;
-    constexpr TextureLoadParams() : ResourceName(), OutTexture(), TempTexture(), CurrentGeneration(), ImageResource() {}
-    TextureLoadParams(const char* ResourceName, Texture* OutTexture, Texture TempTexture, u32 CurrentGeneration, Resource ImageResource)
-    : ResourceName(MString::Duplicate(ResourceName)), OutTexture(OutTexture), TempTexture(TempTexture), CurrentGeneration(CurrentGeneration), ImageResource(ImageResource) {}
+    ImageResource ImgRes;
+    constexpr TextureLoadParams() : ResourceName(), OutTexture(), TempTexture(), CurrentGeneration(), ImgRes() {}
+    TextureLoadParams(const char* ResourceName, Texture* OutTexture, Texture TempTexture, u32 CurrentGeneration, ImageResource ImgRes)
+    : ResourceName(MString::Duplicate(ResourceName)), OutTexture(OutTexture), TempTexture(TempTexture), CurrentGeneration(CurrentGeneration), ImgRes(ImgRes) {}
 };
 
 bool LoadCubeTextures(const char* name, const char TextureNames[6][TEXTURE_NAME_MAX_LENGTH], Texture* t);
@@ -274,16 +274,17 @@ void LoadJobSuccess(void* params)
     auto TextureParams = reinterpret_cast<TextureLoadParams*>(params);
 
     // Это также управляет загрузкой графического процессора. Невозможно выполнить задание, пока средство визуализации не станет многопоточным.
-    auto ResourceData = reinterpret_cast<ImageResourceData*>(TextureParams->ImageResource.data);
+    auto& ResourceData = TextureParams->ImgRes.data;
 
     // Получить внутренние ресурсы текстуры и загрузить в GPU. Не может быть определено, пока рендерер не станет многопоточным.
-    Renderer::Load(ResourceData->pixels, &TextureParams->TempTexture);
+    Renderer::Load(ResourceData.pixels, &TextureParams->TempTexture);
 
     // Сделать копию старой текстуры.
-    auto old = *TextureParams->OutTexture;
+    auto old = static_cast<Texture&&>(*TextureParams->OutTexture);
 
     // Назначить временную текстуру указателю.
-    *TextureParams->OutTexture = TextureParams->TempTexture;
+    *TextureParams->OutTexture = static_cast<Texture&&>(TextureParams->TempTexture);
+    TextureParams->OutTexture->id = old.id;
 
     // Уничтожить старую текстуру.
     Renderer::Unload(&old);
@@ -298,7 +299,7 @@ void LoadJobSuccess(void* params)
     MTRACE("Текстура «%s» успешно загружена.", TextureParams->ResourceName);
 
     // Очистите данные.
-    ResourceSystem::Instance()->Unload(TextureParams->ImageResource);
+    ResourceSystem::Instance()->Unload(TextureParams->ImgRes);
     if (TextureParams->ResourceName) {
         u32 length = MString::Length(TextureParams->ResourceName);
         MMemory::Free(TextureParams->ResourceName, length + 1, Memory::String);
@@ -312,7 +313,7 @@ void LoadJobFail(void *params)
 
     MERROR("Не удалось загрузить текстуру «%s».", TextureParams->ResourceName);
 
-    ResourceSystem::Instance()->Unload(TextureParams->ImageResource);
+    ResourceSystem::Instance()->Unload(TextureParams->ImgRes);
 }
 
 bool LoadJobStart(void *params, void *ResultData)
@@ -322,9 +323,9 @@ bool LoadJobStart(void *params, void *ResultData)
 
     ImageResourceParams ResourceParams{ true };
 
-    bool result = ResourceSystem::Instance()->Load(LoadParams->ResourceName, ResourceType::Image, &ResourceParams, LoadParams->ImageResource);
+    bool result = ResourceSystem::Instance()->Load(LoadParams->ResourceName, ResourceType::Image, &ResourceParams, LoadParams->ImgRes);
 
-    auto ResourceData = reinterpret_cast<ImageResourceData*>(LoadParams->ImageResource.data);
+    auto& ResourceData = LoadParams->ImgRes.data;
 
     LoadParams->CurrentGeneration = LoadParams->OutTexture->generation;
     LoadParams->OutTexture->generation = INVALID::ID;
@@ -333,7 +334,7 @@ bool LoadJobStart(void *params, void *ResultData)
     // Проверка прозрачности
     b32 HasTransparency = false;
     for (u64 i = 0; i < TotalSize; i += LoadParams->TempTexture.ChannelCount) {
-        u8 a = ResourceData->pixels[i + 3];
+        u8 a = ResourceData.pixels[i + 3];
         if (a < 255) {
             HasTransparency = true;
             break;
@@ -343,9 +344,9 @@ bool LoadJobStart(void *params, void *ResultData)
     // Используйте временную текстуру для загрузки.
     TempTexture.Create(
         LoadParams->ResourceName, 
-        ResourceData->width,
-        ResourceData->height,
-        ResourceData->ChannelCount,
+        ResourceData.width,
+        ResourceData.height,
+        ResourceData.ChannelCount,
         TempTexture.flags |= HasTransparency ? TextureFlag::HasTransparency : 0
     );
 
@@ -361,7 +362,7 @@ bool TextureSystem::LoadTexture(const char *TextureName, Texture *t)
 {
     // Запустить задание по загрузке текстур. Обрабатывает только загрузку с диска в ЦП. 
     // Загрузка в ГП выполняется после завершения этого задания.
-    TextureLoadParams params { TextureName, t, Texture(), t->generation, Resource() };
+    TextureLoadParams params { TextureName, t, Texture(), t->generation, ImageResource() };
 
     JobInfo job { LoadJobStart, LoadJobSuccess, LoadJobFail, &params, sizeof(TextureLoadParams), sizeof(TextureLoadParams) };
     JobSystem::Instance()->Submit(job);
@@ -397,7 +398,7 @@ bool TextureSystem::ProcessTextureReference(const char *name, TextureType type, 
 
             // Возьмите копию имени, поскольку в случае уничтожения оно будет уничтожено (поскольку имя передается как указатель на фактическое имя текстуры).
             char NameCopy[TEXTURE_NAME_MAX_LENGTH]{};
-            MString::nCopy(NameCopy, name, TEXTURE_NAME_MAX_LENGTH);
+            MString::Copy(NameCopy, name, TEXTURE_NAME_MAX_LENGTH);
 
             // Если уменьшается, это означает освобождение.
             if (ReferenceDiff < 0) {
@@ -495,21 +496,21 @@ bool LoadCubeTextures(const char *name, const char TextureNames[6][TEXTURE_NAME_
     for (u8 i = 0; i < 6; ++i) {
         ImageResourceParams params { false };
 
-        Resource ImgResource;
+        ImageResource ImgResource;
         if (!ResourceSystemInst->Load(TextureNames[i], ResourceType::Image, &params, ImgResource)) {
             MERROR("LoadCubeTextures() - Не удалось загрузить ресурс изображения для текстуры «%s»", TextureNames[i]);
             return false;
         }
 
-        auto ResourceData = reinterpret_cast<ImageResourceData*>(ImgResource.data);
+        auto& ResourceData = ImgResource.data;
         if (!pixels) {
-            t->width = ResourceData->width;
-            t->height = ResourceData->height;
-            t->ChannelCount = ResourceData->ChannelCount;
+            t->width = ResourceData.width;
+            t->height = ResourceData.height;
+            t->ChannelCount = ResourceData.ChannelCount;
             t->flags = 0;
             t->generation = 0;
             // Сделайте копию имени.
-            MString::nCopy(t->name, name, TEXTURE_NAME_MAX_LENGTH);
+            MString::Copy(t->name, name, TEXTURE_NAME_MAX_LENGTH);
 
             ImageSize = t->width * t->height * t->ChannelCount;
             // ПРИМЕЧАНИЕ: в кубических картах прозрачность не нужна, поэтому ее не проверяем.
@@ -517,7 +518,7 @@ bool LoadCubeTextures(const char *name, const char TextureNames[6][TEXTURE_NAME_
             pixels = MMemory::TAllocate<u8>(Memory::Array, ImageSize * 6);
         } else {
             // Убедитесь, что все текстуры имеют одинаковый размер.
-            if (t->width != ResourceData->width || t->height != ResourceData->height || t->ChannelCount != ResourceData->ChannelCount) {
+            if (t->width != ResourceData.width || t->height != ResourceData.height || t->ChannelCount != ResourceData.ChannelCount) {
                 MERROR("LoadCubeTextures - Все текстуры должны иметь одинаковое разрешение и битовую глубину.");
                 MMemory::Free(pixels, sizeof(u8) * ImageSize * 6, Memory::Array);
                 pixels = 0;
@@ -526,7 +527,7 @@ bool LoadCubeTextures(const char *name, const char TextureNames[6][TEXTURE_NAME_
         }
 
         // Копировать в соответствующую часть массива.
-        MMemory::CopyMem(pixels + ImageSize * i, ResourceData->pixels, ImageSize);
+        MMemory::CopyMem(pixels + ImageSize * i, ResourceData.pixels, ImageSize);
 
         // Очистить данные.
         ResourceSystemInst->Unload(ImgResource);

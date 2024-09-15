@@ -31,10 +31,10 @@ constexpr Shader::Shader()
     ShaderData(nullptr) 
 {}
 
-Shader::Shader(u32 id, const ShaderConfig *config) 
+Shader::Shader(u32 id, const ShaderConfig &config) 
     : 
     id(id), 
-    name(config->name), 
+    name(config.name), 
     RequiredUboAlignment(), 
     GlobalUboSize(), 
     GlobalUboStride(), 
@@ -50,7 +50,7 @@ Shader::Shader(u32 id, const ShaderConfig *config)
     BoundUboOffset(), 
     HashtableBlock(MMemory::Allocate(1024 * sizeof(u16), Memory::Renderer, true)), 
     UniformLookup(1024, false, reinterpret_cast<u16*>(HashtableBlock), true, INVALID::U16ID), 
-    uniforms(config->UniformCount), 
+    uniforms(config.UniformCount), 
     attributes(), 
     state(ShaderState::NotCreated), 
     PushConstantRangeCount(), 
@@ -73,7 +73,7 @@ Shader::~Shader()
     state = ShaderState::NotCreated;
 }
 
-bool Shader::Create(u32 id, const ShaderConfig *config)
+bool Shader::Create(u32 id, const ShaderConfig &config)
 {
     this->id = id;
     if (this->id == INVALID::ID) {
@@ -81,7 +81,7 @@ bool Shader::Create(u32 id, const ShaderConfig *config)
         return false;
     }
     this->state = ShaderState::NotCreated;
-    this->name = config->name;
+    this->name = config.name;
     this->PushConstantRangeCount = 0;
     MMemory::ZeroMem(this->PushConstantRanges, sizeof(Range) * 32);
     this->BoundInstanceID = INVALID::ID;
@@ -203,7 +203,7 @@ bool Shader::UniformAdd(const MString &UniformName, u32 size, ShaderUniformType 
         PushConstantSize += range.size;
     }
 
-    if (!UniformLookup.Set(UniformName, entry.index)) {
+    if (!UniformLookup.Set(UniformName.c_str(), entry.index)) {
         MERROR("Не удалось добавить униформу.");
         return false;
     }
@@ -227,7 +227,7 @@ bool Shader::UniformNameValid(const MString &UniformName)
         return false;
     }
     u16 location;
-    if (UniformLookup.Get(UniformName, &location) && location != INVALID::U16ID) {
+    if (UniformLookup.Get(UniformName.c_str(), &location) && location != INVALID::U16ID) {
         MERROR("Униформа с именем «%s» уже существует в шейдере «%s».", UniformName.c_str(), name.c_str());
         return false;
     }
@@ -261,4 +261,19 @@ u16 Shader::UniformIndex(const char *UniformName)
 void Shader::Destroy()
 {
     this->~Shader();
+}
+
+void ShaderConfig::Clear()
+{
+    // name.Clear();
+    CullMode = FaceCullMode::None;
+    AttributeCount = 0;
+    attributes.Clear();
+    UniformCount = 0;                         
+    uniforms.Clear();    
+    // RenderpassName.Clear();                  
+    StageCount = 0;                           
+    stages.Clear();              
+    StageNames.Clear();              
+    StageFilenames.Clear();          
 }

@@ -1,31 +1,33 @@
 #pragma once
-#include "defines.hpp"
-#include "core/logger.hpp"
+#include "resources/texture.hpp"
+#include "resources/material/material_config.hpp"
+#include "resources/font_resource.hpp"
+#include "resources/geometry.hpp"
+#include "resources/shader.hpp"
 
 /// @brief Общая структура ресурса. Все загрузчики ресурсов загружают в них данные.
-
-//template<typename T>
+/// @tparam T 
+template<typename T>
 struct Resource {
-    u32 LoaderID{};         // Идентификатор загрузчика, обрабатывающего этот ресурс.
-    const char* name;       // Название ресурса.
-    MString FullPath;       // Полный путь к файлу ресурса.
-    u64 DataSize{};         // Размер данных ресурса в байтах.
-    void* data{nullptr};    // Данные ресурса.
-    constexpr Resource() : LoaderID(), name(), FullPath(), DataSize(), data(nullptr) {}
+    u32 LoaderID{};     // Идентификатор загрузчика, обрабатывающего этот ресурс.
+    const char* name;   // Название ресурса.
+    MString FullPath;   // Полный путь к файлу ресурса.
+    //u64 DataSize {};    // Размер данных ресурса в байтах.
+    T data{};           // Данные ресурса.
+    constexpr Resource() : LoaderID(), name(nullptr), FullPath(),/* DataSize(), */data() {}
 };
 
-/*
- * using TextResource = Resource<char*>; // Или MString?
- * using BinaryResource = Resource<u8*>;
- * using ImageResource = Resource<ImageResourceData>;
- * using MaterialResource = Resource<MaterialConfig>;
- * using MeshResource = Resource<GeometryConfig>;
- * using ShaderResource = Resource<ShaderConfig>;
- * using BitmapFontResource = Resource<>;
- * using CustomResource = Resource<>;
-*/
+using TextResource       = Resource<MString>;
+using BinaryResource     = Resource<DArray<u8>>;
+using ImageResource      = Resource<ImageResourceData>;
+using MaterialResource   = Resource<MaterialConfig>;
+using MeshResource       = Resource<DArray<GeometryConfig>>;
+using ShaderResource     = Resource<ShaderConfig>;
+using BitmapFontResource = Resource<BitmapFontResourceData>;
+//using CustomResource = Resource<>;
 
-enum class ResourceType {
+
+enum class ResourceType : u8 {
     Invalid,    // 
     Text,       // Тип ресурса Text.
     Binary,     // Тип ресурса Binary.
@@ -51,7 +53,7 @@ struct ResourceHeader {
 class ResourceLoader
 {
     friend class ResourceSystem;
-protected:
+private:
     u32 id{INVALID::ID};
     ResourceType type;
     MString CustomType;
@@ -59,16 +61,49 @@ protected:
 public:
     // constexpr ResourceLoader() : id(INVALID::ID), type(), CustomType(), TypePath() {}
     constexpr ResourceLoader(ResourceType type, const MString& CustomType, const MString& TypePath) : id(INVALID::ID), type(type), CustomType(CustomType), TypePath(TypePath) {}
-    virtual ~ResourceLoader() {
+    ~ResourceLoader() {
         id = INVALID::ID;
     };
+
+    void Create(ResourceType type, const MString& CustomType, MString&& TypePath) {
+        this->id = INVALID::ID;
+        this->type = type;
+        this->CustomType = CustomType;
+        this->TypePath = static_cast<MString&&>(TypePath);
+    }
+
     MINLINE void Destroy() { this->~ResourceLoader(); }
 
-    virtual bool Load(const char* name, void* params, Resource& OutResource) {
-        MERROR("Вызывается не инициализированный загрузчик");
-        return false;
-    }
-    virtual void Unload( Resource& resource){
-        MERROR("Вызывается не инициализированный загрузчик");
+    bool Load(const char* name, void* params, TextResource& OutResource);
+    bool Load(const char* name, void* params, BinaryResource& OutResource);
+    bool Load(const char* name, void* params, ImageResource& OutResource);
+    bool Load(const char* name, void* params, MaterialResource& OutResource);
+    bool Load(const char* name, void* params, MeshResource& OutResource);
+    bool Load(const char* name, void* params, ShaderResource& OutResource);
+    bool Load(const char* name, void* params, BitmapFontResource& OutResource);
+    //bool Load(const char* name, void* params, CustomResource& OutResource);
+    
+    void Unload(TextResource& resource);
+    void Unload(BinaryResource& resource);
+    void Unload(ImageResource& resource);
+    void Unload(MaterialResource& resource);
+    void Unload(MeshResource& resource);
+    void Unload(ShaderResource& resource);
+    void Unload(BitmapFontResource& resource);
+
+    template<typename T>
+    bool ResourceUnload(Resource<T> &resource, Memory::Tag tag)
+    {
+        if (resource.FullPath) {
+            resource.FullPath.Clear();
+        }
+
+        //if (resource.data) {
+            //MMemory::Free(resource.data, resource.DataSize, tag);
+            //resource.data = nullptr;
+            resource.LoaderID = INVALID::ID;
+        //}
+
+        return true;
     }
 };

@@ -22,35 +22,60 @@ public:
     static bool Initialize(u32 MaxLoaderCount, const char* BasePath);
     static void Shutdown();
 
-    template<typename T>
     /// @brief Регистрирует указанный загрузчик ресурсов в системе.
     /// @param type
     /// @param CustomType пользовательский тип ресурса.
     /// @param TypePath 
     /// @return 
-    MAPI bool RegisterLoader(ResourceType type, const MString& CustomType, const MString& TypePath);
+    MAPI bool RegisterLoader(ResourceType type, const MString& CustomType, const char* TypePath);
     /// @brief Загружает ресурс с указанным именем.
     /// @param name имя ресурса для загрузки.
     /// @param type тип ресурса для загрузки.
     /// @param params параметры, передаваемые загрузчику, или nullptr.
     /// @param OutResource ссылка на недавно загруженный ресурс.
     /// @return true в случае успеха; в противном случае false.
-    MAPI bool Load(const char* name, ResourceType type, void* params, Resource& OutResource);
+    template<typename T>
+    MAPI bool Load(const char* name, ResourceType type, void* params, T& OutResource) {
+        if (type != ResourceType::Custom) {
+            // Выбор загрузчика.
+            for (u32 i = 0; i < MaxLoaderCount; ++i) {
+                auto& l = RegisteredLoaders[i];
+                if (l.id != INVALID::ID && l.type == type) {
+                    return l.Load(name, params, OutResource);
+                }
+            }
+        }
+
+        OutResource.LoaderID = INVALID::ID;
+        MERROR("ResourceSystem::Load — загрузчик для типа %d не найден.", type);
+        return false;
+    }
+
     /// @brief Загружает ресурс с указанным именем и пользовательского типа.
     /// @param name имя ресурса для загрузки.
     /// @param CustomType пользовательский тип ресурса.
     /// @param params параметры, передаваемые загрузчику, или nullptr.
     /// @param OutResource ссылка на недавно загруженный ресурс.
     /// @return true в случае успеха; в противном случае false.
-    MAPI bool Load(const char* name, const char* CustomType, void* params, Resource& OutResource);
+    template<typename T>
+    MAPI bool Load(const char* name, const char* CustomType, void* params, T& OutResource);
+
     /// @brief Выгружает указанный ресурс.
     /// @param resource ссылка на ресурс который нужно выгрузить.
-    MAPI void Unload(Resource& resource);
+    template<typename T>
+    MAPI void Unload(T& resource) {
+        if (resource.LoaderID != INVALID::ID) {
+            auto& l = RegisteredLoaders[resource.LoaderID];
+            if (l.id != INVALID::ID) {
+                l.Unload(resource);
+            }
+        }
+    }
     MAPI const char* BasePath();
 
     static MINLINE ResourceSystem* Instance() { return state; }
-private:
+/*private:
     bool Load(const char* name, ResourceLoader& loader, void* params, Resource& OutResource);
 public:
-    // void* operator new(u64 size);
+    // void* operator new(u64 size);*/
 };

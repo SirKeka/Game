@@ -6,6 +6,8 @@
 #include "resources/shader.hpp"
 #include "renderer/views/render_view.hpp"
 #include "renderbuffer.hpp"
+#include "resources/mesh.hpp"
+#include "resources/ui_text.hpp"
 
 struct StaticMeshData;
 class Texture;
@@ -72,6 +74,14 @@ struct RenderPacket
     constexpr RenderPacket() : DeltaTime(), ViewCount(), views(nullptr) {}
     constexpr RenderPacket(f64 DeltaTime, u16 ViewCount, RenderView::Packet* views)
     : DeltaTime(DeltaTime), ViewCount(ViewCount), views(views) {}
+};
+
+struct UiPacketData {
+    Mesh::PacketData MeshData;
+    // ЗАДАЧА: временно
+    u32 TextCount;
+    Text** texts;
+    constexpr UiPacketData(Mesh::PacketData MeshData, u32 TextCount, Text** texts) : MeshData(MeshData), TextCount(TextCount), texts(texts) {}
 };
 
 /// @brief Общая конфигурация для рендерера.
@@ -232,6 +242,7 @@ public:
     /// @param buffer Указатель для создания внутреннего буфера.
     /// @returns True в случае успеха; в противном случае false.
     virtual bool RenderBufferCreateInternal(RenderBuffer& buffer) = 0;
+    virtual bool RenderBufferCreate(RenderBufferType type, u64 TotalSize, bool UseFreelist, RenderBuffer &buffer) = 0;
 
     /// @brief Уничтожает указанный буфер.
     ///

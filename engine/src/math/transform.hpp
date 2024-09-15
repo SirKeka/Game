@@ -21,7 +21,7 @@ public:
     constexpr Transform() 
     : 
     position(), 
-    rotation(0.f, 0.f, 0.f, 1.f), 
+    rotation(0.F, 0.F, 0.F, 1.F), 
     scale(FVec3::One()), 
     IsDirty(false), 
     local(Matrix4D::MakeIdentity()), 

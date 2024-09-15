@@ -12,14 +12,11 @@
 
 RendererType *Renderer::ptrRenderer = nullptr;
 
-constexpr bool CriticalInit(bool op, const MString& message)
-{
-    if (!op) {
-        MERROR(message.c_str());
-        return false;
+#define CriticalInit(op, message)\
+    if (!op) {                   \
+        MERROR(message);         \
+        return;                  \
     }
-    return true;
-}
 
 Renderer::Renderer(MWindow *window, const char *ApplicationName, ERendererType type)
 :  
@@ -75,7 +72,7 @@ FramesSinceResize()
         RendererConfig::PFN_Method(this, &Renderer::RegenerateRenderTargets)
     };
 
-    CriticalInit(ptrRenderer = new VulkanAPI(window, RConfig, WindowRenderTargetCount), "Систему рендеринга не удалось инициализировать. Выключение.");
+    CriticalInit((ptrRenderer = new VulkanAPI(window, RConfig, WindowRenderTargetCount)), "Систему рендеринга не удалось инициализировать. Выключение.");
 
     // ЗАДАЧА: Узнаем, как их получить, когда определим представления.
     SkyboxRenderpass = ptrRenderer->GetRenderpass(SkyboxRenderpassName);
@@ -102,37 +99,36 @@ FramesSinceResize()
     UiRenderpass->RenderArea = FVec4(0, 0, FramebufferWidth, FramebufferHeight);
 
     // Shaders
-    Resource ConfigResource;
+    ShaderResource ConfigResource;
     ShaderConfig* config = nullptr;
 
     auto ResourceSystemInst = ResourceSystem::Instance();
-    auto ShaderSystemInst = ShaderSystem::GetInstance();
     // Встроенный шейдер скайбокса.
     CriticalInit(
         ResourceSystemInst->Load(BUILTIN_SHADER_NAME_SKYBOX, ResourceType::Shader, nullptr, ConfigResource),
         "Не удалось загрузить встроенный шейдер скайбокса.");
-    config = reinterpret_cast<ShaderConfig*>(ConfigResource.data);
-    CriticalInit(ShaderSystemInst->Create(config), "Не удалось загрузить встроенный шейдер скайбокса.");
+    //config = reinterpret_cast<ShaderConfig*>(ConfigResource.data);
+    CriticalInit(ShaderSystem::Create(ConfigResource.data), "Не удалось загрузить встроенный шейдер скайбокса.");
     ResourceSystemInst->Unload(ConfigResource);
-    SkyboxShaderID = ShaderSystemInst->GetID(BUILTIN_SHADER_NAME_SKYBOX);
+    SkyboxShaderID = ShaderSystem::GetID(BUILTIN_SHADER_NAME_SKYBOX);
 
     // Встроенный шейдер материала.
     CriticalInit(
         ResourceSystemInst->Load(BUILTIN_SHADER_NAME_MATERIAL, ResourceType::Shader, nullptr, ConfigResource),
         "Не удалось загрузить встроенный шейдер материала.");
-    config = reinterpret_cast<ShaderConfig*>(ConfigResource.data);
-    CriticalInit(ShaderSystemInst->Create(config), "Не удалось загрузить встроенный шейдер материала.");
+    //config = reinterpret_cast<ShaderConfig*>(ConfigResource.data);
+    CriticalInit(ShaderSystem::Create(ConfigResource.data), "Не удалось загрузить встроенный шейдер материала.");
     ResourceSystemInst->Unload(ConfigResource);
-    MaterialShaderID = ShaderSystemInst->GetID(BUILTIN_SHADER_NAME_MATERIAL);
+    MaterialShaderID = ShaderSystem::GetID(BUILTIN_SHADER_NAME_MATERIAL);
 
     // Встроенный шейдер пользовательского интерфейса.
     CriticalInit(
         ResourceSystemInst->Load(BUILTIN_SHADER_NAME_UI, ResourceType::Shader, nullptr, ConfigResource),
         "Не удалось загрузить встроенный шейдер пользовательского интерфейса.");
-    config = reinterpret_cast<ShaderConfig*>(ConfigResource.data);
-    CriticalInit(ShaderSystemInst->Create(config), "Не удалось загрузить встроенный шейдер пользовательского интерфейса.");
+    //config = reinterpret_cast<ShaderConfig*>(ConfigResource.data);
+    CriticalInit(ShaderSystem::Create(ConfigResource.data), "Не удалось загрузить встроенный шейдер пользовательского интерфейса.");
     ResourceSystemInst->Unload(ConfigResource);
-    UIShaderID = ShaderSystemInst->GetID(BUILTIN_SHADER_NAME_UI);
+    UIShaderID = ShaderSystem::GetID(BUILTIN_SHADER_NAME_UI);
 }
 
 Renderer::~Renderer()
@@ -418,6 +414,11 @@ bool Renderer::RenderBufferCreate(RenderBuffer &buffer)
         return false;
     }
     return true;
+}
+
+bool Renderer::RenderBufferCreate(RenderBufferType type, u64 TotalSize, bool UseFreelist, RenderBuffer &buffer)
+{
+    return ptrRenderer->RenderBufferCreate(type, TotalSize, UseFreelist, buffer);
 }
 
 void Renderer::RenderBufferDestroy(RenderBuffer &buffer)

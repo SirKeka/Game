@@ -7,10 +7,10 @@
 struct MeshLoadParams {
     const char* ResourceName;
     Mesh* OutMesh;
-    Resource MeshResource;
-    constexpr MeshLoadParams() : ResourceName(), OutMesh(), MeshResource() {}
-    MeshLoadParams(const char* ResourceName, Mesh* OutMesh, Resource MeshResource)
-    : ResourceName(ResourceName), OutMesh(OutMesh), MeshResource(MeshResource) {}
+    MeshResource MeshRes;
+    constexpr MeshLoadParams() : ResourceName(), OutMesh(), MeshRes() {}
+    MeshLoadParams(const char* ResourceName, Mesh* OutMesh, MeshResource MeshResource)
+    : ResourceName(ResourceName), OutMesh(OutMesh), MeshRes(MeshResource) {}
 };
 
 /// @brief Вызывается при успешном завершении задания.
@@ -19,8 +19,8 @@ void MeshLoadJobSuccess(void* params) {
     auto MeshParams = reinterpret_cast<MeshLoadParams*>(params);
 
     // Это также обрабатывает загрузку GPU. Не может быть джобифицировано, пока рендерер не станет многопоточным.
-    auto configs = reinterpret_cast<GeometryConfig*>(MeshParams->MeshResource.data);
-    MeshParams->OutMesh->GeometryCount = MeshParams->MeshResource.DataSize;
+    auto configs = MeshParams->MeshRes.data.Data();
+    MeshParams->OutMesh->GeometryCount = MeshParams->MeshRes.data.Length();
     MeshParams->OutMesh->geometries = MMemory::TAllocate<GeometryID*>(Memory::Array, MeshParams->OutMesh->GeometryCount);
     for (u32 i = 0; i < MeshParams->OutMesh->GeometryCount; ++i) {
         MeshParams->OutMesh->geometries[i] = GeometrySystem::Instance()->Acquire(configs[i], true);
@@ -29,7 +29,7 @@ void MeshLoadJobSuccess(void* params) {
 
     MTRACE("Успешно загружена сетка '%s'.", MeshParams->ResourceName);
 
-    ResourceSystem::Instance()->Unload(MeshParams->MeshResource);
+    ResourceSystem::Instance()->Unload(MeshParams->MeshRes);
 }
 
 /// @brief Вызывается при сбое задания.
@@ -39,7 +39,7 @@ void MeshLoadJobFail(void* params) {
 
     MERROR("Не удалось загрузить сетку '%s'.", MeshParams->ResourceName);
 
-    ResourceSystem::Instance()->Unload(MeshParams->MeshResource);
+    ResourceSystem::Instance()->Unload(MeshParams->MeshRes);
 }
 
 /// @brief Вызывается, когда начинается задание по загрузке сетки.
@@ -48,7 +48,7 @@ void MeshLoadJobFail(void* params) {
 /// @return Истина при успешном выполнении задания; в противном случае ложь.
 bool MeshLoadJobStart(void* params, void* ResultData) {
     auto LoadParams = reinterpret_cast<MeshLoadParams*>(params);
-    bool result = ResourceSystem::Instance()->Load(LoadParams->ResourceName, ResourceType::Mesh, nullptr, LoadParams->MeshResource);
+    bool result = ResourceSystem::Instance()->Load(LoadParams->ResourceName, ResourceType::Mesh, nullptr, LoadParams->MeshRes);
 
     // ПРИМЕЧАНИЕ: Параметры нагрузки также используются здесь в качестве результирующих данных, теперь заполняется только поле mesh_resource.
     MMemory::CopyMem(ResultData, LoadParams, sizeof(MeshLoadParams));
@@ -59,7 +59,7 @@ bool MeshLoadJobStart(void* params, void* ResultData) {
 bool Mesh::LoadFromResource(const char *ResourceName)
 {
     generation = INVALID::U8ID;
-    Resource res;
+    MeshResource res;
     MeshLoadParams params {ResourceName, this, res};
 
     JobInfo job { MeshLoadJobStart, MeshLoadJobSuccess, MeshLoadJobFail, &params, sizeof(MeshLoadParams), sizeof(MeshLoadParams) };

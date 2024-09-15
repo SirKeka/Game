@@ -10,23 +10,23 @@ template<typename> class DArray;
 class MAPI MString
 {
 private:
-    u16 length           {};
-    bool autorelease{false};
+    u32 length           {};
+    bool autorelease {true};
     char* str     {nullptr};
 
 public:
-   constexpr MString() : length(), autorelease(false), str(nullptr) {}
-   /// @brief Создает нулевую строку с зарезервированной памятью под нужное количество символов + 1 для терминального ноля
-   /// @param length длина строки
-   /// @param autorealease указывает нужно ли удалять данные строки или нет ПРИМЕЧАНИЕ: по умолчанию true
-   constexpr MString(u16 length, bool autorelease = true);
+   constexpr MString() : length(), autorelease(true), str(nullptr) {}
    /// @brief Создает строку из двух строк
    /// @param str1 первая строка
    /// @param str2 вторая строка
    /// @param autorealease указывает нужно ли удалять данные строки или нет ПРИМЕЧАНИЕ: по умолчанию true
    constexpr MString(const char *str1, const char *str2, bool autorelease = true);
    constexpr MString(const MString &str1, const MString &str2, bool autorelease = true);
-   constexpr MString(const char *s, bool autorelease = true);
+   /// @brief Создает строку на основе си строки
+   /// @param s си строка
+   /// @param DelCon указывает на то нужно ли копировать управляющие символы. По умолчанию false
+   /// @param autorelease указывает на то нужно ли автоматически удалять данные строки
+   constexpr MString(const char *s, bool DelCon = false, bool autorelease = true);
    constexpr MString(const MString &s);
    constexpr MString(MString&& s);
     ~MString();
@@ -65,6 +65,8 @@ public:
     /// @return ссылку на строку
     MString& operator+=(char c);
 
+    void Create(char* str, u64 length, bool autorelease = true);
+
     /// @brief Извлекает каталог из полного пути к файлу.
     /// @tparam N количество символов в массиве
     /// @param arr массив символов в который нужно скопировать путь
@@ -89,13 +91,17 @@ public:
     void SetAutoRealease(bool autorealease) { this->autorelease = autorealease; }
 
     /// @brief Получает длину заданной строки.
-    /// @return Длину(количество символов в строке)
-    constexpr u16 Length() const noexcept;
+    /// @return Длину строки
+    constexpr u32 Length() const noexcept;
+
+    /// @brief Функция считает количество символов в строке ПРИМЕЧАНИЕ: может не совпадать с длиной строки
+    /// @return Количество символов в строке
+    u32 nChar();
 
     /// @brief Получает длину заданной строки.
     /// @param s строка в стиле си
     /// @return Длину(количество символов в строке)
-    static const u16 Length(const char* s);
+    static const u32 Length(const char* s);
 
     /// @brief Получает длину строки в символах UTF-8 (потенциально многобайтовых).
     /// @param str строка для проверки.
@@ -108,9 +114,10 @@ public:
     /// @param OutCodepoint переменная для хранения кодовой точки UTF-8.
     /// @param OutAdvance указатель для хранения продвижения или количества байтов, которые занимает кодовая точка.
     /// @return True в случае успеха; в противном случае false для недопустимого/неподдерживаемого UTF-8.
-    static bool BytesToCodepoint(const char* bytes, u32 offset, i32& OutCodepoint, u8* OutAdvance);
+    static bool BytesToCodepoint(const char* bytes, u32 offset, i32& OutCodepoint, u8& OutAdvance);
+    bool BytesToCodepoint(u32 offset, i32& OutCodepoint, u8& OutAdvance);
 private:
-    u16 Len(const char* s);
+    constexpr u32 Len(const char* s, bool DelCon = false);
 public:
     //char* Copy(const char* s);
     /// @brief Добавляет к массиву символов строку
@@ -206,11 +213,9 @@ public:
 
     static bool StringToF32(const char* s, f32& fn1, f32* fn2 = nullptr, f32* fn3 = nullptr, f32* fn4 = nullptr);
 
-    static void Copy(char* dest, const char* source);
-    static void Copy(char* dest, const MString& source);
+    static char* Copy(char* dest, const char* source, u64 Length = 0, bool DelCon = false);
+    static char* Copy(char* dest, const MString& source, u64 length = 0, bool DelCon = false);
     void nCopy(const MString& source, u64 length);
-    static void nCopy(char* dest, const char* source, u64 Length);
-    static void nCopy(char* dest, const MString& source, u64 length); 
 
     /// @brief Зануляет статический массив символов
     /// @tparam N число символов в статическом массиве
@@ -234,7 +239,7 @@ public:
     }
     // static char* Concat();
 private:
-    char* Copy(const char* source, u64 length);
+    constexpr char* Copy(const char* source, u64 length, bool DelCon = false);
     char* Copy(const MString& source);
     constexpr char* Concat(const char *str1, const char *str2, u64 length);
 public:

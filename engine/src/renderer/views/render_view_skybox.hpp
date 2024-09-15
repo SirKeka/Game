@@ -24,4 +24,7 @@ public:
     void Resize(u32 width, u32 height) override;
     bool BuildPacket(void* data, Packet& OutPacket) const override;
     bool Render(const Packet& packet, u64 FrameNumber, u64 RenderTargetIndex) const override;
+
+    void* operator new(u64 size);
+    void operator delete(void* ptr, u64 size);
 };

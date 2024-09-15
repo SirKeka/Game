@@ -45,25 +45,25 @@ i32 ProcessShaders(i32 argc, char const *argv[])
 
         char EndPath[10];
         i32 length = MString::Length(argv[i]);
-        MString::nCopy(EndPath, argv[i] + length - 9, 9);
+        MString::Copy(EndPath, argv[i] + length - 9, 9);
 
         // Анализируем этап из имени файла.
         char stage[5];
         if (MString::Equali(EndPath, "frag.glsl")) {
-            MString::nCopy(stage, "frag", 4);
+            MString::Copy(stage, "frag", 4);
         } else if (MString::Equali(EndPath, "vert.glsl")) {
-            MString::nCopy(stage, "vert", 4);
+            MString::Copy(stage, "vert", 4);
         } else if (MString::Equali(EndPath, "geom.glsl")) {
-            MString::nCopy(stage, "geom", 4);
+            MString::Copy(stage, "geom", 4);
         } else if (MString::Equali(EndPath, "comp.glsl")) {
-            MString::nCopy(stage, "comp", 4);
+            MString::Copy(stage, "comp", 4);
         }
         stage[4] = 0;
 
         // Имя выходного файла, просто имеет другое расширение spv.
         char OutFilename[255];
-        MString::nCopy(OutFilename, argv[i], length - 4);
-        MString::nCopy(OutFilename + length - 4, "spv", 3);
+        MString::Copy(OutFilename, argv[i], length - 4);
+        MString::Copy(OutFilename + length - 4, "spv", 3);
         OutFilename[length - 1] = 0;
 
         // Некоторые выходные данные.

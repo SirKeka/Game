@@ -10,41 +10,43 @@
 #include "clock.hpp"
 #include "resources/mesh.hpp"
 #include "resources/skybox.hpp"
+#include "resources/ui_text.hpp"
+
+#include "core/application.hpp"
 
 struct ApplicationState {
     //LinearAllocator SystemAllocator;
     //MMemory* mem;
-    Logger* logger;
+    Logger* logger           {nullptr};
     //Input Inputs;
-    Event* Events;
-    bool IsRunning;
-    bool IsSuspended;
-    MWindow* Window;
-    class Renderer* Render;
-    class GameTypes* GameInst;
+    Event* Events            {nullptr};
+    bool IsRunning             {false};
+    bool IsSuspended           {false};
+    MWindow* Window          {nullptr};
+    class Renderer* Render   {nullptr};
+    class GameTypes* GameInst{nullptr};
 
     //Системы
     //TextureSystem* TexSys;
-    class JobSystem* JobSystemInst{nullptr};
+    class JobSystem* JobSystemInst              {nullptr};
     class RenderViewSystem* RenderViewSystemInst{nullptr};
-    class ResourceSystem* ResourceSystemInst{nullptr};
+    class ResourceSystem* ResourceSystemInst    {nullptr};
     
-    u32 width;
-    u32 height;
-    Clock clock{};
-    f64 LastTime;
+    u32 width   {};
+    u32 height  {};
+    Clock clock {};
+    f64 LastTime{};
 
     // ЗАДАЧА: временно
     Skybox sb;
 
-    Mesh meshes[10];
-    Mesh* CarMesh;
-    Mesh* SponzaMesh;
-    bool ModelsLoaded;
-    Mesh UIMeshes[10];
-
+    Mesh meshes[10]        {};
+    Mesh* CarMesh   {nullptr};
+    Mesh* SponzaMesh{nullptr};
+    bool ModelsLoaded {false};
+    Mesh UIMeshes[10]      {};
+    Text TestText          {};
     // ЗАДАЧА: временно
-
 };
 
 class Application

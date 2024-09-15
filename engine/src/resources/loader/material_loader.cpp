@@ -1,10 +1,8 @@
-#include "material_loader.hpp"
 #include "platform/filesystem.hpp"
 #include "resources/material/material.hpp"
 #include "systems/resource_system.hpp"
-#include "loader_utils.hpp"
 
-bool MaterialLoader::Load(const char *name, void* params, Resource &OutResource)
+bool ResourceLoader::Load(const char *name, void* params, MaterialResource &OutResource)
 {
     if (!name) {
         return false;
@@ -15,7 +13,7 @@ bool MaterialLoader::Load(const char *name, void* params, Resource &OutResource)
     MString::Format(FullFilePath, FormatStr, ResourceSystem::Instance()->BasePath(), TypePath.c_str(), name, ".mmt");
 
     FileHandle f;
-    if (!Filesystem::Open(FullFilePath, FileModes::Read, false, &f)) {
+    if (!Filesystem::Open(FullFilePath, FileModes::Read, false, f)) {
         MERROR("MaterialLoader::Load - невозможно открыть файл материала для чтения: '%s'.", FullFilePath);
         return false;
     }
@@ -24,23 +22,28 @@ bool MaterialLoader::Load(const char *name, void* params, Resource &OutResource)
     OutResource.FullPath = FullFilePath;
 
     // ЗАДАЧА: Здесь следует использовать распределитель.
-    MaterialConfig* ResourceData = new MaterialConfig(name, "Builtin.Material", true, Vector4D<f32>::Zero());
+    auto& MatConf = OutResource.data; // = new MaterialConfig(name, "Builtin.Material", true, Vector4D<f32>::Zero());
     // Установите некоторые значения по умолчанию.
+    MString::Copy(MatConf.name, name);
+    MatConf.ShaderName = "Builtin.Material";
+    MatConf.AutoRelease = true;
 
     // Прочтите каждую строку файла.
     char LineBuf[512] = "";
     char* p = &LineBuf[0];
     u64 LineLength = 0;
     u32 LineNumber = 1;
-    while (Filesystem::ReadLine(&f, 511, &p, LineLength)) {
+    while (Filesystem::ReadLine(f, 511, &p, LineLength)) {
         // Обрезаем строку.
-        MString trimmed { LineBuf };
+        MString trimmed { LineBuf, true };
 
         // Получите обрезанную длину.
         LineLength = trimmed.Length();
 
         // Пропускайте пустые строки и комментарии.
         if (LineLength < 1 || trimmed[0] == '#') {
+            // Очистите буфер строк.
+            MString::Zero(LineBuf);
             LineNumber++;
             continue;
         }
@@ -67,26 +70,26 @@ bool MaterialLoader::Load(const char *name, void* params, Resource &OutResource)
         if (TrimmedVarName.Comparei("version")) {
             // ЗАДАЧА: version
         } else if (TrimmedVarName.Comparei("name")) {
-            MString::nCopy(ResourceData->name, TrimmedValue, MATERIAL_NAME_MAX_LENGTH);
+            MString::Copy(MatConf.name, TrimmedValue, MATERIAL_NAME_MAX_LENGTH);
         } else if (TrimmedVarName.Comparei("diffuse_map_name")) {
-            MString::nCopy(ResourceData->DiffuseMapName, TrimmedValue, TEXTURE_NAME_MAX_LENGTH);
+            MString::Copy(MatConf.DiffuseMapName, TrimmedValue, TEXTURE_NAME_MAX_LENGTH);
         } else if (TrimmedVarName.Comparei("specular_map_name")) {
-            MString::nCopy(ResourceData->SpecularMapName, TrimmedValue, TEXTURE_NAME_MAX_LENGTH);
+            MString::Copy(MatConf.SpecularMapName, TrimmedValue, TEXTURE_NAME_MAX_LENGTH);
         } else if (TrimmedVarName.Comparei("normal_map_name")) {
-            MString::nCopy(ResourceData->NormalMapName, TrimmedValue, TEXTURE_NAME_MAX_LENGTH);
+            MString::Copy(MatConf.NormalMapName, TrimmedValue, TEXTURE_NAME_MAX_LENGTH);
         } else if (TrimmedVarName.Comparei("diffuse_colour")) {
             // Разобрать цвет
-            if (!TrimmedValue.ToVector(ResourceData->DiffuseColour)) {
+            if (!TrimmedValue.ToVector(MatConf.DiffuseColour)) {
                 MWARN("Ошибка анализа диффузного цвета (diffuse_color) в файле «%s». Вместо этого используется белый цвет по умолчанию.", FullFilePath);
                 // ПРИМЕЧАНИЕ. Уже назначено выше, его здесь нет необходимости.
             } 
         } else if (TrimmedVarName.Comparei("Shader")) {
             // Возьмите копию названия материала.
-            ResourceData->ShaderName = TrimmedValue;
+            MatConf.ShaderName = TrimmedValue;
         } else if (TrimmedVarName.Comparei("specular")) {
-            if(!TrimmedValue.ToFloat(ResourceData->specular)) {
+            if(!TrimmedValue.ToFloat(MatConf.specular)) {
                 MWARN("Ошибка анализа зеркального отражения в файле «%s». Вместо этого используется значение по умолчанию 32.0.", FullFilePath);
-                ResourceData->specular = 32.0f;
+                MatConf.specular = 32.0f;
             }
         }
 
@@ -99,16 +102,16 @@ bool MaterialLoader::Load(const char *name, void* params, Resource &OutResource)
 
     Filesystem::Close(f);
 
-    OutResource.data = ResourceData;
-    OutResource.DataSize = sizeof(MaterialConfig);
+    //OutResource.data = ResourceData;
+    //OutResource.DataSize = sizeof(MaterialConfig);
     OutResource.name = name;
 
     return true;
 }
 
-void MaterialLoader::Unload(Resource &resource)
+void ResourceLoader::Unload(MaterialResource &resource)
 {
-    if (!LoaderUtils::ResourceUnload(this, resource, Memory::MaterialInstance)) {
+    if (!ResourceUnload(resource, Memory::MaterialInstance)) {
         MWARN("MaterialLoader::Unload вызывается с nullptr для себя или ресурса.");
         return;
     }

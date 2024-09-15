@@ -1,6 +1,5 @@
-#include "image_loader.hpp"
+#include "resource_loader.hpp"
 #include "systems/resource_system.hpp"
-#include "loader_utils.hpp"
 #include "resources/texture.hpp"
 
 // ЗАДАЧА: загрузчик ресурсов.
@@ -9,7 +8,7 @@
 #define STBI_NO_STDIO
 #include "vendor/stb_image.h"
 
-bool ImageLoader::Load(const char *name, void* params, Resource &OutResource)
+bool ResourceLoader::Load(const char *name, void* params, ImageResource &OutResource)
 {
     if (!name) {
         return false;
@@ -45,16 +44,16 @@ bool ImageLoader::Load(const char *name, void* params, Resource &OutResource)
     }
 
     FileHandle f;
-    if (!Filesystem::Open(FullFilePath, FileModes::Read, true, &f)) {
+    if (!Filesystem::Open(FullFilePath, FileModes::Read, true, f)) {
         MERROR("Невозможно прочитать файл: %s.", FullFilePath);
-        Filesystem::Close(&f);
+        Filesystem::Close(f);
         return false;
     }
 
     u64 FileSize = 0;
-    if (!Filesystem::Size(&f, FileSize)) {
+    if (!Filesystem::Size(f, FileSize)) {
         MERROR("Невозможно получить размер файла: %s.", FullFilePath);
-        Filesystem::Close(&f);
+        Filesystem::Close(f);
         return false;
     }
 
@@ -65,13 +64,13 @@ bool ImageLoader::Load(const char *name, void* params, Resource &OutResource)
     u8* RawData = MMemory::TAllocate<u8>(Memory::Texture, FileSize);
     if (!RawData) {
         MERROR("Невозможно прочитать файл «%s».", FullFilePath);
-        Filesystem::Close(&f);
+        Filesystem::Close(f);
         return false;
     }
 
     u64 BytesRead = 0;
-    bool ReadResult = Filesystem::ReadAllBytes(&f, RawData, BytesRead);
-    Filesystem::Close(&f);
+    bool ReadResult = Filesystem::ReadAllBytes(f, RawData, BytesRead);
+    Filesystem::Close(f);
 
     if (!ReadResult) {
         MERROR("Невозможно прочитать файл: '%s'", FullFilePath);
@@ -93,18 +92,19 @@ bool ImageLoader::Load(const char *name, void* params, Resource &OutResource)
     MMemory::Free(RawData, FileSize, Memory::Texture);
 
     // ЗАДАЧА: Здесь следует использовать распределитель.
-    ImageResourceData* ResourceData = new ImageResourceData(RequiredChannelCount, width, height, data);
-
-    OutResource.data = ResourceData;
-    OutResource.DataSize = sizeof(ImageResourceData);
+    auto& image = OutResource.data;
+    image.ChannelCount = RequiredChannelCount;
+    image.width  = width;
+    image.height = height;
+    image.pixels = data;
 
     return true;
 }
 
-void ImageLoader::Unload(Resource &resource)
+void ResourceLoader::Unload(ImageResource &resource)
 {
-    stbi_image_free(reinterpret_cast<ImageResourceData*>(resource.data)->pixels);
-    if (!LoaderUtils::ResourceUnload(this, resource, Memory::Texture)) {
+    stbi_image_free(resource.data.pixels);
+    if (!ResourceUnload(resource, Memory::Texture)) {
         MWARN("ImageLoader: Выгрузка вызывается со значением nullptr для себя или ресурса.");
         return;
     }

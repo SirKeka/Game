@@ -18,10 +18,10 @@ bool Filesystem::Exists(const char *path)
 #endif
 }
 
-bool Filesystem::Open(const char *path, FileModes mode, bool binary, FileHandle *OutHandle)
+bool Filesystem::Open(const char *path, FileModes mode, bool binary, FileHandle &OutHandle)
 {
-    OutHandle->IsValid = false;
-    OutHandle->handle = 0;
+    OutHandle.IsValid = false;
+    OutHandle.handle = nullptr;
     const char * ModeStr;
 
     if ((mode & FileModes::Read) != 0 && (mode & FileModes::Write) != 0) {
@@ -42,8 +42,8 @@ bool Filesystem::Open(const char *path, FileModes mode, bool binary, FileHandle 
         return false;
     }
 
-    OutHandle->handle = file;
-    OutHandle->IsValid = true;
+    OutHandle.handle = file;
+    OutHandle.IsValid = true;
 
     return true;
 }
@@ -57,22 +57,22 @@ void Filesystem::Close(FileHandle &handle)
     }
 }
 
-bool Filesystem::Size(FileHandle *handle, u64 &OutSize)
+bool Filesystem::Size(FileHandle &handle, u64 &OutSize)
 {
-    if (handle->handle) {
-        fseek(reinterpret_cast<FILE*>(handle->handle), 0, SEEK_END);
-        OutSize = ftell(reinterpret_cast<FILE*>(handle->handle));
-        rewind(reinterpret_cast<FILE*>(handle->handle));
+    if (handle.handle) {
+        fseek(reinterpret_cast<FILE*>(handle.handle), 0, SEEK_END);
+        OutSize = ftell(reinterpret_cast<FILE*>(handle.handle));
+        rewind(reinterpret_cast<FILE*>(handle.handle));
         return true;
     }
     return false;
 }
 
-bool Filesystem::ReadLine(FileHandle *handle, u64 MaxLength, char** LineBuf, u64& OutLineLength)
+bool Filesystem::ReadLine(FileHandle &handle, u64 MaxLength, char** LineBuf, u64& OutLineLength)
 {
-    if (handle->handle && LineBuf && MaxLength > 0) {
+    if (handle.handle && LineBuf && MaxLength > 0) {
         char* buf = *LineBuf;
-        if (fgets(buf, MaxLength, reinterpret_cast<FILE*>(handle->handle)) != 0) {
+        if (fgets(buf, MaxLength, reinterpret_cast<FILE*>(handle.handle)) != 0) {
             OutLineLength = MString::Length(*LineBuf);
             return true;
         }
@@ -80,26 +80,26 @@ bool Filesystem::ReadLine(FileHandle *handle, u64 MaxLength, char** LineBuf, u64
     return false;
 }
 
-bool Filesystem::WriteLine(FileHandle *handle, const char *text)
+bool Filesystem::WriteLine(FileHandle &handle, const char *text)
 {
-     if (handle->handle) {
-        i32 result = fputs(text, reinterpret_cast<FILE*>(handle->handle));
+     if (handle.handle) {
+        i32 result = fputs(text, reinterpret_cast<FILE*>(handle.handle));
         if (result != EOF) {
-            result = fputc('\n', reinterpret_cast<FILE*>(handle->handle));
+            result = fputc('\n', reinterpret_cast<FILE*>(handle.handle));
         }
 
         // Обязательно очистите поток, чтобы он был немедленно записан в файл.
         // Это предотвращает потерю данных в случае сбоя.
-        fflush(reinterpret_cast<FILE*>(handle->handle));
+        fflush(reinterpret_cast<FILE*>(handle.handle));
         return result != EOF;
     }
     return false;
 }
 
-bool Filesystem::Read(FileHandle *handle, u64 DataSize, void *OutData, u64 &OutBytesRead)
+bool Filesystem::Read(FileHandle &handle, u64 DataSize, void *OutData, u64 &OutBytesRead)
 {
-    if (handle->handle && OutData) {
-        OutBytesRead = fread(OutData, 1, DataSize, reinterpret_cast<FILE*>(handle->handle));
+    if (handle.handle && OutData) {
+        OutBytesRead = fread(OutData, 1, DataSize, reinterpret_cast<FILE*>(handle.handle));
         if (OutBytesRead != DataSize) {
             return false;
         }
@@ -108,43 +108,43 @@ bool Filesystem::Read(FileHandle *handle, u64 DataSize, void *OutData, u64 &OutB
     return false;
 }
 
-bool Filesystem::ReadAllBytes(FileHandle *handle, u8 *OutBytes, u64 &OutBytesRead)
+bool Filesystem::ReadAllBytes(FileHandle &handle, u8 *OutBytes, u64 &OutBytesRead)
 {
-    if (handle->handle && OutBytes) {
+    if (handle.handle && OutBytes) {
         // Размер файла
         u64 size = 0;
         if(!Filesystem::Size(handle, size)) {
             return false;
         }
 
-        OutBytesRead = fread(OutBytes, 1, size, reinterpret_cast<FILE*>(handle->handle));
+        OutBytesRead = fread(OutBytes, 1, size, reinterpret_cast<FILE*>(handle.handle));
         return OutBytesRead == size;
     }
     return false;
 }
 
-bool Filesystem::ReadAllText(FileHandle *handle, char *OutText, u64 &OutBytesRead)
+bool Filesystem::ReadAllText(FileHandle &handle, char *OutText, u64 &OutBytesRead)
 {
-    if (handle->handle && OutText && OutBytesRead) {
+    if (handle.handle && OutText && OutBytesRead) {
         // Размер файла
         u64 size = 0;
         if(!Filesystem::Size(handle, size)) {
             return false;
         }
-        OutBytesRead = fread(OutText, 1, size, reinterpret_cast<FILE*>(handle->handle));
+        OutBytesRead = fread(OutText, 1, size, reinterpret_cast<FILE*>(handle.handle));
         return OutBytesRead == size;
     }
     return false;
 }
 
-bool Filesystem::Write(FileHandle *handle, u64 DataSize, const void *data, u64 &OutBytesWritten)
+bool Filesystem::Write(FileHandle &handle, u64 DataSize, const void *data, u64 &OutBytesWritten)
 {
-    if (handle->handle) {
-        OutBytesWritten = fwrite(data, 1, DataSize, reinterpret_cast<FILE*>(handle->handle));
+    if (handle.handle) {
+        OutBytesWritten = fwrite(data, 1, DataSize, reinterpret_cast<FILE*>(handle.handle));
         if (OutBytesWritten != DataSize) {
             return false;
         }
-        fflush(reinterpret_cast<FILE*>(handle->handle));
+        fflush(reinterpret_cast<FILE*>(handle.handle));
         return true;
     }
     return false;

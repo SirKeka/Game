@@ -11,7 +11,6 @@
 #pragma once
 #include "resources/material/material.hpp"
 #include "containers/hashtable.hpp"
-//#include "math/matrix4d.hpp"
 class Matrix4D;
 
 constexpr const char* DEFAULT_MATERIAL_NAME = "default";    // Имя материала по умолчанию.
@@ -120,7 +119,4 @@ private:
     bool CreateDefaultMaterial();
     bool LoadMaterial(const MaterialConfig& config, Material* m);
     void DestroyMaterial(Material* m);
-
-public:
-    // void* operator new(u64 size);
 };

@@ -8,6 +8,9 @@ struct Vertex2D
 {
     FVec2 position; // Позиция вершины
     FVec2 texcoord; // Текстурные коорднаты
+
+    constexpr Vertex2D() : position(), texcoord() {}
+    constexpr Vertex2D(FVec2 position, FVec2 texcoord) : position(position), texcoord(texcoord) {}
 };
 
 /// @brief Структура вершины геометрии/сетки(меша) содержит:

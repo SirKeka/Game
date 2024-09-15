@@ -182,7 +182,7 @@ void VulkanSwapchain::Create(VulkanAPI *VkAPI, u32 width, u32 height)
     VK_CHECK(vkGetSwapchainImagesKHR(VkAPI->Device.LogicalDevice, handle, &this->ImageCount, 0));
 
     if (!RenderTextures) {
-        RenderTextures = new Texture*[this->ImageCount]; //(Texture**)kallocate(sizeof(Texture*) * ImageCount, MEMORY_TAG_RENDERER);
+        RenderTextures = MMemory::TAllocate<Texture*>(Memory::Renderer, this->ImageCount);
         // При создании массива внутренние объекты текстуры также еще не созданы.
         for (u32 i = 0; i < this->ImageCount; ++i) {
             VulkanImage* data = new VulkanImage();

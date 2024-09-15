@@ -29,7 +29,7 @@ ShaderSystem::~ShaderSystem()
 {
     // Уничтожьте все существующие шейдеры.
         for (u32 i = 0; i < this->MaxShaderCount; ++i) {
-            Shader& shader = this->shaders[i];
+            auto& shader = this->shaders[i];
             if (shader.id != INVALID::ID) {
                 shader.Destroy();
             }
@@ -82,28 +82,20 @@ void ShaderSystem::Shutdown()
     }
 }
 
-ShaderSystem *ShaderSystem::GetInstance()
-{
-    if (!state) {
-        MERROR("ShaderSystem::GetInstance - система шейдеров не была инициализирована.");
-    }
-    return state;
-}
-
-bool ShaderSystem::Create(const ShaderConfig *config)
+bool ShaderSystem::Create(const ShaderConfig &config)
 {
     u32 id = NewShaderID();
     Shader* OutShader = &state->shaders[id];
     new(OutShader) Shader(id, config);
 
-    Renderpass* renderpass = Renderer::GetRenderpass(config->RenderpassName);
+    Renderpass* renderpass = Renderer::GetRenderpass(config.RenderpassName);
     
     if (!renderpass) {
-        MERROR("Не удалось найти рендерпасс '%s'", config->RenderpassName.c_str());
+        MERROR("Не удалось найти рендерпасс '%s'", config.RenderpassName.c_str());
         return false;
     }
     
-    if (!Renderer::Load(OutShader, *config, renderpass, config->StageCount, config->StageFilenames, config->stages.Data())) {
+    if (!Renderer::Load(OutShader, config, renderpass, config.StageCount, config.StageFilenames, config.stages.Data())) {
         MERROR("Ошибка создания шейдера.");
         return false;
     }
@@ -112,32 +104,32 @@ bool ShaderSystem::Create(const ShaderConfig *config)
     OutShader->state = ShaderState::Uninitialized;
 
     // Атрибуты процесса
-    for (u32 i = 0; i < config->AttributeCount; ++i) {
-        OutShader->AddAttribute(config->attributes[i]);
+    for (u32 i = 0; i < config.AttributeCount; ++i) {
+        OutShader->AddAttribute(config.attributes[i]);
     }
 
     // Технологическая униформа i = 1
-    for (u32 i = 0; i < config->UniformCount; ++i) {
-        if (config->uniforms[i].type == ShaderUniformType::Sampler) {
-            AddSampler(OutShader, config->uniforms[i]);
+    for (u32 i = 0; i < config.UniformCount; ++i) {
+        if (config.uniforms[i].type == ShaderUniformType::Sampler) {
+            AddSampler(OutShader, config.uniforms[i]);
         } else {
-            if (OutShader->uniforms.Length() + 1 > MaxUniformCount) {
-                MERROR("Шейдер может принимать только общее максимальное количество форм и сэмплеров %d в глобальной, экземплярной и локальной областях.", MaxUniformCount);
+            if (OutShader->uniforms.Length() + 1 > state->MaxUniformCount) {
+                MERROR("Шейдер может принимать только общее максимальное количество форм и сэмплеров %d в глобальной, экземплярной и локальной областях.", state->MaxUniformCount);
             } else {
-                OutShader->AddUniform(config->uniforms[i]);
+                OutShader->AddUniform(config.uniforms[i]);
             }
         }
     }
 
     // Инициализируйте шейдер.
     if (!Renderer::ShaderInitialize(OutShader)) {
-        MERROR("ShaderSystem::Create: не удалось инициализировать шейдер '%s'.", config->name.c_str());
+        MERROR("ShaderSystem::Create: не удалось инициализировать шейдер '%s'.", config.name.c_str());
         // ПРИМЕЧАНИЕ: Initialize автоматически уничтожает шейдер в случае сбоя.
         return false;
     }
 
     // На этом этапе создание прошло успешно, поэтому сохраните идентификатор шейдера в хеш-таблице, чтобы позже можно было найти его по имени.
-    if (!state->lookup.Set(config->name, OutShader->id)) {
+    if (!state->lookup.Set(config.name.c_str(), OutShader->id)) {
         // Черт возьми, мы зашли так далеко... Что ж, удалите шейдер и перезапустите.
         Renderer::Unload(OutShader);
         return false;
@@ -314,7 +306,7 @@ bool ShaderSystem::AddSampler(Shader *shader, const ShaderUniformConfig &config)
 u32 ShaderSystem::GetShaderID(const MString &ShaderName)
 {
     u32 ShaderID = INVALID::ID;
-    if (!state->lookup.Get(ShaderName, &ShaderID)) {
+    if (!state->lookup.Get(ShaderName.c_str(), &ShaderID)) {
         MERROR("Не зарегистрирован ни один шейдер с именем '%s'.", ShaderName.c_str());
         return INVALID::ID;
     }

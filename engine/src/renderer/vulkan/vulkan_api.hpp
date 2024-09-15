@@ -107,6 +107,7 @@ public:
                 //                           RenderBuffer                           //
     //////////////////////////////////////////////////////////////////////////////////////////////
 
+    bool RenderBufferCreate         (RenderBufferType type, u64 TotalSize, bool UseFreelist, RenderBuffer& buffer)         override;
     bool RenderBufferCreateInternal (RenderBuffer& buffer)                                                                 override;
     void RenderBufferDestroyInternal(RenderBuffer& buffer)                                                                 override;
     bool RenderBufferBind           (RenderBuffer& buffer, u64 offset)                                                     override;
@@ -137,7 +138,6 @@ private:
     bool CreateVulkanAllocator(VkAllocationCallbacks* callbacks);
 
     bool VulkanBufferCopyRangeInternal(VkBuffer source, u64 SourceOffset, VkBuffer dest, u64 DestOffset, u64 size);
-    bool RenderBufferCreate(RenderBufferType type, u64 TotalSize, bool UseFreelist, RenderBuffer& buffer);
 
     // Обратный вызов, который будет выполнен, когда бэкэнд потребует обновления/повторной генерации целей рендеринга.
     const RendererConfig::PFN_Method OnRendertargetRefreshRequired;

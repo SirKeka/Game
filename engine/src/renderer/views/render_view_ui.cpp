@@ -1,31 +1,41 @@
 #include "render_view_ui.hpp"
 #include "systems/shader_system.hpp"
 #include "renderer/renderpass.hpp"
+#include "resources/font_resource.hpp"
 #include "resources/mesh.hpp"
 #include "renderer/renderer.hpp"
 #include "renderer/renderpass.hpp"
 #include "systems/material_system.hpp"
 #include "resources/geometry.hpp"
 
+
 RenderViewUI::RenderViewUI()
     : 
     RenderView(), 
-    ShaderID(ShaderSystem::GetInstance()->GetID(CustomShaderName ? CustomShaderName : "Shader.Builtin.UI")), 
+    ShaderID(ShaderSystem::GetID(CustomShaderName ? CustomShaderName : "Shader.Builtin.UI")), 
+    shader(ShaderSystem::GetShader(ShaderID)),
     NearClip(-100.F), 
     FarClip(100.F), 
     ProjectionMatrix(Matrix4D::MakeOrthographicProjection(0.F, 1280.F, 720.F, 0.F, NearClip, FarClip)), 
-    ViewMatrix(Matrix4D::MakeIdentity()) 
+    ViewMatrix(Matrix4D::MakeIdentity()),
+    DiffuseMapLocation(ShaderSystem::UniformIndex(shader, "diffuse_texture")),
+    DiffuseColourLocation(ShaderSystem::UniformIndex(shader, "diffuse_colour")),
+    ModelLocation(ShaderSystem::UniformIndex(shader, "model"))
     /*RenderMode(),*/ 
 {}
 
 RenderViewUI::RenderViewUI(u16 id, MString& name, KnownType type, u8 RenderpassCount, const char* CustomShaderName)
 :
 RenderView(id, name, type, RenderpassCount, CustomShaderName),
-ShaderID(ShaderSystem::GetInstance()->GetID(CustomShaderName ? CustomShaderName : "Shader.Builtin.UI")), 
+ShaderID(ShaderSystem::GetID(CustomShaderName ? CustomShaderName : "Shader.Builtin.UI")), 
+shader(ShaderSystem::GetShader(ShaderID)),
 NearClip(-100.F), 
 FarClip(100.F), 
 ProjectionMatrix(Matrix4D::MakeOrthographicProjection(0.F, 1280.F, 720.F, 0.F, NearClip, FarClip)), 
-ViewMatrix(Matrix4D::MakeIdentity()) 
+ViewMatrix(Matrix4D::MakeIdentity()),
+DiffuseMapLocation(ShaderSystem::UniformIndex(shader, "diffuse_texture")),
+DiffuseColourLocation(ShaderSystem::UniformIndex(shader, "diffuse_colour")),
+ModelLocation(ShaderSystem::UniformIndex(shader, "model"))
 /*RenderMode(),*/ 
 {}
 
@@ -55,7 +65,7 @@ bool RenderViewUI::BuildPacket(void *data, Packet &OutPacket) const
         return false;
     }
 
-    Mesh::PacketData* MeshData = reinterpret_cast<Mesh::PacketData*>(data);
+    auto PacketData = reinterpret_cast<UiPacketData*>(data);
 
     OutPacket.view = this;
 
@@ -63,10 +73,13 @@ bool RenderViewUI::BuildPacket(void *data, Packet &OutPacket) const
     OutPacket.ProjectionMatrix = ProjectionMatrix;
     OutPacket.ViewMatrix = ViewMatrix;
 
+    // ЗАДАЧА: временно установить расширенные данные для тестовых текстовых объектов на данный момент.
+    OutPacket.ExtendedData = data;
+
     // Получить все геометрии из текущей сцены.
     // Итерировать все сетки и добавить их в коллекцию геометрий пакета
-    for (u32 i = 0; i < MeshData->MeshCount; ++i) {
-        Mesh* m = MeshData->meshes[i];
+    for (u32 i = 0; i < PacketData->MeshData.MeshCount; ++i) {
+        auto* m = PacketData->MeshData.meshes[i];
         for (u32 j = 0; j < m->GeometryCount; ++j) {
             OutPacket.geometries.EmplaceBack(m->transform.GetWorld(), m->geometries[j]);
             OutPacket.GeometryCount++;
@@ -85,7 +98,7 @@ bool RenderViewUI::Render(const Packet &packet, u64 FrameNumber, u64 RenderTarge
             return false;
         }
 
-        if (!ShaderSystem::GetInstance()->Use(ShaderID)) {
+        if (!ShaderSystem::Use(ShaderID)) {
             MERROR("Не удалось использовать шейдер материала. Не удалось отрисовать кадр.");
             return false;
         }
@@ -127,6 +140,38 @@ bool RenderViewUI::Render(const Packet &packet, u64 FrameNumber, u64 RenderTarge
             Renderer::DrawGeometry(packet.geometries[i]);
         }
 
+        // Нарисовать растровый текст
+        auto PacketData = reinterpret_cast<UiPacketData*>(packet.ExtendedData);  // массив текстов
+        for (u32 i = 0; i < PacketData->TextCount; ++i) {
+            auto text = PacketData->texts[i];
+            ShaderSystem::BindInstance(text->InstanceID);
+
+            if (!ShaderSystem::UniformSet(DiffuseMapLocation, &text->data->atlas)) {
+                MERROR("Не удалось применить диффузную карту растрового шрифта.");
+                return false;
+            }
+
+            // ЗАДАЧА: цвет текста.
+            static FVec4 WhiteColour {1.F, 1.F, 1.F, 1.F};  // белый
+            if (!ShaderSystem::UniformSet(DiffuseColourLocation, &WhiteColour)) {
+                MERROR("Не удалось применить диффузную цветовую форму растрового шрифта.");
+                return false;
+            }
+            bool NeedsUpdate = text->RenderFrameNumber != FrameNumber;
+            ShaderSystem::ApplyInstance(NeedsUpdate);
+
+            // Синхронизируйте номер кадра.
+            text->RenderFrameNumber = FrameNumber;
+
+            // Применить локальные переменные
+            Matrix4D model = text->transform.GetWorld();
+            if(!ShaderSystem::UniformSet(ModelLocation, &model)) {
+                MERROR("Не удалось применить матрицу модели для текста");
+            }
+
+            text->Draw();
+        }
+
         if (!Renderer::RenderpassEnd(pass)) {
             MERROR("RenderViewUI::Render Проход рендеринга с индексом %u не завершился.", p);
             return false;
@@ -134,4 +179,14 @@ bool RenderViewUI::Render(const Packet &packet, u64 FrameNumber, u64 RenderTarge
     }
 
     return true;
+}
+
+void *RenderViewUI::operator new(u64 size)
+{
+    return MMemory::Allocate(size, Memory::Renderer);
+}
+
+void RenderViewUI::operator delete(void *ptr, u64 size)
+{
+    MMemory::Free(ptr, size, Memory::Renderer);
 }

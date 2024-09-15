@@ -56,6 +56,13 @@ struct MaterialConfig {
         }
         
     }
+
+    operator bool() const {
+        if(!name[0] && !ShaderName && DiffuseColour == FVec4() && specular == 0 && !DiffuseMapName[0] && !SpecularMapName[0] && !NormalMapName[0]) {
+            return false;
+        }
+        return true;
+    }
         
     void* operator new(u64 size) { return MMemory::Allocate(size, Memory::MaterialInstance); }
     void operator delete(void* ptr, u64 size) { MMemory::Free(ptr, size, Memory::MaterialInstance); }

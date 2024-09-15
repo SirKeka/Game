@@ -1,4 +1,4 @@
-#include "mesh_loader.hpp"
+#include "resource_loader.hpp"
 #include "containers/darray.hpp"
 #include "systems/geometry_system.hpp"
 #include "systems/resource_system.hpp"
@@ -49,15 +49,15 @@ struct MeshGroupData {
     }
 };
 
-bool ImportObjFile(FileHandle* ObjFile, const char* OutMsmFilename, DArray<GeometryConfig>& OutGeometries);
+bool ImportObjFile(FileHandle& ObjFile, const char* OutMsmFilename, DArray<GeometryConfig>& OutGeometries);
 void ProcessSubobject(DArray<FVec3>& positions, DArray<FVec3>& normals, DArray<FVec2>& TexCoords, DArray<Face>& faces, GeometryConfig& OutData);
 bool ImportObjMaterialLibraryFile(const char* MtlFilePath);
 
-bool LoadMsmFile(FileHandle* MsmFile, DArray<GeometryConfig>& OutGeometries);
+bool LoadMsmFile(FileHandle& MsmFile, DArray<GeometryConfig>& OutGeometries);
 bool WriteMsmFile(const char* path, const char* name, u32 GeometryCount, DArray<GeometryConfig>& geometries);
 bool WriteMmtFile(const char* MtlFilePath, MaterialConfig& config);
 
-bool MeshLoader::Load(const char *name, void* params, Resource &OutResource)
+bool ResourceLoader::Load(const char *name, void* params, MeshResource &OutResource)
 {
     if (!name) {
         return false;
@@ -83,7 +83,7 @@ bool MeshLoader::Load(const char *name, void* params, Resource &OutResource)
         MString::Format(FullFilePath, FormatString, ResourceSystem::Instance()->BasePath(), TypePath.c_str(), name, SupportedFiletypes[i].extension.c_str());
         // Если файл существует, откройте его и перестаньте искать.
         if (Filesystem::Exists(FullFilePath)) {
-            if (Filesystem::Open(FullFilePath, FileModes::Read, SupportedFiletypes[i].IsBinary, &f)) {
+            if (Filesystem::Open(FullFilePath, FileModes::Read, SupportedFiletypes[i].IsBinary, f)) {
                 type = SupportedFiletypes[i].type;
                 break;
             }
@@ -96,7 +96,7 @@ bool MeshLoader::Load(const char *name, void* params, Resource &OutResource)
     }
 
     OutResource.FullPath = FullFilePath;
-    DArray<GeometryConfig>ResourceData;
+    //DArray<GeometryConfig>ResourceData;
 
     bool result = false;
     switch (type) {
@@ -104,11 +104,11 @@ bool MeshLoader::Load(const char *name, void* params, Resource &OutResource)
             // Создайте имя файла ksm.
             char MsmFileName[512];
             MString::Format(MsmFileName, "%s/%s/%s%s", ResourceSystem::Instance()->BasePath(), TypePath.c_str(), name, ".msm");
-            result = ImportObjFile(&f, MsmFileName, ResourceData);
+            result = ImportObjFile(f, MsmFileName, OutResource.data);
             break;
         }
         case MeshFileType::MSM:
-            result = LoadMsmFile(&f, ResourceData);
+            result = LoadMsmFile(f, OutResource.data);
             break;
         default:
         case MeshFileType::NotFound:
@@ -117,33 +117,36 @@ bool MeshLoader::Load(const char *name, void* params, Resource &OutResource)
             break;
     }
 
-    Filesystem::Close(&f);
+    Filesystem::Close(f);
 
     if (!result) {
         MERROR("Не удалось обработать файл сетки «%s».", FullFilePath);
-        OutResource.data = nullptr;
-        OutResource.DataSize = 0;
+        OutResource.data.Clear();
+        //OutResource.DataSize = 0;
         return false;
     }
 
     // Используйте размер данных в качестве счетчика.
-    OutResource.DataSize = ResourceData.Length();
-    OutResource.data = ResourceData.MovePtr();
+    //OutResource.DataSize = ResourceData.Length();
+    //OutResource.data = ResourceData.MovePtr();
 
     return true;
 }
 
-void MeshLoader::Unload(Resource &resource)
+void ResourceLoader::Unload(MeshResource &resource)
 {
-    const u64& count = resource.DataSize;
+    /*const u64& count = resource.DataSize;
     for (u64 i = 0; i < count; i++) {
         GeometryConfig* config = &(reinterpret_cast<GeometryConfig*>(resource.data))[i];
         config->Dispose();
+    }*/
+    resource.data.Clear();
+    if(resource.FullPath) {
+        resource.FullPath.Clear();
     }
-    if(resource.FullPath) resource.FullPath.Clear();
-    MMemory::Free(resource.data, resource.DataSize * sizeof(GeometryConfig), Memory::DArray);
-    resource.data = nullptr;
-    resource.DataSize = 0;
+    //MMemory::Free(resource.data, resource.DataSize * sizeof(GeometryConfig), Memory::DArray);
+    //resource.data = nullptr;
+    //resource.DataSize = 0;
 }
 
 /// @brief Импортирует obj-файл. Это считывает объект, создает конфигурации геометрии, 
@@ -152,7 +155,7 @@ void MeshLoader::Unload(Resource &resource)
 /// @param OutKsmFilename Путь к файлу ksm, в который будет производиться запись.
 /// @param OutGeometries Массив геометрий, проанализированных из файла.
 /// @return true в случае успеха; в противном случае false.
-bool ImportObjFile(FileHandle *ObjFile, const char *OutMsmFilename, DArray<GeometryConfig> &OutGeometries)
+bool ImportObjFile(FileHandle &ObjFile, const char *OutMsmFilename, DArray<GeometryConfig> &OutGeometries)
 {
     DArray<FVec3> positions { 16384 };
     DArray<FVec3> normals { 16384 };
@@ -285,11 +288,11 @@ bool ImportObjFile(FileHandle *ObjFile, const char *OutMsmFilename, DArray<Geome
                 // Обрабатывайте каждую группу как подобъект.
                 for (u64 i = 0; i < GroupCount; ++i) {
                     GeometryConfig NewData;
-                    MString::nCopy(NewData.name, name, 255);
+                    MString::Copy(NewData.name, name, 255);
                     if (i > 0) {
                         MString::Append(NewData.name, i);
                     }
-                    MString::nCopy(NewData.MaterialName, MaterialNames[i], 255);
+                    MString::Copy(NewData.MaterialName, MaterialNames[i], 255);
 
                     ProcessSubobject(positions, normals, TexCoords, groups[i].faces, NewData);
 
@@ -318,11 +321,11 @@ bool ImportObjFile(FileHandle *ObjFile, const char *OutMsmFilename, DArray<Geome
     const u64& GroupCount = groups.Length();
     for (u64 i = 0; i < GroupCount; ++i) {
         GeometryConfig NewData = {};
-        MString::nCopy(NewData.name, name, 255);
+        MString::Copy(NewData.name, name, 255);
         if (i > 0) {
             MString::Append(NewData.name, i);
         }
-        MString::nCopy(NewData.MaterialName, MaterialNames[i], 255);
+        MString::Copy(NewData.MaterialName, MaterialNames[i], 255);
 
         ProcessSubobject(positions, normals, TexCoords, groups[i].faces, NewData);
 
@@ -472,7 +475,7 @@ bool ImportObjMaterialLibraryFile(const char *MtlFilePath)
     MDEBUG("Импорт файла obj .mtl '%s'...", MtlFilePath);
     // Возьмите файл .mtl, если он существует, и прочитайте информацию о материале.
     FileHandle MtlFile;
-    if (!Filesystem::Open(MtlFilePath, FileModes::Read, false, &MtlFile)) {
+    if (!Filesystem::Open(MtlFilePath, FileModes::Read, false, MtlFile)) {
         MERROR("Невозможно открыть файл MTL: %s", MtlFilePath);
         return false;
     }
@@ -486,7 +489,7 @@ bool ImportObjMaterialLibraryFile(const char *MtlFilePath)
     char* p = &LineBuffer[0];
     u64 LineLength = 0;
     while (true) {
-        if (!Filesystem::ReadLine(&MtlFile, 512, &p, LineLength)) {
+        if (!Filesystem::ReadLine(MtlFile, 512, &p, LineLength)) {
             break;
         }
         // Сначала обрежьте линию.
@@ -622,7 +625,7 @@ bool ImportObjMaterialLibraryFile(const char *MtlFilePath)
 
                     HitName = true;
 
-                    MString::nCopy(CurrentConfig.name, MaterialName, 256);
+                    MString::Copy(CurrentConfig.name, MaterialName, 256);
                 }
             }
         }
@@ -640,11 +643,11 @@ bool ImportObjMaterialLibraryFile(const char *MtlFilePath)
         return false;
     }
 
-    Filesystem::Close(&MtlFile);
+    Filesystem::Close(MtlFile);
     return true;
 }
 
-bool LoadMsmFile(FileHandle *MsmFile, DArray<GeometryConfig> &OutGeometries)
+bool LoadMsmFile(FileHandle &MsmFile, DArray<GeometryConfig> &OutGeometries)
 {
     // версия
     u64 BytesRead = 0;
@@ -711,7 +714,7 @@ bool WriteMsmFile(const char *path, const char *name, u32 GeometryCount, DArray<
     }
 
     FileHandle f;
-    if (!Filesystem::Open(path, FileModes::Write, true, &f)) {
+    if (!Filesystem::Open(path, FileModes::Write, true, f)) {
         MERROR("Невозможно открыть файл «%s» для записи. Ошибка записи MSM.", path);
         return false;
     }
@@ -719,50 +722,50 @@ bool WriteMsmFile(const char *path, const char *name, u32 GeometryCount, DArray<
     // Версия
     u64 written = 0;
     u16 version = 0x0001U;
-    Filesystem::Write(&f, sizeof(u16), &version, written);
+    Filesystem::Write(f, sizeof(u16), &version, written);
 
     // Длина имени
     u32 NameLength = MString::Length(name) + 1;
-    Filesystem::Write(&f, sizeof(u32), &NameLength, written);
+    Filesystem::Write(f, sizeof(u32), &NameLength, written);
     // Имя + терминатор
-    Filesystem::Write(&f, sizeof(char) * NameLength, name, written);
+    Filesystem::Write(f, sizeof(char) * NameLength, name, written);
 
     // Количество геометрии
-    Filesystem::Write(&f, sizeof(u32), &GeometryCount, written);
+    Filesystem::Write(f, sizeof(u32), &GeometryCount, written);
 
     // Каждая геометрия
     for (u32 i = 0; i < GeometryCount; ++i) {
         const GeometryConfig* g = &geometries[i];
 
         // Вершины (размер/количество/массив)
-        Filesystem::Write(&f, sizeof(u32), &g->VertexSize, written);
-        Filesystem::Write(&f, sizeof(u32), &g->VertexCount, written);
-        Filesystem::Write(&f, g->VertexSize * g->VertexCount, g->vertices, written);
+        Filesystem::Write(f, sizeof(u32),   &g->VertexSize, written);
+        Filesystem::Write(f, sizeof(u32),   &g->VertexCount, written);
+        Filesystem::Write(f, g->VertexSize * g->VertexCount, g->vertices, written);
 
         // Индексы (размер/количество/массив)
-        Filesystem::Write(&f, sizeof(u32), &g->IndexSize, written);
-        Filesystem::Write(&f, sizeof(u32), &g->IndexCount, written);
-        Filesystem::Write(&f, g->IndexSize * g->IndexCount, g->indices, written);
+        Filesystem::Write(f, sizeof(u32), &g->IndexSize, written);
+        Filesystem::Write(f, sizeof(u32), &g->IndexCount, written);
+        Filesystem::Write(f, g->IndexSize * g->IndexCount, g->indices, written);
 
         // Имя
         u32 GNameLength = MString::Length(g->name) + 1;
-        Filesystem::Write(&f, sizeof(u32), &GNameLength, written);
-        Filesystem::Write(&f, sizeof(char) * GNameLength, g->name, written);
+        Filesystem::Write(f, sizeof(u32), &GNameLength, written);
+        Filesystem::Write(f, sizeof(char) * GNameLength, g->name, written);
 
         // Имя материала
         u32 MNameLength = MString::Length(g->MaterialName) + 1;
-        Filesystem::Write(&f, sizeof(u32), &MNameLength, written);
-        Filesystem::Write(&f, sizeof(char) * MNameLength, g->MaterialName, written);
+        Filesystem::Write(f, sizeof(u32), &MNameLength, written);
+        Filesystem::Write(f, sizeof(char) * MNameLength, g->MaterialName, written);
 
         // Центер
-        Filesystem::Write(&f, sizeof(FVec3), &g->center, written);
+        Filesystem::Write(f, sizeof(FVec3), &g->center, written);
 
         // Extents (min/max)
-        Filesystem::Write(&f, sizeof(FVec3), &g->MaxExtents, written);
-        Filesystem::Write(&f, sizeof(FVec3), &g->MaxExtents, written);
+        Filesystem::Write(f, sizeof(FVec3), &g->MaxExtents, written);
+        Filesystem::Write(f, sizeof(FVec3), &g->MaxExtents, written);
     }
 
-    Filesystem::Close(&f);
+    Filesystem::Close(f);
     
     return true;
 }
@@ -783,38 +786,38 @@ bool WriteMmtFile(const char *MtlFilePath, MaterialConfig &config)
     char FullFilePath[512];
 
     MString::Format(FullFilePath, FormatStr, directory, config.name, ".mmt");
-    if (!Filesystem::Open(FullFilePath, FileModes::Write, false, &f)) {
+    if (!Filesystem::Open(FullFilePath, FileModes::Write, false, f)) {
         MERROR("Ошибка открытия файла материала для записи: '%s'", FullFilePath);
         return false;
     }
     MDEBUG("Запись файла .mmt '%s'...", FullFilePath);
 
     char LineBuffer[512];
-    Filesystem::WriteLine(&f, "#material file");
-    Filesystem::WriteLine(&f, "");
-    Filesystem::WriteLine(&f, "version=0.1");
+    Filesystem::WriteLine(f, "#material file");
+    Filesystem::WriteLine(f, "");
+    Filesystem::WriteLine(f, "version=0.1");
     MString::Format(LineBuffer, "name=%s", config.name);
-    Filesystem::WriteLine(&f, LineBuffer);
+    Filesystem::WriteLine(f, LineBuffer);
     MString::Format(LineBuffer, "diffuse_colour=%.6f %.6f %.6f %.6f", config.DiffuseColour.r, config.DiffuseColour.g, config.DiffuseColour.b, config.DiffuseColour.a);
-    Filesystem::WriteLine(&f, LineBuffer);
+    Filesystem::WriteLine(f, LineBuffer);
     MString::Format(LineBuffer, "specular=%.6f", config.specular);
-    Filesystem::WriteLine(&f, LineBuffer);
+    Filesystem::WriteLine(f, LineBuffer);
     if (config.DiffuseMapName[0]) {
         MString::Format(LineBuffer, "diffuse_map_name=%s", config.DiffuseMapName);
-        Filesystem::WriteLine(&f, LineBuffer);
+        Filesystem::WriteLine(f, LineBuffer);
     }
     if (config.SpecularMapName[0]) {
         MString::Format(LineBuffer, "specular_map_name=%s", config.SpecularMapName);
-        Filesystem::WriteLine(&f, LineBuffer);
+        Filesystem::WriteLine(f, LineBuffer);
     }
     if (config.NormalMapName[0]) {
         MString::Format(LineBuffer, "normal_map_name=%s", config.NormalMapName);
-        Filesystem::WriteLine(&f, LineBuffer);
+        Filesystem::WriteLine(f, LineBuffer);
     }
     MString::Format(LineBuffer, "shader=%s", config.ShaderName.c_str());
-    Filesystem::WriteLine(&f, LineBuffer);
+    Filesystem::WriteLine(f, LineBuffer);
 
-    Filesystem::Close(&f);
+    Filesystem::Close(f);
 
     return true;
 }

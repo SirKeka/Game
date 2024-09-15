@@ -48,7 +48,7 @@ public:
     specular(), 
     RenderFrameNumber(INVALID::ID) 
     {
-        MString::nCopy(this->name, name, MATERIAL_NAME_MAX_LENGTH);
+        MString::Copy(this->name, name, MATERIAL_NAME_MAX_LENGTH);
     }
     ~Material();
 

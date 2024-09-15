@@ -11,6 +11,7 @@
 #include "systems/camera_system.hpp"
 #include "systems/render_view_system.hpp"
 #include "systems/job_systems.hpp"
+#include "systems/font_system.hpp"
 
 // ЗАДАЧА: временно
 #include "math/geometry_utils.hpp"
@@ -34,7 +35,7 @@ bool Application::Create(GameTypes *GameInst)
     }
 
     GameInst->state = MMemory::Allocate(GameInst->StateMemoryRequirement, Memory::Application);
-    GameInst->application->State = MMemory::TAllocate<ApplicationState>(Memory::Application);
+    GameInst->application->State = MMemory::TAllocate<ApplicationState>(Memory::Application); // ЗАДАЧА: Переделать.
     State = GameInst->application->State;
     State->GameInst = GameInst;
 
@@ -165,6 +166,15 @@ bool Application::Create(GameTypes *GameInst)
     }
     auto GeometrySystemInst = GeometrySystem::Instance();
 
+    // Система шрифтов.
+    BitmapFontConfig BmpFontConfig = { "Metrika 21px", 21, "Metrika" };
+    FontSystemConfig FontSysConfig { 0, nullptr, 1, &BmpFontConfig, 101, 101, false };
+    
+    if (!FontSystem::Initialize(FontSysConfig)) {
+        MFATAL("Не удалось инициализировать систему шрифтов. Приложение не может продолжать работу.");
+        return false;
+    }
+
     // Система камер
     if (!CameraSystem::Initialize(61)) {
         MFATAL("Не удалось инициализировать систему камер. Приложение не может быть продолжено.");
@@ -217,6 +227,14 @@ bool Application::Create(GameTypes *GameInst)
     }
     
     // ЗАДАЧА: временно
+    // Создать тестовые текстовые объекты пользовательского интерфейса
+    
+    if (!State->TestText.Create(TextType::Bitmap, "Metrika 21px", 21, "Какой-то тестовый текст 123,\n\tyo!")) {
+        MERROR("Не удалось загрузить базовый растровый текст пользовательского интерфейса.");
+        return false;
+    }
+    State->TestText.SetPosition(FVec3(50, 100, 0));
+
     // Skybox
     auto* CubeMap = &State->sb.cubemap;
     CubeMap->FilterMagnify = CubeMap->FilterMinify = TextureFilter::ModeLinear;
@@ -232,7 +250,7 @@ bool Application::Create(GameTypes *GameInst)
     SkyboxCubeConfig.MaterialName[0] = '\0';
     State->sb.g = GeometrySystemInst->Acquire(SkyboxCubeConfig, true);
     State->sb.RenderFrameNumber = INVALID::U64ID;
-    auto* SkyboxShader = ShaderSystem::GetInstance()->GetShader(BUILTIN_SHADER_NAME_SKYBOX);
+    auto* SkyboxShader = ShaderSystem::GetShader(BUILTIN_SHADER_NAME_SKYBOX);
     TextureMap* maps[1] = {&State->sb.cubemap};
     if (!Renderer::ShaderAcquireInstanceResources(SkyboxShader, maps, State->sb.InstanceID)) {
         MFATAL("Невозможно получить ресурсы шейдера для текстуры скайбокса.");
@@ -347,7 +365,7 @@ bool Application::ApplicationRun() {
     u8 FrameCount = 0;
     f64 TargetFrameSeconds = 1.0f / 60;
 
-    MINFO(MMemory::GetMemoryUsageStr().c_str());
+    // MINFO(MMemory::GetMemoryUsageStr().c_str());
 
     while (State->IsRunning) {
         if(!State->Window->Messages()) {
@@ -421,6 +439,19 @@ bool Application::ApplicationRun() {
             }
 
             // пользовательский интерфейс
+            // Обновите текст битмапа с позицией камеры. ПРИМЕЧАНИЕ: пока используйте камеру по умолчанию.
+            auto WorldCamera = CameraSystem::Instance()->GetDefault();
+            FVec3 pos = WorldCamera->GetPosition();
+            FVec3 rot = WorldCamera->GetRotationEuler();
+
+            char TextBuffer[256]{};
+            MString::Format(
+                TextBuffer,
+                "Позиция камеры: [%.3F, %.3F, %.3F]\nВращение камеры: [%.3F, %.3F, %.3F]",
+                pos.x, pos.y, pos.z,
+                Math::RadToDeg(rot.x), Math::RadToDeg(rot.y), Math::RadToDeg(rot.z));
+            State->TestText.SetText(TextBuffer);
+
             u32 UIMeshCount = 0;
             Mesh* UIMeshes[10]{};
             // ЗАДАЧА: массив гибкого размера
@@ -431,7 +462,9 @@ bool Application::ApplicationRun() {
                 }
             }
             Mesh::PacketData UIMeshData = {UIMeshCount, UIMeshes};
-            if (!State->RenderViewSystemInst->BuildPacket(State->RenderViewSystemInst->Get("ui"), &UIMeshData, packet.views[2])) {
+            Text* texts[1] = { &State->TestText };
+            UiPacketData UiPacket { UIMeshData, 1, texts };
+            if (!State->RenderViewSystemInst->BuildPacket(State->RenderViewSystemInst->Get("ui"), &UiPacket, packet.views[2])) {
                 MERROR("Не удалось построить пакет для представления «ui».");
                 return false;
             }
@@ -469,6 +502,13 @@ bool Application::ApplicationRun() {
 
     State->IsRunning = false;
 
+    // ЗАДАЧА: Временное
+    // ЗАДАЧА: реализовать уничтожение скайбокса.
+    Renderer::TextureMapReleaseResources(&State->sb.cubemap);
+
+    // State->TestText.~Text(); 
+    // ЗАДАЧА: Конец временного
+
     // Отключение системы событий.
     State->Events->Unregister(EVENT_CODE_APPLICATION_QUIT, nullptr, OnEvent);
     State->Events->Unregister(EVENT_CODE_KEY_PRESSED, nullptr, OnKey);
@@ -479,14 +519,10 @@ bool Application::ApplicationRun() {
     //ЗАДАЧА: временно
     State->Events->Shutdown(); // ЗАДАЧА: при удалении указателя на систему событий происходит ошибка
     Input::Instance()->Sutdown();
+    FontSystem::Shutdown();
     GeometrySystem::Instance()->Shutdown();
     MaterialSystem::Shutdown();
     TextureSystem::Instance()->Shutdown();
-
-    // ЗАДАЧА: Временное
-    // ЗАДАЧА: реализовать уничтожение скайбокса.
-    Renderer::TextureMapReleaseResources(&State->sb.cubemap);
-    // ЗАДАЧА: Конец временного
 
     ShaderSystem::Shutdown();
     State->Render->Shutdown();

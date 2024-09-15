@@ -60,7 +60,9 @@ struct Renderpass
 
     ~Renderpass();
 
+    void* operator new(u64 size);
     void* operator new[] (u64 size);
+    void operator delete(void* ptr, u64 size);
     void operator delete[] (void* ptr, u64 size);
 
 };

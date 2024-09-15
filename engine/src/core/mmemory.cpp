@@ -145,7 +145,13 @@ void *MMemory::AllocateAligned(u64 bytes, u16 alignment, Memory::Tag tag, bool n
         state->TotalAllocated += bytes;
         state->TaggedAllocations[tag] += bytes;
         state->AllocCount++;
-        block = reinterpret_cast<u8*>(state->allocator.AllocateAligned(bytes, alignment));
+
+        if (alignment > 1) {
+            block = reinterpret_cast<u8*>(state->allocator.AllocateAligned(bytes, alignment));
+        } else {
+            block = reinterpret_cast<u8*>(state->allocator.Allocate(bytes));
+        }
+        
         state->AllocationMutex.Unlock();
     } else {
         if (!state) {
@@ -182,10 +188,10 @@ void MMemory::AllocateReport(u64 size, Memory::Tag tag)
 
 void MMemory::Free(void *block, u64 bytes, Memory::Tag tag, bool def)
 {
-    FreeAligned(block, bytes, 1, tag, def);
+    FreeAligned(block, bytes, false, tag, def);
 }
 
-void MMemory::FreeAligned(void *block, u64 size, u16 alignment, Memory::Tag tag, bool def)
+void MMemory::FreeAligned(void *block, u64 size, bool alignment, Memory::Tag tag, bool def)
 {
     if (block) {
         if (tag == Memory::Unknown) {
@@ -199,7 +205,7 @@ void MMemory::FreeAligned(void *block, u64 size, u16 alignment, Memory::Tag tag,
             state->TotalAllocated -= size;
             state->TaggedAllocations[tag] -= size;
             state->AllocCount--;
-            bool result = state->allocator.Free(block, size);
+            bool result = state->allocator.Free(block, size, alignment);
             block = nullptr;
             // Если освобождение не удалось, возможно, это связано с тем, что выделение было выполнено до запуска этой системы. 
             // Поскольку это абсолютно должно быть исключением из правил, попробуйте освободить его на уровне платформы. 

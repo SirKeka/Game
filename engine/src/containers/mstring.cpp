@@ -5,17 +5,14 @@
 #include <string>
 #include <stdarg.h>
 
-constexpr MString::MString(u16 length, bool autorelease) 
-: length(length + 1), autorelease(autorelease), str(MMemory::TAllocate<char>(Memory::String, this->length)) {}
-
 constexpr MString::MString(const char *str1, const char *str2, bool autorelease)
-: length(Length(str1) + Length(str2) + 1), autorelease(autorelease), str(Concat(str1, str2, length)) {}
+: length(UTF8Length(str1) + UTF8Length(str2) + 1), autorelease(autorelease), str(Concat(str1, str2, length)) {}
 
 constexpr MString::MString(const MString &str1, const MString &str2, bool autorelease) 
-: length(str1.length + str2.length - 1), autorelease(autorelease), str(Concat(str1.str, str2.str, length)) {}
+: length(str1.Length() + str2.length), autorelease(autorelease), str(Concat(str1.str, str2.str, length)) {}
 
-constexpr MString::MString(const char *s, bool autorelease) 
-: length(Len(s)), autorelease(autorelease), str(Copy(s, length)) {}
+constexpr MString::MString(const char *s, bool DelCon, bool autorelease) 
+: length(Len(s, DelCon)), autorelease(autorelease), str(Copy(s, length, DelCon)) {}
 
 constexpr MString::MString(const MString &s) : length(s.length), autorelease(s.autorelease), str(Copy(s)) {}
 
@@ -160,13 +157,20 @@ MString &MString::operator+=(char c)
     // ЗАДАЧА: вставьте здесь оператор return
 }
 
+void MString::Create(char *str, u64 length, bool autorelease)
+{
+    this->str = str;
+    this->length = length;
+    this->autorelease = autorelease;
+}
+
 void MString::DirectoryFromPath(char* dest, const char *path)
 {
     u64 length = Length(path);
     for (i32 i = length; i >= 0; --i) {
         char c = path[i];
         if (c == '/' || c == '\\') {
-            nCopy(dest, path, i + 1);
+            Copy(dest, path, i + 1);
             return;
         }
     }
@@ -246,15 +250,17 @@ bool MString::operator==(const char *s) const
     return true;
 }
 
-constexpr u16 MString::Length() const noexcept
+constexpr u32 MString::Length() const noexcept
 {
-    if (length) {
-        return length - 1;
-    }
-    return length;
+    return length ? length - 1 : 0;
 }
 
-const u16 MString::Length(const char *s)
+u32 MString::nChar()
+{
+    return Length(str);
+}
+
+const u32 MString::Length(const char *s)
 {
     if (!s) {
         return 0;
@@ -262,9 +268,7 @@ const u16 MString::Length(const char *s)
     
     u64 len = 0;
     while (*s) {
-        if(*s != '\n') {
-            len++;
-        }
+        len++;
         s++;
     }
     
@@ -301,19 +305,19 @@ const u32 MString::UTF8Length(const char *str)
     return length;
 }
 
-bool MString::BytesToCodepoint(const char *bytes, u32 offset, i32 &OutCodepoint, u8 *OutAdvance)
+bool MString::BytesToCodepoint(const char *bytes, u32 offset, i32 &OutCodepoint, u8 &OutAdvance)
 {
     i32 codepoint = (i32)bytes[offset];
     if (codepoint >= 0 && codepoint < 0x7F) {
         // Обычный однобайтовый символ ascii.
-        *OutAdvance = 1;
+        OutAdvance = 1;
         OutCodepoint = codepoint;
         return true;
     } else if ((codepoint & 0xE0) == 0xC0) {
         // Двухбайтовый символ
         codepoint = ((bytes[offset + 0] & 0b00011111) << 6) +
                     (bytes[offset + 1] & 0b00111111);
-        *OutAdvance = 2;
+        OutAdvance = 2;
         OutCodepoint = codepoint;
         return true;
     } else if ((codepoint & 0xF0) == 0xE0) {
@@ -321,7 +325,7 @@ bool MString::BytesToCodepoint(const char *bytes, u32 offset, i32 &OutCodepoint,
         codepoint = ((bytes[offset + 0] & 0b00001111) << 12) +
                     ((bytes[offset + 1] & 0b00111111) << 6) +
                     (bytes[offset + 2] & 0b00111111);
-        *OutAdvance = 3;
+        OutAdvance = 3;
         OutCodepoint = codepoint;
         return true;
     } else if ((codepoint & 0xF8) == 0xF0) {
@@ -330,21 +334,37 @@ bool MString::BytesToCodepoint(const char *bytes, u32 offset, i32 &OutCodepoint,
                     ((bytes[offset + 1] & 0b00111111) << 12) +
                     ((bytes[offset + 2] & 0b00111111) << 6) +
                     (bytes[offset + 3] & 0b00111111);
-        *OutAdvance = 4;
+        OutAdvance = 4;
         OutCodepoint = codepoint;
         return true;
     } else {
         // ПРИМЕЧАНИЕ: Не поддерживаются 5- и 6-байтовые символы; возвращается как недопустимый UTF-8.
-        *OutAdvance = 0;
+        OutAdvance = 0;
         OutCodepoint = 0;
         MERROR("kstring bytes_to_codepoint() - Not supporting 5 and 6-byte characters; Invalid UTF-8.");
         return false;
     }
 }
 
-u16 MString::Len(const char *s)
+bool MString::BytesToCodepoint(u32 offset, i32 &OutCodepoint, u8 &OutAdvance)
 {
-    u16 len = Length(s);
+    return BytesToCodepoint(str, offset, OutCodepoint, OutAdvance);
+}
+
+constexpr u32 MString::Len(const char *s, bool DelCon)
+{
+    u32 len = 0;
+    if (!DelCon) {
+        len = UTF8Length(s);
+    } else {
+        while (*s) {
+            if (*s != '\a' && *s != '\b' && *s != '\t' && 
+                *s != '\n' && *s != '\v' && *s != '\f' && *s != '\r') {
+                len++;
+            }
+            s++;
+        }
+    }
     return len ? len + 1 : 0;
 }
 
@@ -432,7 +452,7 @@ char *MString::Duplicate(const char *s)
 {
     u64 length = Length(s);
     char* copy = MMemory::TAllocate<char>(Memory::String, length + 1);
-    nCopy(copy, s, length);
+    Copy(copy, s, length);
     copy[length] = '\0';
     return copy;
 }
@@ -601,23 +621,41 @@ ExitLoop:
     return end();
 }
 
-void MString::Copy(char *dest, const char *source)
+char* MString::Copy(char *dest, const char *source, u64 length, bool DelCon)
 {
     if(dest && source) {
-        while (*source) {
-            if(*source != '\n' && *source != '\t') {
-                *dest = *source;
-                dest++;
+        u64 count = length ? length : UINT64_MAX;
+        for (u64 i = 0; i < count; i++) {
+            switch (source[i])
+            {
+            case '\a': case '\b': case '\t': 
+            case '\n': case '\v': case '\f': case '\r': {
+                if (!DelCon && i < count - 1) {
+                    dest[i] = source[i];
+                } else if (DelCon && i < count - 1) {
+                    
+                } else {
+                    dest[i] = 0;
+                }
+            } break;
+            case '\0': {
+                dest[i] = 0;
+                goto ExitLoop;
+            } break;
+            default: {
+                dest[i] = source[i];
+            } break;
             }
-            source++;
         }
-        *dest = '\0';
+        ExitLoop:
+        return dest;
     }
+    return nullptr;
 }
 
-void MString::Copy(char *dest, const MString &source)
+char* MString::Copy(char *dest, const MString &source, u64 length, bool DelCon)
 {
-    Copy(dest, source.str);
+    return Copy(dest, source.str, length, DelCon);
 }
 
 void MString::nCopy(const MString& source, u64 length)
@@ -629,38 +667,11 @@ void MString::nCopy(const MString& source, u64 length)
         }
 }
 
-void MString::nCopy(char *dest, const char *source, u64 Length)
-{
-    for (u64 i = 0; i < Length; i++) {
-        if (dest && source) {
-            dest[i] = source[i];
-            if (!source[i]) {
-                dest[i] = '\0';
-                return;
-            }
-        }    
-    }
-    dest[Length] = '\0';
-}
-
-void MString::nCopy(char *dest, const MString &source, u64 length)
-{
-    if (dest && source.str) {
-        for (u64 i = 0; i < length; i++) {
-            dest[i] = source[i];
-            if (!dest[i] || !source[i]) {
-                break;
-            }
-        }
-    }
-}
-
-char* MString::Copy(const char *source, u64 lenght)
+constexpr char* MString::Copy(const char *source, u64 lenght, bool DelCon)
 {
     if(source && lenght) {
         str = MMemory::TAllocate<char>(Memory::String, length); 
-        Copy(str, source);
-        return str;
+        return Copy(str, source, length, DelCon);
     }
     return nullptr;
 }

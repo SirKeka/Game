@@ -1,8 +1,8 @@
-#include "binary_loader.hpp"
+#include "resource_loader.hpp"
+#include "containers/darray.hpp"
 #include "systems/resource_system.hpp"
-#include "loader_utils.hpp"
 
-bool BinaryLoader::Load(const char *name, void* params, Resource &OutResource)
+bool ResourceLoader::Load(const char *name, void* params, BinaryResource &OutResource)
 {
      if (!name) {
         return false;
@@ -13,7 +13,7 @@ bool BinaryLoader::Load(const char *name, void* params, Resource &OutResource)
     MString::Format(FullFilePath, FormatStr, ResourceSystem::Instance()->BasePath(), TypePath.c_str(), name, "");
 
     FileHandle f;
-    if (!Filesystem::Open(FullFilePath, FileModes::Read, true, &f)) {
+    if (!Filesystem::Open(FullFilePath, FileModes::Read, true, f)) {
         MERROR("BinaryLoader::Load - невозможно открыть файл для бинарного чтения: '%s'.", FullFilePath);
         return false;
     }
@@ -22,16 +22,16 @@ bool BinaryLoader::Load(const char *name, void* params, Resource &OutResource)
     OutResource.FullPath = FullFilePath;
 
     u64 FileSize = 0;
-    if (!Filesystem::Size(&f, FileSize)) {
+    if (!Filesystem::Size(f, FileSize)) {
         MERROR("Невозможно прочитать файл в двоичном формате: %s.", FullFilePath);
         Filesystem::Close(f);
         return false;
     }
 
     // ЗАДАЧА: Здесь следует использовать распределитель.
-    u8* ResourceData = MMemory::TAllocate<u8>(Memory::Array, FileSize);
+    u8* ResourceData = MMemory::TAllocate<u8>(Memory::DArray, FileSize);
     u64 ReadSize = 0;
-    if (!Filesystem::ReadAllBytes(&f, ResourceData, ReadSize)) {
+    if (!Filesystem::ReadAllBytes(f, ResourceData, ReadSize)) {
         MERROR("Невозможно прочитать файл в двоичном формате: %s.", FullFilePath);
         Filesystem::Close(f);
         return false;
@@ -39,16 +39,15 @@ bool BinaryLoader::Load(const char *name, void* params, Resource &OutResource)
 
     Filesystem::Close(f);
 
-    OutResource.data = ResourceData;
-    OutResource.DataSize = ReadSize;
+    OutResource.data.Create(ResourceData, ReadSize);
     OutResource.name = name;
 
     return true;
 }
 
-void BinaryLoader::Unload(Resource &resource)
+void ResourceLoader::Unload(BinaryResource &resource)
 {
-    if (!LoaderUtils::ResourceUnload(this, resource, Memory::Array)) {
+    if (!ResourceUnload(resource, Memory::Array)) {
         MWARN("BinaryLoader::Unload вызывается с nullptr для себя или ресурса.");
     }
 }

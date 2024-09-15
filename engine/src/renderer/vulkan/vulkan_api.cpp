@@ -47,7 +47,7 @@ void* VulkanAllocAllocation(void* UserData, size_t size, size_t alignment, VkSys
         return nullptr;
     }
 
-    void* result = MMemory::AllocateAligned(size, (u16)alignment, Memory::Vulkan);
+    void* result = MMemory::AllocateAligned(size, (u16)alignment, Memory::Vulkan, true);
 #ifdef MVULKAN_ALLOCATOR_TRACE
     MTRACE("Выделенный блок %p. Размер=%llu, Выравнивание=%llu", result, size, alignment);
 #endif
@@ -77,7 +77,7 @@ void VulkanAllocFree(void* UserData, void* memory) {
 #ifdef MVULKAN_ALLOCATOR_TRACE
         MTRACE("Найден блок %p с размером/выравниванием: %llu/%u. Освобождение выровненного блока...", memory, size, alignment);
 #endif
-        MMemory::FreeAligned(memory, size, alignment, Memory::Vulkan);
+        MMemory::FreeAligned(memory, size, true, Memory::Vulkan);
     } else {
         MERROR("VulkanAllocFree не удалось получить поиск выравнивания для блока %p.", memory);
     }
@@ -131,7 +131,7 @@ void* VulkanAllocReallocation(void* UserData, void* original, size_t size, size_
         MTRACE("Освобождение исходного выровненного блока %p...", original);
 #endif
         // Освобождение исходной памяти только в случае успешного нового выделения.
-        MMemory::FreeAligned(original, AllocSize, AllocAlignment, Memory::Vulkan);
+        MMemory::FreeAligned(original, AllocSize, true, Memory::Vulkan);
     } else {
 #ifdef MVULKAN_ALLOCATOR_TRACE
         MERROR("Не удалось перераспределить %p.", original);
@@ -222,9 +222,9 @@ MultithreadingEnabled(false)
     VkApplicationInfo AppInfo = {VK_STRUCTURE_TYPE_APPLICATION_INFO};
     AppInfo.apiVersion = VK_API_VERSION_1_2;
     AppInfo.pApplicationName = config.ApplicationName;
-    AppInfo.applicationVersion = VK_MAKE_API_VERSION(0, 1, 0, 0);
+    AppInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0); // VK_MAKE_API_VERSION(0, 1, 0, 0);
     AppInfo.pEngineName = "Moon Engine";
-    AppInfo.engineVersion = VK_MAKE_API_VERSION(0, 1, 0, 0); 
+    AppInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0); // VK_MAKE_API_VERSION(0, 1, 0, 0); 
     // Создание экземпляра.
     VkInstanceCreateInfo CreateInfo = {VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO};
     CreateInfo.pApplicationInfo = &AppInfo;
@@ -367,7 +367,7 @@ MultithreadingEnabled(false)
         // ЗАДАЧА: перейти к функции для возможности повторного использования.
         // Сначала убедитесь, что нет конфликтов с именем.
         u32 id = INVALID::ID;
-        RenderpassTable.Get(config.PassConfigs[i].name, &id);
+        RenderpassTable.Get(config.PassConfigs[i].name, &id); // слетает swapchain.DepthTexture->Data проблема где-то в аллокаторе
         if (id != INVALID::ID) {
             MERROR("Столкновение с renderpass с именем '%s'. Инициализация не удалась.", config.PassConfigs[i].name);
             return;
@@ -734,7 +734,7 @@ Renderpass *VulkanAPI::GetRenderpass(const MString& name)
     }
 
     u32 id = INVALID::ID;
-    RenderpassTable.Get(name, &id);
+    RenderpassTable.Get(name.c_str(), &id);
     if (id == INVALID::ID) {
         MWARN("Нет зарегистрированного рендер-пасса с именем «%s».", name.c_str());
         return nullptr;
@@ -1085,7 +1085,7 @@ bool VulkanAPI::Load(Shader *shader, const ShaderConfig& config, Renderpass* ren
 
         // Подготовьте сцену и ударьте по счетчику.
         OutShader->config.stages[OutShader->config.StageCount].stage = StageFlag;
-        MString::nCopy(OutShader->config.stages[OutShader->config.StageCount].FileName, StageFilenames[i], 255);
+        MString::Copy(OutShader->config.stages[OutShader->config.StageCount].FileName, StageFilenames[i], 255);
         OutShader->config.StageCount++;
     }
 
@@ -1762,8 +1762,8 @@ bool VulkanAPI::CreateModule(VulkanShader *shader, const VulkanShaderStageConfig
 {
     auto ResourceSystemInst = ResourceSystem::Instance();
     // Прочтите ресурс.
-    Resource BinaryResource;
-    if (!ResourceSystemInst->Load(config.FileName, ResourceType::Binary, nullptr, BinaryResource)) {
+    BinaryResource BinRes;
+    if (!ResourceSystemInst->Load(config.FileName, ResourceType::Binary, nullptr, BinRes)) {
         MERROR("Невозможно прочитать модуль шейдера: %s.", config.FileName);
         return false;
     }
@@ -1771,8 +1771,8 @@ bool VulkanAPI::CreateModule(VulkanShader *shader, const VulkanShaderStageConfig
     // MMemory::ZeroMem(&ShaderStage->CreateInfo, sizeof(VkShaderModuleCreateInfo));
     ShaderStage->CreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
     // Используйте размер и данные ресурса напрямую.
-    ShaderStage->CreateInfo.codeSize = BinaryResource.DataSize;
-    ShaderStage->CreateInfo.pCode = reinterpret_cast<u32*>(BinaryResource.data);
+    ShaderStage->CreateInfo.codeSize = BinRes.data.Length();
+    ShaderStage->CreateInfo.pCode = reinterpret_cast<u32*>(BinRes.data.Data());
 
     VK_CHECK(vkCreateShaderModule(
         Device.LogicalDevice,
@@ -1781,7 +1781,7 @@ bool VulkanAPI::CreateModule(VulkanShader *shader, const VulkanShaderStageConfig
         &ShaderStage->handle));
 
     // Освободите ресурс.
-    ResourceSystemInst->Unload(BinaryResource);
+    ResourceSystemInst->Unload(BinRes);
 
     // Информация об этапе шейдера
     //MMemory::ZeroMem(&ShaderStage->ShaderStageCreateInfo, sizeof(VkPipelineShaderStageCreateInfo));
@@ -1927,6 +1927,7 @@ void VulkanAPI::RenderTargetCreate(u8 AttachmentCount, Texture **attachments, Re
     if (!OutTarget.attachments) {
         OutTarget.attachments = MMemory::TAllocate<Texture*>(Memory::Array, AttachmentCount);
     }
+    
     MMemory::CopyMem(OutTarget.attachments, attachments, sizeof(Texture*) * AttachmentCount);
 
     VkFramebufferCreateInfo FramebufferCreateInfo = {VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
@@ -2001,6 +2002,23 @@ bool VulkanBufferIsHostVisible(VulkanBuffer* buffer)
 bool VulkanBufferIsHostCoherent(VulkanBuffer* buffer) 
 {
     return (buffer->MemoryPropertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) == VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+}
+
+bool VulkanAPI::RenderBufferCreate(RenderBufferType type, u64 TotalSize, bool UseFreelist, RenderBuffer &buffer)
+{
+    buffer.type = type;
+    buffer.TotalSize = TotalSize;
+    if (UseFreelist) {
+        buffer.FreelistMemoryRequirement = FreeList::GetMemoryRequirement(TotalSize);
+        buffer.FreelistBlock = MMemory::Allocate(buffer.FreelistMemoryRequirement, Memory::Renderer);
+        buffer.BufferFreelist.Create(TotalSize, buffer.FreelistBlock);
+    }
+    if (!RenderBufferCreateInternal(buffer)) {
+        MERROR("VulkanAPI::RenderBufferCreate не удалось создать RenderBuffer.");
+        return false;
+    }
+    
+    return true;
 }
 
 bool VulkanAPI::RenderBufferCreateInternal(RenderBuffer &buffer)
@@ -2381,23 +2399,6 @@ bool VulkanAPI::VulkanBufferCopyRangeInternal(VkBuffer source, u64 SourceOffset,
     // Отправьте буфер на выполнение и дождитесь его завершения.
     VulkanCommandBufferEndSingleUse(this, Device.GraphicsCommandPool, TempCommandBuffer, queue);
 
-    return true;
-}
-
-bool VulkanAPI::RenderBufferCreate(RenderBufferType type, u64 TotalSize, bool UseFreelist, RenderBuffer &buffer)
-{
-    buffer.type = type;
-    buffer.TotalSize = TotalSize;
-    if (UseFreelist) {
-        buffer.FreelistMemoryRequirement = FreeList::GetMemoryRequirement(TotalSize);
-        buffer.FreelistBlock = MMemory::Allocate(buffer.FreelistMemoryRequirement, Memory::Renderer);
-        buffer.BufferFreelist.Create(TotalSize, buffer.FreelistBlock);
-    }
-    if (!RenderBufferCreateInternal(buffer)) {
-        MERROR("VulkanAPI::RenderBufferCreate не удалось создать RenderBuffer.");
-        return false;
-    }
-    
     return true;
 }
 

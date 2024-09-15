@@ -1,10 +1,8 @@
-#include "shader_loader.hpp"
+#include "resource_loader.hpp"
 #include "systems/resource_system.hpp"
-#include "resources/shader.hpp"
-#include "core/mmemory.hpp"
-#include "loader_utils.hpp"
+//#include "core/mmemory.hpp"
 
-bool ShaderLoader::Load(const char *name, void* params, Resource &OutResource)
+bool ResourceLoader::Load(const char *name, void* params, ShaderResource &OutResource)
 {
     if (!name) {
         return false;
@@ -15,23 +13,23 @@ bool ShaderLoader::Load(const char *name, void* params, Resource &OutResource)
     MString::Format(FullFilePath, FormatStr, ResourceSystem::Instance()->BasePath(), TypePath.c_str(), name, ".shadercfg");
 
     FileHandle f;
-    if (!Filesystem::Open(FullFilePath, FileModes::Read, false, &f)) {
+    if (!Filesystem::Open(FullFilePath, FileModes::Read, false, f)) {
         MERROR("ShaderLoader::Load - невозможно открыть файл шейдера для чтения: '%s'.", FullFilePath);
         return false;
     }
 
     OutResource.FullPath = FullFilePath;
 
-    ShaderConfig* ResourceData = new ShaderConfig();
+    //ShaderConfig* ResourceData = new ShaderConfig();
 
     // Прочтите каждую строку файла.
     char LineBuf[512] = "";
     char* p = &LineBuf[0];
     u64 LineLength = 0;
-    u32 LineNumber = 1; // 4 и 72 строка
-    while (Filesystem::ReadLine(&f, 511, &p, LineLength)) {
+    u32 LineNumber = 1;
+    while (Filesystem::ReadLine(f, 511, &p, LineLength)) {
         // Обрежьте строку.
-        MString line{LineBuf}; // MString::Trim(LineBuf)
+        MString line{LineBuf, true}; // MString::Trim(LineBuf)
 
         // Получите обрезанную длину.
         LineLength = line.Length();
@@ -50,7 +48,8 @@ bool ShaderLoader::Load(const char *name, void* params, Resource &OutResource)
             LineNumber++;
             continue;
         }
-
+        
+        // ЗАДАЧА: Хранить в единственном буфере MString и получать указатель на нужную часть строки по запросу
         // Предположим, что имя переменной содержит не более 64 символов.
         char RawVarName[64]{};
         MString::Mid(RawVarName, line, 0, EqualIndex);
@@ -65,48 +64,48 @@ bool ShaderLoader::Load(const char *name, void* params, Resource &OutResource)
         if (TrimmedVarName.Comparei("version")) {
             // ЗАДАЧА: version
         } else if (TrimmedVarName.Comparei("name")) {
-            ResourceData->name = std::move(TrimmedValue);
+            OutResource.data.name = std::move(TrimmedValue);
         } else if (TrimmedVarName.Comparei("renderpass")) {
-            ResourceData->RenderpassName = std::move(TrimmedValue);
+            OutResource.data.RenderpassName = std::move(TrimmedValue);
         } else if (TrimmedVarName.Comparei("stages")) {
             // Разбор этапов
-            u32 count = TrimmedValue.Split(',', ResourceData->StageNames, true, true);
+            u32 count = TrimmedValue.Split(',', OutResource.data.StageNames, true, true);
             // Убедитесь, что имя этапа и количество имен файлов этапа одинаковы, поскольку они должны совпадать.
-            if (ResourceData->StageCount == 0) {
-                ResourceData->StageCount = count;
-            } else if (ResourceData->StageCount != count) {
+            if (OutResource.data.StageCount == 0) {
+                OutResource.data.StageCount = count;
+            } else if (OutResource.data.StageCount != count) {
                 MERROR("ShaderLoader::Load: Недопустимый макет файла. Подсчитайте несоответствие между именами этапов и именами файлов этапов.");
             }
             // Разберите каждый этап и добавьте в массив нужный тип.
-            for (u8 i = 0; i < ResourceData->StageCount; ++i) {
-                if (ResourceData->StageNames[i].Comparei("frag") || ResourceData->StageNames[i].Comparei("fragment")) {
-                    ResourceData->stages.PushBack(ShaderStage::Fragment);
-                } else if (ResourceData->StageNames[i].Comparei("vert") || ResourceData->StageNames[i].Comparei("vertex")) {
-                    ResourceData->stages.PushBack(ShaderStage::Vertex);
-                } else if (ResourceData->StageNames[i].Comparei("geom") || ResourceData->StageNames[i].Comparei("geometry")) {
-                    ResourceData->stages.PushBack(ShaderStage::Geometry);
-                } else if (ResourceData->StageNames[i].Comparei("comp") || ResourceData->StageNames[i].Comparei("compute")) {
-                    ResourceData->stages.PushBack(ShaderStage::Compute);
+            for (u8 i = 0; i < OutResource.data.StageCount; ++i) {
+                if (OutResource.data.StageNames[i].Comparei("frag") || OutResource.data.StageNames[i].Comparei("fragment")) {
+                    OutResource.data.stages.PushBack(ShaderStage::Fragment);
+                } else if (OutResource.data.StageNames[i].Comparei("vert") || OutResource.data.StageNames[i].Comparei("vertex")) {
+                    OutResource.data.stages.PushBack(ShaderStage::Vertex);
+                } else if (OutResource.data.StageNames[i].Comparei("geom") || OutResource.data.StageNames[i].Comparei("geometry")) {
+                    OutResource.data.stages.PushBack(ShaderStage::Geometry);
+                } else if (OutResource.data.StageNames[i].Comparei("comp") || OutResource.data.StageNames[i].Comparei("compute")) {
+                    OutResource.data.stages.PushBack(ShaderStage::Compute);
                 } else {
-                    MERROR("ShaderLoader::Load: Неверный макет файла. Неопознанная стадия '%s'", ResourceData->StageNames[i].c_str());
+                    MERROR("ShaderLoader::Load: Неверный макет файла. Неопознанная стадия '%s'", OutResource.data.StageNames[i].c_str());
                 }
             }
         } else if (TrimmedVarName.Comparei("stagefiles")) {
             // Разобрать имена файлов сцены
-            u32 count = TrimmedValue.Split(',', ResourceData->StageFilenames, true, true);
+            u32 count = TrimmedValue.Split(',', OutResource.data.StageFilenames, true, true);
             // Убедитесь, что имя этапа и количество имен файлов этапа одинаковы, поскольку они должны совпадать.
-            if (ResourceData->StageCount == 0) {
-                ResourceData->StageCount = count;
-            } else if (ResourceData->StageCount != count) {
+            if (OutResource.data.StageCount == 0) {
+                OutResource.data.StageCount = count;
+            } else if (OutResource.data.StageCount != count) {
                 MERROR("ShaderLoader::Load: Неверный макет файла. Подсчитайте несоответствие между именами этапов и именами файлов этапов.");
             }
         } else if (TrimmedVarName.Comparei("cull_mode")) {
             if (TrimmedValue.Comparei("front")) {
-                ResourceData->CullMode = FaceCullMode::Front;
+                OutResource.data.CullMode = FaceCullMode::Front;
             } else if (TrimmedValue.Comparei("front_and_back")) {
-            ResourceData->CullMode = FaceCullMode::FrontAndBack;
+            OutResource.data.CullMode = FaceCullMode::FrontAndBack;
             } else if (TrimmedValue.Comparei("none")) {
-                ResourceData->CullMode = FaceCullMode::None;
+                OutResource.data.CullMode = FaceCullMode::None;
             }
         } else if (TrimmedVarName.Comparei("attribute")) {
             // Анализ атрибута.
@@ -159,8 +158,8 @@ bool ShaderLoader::Load(const char *name, void* params, Resource &OutResource)
                 attribute.name = std::move(fields[1]);
                 
                 // Добавьте атрибут.
-                ResourceData->attributes.PushBack(std::move(attribute)); // 
-                ResourceData->AttributeCount++;
+                OutResource.data.attributes.PushBack(std::move(attribute)); // 
+                OutResource.data.AttributeCount++;
             }
 
         } else if (TrimmedVarName.Comparei("uniform")) {
@@ -233,8 +232,8 @@ bool ShaderLoader::Load(const char *name, void* params, Resource &OutResource)
                 uniform.name = std::move(fields[2]);
 
                 // Добавьте атрибут.
-                ResourceData->uniforms.PushBack(std::move(uniform));
-                ResourceData->UniformCount++;
+                OutResource.data.uniforms.PushBack(std::move(uniform));
+                OutResource.data.UniformCount++;
             }
         }
 
@@ -245,19 +244,13 @@ bool ShaderLoader::Load(const char *name, void* params, Resource &OutResource)
         LineNumber++;
     }
 
-    Filesystem::Close(&f);
-
-    OutResource.data = ResourceData;
-    OutResource.DataSize = sizeof(ShaderConfig);
+    Filesystem::Close(f);
 
     return true;
 }
 
-void ShaderLoader::Unload(Resource &resource)
+void ResourceLoader::Unload(ShaderResource &resource)
 {
-    ShaderConfig* data = reinterpret_cast<ShaderConfig*>(resource.data);
-    delete data;
-    resource.data = nullptr;
-    resource.DataSize = 0;
-    resource.LoaderID = INVALID::ID;
+    resource.FullPath.Clear();
+    resource.data.Clear();
 }

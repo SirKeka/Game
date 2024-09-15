@@ -19,7 +19,7 @@ using ETextureFlag = u8;
 
 class TextureSystem
 {
-private:
+public:
     u32 MaxTextureCount{};
     Texture DefaultTexture[4]{}; // DefaultTexture, DefaultDiffuseTexture, DefaultSpecularTexture, DefaultNormalTexture
 

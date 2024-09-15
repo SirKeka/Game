@@ -18,8 +18,8 @@ namespace VulkanShadersUtil
         MString::Format(FileName, "shaders/%s.%s.spv", name, TypeStr);
 
         // Чтение ресурса.
-        Resource BinaryResource;
-        if (!ResourceSystem::Instance()->Load(FileName, ResourceType::Binary, nullptr, BinaryResource)) {
+        BinaryResource BinRes;
+        if (!ResourceSystem::Instance()->Load(FileName, ResourceType::Binary, nullptr, BinRes)) {
             MERROR("Невозможно прочитать шейдерный модуль: %s.", FileName);
             return false;
         }
@@ -27,8 +27,8 @@ namespace VulkanShadersUtil
         MMemory::ZeroMem(&ShaderStages[StageIndex].CreateInfo, sizeof(VkShaderModuleCreateInfo));
         ShaderStages[StageIndex].CreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
         // Используйте размер и данные ресурса напрямую.
-        ShaderStages[StageIndex].CreateInfo.codeSize = BinaryResource.DataSize;
-        ShaderStages[StageIndex].CreateInfo.pCode = reinterpret_cast<u32*>(BinaryResource.data);
+        ShaderStages[StageIndex].CreateInfo.codeSize = BinRes.data.Length();
+        ShaderStages[StageIndex].CreateInfo.pCode = reinterpret_cast<u32*>(BinRes.data.Data());
 
         VK_CHECK(vkCreateShaderModule(
             VkAPI->Device.LogicalDevice,

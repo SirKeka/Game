@@ -1,6 +1,5 @@
 #pragma once
 
-#include "defines.hpp"
 #include "core/mmemory.hpp"
 #include "containers/mstring.hpp"
 
@@ -9,11 +8,12 @@ constexpr u32 TEXTURE_NAME_MAX_LENGTH = 512;
 class VulkanAPI;
 
 struct ImageResourceData {
-    u8 ChannelCount;
-    u32 width;
-    u32 height;
-    u8* pixels;
+    u8 ChannelCount  {};
+    u32 width        {};
+    u32 height       {};
+    u8* pixels{nullptr};
 
+    constexpr ImageResourceData() : ChannelCount(), width(), height(), pixels(nullptr) {}
     constexpr ImageResourceData(u8 ChannelCount, u32 width, u32 height, u8* pixels)
     : ChannelCount(ChannelCount), width(width), height(height), pixels(pixels) {}
     void* operator new(u64 size) { return MMemory::Allocate(size, Memory::Texture); }
@@ -90,7 +90,7 @@ public:
     : id(INVALID::ID), type(), width(0), height(0), ChannelCount(0), flags(), generation(INVALID::ID), name(), Data(nullptr) {}
     constexpr Texture(u32 id, TextureType type, u32 width, u32 height, u8 ChannelCount, TextureFlagBits flags, const char* name, VulkanImage* Data)
     : id(id), type(type), width(width), height(height), ChannelCount(ChannelCount), flags(flags), generation(INVALID::ID), name(), Data(Data) {
-        MString::nCopy(this->name, name, TEXTURE_NAME_MAX_LENGTH);
+        MString::Copy(this->name, name, TEXTURE_NAME_MAX_LENGTH);
     }
     constexpr Texture(const char* name, TextureType type, i32 width, i32 height, i32 ChannelCount, TextureFlagBits flags)
     :
@@ -104,7 +104,7 @@ public:
         name(),
         Data(nullptr)
     {
-        MString::nCopy(this->name, name, TEXTURE_NAME_MAX_LENGTH);
+        MString::Copy(this->name, name, TEXTURE_NAME_MAX_LENGTH);
     }
     ~Texture();
 
@@ -114,7 +114,7 @@ public:
     Texture(const Texture& t);
     constexpr Texture(Texture&& t) : id(t.id), type(t.type), width(t.width), height(t.height), ChannelCount(t.ChannelCount), 
     flags(t.flags), generation(t.generation), name(), Data(t.Data) { 
-        MString::nCopy(this->name, t.name, TEXTURE_NAME_MAX_LENGTH); 
+        MString::Copy(this->name, t.name, TEXTURE_NAME_MAX_LENGTH); 
         t.id = 0;
         t.width = 0;
         t.height = 0;

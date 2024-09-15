@@ -7,18 +7,17 @@
 
 RenderViewSkybox::RenderViewSkybox(u16 id, MString &name, KnownType type, u8 RenderpassCount, const char *CustomShaderName)
 : RenderView(id, name, type, RenderpassCount, CustomShaderName), 
-ShaderID(ShaderSystem::GetInstance()->GetID(CustomShaderName ? CustomShaderName : "Shader.Builtin.Skybox")),
+ShaderID(ShaderSystem::GetID(CustomShaderName ? CustomShaderName : "Shader.Builtin.Skybox")),
 fov(Math::DegToRad(45.F)), NearClip(0.1F), FarClip(1000.F), 
 ProjectionMatrix(Matrix4D::MakeFrustumProjection(fov, 1280 / 720.F, NearClip, FarClip)), 
 WorldCamera(CameraSystem::Instance()->GetDefault()), 
 // locations(),
 ProjectionLocation(), ViewLocation(), CubeMapLocation() 
 {
-    auto ShaderSystemInst = ShaderSystem::GetInstance();
-    auto SkyboxShader = ShaderSystemInst->GetShader(CustomShaderName ? CustomShaderName : "Shader.Builtin.Skybox");
-    ProjectionLocation = ShaderSystemInst->UniformIndex(SkyboxShader, "projection");
-    ViewLocation = ShaderSystemInst->UniformIndex(SkyboxShader, "view");
-    CubeMapLocation = ShaderSystemInst->UniformIndex(SkyboxShader, "cube_texture");
+    auto SkyboxShader = ShaderSystem::GetShader(CustomShaderName ? CustomShaderName : "Shader.Builtin.Skybox");
+    ProjectionLocation = ShaderSystem::UniformIndex(SkyboxShader, "projection");
+    ViewLocation = ShaderSystem::UniformIndex(SkyboxShader, "view");
+    CubeMapLocation = ShaderSystem::UniformIndex(SkyboxShader, "cube_texture");
 }
 
 RenderViewSkybox::~RenderViewSkybox()
@@ -60,7 +59,6 @@ bool RenderViewSkybox::BuildPacket(void *data, Packet &OutPacket) const
 bool RenderViewSkybox::Render(const Packet &packet, u64 FrameNumber, u64 RenderTargetIndex) const
 {
     auto SkyboxData = reinterpret_cast<SkyboxPacketData*>(packet.ExtendedData);
-    auto ShaderSystemInst = ShaderSystem::GetInstance();
 
     for (u32 p = 0; p < RenderpassCount; ++p) {
         auto pass = passes[p];
@@ -69,7 +67,7 @@ bool RenderViewSkybox::Render(const Packet &packet, u64 FrameNumber, u64 RenderT
             return false;
         }
 
-        if (!ShaderSystemInst->Use(ShaderID)) {
+        if (!ShaderSystem::Use(ShaderID)) {
             MERROR("Не удалось использовать шейдер скайбокса. Не удалось отрисовать кадр.");
             return false;
         }
@@ -80,25 +78,25 @@ bool RenderViewSkybox::Render(const Packet &packet, u64 FrameNumber, u64 RenderT
 
         // Применить глобальные переменные
         // TODO: Это ужасно. Нужно привязать по идентификатору.
-        ShaderSystemInst->GetShader(ShaderID)->BindGlobals();
-        if (!ShaderSystemInst->UniformSet(ProjectionLocation, &packet.ProjectionMatrix)) {
+        ShaderSystem::GetShader(ShaderID)->BindGlobals();
+        if (!ShaderSystem::UniformSet(ProjectionLocation, &packet.ProjectionMatrix)) {
             MERROR("Не удалось применить единообразие проекции скайбокса.");
             return false;
         }
-        if (!ShaderSystemInst->UniformSet(ViewLocation, &ViewMatrix)) {
+        if (!ShaderSystem::UniformSet(ViewLocation, &ViewMatrix)) {
             MERROR("Не удалось применить единообразие вида скайбокса.");
             return false;
         }
-        ShaderSystemInst->ApplyGlobal();
+        ShaderSystem::ApplyGlobal();
 
         // Экземпляр
-        ShaderSystemInst->BindInstance(SkyboxData->sb->InstanceID);
-        if (!ShaderSystemInst->UniformSet(CubeMapLocation, &SkyboxData->sb->cubemap)) {
+        ShaderSystem::BindInstance(SkyboxData->sb->InstanceID);
+        if (!ShaderSystem::UniformSet(CubeMapLocation, &SkyboxData->sb->cubemap)) {
             MERROR("Не удалось применить единообразие кубической карты скайбокса.");
             return false;
         }
         bool NeedsUpdate = SkyboxData->sb->RenderFrameNumber != FrameNumber;
-        ShaderSystemInst->ApplyInstance(NeedsUpdate);
+        ShaderSystem::ApplyInstance(NeedsUpdate);
 
         // Синхронизировать номер кадра.
         SkyboxData->sb->RenderFrameNumber = FrameNumber;
@@ -115,4 +113,14 @@ bool RenderViewSkybox::Render(const Packet &packet, u64 FrameNumber, u64 RenderT
     }
 
     return true;
+}
+
+void *RenderViewSkybox::operator new(u64 size)
+{
+    return MMemory::Allocate(size, Memory::Renderer);
+}
+
+void RenderViewSkybox::operator delete(void *ptr, u64 size)
+{
+    MMemory::Free(ptr, size, Memory::Renderer);
 }

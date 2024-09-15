@@ -78,7 +78,7 @@ public:
     /// @param name имя записи, которую нужно задать. Обязательно.
     /// @param value значение, которое необходимо установить. Обязательно.
     /// @return true или false, если передается нулевой указатель.
-    bool Set(const MString& name, T& value) {
+    bool Set(const char* name, T& value) {
         if (!name) {
             MERROR("«HashTable::Set» требует существования имени и значения.");
             return false;
@@ -120,7 +120,7 @@ public:
     /// @param name имя извлекаемой записи. Обязательно.
     /// @param OutValue указатель для хранения полученного значения. Обязательно.
     /// @return true или false, если передается нулевой указатель.
-    bool Get(const MString& name, T* OutValue) {
+    bool Get(const char* name, T* OutValue) {
         if(!IsPointerType) {
             if (!name || !OutValue) {
                 MWARN("«Get» требует существования имени и OutValue.");
@@ -157,11 +157,11 @@ public:
     }
 
 private:
-    u64 Name(const MString& name, u32 ElementCount) {
+    u64 Name(const char* name, u32 ElementCount) {
         unsigned const char* us;
         u64 hash = 0;
 
-        for (us = (unsigned const char*)name.c_str(); *us; us++) {
+        for (us = (unsigned const char*)name; *us; us++) {
             hash = hash * multiplier + *us;
         }
 

@@ -18,7 +18,7 @@ Logger::Logger()
 bool Logger::Initialize()
 {
     // Создайте новый/сотрите существующий файл журнала, затем откройте его.
-    if (!Filesystem::Open("console.log", FileModes::Write, false, &LogFileHandle)) {
+    if (!Filesystem::Open("console.log", FileModes::Write, false, LogFileHandle)) {
         PlatformConsoleWriteError("ОШИБКА: Не удается открыть console.log для записи.", static_cast<u8>(LogLevel::Error));
         return false;
     }
@@ -51,7 +51,7 @@ void Logger::AppendToLogFile(const char *message)
         // Поскольку сообщение уже содержит '\n', просто запишите байты напрямую.
         u64 length = MString::Length(message);
         u64 written = 0;
-        if (!Filesystem::Write(&LogFileHandle, length, message, written)) {
+        if (!Filesystem::Write(LogFileHandle, length, message, written)) {
             PlatformConsoleWriteError("ОШИБКА записи в console.log.", static_cast<u8>(LogLevel::Error));
         }
     }

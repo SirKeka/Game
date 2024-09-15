@@ -34,7 +34,7 @@ Texture::Texture(const Texture &t)
     generation(t.generation), 
     name(), 
     Data(t.Data ? new VulkanImage(*t.Data) : nullptr) { 
-    MString::nCopy(this->name, t.name, TEXTURE_NAME_MAX_LENGTH); 
+    MString::Copy(this->name, t.name, TEXTURE_NAME_MAX_LENGTH); 
 }
 
 Texture &Texture::operator=(const Texture &t)
@@ -46,7 +46,7 @@ Texture &Texture::operator=(const Texture &t)
     ChannelCount = t.ChannelCount;
     flags = t.flags;
     generation = t.generation;
-    MString::nCopy(this->name, t.name, TEXTURE_NAME_MAX_LENGTH);
+    MString::Copy(this->name, t.name, TEXTURE_NAME_MAX_LENGTH);
     Data = new VulkanImage(*t.Data);
     return *this;
 }
@@ -60,7 +60,7 @@ Texture &Texture::operator=(Texture &&t)
     ChannelCount = t.ChannelCount;
     flags = t.flags;
     generation = t.generation;
-    MString::nCopy(this->name, t.name, TEXTURE_NAME_MAX_LENGTH);
+    MString::Copy(this->name, t.name, TEXTURE_NAME_MAX_LENGTH);
     Data = t.Data;
 
     t.id = 0;
@@ -82,7 +82,7 @@ void Texture::Create(const char* name, i32 width, i32 height, i32 ChannelCount, 
     this->height = height;
     this->ChannelCount = ChannelCount;
     this->generation = INVALID::ID;
-    MString::nCopy(this->name, name, TEXTURE_NAME_MAX_LENGTH); // this->name = name;
+    MString::Copy(this->name, name, TEXTURE_NAME_MAX_LENGTH); // this->name = name;
     this->flags = flags;
     this->generation++;
 }

@@ -57,7 +57,7 @@ RenderViewWorld::RenderViewWorld()
 :
     RenderView(),
     // Получите либо переопределение пользовательского шейдера, либо заданное значение по умолчанию.
-    ShaderID(ShaderSystem::GetInstance()->GetID(CustomShaderName ? CustomShaderName : "Shader.Builtin.Material")),
+    ShaderID(ShaderSystem::GetID(CustomShaderName ? CustomShaderName : "Shader.Builtin.Material")),
     fov(Math::DegToRad(45.F)),
     NearClip(0.1F),
     FarClip(1000.F),
@@ -76,7 +76,7 @@ RenderViewWorld::RenderViewWorld()
 RenderViewWorld::RenderViewWorld(u16 id, MString& name, KnownType type, u8 RenderpassCount, const char* CustomShaderName)
 :
 RenderView(id, name, type, RenderpassCount, CustomShaderName),
-ShaderID(ShaderSystem::GetInstance()->GetID(CustomShaderName ? CustomShaderName : "Shader.Builtin.Material")),
+ShaderID(ShaderSystem::GetID(CustomShaderName ? CustomShaderName : "Shader.Builtin.Material")),
 fov(Math::DegToRad(45.F)),
 NearClip(0.1F),
 FarClip(1000.F),
@@ -179,7 +179,7 @@ bool RenderViewWorld::Render(const Packet &packet, u64 FrameNumber, u64 RenderTa
             return false;
         }
 
-        if (!ShaderSystem::GetInstance()->Use(ShaderID)) {
+        if (!ShaderSystem::Use(ShaderID)) {
             MERROR("Не удалось использовать шейдер материала. Не удалось отрисовать кадр.");
             return false;
         }
@@ -228,6 +228,16 @@ bool RenderViewWorld::Render(const Packet &packet, u64 FrameNumber, u64 RenderTa
     }
 
     return true;
+}
+
+void *RenderViewWorld::operator new(u64 size)
+{
+    return MMemory::Allocate(size, Memory::Renderer);
+}
+
+void RenderViewWorld::operator delete(void *ptr, u64 size)
+{
+    MMemory::Free(ptr, size, Memory::Renderer);
 }
 
 static void Swap(GeometryDistance& a, GeometryDistance& b) {
