@@ -26,7 +26,6 @@ using ShaderResource     = Resource<ShaderConfig>;
 using BitmapFontResource = Resource<BitmapFontResourceData>;
 //using CustomResource = Resource<>;
 
-
 enum class ResourceType : u8 {
     Invalid,    // 
     Text,       // Тип ресурса Text.
