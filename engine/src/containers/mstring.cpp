@@ -154,7 +154,7 @@ MString &MString::operator+=(bool b)
 
 MString &MString::operator+=(char c)
 {
-    // ЗАДАЧА: вставьте здесь оператор return
+    return *this;
 }
 
 void MString::Create(char *str, u64 length, bool autorelease)
@@ -617,7 +617,7 @@ bool MString::StringToF32(const char* s, f32& fn1, f32* fn2, f32* fn3, f32* fn4)
         } break;
         }
     }
-ExitLoop:
+//ExitLoop:
     return end();
 }
 
@@ -961,13 +961,13 @@ bool MString::ToUInt(char *str, u64 &u)
     return result != -1;
 }
 
-bool MString::ToBool(/*char *str, */bool &b)
+bool MString::ToBool(bool &b)
 {
     if (!str) {
         MERROR("MString::ToBool: нулевая строка")
         return false;
     }
-    b = *this == "1" || Equali(str, "true");
+    b = (*this == "1") || (*this == "true");
     return true;
 }
 

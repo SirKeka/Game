@@ -205,7 +205,7 @@ void MMemory::FreeAligned(void *block, u64 size, bool alignment, Memory::Tag tag
             state->TotalAllocated -= size;
             state->TaggedAllocations[tag] -= size;
             state->AllocCount--;
-            bool result = state->allocator.Free(block, size, alignment);
+            [[maybe_unused]]bool result = state->allocator.Free(block, size, alignment);
             block = nullptr;
             // Если освобождение не удалось, возможно, это связано с тем, что выделение было выполнено до запуска этой системы. 
             // Поскольку это абсолютно должно быть исключением из правил, попробуйте освободить его на уровне платформы. 

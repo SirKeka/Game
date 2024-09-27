@@ -1,6 +1,5 @@
 #include "resource_loader.hpp"
 #include "systems/resource_system.hpp"
-//#include "core/mmemory.hpp"
 
 bool ResourceLoader::Load(const char *name, void* params, ShaderResource &OutResource)
 {
@@ -19,8 +18,7 @@ bool ResourceLoader::Load(const char *name, void* params, ShaderResource &OutRes
     }
 
     OutResource.FullPath = FullFilePath;
-
-    //ShaderConfig* ResourceData = new ShaderConfig();
+    auto& data = OutResource.data;
 
     // Прочтите каждую строку файла.
     char LineBuf[512] = "";
@@ -29,7 +27,7 @@ bool ResourceLoader::Load(const char *name, void* params, ShaderResource &OutRes
     u32 LineNumber = 1;
     while (Filesystem::ReadLine(f, 511, &p, LineLength)) {
         // Обрежьте строку.
-        MString line{LineBuf, true}; // MString::Trim(LineBuf)
+        MString line{LineBuf, true};
 
         // Получите обрезанную длину.
         LineLength = line.Length();
@@ -53,60 +51,65 @@ bool ResourceLoader::Load(const char *name, void* params, ShaderResource &OutRes
         // Предположим, что имя переменной содержит не более 64 символов.
         char RawVarName[64]{};
         MString::Mid(RawVarName, line, 0, EqualIndex);
-        MString TrimmedVarName = RawVarName; // MString::Trim(RawVarName)
+        MString TrimmedVarName = RawVarName;
 
         // Предположим, что максимальная длина значения, учитывающего имя переменной и знак «=», составляет 511–65 (446).
         char RawValue[446]{};
         MString::Mid(RawValue, line, EqualIndex + 1, -1);  // Прочтите остальную часть строки
-        MString TrimmedValue{RawValue}; // MString::Trim(RawValue)
+        MString TrimmedValue{RawValue};
 
         // Обработайте переменную.
         if (TrimmedVarName.Comparei("version")) {
             // ЗАДАЧА: version
         } else if (TrimmedVarName.Comparei("name")) {
-            OutResource.data.name = std::move(TrimmedValue);
+            data.name = std::move(TrimmedValue);
         } else if (TrimmedVarName.Comparei("renderpass")) {
-            OutResource.data.RenderpassName = std::move(TrimmedValue);
+            // data.RenderpassName = std::move(TrimmedValue);
+            // Игнорируем эту строку в данный момент.
         } else if (TrimmedVarName.Comparei("stages")) {
             // Разбор этапов
-            u32 count = TrimmedValue.Split(',', OutResource.data.StageNames, true, true);
+            u32 count = TrimmedValue.Split(',', data.StageNames, true, true);
             // Убедитесь, что имя этапа и количество имен файлов этапа одинаковы, поскольку они должны совпадать.
-            if (OutResource.data.StageCount == 0) {
-                OutResource.data.StageCount = count;
-            } else if (OutResource.data.StageCount != count) {
+            if (data.StageCount == 0) {
+                data.StageCount = count;
+            } else if (data.StageCount != count) {
                 MERROR("ShaderLoader::Load: Недопустимый макет файла. Подсчитайте несоответствие между именами этапов и именами файлов этапов.");
             }
             // Разберите каждый этап и добавьте в массив нужный тип.
-            for (u8 i = 0; i < OutResource.data.StageCount; ++i) {
-                if (OutResource.data.StageNames[i].Comparei("frag") || OutResource.data.StageNames[i].Comparei("fragment")) {
-                    OutResource.data.stages.PushBack(ShaderStage::Fragment);
-                } else if (OutResource.data.StageNames[i].Comparei("vert") || OutResource.data.StageNames[i].Comparei("vertex")) {
-                    OutResource.data.stages.PushBack(ShaderStage::Vertex);
-                } else if (OutResource.data.StageNames[i].Comparei("geom") || OutResource.data.StageNames[i].Comparei("geometry")) {
-                    OutResource.data.stages.PushBack(ShaderStage::Geometry);
-                } else if (OutResource.data.StageNames[i].Comparei("comp") || OutResource.data.StageNames[i].Comparei("compute")) {
-                    OutResource.data.stages.PushBack(ShaderStage::Compute);
+            for (u8 i = 0; i < data.StageCount; ++i) {
+                if (data.StageNames[i].Comparei("frag") || data.StageNames[i].Comparei("fragment")) {
+                    data.stages.PushBack(Shader::Stage::Fragment);
+                } else if (data.StageNames[i].Comparei("vert") || data.StageNames[i].Comparei("vertex")) {
+                    data.stages.PushBack(Shader::Stage::Vertex);
+                } else if (data.StageNames[i].Comparei("geom") || data.StageNames[i].Comparei("geometry")) {
+                    data.stages.PushBack(Shader::Stage::Geometry);
+                } else if (data.StageNames[i].Comparei("comp") || data.StageNames[i].Comparei("compute")) {
+                    data.stages.PushBack(Shader::Stage::Compute);
                 } else {
-                    MERROR("ShaderLoader::Load: Неверный макет файла. Неопознанная стадия '%s'", OutResource.data.StageNames[i].c_str());
+                    MERROR("ShaderLoader::Load: Неверный макет файла. Неопознанная стадия '%s'", data.StageNames[i].c_str());
                 }
             }
         } else if (TrimmedVarName.Comparei("stagefiles")) {
             // Разобрать имена файлов сцены
-            u32 count = TrimmedValue.Split(',', OutResource.data.StageFilenames, true, true);
+            u32 count = TrimmedValue.Split(',', data.StageFilenames, true, true);
             // Убедитесь, что имя этапа и количество имен файлов этапа одинаковы, поскольку они должны совпадать.
-            if (OutResource.data.StageCount == 0) {
-                OutResource.data.StageCount = count;
-            } else if (OutResource.data.StageCount != count) {
+            if (data.StageCount == 0) {
+                data.StageCount = count;
+            } else if (data.StageCount != count) {
                 MERROR("ShaderLoader::Load: Неверный макет файла. Подсчитайте несоответствие между именами этапов и именами файлов этапов.");
             }
         } else if (TrimmedVarName.Comparei("cull_mode")) {
             if (TrimmedValue.Comparei("front")) {
-                OutResource.data.CullMode = FaceCullMode::Front;
+                data.CullMode = FaceCullMode::Front;
             } else if (TrimmedValue.Comparei("front_and_back")) {
-            OutResource.data.CullMode = FaceCullMode::FrontAndBack;
+            data.CullMode = FaceCullMode::FrontAndBack;
             } else if (TrimmedValue.Comparei("none")) {
-                OutResource.data.CullMode = FaceCullMode::None;
+                data.CullMode = FaceCullMode::None;
             }
+        } else if (TrimmedVarName.Comparei("depth_test")) {
+            TrimmedValue.ToBool(data.DepthTest);
+        } else if (TrimmedVarName.Comparei("depth_write")) {
+            TrimmedValue.ToBool(data.DepthWrite); 
         } else if (TrimmedVarName.Comparei("attribute")) {
             // Анализ атрибута.
             DArray<MString>fields{2};
@@ -114,52 +117,52 @@ bool ResourceLoader::Load(const char *name, void* params, ShaderResource &OutRes
             if (FieldCount != 2) {
                 MERROR("ShaderLoader::Load: Недопустимый макет файла. Поля атрибутов должны иметь формат «тип, имя». Пропуск.");
             } else {
-                ShaderAttributeConfig attribute;
+                Shader::AttributeConfig attribute;
                 // Анализ field type
                 if (fields[0].Comparei("f32")) {
-                    attribute.type = EShaderAttribute::Float32;
+                    attribute.type = Shader::AttributeType::Float32;
                     attribute.size = 4;
                 } else if (fields[0].Comparei("vec2")) {
-                    attribute.type = EShaderAttribute::Float32_2;
+                    attribute.type = Shader::AttributeType::Float32_2;
                     attribute.size = 8;
                 } else if (fields[0].Comparei("vec3")) {
-                    attribute.type = EShaderAttribute::Float32_3;
+                    attribute.type = Shader::AttributeType::Float32_3;
                     attribute.size = 12;
                 } else if (fields[0].Comparei("vec4")) {
-                    attribute.type = EShaderAttribute::Float32_4;
+                    attribute.type = Shader::AttributeType::Float32_4;
                     attribute.size = 16;
                 } else if (fields[0].Comparei("u8")) {
-                    attribute.type = EShaderAttribute::UInt8;
+                    attribute.type = Shader::AttributeType::UInt8;
                     attribute.size = 1;
                 } else if (fields[0].Comparei("u16")) {
-                    attribute.type = EShaderAttribute::UInt16;
+                    attribute.type = Shader::AttributeType::UInt16;
                     attribute.size = 2;
                 } else if (fields[0].Comparei("u32")) {
-                    attribute.type = EShaderAttribute::UInt32;
+                    attribute.type = Shader::AttributeType::UInt32;
                     attribute.size = 4;
                 } else if (fields[0].Comparei("i8")) {
-                    attribute.type = EShaderAttribute::Int8;
+                    attribute.type = Shader::AttributeType::Int8;
                     attribute.size = 1;
                 } else if (fields[0].Comparei("i16")) {
-                    attribute.type = EShaderAttribute::Int16;
+                    attribute.type = Shader::AttributeType::Int16;
                     attribute.size = 2;
                 } else if (fields[0].Comparei("i32")) {
-                    attribute.type = EShaderAttribute::Int32;
+                    attribute.type = Shader::AttributeType::Int32;
                     attribute.size = 4;
                 } else {
                     MERROR("ShaderLoader::Load: Недопустимый макет файла. Тип атрибута должен быть f32, Vector2D, Vector3D, Vector4D, i8, i16, i32, u8, u16 или u32.");
                     MWARN("По умолчанию f32.");
-                    attribute.type = EShaderAttribute::Float32;
+                    attribute.type = Shader::AttributeType::Float32;
                     attribute.size = 4;
                 }
-
+                
                 // Возьмите копию имени атрибута.
                 // attribute.NameLength = fields[1].Length();
                 attribute.name = std::move(fields[1]);
                 
                 // Добавьте атрибут.
-                OutResource.data.attributes.PushBack(std::move(attribute)); // 
-                OutResource.data.AttributeCount++;
+                data.attributes.PushBack(std::move(attribute)); // 
+                data.AttributeCount++;
             }
 
         } else if (TrimmedVarName.Comparei("uniform")) {
@@ -169,62 +172,62 @@ bool ResourceLoader::Load(const char *name, void* params, ShaderResource &OutRes
             if (FieldCount != 3) {
                 MERROR("ShaderLoader::Load: Недопустимый макет файла. Унифицированные поля должны иметь следующий вид: «тип, область действия, имя». Пропуск.");
             } else {
-                ShaderUniformConfig uniform;
+                Shader::UniformConfig uniform;
                 // Анализ field type
                 if (fields[0].Comparei("f32")) {
-                    uniform.type = ShaderUniformType::Float32;
+                    uniform.type = Shader::UniformType::Float32;
                     uniform.size = 4;
                 } else if (fields[0].Comparei("vec2")) {
-                    uniform.type = ShaderUniformType::Float32_2;
+                    uniform.type = Shader::UniformType::Float32_2;
                     uniform.size = 8;
                 } else if (fields[0].Comparei("vec3")) {
-                    uniform.type = ShaderUniformType::Float32_3;
+                    uniform.type = Shader::UniformType::Float32_3;
                     uniform.size = 12;
                 } else if (fields[0].Comparei("vec4")) {
-                    uniform.type = ShaderUniformType::Float32_4;
+                    uniform.type = Shader::UniformType::Float32_4;
                     uniform.size = 16;
                 } else if (fields[0].Comparei("u8")) {
-                    uniform.type = ShaderUniformType::UInt8;
+                    uniform.type = Shader::UniformType::UInt8;
                     uniform.size = 1;
                 } else if (fields[0].Comparei("u16")) {
-                    uniform.type = ShaderUniformType::UInt16;
+                    uniform.type = Shader::UniformType::UInt16;
                     uniform.size = 2;
                 } else if (fields[0].Comparei("u32")) {
-                    uniform.type = ShaderUniformType::UInt32;
+                    uniform.type = Shader::UniformType::UInt32;
                     uniform.size = 4;
                 } else if (fields[0].Comparei("i8")) {
-                    uniform.type = ShaderUniformType::Int8;
+                    uniform.type = Shader::UniformType::Int8;
                     uniform.size = 1;
                 } else if (fields[0].Comparei("i16")) {
-                    uniform.type = ShaderUniformType::Int16;
+                    uniform.type = Shader::UniformType::Int16;
                     uniform.size = 2;
                 } else if (fields[0].Comparei("i32")) {
-                    uniform.type = ShaderUniformType::Int32;
+                    uniform.type = Shader::UniformType::Int32;
                     uniform.size = 4;
                 } else if (fields[0].Comparei("mat4")) {
-                    uniform.type = ShaderUniformType::Matrix4;
+                    uniform.type = Shader::UniformType::Matrix4;
                     uniform.size = 64;
                 } else if (fields[0].Comparei("samp") || fields[0].Comparei("sampler")) {
-                    uniform.type = ShaderUniformType::Sampler;
+                    uniform.type = Shader::UniformType::Sampler;
                     uniform.size = 0;  // У сэмплеров нет размера.
                 } else {
                     MERROR("ShaderLoader::Load: Недопустимый макет файла. Унифицированный тип должен быть f32, vec2, vec3, vec4, i8, i16, i32, u8, u16, u32 или mat4.");
                     MWARN("По умолчанию f32.");
-                    uniform.type = ShaderUniformType::Float32;
+                    uniform.type = Shader::UniformType::Float32;
                     uniform.size = 4;
                 }
 
                 // Анализ области действия
                 if (fields[1]== "0") {
-                    uniform.scope = ShaderScope::Global;
+                    uniform.scope = Shader::Scope::Global;
                 } else if (fields[1]== "1") {
-                    uniform.scope = ShaderScope::Instance;
+                    uniform.scope = Shader::Scope::Instance;
                 } else if (fields[1] == "2") {
-                    uniform.scope = ShaderScope::Local;
+                    uniform.scope = Shader::Scope::Local;
                 } else {
                     MERROR("ShaderLoader::Load: Недопустимый макет файла: универсальная область должна быть равна 0 для глобального, 1 для экземпляра или 2 для локального.");
                     MWARN("По умолчанию глобальный.");
-                    uniform.scope = ShaderScope::Global;
+                    uniform.scope = Shader::Scope::Global;
                 }
 
                 // Возьмите копию имени атрибута.
@@ -232,8 +235,8 @@ bool ResourceLoader::Load(const char *name, void* params, ShaderResource &OutRes
                 uniform.name = std::move(fields[2]);
 
                 // Добавьте атрибут.
-                OutResource.data.uniforms.PushBack(std::move(uniform));
-                OutResource.data.UniformCount++;
+                data.uniforms.PushBack(std::move(uniform));
+                data.UniformCount++;
             }
         }
 

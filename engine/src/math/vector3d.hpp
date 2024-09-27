@@ -163,6 +163,17 @@ public:
     	out.z = v.x * m.data[0 + 2] + v.y * m.data[4 + 2] + v.z * m.data[8 + 2] + 1.0f * m.data[12 + 2];
 		return out;
 	}
+
+	/// @brief Преобразует vec3 значений rgb [0.0-1.0] в целые значения rgb [0-255].
+	/// @param v Вектор значений rgb [0.0-1.0], который нужно преобразовать.
+	/// @param OutR Указатель для хранения значения красного.
+	/// @param OutG Указатель для хранения значения зеленого.
+	/// @param OutB Указатель для хранения значения синего.
+	MINLINE void ToRGBu32(u32& OutR, u32& OutG, u32& OutB) {
+	    OutR = r * 255;
+	    OutG = g * 255;
+	    OutB = b * 255;
+	}
 };
 
 template<typename T>
@@ -289,4 +300,16 @@ template<typename T>
 MINLINE Vector3D<T>& Reject(const Vector3D<T>& a, const Vector3D<T>& b)
 {
 	return Vector3D<T>(a - b * (Dot(a, b) / Dot(b, b)));
+}
+
+template<typename T>
+/// @brief Преобразует целочисленные значения RGB [0-255] в vec3 значений с плавающей точкой [0.0-1.0]
+/// @param r Красное значение [0-255].
+/// @param g Зеленое значение [0-255].
+/// @param b Синее значение [0-255].
+/// @param OutV Указатель для хранения вектора значений с плавающей точкой.
+/// @return 
+MINLINE Vector3D<T> RGBu32ToFVec3(u32 r, u32 g, u32 b) 
+{
+	return (Vector3D<T>(r, g, b) /= 255.F);
 }

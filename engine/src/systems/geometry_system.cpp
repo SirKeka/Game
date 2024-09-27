@@ -187,35 +187,35 @@ GeometryConfig GeometrySystem::GenerateCubeConfig(f32 width, f32 height, f32 dep
 
     Vertex3D* vertex = reinterpret_cast<Vertex3D*>(config.vertices);
     // Передняя поверхность
-    vertex[0]  = Vertex3D(-HalfWidth, -HalfHeight,  HalfDepth,  0.F, 0.F, 1.F, MinUVx, MinUVy);
-    vertex[1]  = Vertex3D( HalfWidth,  HalfHeight,  HalfDepth,  0.F, 0.F, 1.F, MaxUVx, MaxUVy);
-    vertex[2]  = Vertex3D(-HalfWidth,  HalfHeight,  HalfDepth,  0.F, 0.F, 1.F, MinUVx, MaxUVy);
-    vertex[3]  = Vertex3D( HalfWidth, -HalfHeight,  HalfDepth,  0.F, 0.F, 1.F, MaxUVx, MinUVy);
+    vertex[0]  = Vertex3D(-HalfWidth, -HalfHeight,  HalfDepth,  0.F,  0.F,  1.F, MinUVx, MinUVy);
+    vertex[1]  = Vertex3D( HalfWidth,  HalfHeight,  HalfDepth,  0.F,  0.F,  1.F, MaxUVx, MaxUVy);
+    vertex[2]  = Vertex3D(-HalfWidth,  HalfHeight,  HalfDepth,  0.F,  0.F,  1.F, MinUVx, MaxUVy);
+    vertex[3]  = Vertex3D( HalfWidth, -HalfHeight,  HalfDepth,  0.F,  0.F,  1.F, MaxUVx, MinUVy);
     // Задняя поверхность
-    vertex[4]  = Vertex3D( HalfWidth, -HalfHeight, -HalfDepth, 0.F, 0.F, -1.F, MinUVx, MinUVy);
-    vertex[5]  = Vertex3D(-HalfWidth,  HalfHeight, -HalfDepth, 0.F, 0.F, -1.F, MaxUVx, MaxUVy);
-    vertex[6]  = Vertex3D( HalfWidth,  HalfHeight, -HalfDepth, 0.F, 0.F, -1.F, MinUVx, MaxUVy);
-    vertex[7]  = Vertex3D(-HalfWidth, -HalfHeight, -HalfDepth, 0.F, 0.F, -1.F, MaxUVx, MinUVy);
+    vertex[4]  = Vertex3D( HalfWidth, -HalfHeight, -HalfDepth,  0.F,  0.F, -1.F, MinUVx, MinUVy);
+    vertex[5]  = Vertex3D(-HalfWidth,  HalfHeight, -HalfDepth,  0.F,  0.F, -1.F, MaxUVx, MaxUVy);
+    vertex[6]  = Vertex3D( HalfWidth,  HalfHeight, -HalfDepth,  0.F,  0.F, -1.F, MinUVx, MaxUVy);
+    vertex[7]  = Vertex3D(-HalfWidth, -HalfHeight, -HalfDepth,  0.F,  0.F, -1.F, MaxUVx, MinUVy);
     // Левая поверхность
-    vertex[8]  = Vertex3D(-HalfWidth, -HalfHeight, -HalfDepth, -1.F, 0.F, 0.F, MinUVx, MinUVy);
-    vertex[9]  = Vertex3D(-HalfWidth,  HalfHeight,  HalfDepth, -1.F, 0.F, 0.F, MaxUVx, MaxUVy);
-    vertex[10] = Vertex3D(-HalfWidth,  HalfHeight, -HalfDepth, -1.F, 0.F, 0.F, MinUVx, MaxUVy);
-    vertex[11] = Vertex3D(-HalfWidth, -HalfHeight,  HalfDepth, -1.F, 0.F, 0.F, MaxUVx, MinUVy);
+    vertex[8]  = Vertex3D(-HalfWidth, -HalfHeight, -HalfDepth, -1.F,  0.F,  0.F, MinUVx, MinUVy);
+    vertex[9]  = Vertex3D(-HalfWidth,  HalfHeight,  HalfDepth, -1.F,  0.F,  0.F, MaxUVx, MaxUVy);
+    vertex[10] = Vertex3D(-HalfWidth,  HalfHeight, -HalfDepth, -1.F,  0.F,  0.F, MinUVx, MaxUVy);
+    vertex[11] = Vertex3D(-HalfWidth, -HalfHeight,  HalfDepth, -1.F,  0.F,  0.F, MaxUVx, MinUVy);
     // Правая поверхность
-    vertex[12] = Vertex3D( HalfWidth, -HalfHeight,  HalfDepth,  1.F, 0.F, 0.F, MinUVx, MinUVy);
-    vertex[13] = Vertex3D( HalfWidth,  HalfHeight, -HalfDepth,  1.F, 0.F, 0.F, MaxUVx, MaxUVy);
-    vertex[14] = Vertex3D( HalfWidth,  HalfHeight,  HalfDepth,  1.F, 0.F, 0.F, MinUVx, MaxUVy);
-    vertex[15] = Vertex3D( HalfWidth, -HalfHeight, -HalfDepth,  1.F, 0.F, 0.F, MaxUVx, MinUVy);
+    vertex[12] = Vertex3D( HalfWidth, -HalfHeight,  HalfDepth,  1.F,  0.F,  0.F, MinUVx, MinUVy);
+    vertex[13] = Vertex3D( HalfWidth,  HalfHeight, -HalfDepth,  1.F,  0.F,  0.F, MaxUVx, MaxUVy);
+    vertex[14] = Vertex3D( HalfWidth,  HalfHeight,  HalfDepth,  1.F,  0.F,  0.F, MinUVx, MaxUVy);
+    vertex[15] = Vertex3D( HalfWidth, -HalfHeight, -HalfDepth,  1.F,  0.F,  0.F, MaxUVx, MinUVy);
     // Нижняя поверхность
-    vertex[16] = Vertex3D( HalfWidth, -HalfHeight,  HalfDepth, 0.F, -1.F, 0.F, MinUVx, MinUVy);
-    vertex[17] = Vertex3D(-HalfWidth, -HalfHeight, -HalfDepth, 0.F, -1.F, 0.F, MaxUVx, MaxUVy);
-    vertex[18] = Vertex3D( HalfWidth, -HalfHeight, -HalfDepth, 0.F, -1.F, 0.F, MinUVx, MaxUVy);
-    vertex[19] = Vertex3D(-HalfWidth, -HalfHeight,  HalfDepth, 0.F, -1.F, 0.F, MaxUVx, MinUVy);
+    vertex[16] = Vertex3D( HalfWidth, -HalfHeight,  HalfDepth,  0.F, -1.F,  0.F, MinUVx, MinUVy);
+    vertex[17] = Vertex3D(-HalfWidth, -HalfHeight, -HalfDepth,  0.F, -1.F,  0.F, MaxUVx, MaxUVy);
+    vertex[18] = Vertex3D( HalfWidth, -HalfHeight, -HalfDepth,  0.F, -1.F,  0.F, MinUVx, MaxUVy);
+    vertex[19] = Vertex3D(-HalfWidth, -HalfHeight,  HalfDepth,  0.F, -1.F,  0.F, MaxUVx, MinUVy);
     // Верхняя поверхность
-    vertex[20] = Vertex3D(-HalfWidth,  HalfHeight,  HalfDepth,  0.F, 1.F, 0.F, MinUVx, MinUVy);
-    vertex[21] = Vertex3D( HalfWidth,  HalfHeight, -HalfDepth,  0.F, 1.F, 0.F, MaxUVx, MaxUVy);
-    vertex[22] = Vertex3D(-HalfWidth,  HalfHeight, -HalfDepth,  0.F, 1.F, 0.F, MinUVx, MaxUVy);
-    vertex[23] = Vertex3D( HalfWidth,  HalfHeight,  HalfDepth,  0.F, 1.F, 0.F, MaxUVx, MinUVy);
+    vertex[20] = Vertex3D(-HalfWidth,  HalfHeight,  HalfDepth,  0.F,  1.F,  0.F, MinUVx, MinUVy);
+    vertex[21] = Vertex3D( HalfWidth,  HalfHeight, -HalfDepth,  0.F,  1.F,  0.F, MaxUVx, MaxUVy);
+    vertex[22] = Vertex3D(-HalfWidth,  HalfHeight, -HalfDepth,  0.F,  1.F,  0.F, MinUVx, MaxUVy);
+    vertex[23] = Vertex3D( HalfWidth,  HalfHeight,  HalfDepth,  0.F,  1.F,  0.F, MaxUVx, MinUVy);
 
     u32* indices = reinterpret_cast<u32*>(config.indices);
     for (u32 i = 0; i < 6; ++i) {
@@ -401,7 +401,6 @@ void GeometrySystem::Release(GeometryID *gid)
         GeometryReference* ref = &this->RegisteredGeometries[gid->id];
 
         // Возьмите копию ID;
-        u32 id = gid->id;
         if (ref->gid.id == gid->id) {
             if (ref->ReferenceCount > 0) {
                 ref->ReferenceCount--;

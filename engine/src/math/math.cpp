@@ -59,10 +59,10 @@ i32 Math::RandomInRange(i32 min, i32 max)
 
 f32 Math::fRandom()
 {
-    return (float)Math::iRandom() / (f32)RAND_MAX;
+    return (f32)Math::iRandom() / (f32)RAND_MAX;
 }
 
 f32 Math::RandomInRange(f32 min, f32 max)
 {
-    return min + ((float)Math::iRandom() / ((f32)RAND_MAX / (max - min)));
+    return min + ((f32)Math::iRandom() / ((f32)RAND_MAX / (max - min)));
 }

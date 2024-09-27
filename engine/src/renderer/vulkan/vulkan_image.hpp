@@ -5,7 +5,7 @@
 #include "resources/texture.hpp"
 
 class VulkanAPI;
-class VulkanCommandBuffer;
+struct VulkanCommandBuffer;
 
 /// @brief Представление изображения Vulkan. Его можно рассматривать как текстуру. Также содержит вид и память, используемые внутренним изображением.
 class VulkanImage
@@ -73,7 +73,7 @@ public:
     void TransitionLayout(
         VulkanAPI* VkAPI,
         TextureType type,
-        VulkanCommandBuffer* CommandBuffer,
+        VulkanCommandBuffer& CommandBuffer,
         VkFormat format,
         VkImageLayout OldLayout,
         VkImageLayout NewLayout
@@ -86,6 +86,32 @@ public:
     /// @param buffer буфер, данные которого будут скопированы.
     /// @param CommandBuffer 
     void CopyFromBuffer(VulkanAPI* VkAPI, TextureType type, VkBuffer buffer, VulkanCommandBuffer* CommandBuffer);
+
+    /// @brief Копирует данные из предоставленного изображения в указанный буфер.
+    /// @param VkAPI указатель на объект отрисовщика типа VulkanAPI.
+    /// @param type тип текстуры. Предоставляет подсказки по количеству слоев.
+    /// @param buffer буфер для копирования.
+    /// @param CommandBuffer буфер команд, который будет использоваться для копирования.
+    void CopyToBuffer(
+        VulkanAPI* VkAPI,
+        TextureType type,
+        VkBuffer buffer,
+        VulkanCommandBuffer& CommandBuffer);
+
+    /// @brief Копирует данные одного пикселя из указанного изображения в предоставленный буфер.
+    /// @param VkAPI указатель на объект отрисовщика типа VulkanAPI.
+    /// @param type тип текстуры. Предоставляет подсказки по количеству слоев.
+    /// @param buffer Буфер для копирования.
+    /// @param x х-координата пикселя для копирования.
+    /// @param y у-координата пикселя для копирования.
+    /// @param CommandBuffer буфер команд, который будет использоваться для копирования.
+    void CopyPixelToBuffer(
+        VulkanAPI* VkAPI,
+        TextureType type,
+        VkBuffer buffer,
+        u32 x,
+        u32 y,
+        VulkanCommandBuffer& CommandBuffer);
 
     void Destroy(VulkanAPI* VkAPI);
 

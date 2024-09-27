@@ -52,6 +52,21 @@ struct TextureMap {
         tm.sampler = nullptr;
     }
 
+    TextureMap& operator= (TextureMap&& tm) {
+        texture = tm.texture;
+        use = tm.use;
+        FilterMinify = tm.FilterMinify;
+        FilterMagnify = tm.FilterMagnify;
+        RepeatU = tm.RepeatU;
+        RepeatV = tm.RepeatV;
+        RepeatW = tm.RepeatW;
+        sampler = tm.sampler;
+
+        tm.texture = nullptr;
+        tm.sampler = nullptr;
+        return *this;
+    }
+
     void* operator new(u64 size) {
         return MMemory::Allocate(size, Memory::Renderer);
     }

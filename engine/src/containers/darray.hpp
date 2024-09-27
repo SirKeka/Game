@@ -2,27 +2,67 @@
 #include "defines.hpp"
 #include "core/mmemory.hpp"
 #include <new>
-//#include "core/logger.hpp"
-/*
-template <typename T, typename = void_t<>>
-struct IsClass : std::false_type { };
 
-template <typename T>
-struct IsClass<T, void_t<int T::*>> : std::true_type { };
-*/
+template<typename T>
+void Swap(T& a, T& b) {
+    auto temp = std::move(a);
+    a = std::move(b);
+    b = std::move(temp);
+}
+
+template<typename T>
+i32 Partition(T arr[], i32 LowIndex, i32 HighIndex, bool ascending) {
+    auto pivot = arr[HighIndex];
+    i32 i = (LowIndex - 1);
+
+    for (i32 j = LowIndex; j <= HighIndex - 1; ++j) {
+        if (ascending) {
+            if (arr[j].distance < pivot.distance) {
+                ++i;
+                Swap(arr[i], arr[j]);
+            }
+        } else {
+            if (arr[j].distance > pivot.distance) {
+                ++i;
+                Swap(arr[i], arr[j]);
+            }
+        }
+    }
+    Swap(arr[i + 1], arr[HighIndex]);
+    return i + 1;
+}
+
+/// @brief Частная, рекурсивная, функция сортировки на месте для структур GeometryDistance.
+/// @tparam T тип объектов(переменных), которые находятся в массиве
+/// @param arr Массив структур GeometryDistance, которые нужно отсортировать.
+/// @param LowIndex Низкий индекс, с которого нужно начать сортировку (обычно 0)
+/// @param HighIndex Высокий индекс, которым нужно закончить (обычно длина массива - 1)
+/// @param ascending true для сортировки в порядке возрастания; в противном случае - по убыванию.
+template<typename T>
+void QuickSort(T arr[], i32 LowIndex, i32 HighIndex, bool ascending)
+{
+    if (LowIndex < HighIndex) {
+        i32 partitionIndex = Partition(arr, LowIndex, HighIndex, ascending);
+
+        // Независимая сортировка элементов до и после индекса раздела.
+        QuickSort(arr, LowIndex, partitionIndex - 1, ascending);
+        QuickSort(arr, partitionIndex + 1, HighIndex, ascending);
+    }
+}
+
 template<typename T>
 class MAPI DArray
 {
 // Переменные
 private:
-    u64 size{};             // Количество элементов в массиве
-    u64 capacity{};         // Выделенная память под данное количество элементов
+    u64 size      {};   // Количество элементов в массиве
+    u64 capacity  {};   // Выделенная память под данное количество элементов
     T* data{nullptr};   // Указатель на область памяти где хранятся элементы
 
 // Функции
 public:
     constexpr DArray() : size(), capacity(), data(nullptr) {}
-    constexpr DArray(const T& value) { PushBack(value); }
+    constexpr DArray(T&& value) { PushBack(value); }
     constexpr DArray(u64 capacity) : size(), capacity(capacity), data(capacity ? MMemory::TAllocate<T>(Memory::DArray, capacity, true) : nullptr) {}
     constexpr DArray(u64 size, const T& value) {
         if(size > 0) {
@@ -38,6 +78,10 @@ public:
     /// @brief Конструктор копирования
     /// @param other динамический массив из которого нужно копировать данные
     constexpr DArray(const DArray& other) : size(other.size), capacity(other.capacity), data() {
+        if (!capacity) {
+            return;
+        }
+        
         data = MMemory::TAllocate<T>(Memory::DArray, capacity);
         for (u64 i = 0; i < size; i++) {
             data[i] = other.data[i];
@@ -88,6 +132,13 @@ public:
         darr.size = 0;
         darr.capacity = 0;
         return *this;
+    }
+
+    explicit operator bool() const {
+        if (!data && capacity < 1 && size < 1) {
+            return false;
+        }
+        return true;
     }
 
     // Доступ к элементу------------------------------------------------------------------------

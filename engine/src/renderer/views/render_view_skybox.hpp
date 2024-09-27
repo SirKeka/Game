@@ -6,19 +6,18 @@
 class RenderViewSkybox : public RenderView
 {
 private:
-    u32 ShaderID;
-    f32 fov;
-    f32 NearClip;
-    f32 FarClip;
-    Matrix4D ProjectionMatrix;
-    class Camera* WorldCamera;
+    Shader* shader           {nullptr};
+    f32 fov                         {};
+    f32 NearClip                    {};
+    f32 FarClip                     {};
+    Matrix4D ProjectionMatrix       {};
+    class Camera* WorldCamera{nullptr};
     // Uniform locations
-    u16 ProjectionLocation;
-    u16 ViewLocation;
-    u16 CubeMapLocation;
+    u16 ProjectionLocation          {};
+    u16 ViewLocation                {};
+    u16 CubeMapLocation             {};
 public:
-    constexpr RenderViewSkybox() : RenderView(), ShaderID(), fov(), NearClip(), FarClip(), ProjectionMatrix(), WorldCamera(nullptr), /*locations(),*/ ProjectionLocation(), ViewLocation(), CubeMapLocation() {}
-    RenderViewSkybox(u16 id, MString& name, KnownType type, u8 RenderpassCount, const char* CustomShaderName);
+    RenderViewSkybox(u16 id, MString&& name, KnownType type, u8 RenderpassCount, const char* CustomShaderName, RenderpassConfig* PassConfig);
     ~RenderViewSkybox();
 
     void Resize(u32 width, u32 height) override;

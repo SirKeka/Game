@@ -62,14 +62,16 @@ void VulkanSwapchain::Present(
 void VulkanSwapchain::Destroy(VulkanAPI *VkAPI)
 {   
     vkDeviceWaitIdle(VkAPI->Device.LogicalDevice);
-    DepthTexture->Data->Destroy(VkAPI);
-    delete DepthTexture->Data;
-    DepthTexture->Data = nullptr;
+    for (u32 i = 0; i < VkAPI->swapchain.ImageCount; ++i) {
+        DepthTextures[i].Data->Destroy(VkAPI);
+        //delete DepthTextures->Data;
+        DepthTextures[i].Data = nullptr;
+    }
 
     // ЗАДАЧА: после выхода из функции main() попадаем в фаил exe_comon.inl который перенаправляет снова в этот цикл
     // Уничтожайте только представления, а не изображения, поскольку они принадлежат цепочке обмена и, следовательно, уничтожаются, когда это происходит.
     for (u32 i = 0; i < ImageCount; ++i) {
-        VulkanImage& image = *RenderTextures[i]->Data;
+        auto& image = *RenderTextures[i].Data;
         vkDestroyImageView(VkAPI->Device.LogicalDevice, image.view, VkAPI->allocator);
     }
 
@@ -181,16 +183,18 @@ void VulkanSwapchain::Create(VulkanAPI *VkAPI, u32 width, u32 height)
     //ImageCount = 0;
     VK_CHECK(vkGetSwapchainImagesKHR(VkAPI->Device.LogicalDevice, handle, &this->ImageCount, 0));
 
+    auto TextureSystemInst = TextureSystem::Instance();
+
     if (!RenderTextures) {
-        RenderTextures = MMemory::TAllocate<Texture*>(Memory::Renderer, this->ImageCount);
+        RenderTextures = MMemory::TAllocate<Texture>(Memory::Renderer, this->ImageCount);
         // При создании массива внутренние объекты текстуры также еще не созданы.
         for (u32 i = 0; i < this->ImageCount; ++i) {
-            VulkanImage* data = new VulkanImage();
+            auto data = new VulkanImage();
 
             char TexName[38] = "__internal_vulkan_swapchain_image_0__";
             TexName[34] = '0' + (char)i;
 
-            RenderTextures[i] = TextureSystem::Instance()->WrapInternal(
+            TextureSystemInst->WrapInternal(
                 TexName,
                 SwapchainExtent.width,
                 SwapchainExtent.height,
@@ -198,8 +202,10 @@ void VulkanSwapchain::Create(VulkanAPI *VkAPI, u32 width, u32 height)
                 false,
                 true,
                 false,
-                data);
-            if (!RenderTextures[i]) {
+                data,
+                &RenderTextures[i]
+            );
+            if (!RenderTextures[i].Data) {
                 MFATAL("Не удалось создать новую текстуру изображения цепочки обмена!");
                 return;
             }
@@ -207,14 +213,14 @@ void VulkanSwapchain::Create(VulkanAPI *VkAPI, u32 width, u32 height)
     } else {
         for (u32 i = 0; i < this->ImageCount; ++i) {
             // Просто обновите размеры.
-            TextureSystem::Instance()->Resize(RenderTextures[i], SwapchainExtent.width, SwapchainExtent.height, false);
+            TextureSystemInst->Resize(&RenderTextures[i], SwapchainExtent.width, SwapchainExtent.height, false);
         }
     }
     VkImage SwapchainImages[32];
     VK_CHECK(vkGetSwapchainImagesKHR(VkAPI->Device.LogicalDevice, handle, &ImageCount, SwapchainImages));
     for (u32 i = 0; i < this->ImageCount; ++i) {
         // Обновите внутренний образ для каждого.
-        auto& image = *RenderTextures[i]->Data;
+        auto& image = *RenderTextures[i].Data;
         image.handle = SwapchainImages[i];
         image.width = SwapchainExtent.width;
         image.height = SwapchainExtent.height;
@@ -222,7 +228,7 @@ void VulkanSwapchain::Create(VulkanAPI *VkAPI, u32 width, u32 height)
 
     // Views
     for (u32 i = 0; i < ImageCount; ++i) {
-        auto& image = *RenderTextures[i]->Data;
+        auto& image = *RenderTextures[i].Data;
         VkImageViewCreateInfo ViewInfo = {VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
         ViewInfo.image = image.handle;
         ViewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
@@ -236,36 +242,43 @@ void VulkanSwapchain::Create(VulkanAPI *VkAPI, u32 width, u32 height)
         VK_CHECK(vkCreateImageView(VkAPI->Device.LogicalDevice, &ViewInfo, VkAPI->allocator, &image.view));
     }
 
+    if (!DepthTextures) {
+        DepthTextures = MMemory::TAllocate<Texture>(Memory::Renderer, ImageCount);
+    }
+
     // Ресурсы глубины
     if (!VkAPI->Device.DetectDepthFormat()) {
         VkAPI->Device.DepthFormat = VK_FORMAT_UNDEFINED;
         MFATAL("Не удалось найти поддерживаемый формат!");
     }
 
-    // Создайте изображение глубины и его вид.
-    VulkanImage* image = new VulkanImage(VkAPI,
-        TextureType::_2D,
-        SwapchainExtent.width,
-        SwapchainExtent.height,
-        VkAPI->Device.DepthFormat,
-        VK_IMAGE_TILING_OPTIMAL,
-        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-        true,
-        VK_IMAGE_ASPECT_DEPTH_BIT
-    );
+    for (u32 i = 0; i < VkAPI->swapchain.ImageCount; ++i) {
+        // Создайте изображение глубины и его вид.
+        VulkanImage* image = new VulkanImage(VkAPI,
+            TextureType::_2D,
+            SwapchainExtent.width,
+            SwapchainExtent.height,
+            VkAPI->Device.DepthFormat,
+            VK_IMAGE_TILING_OPTIMAL,
+            VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+            true,
+            VK_IMAGE_ASPECT_DEPTH_BIT
+        );
     
-    // Оберните его в текстуру.
-    VkAPI->swapchain.DepthTexture = TextureSystem::Instance()->WrapInternal(
-        "__moon_default_depth_texture__",
-        SwapchainExtent.width,
-        SwapchainExtent.height,
-        VkAPI->Device.DepthChannelCount,
-        false,
-        true,
-        false,
-        image
-    );
+        // Оберните его в текстуру.
+        TextureSystemInst->WrapInternal(
+            "__moon_default_depth_texture__",
+            SwapchainExtent.width,
+            SwapchainExtent.height,
+            VkAPI->Device.DepthChannelCount,
+            false,
+            true,
+            false,
+            image,
+            &VkAPI->swapchain.DepthTextures[i]
+        );
+    }
 
     MINFO("Swapchain успешно создан.");
 }

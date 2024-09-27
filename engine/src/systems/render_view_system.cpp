@@ -59,15 +59,15 @@ bool RenderViewSystem::Create(RenderView::Config &config)
 
     u16 id = INVALID::U16ID;
     // Убедитесь, что запись с таким именем еще не зарегистрирована.
-    lookup.Get(config.name.c_str(), &id);
+    state->lookup.Get(config.name, &id);
     if (id != INVALID::U16ID) {
-        MERROR("RenderViewSystem::Create - Вид с именем '%s' уже существует. Новый не будет создан.", config.name.c_str());
+        MERROR("RenderViewSystem::Create - Вид с именем '%s' уже существует. Новый не будет создан.", config.name);
         return false;
     }
 
     // Найдите новый идентификатор.
-    for (u32 i = 0; i < MaxViewCount; ++i) {
-        if (RegisteredViews[i] == nullptr) {
+    for (u32 i = 0; i < state->MaxViewCount; ++i) {
+        if (state->RegisteredViews[i] == nullptr) {
             id = i;
             break;
         }
@@ -78,39 +78,43 @@ bool RenderViewSystem::Create(RenderView::Config &config)
         MERROR("RenderViewSystem::Create - Нет доступного места для нового представления. Измените конфигурацию системы, чтобы учесть больше.");
         return false;
     }
+
+    //for (u32 i = 0; i < config.PassCount; ++i) {
+    //    // Создаем проходы рендеринга в соответствии с конфигурацией.
+    //    if (!Renderer::RenderpassCreate(config[i], this->passes[i])) {
+    //        MERROR("RenderViewSystem::Create - Не удалось создать проход рендеринга '%s'", config[i].name);
+    //        return;
+    //    }
+    //}
+
     // ЗАДАЧА: Шаблон фабрика
     switch (config.type)
     {
     case RenderView::KnownTypeWorld:
-        if (!(RegisteredViews[id] = new RenderViewWorld(id, config.name, config.type, config.PassCount, config.CustomShaderName))) {
+        if (!(state->RegisteredViews[id] = new RenderViewWorld(id, config.name, config.type, config.PassCount, config.CustomShaderName, config.passes))) {
             MERROR("Не удалось создать представление.");
         }
         break;
     case RenderView::KnownTypeUI:
-        if (!(RegisteredViews[id] = new RenderViewUI(id, config.name, config.type, config.PassCount, config.CustomShaderName))) {
+        if (!(state->RegisteredViews[id] = new RenderViewUI(id, config.name, config.type, config.PassCount, config.CustomShaderName, config.passes))) {
             MERROR("Не удалось создать представление.");
         }
         break;
     case RenderView::KnownTypeSkybox:
-        if (!(RegisteredViews[id] = new RenderViewSkybox(id, config.name, config.type, config.PassCount, config.CustomShaderName))) {
+        if (!(state->RegisteredViews[id] = new RenderViewSkybox(id, config.name, config.type, config.PassCount, config.CustomShaderName, config.passes))) {
             MERROR("Не удалось создать представление.");
         }
         break;
     default:
         break;
     }
-    RenderView* view = RegisteredViews[id];
 
-    for (u32 i = 0; i < view->RenderpassCount; ++i) {
-        view->passes[i] = Renderer::GetRenderpass(config.passes[i].name);
-        if (!view->passes[i]) {
-            MFATAL("RenderViewSystem::Create - renderpass: '%s' не найден.", config.passes[i].name);
-            return false;
-        }
-    }
+    auto view = state->RegisteredViews[id];
+
+    RegenerateRenderTargets(view);
 
     // Обновите запись хэш-таблицы.
-    lookup.Set(view->name.c_str(), id);
+    state->lookup.Set(view->name.c_str(), id);
 
     return true;
 }
@@ -118,9 +122,9 @@ bool RenderViewSystem::Create(RenderView::Config &config)
 void RenderViewSystem::OnWindowResize(u32 width, u32 height)
 {
     // Отправить всем видам
-    for (u32 i = 0; i < MaxViewCount; ++i) {
-        if (RegisteredViews[i] != nullptr && RegisteredViews[i]->id != INVALID::U16ID) {
-            RegisteredViews[i]->Resize(width, height);
+    for (u32 i = 0; i < state->MaxViewCount; ++i) {
+        if (state->RegisteredViews[i] != nullptr && state->RegisteredViews[i]->id != INVALID::U16ID) {
+            state->RegisteredViews[i]->Resize(width, height);
         }
     }
 }
@@ -129,9 +133,9 @@ RenderView *RenderViewSystem::Get(const char *name)
 {
     if (state) {
         u16 id = INVALID::U16ID;
-        lookup.Get(name, &id);
+        state->lookup.Get(name, &id);
         if (id != INVALID::U16ID) {
-            return RegisteredViews[id];
+            return state->RegisteredViews[id];
         }
     }
     return nullptr;
@@ -155,4 +159,53 @@ bool RenderViewSystem::OnRender(const RenderView *view, const RenderView::Packet
 
     MERROR("RenderViewSystem::Render требует действительный указатель на данные.");
     return false;
+}
+
+void RenderViewSystem::RegenerateRenderTargets(RenderView* view)
+{
+    // Создайте цели рендеринга для каждой. TODO: Должна быть настраиваемой.
+
+    for (u64 r = 0; r < view->RenderpassCount; ++r) {
+        auto& pass = view->passes[r];
+
+        for (u8 i = 0; i < pass.RenderTargetCount; ++i) {
+            auto& target = pass.targets[i];
+            // Сначала уничтожьте старую, если она существует.
+            // ЗАДАЧА: проверьте, действительно ли требуется изменение размера для этой цели.
+            Renderer::RenderTargetDestroy(target, false);
+
+            for (u32 a = 0; a < target.AttachmentCount; ++a) {
+                auto& attachment = target.attachments[a];
+                if (attachment.source == RenderTargetAttachmentSource::Default) {
+                    if (attachment.type == RenderTargetAttachmentType::Colour) {
+                        attachment.texture = Renderer::WindowAttachmentGet(i);
+                    } else if (attachment.type == RenderTargetAttachmentType::Depth) {
+                        attachment.texture = Renderer::DepthAttachmentGet(i);
+                    } else {
+                        MFATAL("Неподдерживаемый тип вложения: 0x%x", attachment.type);
+                        continue;
+                    }
+                } else if (attachment.source == RenderTargetAttachmentSource::View) {
+                    if (!view->RegenerateAttachmentTarget()) {
+                        continue;
+                    } else {
+                        if (!view->RegenerateAttachmentTarget(r, &attachment)) {
+                            MERROR("Не удалось повторно создать целевой объект вложения для типа вложения: 0x%x", attachment.type);
+                        }
+                    }
+                }
+            }
+
+            // Создайте цель рендеринга.
+            Renderer::RenderTargetCreate(
+                target.AttachmentCount,
+                target.attachments,
+                &pass,
+                // ПРИМЕЧАНИЕ: здесь мы просто отталкиваемся от размера первого вложения, но этого должно быть достаточно для большинства случаев.
+                target.attachments[0].texture->width,
+                target.attachments[0].texture->height,
+                pass.targets[i]
+            );
+        }
+    }
 }

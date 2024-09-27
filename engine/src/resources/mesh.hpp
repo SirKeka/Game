@@ -6,12 +6,13 @@
 struct GeometryID;
 
 struct Mesh {
-    u8 generation;
-    u16 GeometryCount{};
+    u32 UniqueID                  {};
+    u8 generation                 {};
+    u16 GeometryCount             {};
     GeometryID** geometries{nullptr};
-    Transform transform{};
+    Transform transform           {};
 
-    constexpr Mesh() : generation(), GeometryCount(), geometries(nullptr), transform() {}
+    constexpr Mesh() : UniqueID(), generation(), GeometryCount(), geometries(nullptr), transform() {}
     constexpr Mesh(u16 GeometryCount, GeometryID** geometries, const Transform& transform)
     : generation(), GeometryCount(GeometryCount), geometries(geometries), transform(transform) {}
     Mesh(const Mesh& mesh)
@@ -20,8 +21,9 @@ struct Mesh {
             geometries[i] = mesh.geometries[i];
         }
     }
-    constexpr Mesh(Mesh&& mesh) : generation(mesh.generation), GeometryCount(mesh.GeometryCount), geometries(mesh.geometries), transform(mesh.transform)
+    constexpr Mesh(Mesh&& mesh) : UniqueID(mesh.UniqueID), generation(mesh.generation), GeometryCount(mesh.GeometryCount), geometries(mesh.geometries), transform(mesh.transform)
     {
+        mesh.UniqueID = INVALID::ID;
         mesh.generation = 0;
         mesh.GeometryCount = 0;
         mesh.geometries = nullptr;
@@ -47,7 +49,7 @@ struct Mesh {
     struct PacketData {
         u32 MeshCount;
         Mesh** meshes;
-        constexpr PacketData() : MeshCount(), meshes(nullptr) {}
+        //constexpr PacketData() : MeshCount(), meshes(nullptr) {}
         constexpr PacketData(u32 MeshCount, Mesh** meshes) : MeshCount(MeshCount), meshes(meshes) {}
     };
 

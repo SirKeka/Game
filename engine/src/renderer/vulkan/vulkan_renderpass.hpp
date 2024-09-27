@@ -26,80 +26,177 @@ struct VulkanRenderpass
 
     f32 depth;                   // Значение очистки глубины.
     u32 stencil;                 // Значение очистки трафарета.
-    bool HasPrevPass;            // Указывает, есть ли предыдущий проход рендеринга.
-    bool HasNextPass;            // Указывает, есть ли следующий проход рендеринга.
 
     VulkanRenderpassState state; // Указывает состояние прохода рендеринга.
 
-    constexpr VulkanRenderpass() : handle(), depth(), stencil(), HasPrevPass(), HasNextPass(), state() {}
-    constexpr VulkanRenderpass(u8 ClearFlags, f32 depth, u32 stencil, bool HasPrevPass, bool HasNextPass, VulkanAPI* VkAPI)
-    : handle(), depth(depth), stencil(stencil), HasPrevPass(HasPrevPass), HasNextPass(HasNextPass), state()
+    constexpr VulkanRenderpass() : handle(), depth(), stencil(), state() {}
+    VulkanRenderpass(u8 ClearFlags, const RenderpassConfig& config, VulkanAPI* VkAPI)
+    : handle(), depth(config.depth), stencil(config.stencil), state()
     {
         // Главный подпроход
         VkSubpassDescription subpass = {};
         subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 
         // Вложения ЗАДАЧА: сделать это настраиваемым.
-        u32 AttachmentDescriptionCount = 0;
-        VkAttachmentDescription AttachmentDescriptions[2];
+        DArray<VkAttachmentDescription> AttachmentDescriptions;
+        DArray<VkAttachmentDescription> ColourAttachmentDescs;
+        DArray<VkAttachmentDescription> DepthAttachmentDescs;
 
-        // Цветное вложение
-        bool DoClearColour = (ClearFlags & RenderpassClearFlag::ColourBuffer) != 0;
-        VkAttachmentDescription ColorAttachment;
-        ColorAttachment.format = VkAPI->swapchain.ImageFormat.format; // ЗАДАЧА: настроить
-        ColorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-        ColorAttachment.loadOp = DoClearColour ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
-        ColorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        ColorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-        ColorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        // Если исходит из предыдущего прохода, он уже должен быть VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL. В противном случае неопределенно.
-        ColorAttachment.initialLayout = HasPrevPass ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_UNDEFINED;
+        // Всегда можно просто посмотреть на первую цель, так как они все одинаковы (по одной на кадр).
+        // auto target = targets[0];
+        for (u32 i = 0; i < config.target.AttachmentCount; ++i) {
+            auto& AttachmentConfig = config.target.attachments[i];
 
-        // Если собираетесь на другой проход, используйте VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL. В противном случае VK_IMAGE_LAYOUT_PRESENT_SRC_KHR.
-        ColorAttachment.finalLayout = HasNextPass ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;  // Переход к этапу после рендеринга
-        ColorAttachment.flags = 0;
+            VkAttachmentDescription AttachmentDesc = {};
+            if (AttachmentConfig.type == RenderTargetAttachmentType::Colour) {
+                // Цветовая приставка.
+                bool DoClearColour = (ClearFlags & RenderpassClearFlag::ColourBuffer) != 0;
 
-        AttachmentDescriptions[AttachmentDescriptionCount] = ColorAttachment;
-        AttachmentDescriptionCount++;
+                if (AttachmentConfig.source == RenderTargetAttachmentSource::Default) {
+                    AttachmentDesc.format = VkAPI->swapchain.ImageFormat.format;
+                } else {
+                    // ЗАДАЧА: настраиваемый формат?
+                    AttachmentDesc.format = VK_FORMAT_R8G8B8A8_UNORM;
+                }
 
-        VkAttachmentReference ColorAttachmentReference;
-        ColorAttachmentReference.attachment = 0;  // Индекс массива описания вложения
-        ColorAttachmentReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+                AttachmentDesc.samples = VK_SAMPLE_COUNT_1_BIT;
+                // AttachmentDesc.loadOp = DoClearColour ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
 
-        subpass.colorAttachmentCount = 1;
-        subpass.pColorAttachments = &ColorAttachmentReference;
+                // Определите, какую операцию загрузки использовать.
+                if (AttachmentConfig.LoadOperation == RenderTargetAttachmentLoadOperation::DontCare) {
+                    // Если нас это не волнует, единственное, что нужно проверить, — это очищается ли вложение.
+                    AttachmentDesc.loadOp = DoClearColour ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+                } else {
+                    // Если мы загружаем, проверьте, очищаем ли мы его. Эта комбинация не имеет смысла и должна быть предупреждена.
+                    if (AttachmentConfig.LoadOperation == RenderTargetAttachmentLoadOperation::Load) {
+                        if (DoClearColour) {
+                            MWARN("Операция загрузки цветного вложения установлена ​​на загрузку, но также установлена ​​на очистку. Эта комбинация недопустима и приведет к ошибке очистки. Проверьте конфигурацию вложения.");
+                            AttachmentDesc.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+                        } else {
+                            AttachmentDesc.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+                        }
+                    } else {
+                        MFATAL("Недопустимая и неподдерживаемая комбинация операции загрузки (0x%x) и флагов очистки (0x%x) для цветного вложения.", AttachmentDesc.loadOp, ClearFlags);
+                        return;
+                    }
+                }
 
-        // Приставка по глубине, если она есть.
-        bool DoClearDepth = (ClearFlags & RenderpassClearFlag::DepthBuffer) != 0;
-        if (DoClearDepth){
-            VkAttachmentDescription DepthAttachment = {};
-            DepthAttachment.format = VkAPI->Device.DepthFormat;
-            DepthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-            if (HasPrevPass) {
-                DepthAttachment.loadOp = DoClearDepth ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
-            } else {
-                DepthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+                // Определите, какую операцию сохранения использовать.
+                if (AttachmentConfig.StoreOperation == RenderTargetAttachmentStoreOperation::DontCare){
+                    AttachmentDesc.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+                } else if (AttachmentConfig.StoreOperation == RenderTargetAttachmentStoreOperation::Store) {
+                    AttachmentDesc.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+                } else {
+                    MFATAL("Неверная операция сохранения (0x%x) установлена ​​для присоединения глубины. Проверьте конфигурацию.", AttachmentConfig.StoreOperation);
+                    return;
+                }
+
+                // ПРИМЕЧАНИЕ: они никогда не будут использоваться для цветного вложения.
+                AttachmentDesc.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+                AttachmentDesc.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+                // Если загрузка, это означает, что она происходит из другого прохода, то есть формат должен быть VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL. В противном случае он не определен.
+                AttachmentDesc.initialLayout = AttachmentConfig.LoadOperation == RenderTargetAttachmentLoadOperation::Load ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_UNDEFINED;
+
+                // Если это последний проход, записывающий в это вложение, present after должно быть установлено в true.
+                AttachmentDesc.finalLayout = AttachmentConfig.PresentAfter ? VK_IMAGE_LAYOUT_PRESENT_SRC_KHR : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;  // Transitioned to after the render pass
+                AttachmentDesc.flags = 0;
+
+                // Push в массив цветных вложений.
+                ColourAttachmentDescs.PushBack(AttachmentDesc);
+            } else if (AttachmentConfig.type == RenderTargetAttachmentType::Depth) {
+                // Глубина вложения.
+                bool DoClearDepth = (ClearFlags & RenderpassClearFlag::DepthBuffer) != 0;
+
+                if (AttachmentConfig.source == RenderTargetAttachmentSource::Default) {
+                    AttachmentDesc.format = VkAPI->Device.DepthFormat;
+                } else {
+                    // ЗАДАЧА: Может быть более оптимальный формат для использования, если не задана глубина по умолчанию.
+                    AttachmentDesc.format = VkAPI->Device.DepthFormat;
+                }
+
+                AttachmentDesc.samples = VK_SAMPLE_COUNT_1_BIT;
+                // Определите, какую операцию загрузки использовать.
+                if (AttachmentConfig.LoadOperation == RenderTargetAttachmentLoadOperation::DontCare) {
+                    // Если нам все равно, единственное, что нужно проверить, — это очищается ли вложение.
+                    AttachmentDesc.loadOp = DoClearDepth ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+                } else {
+                    // Если мы загружаем, проверьте, очищаемся ли мы также. Эта комбинация не имеет смысла и должна быть предупреждена.
+                    if (AttachmentConfig.LoadOperation == RenderTargetAttachmentLoadOperation::Load) {
+                        if (DoClearDepth) {
+                            MWARN("Операция загрузки прикрепления глубины установлена ​​на загрузку, но также установлена ​​на очистку. Эта комбинация недопустима и приведет к ошибке очистки. Проверьте конфигурацию прикрепления.");
+                            AttachmentDesc.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+                        } else {
+                            AttachmentDesc.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+                        }
+                    } else {
+                        MFATAL("Недопустимая и неподдерживаемая комбинация операции загрузки (0x%x) и флагов очистки (0x%x) для прикрепления глубины.", AttachmentDesc.loadOp, ClearFlags);
+                        return;
+                    }
+                }
+
+                // Определите, какую операцию хранения использовать.
+                if (AttachmentConfig.StoreOperation == RenderTargetAttachmentStoreOperation::DontCare) {
+                    AttachmentDesc.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+                } else if (AttachmentConfig.StoreOperation == RenderTargetAttachmentStoreOperation::Store) {
+                    AttachmentDesc.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+                } else {
+                    MFATAL("Неверная операция сохранения (0x%x) установлена ​​для присоединения глубины. Проверьте конфигурацию.", AttachmentConfig.StoreOperation);
+                    return;
+                }
+
+                // TODO: Настраиваемость для прикреплений трафарета.
+                AttachmentDesc.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+                AttachmentDesc.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+                // Если исходит из предыдущего прохода, уже должно быть VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL. В противном случае не определено.
+                AttachmentDesc.initialLayout = AttachmentConfig.LoadOperation == RenderTargetAttachmentLoadOperation::Load ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_UNDEFINED;
+                // Окончательный макет для прикреплений трафарета глубины всегда такой.
+                AttachmentDesc.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+                // Отправить в массив цветных прикреплений.
+                DepthAttachmentDescs.PushBack(AttachmentDesc);
             }
-            DepthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-            DepthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-            DepthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-            DepthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-            DepthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+            // Отправить в общий массив.
+            AttachmentDescriptions.PushBack(AttachmentDesc);
+        }
 
-           AttachmentDescriptions[AttachmentDescriptionCount] = DepthAttachment;
-            AttachmentDescriptionCount++;
+        // Настроить ссылки на прикрепления.
+        u32 AttachmentsAdded = 0;
 
-            // Указание глубины
-            VkAttachmentReference DepthAttachmentReference;
-            DepthAttachmentReference.attachment = 1;
-            DepthAttachmentReference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        // Ссылка на цветное прикрепление.
+        VkAttachmentReference* ColourAttachmentReferences = nullptr;
+        u32 ColourAttachmentCount = ColourAttachmentDescs.Length();
+        if (ColourAttachmentCount > 0) {
+            ColourAttachmentReferences = MMemory::TAllocate<VkAttachmentReference>(Memory::Array, ColourAttachmentCount);
+            for (u32 i = 0; i < ColourAttachmentCount; ++i) {
+                ColourAttachmentReferences[i].attachment = AttachmentsAdded;  // Индекс массива описания вложения
+                ColourAttachmentReferences[i].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+                AttachmentsAdded++;
+            }
+
+            subpass.colorAttachmentCount = ColourAttachmentCount;
+            subpass.pColorAttachments = ColourAttachmentReferences;
+        } else {
+            subpass.colorAttachmentCount = 0;
+            subpass.pColorAttachments = 0;
+        }
+
+        // Ссылка на глубину прикрепления.
+        VkAttachmentReference* DepthAttachmentReferences = nullptr;
+        u32 DepthAttachmentCount = DepthAttachmentDescs.Length();
+        if (DepthAttachmentCount > 0) {
+            MASSERT_MSG(DepthAttachmentCount == 1, "Вложения с несколькими глубинами не поддерживаются.");
+            DepthAttachmentReferences = MMemory::TAllocate<VkAttachmentReference>(Memory::Array, DepthAttachmentCount);
+            for (u32 i = 0; i < DepthAttachmentCount; ++i) {
+                DepthAttachmentReferences[i].attachment = AttachmentsAdded;  // Индекс массива описания прикрепления
+                DepthAttachmentReferences[i].layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+                AttachmentsAdded++;
+            }
 
             // ЗАДАЧА: другие типы вложений (ввод, разрешение, сохранение)
 
             // Данные трафарета глубины.
-            subpass.pDepthStencilAttachment = &DepthAttachmentReference;
+            subpass.pDepthStencilAttachment = DepthAttachmentReferences;
         } else {
-            MMemory::ZeroMem(&AttachmentDescriptions[AttachmentDescriptionCount], sizeof(VkAttachmentDescription));
             subpass.pDepthStencilAttachment = 0;
         }
 
@@ -126,8 +223,8 @@ struct VulkanRenderpass
 
         // Создание прохода рендеринга.
         VkRenderPassCreateInfo RenderPassCreateInfo = {VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO};
-        RenderPassCreateInfo.attachmentCount = AttachmentDescriptionCount;
-        RenderPassCreateInfo.pAttachments = AttachmentDescriptions;
+        RenderPassCreateInfo.attachmentCount = AttachmentDescriptions.Length();
+        RenderPassCreateInfo.pAttachments = AttachmentDescriptions.Data();
         RenderPassCreateInfo.subpassCount = 1;
         RenderPassCreateInfo.pSubpasses = &subpass;
         RenderPassCreateInfo.dependencyCount = 1;
@@ -141,6 +238,16 @@ struct VulkanRenderpass
             VkAPI->allocator,
             &handle)
         );
+
+        if (ColourAttachmentReferences) {
+            MMemory::Free(ColourAttachmentReferences, sizeof(VkAttachmentReference) * ColourAttachmentCount, Memory::Array);
+        }
+
+        if (DepthAttachmentReferences) {
+            MMemory::Free(DepthAttachmentReferences, sizeof(VkAttachmentReference) * DepthAttachmentCount, Memory::Array);
+        }
+
+        //return true;
     }
     
     ~VulkanRenderpass() = default;

@@ -4,7 +4,6 @@
 class RenderViewUI : public RenderView
 {
 private:
-    u32 ShaderID             {};
     class Shader* shader     {};
     f32 NearClip             {};
     f32 FarClip              {};
@@ -15,8 +14,8 @@ private:
     u16 ModelLocation        {};
     // u32 RenderMode;
 public:
-    RenderViewUI();
-    RenderViewUI(u16 id, MString& name, KnownType type, u8 RenderpassCount, const char* CustomShaderName);
+    // constexpr RenderViewUI();
+    /*constexpr */RenderViewUI(u16 id, MString&& name, KnownType type, u8 RenderpassCount, const char* CustomShaderName, RenderpassConfig* PassConfig);
     ~RenderViewUI();
 
     void Resize(u32 width, u32 height) override;

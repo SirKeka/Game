@@ -18,16 +18,16 @@ struct TextureReference {
 // Также используется как ResultData из задания.
 struct TextureLoadParams {
     char* ResourceName;
-    Texture* OutTexture;
+    Texture& OutTexture;
     Texture TempTexture;
     u32 CurrentGeneration;
     ImageResource ImgRes;
-    constexpr TextureLoadParams() : ResourceName(), OutTexture(), TempTexture(), CurrentGeneration(), ImgRes() {}
-    TextureLoadParams(const char* ResourceName, Texture* OutTexture, Texture TempTexture, u32 CurrentGeneration, ImageResource ImgRes)
+    // constexpr TextureLoadParams() : ResourceName(), OutTexture(), TempTexture(), CurrentGeneration(), ImgRes() {}
+    TextureLoadParams(const char* ResourceName, Texture& OutTexture, Texture TempTexture, u32 CurrentGeneration, ImageResource ImgRes)
     : ResourceName(MString::Duplicate(ResourceName)), OutTexture(OutTexture), TempTexture(TempTexture), CurrentGeneration(CurrentGeneration), ImgRes(ImgRes) {}
 };
 
-bool LoadCubeTextures(const char* name, const char TextureNames[6][TEXTURE_NAME_MAX_LENGTH], Texture* t);
+bool LoadCubeTextures(const char* name, const char TextureNames[6][TEXTURE_NAME_MAX_LENGTH], Texture& t);
 
 TextureSystem* TextureSystem::state = nullptr;
 
@@ -129,7 +129,7 @@ Texture *TextureSystem::AquireWriteable(const char *name, u32 width, u32 height,
         return nullptr;
     }
 
-    Texture& texture = state->RegisteredTextures[id];
+    auto& texture = state->RegisteredTextures[id];
     TextureFlagBits flags = 0;
     flags |= HasTransparency ? TextureFlag::HasTransparency : 0;
     flags |= TextureFlag::IsWriteable;
@@ -284,20 +284,20 @@ void LoadJobSuccess(void* params)
     Renderer::Load(ResourceData.pixels, &TextureParams->TempTexture);
 
     // Сделать копию старой текстуры.
-    auto old = static_cast<Texture&&>(*TextureParams->OutTexture);
+    auto old = static_cast<Texture&&>(TextureParams->OutTexture);
 
     // Назначить временную текстуру указателю.
-    *TextureParams->OutTexture = static_cast<Texture&&>(TextureParams->TempTexture);
-    TextureParams->OutTexture->id = old.id;
+    TextureParams->OutTexture = static_cast<Texture&&>(TextureParams->TempTexture);
+    TextureParams->OutTexture.id = old.id;
 
     // Уничтожить старую текстуру.
     Renderer::Unload(&old);
     old.Clear();
 
     if (TextureParams->CurrentGeneration == INVALID::ID) {
-        TextureParams->OutTexture->generation = 0;
+        TextureParams->OutTexture.generation = 0;
     } else {
-        TextureParams->OutTexture->generation = TextureParams->CurrentGeneration + 1;
+        TextureParams->OutTexture.generation = TextureParams->CurrentGeneration + 1;
     }
 
     MTRACE("Текстура «%s» успешно загружена.", TextureParams->ResourceName);
@@ -327,14 +327,19 @@ bool LoadJobStart(void *params, void *ResultData)
 
     ImageResourceParams ResourceParams{ true };
 
-    bool result = ResourceSystem::Instance()->Load(LoadParams->ResourceName, ResourceType::Image, &ResourceParams, LoadParams->ImgRes);
+    bool result = ResourceSystem::Instance()->Load(LoadParams->ResourceName, eResource::Type::Image, &ResourceParams, LoadParams->ImgRes);
 
     auto& ResourceData = LoadParams->ImgRes.data;
 
-    LoadParams->CurrentGeneration = LoadParams->OutTexture->generation;
-    LoadParams->OutTexture->generation = INVALID::ID;
+    // Используйте временную текстуру для загрузки.
+    TempTexture.width = ResourceData.width;
+    TempTexture.height = ResourceData.height;
+    TempTexture.ChannelCount = ResourceData.ChannelCount;
 
-    u64 TotalSize = LoadParams->TempTexture.width * LoadParams->TempTexture.height * LoadParams->TempTexture.ChannelCount;
+    LoadParams->CurrentGeneration = LoadParams->OutTexture.generation;
+    LoadParams->OutTexture.generation = INVALID::ID;
+
+    u64 TotalSize = TempTexture.width * TempTexture.height * TempTexture.ChannelCount;
     // Проверка прозрачности
     b32 HasTransparency = false;
     for (u64 i = 0; i < TotalSize; i += LoadParams->TempTexture.ChannelCount) {
@@ -344,17 +349,9 @@ bool LoadJobStart(void *params, void *ResultData)
             break;
         }
     }
-
-    // Используйте временную текстуру для загрузки.
-    TempTexture.Create(
-        LoadParams->ResourceName, 
-        ResourceData.width,
-        ResourceData.height,
-        ResourceData.ChannelCount,
-        TempTexture.flags |= HasTransparency ? TextureFlag::HasTransparency : 0
-    );
-
-    TempTexture.generation = INVALID::ID;
+    
+    MString::Copy(TempTexture.name, LoadParams->ResourceName, TEXTURE_NAME_MAX_LENGTH);
+    TempTexture.flags |= HasTransparency ? TextureFlag::HasTransparency : 0;
 
     // ПРИМЕЧАНИЕ: Параметры загрузки также используются здесь в качестве результирующих данных, теперь заполняется только поле image_resource.
     MMemory::CopyMem(ResultData, LoadParams, sizeof(TextureLoadParams));
@@ -362,11 +359,11 @@ bool LoadJobStart(void *params, void *ResultData)
     return result;
 }
 
-bool TextureSystem::LoadTexture(const char *TextureName, Texture *t)
+bool TextureSystem::LoadTexture(const char *TextureName, Texture &t)
 {
     // Запустить задание по загрузке текстур. Обрабатывает только загрузку с диска в ЦП. 
     // Загрузка в ГП выполняется после завершения этого задания.
-    TextureLoadParams params { TextureName, t, Texture(), t->generation, ImageResource() };
+    TextureLoadParams params { TextureName, t, Texture(), t.generation, ImageResource() };
 
     JobInfo job { LoadJobStart, LoadJobSuccess, LoadJobFail, &params, sizeof(TextureLoadParams), sizeof(TextureLoadParams) };
     JobSystem::Instance()->Submit(job);
@@ -441,8 +438,8 @@ bool TextureSystem::ProcessTextureReference(const char *name, TextureType type, 
                         MFATAL("TextureSystem::ProcessTextureReference — система текстур больше не может содержать текстуры. Настройте конфигурацию, чтобы разрешить больше.");
                         return false;
                     } else {
-                        Texture* texture = &state->RegisteredTextures[ref.handle];
-                        texture->type = type;
+                        auto& texture = state->RegisteredTextures[ref.handle];
+                        texture.type = type;
                         // Создайте новую текстуру.
                         if (SkipLoad) {
                             // MTRACE("Загрузка текстуры «%s» пропущена. Это ожидаемое поведение.");
@@ -468,7 +465,7 @@ bool TextureSystem::ProcessTextureReference(const char *name, TextureType type, 
                                     return false;
                                 }
                             }
-                            texture->id = ref.handle;
+                            texture.id = ref.handle;
                         }
                         // MTRACE("Текстура «%s» еще не существует. Создано, и ref_count теперь равен %i.", name, ref.ReferenceCount);
                     }
@@ -492,7 +489,7 @@ bool TextureSystem::ProcessTextureReference(const char *name, TextureType type, 
     return false;
 }
 
-bool LoadCubeTextures(const char *name, const char TextureNames[6][TEXTURE_NAME_MAX_LENGTH], Texture *t)
+bool LoadCubeTextures(const char *name, const char TextureNames[6][TEXTURE_NAME_MAX_LENGTH], Texture &t)
 {
     u8* pixels = nullptr;
     u64 ImageSize = 0;
@@ -501,28 +498,28 @@ bool LoadCubeTextures(const char *name, const char TextureNames[6][TEXTURE_NAME_
         ImageResourceParams params { false };
 
         ImageResource ImgResource;
-        if (!ResourceSystemInst->Load(TextureNames[i], ResourceType::Image, &params, ImgResource)) {
+        if (!ResourceSystemInst->Load(TextureNames[i], eResource::Type::Image, &params, ImgResource)) {
             MERROR("LoadCubeTextures() - Не удалось загрузить ресурс изображения для текстуры «%s»", TextureNames[i]);
             return false;
         }
 
         auto& ResourceData = ImgResource.data;
         if (!pixels) {
-            t->width = ResourceData.width;
-            t->height = ResourceData.height;
-            t->ChannelCount = ResourceData.ChannelCount;
-            t->flags = 0;
-            t->generation = 0;
+            t.width = ResourceData.width;
+            t.height = ResourceData.height;
+            t.ChannelCount = ResourceData.ChannelCount;
+            t.flags = 0;
+            t.generation = 0;
             // Сделайте копию имени.
-            MString::Copy(t->name, name, TEXTURE_NAME_MAX_LENGTH);
+            MString::Copy(t.name, name, TEXTURE_NAME_MAX_LENGTH);
 
-            ImageSize = t->width * t->height * t->ChannelCount;
+            ImageSize = t.width * t.height * t.ChannelCount;
             // ПРИМЕЧАНИЕ: в кубических картах прозрачность не нужна, поэтому ее не проверяем.
 
             pixels = MMemory::TAllocate<u8>(Memory::Array, ImageSize * 6);
         } else {
             // Убедитесь, что все текстуры имеют одинаковый размер.
-            if (t->width != ResourceData.width || t->height != ResourceData.height || t->ChannelCount != ResourceData.ChannelCount) {
+            if (t.width != ResourceData.width || t.height != ResourceData.height || t.ChannelCount != ResourceData.ChannelCount) {
                 MERROR("LoadCubeTextures - Все текстуры должны иметь одинаковое разрешение и битовую глубину.");
                 MMemory::Free(pixels, sizeof(u8) * ImageSize * 6, Memory::Array);
                 pixels = 0;
@@ -538,7 +535,7 @@ bool LoadCubeTextures(const char *name, const char TextureNames[6][TEXTURE_NAME_
     }
 
     // Получить внутренние ресурсы текстур и загрузить их в графический процессор.
-    Renderer::Load(pixels, t);
+    Renderer::Load(pixels, &t);
 
     MMemory::Free(pixels, sizeof(u8) * ImageSize * 6, Memory::Array);
     pixels = 0;

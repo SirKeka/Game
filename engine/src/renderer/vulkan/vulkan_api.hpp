@@ -16,8 +16,6 @@
     MASSERT(expr == VK_SUCCESS); \
 }
 
-constexpr u32 VULKAN_MAX_REGISTERED_RENDERPASSES = 31;
-
 class VulkanAPI : public RendererType
 {
 public:
@@ -26,6 +24,8 @@ public:
     u32 FramebufferHeight{};                            // Текущая высота фреймбуфера.
     u64 FramebufferSizeGeneration{};                    // Текущее поколение размера кадрового буфера. Если он не соответствует FramebufferSizeLastGeneration, необходимо создать новый.
     u64 FramebufferSizeLastGeneration{};                // Генерация кадрового буфера при его последнем создании. При обновлении установите значение FramebufferSizeGeneration.
+    FVec4 ViewportRect;                                 // Прямоугольник области просмотра.
+    FVec4 ScissorRect;                                  // Прямоугольник ножниц.
     VkInstance instance{};                              // Дескриптор внутреннего экземпляра Vulkan.
     VkAllocationCallbacks* allocator{nullptr};          // Внутренний распределитель Vulkan.
     VkSurfaceKHR surface{};                             // Внутренняя поверхность Vulkan, на которой будет отображаться окно.
@@ -36,9 +36,6 @@ public:
 
     VulkanDevice Device{};                              // Устройство Vulkan.
     VulkanSwapchain swapchain{};                        // Цепочка подкачки.
-    void* RenderpassTableBlock{nullptr};                // Блок памяти для хештаблицы подпроходов рендера.
-    HashTable<u32> RenderpassTable;                     // Хештаблица подпроходов рендера.
-    Renderpass RegisteredPasses[VULKAN_MAX_REGISTERED_RENDERPASSES]; // Зарегистрированные рендер-проходы
     RenderBuffer ObjectVertexBuffer{};                  // Буфер вершин объекта, используемый для хранения вершин геометрии.
     RenderBuffer ObjectIndexBuffer{};                   // Буфер индекса объекта, используемый для хранения индексов геометрии.
     DArray<VulkanCommandBuffer> GraphicsCommandBuffers; // Буферы графических команд, по одному на кадр.
@@ -62,19 +59,23 @@ public:
     VulkanAPI(class MWindow* window, const RendererConfig& config, u8& OutWindowRenderTargetCount);
     ~VulkanAPI();
     
-    void ShutDown() override;
-    void Resized(u16 width, u16 height) override;
-    bool BeginFrame(f32 Deltatime) override;
-    bool EndFrame(f32 DeltaTime) override;
+    void ShutDown()                                              override;
+    void Resized(u16 width, u16 height)                          override;
+    bool BeginFrame(f32 Deltatime)                               override;
+    bool EndFrame(f32 DeltaTime)                                 override;
+    void ViewportSet(const FVec4& rect)                          override;
+    void ViewportReset()                                         override;
+    void ScissorSet(const FVec4& rect)                           override;
+    void ScissorReset()                                          override;
     bool RenderpassBegin(Renderpass* pass, RenderTarget& target) override;
-    bool RenderpassEnd(Renderpass* pass) override;
-    Renderpass* GetRenderpass(const MString& name) override;
-
+    bool RenderpassEnd(Renderpass* pass)                         override;
 
     void Load(const u8* pixels, Texture* texture)                                         override;
     void LoadTextureWriteable  (Texture* texture)                                         override;
     void TextureResize         (Texture* texture, u32 NewWidth, u32 NewHeight)            override;
     void TextureWriteData      (Texture* texture, u32 offset, u32 size, const u8* pixels) override;
+    void TextureReadData       (Texture* texture, u32 offset, u32 size, void** OutMemory) override;
+    void TextureReadPixel      (Texture* texture, u32 x, u32 y, u8** OutRgba)             override;
     void Unload                (Texture* texture)                                         override;
     
     bool Load        (GeometryID* gid, u32 VertexSize, u32 VertexCount, const void* vertices, u32 IndexSize, u32 IndexCount, const void* indices) override;
@@ -83,7 +84,7 @@ public:
 
     // Методы относящиеся к шейдерам---------------------------------------------------------------------------------------------------------------------------------------------
 
-    bool Load                          (Shader* shader, const ShaderConfig& config, Renderpass* renderpass, u8 StageCount, const DArray<MString>& StageFilenames, const ShaderStage* stages) override;
+    bool Load                          (Shader* shader, const Shader::Config& config, Renderpass* renderpass, u8 StageCount, const DArray<MString>& StageFilenames, const Shader::Stage* stages) override;
     void Unload                        (Shader* shader)                                                   override;
     bool ShaderInitialize              (Shader* shader)                                                   override;
     bool ShaderUse                     (Shader* shader)                                                   override;
@@ -91,17 +92,19 @@ public:
     bool ShaderApplyInstance           (Shader* shader, bool NeedsUpdate)                                 override;
     bool ShaderAcquireInstanceResources(Shader* shader, TextureMap** maps, u32& OutInstanceID)            override;
     bool ShaderReleaseInstanceResources(Shader* shader, u32 InstanceID)                                   override;
-    bool SetUniform                    (Shader* shader, struct ShaderUniform* uniform, const void* value) override;
+    bool SetUniform                    (Shader* shader, struct Shader::Uniform* uniform, const void* value) override;
 
     bool TextureMapAcquireResources(TextureMap* map) override;
     void TextureMapReleaseResources(TextureMap* map) override;
-    void RenderTargetCreate(u8 AttachmentCount, Texture** attachments, Renderpass* pass, u32 width, u32 height, RenderTarget& OutTarget) override;
+    void RenderTargetCreate(u8 AttachmentCount, RenderTargetAttachment* attachments, Renderpass* pass, u32 width, u32 height, RenderTarget& OutTarget) override;
     void RenderTargetDestroy(RenderTarget& target, bool FreeInternalMemory = false) override;
-    void RenderpassCreate(Renderpass& OutRenderpass, f32 depth, u32 stencil, bool HasPrevPass, bool HasNextPass) override;
+    bool RenderpassCreate(const RenderpassConfig& config, Renderpass& OutRenderpass) override;
     void RenderpassDestroy(Renderpass* OutRenderpass) override;
-    Texture* WindowAttachmentGet(u8 index) override;
-    Texture* DepthAttachmentGet() override;
-    u8 WindowAttachmentIndexGet() override;
+
+    Texture* WindowAttachmentGet(u8 index)  override;
+    Texture* DepthAttachmentGet(u8 index)   override;
+    u8 WindowAttachmentIndexGet()           override;
+    u8 WindowAttachmentCountGet()           override;
 
     //////////////////////////////////////////////////////////////////////////////////////////////
                 //                           RenderBuffer                           //
@@ -138,8 +141,4 @@ private:
     bool CreateVulkanAllocator(VkAllocationCallbacks* callbacks);
 
     bool VulkanBufferCopyRangeInternal(VkBuffer source, u64 SourceOffset, VkBuffer dest, u64 DestOffset, u64 size);
-
-    // Обратный вызов, который будет выполнен, когда бэкэнд потребует обновления/повторной генерации целей рендеринга.
-    const RendererConfig::PFN_Method OnRendertargetRefreshRequired;
-    //void (Renderer::*OnRendertargetRefreshRequired)();   
 };

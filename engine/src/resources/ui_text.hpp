@@ -13,7 +13,8 @@
     private:
         friend class FontSystem;
         friend class RenderViewUI;
-    
+
+        u32 UniqueID;
         TextType type;
         struct FontData* data;
         RenderBuffer VertexBuffer;
@@ -23,7 +24,7 @@
         u32 InstanceID;
         u64 RenderFrameNumber;
     public:
-        constexpr Text(): type(), data(), VertexBuffer(), IndexBuffer(), text(), transform(), InstanceID(INVALID::ID), RenderFrameNumber(INVALID::U64ID) {}
+        constexpr Text() : UniqueID(), type(), data(), VertexBuffer(), IndexBuffer(), text(), transform(), InstanceID(INVALID::ID), RenderFrameNumber(INVALID::U64ID) {}
         ~Text();
     
         bool Create(TextType type, const char* FontName, u16 FontSize, const char* TextContent);

@@ -1,4 +1,5 @@
 #include "vulkan_api.hpp"
+#include "core/event.hpp"
 #include "memory/linear_allocator.hpp"
 #include "vulkan_command_buffer.hpp"
 #include "renderer/renderbuffer.hpp"
@@ -195,14 +196,12 @@ VulkanAPI::VulkanAPI(MWindow *window,  const RendererConfig& config, u8& OutWind
 FramebufferWidth(800), FramebufferHeight(600), 
 FramebufferSizeGeneration(),
 FramebufferSizeLastGeneration(),
+ViewportRect(), // 0.F, (f32)FramebufferHeight, (f32)FramebufferWidth, -(f32)FramebufferHeight
+ScissorRect(),  // 0, 0, FramebufferHeight, FramebufferHeight
 instance(), allocator(nullptr), surface(),
 Device(), swapchain(),
-RenderpassTableBlock(MMemory::Allocate(sizeof(u32) * VULKAN_MAX_REGISTERED_RENDERPASSES, Memory::Renderer)),
-RenderpassTable(VULKAN_MAX_REGISTERED_RENDERPASSES, false, reinterpret_cast<u32*>(RenderpassTableBlock), true, INVALID::ID), 
-RegisteredPasses(),
 ObjectVertexBuffer(RenderBufferType::Vertex, sizeof(Vertex3D) * 1024 * 1024, true),
 ObjectIndexBuffer(RenderBufferType::Index, sizeof(u32) * 1024 * 1024, true),
-OnRendertargetRefreshRequired(config.OnRendertargetRefreshRequired),
 MultithreadingEnabled(false)
 {
     // ПРИМЕЧАНИЕ: Пользовательский распределитель.
@@ -362,43 +361,6 @@ MultithreadingEnabled(false)
     // Сохраните количество имеющихся у нас изображений в качестве необходимого количества целей рендеринга.
     OutWindowRenderTargetCount = swapchain.ImageCount;
 
-   // Проходы рендеринга
-    for (u32 i = 0; i < config.RenderpassCount; ++i) {
-        // ЗАДАЧА: перейти к функции для возможности повторного использования.
-        // Сначала убедитесь, что нет конфликтов с именем.
-        u32 id = INVALID::ID;
-        RenderpassTable.Get(config.PassConfigs[i].name, &id); // слетает swapchain.DepthTexture->Data проблема где-то в аллокаторе
-        if (id != INVALID::ID) {
-            MERROR("Столкновение с renderpass с именем '%s'. Инициализация не удалась.", config.PassConfigs[i].name);
-            return;
-        }
-        // Вырежьте новый идентификатор.
-        for (u32 j = 0; j < VULKAN_MAX_REGISTERED_RENDERPASSES; ++j) {
-            if (RegisteredPasses[j].id == INVALID::U16ID) {
-                // Нашли его.
-                RegisteredPasses[j].id = j;
-                id = j;
-                break;
-            }
-        }
-
-        // Убедитесь, что мы получили идентификатор
-        if (id == INVALID::ID) {
-            MERROR("Не найдено места для нового рендерпасса. Увеличьте VULKAN_MAX_REGISTERED_RENDERPASSES. Инициализация не удалась.");
-            return;
-        }
-
-        // Настройте renderpass.
-        RegisteredPasses[id].ClearFlags = config.PassConfigs[i].ClearFlags;
-        RegisteredPasses[id].ClearColour = config.PassConfigs[i].ClearColour;
-        RegisteredPasses[id].RenderArea = config.PassConfigs[i].RenderArea;
-
-        RenderpassCreate(RegisteredPasses[id], 1.0f, 0, config.PassConfigs[i].PrevName != 0, config.PassConfigs[i].NextName != 0);
-
-        // Обновите таблицу с новым идентификатором.
-        RenderpassTable.Set(config.PassConfigs[i].name, id);
-    }
-
     // Создайте буферы команд.
     CreateCommandBuffers();
 
@@ -486,11 +448,6 @@ VulkanAPI::~VulkanAPI()
                 &GraphicsCommandBuffers[i]);
                 GraphicsCommandBuffers[i].handle = 0;
         }
-    }
-
-    // Проход рендеринга (Renderpass)
-    for (u64 i = 0; i < VULKAN_MAX_REGISTERED_RENDERPASSES; i++) {
-        RenderpassDestroy(RegisteredPasses + i);
     }
 
     // Цепочка подкачки (Swapchain)
@@ -586,22 +543,11 @@ bool VulkanAPI::BeginFrame(f32 Deltatime)
     VulkanCommandBufferBegin(&GraphicsCommandBuffers[ImageIndex], false, false, false);
 
     // Динамическое состояние
-    VkViewport viewport;
-    viewport.x = 0.0f;
-    viewport.y = (f32)FramebufferHeight;
-    viewport.width = (f32)FramebufferWidth;
-    viewport.height = -(f32)FramebufferHeight;
-    viewport.minDepth = 0.0f;
-    viewport.maxDepth = 1.0f;
+    ViewportRect = FVec4(0.F, (f32)FramebufferHeight, (f32)FramebufferWidth, -(f32)FramebufferHeight);
+    ViewportSet(ViewportRect);
 
-    // Ножницы
-    VkRect2D scissor;
-    scissor.offset.x = scissor.offset.y = 0;
-    scissor.extent.width = FramebufferWidth;
-    scissor.extent.height = FramebufferHeight;
-
-    vkCmdSetViewport(GraphicsCommandBuffers[ImageIndex].handle, 0, 1, &viewport);
-    vkCmdSetScissor(GraphicsCommandBuffers[ImageIndex].handle, 0, 1, &scissor);
+    ScissorRect = FVec4(0.F, 0.F, FramebufferWidth, FramebufferHeight);
+    ScissorSet(ScissorRect);
 
     return true;
 }
@@ -670,6 +616,46 @@ bool VulkanAPI::EndFrame(f32 DeltaTime)
     return true;
 }
 
+void VulkanAPI::ViewportSet(const FVec4 &rect)
+{
+    VkViewport viewport;
+    viewport.x = rect.x;
+    viewport.y = rect.y;
+    viewport.width = rect.z;
+    viewport.height = rect.w;
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+
+    auto& CommandBuffer = GraphicsCommandBuffers[ImageIndex];
+
+    vkCmdSetViewport(CommandBuffer.handle, 0, 1, &viewport);
+}
+
+void VulkanAPI::ViewportReset()
+{
+    // Просто установите текущий прямоугольник области просмотра.
+    ViewportSet(ViewportRect);
+}
+
+void VulkanAPI::ScissorSet(const FVec4 &rect)
+{
+    VkRect2D scissor;
+    scissor.offset.x = rect.x;
+    scissor.offset.y = rect.y;
+    scissor.extent.width = rect.z;
+    scissor.extent.height = rect.w;
+
+    auto CommandBuffer = GraphicsCommandBuffers[ImageIndex];
+
+    vkCmdSetScissor(CommandBuffer.handle, 0, 1, &scissor);
+}
+
+void VulkanAPI::ScissorReset()
+{
+    // Просто установите текущий прямоугольник ножниц.
+    ScissorSet(ScissorRect);
+}
+
 bool VulkanAPI::RenderpassBegin(Renderpass* pass, RenderTarget& target)
 {
     auto& CommandBuffer = GraphicsCommandBuffers[ImageIndex];
@@ -706,6 +692,13 @@ bool VulkanAPI::RenderpassBegin(Renderpass* pass, RenderTarget& target)
         bool DoClearStencil = (pass->ClearFlags & RenderpassClearFlag::StencilBuffer) != 0;
         ClearValues[BeginInfo.clearValueCount].depthStencil.stencil = DoClearStencil ? VkRenderpass->stencil : 0;
         BeginInfo.clearValueCount++;
+    } else {
+        for (u32 i = 0; i < target.AttachmentCount; ++i) {
+            if (target.attachments[i].type == RenderTargetAttachmentType::Depth) {
+                // Если есть привязка глубины, обязательно добавьте количество очисток, но не беспокойтесь о копировании данных.
+                BeginInfo.clearValueCount++;
+            }
+        }
     }
 
     BeginInfo.pClearValues = BeginInfo.clearValueCount > 0 ? ClearValues : 0;
@@ -724,23 +717,6 @@ bool VulkanAPI::RenderpassEnd(Renderpass* pass)
     vkCmdEndRenderPass(CommandBuffer.handle);
     CommandBuffer.state = COMMAND_BUFFER_STATE_RECORDING;
     return true;
-}
-
-Renderpass *VulkanAPI::GetRenderpass(const MString& name)
-{
-    if (!name || name[0] == '\0') {
-        MERROR("VulkanAPI::GetRenderpass требует имя. Ничего не будет возвращено.");
-        return nullptr;
-    }
-
-    u32 id = INVALID::ID;
-    RenderpassTable.Get(name.c_str(), &id);
-    if (id == INVALID::ID) {
-        MWARN("Нет зарегистрированного рендер-пасса с именем «%s».", name.c_str());
-        return nullptr;
-    }
-
-    return &RegisteredPasses[id];
 }
 
 void VulkanAPI::Load(const u8* pixels, Texture *texture)
@@ -785,8 +761,19 @@ VkFormat ChannelCountToFormat(u8 ChannelCount, VkFormat DefaultFormat) {
 
 void VulkanAPI::LoadTextureWriteable(Texture *texture)
 {
-    VkFormat ImageFormat = ChannelCountToFormat(texture->ChannelCount, VK_FORMAT_R8G8B8A8_UNORM);
-    // ЗАДАЧА: здесь много предположений, разные типы текстур потребуют разных опций.
+    VkImageUsageFlagBits usage;
+    VkImageAspectFlagBits aspect;
+    VkFormat ImageFormat;
+    if (texture->flags & TextureFlag::Depth) {
+        usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+        aspect = VK_IMAGE_ASPECT_DEPTH_BIT;
+        ImageFormat = Device.DepthFormat;
+    } else {
+        usage = static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+        aspect = VK_IMAGE_ASPECT_COLOR_BIT;
+        ImageFormat = ChannelCountToFormat(texture->ChannelCount, VK_FORMAT_R8G8B8A8_UNORM);
+    }
+
     texture->Data = new VulkanImage(
         this,
         texture->type,
@@ -794,10 +781,10 @@ void VulkanAPI::LoadTextureWriteable(Texture *texture)
         texture->height,
         ImageFormat,
         VK_IMAGE_TILING_OPTIMAL,
-        VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+        usage,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
         true,
-        VK_IMAGE_ASPECT_COLOR_BIT);
+        aspect);
     texture->generation++;
 }
 
@@ -835,7 +822,6 @@ void VulkanAPI::TextureWriteData(Texture *texture, u32 offset, u32 size, const u
     VkFormat ImageFormat = ChannelCountToFormat(texture->ChannelCount, VK_FORMAT_R8G8B8A8_UNORM);
 
     // Создайте промежуточный буфер и загрузите в него данные.
-    VkMemoryPropertyFlags MemoryPropFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
     RenderBuffer staging { RenderBufferType::Staging, size, false };
     if (!RenderBufferCreateInternal(staging)) {
         MERROR("Не удалось создать промежуточный буфер для записи текстуры.");
@@ -845,12 +831,12 @@ void VulkanAPI::TextureWriteData(Texture *texture, u32 offset, u32 size, const u
     RenderBufferLoadRange(staging, 0 , size, pixels);
 
     VulkanCommandBuffer TempBuffer;
-    const VkCommandPool& pool = Device.GraphicsCommandPool;
-    const VkQueue& queue = Device.GraphicsQueue;
+    const auto& pool = Device.GraphicsCommandPool;
+    const auto& queue = Device.GraphicsQueue;
     VulkanCommandBufferAllocateAndBeginSingleUse(this, pool, TempBuffer);
 
     // Переведите макет от текущего к оптимальному для получения данных.
-    texture->Data->TransitionLayout(this, texture->type, &TempBuffer, ImageFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    texture->Data->TransitionLayout(this, texture->type, TempBuffer, ImageFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
     // Скопируйте данные из буфера.
     texture->Data->CopyFromBuffer(this, texture->type, reinterpret_cast<VulkanBuffer*>(staging.data)->handle, &TempBuffer);
@@ -859,7 +845,7 @@ void VulkanAPI::TextureWriteData(Texture *texture, u32 offset, u32 size, const u
     texture->Data->TransitionLayout(
         this, 
         texture->type,
-        &TempBuffer, 
+        TempBuffer, 
         ImageFormat, 
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
@@ -871,6 +857,113 @@ void VulkanAPI::TextureWriteData(Texture *texture, u32 offset, u32 size, const u
     RenderBufferDestroyInternal(staging);
 
     texture->generation++;
+}
+
+void VulkanAPI::TextureReadData(Texture *texture, u32 offset, u32 size, void **OutMemory)
+{
+    auto image = texture->Data;
+
+    VkFormat ImageFormat = ChannelCountToFormat(texture->ChannelCount, VK_FORMAT_R8G8B8A8_UNORM);
+
+    // Создайте промежуточный буфер и загрузите в него данные.
+    RenderBuffer staging;
+    if (!RenderBufferCreate(RenderBufferType::Read, size, false, staging)) {
+        MERROR("Не удалось создать промежуточный буфер для чтения текстуры.");
+        return;
+    }
+    RenderBufferBind(staging, 0);
+
+    VulkanCommandBuffer TempBuffer;
+    auto pool = Device.GraphicsCommandPool;
+    auto queue = Device.GraphicsQueue;
+    VulkanCommandBufferAllocateAndBeginSingleUse(this, pool, TempBuffer);
+
+    // ПРИМЕЧАНИЕ: переход к VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL
+    // Переведите макет из текущего состояния в оптимальное для выдачи данных.
+    image->TransitionLayout(
+        this,
+        texture->type,
+        TempBuffer,
+        ImageFormat,
+        VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+
+    // Копируем данные в буфер.
+    image->CopyToBuffer(this, texture->type, reinterpret_cast<VulkanBuffer*>(staging.data)->handle, TempBuffer);
+
+    // Переход от оптимальной для чтения данных к оптимальной для чтения только шейдера компоновке.
+    image->TransitionLayout(
+        this,
+        texture->type,
+        TempBuffer,
+        ImageFormat,
+        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+    VulkanCommandBufferEndSingleUse(this, pool, TempBuffer, queue);
+
+    if (!RenderBufferRead(staging, offset, size, OutMemory)) {
+        MERROR("RenderBufferRead failed.");
+    }
+
+    RenderBufferUnbind(staging);
+    RenderBufferDestroyInternal(staging);
+}
+
+void VulkanAPI::TextureReadPixel(Texture *texture, u32 x, u32 y, u8 **OutRgba)
+{
+    auto image = texture->Data;
+
+    auto ImageFormat = ChannelCountToFormat(texture->ChannelCount, VK_FORMAT_R8G8B8A8_UNORM);
+
+    // ЗАДАЧА: Создавать буфер каждый раз не очень хорошо. Можно оптимизировать это, создав буфер один раз и просто повторно используя его.
+
+    // Создайте промежуточный буфер и загрузите в него данные.
+    RenderBuffer staging;
+    if (!RenderBufferCreate(RenderBufferType::Read, sizeof(u8) * 4, false, staging)) {
+        MERROR("Не удалось создать промежуточный буфер для чтения пикселей текстуры.");
+        return;
+    }
+    RenderBufferBind(staging, 0);
+
+    VulkanCommandBuffer TempBuffer;
+    auto pool = Device.GraphicsCommandPool;
+    auto queue = Device.GraphicsQueue;
+    VulkanCommandBufferAllocateAndBeginSingleUse(this, pool, TempBuffer);
+
+    // ПРИМЕЧАНИЕ: переход к VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL
+    // Переведите макет из текущего состояния в оптимальное для передачи данных.
+    image->TransitionLayout(
+        this,
+        texture->type,
+        TempBuffer,
+        ImageFormat,
+        VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL
+    );
+
+    // Скопируйте данные в буфер.
+    // image.CopyToBuffer(this, texture->type, reinterpret_cast<VulkanBuffer*>(staging.data)->handle, TempBuffer);
+    image->CopyPixelToBuffer(this, texture->type, reinterpret_cast<VulkanBuffer*>(staging.data)->handle, x, y, TempBuffer);
+
+    // Переход от оптимальной компоновки для чтения данных к оптимальной компоновке, предназначенной только для чтения шейдеров.
+    image->TransitionLayout(
+        this,
+        texture->type,
+        TempBuffer,
+        ImageFormat,
+        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+    );
+
+    VulkanCommandBufferEndSingleUse(this, pool, TempBuffer, queue);
+
+    if (!RenderBufferRead(staging, 0, sizeof(u8) * 4, reinterpret_cast<void**>(OutRgba))) {
+        MERROR("RenderBufferRead failed.");
+    }
+
+    RenderBufferUnbind(staging);
+    RenderBufferDestroyInternal(staging);
 }
 
 void VulkanAPI::Unload(Texture *texture)
@@ -1018,23 +1111,23 @@ void VulkanAPI::DrawGeometry(const GeometryRenderData& data)
 const u32 DESC_SET_INDEX_GLOBAL   = 0;  // Индекс набора глобальных дескрипторов.
 const u32 DESC_SET_INDEX_INSTANCE = 1;  // Индекс набора дескрипторов экземпляра.
 
-bool VulkanAPI::Load(Shader *shader, const ShaderConfig& config, Renderpass* renderpass, u8 StageCount, const DArray<MString>& StageFilenames, const ShaderStage *stages)
+bool VulkanAPI::Load(Shader *shader, const Shader::Config& config, Renderpass* renderpass, u8 StageCount, const DArray<MString>& StageFilenames, const Shader::Stage *stages)
 {
     // Этапы перевода
     VkShaderStageFlags VkStages[VulkanShaderConstants::MaxStages];
     for (u8 i = 0; i < StageCount; ++i) {
         switch (stages[i]) {
-            case ShaderStage::Fragment:
+            case Shader::Stage::Fragment:
                 VkStages[i] = VK_SHADER_STAGE_FRAGMENT_BIT;
                 break;
-            case ShaderStage::Vertex:
+            case Shader::Stage::Vertex:
                 VkStages[i] = VK_SHADER_STAGE_VERTEX_BIT;
                 break;
-            case ShaderStage::Geometry:
+            case Shader::Stage::Geometry:
                 MWARN("VulkanAPI::LoadShader: VK_SHADER_STAGE_GEOMETRY_BIT установлен, но еще не поддерживается.");
                 VkStages[i] = VK_SHADER_STAGE_GEOMETRY_BIT;
                 break;
-            case ShaderStage::Compute:
+            case Shader::Stage::Compute:
                 MWARN("VulkanAPI::LoadShader: SHADER_STAGE_COMPUTE установлен, но еще не поддерживается.");
                 VkStages[i] = VK_SHADER_STAGE_COMPUTE_BIT;
                 break;
@@ -1050,20 +1143,20 @@ bool VulkanAPI::Load(Shader *shader, const ShaderConfig& config, Renderpass* ren
 
     // Скопируйте указатель на контекст.
     shader->ShaderData = new VulkanShader();
-    auto OutShader = shader->ShaderData;
+    auto VulkShader = shader->ShaderData;
 
-    OutShader->renderpass = reinterpret_cast<VulkanRenderpass*>(renderpass->InternalData);
+    VulkShader->renderpass = reinterpret_cast<VulkanRenderpass*>(renderpass->InternalData);
 
     // Создайте конфигурацию.
-    OutShader->config.MaxDescriptorSetCount = MaxDescriptorAllocateCount;
+    VulkShader->config.MaxDescriptorSetCount = MaxDescriptorAllocateCount;
 
     // Этапы шейдера. Разбираем флаги.
     // MMemory::ZeroMem(OutShader->config.stages, sizeof(VulkanShaderStageConfig) * VulkanShaderConstants::MaxStages);
-    OutShader->config.StageCount = 0;
+    VulkShader->config.StageCount = 0;
     // Перебрать предоставленные этапы.
     for (u32 i = 0; i < StageCount; i++) {
         // Убедитесь, что достаточно места для добавления сцены.
-        if (OutShader->config.StageCount + 1 > VulkanShaderConstants::MaxStages) {
+        if (VulkShader->config.StageCount + 1 > VulkanShaderConstants::MaxStages) {
             MERROR("Шейдеры могут иметь максимум %d стадий.", VulkanShaderConstants::MaxStages);
             return false;
         }
@@ -1071,10 +1164,10 @@ bool VulkanAPI::Load(Shader *shader, const ShaderConfig& config, Renderpass* ren
         // Убедитесь, что сцена поддерживается.
         VkShaderStageFlagBits StageFlag;
         switch (stages[i]) {
-            case ShaderStage::Vertex:
+            case Shader::Stage::Vertex:
                 StageFlag = VK_SHADER_STAGE_VERTEX_BIT;
                 break;
-            case ShaderStage::Fragment:
+            case Shader::Stage::Fragment:
                 StageFlag = VK_SHADER_STAGE_FRAGMENT_BIT;
                 break;
             default:
@@ -1084,54 +1177,54 @@ bool VulkanAPI::Load(Shader *shader, const ShaderConfig& config, Renderpass* ren
         }
 
         // Подготовьте сцену и ударьте по счетчику.
-        OutShader->config.stages[OutShader->config.StageCount].stage = StageFlag;
-        MString::Copy(OutShader->config.stages[OutShader->config.StageCount].FileName, StageFilenames[i], 255);
-        OutShader->config.StageCount++;
+        VulkShader->config.stages[VulkShader->config.StageCount].stage = StageFlag;
+        MString::Copy(VulkShader->config.stages[VulkShader->config.StageCount].FileName, StageFilenames[i], 255);
+        VulkShader->config.StageCount++;
     }
 
-    OutShader->config.DescriptorSets[0].SamplerBindingIndex = INVALID::U8ID;
-    OutShader->config.DescriptorSets[1].SamplerBindingIndex = INVALID::U8ID;
+    VulkShader->config.DescriptorSets[0].SamplerBindingIndex = INVALID::U8ID;
+    VulkShader->config.DescriptorSets[1].SamplerBindingIndex = INVALID::U8ID;
 
     // Получите данные по количеству униформы.
-    OutShader->GlobalUniformCount = 0;
-    OutShader->GlobalUniformSamplerCount = 0;
-    OutShader->InstanceUniformCount = 0;
-    OutShader->InstanceUniformSamplerCount = 0;
-    OutShader->LocalUniformCount = 0;
+    VulkShader->GlobalUniformCount = 0;
+    VulkShader->GlobalUniformSamplerCount = 0;
+    VulkShader->InstanceUniformCount = 0;
+    VulkShader->InstanceUniformSamplerCount = 0;
+    VulkShader->LocalUniformCount = 0;
     const u32& TotalCount = config.uniforms.Length();
     for (u32 i = 0; i < TotalCount; ++i) {
         switch (config.uniforms[i].scope) {
-            case ShaderScope::Global:
-                if (config.uniforms[i].type == ShaderUniformType::Sampler) {
-                    OutShader->GlobalUniformSamplerCount++;
+            case Shader::Scope::Global:
+                if (config.uniforms[i].type == Shader::UniformType::Sampler) {
+                    VulkShader->GlobalUniformSamplerCount++;
                 } else {
-                    OutShader->GlobalUniformCount++;
+                    VulkShader->GlobalUniformCount++;
                 }
                 break;
-            case ShaderScope::Instance:
-                if (config.uniforms[i].type == ShaderUniformType::Sampler){
-                    OutShader->InstanceUniformSamplerCount++;
+            case Shader::Scope::Instance:
+                if (config.uniforms[i].type == Shader::UniformType::Sampler){
+                    VulkShader->InstanceUniformSamplerCount++;
                 } else {
-                    OutShader->InstanceUniformCount++;
+                    VulkShader->InstanceUniformCount++;
                 }
                 break;
-            case ShaderScope::Local:
-                OutShader->LocalUniformCount++;
+            case Shader::Scope::Local:
+                VulkShader->LocalUniformCount++;
                 break;
         }
     }
 
     // На данный момент шейдеры будут иметь только эти два типа пулов дескрипторов.
-    OutShader->config.PoolSizes[0] = VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1024};          // HACK: максимальное количество наборов дескрипторов ubo.
-    OutShader->config.PoolSizes[1] = VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4096};  // HACK: максимальное количество наборов дескрипторов сэмплера изображений.
+    VulkShader->config.PoolSizes[0] = VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1024};          // HACK: максимальное количество наборов дескрипторов ubo.
+    VulkShader->config.PoolSizes[1] = VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4096};  // HACK: максимальное количество наборов дескрипторов сэмплера изображений.
 
     // Конфигурация глобального набора дескрипторов.
-    if (OutShader->GlobalUniformCount > 0 || OutShader->GlobalUniformSamplerCount > 0) {
+    if (VulkShader->GlobalUniformCount > 0 || VulkShader->GlobalUniformSamplerCount > 0) {
     
-        auto& SetConfig = OutShader->config.DescriptorSets[OutShader->config.DescriptorSetCount];
+        auto& SetConfig = VulkShader->config.DescriptorSets[VulkShader->config.DescriptorSetCount];
 
         // При наличии глобального UBO-привязки он является первым.
-        if (OutShader->GlobalUniformCount > 0) {
+        if (VulkShader->GlobalUniformCount > 0) {
             const u8& BindingIndex = SetConfig.BindingCount;
             SetConfig.bindings[BindingIndex].binding = BindingIndex;
             SetConfig.bindings[BindingIndex].descriptorCount = 1;
@@ -1141,10 +1234,10 @@ bool VulkanAPI::Load(Shader *shader, const ShaderConfig& config, Renderpass* ren
         }
 
         // Добавьте привязку для сэмплеров, если они используются.
-        if (OutShader->GlobalUniformSamplerCount > 0) {
+        if (VulkShader->GlobalUniformSamplerCount > 0) {
             const u8& BindingIndex = SetConfig.BindingCount;
             SetConfig.bindings[BindingIndex].binding = BindingIndex;
-            SetConfig.bindings[BindingIndex].descriptorCount = OutShader->GlobalUniformSamplerCount;  // Один дескриптор на сэмплер.
+            SetConfig.bindings[BindingIndex].descriptorCount = VulkShader->GlobalUniformSamplerCount;  // Один дескриптор на сэмплер.
             SetConfig.bindings[BindingIndex].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
             SetConfig.bindings[BindingIndex].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
             SetConfig.SamplerBindingIndex = BindingIndex;
@@ -1152,15 +1245,15 @@ bool VulkanAPI::Load(Shader *shader, const ShaderConfig& config, Renderpass* ren
         }
 
         // Увеличить установленный счетчик.
-        OutShader->config.DescriptorSetCount++;
+        VulkShader->config.DescriptorSetCount++;
     }
 
     // Если используются униформы экземпляров, добавьте набор дескрипторов UBO.
-    if (OutShader->InstanceUniformCount > 0 || OutShader->InstanceUniformSamplerCount > 0) {
+    if (VulkShader->InstanceUniformCount > 0 || VulkShader->InstanceUniformSamplerCount > 0) {
         // В этом наборе добавьте привязку для UBO, если она используется.
-        auto& SetConfig = OutShader->config.DescriptorSets[OutShader->config.DescriptorSetCount];
+        auto& SetConfig = VulkShader->config.DescriptorSets[VulkShader->config.DescriptorSetCount];
 
-        if (OutShader->InstanceUniformCount > 0) {
+        if (VulkShader->InstanceUniformCount > 0) {
             const u8& BindingIndex = SetConfig.BindingCount;
             SetConfig.bindings[BindingIndex].binding = BindingIndex;
             SetConfig.bindings[BindingIndex].descriptorCount = 1;
@@ -1170,10 +1263,10 @@ bool VulkanAPI::Load(Shader *shader, const ShaderConfig& config, Renderpass* ren
         }
 
         // Добавьте привязку для сэмплеров, если она используется.
-        if (OutShader->InstanceUniformSamplerCount > 0) {
+        if (VulkShader->InstanceUniformSamplerCount > 0) {
             const u8& BindingIndex = SetConfig.BindingCount;
             SetConfig.bindings[BindingIndex].binding = BindingIndex;
-            SetConfig.bindings[BindingIndex].descriptorCount = OutShader->InstanceUniformSamplerCount;  // Один дескриптор на сэмплер.
+            SetConfig.bindings[BindingIndex].descriptorCount = VulkShader->InstanceUniformSamplerCount;  // Один дескриптор на сэмплер.
             SetConfig.bindings[BindingIndex].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
             SetConfig.bindings[BindingIndex].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
             SetConfig.SamplerBindingIndex = BindingIndex;
@@ -1181,11 +1274,11 @@ bool VulkanAPI::Load(Shader *shader, const ShaderConfig& config, Renderpass* ren
         }
 
         // Увеличьте счетчик набора.
-        OutShader->config.DescriptorSetCount++;
+        VulkShader->config.DescriptorSetCount++;
     }
 
    // Сохраните копию режима отбраковки.
-    OutShader->config.CullMode = config.CullMode;
+    VulkShader->config.CullMode = config.CullMode;
 
     return true;
 }
@@ -1240,7 +1333,7 @@ void VulkanAPI::Unload(Shader *shader)
 bool VulkanAPI::ShaderInitialize(Shader *shader)
 {
     auto& LogicalDevice = Device.LogicalDevice;
-    VulkanShader* VkShader = shader->ShaderData;
+    auto VkShader = shader->ShaderData;
 
     // Создайте модуль для каждого этапа.
     //MMemory::ZeroMem(VkShader->stages, sizeof(VulkanShaderStage) * VulkanShaderConstants::MaxStages);
@@ -1255,21 +1348,21 @@ bool VulkanAPI::ShaderInitialize(Shader *shader)
     static VkFormat* types = nullptr;
     static VkFormat t[11];
     if (!types) {
-        t[EShaderAttribute::Float32]   =          VK_FORMAT_R32_SFLOAT;
-        t[EShaderAttribute::Float32_2] =       VK_FORMAT_R32G32_SFLOAT;
-        t[EShaderAttribute::Float32_3] =    VK_FORMAT_R32G32B32_SFLOAT;
-        t[EShaderAttribute::Float32_4] = VK_FORMAT_R32G32B32A32_SFLOAT;
-        t[EShaderAttribute::Int8]      =             VK_FORMAT_R8_SINT;
-        t[EShaderAttribute::UInt8]     =             VK_FORMAT_R8_UINT;
-        t[EShaderAttribute::Int16]     =            VK_FORMAT_R16_SINT;
-        t[EShaderAttribute::UInt16]    =            VK_FORMAT_R16_UINT;
-        t[EShaderAttribute::Int32]     =            VK_FORMAT_R32_SINT;
-        t[EShaderAttribute::UInt32]    =            VK_FORMAT_R32_UINT;
+        t[Shader::AttributeType::Float32]   =          VK_FORMAT_R32_SFLOAT;
+        t[Shader::AttributeType::Float32_2] =       VK_FORMAT_R32G32_SFLOAT;
+        t[Shader::AttributeType::Float32_3] =    VK_FORMAT_R32G32B32_SFLOAT;
+        t[Shader::AttributeType::Float32_4] = VK_FORMAT_R32G32B32A32_SFLOAT;
+        t[Shader::AttributeType::Int8]      =             VK_FORMAT_R8_SINT;
+        t[Shader::AttributeType::UInt8]     =             VK_FORMAT_R8_UINT;
+        t[Shader::AttributeType::Int16]     =            VK_FORMAT_R16_SINT;
+        t[Shader::AttributeType::UInt16]    =            VK_FORMAT_R16_UINT;
+        t[Shader::AttributeType::Int32]     =            VK_FORMAT_R32_SINT;
+        t[Shader::AttributeType::UInt32]    =            VK_FORMAT_R32_UINT;
         types = t;
     }
 
     // Атрибуты процесса
-    const u32& AttributeCount = shader->attributes.Length();
+    const auto& AttributeCount = shader->attributes.Length();
     u32 offset = 0;
     for (u32 i = 0; i < AttributeCount; ++i) {
         // Настройте новый атрибут.
@@ -1332,11 +1425,10 @@ bool VulkanAPI::ShaderInitialize(Shader *shader)
         StageCreateIfos[i] = VkShader->stages[i].ShaderStageCreateInfo;
     }
 
-    bool PipelineResult = VkShader->pipeline.Create(
-        this,
+    VulkanPipeline::Config PipelineConfig {
         VkShader->renderpass,
         shader->AttributeStride,
-        shader->attributes.Length(),
+        (u32)shader->attributes.Length(),
         VkShader->config.attributes,  // shader->attributes,
         VkShader->config.DescriptorSetCount,
         VkShader->DescriptorSetLayouts,
@@ -1348,7 +1440,10 @@ bool VulkanAPI::ShaderInitialize(Shader *shader)
         false,
         true,
         shader->PushConstantRangeCount,
-        shader->PushConstantRanges);
+        shader->PushConstantRanges
+    };
+
+    bool PipelineResult = VkShader->pipeline.Create(this, PipelineConfig);
 
     if (!PipelineResult) {
         MERROR("Не удалось загрузить графический конвейер для объектного шейдера.");
@@ -1444,7 +1539,7 @@ bool VulkanAPI::ShaderApplyGlobals(Shader *shader)
 
 bool VulkanAPI::ShaderApplyInstance(Shader *shader, bool NeedsUpdate)
 {
-    VulkanShader* VkShader = shader->ShaderData;
+    auto VkShader = shader->ShaderData;
     if (VkShader->InstanceUniformCount < 1 && VkShader->InstanceUniformSamplerCount < 1) {
         MERROR("Этот шейдер не использует экземпляры.");
         return false;
@@ -1602,14 +1697,17 @@ bool VulkanAPI::ShaderAcquireInstanceResources(Shader *shader, TextureMap** maps
     auto& InstanceState = VkShader->InstanceStates[OutInstanceID];
     const u8& SamplerBindingIndex = VkShader->config.DescriptorSets[DESC_SET_INDEX_INSTANCE].SamplerBindingIndex;
     const u32& InstanceTextureCount = VkShader->config.DescriptorSets[DESC_SET_INDEX_INSTANCE].bindings[SamplerBindingIndex].descriptorCount;
-    // Очистите память всего массива, даже если она не вся использована.
-    InstanceState.InstanceTextureMaps = MMemory::TAllocate<TextureMap*>(Memory::Array, shader->InstanceTextureCount, true);
-    Texture* DefaultTexture = TextureSystem::Instance()->GetDefaultTexture(ETexture::Default);
-    MMemory::CopyMem(InstanceState.InstanceTextureMaps, maps, sizeof(TextureMap*) * shader->InstanceTextureCount);
-    // Установите для всех указателей текстур значения по умолчанию, пока они не будут назначены.
-    for (u32 i = 0; i < InstanceTextureCount; ++i) {
-        if (!maps[i]->texture) {
-            InstanceState.InstanceTextureMaps[i]->texture = DefaultTexture;
+    // Настраивайте только в том случае, если шейдер действительно этого требует.
+    if (shader->InstanceTextureCount > 0) {
+        // Очистите память всего массива, даже если она не вся использована.
+        InstanceState.InstanceTextureMaps = MMemory::TAllocate<TextureMap*>(Memory::Array, shader->InstanceTextureCount, true);
+        Texture* DefaultTexture = TextureSystem::Instance()->GetDefaultTexture(ETexture::Default);
+        MMemory::CopyMem(InstanceState.InstanceTextureMaps, maps, sizeof(TextureMap*) * shader->InstanceTextureCount);
+        // Установите для всех указателей текстур значения по умолчанию, пока они не будут назначены.
+        for (u32 i = 0; i < InstanceTextureCount; ++i) {
+            if (!maps[i]->texture) {
+                InstanceState.InstanceTextureMaps[i]->texture = DefaultTexture;
+            }
         }
     }
 
@@ -1763,7 +1861,7 @@ bool VulkanAPI::CreateModule(VulkanShader *shader, const VulkanShaderStageConfig
     auto ResourceSystemInst = ResourceSystem::Instance();
     // Прочтите ресурс.
     BinaryResource BinRes;
-    if (!ResourceSystemInst->Load(config.FileName, ResourceType::Binary, nullptr, BinRes)) {
+    if (!ResourceSystemInst->Load(config.FileName, eResource::Type::Binary, nullptr, BinRes)) {
         MERROR("Невозможно прочитать модуль шейдера: %s.", config.FileName);
         return false;
     }
@@ -1832,10 +1930,9 @@ bool VulkanAPI::RecreateSwapchain()
         VulkanCommandBufferFree(this, Device.GraphicsCommandPool, &GraphicsCommandBuffers[i]);
     }
 
-    // Сообщите рендереру, что требуется обновление.
-    if (OnRendertargetRefreshRequired) {
-        OnRendertargetRefreshRequired.Run();
-    }
+    // Укажите слушателям, что требуется обновление цели рендеринга.
+    EventContext EventContext = {0};
+    Event::GetInstance()->Fire(EVENT_CODE_DEFAULT_RENDERTARGET_REFRESH_REQUIRED, 0, EventContext);
 
     CreateCommandBuffers();
 
@@ -1845,17 +1942,17 @@ bool VulkanAPI::RecreateSwapchain()
     return true;
 }
 
-bool VulkanAPI::SetUniform(Shader *shader, ShaderUniform *uniform, const void *value)
+bool VulkanAPI::SetUniform(Shader *shader, Shader::Uniform *uniform, const void *value)
 {
     auto VkShader = shader->ShaderData;
-    if (uniform->type == ShaderUniformType::Sampler) {
-        if (uniform->scope == ShaderScope::Global) {
+    if (uniform->type == Shader::UniformType::Sampler) {
+        if (uniform->scope == Shader::Scope::Global) {
             shader->GlobalTextureMaps[uniform->location] = (TextureMap*)value;
         } else {
             VkShader->InstanceStates[shader->BoundInstanceID].InstanceTextureMaps[uniform->location] = (TextureMap*)value;
         }
     } else {
-        if (uniform->scope == ShaderScope::Local) {
+        if (uniform->scope == Shader::Scope::Local) {
             // Является локальным, использует push-константы. Сделайте это немедленно.
             VkCommandBuffer CommandBuffer = GraphicsCommandBuffers[ImageIndex].handle;
             vkCmdPushConstants(CommandBuffer, VkShader->pipeline.PipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, uniform->offset, uniform->size, value);
@@ -1914,21 +2011,15 @@ void VulkanAPI::TextureMapReleaseResources(TextureMap *map)
     }
 }
 
-void VulkanAPI::RenderTargetCreate(u8 AttachmentCount, Texture **attachments, Renderpass *pass, u32 width, u32 height, RenderTarget &OutTarget)
+void VulkanAPI::RenderTargetCreate(u8 AttachmentCount, RenderTargetAttachment *attachments, Renderpass *pass, u32 width, u32 height, RenderTarget &OutTarget)
 {
     // Максимальное количество вложений
     VkImageView AttachmentViews[32];
     for (u32 i = 0; i < AttachmentCount; ++i) {
-        AttachmentViews[i] = (attachments[i]->Data)->view;
-    }
-
-    // Сделайте копию вложений и посчитайте.
-    OutTarget.AttachmentCount = AttachmentCount;
-    if (!OutTarget.attachments) {
-        OutTarget.attachments = MMemory::TAllocate<Texture*>(Memory::Array, AttachmentCount);
+        AttachmentViews[i] = attachments[i].texture->Data->view;
     }
     
-    MMemory::CopyMem(OutTarget.attachments, attachments, sizeof(Texture*) * AttachmentCount);
+    MMemory::CopyMem(OutTarget.attachments, attachments, sizeof(RenderTargetAttachment) * AttachmentCount);
 
     VkFramebufferCreateInfo FramebufferCreateInfo = {VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
     FramebufferCreateInfo.renderPass = reinterpret_cast<VulkanRenderpass*>(pass->InternalData)->handle;
@@ -1947,14 +2038,42 @@ void VulkanAPI::RenderTargetDestroy(RenderTarget &target, bool FreeInternalMemor
         vkDestroyFramebuffer(Device.LogicalDevice, (VkFramebuffer)target.InternalFramebuffer, allocator);
         target.InternalFramebuffer = 0;
         if (FreeInternalMemory) {
-            target.~RenderTarget();
+            MMemory::Free(target.attachments, sizeof(RenderTargetAttachment) * target.AttachmentCount, Memory::Array);
+            target.attachments = nullptr;
+            target.AttachmentCount = 0;
         }
     }
 }
 
-void VulkanAPI::RenderpassCreate(Renderpass& OutRenderpass, f32 depth, u32 stencil, bool HasPrevPass, bool HasNextPass)
+bool VulkanAPI::RenderpassCreate(const RenderpassConfig& config, Renderpass& OutRenderpass)
 {
-    OutRenderpass.InternalData = new VulkanRenderpass(OutRenderpass.ClearFlags, depth, stencil, HasPrevPass, HasNextPass, this);
+    OutRenderpass.RenderArea = config.RenderArea;
+    OutRenderpass.ClearColour = config.ClearColour;
+    OutRenderpass.ClearFlags = config.ClearFlags;
+    OutRenderpass.RenderTargetCount = config.RenderTargetCount;
+    OutRenderpass.targets = MMemory::TAllocate<RenderTarget>(Memory::Array, OutRenderpass.RenderTargetCount, true);
+
+    // Скопируйте конфигурацию для каждой цели.
+    for (u32 t = 0; t < OutRenderpass.RenderTargetCount; ++t) {
+        auto& target = OutRenderpass.targets[t];
+        target.AttachmentCount = config.target.AttachmentCount;
+        target.attachments = MMemory::TAllocate<RenderTargetAttachment>(Memory::Array, target.AttachmentCount);
+
+        // Каждое вложение для цели.
+        for (u32 a = 0; a < target.AttachmentCount; ++a) {
+            auto& attachment = target.attachments[a];
+            auto& AttachmentConfig = config.target.attachments[a];
+
+            attachment.source = AttachmentConfig.source;
+            attachment.type = AttachmentConfig.type;
+            attachment.LoadOperation = AttachmentConfig.LoadOperation;
+            attachment.StoreOperation = AttachmentConfig.StoreOperation;
+            attachment.PresentAfter = AttachmentConfig.PresentAfter;
+            attachment.texture = nullptr;
+        }
+    }
+
+    return (OutRenderpass.InternalData = new VulkanRenderpass(OutRenderpass.ClearFlags, config, this)) != nullptr;
 }
 
 void VulkanAPI::RenderpassDestroy(Renderpass *OutRenderpass)
@@ -1965,21 +2084,31 @@ void VulkanAPI::RenderpassDestroy(Renderpass *OutRenderpass)
 Texture *VulkanAPI::WindowAttachmentGet(u8 index)
 {
     if (index >= swapchain.ImageCount) {
-        MFATAL("Попытка получить индекс вложения вне диапазона: %d. Количество вложений: %d", index, swapchain.ImageCount);
+        MFATAL("Попытка получить индекс цветового вложения вне диапазона: %d. Количество вложений: %d", index, swapchain.ImageCount);
         return nullptr;
     }
 
-    return swapchain.RenderTextures[index];
+    return &swapchain.RenderTextures[index];
 }
 
-Texture *VulkanAPI::DepthAttachmentGet()
+Texture *VulkanAPI::DepthAttachmentGet(u8 index)
 {
-    return swapchain.DepthTexture;
+    if (index >= swapchain.ImageCount) {
+        MFATAL("Попытка получить индекс вложения глубины вне диапазона: %d. Количество вложений: %d", index, swapchain.ImageCount);
+        return nullptr;
+    }
+
+    return &swapchain.DepthTextures[index];
 }
 
 u8 VulkanAPI::WindowAttachmentIndexGet()
 {
     return ImageIndex;
+}
+
+u8 VulkanAPI::WindowAttachmentCountGet()
+{
+    return u8(swapchain.ImageCount);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////

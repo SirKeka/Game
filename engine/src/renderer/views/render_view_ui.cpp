@@ -6,41 +6,69 @@
 #include "renderer/renderer.hpp"
 #include "renderer/renderpass.hpp"
 #include "systems/material_system.hpp"
+#include "systems/resource_system.hpp"
 #include "resources/geometry.hpp"
 
 
-RenderViewUI::RenderViewUI()
-    : 
-    RenderView(), 
-    ShaderID(ShaderSystem::GetID(CustomShaderName ? CustomShaderName : "Shader.Builtin.UI")), 
-    shader(ShaderSystem::GetShader(ShaderID)),
-    NearClip(-100.F), 
-    FarClip(100.F), 
-    ProjectionMatrix(Matrix4D::MakeOrthographicProjection(0.F, 1280.F, 720.F, 0.F, NearClip, FarClip)), 
-    ViewMatrix(Matrix4D::MakeIdentity()),
-    DiffuseMapLocation(ShaderSystem::UniformIndex(shader, "diffuse_texture")),
-    DiffuseColourLocation(ShaderSystem::UniformIndex(shader, "diffuse_colour")),
-    ModelLocation(ShaderSystem::UniformIndex(shader, "model"))
-    /*RenderMode(),*/ 
-{}
+// constexpr RenderViewUI::RenderViewUI()
+//     : 
+//     RenderView(), 
+//     ShaderID(ShaderSystem::GetID(CustomShaderName ? CustomShaderName : "Shader.Builtin.UI")), 
+//     shader(ShaderSystem::GetShader(ShaderID)),
+//     NearClip(-100.F), 
+//     FarClip(100.F), 
+//     ProjectionMatrix(Matrix4D::MakeOrthographicProjection(0.F, 1280.F, 720.F, 0.F, NearClip, FarClip)), 
+//     ViewMatrix(Matrix4D::MakeIdentity()),
+//     DiffuseMapLocation(ShaderSystem::UniformIndex(shader, "diffuse_texture")),
+//     DiffuseColourLocation(ShaderSystem::UniformIndex(shader, "diffuse_colour")),
+//     ModelLocation(ShaderSystem::UniformIndex(shader, "model"))
+//     /*RenderMode(),*/ 
+// {}
 
-RenderViewUI::RenderViewUI(u16 id, MString& name, KnownType type, u8 RenderpassCount, const char* CustomShaderName)
+/*constexpr */RenderViewUI::RenderViewUI(u16 id, MString&& name, KnownType type, u8 RenderpassCount, const char* CustomShaderName, RenderpassConfig* PassConfig)
 :
-RenderView(id, name, type, RenderpassCount, CustomShaderName),
-ShaderID(ShaderSystem::GetID(CustomShaderName ? CustomShaderName : "Shader.Builtin.UI")), 
-shader(ShaderSystem::GetShader(ShaderID)),
+RenderView(id, static_cast<MString&&>(name), type, RenderpassCount, CustomShaderName, PassConfig), 
+shader(),
 NearClip(-100.F), 
 FarClip(100.F), 
 ProjectionMatrix(Matrix4D::MakeOrthographicProjection(0.F, 1280.F, 720.F, 0.F, NearClip, FarClip)), 
 ViewMatrix(Matrix4D::MakeIdentity()),
-DiffuseMapLocation(ShaderSystem::UniformIndex(shader, "diffuse_texture")),
-DiffuseColourLocation(ShaderSystem::UniformIndex(shader, "diffuse_colour")),
-ModelLocation(ShaderSystem::UniformIndex(shader, "model"))
+DiffuseMapLocation(),
+DiffuseColourLocation(),
+ModelLocation()
 /*RenderMode(),*/ 
-{}
+{
+    const char* ShaderName = "Shader.Builtin.UI";
+    ShaderResource ConfigResource;
+    if (!ResourceSystem::Load(ShaderName, eResource::Shader, nullptr, ConfigResource)) {
+        MERROR("Не удалось загрузить встроенный шейдер пользовательского интерфейса.");
+        return;
+    }
+    auto& config = ConfigResource.data;
+    // ПРИМЕЧАНИЕ: Предположим, что это первый проход, так как это все, что есть в этом представлении.
+    if (!ShaderSystem::Create(passes[0], config)) {
+        MERROR("Не удалось загрузить встроенный шейдер пользовательского интерфейса.");
+        return;
+    }
+    // ResourceSystem::Unload(ConfigResource);
+
+    // Получите либо переопределение пользовательского шейдера, либо заданное значение по умолчанию.
+    shader = ShaderSystem::GetShader(CustomShaderName ? CustomShaderName : ShaderName);
+
+    DiffuseMapLocation    = ShaderSystem::UniformIndex(shader, "diffuse_texture");
+    DiffuseColourLocation = ShaderSystem::UniformIndex(shader, "diffuse_colour");
+    ModelLocation         = ShaderSystem::UniformIndex(shader, "model");
+
+    if(!Event::Register(EVENT_CODE_DEFAULT_RENDERTARGET_REFRESH_REQUIRED, this, RenderViewOnEvent)) {
+        MERROR("Не удалось прослушать событие, требующее обновления, создание не удалось.");
+        return;
+    }
+}
 
 RenderViewUI::~RenderViewUI()
 {
+    // Отменить регистрацию на мероприятии.
+    Event::Unregister(EVENT_CODE_DEFAULT_RENDERTARGET_REFRESH_REQUIRED, this, RenderViewOnEvent);
 }
 
 void RenderViewUI::Resize(u32 width, u32 height)
@@ -53,7 +81,7 @@ void RenderViewUI::Resize(u32 width, u32 height)
         ProjectionMatrix = Matrix4D::MakeOrthographicProjection(0.0f, (f32)this->width, (f32)this->height, 0.0f, NearClip, FarClip);
 
         for (u32 i = 0; i < RenderpassCount; ++i) {
-            passes[i]->RenderArea = FVec4(0, 0, width, height);
+            passes[i].RenderArea = FVec4(0, 0, width, height);
         }
     }
 }
@@ -91,8 +119,9 @@ bool RenderViewUI::BuildPacket(void *data, Packet &OutPacket) const
 bool RenderViewUI::Render(const Packet &packet, u64 FrameNumber, u64 RenderTargetIndex) const
 {
     auto MaterialSystemInst = MaterialSystem::Instance();
+    const auto& ShaderID = shader->id;
     for (u32 p = 0; p < RenderpassCount; ++p) {
-        auto pass = passes[p];
+        auto pass = &passes[p];
         if (!Renderer::RenderpassBegin(pass, pass->targets[RenderTargetIndex])) {
             MERROR("RenderViewUI::Render pass index %u не удалось запустить.", p);
             return false;

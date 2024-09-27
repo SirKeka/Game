@@ -48,7 +48,7 @@ void MeshLoadJobFail(void* params) {
 /// @return Истина при успешном выполнении задания; в противном случае ложь.
 bool MeshLoadJobStart(void* params, void* ResultData) {
     auto LoadParams = reinterpret_cast<MeshLoadParams*>(params);
-    bool result = ResourceSystem::Instance()->Load(LoadParams->ResourceName, ResourceType::Mesh, nullptr, LoadParams->MeshRes);
+    bool result = ResourceSystem::Instance()->Load(LoadParams->ResourceName, eResource::Type::Mesh, nullptr, LoadParams->MeshRes);
 
     // ПРИМЕЧАНИЕ: Параметры нагрузки также используются здесь в качестве результирующих данных, теперь заполняется только поле mesh_resource.
     MMemory::CopyMem(ResultData, LoadParams, sizeof(MeshLoadParams));

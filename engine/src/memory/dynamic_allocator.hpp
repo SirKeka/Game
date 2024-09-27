@@ -53,6 +53,9 @@ public:
     /// @return Общий объем пространства, изначально доступного в байтах.
     u64 TotalSpace();
 
+    // Получает размер внутреннего заголовка выделения. Это действительно используется только для целей модульного тестирования.
+    u64 HeaderSize();
+
     operator bool() const;
 private:
     u64 GetFreeListRequirement(u64 TotalSize);

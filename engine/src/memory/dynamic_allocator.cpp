@@ -229,6 +229,12 @@ u64 DynamicAllocator::TotalSpace()
     return state->TotalSize;
 }
 
+u64 DynamicAllocator::HeaderSize()
+{
+    // Достаточно места для хранения заголовка и размера.
+    return 1 + SIZE_STORAGE;
+}
+
 DynamicAllocator::operator bool() const
 {
     if (state) { // TotalSize != 0 && (bool)state->list && FreelistBlock && MemoryBlock

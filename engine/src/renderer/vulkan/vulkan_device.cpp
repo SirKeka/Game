@@ -68,15 +68,23 @@ bool VulkanDevice::Create(VulkanAPI* VkAPI)
     MMemory::Free(AvailableExtensions, sizeof(VkExtensionProperties) * AvailableExtensionCount, Memory::Renderer);
 
     u32 ExtensionCount = PortabilityRequired ? 2 : 1;
-    const char** ExtensionNames = PortabilityRequired
+    /*const char** ExtensionNames = PortabilityRequired
                                        ? (const char* [2]){VK_KHR_SWAPCHAIN_EXTENSION_NAME, "VK_KHR_portability_subset"}
-                                       : (const char* [1]){VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+                                       : (const char* [1]){VK_KHR_SWAPCHAIN_EXTENSION_NAME};*/
+    DArray<const char*> ExtensionNames {2};
+    if (PortabilityRequired) {
+        ExtensionNames.PushBack(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+        ExtensionNames.PushBack("VK_KHR_portability_subset");
+    } else {
+        ExtensionNames.PushBack(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+    }
+    
     VkDeviceCreateInfo DeviceCreateInfo = {VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO};
     DeviceCreateInfo.queueCreateInfoCount = IndexCount;
     DeviceCreateInfo.pQueueCreateInfos = QueueCreateInfos;
     DeviceCreateInfo.pEnabledFeatures = &DeviceFeatures;
     DeviceCreateInfo.enabledExtensionCount = ExtensionCount;
-    DeviceCreateInfo.ppEnabledExtensionNames = ExtensionNames;
+    DeviceCreateInfo.ppEnabledExtensionNames = ExtensionNames.Data();
 
     // Устарел и игнорируется, так что ничего не передавайте.
     DeviceCreateInfo.enabledLayerCount = 0;

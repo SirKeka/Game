@@ -18,7 +18,7 @@ class CameraSystem
 private:
     u16 MaxCameraCount;             // ПРИМЕЧАНИЕ: Максимальное количество камер, которыми может управлять система.
     HashTable<u16> lookup;
-    void* HashtableBlock;
+    [[maybe_unused]]void* HashtableBlock;
     CameraLookup* cameras;
 
     Camera DefaultCamera;           // Незарегистрированная камера по умолчанию, которая всегда существует в качестве запасного варианта.

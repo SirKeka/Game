@@ -1,20 +1,62 @@
 #pragma once
 #include "math/vector4d_fwd.hpp"
+#include "core/mmemory.hpp"
+
+class Texture;
+
+enum class RenderTargetAttachmentType {
+    Colour = 0x1,
+    Depth = 0x2,
+    Stencil = 0x4
+};
+
+enum class RenderTargetAttachmentSource {
+    Default = 0x1,
+    View = 0x2
+};
+
+enum class RenderTargetAttachmentLoadOperation {
+    DontCare = 0x0,
+    Load = 0x1
+};
+
+enum RenderTargetAttachmentStoreOperation {
+    DontCare = 0x0,
+    Store = 0x1
+};
+
+struct RenderTargetAttachmentConfig {
+    RenderTargetAttachmentType type                    {};
+    RenderTargetAttachmentSource source                {};
+    RenderTargetAttachmentLoadOperation LoadOperation  {};
+    RenderTargetAttachmentStoreOperation StoreOperation{};
+    bool PresentAfter                             {false};
+    constexpr RenderTargetAttachmentConfig(RenderTargetAttachmentType type, RenderTargetAttachmentSource source, RenderTargetAttachmentLoadOperation LoadOperation, RenderTargetAttachmentStoreOperation StoreOperation, bool PresentAfter)
+    : type(type), source(source), LoadOperation(LoadOperation), StoreOperation(StoreOperation), PresentAfter(PresentAfter) {}
+};
+
+struct RenderTargetConfig {
+    u8 AttachmentCount                       ;
+    RenderTargetAttachmentConfig* attachments;
+    constexpr RenderTargetConfig(u8 AttachmentCount, RenderTargetAttachmentConfig* attachments) : AttachmentCount(AttachmentCount), attachments(attachments) {}
+};
+
+struct RenderTargetAttachment {
+    RenderTargetAttachmentType type                    {};
+    RenderTargetAttachmentSource source                {};
+    RenderTargetAttachmentLoadOperation LoadOperation  {};
+    RenderTargetAttachmentStoreOperation StoreOperation{};
+    bool PresentAfter                             {false};
+    Texture* texture                            {nullptr};
+};
 
 /// @brief Представляет цель рендеринга, которая используется для рендеринга в текстуру или набор текстур.
 struct RenderTarget {
-    bool SyncToWindowSize;              // Указывает, следует ли обновлять эту цель рендеринга при изменении размера окна.
-    u8 AttachmentCount;                 // Количество вложений.
-    class Texture** attachments;        // Массив вложений (указателей на текстуры).
-    void* InternalFramebuffer;          // Внутренний объект буфера кадра API рендеринга.
+    u8 AttachmentCount                        {};   // Количество вложений.
+    RenderTargetAttachment* attachments{nullptr};   // Массив вложений.
+    void* InternalFramebuffer          {nullptr};   // Внутренний объект буфера кадра API рендеринга.
 
-    constexpr RenderTarget() : SyncToWindowSize(), AttachmentCount(), attachments(nullptr), InternalFramebuffer(nullptr) {}
-    constexpr RenderTarget(bool SyncToWindowSize, u8 AttachmentCount) 
-    : SyncToWindowSize(SyncToWindowSize), AttachmentCount(AttachmentCount), attachments(nullptr), InternalFramebuffer(nullptr) {}
-    ~RenderTarget();
-
-    void* operator new[] (u64 size);
-    void operator delete[] (void* ptr, u64 size);
+    constexpr RenderTarget() : AttachmentCount(), attachments(nullptr), InternalFramebuffer(nullptr) {}
 };
 
 /// @brief Типы очистки, которые необходимо выполнить на этапе рендеринга. 
@@ -29,15 +71,17 @@ namespace RenderpassClearFlag {
 } // namespace RenderpassClear
 
 struct RenderpassConfig {
-    const char* name;       // Имя этого прохода рендеринга.
-    const char* PrevName;   // Имя предыдущего прохода рендеринга.
-    const char* NextName;   // Имя следующего прохода рендеринга.
-    FVec4 RenderArea;       // Текущая область рендеринга прохода рендеринга.
-    FVec4 ClearColour;      // Чистый цвет, используемый для этого прохода рендеринга.
+    const char* name{nullptr};    // Имя этого прохода рендеринга.
+    f32 depth              {};
+    u32 stencil            {};
+    FVec4 RenderArea       {};    // Текущая область рендеринга прохода рендеринга.
+    FVec4 ClearColour      {};    // Чистый цвет, используемый для этого прохода рендеринга.
+    u8 ClearFlags          {};    // Флаги очистки для этого прохода рендеринга.
+    u8 RenderTargetCount   {};    // Количество целей рендеринга, созданных в соответствии с конфигурацией цели рендеринга.
+    RenderTargetConfig target;    // Конфигурация цели рендеринга.
 
-    u8 ClearFlags;          // Флаги очистки для этого прохода рендеринга.
-    constexpr RenderpassConfig(const char* name, const char* PrevName, const char* NextName, FVec4 RenderArea, FVec4 ClearColour, u8 ClearFlags)
-    : name(name), PrevName(PrevName), NextName(NextName), RenderArea(RenderArea), ClearColour(ClearColour), ClearFlags(ClearFlags) {}
+    constexpr RenderpassConfig(const char* name, f32 depth, u32 stencil, FVec4 RenderArea, FVec4 ClearColour, u8 ClearFlags, u8 RenderTargetCount, RenderTargetConfig target)
+    : name(name), depth(depth), stencil(stencil), RenderArea(RenderArea), ClearColour(ClearColour), ClearFlags(ClearFlags), RenderTargetCount(RenderTargetCount), target(target) {}
 };
 
 /// @brief Представляет собой общий проход рендеринга.
@@ -55,9 +99,16 @@ struct Renderpass
     void* InternalData;     // Внутренние данные прохода рендеринга.
 
     constexpr Renderpass() : id(INVALID::U16ID), RenderArea(), ClearColour(), ClearFlags(), RenderTargetCount(), targets(nullptr), InternalData(nullptr) {}
-    constexpr Renderpass(FVec4 RenderArea, FVec4 ClearColour, u8 ClearFlags, u8 RenderTargetCount)
-    : id(INVALID::U16ID), RenderArea(RenderArea), ClearColour(ClearColour), ClearFlags(ClearFlags), RenderTargetCount(RenderTargetCount), targets(nullptr), InternalData(nullptr) {}
-
+    constexpr Renderpass(const RenderpassConfig& config)
+    : 
+    id(INVALID::U16ID), 
+    RenderArea(config.RenderArea), 
+    ClearColour(config.ClearColour), 
+    ClearFlags(config.ClearFlags), 
+    RenderTargetCount(config.RenderTargetCount), 
+    targets(MMemory::TAllocate<RenderTarget>(Memory::Array, RenderTargetCount)), 
+    InternalData(nullptr) {}
+    
     ~Renderpass();
 
     void* operator new(u64 size);

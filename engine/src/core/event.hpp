@@ -25,7 +25,6 @@ struct EventContext {
 };
 
 // Должен возвращать true, если обработано.
-//using PFN_OnEvent = std::function<bool(u16 code, void* sender, void* ListenerInst, EventContext data)>;
 typedef bool (*PFN_OnEvent)(u16 code, void* sender, void* ListenerInst, EventContext data);
 
 /// @brief Реализация класса инициатора для синхронных действий
@@ -77,7 +76,7 @@ public:
     /// @param listener Указатель на экземпляр прослушивателя. Может быть 0/NULL.
     /// @param OnEvent Указатель функции обратного вызова, который будет вызываться при запуске кода события.
     /// @return true, если событие успешно зарегистрировано; в противном случае false.
-    bool Register(u16 code, void* listener, PFN_OnEvent OnEvent);
+    static bool Register(u16 code, void* listener, PFN_OnEvent OnEvent);
 
     /// @brief Отмените регистрацию от прослушивания событий, отправляемых с помощью предоставленного кода.
     /// Если соответствующая регистрация не найдена, эта функция возвращает false.
@@ -85,7 +84,7 @@ public:
     /// @param listener Указатель на экземпляр прослушивателя. Может быть 0/NULL.
     /// @param OnEvent Указатель функции обратного вызова, регистрацию которого необходимо отменить.
     /// @return true, если событие успешно отменено; в противном случае false.
-    bool Unregister(u16 code, void* listener, PFN_OnEvent OnEvent);
+    static bool Unregister(u16 code, void* listener, PFN_OnEvent OnEvent);
 
     /// @brief Вызывает событие для слушателей данного кода. Если обработчик событий возвращает true, 
     /// событие считается обработанным и больше не передается прослушивателям.
@@ -93,7 +92,7 @@ public:
     /// @param sender Указатель на отправителя. Может быть 0/NULL.
     /// @param data Данные о событии.
     /// @return true, если обработано, иначе false.
-    bool Fire(u16 code, void* sender, EventContext context);
+    static bool Fire(u16 code, void* sender, EventContext context);
 
     static MINLINE Event* GetInstance() {
         /*if (!event) {
@@ -158,6 +157,15 @@ enum SystemEventCode {
     EVENT_CODE_DEBUG2 = 0x12,   // Специальное событие отладки. Контекст будет меняться со временем.
     EVENT_CODE_DEBUG3 = 0x13,   // Специальное событие отладки. Контекст будет меняться со временем.
     EVENT_CODE_DEBUG4 = 0x14,   // Специальное событие отладки. Контекст будет меняться со временем.
+
+    /// @brief Идентификатор наведенного объекта, если он есть.
+    /// Использование контекста:
+    /// i32 id = context.data.u32[0]; - будет НЕДЕЙСТВИТЕЛЬНЫМ ИДЕНТИФИКАТОРОМ, если ни на что не наведен курсор.
+    EVENT_CODE_OBJECT_HOVER_ID_CHANGED = 0x15,
+ 
+    /// @brief Событие, запускаемое бэкэндом рендеринга, чтобы указать, когда необходимо обновить 
+    /// любые цели рендеринга, связанные с ресурсами окна по умолчанию (т.е. изменить размер окна).
+    EVENT_CODE_DEFAULT_RENDERTARGET_REFRESH_REQUIRED = 0x16,
 
     MAX_EVENT_CODE = 0xFF       // Максимальный код события, который можно использовать внутри.
 };

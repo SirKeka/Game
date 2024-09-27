@@ -43,7 +43,7 @@ struct MeshGroupData {
         faces = mgd.faces;
         return *this;
     }
-    constexpr  MeshGroupData& operator=(MeshGroupData&& mgd) {
+    constexpr MeshGroupData& operator=(MeshGroupData&& mgd) {
         faces = std::move(mgd.faces);
         return *this;
     }
@@ -664,6 +664,8 @@ bool LoadMsmFile(FileHandle &MsmFile, DArray<GeometryConfig> &OutGeometries)
     // Количество геометрии
     u32 GeometryCount = 0;
     Filesystem::Read(MsmFile, sizeof(u32), &GeometryCount, BytesRead);
+
+    OutGeometries.Reserve(GeometryCount);
 
     // Каждая геометрия
     for (u32 i = 0; i < GeometryCount; ++i) {

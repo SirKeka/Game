@@ -44,6 +44,8 @@ struct ApplicationState {
     bool ModelsLoaded {false};
     Mesh UIMeshes[10]      {};
     Text TestText          {};
+    Text TestSysText       {};
+    u32 HoveredObjectID    {};    // Уникальный идентификатор объекта, на который в данный момент наведен курсор.
     // ЗАДАЧА: временно
 };
 

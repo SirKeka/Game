@@ -59,7 +59,8 @@ namespace TextureFlag {
     enum TextureFlag {
         HasTransparency = 0x1,  // Указывает, имеет ли текстура прозрачность.
         IsWriteable     = 0x2,  // Указывает, можно ли записать (отобразить) текстуру.
-        IsWrapped       = 0x4   // Указывает, была ли текстура создана с помощью обертки или традиционного создания.
+        IsWrapped       = 0x4,   // Указывает, была ли текстура создана с помощью обертки или традиционного создания.
+        Depth           = 0x8   // Указывает, что текстура является текстурой глубины.
     };
 }
 
@@ -126,13 +127,19 @@ public:
     }
     Texture& operator= (const Texture& t);
     Texture& operator= (Texture&& t);
+    void Create(const char* name, i32 width, i32 height, i32 ChannelCount, TextureFlagBits flags);
+    /*
     void Create(
+        u32 id, 
+        TextureType type, 
+        u32 width, 
+        u32 height, 
+        u8 ChannelCount, 
+        TextureFlagBits flags, 
         const char* name, 
-        i32 width, 
-        i32 height, 
-        i32 ChannelCount,  
-        TextureFlagBits flags);
-
+        VulkanImage* Data
+    );
+    */
     void Clear();
 
     explicit operator bool() const;

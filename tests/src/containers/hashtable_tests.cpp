@@ -238,7 +238,7 @@ u8 hashtable_try_call_non_ptr_on_ptr_table() {
 
 u8 hashtable_try_call_ptr_on_non_ptr_table() {
     HashTable<ht_test_struct> table;
-    u64 ElementSize = sizeof(ht_test_struct);
+    [[maybe_unused]]u64 ElementSize = sizeof(ht_test_struct);
     u64 ElementCount = 3;
     ht_test_struct memory[3];
 

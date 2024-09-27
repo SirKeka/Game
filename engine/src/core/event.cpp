@@ -31,16 +31,16 @@ bool Event::Register(u16 code, void *listener, PFN_OnEvent OnEvent)
         return false;
     }
 
-    u64 RegisteredCount = registered[code].events.Length();
+    u64 RegisteredCount = event->registered[code].events.Length();
     for(u64 i = 0; i < RegisteredCount; ++i) {
-        if(registered[code].events[i].listener == listener && registered[code].events[i].callback == OnEvent) {
+        if(event->registered[code].events[i].listener == listener && event->registered[code].events[i].callback == OnEvent) {
             MWARN("Событие уже зарегистрировано с кодом %hu и обратным вызовом %p", code, OnEvent);
             return false;
         }
     }
 
     // Если на этом этапе дубликат не найден. Продолжайте регистрацию.
-    registered[code].events.EmplaceBack(listener, OnEvent);
+    event->registered[code].events.EmplaceBack(listener, OnEvent);
 
     return true;
 }
@@ -52,18 +52,18 @@ bool Event::Unregister(u16 code, void *listener, PFN_OnEvent OnEvent)
     }
 
     // По коду ничего не прописано, загружаемся.
-    if(registered[code].events.Capacity() == 0) {
+    if(event->registered[code].events.Capacity() == 0) {
         // ЗАДАЧА: warn
         return false;
     }
 
-    u64 RegisteredCount = registered[code].events.Length();
+    u64 RegisteredCount = event->registered[code].events.Length();
     for(u64 i = 0; i < RegisteredCount; ++i) {
-        const RegisteredEvent& e = registered[code].events[i];
+        const auto& e = event->registered[code].events[i];
         if(e.listener == listener/* && e.callback == OnEvent*/) {
             // Нашёл, удали
             // RegisteredEvent PoppedEvent;
-            registered[code].events.PopAt(i);
+            event->registered[code].events.PopAt(i);
             return true;
         }
     }
@@ -79,13 +79,13 @@ bool Event::Fire(u16 code, void *sender, EventContext context)
     }
 
     // Если для кода ничего не зарегистрировано, выйдите из системы.
-    if(registered[code].events.Length() == 0) {
+    if(event->registered[code].events.Length() == 0) {
         return false;
     }
 
-    const u64& RegisteredCount = registered[code].events.Length();
+    const u64& RegisteredCount = event->registered[code].events.Length();
     for(u64 i = 0; i < RegisteredCount; ++i) {
-        const RegisteredEvent& e = registered[code].events[i];
+        const auto& e = event->registered[code].events[i];
         if(e.callback(code, sender, e.listener, context)) {
             // Сообщение обработано, не отправляйте его другим слушателям.
             return true;

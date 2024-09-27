@@ -5,38 +5,22 @@
 #include "vulkan_renderpass.hpp"
 #include "vulkan_command_buffer.hpp"
 
-bool VulkanPipeline::Create(
-    VulkanAPI* VkAPI,
-    VulkanRenderpass* renderpass,
-    u32 stride,
-    u32 AttributeCount,
-    VkVertexInputAttributeDescription* attributes,
-    u32 DescriptorSetLayoutCount,
-    VkDescriptorSetLayout* DescriptorSetLayouts,
-    u32 StageCount,
-    VkPipelineShaderStageCreateInfo* stages,
-    VkViewport viewport,
-    VkRect2D scissor,
-    FaceCullMode CullMode,
-    bool IsWireframe,
-    bool DepthTest,
-    u32 PushConstantRangeCount,
-    Range* PushConstantRanges)
+bool VulkanPipeline::Create(VulkanAPI* VkAPI, const Config& config)
 {
     // Состояние видового экрана
     VkPipelineViewportStateCreateInfo ViewportState = {VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO};
     ViewportState.viewportCount = 1;
-    ViewportState.pViewports = &viewport;
+    ViewportState.pViewports = &config.viewport;
     ViewportState.scissorCount = 1;
-    ViewportState.pScissors = &scissor;
+    ViewportState.pScissors = &config.scissor;
 
     // Растеризатор
     VkPipelineRasterizationStateCreateInfo RasterizerCreateInfo = {VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO};
     RasterizerCreateInfo.depthClampEnable = VK_FALSE;
     RasterizerCreateInfo.rasterizerDiscardEnable = VK_FALSE;
-    RasterizerCreateInfo.polygonMode = IsWireframe ? VK_POLYGON_MODE_LINE : VK_POLYGON_MODE_FILL;
+    RasterizerCreateInfo.polygonMode = config.IsWireframe ? VK_POLYGON_MODE_LINE : VK_POLYGON_MODE_FILL;
     RasterizerCreateInfo.lineWidth = 1.0f;
-    switch (CullMode) {
+    switch (config.CullMode) {
         case FaceCullMode::None:
             RasterizerCreateInfo.cullMode = VK_CULL_MODE_NONE;
             break;
@@ -68,9 +52,11 @@ bool VulkanPipeline::Create(
 
     // Проверка глубины и трафарета.
     VkPipelineDepthStencilStateCreateInfo DepthStencil = {VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO};
-    if (DepthTest) {
+    if (config.ShaderFlags & Shader::DepthTestFlag) {
         DepthStencil.depthTestEnable = VK_TRUE;
-        DepthStencil.depthWriteEnable = VK_TRUE;
+        if (config.ShaderFlags & Shader::DepthWriteFlag) {
+           DepthStencil.depthWriteEnable = VK_TRUE;
+        }
         DepthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
         DepthStencil.depthBoundsTestEnable = VK_FALSE;
         DepthStencil.stencilTestEnable = VK_FALSE;
@@ -109,15 +95,15 @@ bool VulkanPipeline::Create(
     // Вершинный ввод
     VkVertexInputBindingDescription BindingDescription;
     BindingDescription.binding = 0;  // Индекс привязки
-    BindingDescription.stride = stride;
+    BindingDescription.stride = config.stride;
     BindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;  // Переходите к следующему вводу данных для каждой вершины.
 
     // Атрибуты
     VkPipelineVertexInputStateCreateInfo VertexInputInfo = {VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO};
     VertexInputInfo.vertexBindingDescriptionCount = 1;
     VertexInputInfo.pVertexBindingDescriptions = &BindingDescription;
-    VertexInputInfo.vertexAttributeDescriptionCount = AttributeCount;
-    VertexInputInfo.pVertexAttributeDescriptions = attributes;
+    VertexInputInfo.vertexAttributeDescriptionCount = config.AttributeCount;
+    VertexInputInfo.pVertexAttributeDescriptions = config.attributes;
 
     // Входной узел
     VkPipelineInputAssemblyStateCreateInfo InputAssembly = {VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO};
@@ -128,21 +114,21 @@ bool VulkanPipeline::Create(
     VkPipelineLayoutCreateInfo PipelineLayoutCreateInfo = {VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
 
     // Push-константы
-    if (PushConstantRangeCount > 0) {
-        if (PushConstantRangeCount > 32) {
-            MERROR("VulkanPipeline::Create — не может иметь более 32 диапазонов push-констант. Пройдено количество: %i", PushConstantRangeCount);
+    if (config.PushConstantRangeCount > 0) {
+        if (config.PushConstantRangeCount > 32) {
+            MERROR("VulkanPipeline::Create — не может иметь более 32 диапазонов push-констант. Пройдено количество: %i", config.PushConstantRangeCount);
             return false;
         }
 
         // ПРИМЕЧАНИЕ: 32 — это максимальное количество диапазонов, которое мы можем когда-либо иметь, поскольку спецификация гарантирует только 128 байтов с 4-байтовым выравниванием.
         VkPushConstantRange ranges[32]{};
         // MMemory::ZeroMem(ranges, sizeof(VkPushConstantRange) * 32);
-        for (u32 i = 0; i < PushConstantRangeCount; ++i) {
+        for (u32 i = 0; i < config.PushConstantRangeCount; ++i) {
             ranges[i].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-            ranges[i].offset = PushConstantRanges[i].offset;
-            ranges[i].size = PushConstantRanges[i].size;
+            ranges[i].offset = config.PushConstantRanges[i].offset;
+            ranges[i].size = config.PushConstantRanges[i].size;
         }
-        PipelineLayoutCreateInfo.pushConstantRangeCount = PushConstantRangeCount;
+        PipelineLayoutCreateInfo.pushConstantRangeCount = config.PushConstantRangeCount;
         PipelineLayoutCreateInfo.pPushConstantRanges = ranges;
     } else {
         PipelineLayoutCreateInfo.pushConstantRangeCount = 0;
@@ -150,8 +136,8 @@ bool VulkanPipeline::Create(
     }
 
     // Макеты набора дескрипторов
-    PipelineLayoutCreateInfo.setLayoutCount = DescriptorSetLayoutCount;
-    PipelineLayoutCreateInfo.pSetLayouts = DescriptorSetLayouts;
+    PipelineLayoutCreateInfo.setLayoutCount = config.DescriptorSetLayoutCount;
+    PipelineLayoutCreateInfo.pSetLayouts = config.DescriptorSetLayouts;
 
     // Создание макета конвейера.
     VK_CHECK(vkCreatePipelineLayout(
@@ -162,22 +148,22 @@ bool VulkanPipeline::Create(
 
     // Создание конвейера
     VkGraphicsPipelineCreateInfo PipelineCreateInfo = {VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO};
-    PipelineCreateInfo.stageCount = StageCount;
-    PipelineCreateInfo.pStages = stages;
+    PipelineCreateInfo.stageCount = config.StageCount;
+    PipelineCreateInfo.pStages = config.stages;
     PipelineCreateInfo.pVertexInputState = &VertexInputInfo;
     PipelineCreateInfo.pInputAssemblyState = &InputAssembly;
 
     PipelineCreateInfo.pViewportState = &ViewportState;
     PipelineCreateInfo.pRasterizationState = &RasterizerCreateInfo;
     PipelineCreateInfo.pMultisampleState = &MultisamplingCreateInfo;
-    PipelineCreateInfo.pDepthStencilState = DepthTest ? &DepthStencil : nullptr;
+    PipelineCreateInfo.pDepthStencilState = (config.ShaderFlags & Shader::DepthTestFlag) ? &DepthStencil : nullptr;
     PipelineCreateInfo.pColorBlendState = &ColorBlendStateCreateInfo;
     PipelineCreateInfo.pDynamicState = &DynamicStateCreateInfo;
     PipelineCreateInfo.pTessellationState = nullptr;
 
     PipelineCreateInfo.layout = PipelineLayout;
 
-    PipelineCreateInfo.renderPass = renderpass->handle;
+    PipelineCreateInfo.renderPass = config.renderpass->handle;
     PipelineCreateInfo.subpass = 0;
     PipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
     PipelineCreateInfo.basePipelineIndex = -1;

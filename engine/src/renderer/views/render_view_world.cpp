@@ -3,6 +3,8 @@
 #include "systems/shader_system.hpp"
 #include "systems/camera_system.hpp"
 #include "systems/material_system.hpp"
+#include "systems/render_view_system.hpp"
+#include "systems/resource_system.hpp"
 #include "renderer/renderpass.hpp"
 #include "resources/mesh.hpp"
 #include "resources/geometry.hpp"
@@ -14,15 +16,8 @@ struct GeometryDistance {
     constexpr GeometryDistance(GeometryRenderData g, f32 distance) : g(g), distance(distance) {}
 };
 
-/// @brief Частная, рекурсивная, функция сортировки на месте для структур GeometryDistance.
-/// @param arr Массив структур GeometryDistance, которые нужно отсортировать.
-/// @param LowIndex Низкий индекс, с которого нужно начать сортировку (обычно 0)
-/// @param HighIndex Высокий индекс, которым нужно закончить (обычно длина массива - 1)
-/// @param ascending true для сортировки в порядке возрастания; в противном случае - по убыванию.
-static void QuickSort(GeometryDistance arr[], i32 LowIndex, i32 HighIndex, bool ascending);
-
 bool RenderViewWorld::OnEvent(u16 code, void* sender, void* ListenerInst, EventContext context) {
-    RenderViewWorld* self = (RenderViewWorld*)ListenerInst;
+    auto self = reinterpret_cast<RenderViewWorld*>(ListenerInst);
     if (!self) {
         return false;
     }
@@ -47,36 +42,21 @@ bool RenderViewWorld::OnEvent(u16 code, void* sender, void* ListenerInst, EventC
             }
             return true;
         }
+        case EVENT_CODE_DEFAULT_RENDERTARGET_REFRESH_REQUIRED: {
+            RenderViewSystem::RegenerateRenderTargets(self);
+            // Это должно быть использовано другими представлениями, поэтому считайте, что это _не_ обработано.
+            return false;
+        }
     }
 
     // Событие намеренно не обрабатывается, чтобы другие слушатели могли его получить.
     return false;
 }
 
-RenderViewWorld::RenderViewWorld()
+/*constexpr */RenderViewWorld::RenderViewWorld(u16 id, MString&& name, KnownType type, u8 RenderpassCount, const char* CustomShaderName, RenderpassConfig* PassConfig)
 :
-    RenderView(),
-    // Получите либо переопределение пользовательского шейдера, либо заданное значение по умолчанию.
-    ShaderID(ShaderSystem::GetID(CustomShaderName ? CustomShaderName : "Shader.Builtin.Material")),
-    fov(Math::DegToRad(45.F)),
-    NearClip(0.1F),
-    FarClip(1000.F),
-    ProjectionMatrix(Matrix4D::MakeFrustumProjection(fov, 1280 / 720.f, NearClip, FarClip)), // Поумолчанию
-    WorldCamera(CameraSystem::Instance()->GetDefault()),
-    AmbientColour(0.25F, 0.25F, 0.25F, 1.F),
-    RenderMode()
-{
-    // Следите за изменениями режима.
-    if (!Event::GetInstance()->Register(EVENT_CODE_SET_RENDER_MODE, this, OnEvent)) {
-        MERROR("Не удалось прослушать событие установки режима рендеринга, создание не удалось.");
-        return;
-    }
-}
-
-RenderViewWorld::RenderViewWorld(u16 id, MString& name, KnownType type, u8 RenderpassCount, const char* CustomShaderName)
-:
-RenderView(id, name, type, RenderpassCount, CustomShaderName),
-ShaderID(ShaderSystem::GetID(CustomShaderName ? CustomShaderName : "Shader.Builtin.Material")),
+RenderView(id, std::move(name), type, RenderpassCount, CustomShaderName, PassConfig),
+shader(),
 fov(Math::DegToRad(45.F)),
 NearClip(0.1F),
 FarClip(1000.F),
@@ -85,8 +65,30 @@ WorldCamera(CameraSystem::Instance()->GetDefault()),
 AmbientColour(0.25F, 0.25F, 0.25F, 1.F),
 RenderMode()
 {
+    const char* ShaderName = "Shader.Builtin.Material";
+    ShaderResource ConfigResource;
+    if (!ResourceSystem::Load(ShaderName, eResource::Shader, nullptr, ConfigResource)) {
+        MERROR("Не удалось загрузить встроенный шейдер пользовательского интерфейса.");
+        return;
+    }
+    auto& config = ConfigResource.data;
+    // ПРИМЕЧАНИЕ: Предположим, что это первый проход, так как это все, что есть в этом представлении.
+    if (!ShaderSystem::Create(passes[0], config)) {
+        MERROR("Не удалось загрузить встроенный шейдер пользовательского интерфейса.");
+        return;
+    }
+    // ResourceSystem::Unload(ConfigResource);
+
+    // Получите либо переопределение пользовательского шейдера, либо заданное значение по умолчанию.
+    shader = ShaderSystem::GetShader(CustomShaderName ? CustomShaderName : ShaderName);
+
     // Следите за изменениями режима.
     if (!Event::GetInstance()->Register(EVENT_CODE_SET_RENDER_MODE, this, OnEvent)) {
+        MERROR("Не удалось прослушать событие установки режима рендеринга, создание не удалось.");
+        return;
+    }
+
+    if (!Event::GetInstance()->Register(EVENT_CODE_DEFAULT_RENDERTARGET_REFRESH_REQUIRED, this, OnEvent)) {
         MERROR("Не удалось прослушать событие установки режима рендеринга, создание не удалось.");
         return;
     }
@@ -94,7 +96,8 @@ RenderMode()
 
 RenderViewWorld::~RenderViewWorld()
 {
-    Event::GetInstance()->Unregister(EVENT_CODE_SET_RENDER_MODE, this, OnEvent);
+    Event::Unregister(EVENT_CODE_DEFAULT_RENDERTARGET_REFRESH_REQUIRED, this, OnEvent);
+    Event::Unregister(EVENT_CODE_SET_RENDER_MODE, this, OnEvent);
 }
 
 void RenderViewWorld::Resize(u32 width, u32 height)
@@ -108,7 +111,7 @@ void RenderViewWorld::Resize(u32 width, u32 height)
         ProjectionMatrix = Matrix4D::MakeFrustumProjection(fov, aspect, NearClip, FarClip);
 
         for (u32 i = 0; i < RenderpassCount; ++i) {
-            passes[i]->RenderArea = FVec4(0, 0, width, height);
+            passes[i].RenderArea = FVec4(0, 0, width, height);
         }
     }
 }
@@ -135,13 +138,13 @@ bool RenderViewWorld::BuildPacket(void *data, Packet &OutPacket) const
     DArray<GeometryDistance> GeometryDistances;
     
     for (u32 i = 0; i < MeshData->MeshCount; ++i) {
-        Mesh* m = MeshData->meshes[i];
+        auto m = MeshData->meshes[i];
         const auto& model = m->transform.GetWorld();
         for (u32 j = 0; j < m->GeometryCount; ++j) {
-            //GeometryRenderData { model, m->geometries[j] };
+            // GeometryRenderData { model, m->geometries[j] };
             // ЗАДАЧА: Добавить что-то к материалу для проверки прозрачности.
             if ((m->geometries[j]->material->DiffuseMap.texture->flags & TextureFlag::HasTransparency) == 0) {
-                OutPacket.geometries.EmplaceBack(m->transform.GetWorld(), m->geometries[j]);
+                OutPacket.geometries.EmplaceBack(model, m->geometries[j]);
                 OutPacket.GeometryCount++;
             } else {
                 // Для сеток _с_ прозрачностью добавьте их в отдельный список, чтобы позже отсортировать по расстоянию.
@@ -172,8 +175,9 @@ bool RenderViewWorld::BuildPacket(void *data, Packet &OutPacket) const
 bool RenderViewWorld::Render(const Packet &packet, u64 FrameNumber, u64 RenderTargetIndex) const
 {
     auto MaterialSystemInst = MaterialSystem::Instance();
+    const auto& ShaderID = shader->id;
     for (u32 p = 0; p < RenderpassCount; ++p) {
-        auto& pass = passes[p];
+        auto pass = &passes[p];
         if (!Renderer::RenderpassBegin(pass, pass->targets[RenderTargetIndex])) {
             MERROR("RenderViewWorld::Render pass index %u не удалось запустить.", p);
             return false;
@@ -238,42 +242,4 @@ void *RenderViewWorld::operator new(u64 size)
 void RenderViewWorld::operator delete(void *ptr, u64 size)
 {
     MMemory::Free(ptr, size, Memory::Renderer);
-}
-
-static void Swap(GeometryDistance& a, GeometryDistance& b) {
-    auto temp = a;
-    a = b;
-    b = temp;
-}
-
-static i32 Partition(GeometryDistance arr[], i32 LowIndex, i32 HighIndex, bool ascending) {
-    auto pivot = arr[HighIndex];
-    i32 i = (LowIndex - 1);
-
-    for (i32 j = LowIndex; j <= HighIndex - 1; ++j) {
-        if (ascending) {
-            if (arr[j].distance < pivot.distance) {
-                ++i;
-                Swap(arr[i], arr[j]);
-            }
-        } else {
-            if (arr[j].distance > pivot.distance) {
-                ++i;
-                Swap(arr[i], arr[j]);
-            }
-        }
-    }
-    Swap(arr[i + 1], arr[HighIndex]);
-    return i + 1;
-}
-
-void QuickSort(GeometryDistance arr[], i32 LowIndex, i32 HighIndex, bool ascending)
-{
-    if (LowIndex < HighIndex) {
-        i32 partitionIndex = Partition(arr, LowIndex, HighIndex, ascending);
-
-        // Независимая сортировка элементов до и после индекса раздела.
-        QuickSort(arr, LowIndex, partitionIndex - 1, ascending);
-        QuickSort(arr, partitionIndex + 1, HighIndex, ascending);
-    }
 }

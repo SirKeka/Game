@@ -5,7 +5,7 @@
 class RenderViewWorld : public RenderView
 {
 private:
-    u32 ShaderID;
+    class Shader* shader;
     f32 fov;
     f32 NearClip;
     f32 FarClip;
@@ -14,8 +14,8 @@ private:
     FVec4 AmbientColour;
     u32 RenderMode;
 public:
-    RenderViewWorld();
-    RenderViewWorld(u16 id, MString& name, KnownType type, u8 RenderpassCount, const char* CustomShaderName);
+    // RenderViewWorld();
+    /*constexpr */RenderViewWorld(u16 id, MString&& name, KnownType type, u8 RenderpassCount, const char* CustomShaderName, RenderpassConfig* PassConfig);
     ~RenderViewWorld();
 
     void Resize(u32 width, u32 height) override;

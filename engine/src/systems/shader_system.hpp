@@ -13,12 +13,6 @@
 #include "resources/shader.hpp"
 #include "resources/texture.hpp"
 
-constexpr const char* BUILTIN_SHADER_NAME_SKYBOX = "Shader.Builtin.Skybox";
-constexpr const char* BUILTIN_SHADER_NAME_MATERIAL = "Shader.Builtin.Material";
-constexpr const char* BUILTIN_SHADER_NAME_UI = "Shader.Builtin.UI";
-
-//struct Shader;
-
 class ShaderSystem
 {
 private:
@@ -50,7 +44,7 @@ public:
     /// @brief Создает новый шейдер с заданной конфигурацией. 
     /// @param config конфигурация, которая будет использоваться при создании шейдера.
     /// @return true в случае успеха; в противном случае false.
-    static MAPI bool Create(const ShaderConfig& config);
+    static MAPI bool Create(struct Renderpass& pass, const Shader::Config& config);
     /// @brief Получает идентификатор шейдера по имени.
     /// @param ShaderName имя шейдера.
     /// @return Идентификатор шейдера, если он найден; в противном случае INVALID::ID.
@@ -113,8 +107,8 @@ private:
     /// @brief Добавляет образец текстуры в шейдер. Должно быть сделано после инициализации шейдера.
     /// @param config конфигурация униформы.
     /// @return True в случае успеха; в противном случае ложь.
-    static bool AddSampler(Shader* shader, const ShaderUniformConfig& config);
+    static bool AddSampler(Shader* shader, const Shader::UniformConfig& config);
     static u32 GetShaderID(const MString& ShaderName);
     static u32 NewShaderID();
-    bool UniformAdd(Shader* shader, const char* UniformName, u32 size, ShaderUniformType type, ShaderScope scope, u32 SetLocation, bool IsSampler);
+    bool UniformAdd(Shader* shader, const char* UniformName, u32 size, Shader::UniformType type, Shader::Scope scope, u32 SetLocation, bool IsSampler);
 };

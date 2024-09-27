@@ -3,26 +3,27 @@
 #include "containers/hashtable.hpp"
 
 struct SystemFontConfig {
-    MString name;
-    u16 DefaultSize;
-    MString ResourceName;
+    MString name        {};
+    u16 DefaultSize     {};
+    MString ResourceName{};
+    constexpr SystemFontConfig(MString&& name, u16 DefaultSize, MString&& ResourceName) : name(name), DefaultSize(DefaultSize), ResourceName(ResourceName) {}
 };
 
 struct BitmapFontConfig {
-    MString name;
-    u16 size;
-    MString ResourceName;
+    MString name        {};
+    u16 size            {};
+    MString ResourceName{};
     constexpr BitmapFontConfig(MString&& name, u16 size, MString&& ResourceName) : name(name), size(size), ResourceName(ResourceName) {}
 };
 
 struct FontSystemConfig {
-    u8 DefaultSystemFontCount;
-    SystemFontConfig* SystemFontConfigs;
-    u8 DefaultBitmapFontCount;
-    BitmapFontConfig* BitmapFontConfigs;
-    u8 MaxSystemFontCount;
-    u8 MaxBitmapFontCount;
-    bool AutoRelease;
+    u8 DefaultSystemFontCount                 {};
+    SystemFontConfig* SystemFontConfigs{nullptr};
+    u8 DefaultBitmapFontCount                 {};
+    BitmapFontConfig* BitmapFontConfigs{nullptr};
+    u8 MaxSystemFontCount                     {};
+    u8 MaxBitmapFontCount                     {};
+    bool AutoRelease                          {};
 
     constexpr FontSystemConfig() 
     : 
@@ -54,21 +55,28 @@ struct FontSystemConfig {
 };
 
 struct BitmapFontLookup;
+struct SystemFontLookup;
 
 class FontSystem
 {
 private:
-    FontSystemConfig config;
-    HashTable<u16> bitmapFontLookup;
-    BitmapFontLookup* BitmapFonts;
-    void* BitmapHashTableBlock;
+    FontSystemConfig config             {};
+    HashTable<u16> bitmapFontLookup     {};
+    HashTable<u16> systemFontLookup     {};
+    BitmapFontLookup* BitmapFonts{nullptr};
+    SystemFontLookup* SystemFonts{nullptr};
+    void* BitmapHashTableBlock   {nullptr};
+    void* SystemHashtableBlock   {nullptr};
 
     static FontSystem* state;
 
-    constexpr FontSystem(FontSystemConfig& config, BitmapFontLookup* BitmapFonts, u16* BitmapHashTableBlock)
+    constexpr FontSystem(FontSystemConfig& config, BitmapFontLookup* BitmapFonts, SystemFontLookup* SystemFonts, u16* BitmapHashTableBlock, u16* SystemHashtableBlock)
     : config(config), 
-    bitmapFontLookup(config.MaxBitmapFontCount,  false, BitmapHashTableBlock, true, INVALID::U16ID), // Создание хэш-таблицы для поиска шрифтов и заполнить недействительными индексами.
-    BitmapFonts(BitmapFonts), BitmapHashTableBlock(BitmapHashTableBlock) {}
+    bitmapFontLookup(config.MaxBitmapFontCount, false, BitmapHashTableBlock, true, INVALID::U16ID), // Создание хэш-таблицы для поиска шрифтов и заполнить недействительными индексами.
+    systemFontLookup(config.MaxBitmapFontCount, false, SystemHashtableBlock, true, INVALID::U16ID),
+    BitmapFonts(BitmapFonts), SystemFonts(SystemFonts),
+    BitmapHashTableBlock(BitmapHashTableBlock),
+    SystemHashtableBlock(SystemHashtableBlock) {}
 public:
     ~FontSystem() = default;
 
@@ -83,11 +91,11 @@ public:
     /// @param FontSize Размер шрифта. Игнорируется для растровых шрифтов.
     /// @param text Указатель на текстовый объект, для которого необходимо получить шрифт.
     /// @return True в случае успеха; в противном случае false.
-    static bool Acquire(const char* FontName, u16 FontSize, struct Text& text);
+    static bool Acquire(const char* FontName, u16 FontSize, class Text& text);
     /// @brief Освобождает ссылки на шрифт, хранящийеся в предоставленном Text.
     /// @param text Указатель на текстовый объект, из которого следует освободить шрифт.
     /// @return True в случае успеха; в противном случае false.
-    static bool Release(struct Text& text);
+    static bool Release(class Text& text);
 
     static bool VerifyAtlas(struct FontData* font, const char* text);
 };

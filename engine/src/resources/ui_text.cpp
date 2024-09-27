@@ -1,4 +1,5 @@
 #include "ui_text.hpp"
+#include "core/identifier.hpp"
 #include "renderer/renderer.hpp"
 #include "systems/font_system.hpp"
 #include "systems/shader_system.hpp"
@@ -13,13 +14,15 @@ Text::~Text()
         kfree(text->text, sizeof(char) * TextLength, MEMORY_TAG_STRING);
         text->text = 0;
     }*/
+    // Release the unique identifier.
+    Identifier::ReleaseID(UniqueID);
 
     // Уничтожить буферы.
     Renderer::RenderBufferDestroy(VertexBuffer);
     Renderer::RenderBufferDestroy(IndexBuffer);
 
     // Освободить ресурсы для карты текстуры шрифта.
-    auto UiShader = ShaderSystem::GetShader(BUILTIN_SHADER_NAME_UI);  // ЗАДАЧА: Текстовый шейдер.
+    auto UiShader = ShaderSystem::GetShader("Shader.Builtin.UI");  // ЗАДАЧА: Текстовый шейдер.
     if (!Renderer::ShaderReleaseInstanceResources(UiShader, InstanceID)) {
         MFATAL("Невозможно освободить ресурсы шейдера для текстурной карты шрифта.");
     }
@@ -55,7 +58,7 @@ bool Text::Create(TextType type, const char *FontName, u16 FontSize, const char 
     }
 
     // Получите ресурсы для карты текстуры шрифта.
-    auto UiShader = ShaderSystem::GetShader(BUILTIN_SHADER_NAME_UI);  // ЗАДАЧА: Текстовый шейдер.
+    auto UiShader = ShaderSystem::GetShader("Shader.Builtin.UI");  // ЗАДАЧА: Текстовый шейдер.
     TextureMap* FontMaps[1] = { &data->atlas };
     if (!Renderer::ShaderAcquireInstanceResources(UiShader, FontMaps, InstanceID)) {
         MFATAL("Не удалось получить ресурсы шейдера для карты текстуры шрифта.");
@@ -91,6 +94,9 @@ bool Text::Create(TextType type, const char *FontName, u16 FontSize, const char 
 
     // Сгенерируйте геометрию.
     RegenerateGeometry();
+
+    // Получите уникальный идентификатор для текстового объекта.
+    UniqueID = Identifier::AquireNewID(this);
 
     return true;
 }

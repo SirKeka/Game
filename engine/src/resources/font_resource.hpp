@@ -1,7 +1,6 @@
 #pragma once
 #include "resources/texture_map.hpp"
-
-#include <utility>
+#include "containers/darray.hpp"
 
 struct FontGlyph {
     i32 codepoint;
@@ -89,6 +88,35 @@ struct FontData {
         f.InternalDataSize = 0;
         f.InternalData = nullptr;
     }
+    FontData& operator= (FontData&& f) {
+        type = f.type;
+        size = f.size;
+        MString::Copy(face, f.face, 256);
+        LineHeight = f.LineHeight; 
+        baseline = f.baseline; 
+        AtlasSizeX = f.AtlasSizeX; 
+        AtlasSizeY = f.AtlasSizeY;
+        atlas = std::move(f.atlas);
+        GlyphCount = f.GlyphCount;
+        glyphs = f.glyphs;
+        KerningCount = f.KerningCount;
+        kernings = f.kernings;
+        TabXAdvance = f.TabXAdvance;
+        InternalDataSize = f.InternalDataSize;
+        InternalData = f.InternalData;
+
+        f.size = 0;
+        f.LineHeight = f.baseline = f.AtlasSizeX = f.AtlasSizeY = 0;
+        f.GlyphCount = 0;
+        f.glyphs = nullptr;
+        f.KerningCount = 0;
+        f.kernings = nullptr;
+        f.TabXAdvance = 0.F;
+        f.InternalDataSize = 0;
+        f.InternalData = nullptr;
+
+        return *this;
+    }
 };
 
 struct BitmapFontPage {
@@ -112,4 +140,14 @@ struct BitmapFontResourceData {
     void operator delete(void* ptr, u64 size) {
         MMemory::Free(ptr, size, Memory::Resource);
     }
+};
+
+struct SystemFontFace {
+    char name[256]{};
+};
+
+struct SystemFontResourceData {
+    DArray<SystemFontFace> fonts{};
+    u64 BinarySize              {};
+    void* FontBinary     {nullptr};
 };

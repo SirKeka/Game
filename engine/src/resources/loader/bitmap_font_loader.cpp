@@ -92,45 +92,35 @@ bool ResourceLoader::Load(const char *name, void *params, BitmapFontResource &Ou
     if (!result) {
         MERROR("Не удалось обработать файл растрового шрифта '%s'.", FullFilePath);
         //string_free(out_resource->full_path);
-        //OutResource.data = nullptr;
-        //OutResource.DataSize = 0;
         return false;
     }
-
-    //OutResource.data = new BitmapFontResourceData(std::move(ResourceData)); 
-    //OutResource.DataSize = sizeof(BitmapFontResourceData);
 
     return true;
 }
 
 void ResourceLoader::Unload(BitmapFontResource &resource)
 {
-    //if (resource.data) {
-        auto& data = resource.data;
-        if (data.data.GlyphCount && data.data.glyphs) {
-            MMemory::Free(data.data.glyphs, sizeof(FontGlyph) * data.data.GlyphCount, Memory::Array);
-            data.data.glyphs = nullptr;
-        }
+    auto& data = resource.data;
+    if (data.data.GlyphCount && data.data.glyphs) {
+        MMemory::Free(data.data.glyphs, sizeof(FontGlyph) * data.data.GlyphCount, Memory::Array);
+        data.data.glyphs = nullptr;
+    }
 
-        if (data.data.KerningCount && data.data.kernings) {
-            MMemory::Free(data.data.kernings, sizeof(FontKerning) * data.data.KerningCount, Memory::Array);
-            data.data.kernings = nullptr;
-        }
+    if (data.data.KerningCount && data.data.kernings) {
+        MMemory::Free(data.data.kernings, sizeof(FontKerning) * data.data.KerningCount, Memory::Array);
+        data.data.kernings = nullptr;
+    }
 
-        if (data.PageCount && data.pages) {
-            MMemory::Free(data.pages, sizeof(BitmapFontPage) * data.PageCount, Memory::Array);
-            data.pages = nullptr;
-        }
+    if (data.PageCount && data.pages) {
+        MMemory::Free(data.pages, sizeof(BitmapFontPage) * data.PageCount, Memory::Array);
+        data.pages = nullptr;
+    }
 
-        //delete (data);
-        //resource.data = nullptr;
-        //resource.DataSize = 0;
-        resource.LoaderID = INVALID::ID;
+    resource.LoaderID = INVALID::ID;
 
-        if (resource.FullPath) {
-            resource.FullPath.Clear();
-        }
-    //}
+    if (resource.FullPath) {
+        resource.FullPath.Clear();
+    }
 }
 
 #define VERIFY_LINE(LineType, LineNum, expected, actual)                                                                                               \
@@ -159,8 +149,8 @@ bool ImportFntFile(FileHandle &FntFile, const char *OutMbfFilename, BitmapFontRe
             continue;
         }
 
-        char first_char = LineBuf[0];
-        switch (first_char) {
+        char FirstChar = LineBuf[0];
+        switch (FirstChar) {
             case 'i': {
                 // 'info' line
 
@@ -301,7 +291,7 @@ bool ReadMbfFile(FileHandle &MbfFile, BitmapFontResourceData &data)
     CLOSE_IF_FAILED(Filesystem::Read(MbfFile, ReadSize, &header, BytesRead), MbfFile);
 
     // Проверьте содержимое заголовка.
-    if (header.MagicNumber != RESOURCE_MAGIC && header.ResourceType == static_cast<u8>(ResourceType::BitmapFont)) {
+    if (header.MagicNumber != RESOURCE_MAGIC && header.ResourceType == static_cast<u8>(eResource::Type::BitmapFont)) {
         MERROR("Заголовок файла MBF недействителен и не может быть прочитан.");
         Filesystem::Close(MbfFile);
         return false;
@@ -411,7 +401,7 @@ bool WriteMbfFile(const char *path, BitmapFontResourceData &data)
     // Сначала напишите заголовок ресурса.
     ResourceHeader header;
     header.MagicNumber = RESOURCE_MAGIC;
-    header.ResourceType = static_cast<u8>(ResourceType::BitmapFont);
+    header.ResourceType = static_cast<u8>(eResource::Type::BitmapFont);
     header.version = 0x01U;  // Версия 1 на данный момент.
     header.reserved = 0;
     WriteSize = sizeof(ResourceHeader);

@@ -31,10 +31,11 @@ constexpr Shader::Shader()
     ShaderData(nullptr) 
 {}
 
-Shader::Shader(u32 id, const ShaderConfig &config) 
+Shader::Shader(u32 id, const Config &config) 
     : 
     id(id), 
     name(config.name), 
+    flags(),
     RequiredUboAlignment(), 
     GlobalUboSize(), 
     GlobalUboStride(), 
@@ -52,7 +53,7 @@ Shader::Shader(u32 id, const ShaderConfig &config)
     UniformLookup(1024, false, reinterpret_cast<u16*>(HashtableBlock), true, INVALID::U16ID), 
     uniforms(config.UniformCount), 
     attributes(), 
-    state(ShaderState::NotCreated), 
+    state(State::NotCreated), 
     PushConstantRangeCount(), 
     PushConstantRanges(), 
     AttributeStride(), 
@@ -70,17 +71,17 @@ Shader::~Shader()
     Renderer::Unload(this);
 
     // Сразу же сделайте его непригодным для использования.
-    state = ShaderState::NotCreated;
+    state = State::NotCreated;
 }
 
-bool Shader::Create(u32 id, const ShaderConfig &config)
+bool Shader::Create(u32 id, const Config &config)
 {
     this->id = id;
     if (this->id == INVALID::ID) {
         MERROR("Невозможно найти свободный слот для создания нового шейдера. Прерывание.");
         return false;
     }
-    this->state = ShaderState::NotCreated;
+    this->state = State::NotCreated;
     this->name = config.name;
     this->PushConstantRangeCount = 0;
     MMemory::ZeroMem(this->PushConstantRanges, sizeof(Range) * 32);
@@ -111,30 +112,30 @@ bool Shader::Create(u32 id, const ShaderConfig &config)
     return true;
 }
 
-bool Shader::AddAttribute(const ShaderAttributeConfig &config)
+bool Shader::AddAttribute(const AttributeConfig &config)
 {
     u32 size = 0;
     switch (config.type) {
-        case EShaderAttribute::Int8:
-        case EShaderAttribute::UInt8:
+        case Shader::AttributeType::Int8:
+        case Shader::AttributeType::UInt8:
             size = 1;
             break;
-        case EShaderAttribute::Int16:
-        case EShaderAttribute::UInt16:
+        case Shader::AttributeType::Int16:
+        case Shader::AttributeType::UInt16:
             size = 2;
             break;
-        case EShaderAttribute::Float32:
-        case EShaderAttribute::Int32:
-        case EShaderAttribute::UInt32:
+        case Shader::AttributeType::Float32:
+        case Shader::AttributeType::Int32:
+        case Shader::AttributeType::UInt32:
             size = 4;
             break;
-        case EShaderAttribute::Float32_2:
+        case Shader::AttributeType::Float32_2:
             size = 8;
             break;
-        case EShaderAttribute::Float32_3:
+        case Shader::AttributeType::Float32_3:
             size = 12;
             break;
-        case EShaderAttribute::Float32_4:
+        case Shader::AttributeType::Float32_4:
             size = 16;
             break;
         default:
@@ -151,7 +152,7 @@ bool Shader::AddAttribute(const ShaderAttributeConfig &config)
     return true;
 }
 
-bool Shader::AddUniform(const ShaderUniformConfig &config)
+bool Shader::AddUniform(const UniformConfig &config)
 {
     if (!UniformAddStateValid() || !UniformNameValid(config.name)) {
         return false;
@@ -173,16 +174,16 @@ bool Shader::BindInstance(u32 InstanceID)
     return true;
 }
 
-bool Shader::UniformAdd(const MString &UniformName, u32 size, ShaderUniformType type, ShaderScope scope, u32 SetLocation, bool IsSampler)
+bool Shader::UniformAdd(const MString &UniformName, u32 size, Shader::UniformType type, Shader::Scope scope, u32 SetLocation, bool IsSampler)
 {
-    ShaderUniform entry{
+    Shader::Uniform entry{
         (u16)uniforms.Length(),                                 // Индекс сохраняется в хеш-таблице для поиска.
         IsSampler ? (u16)SetLocation : (u16)uniforms.Length(),  // Просто используйте переданное местоположение
         scope, 
         type}; 
-    bool IsGlobal = (scope == ShaderScope::Global);
+    bool IsGlobal = (scope == Shader::Scope::Global);
 
-    if (scope != ShaderScope::Local) {
+    if (scope != Shader::Scope::Local) {
         entry.SetIndex = (u32)scope;
         entry.offset = IsSampler ? 0 : IsGlobal ? GlobalUboSize
                                                   : UboSize;
@@ -210,9 +211,9 @@ bool Shader::UniformAdd(const MString &UniformName, u32 size, ShaderUniformType 
     uniforms.PushBack(entry);
 
     if (!IsSampler) {
-        if (entry.scope == ShaderScope::Global) {
+        if (entry.scope == Shader::Scope::Global) {
             GlobalUboSize += entry.size;
-        } else if (entry.scope == ShaderScope::Instance) {
+        } else if (entry.scope == Shader::Scope::Instance) {
             UboSize += entry.size;
         }
     }
@@ -236,7 +237,7 @@ bool Shader::UniformNameValid(const MString &UniformName)
 
 bool Shader::UniformAddStateValid()
 {
-    if (state != ShaderState::Uninitialized) {
+    if (state != Shader::State::Uninitialized) {
         MERROR("Униформы можно добавлять в шейдеры только перед инициализацией.");
         return false;
     }
@@ -263,7 +264,7 @@ void Shader::Destroy()
     this->~Shader();
 }
 
-void ShaderConfig::Clear()
+void Shader::Config::Clear()
 {
     // name.Clear();
     CullMode = FaceCullMode::None;

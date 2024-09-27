@@ -11,13 +11,14 @@ constexpr ResourceSystem::ResourceSystem(u32 MaxLoaderCount, const char* BasePat
 : MaxLoaderCount(MaxLoaderCount), AssetBasePath(BasePath), RegisteredLoaders(RegisteredLoaders) 
 {
     // ПРИМЕЧАНИЕ: Здесь можно автоматически зарегистрировать известные типы загрузчиков.
-    RegisterLoader(ResourceType::Text,       MString(),          "");
-    RegisterLoader(ResourceType::Binary,     MString(),          "");
-    RegisterLoader(ResourceType::Image,      MString(),  "textures");
-    RegisterLoader(ResourceType::Material,   MString(), "materials");
-    RegisterLoader(ResourceType::Shader,     MString(),   "shaders");
-    RegisterLoader(ResourceType::Mesh,       MString(),    "models");
-    RegisterLoader(ResourceType::BitmapFont, MString(),     "fonts");
+    RegisterLoader(eResource::Type::Text,       MString(),          "");
+    RegisterLoader(eResource::Type::Binary,     MString(),          "");
+    RegisterLoader(eResource::Type::Image,      MString(),  "textures");
+    RegisterLoader(eResource::Type::Material,   MString(), "materials");
+    RegisterLoader(eResource::Type::Shader,     MString(),   "shaders");
+    RegisterLoader(eResource::Type::Mesh,       MString(),    "models");
+    RegisterLoader(eResource::Type::BitmapFont, MString(),     "fonts");
+    RegisterLoader(eResource::Type::SystemFont, MString(),     "fonts");
 }
 
 bool ResourceSystem::Initialize(u32 MaxLoaderCount, const char* BasePath)
@@ -47,12 +48,12 @@ void ResourceSystem::Shutdown()
     }
 }
 
-bool ResourceSystem::RegisterLoader(ResourceType type, const MString &CustomType, const char *TypePath)
+bool ResourceSystem::RegisterLoader(eResource::Type type, const MString &CustomType, const char *TypePath)
 {
     // Убедитесь, что загрузчики данного типа еще не существуют.
     for (u32 i = 0; i < MaxLoaderCount; ++i) {
         auto& l = RegisteredLoaders[i];
-        if (l.type != ResourceType::Invalid) {
+        if (l.type != eResource::Type::Invalid) {
             if (l.type == type) {
                 MERROR("ResourceSystem::RegisterLoader — загрузчик типа %d уже существует и не будет зарегистрирован.", type);
                 return false;
@@ -63,7 +64,7 @@ bool ResourceSystem::RegisterLoader(ResourceType type, const MString &CustomType
         }
     }
     for (u32 i = 0; i < MaxLoaderCount; ++i) {
-        if (RegisteredLoaders[i].type == ResourceType::Invalid) {
+        if (RegisteredLoaders[i].type == eResource::Type::Invalid) {
             RegisteredLoaders[i].Create(type, CustomType, TypePath);
             RegisteredLoaders[i].id = i;
             MTRACE("Загрузчик зарегистрирован.");
@@ -81,7 +82,7 @@ bool ResourceSystem::Load(const char *name, const char *CustomType, void* params
         // Выбор загрузчика.
         for (u32 i = 0; i < MaxLoaderCount; ++i) {
             auto& l = RegisteredLoaders[i];
-            if (l.id != INVALID::ID && l.type == ResourceType::Custom && l.CustomType.Comparei(CustomType)) {
+            if (l.id != INVALID::ID && l.type == eResource::Type::Custom && l.CustomType.Comparei(CustomType)) {
                 return l.Load(name, params, OutResource);
             }
         }
@@ -94,8 +95,8 @@ bool ResourceSystem::Load(const char *name, const char *CustomType, void* params
 
 const char *ResourceSystem::BasePath()
 {
-    if (AssetBasePath) {
-        return AssetBasePath;
+    if (state->AssetBasePath) {
+        return state->AssetBasePath;
     }
 
     MERROR("ResourceSystem::BasePath вызывается перед инициализацией и возвращает пустую строку.");

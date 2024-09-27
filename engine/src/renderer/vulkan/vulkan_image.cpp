@@ -112,7 +112,7 @@ void VulkanImage::ViewCreate(VulkanAPI *VkAPI, TextureType type, VkFormat format
 void VulkanImage::TransitionLayout(
     VulkanAPI *VkAPI, 
     TextureType type,
-    VulkanCommandBuffer *CommandBuffer, 
+    VulkanCommandBuffer &CommandBuffer, 
     VkFormat format, 
     VkImageLayout OldLayout, 
     VkImageLayout NewLayout)
@@ -152,13 +152,32 @@ void VulkanImage::TransitionLayout(
 
         // Стадия фрагмента.
         DestStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    } else if (OldLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL && NewLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
+        // Переход от макета источника передачи к макету только для чтения шейдера.
+        barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+        barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+        // От этапа копирования к...
+        SourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+
+        // Этап фрагмента.
+        DestStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    } else if (OldLayout == VK_IMAGE_LAYOUT_UNDEFINED && NewLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) {
+        barrier.srcAccessMask = 0;
+        barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+
+        // Неважно, на какой стадии находится конвейер в начале.
+        SourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+
+        // Используется для копирования
+        DestStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
     } else {
         MFATAL("неподдерживаемый переход макета!");
         return;
     }
 
     vkCmdPipelineBarrier(
-        CommandBuffer->handle,
+        CommandBuffer.handle,
         SourceStage, DestStage,
         0,
         0, 0,
@@ -193,6 +212,58 @@ void VulkanImage::CopyFromBuffer(
         buffer,
         this->handle,
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        1,
+        &region);
+}
+
+void VulkanImage::CopyToBuffer(VulkanAPI *VkAPI, TextureType type, VkBuffer buffer, VulkanCommandBuffer &CommandBuffer)
+{
+    VkBufferImageCopy region = {};
+    region.bufferOffset = 0;
+    region.bufferRowLength = 0;
+    region.bufferImageHeight = 0;
+
+    region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    region.imageSubresource.mipLevel = 0;
+    region.imageSubresource.baseArrayLayer = 0;
+    region.imageSubresource.layerCount = type == TextureType::Cube ? 6 : 1;
+
+    region.imageExtent.width = width;
+    region.imageExtent.height = height;
+    region.imageExtent.depth = 1;
+
+    vkCmdCopyImageToBuffer(
+        CommandBuffer.handle,
+        handle,
+        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        buffer,
+        1,
+        &region);
+}
+
+void VulkanImage::CopyPixelToBuffer(VulkanAPI *VkAPI, TextureType type, VkBuffer buffer, u32 x, u32 y, VulkanCommandBuffer &CommandBuffer)
+{
+    VkBufferImageCopy region = {};
+    region.bufferOffset = 0;
+    region.bufferRowLength = 0;
+    region.bufferImageHeight = 0;
+
+    region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    region.imageSubresource.mipLevel = 0;
+    region.imageSubresource.baseArrayLayer = 0;
+    region.imageSubresource.layerCount = type == TextureType::Cube ? 6 : 1;
+
+    region.imageOffset.x = x;
+    region.imageOffset.y = y;
+    region.imageExtent.width = 1;
+    region.imageExtent.height = 1;
+    region.imageExtent.depth = 1;
+
+    vkCmdCopyImageToBuffer(
+        CommandBuffer.handle,
+        handle,
+        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        buffer,
         1,
         &region);
 }

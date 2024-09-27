@@ -82,56 +82,57 @@ void ShaderSystem::Shutdown()
     }
 }
 
-bool ShaderSystem::Create(const ShaderConfig &config)
+bool ShaderSystem::Create(Renderpass& pass, const Shader::Config &config)
 {
     u32 id = NewShaderID();
-    Shader* OutShader = &state->shaders[id];
-    new(OutShader) Shader(id, config);
-
-    Renderpass* renderpass = Renderer::GetRenderpass(config.RenderpassName);
+    Shader* NewShader = &state->shaders[id];
+    new(NewShader) Shader(id, config);
     
-    if (!renderpass) {
-        MERROR("Не удалось найти рендерпасс '%s'", config.RenderpassName.c_str());
-        return false;
+    // Флаги процесса.
+    if (config.DepthTest) {
+        NewShader->flags |= Shader::DepthTestFlag;
+    }
+    if (config.DepthWrite) {
+        NewShader->flags |= Shader::DepthWriteFlag;
     }
     
-    if (!Renderer::Load(OutShader, config, renderpass, config.StageCount, config.StageFilenames, config.stages.Data())) {
+    if (!Renderer::Load(NewShader, config, &pass, config.StageCount, config.StageFilenames, config.stages.Data())) {
         MERROR("Ошибка создания шейдера.");
         return false;
     }
 
     // Готов к инициализации.
-    OutShader->state = ShaderState::Uninitialized;
+    NewShader->state = Shader::State::Uninitialized;
 
     // Атрибуты процесса
     for (u32 i = 0; i < config.AttributeCount; ++i) {
-        OutShader->AddAttribute(config.attributes[i]);
+        NewShader->AddAttribute(config.attributes[i]);
     }
 
     // Технологическая униформа i = 1
     for (u32 i = 0; i < config.UniformCount; ++i) {
-        if (config.uniforms[i].type == ShaderUniformType::Sampler) {
-            AddSampler(OutShader, config.uniforms[i]);
+        if (config.uniforms[i].type == Shader::UniformType::Sampler) {
+            AddSampler(NewShader, config.uniforms[i]);
         } else {
-            if (OutShader->uniforms.Length() + 1 > state->MaxUniformCount) {
+            if (NewShader->uniforms.Length() + 1 > state->MaxUniformCount) {
                 MERROR("Шейдер может принимать только общее максимальное количество форм и сэмплеров %d в глобальной, экземплярной и локальной областях.", state->MaxUniformCount);
             } else {
-                OutShader->AddUniform(config.uniforms[i]);
+                NewShader->AddUniform(config.uniforms[i]);
             }
         }
     }
 
     // Инициализируйте шейдер.
-    if (!Renderer::ShaderInitialize(OutShader)) {
+    if (!Renderer::ShaderInitialize(NewShader)) {
         MERROR("ShaderSystem::Create: не удалось инициализировать шейдер '%s'.", config.name.c_str());
         // ПРИМЕЧАНИЕ: Initialize автоматически уничтожает шейдер в случае сбоя.
         return false;
     }
 
     // На этом этапе создание прошло успешно, поэтому сохраните идентификатор шейдера в хеш-таблице, чтобы позже можно было найти его по имени.
-    if (!state->lookup.Set(config.name.c_str(), OutShader->id)) {
+    if (!state->lookup.Set(config.name.c_str(), NewShader->id)) {
         // Черт возьми, мы зашли так далеко... Что ж, удалите шейдер и перезапустите.
-        Renderer::Unload(OutShader);
+        Renderer::Unload(NewShader);
         return false;
     }
 
@@ -209,9 +210,9 @@ bool ShaderSystem::UniformSet(u16 index, const void *value)
     auto& shader = state->shaders[state->CurrentShaderID];
     auto& uniform = shader.uniforms[index];
     if (shader.BoundScope != uniform.scope) {
-        if (uniform.scope == ShaderScope::Global) {
+        if (uniform.scope == Shader::Scope::Global) {
             shader.BindGlobals();
-        } else if (uniform.scope == ShaderScope::Instance) {
+        } else if (uniform.scope == Shader::Scope::Instance) {
             shader.BindInstance(shader.BoundInstanceID);
         } else {
             // ПРИМЕЧАНИЕ: Больше здесь делать нечего, просто установите униформу.
@@ -248,10 +249,10 @@ bool ShaderSystem::BindInstance(u32 InstanceID)
     return s->BindInstance(InstanceID);
 }
 
-bool ShaderSystem::AddSampler(Shader *shader, const ShaderUniformConfig &config)
+bool ShaderSystem::AddSampler(Shader *shader, const Shader::UniformConfig &config)
 {
     // Образцы нельзя использовать для push-констант.
-    if (config.scope == ShaderScope::Local) {
+    if (config.scope == Shader::Scope::Local) {
         MERROR("Shader::AddSampler невозможно добавить сэмплер в локальной области.");
         return false;
     }
@@ -263,7 +264,7 @@ bool ShaderSystem::AddSampler(Shader *shader, const ShaderUniformConfig &config)
 
     // Если глобальный, вставьте в глобальный список.
     u32 location = 0;
-    if (config.scope == ShaderScope::Global) {
+    if (config.scope == Shader::Scope::Global) {
         u32 GlobalTextureCount = shader->GlobalTextureMaps.Length();
         if (GlobalTextureCount + 1 > state->MaxGlobalTextures) {
             MERROR("Глобальное количество текстур шейдера %i превышает максимальное значение %i", GlobalTextureCount, state->MaxGlobalTextures);
@@ -273,7 +274,7 @@ bool ShaderSystem::AddSampler(Shader *shader, const ShaderUniformConfig &config)
         // ПРИМЕЧАНИЕ: создание карты текстур по умолчанию, которая будет использоваться здесь. Всегда можно обновить позже.
         // Выделите указатель, назначьте текстуру и вставьте ее в глобальные карты текстур.
         // ПРИМЕЧАНИЕ: Это распределение выполняется только для глобальных карт текстур.
-        TextureMap* DefaultMap = new TextureMap();
+        auto DefaultMap = new TextureMap();
         if (!Renderer::TextureMapAcquireResources(DefaultMap)) {
             MERROR("Не удалось получить ресурсы для глобальной карты текстур во время создания шейдера.");
             return false;
@@ -323,7 +324,7 @@ u32 ShaderSystem::NewShaderID()
     return INVALID::ID;
 }
 
-bool ShaderSystem::UniformAdd(Shader* shader, const char *UniformName, u32 size, ShaderUniformType type, ShaderScope scope, u32 SetLocation, bool IsSampler)
+bool ShaderSystem::UniformAdd(Shader* shader, const char *UniformName, u32 size, Shader::UniformType type, Shader::Scope scope, u32 SetLocation, bool IsSampler)
 {
     if (shader->uniforms.Length() + 1 > state->MaxUniformCount) {
         MERROR("Шейдер может принимать только общее максимальное количество форм и сэмплеров %d в глобальной, экземплярной и локальной областях.", state->MaxUniformCount);
@@ -331,9 +332,3 @@ bool ShaderSystem::UniformAdd(Shader* shader, const char *UniformName, u32 size,
     }
     return shader->UniformAdd(UniformName, size, type, scope, SetLocation, IsSampler);
 }
-/*
-void *ShaderSystem::operator new(u64 size)
-{
-    return LinearAllocator::Instance().Allocate(size);
-}
-*/

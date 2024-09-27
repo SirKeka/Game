@@ -74,7 +74,7 @@ struct VulkanShaderInstanceState {
     u32 id;                                             // Идентификатор экземпляра. INVALID::ID, если не используется.
     u64 offset;                                         // Смещение в байтах в универсальном буфере экземпляра. 
     VulkanShaderDescriptorSetState DescriptorSetState;  // Состояние набора дескрипторов. 
-    class TextureMap** InstanceTextureMaps;             // Указатели экземпляров текстурных карт, которые используются во время рендеринга. Они устанавливаются вызовами SetSampler.
+    struct TextureMap** InstanceTextureMaps;             // Указатели экземпляров текстурных карт, которые используются во время рендеринга. Они устанавливаются вызовами SetSampler.
     constexpr VulkanShaderInstanceState() : id(INVALID::ID), offset(), DescriptorSetState(), InstanceTextureMaps(nullptr) {}
 };
  

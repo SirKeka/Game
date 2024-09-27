@@ -78,12 +78,12 @@ Material *MaterialSystem::Acquire(const char *name)
     auto ResourceSystemInst = ResourceSystem::Instance();
     // Загрузить конфигурацию материала из ресурса.
     MaterialResource MaterialResource;
-    if (!ResourceSystemInst->Load(name, ResourceType::Material, nullptr, MaterialResource)) {
+    if (!ResourceSystemInst->Load(name, eResource::Type::Material, nullptr, MaterialResource)) {
         MERROR("Не удалось загрузить ресурс материала, возвращается значение nullptr.");
         return nullptr;
     }
     
-    Material* m;
+    Material* m = nullptr;
     if (MaterialResource.data) {
         m = Acquire(MaterialResource.data);
     }
@@ -139,7 +139,7 @@ Material *MaterialSystem::Acquire(const MaterialConfig &config)
             // Получите единые индексы.
             Shader* s = ShaderSystem::GetShader(m->ShaderID);
             // Сохраните местоположения известных типов для быстрого поиска.
-            if (MaterialShaderID == INVALID::ID && config.ShaderName == BUILTIN_SHADER_NAME_MATERIAL) {
+            if (MaterialShaderID == INVALID::ID && config.ShaderName == "Shader.Builtin.Material") {
                 MaterialShaderID                  = s->id;
                 MaterialLocations.projection      = ShaderSystem::UniformIndex(s,       "projection");
                 MaterialLocations.view            = ShaderSystem::UniformIndex(s,             "view");
@@ -152,7 +152,7 @@ Material *MaterialSystem::Acquire(const MaterialConfig &config)
                 MaterialLocations.specular        = ShaderSystem::UniformIndex(s,         "specular");
                 MaterialLocations.model           = ShaderSystem::UniformIndex(s,            "model");
                 MaterialLocations.RenderMode      = ShaderSystem::UniformIndex(s,             "mode");
-            } else if (UI_ShaderID == INVALID::ID && config.ShaderName == BUILTIN_SHADER_NAME_UI) {
+            } else if (UI_ShaderID == INVALID::ID && config.ShaderName == "Shader.Builtin.UI") {
                 UI_ShaderID = s->id;
                 UI_Locations.projection           = ShaderSystem::UniformIndex(s,      "projection");
                 UI_Locations.view                 = ShaderSystem::UniformIndex(s,            "view");
@@ -307,7 +307,7 @@ bool MaterialSystem::ApplyLocal(Material *material, const Matrix4D &model)
 bool MaterialSystem::CreateDefaultMaterial()
 { 
     TextureMap* maps[3] = {&DefaultMaterial.DiffuseMap, &DefaultMaterial.SpecularMap, &DefaultMaterial.NormalMap};
-    Shader* s = ShaderSystem::GetShader(BUILTIN_SHADER_NAME_MATERIAL);
+    Shader* s = ShaderSystem::GetShader("Shader.Builtin.Material");
     if (!Renderer::ShaderAcquireInstanceResources(s, maps, DefaultMaterial.InternalId)) {
         MFATAL("Не удалось получить ресурсы средства рендеринга для материала по умолчанию. Приложение не может быть продолжено.");
         return false;

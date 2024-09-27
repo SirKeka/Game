@@ -27,7 +27,7 @@ public:
     /// @param CustomType пользовательский тип ресурса.
     /// @param TypePath 
     /// @return 
-    MAPI bool RegisterLoader(ResourceType type, const MString& CustomType, const char* TypePath);
+    MAPI bool RegisterLoader(eResource::Type type, const MString& CustomType, const char* TypePath);
     /// @brief Загружает ресурс с указанным именем.
     /// @param name имя ресурса для загрузки.
     /// @param type тип ресурса для загрузки.
@@ -35,11 +35,11 @@ public:
     /// @param OutResource ссылка на недавно загруженный ресурс.
     /// @return true в случае успеха; в противном случае false.
     template<typename T>
-    MAPI bool Load(const char* name, ResourceType type, void* params, T& OutResource) {
-        if (type != ResourceType::Custom) {
+    MAPI static bool Load(const char* name, eResource::Type type, void* params, T& OutResource) {
+        if (type != eResource::Type::Custom) {
             // Выбор загрузчика.
-            for (u32 i = 0; i < MaxLoaderCount; ++i) {
-                auto& l = RegisteredLoaders[i];
+            for (u32 i = 0; i < state->MaxLoaderCount; ++i) {
+                auto& l = state->RegisteredLoaders[i];
                 if (l.id != INVALID::ID && l.type == type) {
                     return l.Load(name, params, OutResource);
                 }
@@ -71,7 +71,7 @@ public:
             }
         }
     }
-    MAPI const char* BasePath();
+    MAPI static const char* BasePath();
 
     static MINLINE ResourceSystem* Instance() { return state; }
 /*private:

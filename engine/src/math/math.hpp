@@ -72,4 +72,35 @@ MINLINE f32 RadToDeg(f32 radians)
     return radians * M_RAD2DEG_MULTIPLIER;
 }
 
+/// @brief Преобразует значение из «старого» диапазона в «новый» диапазон.
+/// @param value Значение для преобразования.
+/// @param OldMin Минимальное значение из старого диапазона.
+/// @param OldMax Максимальное значение из старого диапазона.
+/// @param NewMin Минимальное значение из нового диапазона.
+/// @param NewMax Максимальное значение из нового диапазона.
+/// @return Преобразованное значение.
+MINLINE f32 RangeConvertF32(f32 value, f32 OldMin, f32 OldMax, f32 NewMin, f32 NewMax) {
+    return (((value - OldMin) * (NewMax - NewMin)) / (OldMax - OldMin)) + NewMin;
+}
+
+/// @brief Преобразует значения rgb int [0-255] в одно 32-битное целое число.
+/// @param r Значение красного [0-255].
+/// @param g Значение зеленого [0-255].
+/// @param b Значение синего [0-255].
+/// @param OutU32 Указатель для хранения полученного целого числа.
+MINLINE void RgbuToU32(u32 r, u32 g, u32 b, u32& OutU32) {
+    OutU32 = (((r & 0x0FF) << 16) | ((g & 0x0FF) << 8) | (b & 0x0FF));
+}
+
+/// @brief Преобразует заданное 32-битное целое число в значения RGB [0-255].
+/// @param rgbu Целое число, содержащее значение RGB.
+/// @param OutR Указатель для хранения значения красного.
+/// @param OutG Указатель для хранения значения зеленого.
+/// @param OutB Указатель для хранения значения синего.
+MINLINE void u32ToRGB(u32 rgbu, u32& OutR, u32& OutG, u32& OutB) {
+    OutR = (rgbu >> 16) & 0x0FF;
+    OutG = (rgbu >> 8) & 0x0FF;
+    OutB = (rgbu)&0x0FF;
+}
+
 } // namespace M::Math

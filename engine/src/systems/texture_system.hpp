@@ -90,9 +90,9 @@ public:
     /// @param IsWriteable указатель на внутренние данные, которые будут установлены в текстуре.
     /// @param RegisterTexture указывает, должна ли текстура быть зарегистрирована в системе.
     /// @param InternalData указатель на обернутую текстуру.
-    /// @return Указатель на текстуру.
+    /// @param OutTexture Необязательный указатель для хранения обернутой текстуры. Если null, вместо этого выделяется и возвращается новый указатель.
     template<typename T>
-    Texture* WrapInternal(const char* name, u32 width, u32 height, u8 ChannelCount, bool HasTransparency, bool IsWriteable, bool RegisterTexture, T* InternalData) {
+    void WrapInternal(const char* name, u32 width, u32 height, u8 ChannelCount, bool HasTransparency, bool IsWriteable, bool RegisterTexture, T* InternalData, Texture* OutTexture) {
         u32 id = INVALID::ID;
         Texture* texture = nullptr;
         if (RegisterTexture) {
@@ -100,11 +100,15 @@ public:
             // что их ресурсы создаются и управляются где-то во внутренних компонентах средства рендеринга.
             if (!ProcessTextureReference(name, TextureType::_2D, 1, false, true, id)) {
                 MERROR("ТекстурнойСистеме::WrapInternal не удалось получить новый идентификатор текстуры.");
-                return nullptr;
+                return;
             }
             texture = &state->RegisteredTextures[id];
         } else {
-            texture = new Texture();
+            if (OutTexture) {
+                texture = OutTexture;
+            } else {
+                texture = new Texture();
+            }
             // MTRACE("TextureSystem::WrapInternal создала текстуру «%s», но не зарегистрировалась, что привело к выделению. Освобождение этой памяти зависит от вызывающего абонента.", name);
         } 
         TextureFlagBits flag = 0;
@@ -112,7 +116,6 @@ public:
         flag |= IsWriteable ? TextureFlag::IsWriteable : 0;
         flag |= TextureFlag::IsWrapped;
         *texture = Texture(id, TextureType::_2D, width, height, ChannelCount, flag, name, InternalData);
-        return texture;
     }
     /// @brief Устанавливает внутренние данные текстуры. Полезно, например, для замены внутренних данных внутри средства рендеринга для обернутых текстур.
     /// @param texture указатель на текстуру, которую необходимо обновить.
@@ -149,7 +152,7 @@ public:
 private:
     bool CreateDefaultTexture();
     void DestroyDefaultTexture();
-    bool LoadTexture(const char* TextureName, Texture* t);
+    bool LoadTexture(const char* TextureName, Texture& t);
     bool ProcessTextureReference(const char *name, TextureType type, i8 ReferenceDiff, bool AutoRelease, bool SkipLoad, u32 &OutTextureId);
 };
 

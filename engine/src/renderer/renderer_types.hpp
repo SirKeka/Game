@@ -24,40 +24,41 @@ enum class ERendererType
 /*размер данной струтуры для карт Nvidia должен быть равен 256 байт*/
 struct VulkanMaterialShaderGlobalUniformObject
 {
-    Matrix4D projection;        // 64 байта
-    Matrix4D view;              // 64 байта
-    Matrix4D mReserved0;        // 64 байта, зарезервированные для будущего использования
-    Matrix4D mReserved1;        // 64 байта, зарезервированные для будущего использования
+    Matrix4D projection{};  // 64 байта
+    Matrix4D view      {};  // 64 байта
+    Matrix4D mReserved0{};  // 64 байта, зарезервированные для будущего использования
+    Matrix4D mReserved1{};  // 64 байта, зарезервированные для будущего использования
 };
 
 struct VulkanMaterialShaderInstanceUniformObject 
 {
-    FVec4 DiffuseColor; // 16 байт
-    FVec4 vReserved0;   // 16 байт, зарезервировано для будущего использования.
-    FVec4 vReserved1;   // 16 байт, зарезервировано для будущего использования.
-    FVec4 vReserved2;   // 16 байт, зарезервировано для будущего использования.
+    FVec4 DiffuseColor{};   // 16 байт
+    FVec4 vReserved0  {};   // 16 байт, зарезервировано для будущего использования.
+    FVec4 vReserved1  {};   // 16 байт, зарезервировано для будущего использования.
+    FVec4 vReserved2  {};   // 16 байт, зарезервировано для будущего использования.
 };
 
 /// @brief 
 struct VulkanUI_ShaderGlobalUniformObject {
-    Matrix4D projection;        // 64 bytes
-    Matrix4D view;              // 64 bytes
-    Matrix4D mReserved0;        // 64 bytes, зарезервировано для будущего использования.
-    Matrix4D mReserved1;        // 64 bytes, зарезервировано для будущего использования.
+    Matrix4D projection{};  // 64 bytes
+    Matrix4D view      {};  // 64 bytes
+    Matrix4D mReserved0{};  // 64 bytes, зарезервировано для будущего использования.
+    Matrix4D mReserved1{};  // 64 bytes, зарезервировано для будущего использования.
 };
 
 /// @brief Объект универсального буфера экземпляра материала пользовательского интерфейса, специфичный для Vulkan, для шейдера пользовательского интерфейса.
 struct VulkanUI_ShaderInstanceUniformObject {
-    FVec4 DiffuseColor; // 16 bytes
-    FVec4 vReserved0;   // 16 bytes, зарезервировано для будущего использования.
-    FVec4 vReserved1;   // 16 bytes, зарезервировано для будущего использования.
-    FVec4 vReserved2;   // 16 bytes, зарезервировано для будущего использования.
+    FVec4 DiffuseColor{};   // 16 bytes
+    FVec4 vReserved0  {};   // 16 bytes, зарезервировано для будущего использования.
+    FVec4 vReserved1  {};   // 16 bytes, зарезервировано для будущего использования.
+    FVec4 vReserved2  {};   // 16 bytes, зарезервировано для будущего использования.
 };
 
 struct GeometryRenderData 
 {
-    Matrix4D model;
-    GeometryID* gid;
+    Matrix4D model {};
+    GeometryID* gid{};
+    u32 UniqueID   {};
 
     constexpr GeometryRenderData() : model(), gid(nullptr) {}
     constexpr GeometryRenderData(const Matrix4D& model, GeometryID* gid) : model(model), gid(gid) {}
@@ -71,9 +72,9 @@ struct RenderPacket
     f64 DeltaTime;
     u16 ViewCount;              // Количество представлений, которые нужно отобразить. 
     RenderView::Packet* views;  // Массив представлений, которые нужно отобразить.
-    constexpr RenderPacket() : DeltaTime(), ViewCount(), views(nullptr) {}
-    constexpr RenderPacket(f64 DeltaTime, u16 ViewCount, RenderView::Packet* views)
-    : DeltaTime(DeltaTime), ViewCount(ViewCount), views(views) {}
+    // constexpr RenderPacket() : DeltaTime(), ViewCount(), views(nullptr) {}
+    /*constexpr RenderPacket(f64 DeltaTime, u16 ViewCount, RenderView::Packet* views)
+    : DeltaTime(DeltaTime), ViewCount(ViewCount), views(views) {}*/
 };
 
 struct UiPacketData {
@@ -87,26 +88,6 @@ struct UiPacketData {
 /// @brief Общая конфигурация для рендерера.
 struct RendererConfig {
     const char* ApplicationName;            // Имя приложения.
-    u16 RenderpassCount;                    // Количество указателей на проходы рендеринга.
-    struct RenderpassConfig* PassConfigs;   // Массив конфигураций для проходов рендеринга. Будет инициализировано на бэкэнде автоматически.
-    // Обратный вызов, который будет выполнен, когда бэкэнд потребует обновления/повторной генерации целей рендеринга.
-    class PFN_Method {
-    public:
-        using PtrCallbackMethod = void(Renderer::*)();
-
-        constexpr PFN_Method(Renderer* ptrCallbackClass, PtrCallbackMethod CallbackMethod)
-        : ptrCallbackClass(ptrCallbackClass), CallbackMethod(CallbackMethod) {}
-        void Run() const {
-            (ptrCallbackClass->*CallbackMethod)();
-        }
-        operator bool() const { return (ptrCallbackClass != nullptr && CallbackMethod != nullptr); }
-    private:
-        Renderer* ptrCallbackClass{nullptr};
-        PtrCallbackMethod CallbackMethod{nullptr};
-    } OnRendertargetRefreshRequired;
-    // void (Renderer::*OnRendertargetRefreshRequired)();
-    constexpr RendererConfig(const char* ApplicationName, u16 RenderpassCount, struct RenderpassConfig* PassConfigs, PFN_Method OnRendertargetRefreshRequired)
-    : ApplicationName(ApplicationName), RenderpassCount(RenderpassCount), PassConfigs(PassConfigs), OnRendertargetRefreshRequired(OnRendertargetRefreshRequired) {}
 };
 
 class RendererType
@@ -124,19 +105,34 @@ public:
     virtual void Resized(u16 width, u16 height) = 0;
     virtual bool BeginFrame(f32 Deltatime) = 0;
     virtual bool EndFrame(f32 DeltaTime) = 0;
+
+    /// @brief Устанавливает область просмотра рендерера на заданный прямоугольник. Должно быть сделано в проходе рендеринга.
+    /// @param rect Прямоугольник области просмотра, который необходимо установить.
+    virtual void ViewportSet(const FVec4& rect) = 0;
+
+    /// @brief Сбрасывает область просмотра на значение по умолчанию, которое соответствует окну приложения.
+    /// Должно быть сделано в проходе рендеринга.
+    virtual void ViewportReset() = 0;
+
+    /// @brief Устанавливает ножницы рендерера на заданный прямоугольник. Должно быть сделано в проходе рендеринга.
+    /// @param rect Прямоугольник ножниц, который необходимо установить.
+    virtual void ScissorSet(const FVec4& rect) = 0;
+
+    /// @brief Сбрасывает ножницы на значение по умолчанию, которое соответствует окну приложения.
+    /// Должно быть сделано в проходе рендеринга.
+    virtual void ScissorReset() = 0;
+
     /// @brief Начинает проход рендеринга с указанной целью.
     /// @param pass указатель на проход рендеринга для начала.
     /// @param target указатель на цель рендеринга для использования.
     /// @return тrue в случае успеха иначе false.
     virtual bool RenderpassBegin(Renderpass* pass, RenderTarget& target) = 0;
+
     /// @brief Завершает проход рендеринга с указанным идентификатором.
     /// @param pass указатель на проход рендеринга для завершения.
     /// @return тrue в случае успеха иначе false.
     virtual bool RenderpassEnd(Renderpass* pass) = 0;
-    /// @brief Получает указатель на renderpass, используя предоставленное имя.
-    /// @param name имя renderpass.
-    /// @return Указатель на renderpass, если найден; в противном случае nullptr.
-    virtual Renderpass* GetRenderpass(const MString& name) = 0;
+
     /// @brief Рисует заданную геометрию. Должен вызываться только внутри прохода рендеринга, внутри кадра.
     /// @param data данные рендеринга геометрии, которая должна быть нарисована.
     virtual void DrawGeometry(const GeometryRenderData& data) = 0;
@@ -150,16 +146,19 @@ public:
     /// @param pixels Необработанные данные изображения, которые будут загружены в графический процессор.
     /// @return true в случае успеха, иначе false.
     virtual void Load(const u8* pixels, Texture* texture) = 0;
+
     /// @brief Загружает новую записываемую текстуру без записи в нее данных.
     /// @param texture указатель на текстуру которую нужно загрузить.
     /// @return true в случае успеха, иначе false.
     virtual void LoadTextureWriteable(Texture* texture) = 0;
+
     /// @brief Изменяет размер текстуры. На этом уровне нет проверки возможности записи текстуры. 
     /// Внутренние ресурсы уничтожаются и воссоздаются при новом разрешении. Данные потеряны, и их необходимо перезагрузить.
     /// @param texture указатель на текстуру, размер которой нужно изменить.
     /// @param NewWidth новая ширина в пикселях.
     /// @param NewHeight новая высота в пикселях.
     virtual void TextureResize(Texture* texture, u32 NewWidth, u32 NewHeight) = 0;
+
     /// @brief Записывает данные в предоставленную текстуру. ПРИМЕЧАНИЕ: На этом уровне это может быть как записываемая, 
     /// так и незаписываемая текстура, поскольку она также обрабатывает начальную загрузку текстуры. Сама система текстур 
     /// должна отвечать за блокировку запросов на запись в недоступные для записи текстуры.
@@ -168,6 +167,21 @@ public:
     /// @param size количество байтов, которые необходимо записать.
     /// @param pixels необработанные данные изображения, которые необходимо записать.
     virtual void TextureWriteData(Texture* texture, u32 offset, u32 size, const u8* pixels) = 0;
+
+    /// @brief Считывает указанные данные из предоставленной текстуры.
+    /// @param texture Указатель на текстуру для чтения.
+    /// @param offset Смещение в байтах от начала данных для чтения.
+    /// @param size Количество байтов для чтения.
+    /// @param OutMemory Указатель на блок памяти для записи считанных данных.
+    virtual void TextureReadData(Texture* texture, u32 offset, u32 size, void** OutMemory) = 0;
+
+    /// @brief Считывает пиксель из предоставленной текстуры с указанной координатой x/y.
+    /// @param texture Указатель на текстуру для чтения.
+    /// @param x Координата x пикселя.
+    /// @param y Координата y пикселя.
+    /// @param OutRgba Указатель на массив u8 для хранения данных пикселей (должен быть sizeof(u8) * 4)
+    virtual void TextureReadPixel(Texture* texture, u32 x, u32 y, u8** OutRgba) = 0;
+
     /// @brief Выгружает данные текстуры из графического процессора.
     /// @param texture указатель на текстуру которую нужно выгрузить.
     virtual void Unload(Texture* texture) = 0;
@@ -187,7 +201,7 @@ public:
     /// @param StageFilenames массив имен файлов этапов шейдера, которые будут загружены. Должно соответствовать массиву этапов.
     /// @param stages массив этапов шейдера(ShaderStage), указывающий, какие этапы рендеринга (вершина, фрагмент и т. д.) используются в этом шейдере.
     /// @return true в случае успеха, иначе false.
-    virtual bool Load(Shader* shader, const ShaderConfig& config, Renderpass* renderpass, u8 StageCount, const DArray<MString>& StageFilenames, const ShaderStage* stages) = 0;
+    virtual bool Load(Shader* shader, const Shader::Config& config, Renderpass* renderpass, u8 StageCount, const DArray<MString>& StageFilenames, const Shader::Stage* stages) = 0;
     /// @brief Уничтожает данный шейдер и освобождает все имеющиеся в нем ресурсы.--------------------------------------------------------------------
     /// @param shader указатель на шейдер, который нужно уничтожить.
     virtual void Unload(Shader* shader) = 0;
@@ -231,7 +245,7 @@ public:
     /// @param uniform постоянный указатель на униформу.
     /// @param value указатель на значение, которое необходимо установить.
     /// @return true в случае успеха, иначе false.
-    virtual bool SetUniform(Shader* shader, struct ShaderUniform* uniform, const void* value) = 0;
+    virtual bool SetUniform(Shader* shader, struct Shader::Uniform* uniform, const void* value) = 0;
 
     //////////////////////////////////////////////////////////////////////
     //                           RenderBuffer                           //
@@ -327,35 +341,44 @@ public:
     virtual bool RenderBufferDraw(RenderBuffer& buffer, u64 offset, u32 ElementCount, bool BindOnly) = 0;
     
     /// @brief Создает новую цель рендеринга, используя предоставленные данные.
-    /// @param AttachmentCount количество вложений (указателей текстур).
-    /// @param attachments массив вложений (указателей текстур).
+    /// @param AttachmentCount количество вложений.
+    /// @param attachments массив вложений.
     /// @param pass указатель на проход рендеринга, с которым связана цель рендеринга.
     /// @param width ширина цели рендеринга в пикселях.
     /// @param height высота цели рендеринга в пикселях.
     /// @param OutTarget указатель для хранения новой созданной цели рендеринга.
-    virtual void RenderTargetCreate(u8 AttachmentCount, Texture** attachments, Renderpass* pass, u32 width, u32 height, RenderTarget& OutTarget) = 0;
+    virtual void RenderTargetCreate(u8 AttachmentCount, RenderTargetAttachment* attachments, Renderpass* pass, u32 width, u32 height, RenderTarget& OutTarget) = 0;
+    
     /// @brief Уничтожает предоставленную цель рендеринга.
     /// @param target указатель на цель рендеринга, которую нужно уничтожить.
     /// @param FreeInternalMemory указывает, следует ли освободить внутреннюю память.
     virtual void RenderTargetDestroy(RenderTarget& target, bool FreeInternalMemory) = 0;
+    
     /// @brief Создает новый проход рендеринга.
+    /// @param config Константная ссылка на конфигурацию, которая будет использоваться при создании прохода рендеринга.
     /// @param OutRenderpass указатель на общий проход рендеринга.
-    /// @param depth величина очистки глубины.
-    /// @param stencil значение очистки трафарета.
-    /// @param HasPrevPass указывает, есть ли предыдущий проход рендеринга.
-    /// @param HasNextPass указывает, есть ли следующий проход рендеринга.
-    virtual void RenderpassCreate(Renderpass& OutRenderpass, f32 depth, u32 stencil, bool HasPrevPass, bool HasNextPass) = 0;
+    virtual bool RenderpassCreate(const RenderpassConfig& config, Renderpass& OutRenderpass) = 0;
+    
     /// @brief Уничтожает указанный renderpass.
     /// @param OutRenderpass указатель на renderpass, который необходимо уничтожить.
     virtual void RenderpassDestroy(Renderpass* OutRenderpass) = 0;
+    
     /// @brief Пытается получить цель визуализации окна по указанному индексу.
     /// @param index индекс вложения для получения. Должен быть в пределах диапазона количества целей визуализации окна.
     /// @return указатель на вложение текстуры в случае успеха; в противном случае 0.
     virtual Texture* WindowAttachmentGet(u8 index) = 0;
+    
     /// @return Возвращает указатель на основную цель текстуры глубины.
-    virtual Texture* DepthAttachmentGet() = 0;
+    /// @param index Индекс вложения для получения. Должен быть в пределах диапазона количества целевых объектов визуализации окна.
+    /// @return Указатель на вложение текстуры в случае успеха; в противном случае nullptr.
+    virtual Texture* DepthAttachmentGet(u8 index) = 0;
+    
     /// @return Возвращает текущий индекс прикрепления окна.
     virtual u8 WindowAttachmentIndexGet() = 0;
+
+    /// @brief Возвращает количество вложений, необходимых для целей визуализации на основе окна.
+    virtual u8 WindowAttachmentCountGet() = 0;
+    
     /// @brief Указывает, поддерживает ли рендерер многопоточность.
     virtual bool IsMultithreaded() = 0;
     };

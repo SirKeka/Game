@@ -16,11 +16,11 @@ int main() {
     // TODO: добавьте сюда тестовые регистрации.
     //LinearAllocatorRegisterTests();
 
-    hashtable_register_tests();
+    //hashtable_register_tests();
 
     //FreelistRegisterTests();
 
-    //DynamicAllocatorRegisterTests();
+    DynamicAllocatorRegisterTests();
 
     MDEBUG("Запуск тестов...");
 

@@ -1,6 +1,6 @@
 #include "renderpass.hpp"
 #include "core/mmemory.hpp"
-
+/*
 RenderTarget::~RenderTarget()
 {
     if (attachments) {
@@ -9,16 +9,7 @@ RenderTarget::~RenderTarget()
         AttachmentCount = 0;
     }
 }
-
-void *RenderTarget::operator new[](u64 size)
-{
-    return MMemory::Allocate(size, Memory::Array);
-}
-
-void RenderTarget::operator delete[](void *ptr, u64 size)
-{
-    MMemory::Free(ptr, size, Memory::Array);
-}
+*/
 
 Renderpass::~Renderpass()
 {

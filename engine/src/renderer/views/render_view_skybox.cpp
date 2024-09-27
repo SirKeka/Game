@@ -2,26 +2,53 @@
 #include "renderer/renderpass.hpp"
 #include "renderer/camera.hpp"
 #include "renderer/renderer.hpp"
+#include "systems/render_view_system.hpp"
+#include "systems/resource_system.hpp"
 #include "systems/shader_system.hpp"
 #include "resources/skybox.hpp"
 
-RenderViewSkybox::RenderViewSkybox(u16 id, MString &name, KnownType type, u8 RenderpassCount, const char *CustomShaderName)
-: RenderView(id, name, type, RenderpassCount, CustomShaderName), 
-ShaderID(ShaderSystem::GetID(CustomShaderName ? CustomShaderName : "Shader.Builtin.Skybox")),
+RenderViewSkybox::RenderViewSkybox(u16 id, MString &&name, KnownType type, u8 RenderpassCount, const char *CustomShaderName, RenderpassConfig* PassConfig)
+: RenderView(id, static_cast<MString&&>(name), type, RenderpassCount, CustomShaderName, PassConfig),
+shader(),
 fov(Math::DegToRad(45.F)), NearClip(0.1F), FarClip(1000.F), 
 ProjectionMatrix(Matrix4D::MakeFrustumProjection(fov, 1280 / 720.F, NearClip, FarClip)), 
 WorldCamera(CameraSystem::Instance()->GetDefault()), 
 // locations(),
 ProjectionLocation(), ViewLocation(), CubeMapLocation() 
 {
-    auto SkyboxShader = ShaderSystem::GetShader(CustomShaderName ? CustomShaderName : "Shader.Builtin.Skybox");
-    ProjectionLocation = ShaderSystem::UniformIndex(SkyboxShader, "projection");
-    ViewLocation = ShaderSystem::UniformIndex(SkyboxShader, "view");
-    CubeMapLocation = ShaderSystem::UniformIndex(SkyboxShader, "cube_texture");
+    // Встроенный шейдер скабокса.
+    const char* ShaderName = "Shader.Builtin.Skybox";
+    ShaderResource ConfigResource;
+    if (!ResourceSystem::Load(ShaderName, eResource::Shader, nullptr, ConfigResource)) {
+        MERROR("Не удалось загрузить встроенный шейдер скайбокса.");
+        return;
+    }
+    auto& config = ConfigResource.data;
+    // ПРИМЕЧАНИЕ: предполагается первый проход, так как это все, что есть в этом представлении.
+    if (!ShaderSystem::Create(passes[0], config)) {
+        MERROR("Не удалось загрузить встроенный шейдер скайбокса.");
+        return;
+    }
+
+    // ResourceSystem::Unload(ConfigResource);
+
+    // Получить указатель на шейдер.
+    shader = ShaderSystem::GetShader(CustomShaderName ? CustomShaderName : ShaderName);
+
+    ProjectionLocation = ShaderSystem::UniformIndex(shader, "projection");
+    ViewLocation = ShaderSystem::UniformIndex(shader, "view");
+    CubeMapLocation = ShaderSystem::UniformIndex(shader, "cube_texture");
+
+    if(!Event::Register(EVENT_CODE_DEFAULT_RENDERTARGET_REFRESH_REQUIRED, this, RenderViewOnEvent)) {
+        MERROR("Не удалось прослушать событие, требующее обновления, создание не удалось.");
+        return;
+    }
 }
 
 RenderViewSkybox::~RenderViewSkybox()
 {
+    // Отменить регистрацию на мероприятии.
+    Event::Unregister(EVENT_CODE_DEFAULT_RENDERTARGET_REFRESH_REQUIRED, this, RenderViewOnEvent);
 }
 
 void RenderViewSkybox::Resize(u32 width, u32 height)
@@ -35,7 +62,7 @@ void RenderViewSkybox::Resize(u32 width, u32 height)
         ProjectionMatrix = Matrix4D::MakeFrustumProjection(fov, aspect, NearClip, FarClip);
 
         for (u32 i = 0; i < RenderpassCount; ++i) {
-            passes[i]->RenderArea = FVec4(0, 0, width, height);
+            passes[i].RenderArea = FVec4(0, 0, width, height);
         }
     }
 }
@@ -59,10 +86,11 @@ bool RenderViewSkybox::BuildPacket(void *data, Packet &OutPacket) const
 bool RenderViewSkybox::Render(const Packet &packet, u64 FrameNumber, u64 RenderTargetIndex) const
 {
     auto SkyboxData = reinterpret_cast<SkyboxPacketData*>(packet.ExtendedData);
+    const auto& ShaderID = shader->id;
 
     for (u32 p = 0; p < RenderpassCount; ++p) {
-        auto pass = passes[p];
-        if (!Renderer::RenderpassBegin(pass, pass->targets[RenderTargetIndex])) {
+        auto& pass = passes[p];
+        if (!Renderer::RenderpassBegin(&pass, pass.targets[RenderTargetIndex])) {
             MERROR("RenderViewSkybox::Render индекс прохода %u ошибка запуска.", p);
             return false;
         }
@@ -106,7 +134,7 @@ bool RenderViewSkybox::Render(const Packet &packet, u64 FrameNumber, u64 RenderT
         RenderData.gid = SkyboxData->sb->g;
         Renderer::DrawGeometry(RenderData);
 
-        if (!Renderer::RenderpassEnd(pass)) {
+        if (!Renderer::RenderpassEnd(&pass)) {
             MERROR("RenderViewSkybox::Render проход под индексом %u не завершился.", p);
             return false;
         }
