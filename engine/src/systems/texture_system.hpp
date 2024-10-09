@@ -37,7 +37,7 @@ public:
     TextureSystem(const TextureSystem&) = delete;
     TextureSystem& operator= (const TextureSystem&) = delete;
 
-    static bool Initialize(u32 MaxTextureCount);
+    static bool Initialize(u32 MaxTextureCount, class LinearAllocator& SystemAllocator);
     static void Shutdown();
 
     /// @brief Пытается получить текстуру с заданным именем. Если она еще не загружена, это запускает её загрузку. 

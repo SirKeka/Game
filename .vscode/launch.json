@@ -41,7 +41,7 @@
             }
         },
         {
-            "name": "Launch Kohi Tools",
+            "name": "Launch Moon Tools",
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/bin/tools",

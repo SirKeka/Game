@@ -71,7 +71,7 @@ bool VulkanDevice::Create(VulkanAPI* VkAPI)
     /*const char** ExtensionNames = PortabilityRequired
                                        ? (const char* [2]){VK_KHR_SWAPCHAIN_EXTENSION_NAME, "VK_KHR_portability_subset"}
                                        : (const char* [1]){VK_KHR_SWAPCHAIN_EXTENSION_NAME};*/
-    DArray<const char*> ExtensionNames {2};
+    DArray<const char*> ExtensionNames;
     if (PortabilityRequired) {
         ExtensionNames.PushBack(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
         ExtensionNames.PushBack("VK_KHR_portability_subset");

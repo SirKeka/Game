@@ -5,6 +5,7 @@
 
 #include <cstring>
 #include <stdio.h>
+#include <new>
 
 struct MemoryState 
 {

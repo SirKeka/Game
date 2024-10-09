@@ -1,4 +1,5 @@
 #include "render_view_ui.hpp"
+#include "memory/linear_allocator.hpp"
 #include "systems/shader_system.hpp"
 #include "renderer/renderpass.hpp"
 #include "resources/font_resource.hpp"
@@ -9,25 +10,9 @@
 #include "systems/resource_system.hpp"
 #include "resources/geometry.hpp"
 
-
-// constexpr RenderViewUI::RenderViewUI()
-//     : 
-//     RenderView(), 
-//     ShaderID(ShaderSystem::GetID(CustomShaderName ? CustomShaderName : "Shader.Builtin.UI")), 
-//     shader(ShaderSystem::GetShader(ShaderID)),
-//     NearClip(-100.F), 
-//     FarClip(100.F), 
-//     ProjectionMatrix(Matrix4D::MakeOrthographicProjection(0.F, 1280.F, 720.F, 0.F, NearClip, FarClip)), 
-//     ViewMatrix(Matrix4D::MakeIdentity()),
-//     DiffuseMapLocation(ShaderSystem::UniformIndex(shader, "diffuse_texture")),
-//     DiffuseColourLocation(ShaderSystem::UniformIndex(shader, "diffuse_colour")),
-//     ModelLocation(ShaderSystem::UniformIndex(shader, "model"))
-//     /*RenderMode(),*/ 
-// {}
-
-/*constexpr */RenderViewUI::RenderViewUI(u16 id, MString&& name, KnownType type, u8 RenderpassCount, const char* CustomShaderName, RenderpassConfig* PassConfig)
+RenderViewUI::RenderViewUI(u16 id, const Config &config)
 :
-RenderView(id, static_cast<MString&&>(name), type, RenderpassCount, CustomShaderName, PassConfig), 
+RenderView(id, config), 
 shader(),
 NearClip(-100.F), 
 FarClip(100.F), 
@@ -44,9 +29,9 @@ ModelLocation()
         MERROR("Не удалось загрузить встроенный шейдер пользовательского интерфейса.");
         return;
     }
-    auto& config = ConfigResource.data;
+
     // ПРИМЕЧАНИЕ: Предположим, что это первый проход, так как это все, что есть в этом представлении.
-    if (!ShaderSystem::Create(passes[0], config)) {
+    if (!ShaderSystem::Create(passes[0], ConfigResource.data)) {
         MERROR("Не удалось загрузить встроенный шейдер пользовательского интерфейса.");
         return;
     }
@@ -86,7 +71,7 @@ void RenderViewUI::Resize(u32 width, u32 height)
     }
 }
 
-bool RenderViewUI::BuildPacket(void *data, Packet &OutPacket) const
+bool RenderViewUI::BuildPacket(LinearAllocator& FrameAllocator, void *data, Packet &OutPacket)
 {
     if (!data) {
         MWARN("RenderViewUI::BuildPacket требует действительный указатель на представление, пакет и данные.");
@@ -102,21 +87,25 @@ bool RenderViewUI::BuildPacket(void *data, Packet &OutPacket) const
     OutPacket.ViewMatrix = ViewMatrix;
 
     // ЗАДАЧА: временно установить расширенные данные для тестовых текстовых объектов на данный момент.
-    OutPacket.ExtendedData = data;
+    OutPacket.ExtendedData = FrameAllocator.Allocate(sizeof(UiPacketData));
+    MMemory::CopyMem(OutPacket.ExtendedData, PacketData, sizeof(UiPacketData));
 
     // Получить все геометрии из текущей сцены.
     // Итерировать все сетки и добавить их в коллекцию геометрий пакета
     for (u32 i = 0; i < PacketData->MeshData.MeshCount; ++i) {
         auto* m = PacketData->MeshData.meshes[i];
         for (u32 j = 0; j < m->GeometryCount; ++j) {
-            OutPacket.geometries.EmplaceBack(m->transform.GetWorld(), m->geometries[j]);
+            GeometryRenderData RenderData;
+            RenderData.gid = m->geometries[j];
+            RenderData.model = m->transform.GetWorld();
+            OutPacket.geometries.PushBack(RenderData);
             OutPacket.GeometryCount++;
         }
     }
     return true;
 }
 
-bool RenderViewUI::Render(const Packet &packet, u64 FrameNumber, u64 RenderTargetIndex) const
+bool RenderViewUI::Render(const Packet &packet, u64 FrameNumber, u64 RenderTargetIndex)
 {
     auto MaterialSystemInst = MaterialSystem::Instance();
     const auto& ShaderID = shader->id;

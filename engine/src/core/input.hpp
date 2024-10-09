@@ -189,15 +189,15 @@ private:
 
     static Input* input;
 
-    Input() : KeyboardCurrent(), KeyboardPrevious(), MouseCurrent(), MousePrevious() {};
+    constexpr Input() : KeyboardCurrent(), KeyboardPrevious(), MouseCurrent(), MousePrevious() {};
 public:
     ~Input();
 
     Input(const Input&) = delete;
     Input& operator= (const Input&) = delete;
 
-    void Initialize();
-    void Sutdown();
+    static void Initialize(LinearAllocator& SystemAllocator);
+    static void Sutdown();
     void Update(f64 DeltaTime);
 
     // ввод с клавиатуры
@@ -222,7 +222,6 @@ public:
     void ProcessMouseWheel(i8 Zdelta);
 
     static Input* Instance();
-    void* operator new(u64 size);
 private:
     constexpr u16 ToInt(Keys key);
     constexpr u32 ToInt(Buttons button);

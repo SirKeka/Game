@@ -95,8 +95,3 @@ bool Event::Fire(u16 code, void *sender, EventContext context)
     // Не найдено.
     return false;
 }
-
-void *Event::operator new(u64 size)
-{
-    return LinearAllocator::Instance().Allocate(size);
-}

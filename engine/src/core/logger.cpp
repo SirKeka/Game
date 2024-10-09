@@ -23,14 +23,6 @@ bool Logger::Initialize()
         return false;
     }
 
-    // ЗАДАЧА: Удали это
-    MFATAL("Тестовое сообщение: %f", 3.14f);
-    MERROR("Тестовое сообщение: %f", 3.14f);
-    MWARN("Тестовое сообщение: %f", 3.14f);
-    MINFO("Тестовое сообщение: %f", 3.14f);
-    MDEBUG("Тестовое сообщение: %f", 3.14f);
-    MTRACE("Тестовое сообщение: %f", 3.14f);
-
     return true;
 }
 
@@ -38,11 +30,6 @@ void Logger::Shutdown()
 {
     // ЗАДАЧА: очистка журнала/запись записей в очереди.
     //this->~Logger();
-}
-
-void *Logger::operator new(u64 size)
-{
-    return LinearAllocator::Instance().Allocate(size);
 }
 
 void Logger::AppendToLogFile(const char *message)

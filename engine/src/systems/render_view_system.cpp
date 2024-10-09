@@ -3,10 +3,13 @@
 #include "containers/hashtable.hpp"
 #include "renderer/renderer.hpp"
 
+#include <new>
+
 // ЗАДАЧА: временно - создайте фабрику и зарегистрируйтесь.
 #include "renderer/views/render_view_world.hpp"
 #include "renderer/views/render_view_ui.hpp"
 #include "renderer/views/render_view_skybox.hpp"
+#include "renderer/views/render_view_pick.hpp"
 
 RenderViewSystem* RenderViewSystem::state = nullptr;
 
@@ -17,7 +20,7 @@ TableBlock(TableBlock),
 MaxViewCount(MaxViewCount),
 RegisteredViews(RegisteredViews) {}
 
-bool RenderViewSystem::Initialize(u16 MaxViewCount)
+bool RenderViewSystem::Initialize(u16 MaxViewCount, LinearAllocator& SystemAllocator)
 {
     if (MaxViewCount == 0) {
         MFATAL("RenderViewSystem::Initialize - MaxViewCount должен быть > 0.");
@@ -30,7 +33,7 @@ bool RenderViewSystem::Initialize(u16 MaxViewCount)
     u64 ArrayRequirement = sizeof(RenderView*) * MaxViewCount;
     u64 MemoryRequirement = ClassRequirement + HashtableRequirement + ArrayRequirement;
 
-    u8* RVSPointer = reinterpret_cast<u8*>(LinearAllocator::Instance().Allocate(MemoryRequirement));
+    u8* RVSPointer = reinterpret_cast<u8*>(SystemAllocator.Allocate(MemoryRequirement));
 
     state = new(RVSPointer) RenderViewSystem(MaxViewCount, reinterpret_cast<u16*>(RVSPointer + ClassRequirement), reinterpret_cast<RenderView**>(RVSPointer + ClassRequirement + HashtableRequirement));
 
@@ -42,7 +45,12 @@ bool RenderViewSystem::Initialize(u16 MaxViewCount)
 
 void RenderViewSystem::Shutdown()
 {
-    state = nullptr;
+    for (u32 i = 0; i < state->MaxViewCount; i++) {
+        auto view = state->RegisteredViews[i];
+        if (view) {
+            delete view;
+        }
+    }
 }
 
 bool RenderViewSystem::Create(RenderView::Config &config)
@@ -79,30 +87,27 @@ bool RenderViewSystem::Create(RenderView::Config &config)
         return false;
     }
 
-    //for (u32 i = 0; i < config.PassCount; ++i) {
-    //    // Создаем проходы рендеринга в соответствии с конфигурацией.
-    //    if (!Renderer::RenderpassCreate(config[i], this->passes[i])) {
-    //        MERROR("RenderViewSystem::Create - Не удалось создать проход рендеринга '%s'", config[i].name);
-    //        return;
-    //    }
-    //}
-
     // ЗАДАЧА: Шаблон фабрика
     switch (config.type)
     {
     case RenderView::KnownTypeWorld:
-        if (!(state->RegisteredViews[id] = new RenderViewWorld(id, config.name, config.type, config.PassCount, config.CustomShaderName, config.passes))) {
-            MERROR("Не удалось создать представление.");
+        if (!(state->RegisteredViews[id] = new RenderViewWorld(id, config))) {
+            MERROR("Не удалось создать RenderViewWorld.");
         }
         break;
     case RenderView::KnownTypeUI:
-        if (!(state->RegisteredViews[id] = new RenderViewUI(id, config.name, config.type, config.PassCount, config.CustomShaderName, config.passes))) {
-            MERROR("Не удалось создать представление.");
+        if (!(state->RegisteredViews[id] = new RenderViewUI(id, config))) {
+            MERROR("Не удалось создать RenderViewUI.");
         }
         break;
     case RenderView::KnownTypeSkybox:
-        if (!(state->RegisteredViews[id] = new RenderViewSkybox(id, config.name, config.type, config.PassCount, config.CustomShaderName, config.passes))) {
-            MERROR("Не удалось создать представление.");
+        if (!(state->RegisteredViews[id] = new RenderViewSkybox(id, config))) {
+            MERROR("Не удалось создать RenderViewSkybox.");
+        }
+        break;
+    case RenderView::KnownTypePick:
+        if (!(state->RegisteredViews[id] = new RenderViewPick(id, config))) {
+            MERROR("Не удалось создать RenderViewPick.")
         }
         break;
     default:
@@ -141,17 +146,17 @@ RenderView *RenderViewSystem::Get(const char *name)
     return nullptr;
 }
 
-bool RenderViewSystem::BuildPacket(const RenderView *view, void *data, RenderView::Packet &OutPacket)
+bool RenderViewSystem::BuildPacket(RenderView *view, class LinearAllocator& FrameAllocator, void *data, RenderView::Packet &OutPacket)
 {
     if (view) {
-        return view->BuildPacket(data, OutPacket);
+        return view->BuildPacket(FrameAllocator, data, OutPacket);
     }
 
     MERROR("RenderViewSystem::BuildPacket требует действительных указателей на представление и пакет.");
     return false;
 }
 
-bool RenderViewSystem::OnRender(const RenderView *view, const RenderView::Packet &packet, u64 FrameNumber, u64 RenderTargetIndex)
+bool RenderViewSystem::OnRender(RenderView *view, const RenderView::Packet &packet, u64 FrameNumber, u64 RenderTargetIndex)
 {
     if (view) {
         return view->Render(packet, FrameNumber, RenderTargetIndex);
@@ -163,7 +168,7 @@ bool RenderViewSystem::OnRender(const RenderView *view, const RenderView::Packet
 
 void RenderViewSystem::RegenerateRenderTargets(RenderView* view)
 {
-    // Создайте цели рендеринга для каждой. TODO: Должна быть настраиваемой.
+    // Создайте цели рендеринга для каждой. ЗАДАЧА: Должна быть настраиваемой.
 
     for (u64 r = 0; r < view->RenderpassCount; ++r) {
         auto& pass = view->passes[r];

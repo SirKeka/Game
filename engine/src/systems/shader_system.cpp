@@ -7,12 +7,12 @@
 
 ShaderSystem* ShaderSystem::state = nullptr;
 
-ShaderSystem::ShaderSystem(u16 MaxShaderCount, u8 MaxUniformCount, u8 MaxGlobalTextures, u8 MaxInstanceTextures, void* LookupMemory, Shader* shaders)
+ShaderSystem::ShaderSystem(const Config& config, void* LookupMemory, Shader* shaders)
 :
-MaxShaderCount(MaxShaderCount),
-MaxUniformCount(MaxUniformCount),
-MaxGlobalTextures(MaxGlobalTextures),
-MaxInstanceTextures(MaxInstanceTextures),
+MaxShaderCount(config.MaxShaderCount),
+MaxUniformCount(config.MaxUniformCount),
+MaxGlobalTextures(config.MaxGlobalTextures),
+MaxInstanceTextures(config.MaxInstanceTextures),
 LookupMemory(LookupMemory),
 lookup(MaxShaderCount, false, reinterpret_cast<u32*>(LookupMemory), true, INVALID::ID),
 CurrentShaderID(INVALID::ID),
@@ -38,11 +38,11 @@ ShaderSystem::~ShaderSystem()
         
 }
 
-bool ShaderSystem::Initialize(u16 MaxShaderCount, u8 MaxUniformCount, u8 MaxGlobalTextures, u8 MaxInstanceTextures)
+bool ShaderSystem::Initialize(const Config& config, LinearAllocator& SystemAllocator)
 {
     // Проверьте конфигурацию.
-    if (MaxShaderCount < 512) {
-        if (MaxShaderCount == 0) {
+    if (config.MaxShaderCount < 512) {
+        if (config.MaxShaderCount == 0) {
             MERROR("ShaderSystem::Initialize — MaxShaderCount должен быть больше 0");
             return false;
         } else {
@@ -55,14 +55,14 @@ bool ShaderSystem::Initialize(u16 MaxShaderCount, u8 MaxUniformCount, u8 MaxGlob
         // Выясняем, какой размер хеш-таблицы необходим.
         // Блок памяти будет содержать структуру состояния, а затем блок хеш-таблицы.
         u64 ClassRequirement = sizeof(ShaderSystem);
-        u64 HashtableRequirement = sizeof(u32) * MaxShaderCount;
-        u64 ShaderArrayRequirement = sizeof(Shader) * MaxShaderCount;
+        u64 HashtableRequirement = sizeof(u32) * config.MaxShaderCount;
+        u64 ShaderArrayRequirement = sizeof(Shader) * config.MaxShaderCount;
         u64 MemoryRequirement = ClassRequirement + HashtableRequirement + ShaderArrayRequirement;
-        void* ptrShaderSystem = LinearAllocator::Instance().Allocate(MemoryRequirement);
+        void* ptrShaderSystem = SystemAllocator.Allocate(MemoryRequirement);
         // Настраиваем указатель состояния, блок памяти, массив шейдеров, затем создаем хеш-таблицу.
         u8* addres = reinterpret_cast<u8*>(ptrShaderSystem);
         state = new(ptrShaderSystem) ShaderSystem(
-            MaxShaderCount, MaxUniformCount, MaxGlobalTextures, MaxInstanceTextures,
+            config,
             (addres + ClassRequirement), 
             reinterpret_cast<Shader*>(addres + ClassRequirement + HashtableRequirement));
     }
@@ -244,9 +244,9 @@ bool ShaderSystem::ApplyInstance(bool NeedsUpdate)
 
 bool ShaderSystem::BindInstance(u32 InstanceID)
 {
-    Shader* s = &state->shaders[state->CurrentShaderID];
-    s->BoundInstanceID = InstanceID;
-    return s->BindInstance(InstanceID);
+    auto& s = state->shaders[state->CurrentShaderID];
+    s.BoundInstanceID = InstanceID;
+    return s.BindInstance(InstanceID);
 }
 
 bool ShaderSystem::AddSampler(Shader *shader, const Shader::UniformConfig &config)

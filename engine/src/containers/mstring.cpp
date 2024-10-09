@@ -5,29 +5,26 @@
 #include <string>
 #include <stdarg.h>
 
-constexpr MString::MString(const char *str1, const char *str2, bool autorelease)
-: length(UTF8Length(str1) + UTF8Length(str2) + 1), autorelease(autorelease), str(Concat(str1, str2, length)) {}
+constexpr MString::MString(const char *str1, const char *str2)
+: length(UTF8Length(str1) + UTF8Length(str2) + 1), str(Concat(str1, str2, length)) {}
 
-constexpr MString::MString(const MString &str1, const MString &str2, bool autorelease) 
-: length(str1.Length() + str2.length), autorelease(autorelease), str(Concat(str1.str, str2.str, length)) {}
+constexpr MString::MString(const MString &str1, const MString &str2) 
+: length(str1.Length() + str2.length), str(Concat(str1.str, str2.str, length)) {}
 
-constexpr MString::MString(const char *s, bool DelCon, bool autorelease) 
-: length(Len(s, DelCon)), autorelease(autorelease), str(Copy(s, length, DelCon)) {}
+constexpr MString::MString(const char *s, bool DelCon) 
+: length(Len(s, DelCon)), str(Copy(s, length, DelCon)) {}
 
-constexpr MString::MString(const MString &s) : length(s.length), autorelease(s.autorelease), str(Copy(s)) {}
+constexpr MString::MString(const MString &s) : length(s.length), str(Copy(s)) {}
 
-constexpr MString::MString(MString &&s) : length(s.length), autorelease(s.autorelease), str(s.str) 
+constexpr MString::MString(MString &&s) : length(s.length), str(s.str) 
 {
     s.str = nullptr;
     s.length = 0;
-    s.autorelease = false;
 }
 
 MString::~MString()
 {
-    if (autorelease) {
-        Clear();
-    }
+    Clear();
 }
 /*
 char MString::operator[](u64 i)
@@ -161,7 +158,6 @@ void MString::Create(char *str, u64 length, bool autorelease)
 {
     this->str = str;
     this->length = length;
-    this->autorelease = autorelease;
 }
 
 void MString::DirectoryFromPath(char* dest, const char *path)
@@ -995,10 +991,10 @@ u32 MString::Split(const char *str, char delimiter, DArray<MString> &darray, boo
             // Добавить новую запись
             if (IncludeEmpty || result) {
                 if (!result) {
-                    darray.EmplaceBack();
+                    darray.PushBack(MString());
                 } else {
                     // MString entry{result};
-                    darray.EmplaceBack(std::move(result));
+                    darray.PushBack(std::move(result));
                 }
                 EntryCount++;
             } 
@@ -1019,10 +1015,10 @@ u32 MString::Split(const char *str, char delimiter, DArray<MString> &darray, boo
     // Добавить новую запись
     if (IncludeEmpty || result) {
         if (!result) {
-            darray.EmplaceBack();
+            darray.PushBack(MString());
         } else {
             //MString entry{result};
-            darray.EmplaceBack(std::move(result));
+            darray.PushBack(std::move(result));
         }
         EntryCount++;
     }

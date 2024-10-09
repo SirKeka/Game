@@ -10,9 +10,11 @@
 #include "systems/render_view_system.hpp"
 #include "views/render_view.hpp"
 
+#include <new>
+
 RendererType *Renderer::ptrRenderer = nullptr;
 
-Renderer::Renderer(MWindow *window, const char *ApplicationName, ERendererType type)
+Renderer::Renderer(MWindow *window, const char *ApplicationName, ERendererType type, LinearAllocator& SystemAllocator)
 :  
 WindowRenderTargetCount(),
 // Размер буфера кадра по умолчанию. Переопределяется при создании окна.
@@ -22,8 +24,8 @@ resizing(false),
 FramesSinceResize()
 {    
     RendererConfig RConfig { ApplicationName };
-
-    if ((ptrRenderer = new VulkanAPI(window, RConfig, WindowRenderTargetCount))) {
+    void* ptrMem = SystemAllocator.Allocate(sizeof(VulkanAPI));
+    if (!(ptrRenderer = new(ptrMem) VulkanAPI(window, RConfig, WindowRenderTargetCount))) {
         MERROR("Систему рендеринга не удалось инициализировать. Выключение.");
     }
 }
@@ -360,9 +362,4 @@ bool Renderer::RenderBufferCopyRange(RenderBuffer &source, u64 SourceOffset, Ren
 bool Renderer::RenderBufferDraw(RenderBuffer &buffer, u64 offset, u32 ElementCount, bool BindOnly)
 {
     return ptrRenderer->RenderBufferDraw(buffer, offset, ElementCount, BindOnly);
-}
-
-void *Renderer::operator new(u64 size)
-{
-    return LinearAllocator::Instance().Allocate(size);
 }

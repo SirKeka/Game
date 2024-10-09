@@ -8,13 +8,14 @@
         System
     };
     
-    class Text
+    class MAPI Text
     {
-    private:
-        friend class FontSystem;
-        friend class RenderViewUI;
-
+    friend class FontSystem;
+    friend class RenderViewUI;
+    friend class RenderViewPick;
+    public:
         u32 UniqueID;
+    private:
         TextType type;
         struct FontData* data;
         RenderBuffer VertexBuffer;

@@ -19,7 +19,7 @@ CameraSystem::CameraSystem(u16 MaxCameraCount, void* HashtableBlock, CameraLooku
     DefaultCamera()
 {}
 
-bool CameraSystem::Initialize(u16 MaxCameraCount)
+bool CameraSystem::Initialize(u16 MaxCameraCount, LinearAllocator& SystemAllocator)
 {
     if (MaxCameraCount == 0) {
         MFATAL("CameraSystem::Initialize - максимальное количество камер должно быть > 0.");
@@ -32,7 +32,7 @@ bool CameraSystem::Initialize(u16 MaxCameraCount)
     u64 HashtableRequirement = sizeof(u16) * MaxCameraCount;
     u64 MemoryRequirement = StructRequirement + ArrayRequirement + HashtableRequirement;
 
-    u8* CSPointer = reinterpret_cast<u8*>(LinearAllocator::Instance().Allocate(MemoryRequirement)); // выделяем память под систему камер
+    u8* CSPointer = reinterpret_cast<u8*>(SystemAllocator.Allocate(MemoryRequirement)); // выделяем память под систему камер
 
     if (!(state = new(CSPointer) CameraSystem(MaxCameraCount, CSPointer + StructRequirement + ArrayRequirement, reinterpret_cast<CameraLookup*>(CSPointer + ArrayRequirement)))) {
         return false;
@@ -113,7 +113,7 @@ void CameraSystem::Release(const char *name)
 Camera *CameraSystem::GetDefault()
 {
     if (state) {
-        return &DefaultCamera;
+        return &state->DefaultCamera;
     }
     MERROR("CameraSystem::GetDefault вызван до инициализации системы. Возвращено значение null.");
     return nullptr;

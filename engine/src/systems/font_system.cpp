@@ -53,7 +53,7 @@ bool VerifySystemFontSizeVariant(SystemFontLookup& lookup, FontData* variant, co
 
 FontSystem* FontSystem::state;
 
-bool FontSystem::Initialize(FontSystemConfig& config)
+bool FontSystem::Initialize(FontSystemConfig& config, LinearAllocator& SystemAllocator)
 {
     if (config.MaxBitmapFontCount == 0 || config.MaxSystemFontCount == 0) {
         MFATAL("FontSystems::Initialize - config.MaxBitmapFontCount и config.MaxSystemFontCount должны быть > 0.");
@@ -68,7 +68,7 @@ bool FontSystem::Initialize(FontSystemConfig& config)
     u64 SysHashTableRequirement = sizeof(u16) * config.MaxSystemFontCount;
     u64 MemoryRequirement = StructRequirement + BmpArrayRequirement + SysArrayRequirement + BmpHashTableRequirement + SysHashTableRequirement;
 
-    u8* MemBlock = reinterpret_cast<u8*>(LinearAllocator::Instance().Allocate(MemoryRequirement));
+    u8* MemBlock = reinterpret_cast<u8*>(SystemAllocator.Allocate(MemoryRequirement));
 
     // Блоки массивов находятся после состояния. Уже выделены, поэтому просто установите указатель.
     auto BmpArrayBlock = new(MemBlock + StructRequirement) BitmapFontLookup[config.MaxBitmapFontCount];

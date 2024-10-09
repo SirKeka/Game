@@ -6,18 +6,18 @@ struct Renderpass;
 
 struct SkyboxPacketData {
     struct Skybox* sb;
-    //constexpr SkyboxPacketData() : sb(nullptr) {}
     constexpr SkyboxPacketData(Skybox* sb) : sb(sb) {}
 };
 
-class RenderView
+class MAPI RenderView
 {
 public:
     /// @brief Известные типы представления рендеринга, имеющие связанную с ними логику.
 enum KnownType {
     KnownTypeWorld  = 0x01, // Представление, которое рендерит только объекты с *никакой* прозрачностью.
     KnownTypeUI     = 0x02, // Представление, которое рендерит только объекты пользовательского интерфейса.
-    KnownTypeSkybox = 0x03  // Вид, отображающий только объекты скайбокса.
+    KnownTypeSkybox = 0x03, // Вид, отображающий только объекты скайбокса.
+    KnownTypePick   = 0x04  // Представление, которое отображает только объекты пользовательского интерфейса и мира, которые можно выбрать.
 };
 
 /// @brief Известные источники матрицы представления.
@@ -44,9 +44,6 @@ struct Config {
     ProjectionMatrixSource PMS;     // Источник матрицы проекции.
     u8 PassCount;                   // Количество проходов рендеринга, используемых в этом представлении.
     struct RenderpassConfig* passes;// Конфигурация проходов рендеринга, используемых в этом представлении.
-
-    constexpr Config(const char* name, u16 width, u16 height, KnownType type, ViewMatrixSource VMS, u8 PassCount, RenderpassConfig* passes)
-    : name(name), CustomShaderName(nullptr), width(width), height(height), type(type), VMS(VMS), PMS(), PassCount(PassCount), passes(passes) {}
 };
 
 struct Packet;
@@ -66,7 +63,7 @@ protected:
 public:
     constexpr RenderView()
     : id(INVALID::U16ID), name(), width(), height(), type(), RenderpassCount(), passes(nullptr), CustomShaderName(nullptr) {}
-    RenderView(u16 id, MString&& name, KnownType type, u8 RenderpassCount, const char* CustomShaderName, RenderpassConfig* config);
+    RenderView(u16 id, const Config &config);
     constexpr RenderView(u16 id, MString&& name, u16 width, u16 height, KnownType type, u8 RenderpassCount, const char* CustomShaderName);
     virtual ~RenderView();
 
@@ -79,14 +76,14 @@ public:
     /// @param data данные свободной формы, используемые для создания пакета.
     /// @param OutPacket указатель для хранения сгенерированного пакета.
     /// @return true в случае успеха; в противном случае false.
-    virtual bool BuildPacket(void* data, Packet& OutPacket) const { return false; }
+    virtual bool BuildPacket(class LinearAllocator& FrameAllocator, void* data, Packet& OutPacket) { return false; }
 
     /// @brief Использует заданное представление и пакет для визуализации содержимого.
     /// @param packet указатель на пакет, данные которого должны быть визуализированы.
     /// @param FrameNumber текущий номер кадра визуализатора, обычно используемый для синхронизации данных.
     /// @param RenderTargetIndex текущий индекс цели визуализации для визуализаторов, которые используют несколько целей визуализации одновременно (например, Vulkan).
     /// @return true в случае успеха; в противном случае false.
-    virtual bool Render(const Packet& packet, u64 FrameNumber, u64 RenderTargetIndex) const { return false; }
+    virtual bool Render(const Packet& packet, u64 FrameNumber, u64 RenderTargetIndex) { return false; }
 
     /// @brief Регенерирует ресурсы для указанного вложения по указанному индексу прохода.
     /// @param self Указатель на представление для использования.
@@ -97,7 +94,7 @@ public:
  
     /// @brief Пакет для представления рендеринга, созданный им и содержащий данные о том, что должно быть визуализировано.
     struct Packet {
-        const RenderView* view;                         // Постоянный указатель на представление, с которым связан этот пакет.
+        RenderView* view;                               // Указатель на представление, с которым связан этот пакет.
         Matrix4D ViewMatrix;                            // Текущая матрица представления.
         Matrix4D ProjectionMatrix;                      // Текущая матрица проекции.
         FVec3 ViewPosition;                             // Текущая позиция представления, если применимо.
@@ -110,3 +107,5 @@ public:
 };
 
 bool RenderViewOnEvent(u16 code, void* sender, void* ListenerInst, EventContext context);
+
+template class DArray<RenderView::Config>; // Явное инстанцирование

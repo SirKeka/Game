@@ -76,7 +76,7 @@ public:
         AttributeType type;   // Тип атрибута.
 
         constexpr AttributeConfig() : name(), size(), type() {}
-        constexpr AttributeConfig(AttributeConfig&& sac) : name(std::move(sac.name)), size(sac.size), type(sac.type) {
+        constexpr AttributeConfig(AttributeConfig&& sac) : name(static_cast<MString&&>(sac.name)), size(sac.size), type(sac.type) {
             size = 0;
         }
         AttributeConfig& operator =(const AttributeConfig& sac) {
@@ -86,7 +86,7 @@ public:
             return *this;
         }
         AttributeConfig& operator =(AttributeConfig&& sac) {
-            name = std::move(sac.name);
+            name = static_cast<MString&&>(sac.name);
             size = sac.size;
             type = sac.type;
             return *this;
@@ -102,7 +102,7 @@ public:
         UniformType type;   // Тип униформы.
         Scope scope;        // Область применения униформы.
         constexpr UniformConfig() : name(), size(), location(), type(), scope() {}
-        constexpr UniformConfig(UniformConfig&& suc) : name(std::move(suc.name)), size(suc.size), location(suc.location), type(suc.type), scope(suc.scope) {
+        constexpr UniformConfig(UniformConfig&& suc) : name(static_cast<MString&&>(suc.name)), size(suc.size), location(suc.location), type(suc.type), scope(suc.scope) {
             suc.size = 0;
             suc.location = 0;
         }
@@ -115,7 +115,7 @@ public:
             return *this;
         }
         UniformConfig& operator =(UniformConfig&& suc) {
-            name = std::move(suc.name);
+            name = static_cast<MString&&>(suc.name);
             size = suc.size;
             location = suc.location;
             type = suc.type;
@@ -156,15 +156,13 @@ public:
 
     ///@brief Представляет одну запись во внутреннем универсальном массиве.
     struct Uniform {
-        u64 offset{};                          // Смещение в байтах от начала универсального набора (глобальное/экземплярное/локальное).
-        u16 index{};                           // Индекс во внутренний универсальный массив.
-        u16 location{};                        // Местоположение, которое будет использоваться для поиска. Обычно совпадает с индексом, за исключением сэмплеров, которые используются для поиска индекса текстуры во внутреннем массиве в заданной области (глобальный/экземпляр).
-        u16 size{};                            // Размер униформы или 0 для сэмплеров.
-        u8  SetIndex{};                        // Индекс набора дескрипторов, которому принадлежит униформа (0 = глобальный, 1 = экземпляр, INVALID::ID = локальный).
-        Scope scope{};                         // Область применения униформы.
-        UniformType type{};                    // Тип униформы.
-        constexpr Uniform() : offset(), index(), location(), size(), SetIndex(), scope(), type() {}
-        constexpr Uniform(u16 index, u16 location, Scope scope, UniformType type) : offset(), index(index), location(location), size(), SetIndex(), scope(scope), type(type) {}
+        u64 offset;         // Смещение в байтах от начала универсального набора (глобальное/экземплярное/локальное).
+        u16 index;          // Индекс во внутренний универсальный массив.
+        u16 location;       // Местоположение, которое будет использоваться для поиска. Обычно совпадает с индексом, за исключением сэмплеров, которые используются для поиска индекса текстуры во внутреннем массиве в заданной области (глобальный/экземпляр).
+        u16 size;           // Размер униформы или 0 для сэмплеров.
+        u8  SetIndex;       // Индекс набора дескрипторов, которому принадлежит униформа (0 = глобальный, 1 = экземпляр, INVALID::ID = локальный).
+        Scope scope;        // Область применения униформы.
+        UniformType type;   // Тип униформы.
     };
     
     /// @brief Представляет один атрибут вершины шейдера.
@@ -172,19 +170,16 @@ public:
         MString name;                      // Имя атрибута.
         AttributeType type;                // Тип атрибута.
         u32 size;                          // Размер атрибута в байтах.
-        constexpr Attribute() : name(), type(), size() {}
         constexpr Attribute(const MString& name, AttributeType type, u32 size) : name(name), type(type), size(size) {}
         constexpr Attribute(const Attribute& sa) : name(sa.name), type(sa.type), size(sa.size) {}
     };  
 private:
-
     friend class ShaderSystem;                        // Система шейдеров является дружественным класом для шейдера
     friend class VulkanAPI;                           // Указание рендера в качестве друга для доступа к переменным класса.
     friend class MaterialSystem;                      // Указывает что система материалов является дружественным классом
-    friend class RenderViewSkybox;
-    friend class RenderViewUI;
-    friend class RenderViewWorld;
+public:
     u32 id                                      {};   // Идентификатор шейдера
+private:
     MString name                                {};   // Имя шейдера
     FlagBits flags                              {};   // 
     bool UseInstances                           {};   // Указывает, использует ли шейдер экземпляры. В противном случае предполагается, что используются только глобальные униформы и сэмплеры.

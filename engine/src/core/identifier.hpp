@@ -13,9 +13,9 @@ namespace Identifier
     ///@brief Получает новый идентификатор для данного владельца.
     ///@param owner Владелец идентификатора.
     ///@return Новый идентификатор.
-    u32 AquireNewID(void* owner);
+    MAPI u32 AquireNewID(void* owner);
 
     /// @brief Освобождает данный идентификатор, который затем может быть использован снова.
     /// @param id Идентификатор, который будет освобожден.
-    void ReleaseID(u32 id);
+    MAPI void ReleaseID(u32 id);
 } // namespace Identifier

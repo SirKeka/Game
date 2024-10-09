@@ -6,7 +6,7 @@
 
 #include "math.hpp"
 
-class Quaternion
+class MAPI Quaternion
 {
 public:
 #if defined(MUSE_SIMD)

@@ -15,6 +15,13 @@
 
 class ShaderSystem
 {
+public:
+    struct Config {
+        u16 MaxShaderCount;
+        u8  MaxUniformCount;
+        u8  MaxGlobalTextures;
+        u8  MaxInstanceTextures;
+    };
 private:
     // Конфигурация шейдерной системы.--------------------------------------------------------------------------------------------------
     u16 MaxShaderCount;                 // Максимальное количество шейдеров, хранящихся в системе. ПРИМЕЧАНИЕ: Должно быть не менее 512.
@@ -30,14 +37,14 @@ private:
     static ShaderSystem* state;         // Статический экземпляр (синглтон) системы шейдеров
     // ---------------------------------------------------------------------------------------------------------------------------------
     constexpr ShaderSystem() : MaxShaderCount(), MaxUniformCount(), MaxGlobalTextures(), MaxInstanceTextures(), LookupMemory(nullptr), lookup(), CurrentShaderID(INVALID::ID), shaders(nullptr) {}
-    ShaderSystem(u16 MaxShaderCount, u8 MaxUniformCount, u8 MaxGlobalTextures, u8 MaxInstanceTextures, void* LookupMemory, Shader* shaders);
+    ShaderSystem(const Config& config, void* LookupMemory, Shader* shaders);
 public:
     ~ShaderSystem();
 
     /// @brief Инициализирует шейдерную систему, используя предоставленную конфигурацию. 
     /// ПРИМЕЧАНИЕ: Вызовите это дважды: один раз, чтобы получить требуемую память (память = 0), а второй раз, включая выделенную память.
     /// @param MaxShaderCount максимальное количество шейдеров, которое будет хранится в системе. ПРИМЕЧАНИЕ: Должно быть не менее 512.
-    static bool Initialize(u16 MaxShaderCount, u8 MaxUniformCount, u8 MaxGlobalTextures, u8 MaxInstanceTextures);
+    static bool Initialize(const Config& config, class LinearAllocator& SystemAllocator);
     /// @brief Выключает шейдерную систему.
     static void Shutdown();
 

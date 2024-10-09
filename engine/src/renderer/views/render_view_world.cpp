@@ -1,4 +1,5 @@
 #include "render_view_world.hpp"
+// #include "memory/linear_allocator.hpp"
 #include "renderer/renderer.hpp"
 #include "systems/shader_system.hpp"
 #include "systems/camera_system.hpp"
@@ -13,7 +14,6 @@
 struct GeometryDistance {
     GeometryRenderData g;   // Данные рендеринга геометрии.
     f32 distance;           // Расстояние от камеры.
-    constexpr GeometryDistance(GeometryRenderData g, f32 distance) : g(g), distance(distance) {}
 };
 
 bool RenderViewWorld::OnEvent(u16 code, void* sender, void* ListenerInst, EventContext context) {
@@ -53,9 +53,9 @@ bool RenderViewWorld::OnEvent(u16 code, void* sender, void* ListenerInst, EventC
     return false;
 }
 
-/*constexpr */RenderViewWorld::RenderViewWorld(u16 id, MString&& name, KnownType type, u8 RenderpassCount, const char* CustomShaderName, RenderpassConfig* PassConfig)
+/*constexpr */RenderViewWorld::RenderViewWorld(u16 id, const Config &config)
 :
-RenderView(id, std::move(name), type, RenderpassCount, CustomShaderName, PassConfig),
+RenderView(id, config),
 shader(),
 fov(Math::DegToRad(45.F)),
 NearClip(0.1F),
@@ -71,9 +71,9 @@ RenderMode()
         MERROR("Не удалось загрузить встроенный шейдер пользовательского интерфейса.");
         return;
     }
-    auto& config = ConfigResource.data;
+
     // ПРИМЕЧАНИЕ: Предположим, что это первый проход, так как это все, что есть в этом представлении.
-    if (!ShaderSystem::Create(passes[0], config)) {
+    if (!ShaderSystem::Create(passes[0], ConfigResource.data)) {
         MERROR("Не удалось загрузить встроенный шейдер пользовательского интерфейса.");
         return;
     }
@@ -116,7 +116,7 @@ void RenderViewWorld::Resize(u32 width, u32 height)
     }
 }
 
-bool RenderViewWorld::BuildPacket(void *data, Packet &OutPacket) const
+bool RenderViewWorld::BuildPacket(class LinearAllocator& FrameAllocator, void *data, Packet &OutPacket)
 {
     if (!data) {
         MWARN("RenderViewWorld::BuildPacket требует действительный указатель на вид, пакет и данные.");
@@ -141,10 +141,12 @@ bool RenderViewWorld::BuildPacket(void *data, Packet &OutPacket) const
         auto m = MeshData->meshes[i];
         const auto& model = m->transform.GetWorld();
         for (u32 j = 0; j < m->GeometryCount; ++j) {
-            // GeometryRenderData { model, m->geometries[j] };
+            GeometryRenderData RenderData;
+            RenderData.gid = m->geometries[j];
+            RenderData.model = model;
             // ЗАДАЧА: Добавить что-то к материалу для проверки прозрачности.
             if ((m->geometries[j]->material->DiffuseMap.texture->flags & TextureFlag::HasTransparency) == 0) {
-                OutPacket.geometries.EmplaceBack(model, m->geometries[j]);
+                OutPacket.geometries.PushBack(RenderData);
                 OutPacket.GeometryCount++;
             } else {
                 // Для сеток _с_ прозрачностью добавьте их в отдельный список, чтобы позже отсортировать по расстоянию.
@@ -153,8 +155,10 @@ bool RenderViewWorld::BuildPacket(void *data, Packet &OutPacket) const
                 // ПРИМЕЧАНИЕ: это не идеально для полупрозрачных сеток, которые пересекаются, но для наших целей сейчас достаточно.
                 auto center = FVec3::Transform(m->geometries[j]->center, model);
                 auto distance = Distance(center, WorldCamera->GetPosition());
-
-                GeometryDistances.EmplaceBack(GeometryRenderData(model, m->geometries[j]), Math::abs(distance));
+                GeometryDistance GeoDist;
+                GeoDist.g = RenderData;
+                GeoDist.distance = Math::abs(distance);
+                GeometryDistances.PushBack(GeoDist);
             }
         }
     }
@@ -172,7 +176,7 @@ bool RenderViewWorld::BuildPacket(void *data, Packet &OutPacket) const
     return true;
 }
 
-bool RenderViewWorld::Render(const Packet &packet, u64 FrameNumber, u64 RenderTargetIndex) const
+bool RenderViewWorld::Render(const Packet &packet, u64 FrameNumber, u64 RenderTargetIndex)
 {
     auto MaterialSystemInst = MaterialSystem::Instance();
     const auto& ShaderID = shader->id;

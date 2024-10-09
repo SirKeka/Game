@@ -18,9 +18,9 @@ private:
     GeometryID Default2dGeometry{0, 0};
 
     // Массив зарегистрированных сеток.
-    struct GeometryReference* RegisteredGeometries;
+    struct GeometryReference* RegisteredGeometries{nullptr};
 
-    static GeometrySystem* state;
+    MAPI static GeometrySystem* state;
 
     GeometrySystem(u32 MaxGeometryCount, GeometryReference* RegisteredGeometries);
     ~GeometrySystem() {}
@@ -30,28 +30,28 @@ public:
 
     static MINLINE GeometrySystem* Instance() { return state; }
 
-    static bool Initialize(u32 MaxGeometryCount);
+    static bool Initialize(u32 MaxGeometryCount, class LinearAllocator& SystemAllocator);
     static void Shutdown();
 
     /// @brief Получает существующую геометрию по идентификатору.
     /// @param id Идентификатор геометрии, по которому необходимо получить данные.
     /// @return Указатель на полученную геометрию или nullptr в случае неудачи.
-    GeometryID* Acquire(u32 id);
+    MAPI static GeometryID* Acquire(u32 id);
     /// @brief Регистрирует и получает новую геометрию, используя данную конфигурацию.
     /// @param config Конфигурация геометрии.
     /// @param AutoRelease Указывает, должна ли полученная геометрия быть выгружена, когда ее счетчик ссылок достигнет 0.
     /// @return Указатель на полученную геометрию или nullptr в случае неудачи. 
-    GeometryID* Acquire(const GeometryConfig& config, bool AutoRelease);
+    MAPI static GeometryID* Acquire(const GeometryConfig& config, bool AutoRelease);
 
     /// @brief Освобождает ссылку на предоставленную геометрию.
     /// @param Geometry Геометрия, которую нужно освободить.
-    void Release(GeometryID *gid);
+    static void Release(GeometryID *gid);
     /// @brief Получает указатель на геометрию по умолчанию.
     /// @return Указатель на геометрию по умолчанию.
-    GeometryID* GetDefault();
+    static GeometryID* GetDefault();
     /// @brief Получает указатель на геометрию по умолчанию.
     /// @return Указатель на геометрию по умолчанию.
-    GeometryID* GetDefault2D();
+    static GeometryID* GetDefault2D();
     /// @brief Генерирует конфигурацию для геометрии плоскости с учетом предоставленных параметров.
     /// ПРИМЕЧАНИЕ: массивы вершин и индексов распределяются динамически и должны освобождаться при удалении объекта.
     /// Таким образом, это не следует считать производственным кодом.
@@ -64,7 +64,7 @@ public:
     /// @param name Имя сгенерированной геометрии.
     /// @param MaterialName Имя материала, который будет использоваться.
     /// @return Конфигурация геометрии, которую затем можно передать в Geometry_system_acquire_from_config().
-    GeometryConfig GeneratePlaneConfig(
+    static GeometryConfig GeneratePlaneConfig(
         f32 width, f32 height, 
         u32 xSegmentCount, 
         u32 ySegmentCount, 
@@ -81,11 +81,11 @@ public:
     /// @param name 
     /// @param MaterialName 
     /// @return 
-    GeometryConfig GenerateCubeConfig(f32 width, f32 height, f32 depth, f32 TileX, f32 TileY, const char* name, const char* MaterialName);
+    MAPI static GeometryConfig GenerateCubeConfig(f32 width, f32 height, f32 depth, f32 TileX, f32 TileY, const char* name, const char* MaterialName);
 private:
-    bool CreateGeometry(const GeometryConfig& config, GeometryID* gid);
-    void DestroyGeometry(GeometryID* gid);
-    bool CreateDefaultGeometries();
+    static bool CreateGeometry(const GeometryConfig& config, GeometryID* gid);
+    static void DestroyGeometry(GeometryID* gid);
+    static bool CreateDefaultGeometries();
 public:
     // void* operator new(u64 size);
 };

@@ -8,98 +8,98 @@
 #include <memory/linear_allocator.hpp>
 
 u8 LinearAllocatorShouldCreateAndDestroy() {
-    LinearAllocator::Instance().Initialize(sizeof(u64));
+    LinearAllocator alloc{ sizeof(u64) };
 
-    ExpectShouldNotBe(0, LinearAllocator::Instance().memory);
-    ExpectShouldBe(sizeof(u64), LinearAllocator::Instance().TotalSize);
-    ExpectShouldBe(0, LinearAllocator::Instance().allocated);
+    ExpectShouldNotBe(0, alloc.memory);
+    ExpectShouldBe(sizeof(u64), alloc.TotalSize);
+    ExpectShouldBe(0, alloc.allocated);
 
-    LinearAllocator::Instance().~LinearAllocator();
+    alloc.~LinearAllocator();
 
-    ExpectShouldBe(0, LinearAllocator::Instance().memory);
-    ExpectShouldBe(0, LinearAllocator::Instance().TotalSize);
-    ExpectShouldBe(0, LinearAllocator::Instance().allocated);
+    ExpectShouldBe(0, alloc.memory);
+    ExpectShouldBe(0, alloc.TotalSize);
+    ExpectShouldBe(0, alloc.allocated);
 
     return true;
 }
 
 u8 LinearAllocatorSingleAllocationAllSpace() {
-    LinearAllocator::Instance().Initialize(sizeof(u64));
+    LinearAllocator alloc{ sizeof(u64) };
 
     // Единое распределение.
-    void* block = LinearAllocator::Instance().Allocate(sizeof(u64));
+    void* block = alloc.Allocate(sizeof(u64));
 
     // Подтвердите это
     ExpectShouldNotBe(0, block);
-    ExpectShouldBe(sizeof(u64), LinearAllocator::Instance().allocated);
+    ExpectShouldBe(sizeof(u64), alloc.allocated);
 
-    LinearAllocator::Instance().~LinearAllocator();
+    alloc.~LinearAllocator();
 
     return true;
 }
 
 u8 LinearAllocatorMultiAllocationAllSpace() {
     u64 MaxAllocs = 1024;
-    LinearAllocator::Instance().Initialize(sizeof(u64) * MaxAllocs, nullptr);
+    LinearAllocator alloc{sizeof(u64) * MaxAllocs, nullptr};
 
     // Множественное распределение - полное.
     void* block;
     for (u64 i = 0; i < MaxAllocs; ++i) {
-        block = LinearAllocator::Instance().Allocate(sizeof(u64));
+        block = alloc.Allocate(sizeof(u64));
         // Подтвердите это
         ExpectShouldNotBe(0, block);
-        ExpectShouldBe(sizeof(u64) * (i + 1), LinearAllocator::Instance().allocated);
+        ExpectShouldBe(sizeof(u64) * (i + 1), alloc.allocated);
     }
 
-    LinearAllocator::Instance().~LinearAllocator();
+    alloc.~LinearAllocator();
 
     return true;
 }
 
 u8 LinearAllocatorMultiAllocationOverAllocate() {
     u64 MaxAllocs = 3;
-    LinearAllocator::Instance().Initialize(sizeof(u64) * MaxAllocs, nullptr);
+    LinearAllocator alloc{sizeof(u64) * MaxAllocs, nullptr};
 
     // Множественное распределение - полное.
     void* block;
     for (u64 i = 0; i < MaxAllocs; ++i) {
-        block = LinearAllocator::Instance().Allocate(sizeof(u64));
+        block = alloc.Allocate(sizeof(u64));
         // Подтвердите это
         ExpectShouldNotBe(0, block);
-        ExpectShouldBe(sizeof(u64) * (i + 1), LinearAllocator::Instance().allocated);
+        ExpectShouldBe(sizeof(u64) * (i + 1), alloc.allocated);
     }
 
     MDEBUG("Примечание: Приведенная ниже ошибка намеренно вызвана этим тестом.");
 
     // Запросите еще одно распределение. Должно возникнуть сообщение об ошибке и вернуться значение 0.
-    block = LinearAllocator::Instance().Allocate(sizeof(u64));
+    block = alloc.Allocate(sizeof(u64));
     // Проверьте это - выделенное должно быть неизменным.
     ExpectShouldBe(0, block);
-    ExpectShouldBe(sizeof(u64) * (MaxAllocs), LinearAllocator::Instance().allocated);
+    ExpectShouldBe(sizeof(u64) * (MaxAllocs), alloc.allocated);
 
-    LinearAllocator::Instance().~LinearAllocator();
+    alloc.~LinearAllocator();
 
     return true;
 }
 
 u8 LinearAllocatorMultiAllocationAllSpaceThenFree() {
     u64 MaxAllocs = 1024;
-    LinearAllocator::Instance().Initialize(sizeof(u64) * MaxAllocs, nullptr);
+    LinearAllocator alloc{ sizeof(u64) * MaxAllocs, nullptr };
 
     // Множественное распределение - полное.
     void* block;
     for (u64 i = 0; i < MaxAllocs; ++i) {
-        block = LinearAllocator::Instance().Allocate(sizeof(u64));
+        block = alloc.Allocate(sizeof(u64));
         // Подтвердите это
         ExpectShouldNotBe(0, block);
-        ExpectShouldBe(sizeof(u64) * (i + 1), LinearAllocator::Instance().allocated);
+        ExpectShouldBe(sizeof(u64) * (i + 1), alloc.allocated);
     }
 
     // Убедитесь, что указатель сброшен
-    LinearAllocator::Instance().FreeAll();
-    ExpectShouldBe(0, LinearAllocator::Instance().allocated);
+    alloc.FreeAll();
+    ExpectShouldBe(0, alloc.allocated);
 
-    LinearAllocator::Instance().~LinearAllocator();
+    alloc.~LinearAllocator();
 
     return true;
 }

@@ -152,9 +152,9 @@ JobSystem::~JobSystem()
     }
 }
 
-bool JobSystem::Initialize(u8 MaxJobThreadCount, u32 TypeMasks[])
+bool JobSystem::Initialize(u8 MaxJobThreadCount, u32 TypeMasks[], LinearAllocator& SystemAllocator)
 {
-    state = reinterpret_cast<JobSystem*>(LinearAllocator::Instance().Allocate(sizeof(JobSystem)));
+    state = reinterpret_cast<JobSystem*>(SystemAllocator.Allocate(sizeof(JobSystem)));
     new(state) JobSystem(MaxJobThreadCount, TypeMasks);
 
     // Аннулировать все слоты результатов

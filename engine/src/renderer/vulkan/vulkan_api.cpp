@@ -230,11 +230,10 @@ MultithreadingEnabled(false)
 
     // Получите список необходимых расширений
     
-    DArray<const char*>RequiredExtensions;                              // Создаем массив указателей
-    RequiredExtensions.PushBack(VK_KHR_SURFACE_EXTENSION_NAME);         // Общее расширение поверхности
-    PlatformGetRequiredExtensionNames(RequiredExtensions);              // Расширения для конкретной платформы
+    DArray<const char*>RequiredExtensions{VK_KHR_SURFACE_EXTENSION_NAME};   // Общее расширение поверхности
+    PlatformGetRequiredExtensionNames(RequiredExtensions);                  // Расширения для конкретной платформы
 #if defined(_DEBUG)
-    RequiredExtensions.PushBack(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);     // утилиты отладки
+    RequiredExtensions.PushBack(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);         // утилиты отладки
 
     MDEBUG("Необходимые расширения:");
     const u32& RequiredExtensionCount = RequiredExtensions.Length();
@@ -284,9 +283,8 @@ MultithreadingEnabled(false)
 
     // Получите список доступных уровней проверки.
     u32 AvailableLayerCount = 0;
-    VK_CHECK(vkEnumerateInstanceLayerProperties(&AvailableLayerCount, 0));
-    VkLayerProperties prop;
-    DArray<VkLayerProperties> AvailableLayers(AvailableLayerCount, prop);
+    VK_CHECK(vkEnumerateInstanceLayerProperties(&AvailableLayerCount, nullptr));
+    DArray<VkLayerProperties> AvailableLayers(AvailableLayerCount);
     VK_CHECK(vkEnumerateInstanceLayerProperties(&AvailableLayerCount, AvailableLayers.Data())); 
 
     // Убедитесь, что доступны все необходимые слои.
@@ -307,7 +305,6 @@ MultithreadingEnabled(false)
     }
     MINFO("Присутствуют все необходимые уровни проверки.");
 #endif
-
     CreateInfo.enabledLayerCount = RequiredValidationLayerCount;
     CreateInfo.ppEnabledLayerNames = RequiredValidationLayerNames.Data();
 
@@ -2076,9 +2073,13 @@ bool VulkanAPI::RenderpassCreate(const RenderpassConfig& config, Renderpass& Out
     return (OutRenderpass.InternalData = new VulkanRenderpass(OutRenderpass.ClearFlags, config, this)) != nullptr;
 }
 
-void VulkanAPI::RenderpassDestroy(Renderpass *OutRenderpass)
+void VulkanAPI::RenderpassDestroy(Renderpass *renderpass)
 {
-    reinterpret_cast<VulkanRenderpass*>(OutRenderpass->InternalData)->Destroy(this);
+    for (u32 i = 0; i < renderpass->RenderTargetCount; i++) {
+        RenderTargetDestroy(renderpass->targets[i], true);
+    }
+    
+    reinterpret_cast<VulkanRenderpass*>(renderpass->InternalData)->Destroy(this);
 }
 
 Texture *VulkanAPI::WindowAttachmentGet(u8 index)
@@ -2352,7 +2353,7 @@ bool VulkanAPI::RenderBufferRead(RenderBuffer &buffer, u64 offset, u64 size, voi
         // Если промежуточный буфер не нужен, отобразите/скопируйте/отмените отображение.
         void* PtrData;
         VK_CHECK(vkMapMemory(Device.LogicalDevice, VkBuf->memory, offset, size, 0, &PtrData));
-        MMemory::CopyMem(OutMemory, PtrData, size);
+        MMemory::CopyMem(*OutMemory, PtrData, size);
         vkUnmapMemory(Device.LogicalDevice, VkBuf->memory);
     }
 
@@ -2529,9 +2530,4 @@ bool VulkanAPI::VulkanBufferCopyRangeInternal(VkBuffer source, u64 SourceOffset,
     VulkanCommandBufferEndSingleUse(this, Device.GraphicsCommandPool, TempCommandBuffer, queue);
 
     return true;
-}
-
-void *VulkanAPI::operator new(u64 size)
-{
-    return LinearAllocator::Instance().Allocate(size);
 }

@@ -24,9 +24,6 @@ struct PlatformState
     HINSTANCE HInstance;   // Дескриптор экземпляра приложения
     HWND hwnd;             // Дескриптор окна
     VkSurfaceKHR surface;
-
-    PlatformState() : HInstance(0), hwnd(0), surface(0) { };
-    void* operator new(u64 size) { return LinearAllocator::Instance().Allocate(size); }
 };
 
 // Прототип функции обратного вызова для обработки сообщений
@@ -36,14 +33,8 @@ LRESULT CALLBACK Win32MessageProcessor(HWND, u32, WPARAM, LPARAM);
 static f64 ClockFrequency;
 static LARGE_INTEGER StartTime;
 
-MWindow::MWindow(const char * name, i32 x, i32 y, i32 width, i32 height)
-{
-    this->name = name;
-    this->x = x;
-    this->y = y;
-    this->width = width;
-    this->height = height;
-}
+MWindow::MWindow(const char *name, i32 x, i32 y, i32 width, i32 height)
+: name(name), x(x), y(y), width(width), height(height) {}
 
 MWindow::~MWindow()
 {
@@ -172,11 +163,6 @@ void MWindow::ClockSetup()
     QueryPerformanceFrequency(&Frequency);          // Тактовая чистота процессора
     ClockFrequency = 1.0 / (f64)Frequency.QuadPart;
     QueryPerformanceCounter(&StartTime);
-}
-
-void *MWindow::operator new(u64 size)
-{
-    return LinearAllocator::Instance().Allocate(size);
 }
 
 void *PlatformAllocate(u64 size, bool aligned) {

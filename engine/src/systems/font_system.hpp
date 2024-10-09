@@ -7,6 +7,8 @@ struct SystemFontConfig {
     u16 DefaultSize     {};
     MString ResourceName{};
     constexpr SystemFontConfig(MString&& name, u16 DefaultSize, MString&& ResourceName) : name(name), DefaultSize(DefaultSize), ResourceName(ResourceName) {}
+    void* operator new(u64 size)              { return MMemory::Allocate(size, Memory::SystemFont); }
+    void operator delete(void* ptr, u64 size) { MMemory::Free(ptr, size, Memory::SystemFont); }
 };
 
 struct BitmapFontConfig {
@@ -14,6 +16,9 @@ struct BitmapFontConfig {
     u16 size            {};
     MString ResourceName{};
     constexpr BitmapFontConfig(MString&& name, u16 size, MString&& ResourceName) : name(name), size(size), ResourceName(ResourceName) {}
+
+    void* operator new(u64 size)              { return MMemory::Allocate(size, Memory::BitmapFont); }
+    void operator delete(void* ptr, u64 size) { MMemory::Free(ptr, size, Memory::BitmapFont); }
 };
 
 struct FontSystemConfig {
@@ -43,15 +48,6 @@ struct FontSystemConfig {
     MaxSystemFontCount(MaxSystemFontCount),
     MaxBitmapFontCount(MaxBitmapFontCount),
     AutoRelease(AutoRelease) {}
-    constexpr FontSystemConfig(const FontSystemConfig& c)
-    :
-    DefaultSystemFontCount(c.DefaultSystemFontCount), 
-    SystemFontConfigs(c.SystemFontConfigs), 
-    DefaultBitmapFontCount(c.DefaultBitmapFontCount), 
-    BitmapFontConfigs(c.BitmapFontConfigs), 
-    MaxSystemFontCount(c.MaxSystemFontCount),
-    MaxBitmapFontCount(c.MaxBitmapFontCount),
-    AutoRelease(c.AutoRelease) {}
 };
 
 struct BitmapFontLookup;
@@ -80,7 +76,7 @@ private:
 public:
     ~FontSystem() = default;
 
-    static bool Initialize(FontSystemConfig& config);
+    static bool Initialize(FontSystemConfig& config, class LinearAllocator& SystemAllocator);
     static void Shutdown();
 
     static bool LoadFont(SystemFontConfig& config);

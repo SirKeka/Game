@@ -35,7 +35,6 @@ bool ResourceLoader::Load(const char *name, void* params, ImageResource &OutReso
 
     // Сначала скопируйте полный путь и имя ресурса.
     OutResource.FullPath = FullFilePath;
-    OutResource.FullPath.SetAutoRealease(false);
     OutResource.name = name;
 
     if (!found) {

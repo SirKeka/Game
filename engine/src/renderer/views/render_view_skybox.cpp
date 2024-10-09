@@ -1,4 +1,5 @@
 #include "render_view_skybox.hpp"
+#include "memory/linear_allocator.hpp"
 #include "renderer/renderpass.hpp"
 #include "renderer/camera.hpp"
 #include "renderer/renderer.hpp"
@@ -7,8 +8,8 @@
 #include "systems/shader_system.hpp"
 #include "resources/skybox.hpp"
 
-RenderViewSkybox::RenderViewSkybox(u16 id, MString &&name, KnownType type, u8 RenderpassCount, const char *CustomShaderName, RenderpassConfig* PassConfig)
-: RenderView(id, static_cast<MString&&>(name), type, RenderpassCount, CustomShaderName, PassConfig),
+RenderViewSkybox::RenderViewSkybox(u16 id, const Config &config)
+: RenderView(id, config),
 shader(),
 fov(Math::DegToRad(45.F)), NearClip(0.1F), FarClip(1000.F), 
 ProjectionMatrix(Matrix4D::MakeFrustumProjection(fov, 1280 / 720.F, NearClip, FarClip)), 
@@ -23,9 +24,9 @@ ProjectionLocation(), ViewLocation(), CubeMapLocation()
         MERROR("Не удалось загрузить встроенный шейдер скайбокса.");
         return;
     }
-    auto& config = ConfigResource.data;
+
     // ПРИМЕЧАНИЕ: предполагается первый проход, так как это все, что есть в этом представлении.
-    if (!ShaderSystem::Create(passes[0], config)) {
+    if (!ShaderSystem::Create(passes[0],ConfigResource.data)) {
         MERROR("Не удалось загрузить встроенный шейдер скайбокса.");
         return;
     }
@@ -67,9 +68,9 @@ void RenderViewSkybox::Resize(u32 width, u32 height)
     }
 }
 
-bool RenderViewSkybox::BuildPacket(void *data, Packet &OutPacket) const
+bool RenderViewSkybox::BuildPacket(class LinearAllocator& FrameAllocator, void *data, Packet &OutPacket)
 {
-    SkyboxPacketData* SkyboxData = reinterpret_cast<SkyboxPacketData*>(data);
+    auto SkyboxData = reinterpret_cast<SkyboxPacketData*>(data);
 
     OutPacket.view = this;
 
@@ -83,7 +84,7 @@ bool RenderViewSkybox::BuildPacket(void *data, Packet &OutPacket) const
     return true;
 }
 
-bool RenderViewSkybox::Render(const Packet &packet, u64 FrameNumber, u64 RenderTargetIndex) const
+bool RenderViewSkybox::Render(const Packet &packet, u64 FrameNumber, u64 RenderTargetIndex)
 {
     auto SkyboxData = reinterpret_cast<SkyboxPacketData*>(packet.ExtendedData);
     const auto& ShaderID = shader->id;

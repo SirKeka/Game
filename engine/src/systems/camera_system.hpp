@@ -37,7 +37,7 @@ public:
     /// @brief Инициализирует систему камеры.
     /// 
     /// @return True в случае успеха, иначе false.
-    static bool Initialize(u16 MaxCameraCount);
+    static bool Initialize(u16 MaxCameraCount, class LinearAllocator& SystemAllocator);
     /// @brief Выключает систему камер.
     static void Shutdown();
 
@@ -50,5 +50,5 @@ public:
     void Release(const char* name);
     /// @brief Получает указатель на камеру по умолчанию.
     /// @return Указатель на камеру по умолчанию.
-    MAPI Camera* GetDefault();
+    static MAPI Camera* GetDefault();
 };

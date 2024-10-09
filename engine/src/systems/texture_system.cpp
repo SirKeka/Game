@@ -17,14 +17,11 @@ struct TextureReference {
 
 // Также используется как ResultData из задания.
 struct TextureLoadParams {
-    char* ResourceName;
-    Texture& OutTexture;
-    Texture TempTexture;
+    MString ResourceName;
+    Texture* OutTexture;
+    Texture TempTexture{};
     u32 CurrentGeneration;
-    ImageResource ImgRes;
-    // constexpr TextureLoadParams() : ResourceName(), OutTexture(), TempTexture(), CurrentGeneration(), ImgRes() {}
-    TextureLoadParams(const char* ResourceName, Texture& OutTexture, Texture TempTexture, u32 CurrentGeneration, ImageResource ImgRes)
-    : ResourceName(MString::Duplicate(ResourceName)), OutTexture(OutTexture), TempTexture(TempTexture), CurrentGeneration(CurrentGeneration), ImgRes(ImgRes) {}
+    ImageResource ImgRes{};
 };
 
 bool LoadCubeTextures(const char* name, const char TextureNames[6][TEXTURE_NAME_MAX_LENGTH], Texture& t);
@@ -52,7 +49,7 @@ TextureSystem::~TextureSystem()
     }
 }
 
-bool TextureSystem::Initialize(u32 MaxTextureCount)
+bool TextureSystem::Initialize(u32 MaxTextureCount, LinearAllocator& SystemAllocator)
 {
     if (MaxTextureCount == 0) {
         MFATAL("TextureSystemInitialize — MaxTextureCount должно быть > 0.");
@@ -64,7 +61,7 @@ bool TextureSystem::Initialize(u32 MaxTextureCount)
     u64 ArrayRequirement = sizeof(Texture) * MaxTextureCount;
     u64 HashtableRequirement = sizeof(TextureReference) * MaxTextureCount;
     u64 MemoryRequirement = StructRequirement + ArrayRequirement + HashtableRequirement;
-    u8* strTextureSystem = reinterpret_cast<u8*> (LinearAllocator::Instance().Allocate(MemoryRequirement));
+    u8* strTextureSystem = reinterpret_cast<u8*> (SystemAllocator.Allocate(MemoryRequirement));
     Texture* ArrayBlock = reinterpret_cast<Texture*> (strTextureSystem + StructRequirement);
     TextureReference* HashTableBlock = reinterpret_cast<TextureReference*> (strTextureSystem + StructRequirement + ArrayRequirement);
     if (!state) {
@@ -284,30 +281,28 @@ void LoadJobSuccess(void* params)
     Renderer::Load(ResourceData.pixels, &TextureParams->TempTexture);
 
     // Сделать копию старой текстуры.
-    auto old = static_cast<Texture&&>(TextureParams->OutTexture);
+    auto old = static_cast<Texture&&>(*TextureParams->OutTexture);
 
     // Назначить временную текстуру указателю.
-    TextureParams->OutTexture = static_cast<Texture&&>(TextureParams->TempTexture);
-    TextureParams->OutTexture.id = old.id;
+    *TextureParams->OutTexture = static_cast<Texture&&>(TextureParams->TempTexture);
+    TextureParams->OutTexture->id = old.id;
 
     // Уничтожить старую текстуру.
     Renderer::Unload(&old);
     old.Clear();
 
     if (TextureParams->CurrentGeneration == INVALID::ID) {
-        TextureParams->OutTexture.generation = 0;
+        TextureParams->OutTexture->generation = 0;
     } else {
-        TextureParams->OutTexture.generation = TextureParams->CurrentGeneration + 1;
+        TextureParams->OutTexture->generation = TextureParams->CurrentGeneration + 1;
     }
 
-    MTRACE("Текстура «%s» успешно загружена.", TextureParams->ResourceName);
+    MTRACE("Текстура «%s» успешно загружена.", TextureParams->ResourceName.c_str());
 
     // Очистите данные.
     ResourceSystem::Instance()->Unload(TextureParams->ImgRes);
     if (TextureParams->ResourceName) {
-        u32 length = MString::Length(TextureParams->ResourceName);
-        MMemory::Free(TextureParams->ResourceName, length + 1, Memory::String);
-        TextureParams->ResourceName = nullptr;
+        TextureParams->ResourceName.Clear();
     }
 }
 
@@ -315,7 +310,7 @@ void LoadJobFail(void *params)
 {
     auto TextureParams = reinterpret_cast<TextureLoadParams*>(params);
 
-    MERROR("Не удалось загрузить текстуру «%s».", TextureParams->ResourceName);
+    MERROR("Не удалось загрузить текстуру «%s».", TextureParams->ResourceName.c_str());
 
     ResourceSystem::Instance()->Unload(TextureParams->ImgRes);
 }
@@ -327,7 +322,7 @@ bool LoadJobStart(void *params, void *ResultData)
 
     ImageResourceParams ResourceParams{ true };
 
-    bool result = ResourceSystem::Instance()->Load(LoadParams->ResourceName, eResource::Type::Image, &ResourceParams, LoadParams->ImgRes);
+    bool result = ResourceSystem::Instance()->Load(LoadParams->ResourceName.c_str(), eResource::Type::Image, &ResourceParams, LoadParams->ImgRes);
 
     auto& ResourceData = LoadParams->ImgRes.data;
 
@@ -336,8 +331,8 @@ bool LoadJobStart(void *params, void *ResultData)
     TempTexture.height = ResourceData.height;
     TempTexture.ChannelCount = ResourceData.ChannelCount;
 
-    LoadParams->CurrentGeneration = LoadParams->OutTexture.generation;
-    LoadParams->OutTexture.generation = INVALID::ID;
+    LoadParams->CurrentGeneration = LoadParams->OutTexture->generation;
+    LoadParams->OutTexture->generation = INVALID::ID;
 
     u64 TotalSize = TempTexture.width * TempTexture.height * TempTexture.ChannelCount;
     // Проверка прозрачности
@@ -363,10 +358,14 @@ bool TextureSystem::LoadTexture(const char *TextureName, Texture &t)
 {
     // Запустить задание по загрузке текстур. Обрабатывает только загрузку с диска в ЦП. 
     // Загрузка в ГП выполняется после завершения этого задания.
-    TextureLoadParams params { TextureName, t, Texture(), t.generation, ImageResource() };
+    TextureLoadParams params;
+    params.ResourceName = TextureName;
+    params.OutTexture = &t;
+    params.CurrentGeneration = t.generation;
 
     JobInfo job { LoadJobStart, LoadJobSuccess, LoadJobFail, &params, sizeof(TextureLoadParams), sizeof(TextureLoadParams) };
     JobSystem::Instance()->Submit(job);
+    params.ResourceName.SetNullString();
     return true;
 }
 

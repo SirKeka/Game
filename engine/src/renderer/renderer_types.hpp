@@ -24,45 +24,41 @@ enum class ERendererType
 /*размер данной струтуры для карт Nvidia должен быть равен 256 байт*/
 struct VulkanMaterialShaderGlobalUniformObject
 {
-    Matrix4D projection{};  // 64 байта
-    Matrix4D view      {};  // 64 байта
-    Matrix4D mReserved0{};  // 64 байта, зарезервированные для будущего использования
-    Matrix4D mReserved1{};  // 64 байта, зарезервированные для будущего использования
+    Matrix4D projection;    // 64 байта
+    Matrix4D view;          // 64 байта
+    Matrix4D mReserved0;    // 64 байта, зарезервированные для будущего использования
+    Matrix4D mReserved1;    // 64 байта, зарезервированные для будущего использования
 };
 
 struct VulkanMaterialShaderInstanceUniformObject 
 {
-    FVec4 DiffuseColor{};   // 16 байт
-    FVec4 vReserved0  {};   // 16 байт, зарезервировано для будущего использования.
-    FVec4 vReserved1  {};   // 16 байт, зарезервировано для будущего использования.
-    FVec4 vReserved2  {};   // 16 байт, зарезервировано для будущего использования.
+    FVec4 DiffuseColor; // 16 байт
+    FVec4 vReserved0;   // 16 байт, зарезервировано для будущего использования.
+    FVec4 vReserved1;   // 16 байт, зарезервировано для будущего использования.
+    FVec4 vReserved2;   // 16 байт, зарезервировано для будущего использования.
 };
 
 /// @brief 
 struct VulkanUI_ShaderGlobalUniformObject {
-    Matrix4D projection{};  // 64 bytes
-    Matrix4D view      {};  // 64 bytes
-    Matrix4D mReserved0{};  // 64 bytes, зарезервировано для будущего использования.
-    Matrix4D mReserved1{};  // 64 bytes, зарезервировано для будущего использования.
+    Matrix4D projection;    // 64 bytes
+    Matrix4D view;          // 64 bytes
+    Matrix4D mReserved0;    // 64 bytes, зарезервировано для будущего использования.
+    Matrix4D mReserved1;    // 64 bytes, зарезервировано для будущего использования.
 };
 
 /// @brief Объект универсального буфера экземпляра материала пользовательского интерфейса, специфичный для Vulkan, для шейдера пользовательского интерфейса.
 struct VulkanUI_ShaderInstanceUniformObject {
-    FVec4 DiffuseColor{};   // 16 bytes
-    FVec4 vReserved0  {};   // 16 bytes, зарезервировано для будущего использования.
-    FVec4 vReserved1  {};   // 16 bytes, зарезервировано для будущего использования.
-    FVec4 vReserved2  {};   // 16 bytes, зарезервировано для будущего использования.
+    FVec4 DiffuseColor; // 16 bytes
+    FVec4 vReserved0;   // 16 bytes, зарезервировано для будущего использования.
+    FVec4 vReserved1;   // 16 bytes, зарезервировано для будущего использования.
+    FVec4 vReserved2;   // 16 bytes, зарезервировано для будущего использования.
 };
 
 struct GeometryRenderData 
 {
-    Matrix4D model {};
-    GeometryID* gid{};
-    u32 UniqueID   {};
-
-    constexpr GeometryRenderData() : model(), gid(nullptr) {}
-    constexpr GeometryRenderData(const Matrix4D& model, GeometryID* gid) : model(model), gid(gid) {}
-    //constexpr GeometryRenderData(GeometryRenderData&& grd) : model(grd.model), gid() {}
+    Matrix4D model;
+    GeometryID* gid;
+    u32 UniqueID;
 };
 
 /// @brief Структура, которая генерируется приложением и отправляется один раз рендереру для рендеринга заданного кадра. 
@@ -72,9 +68,6 @@ struct RenderPacket
     f64 DeltaTime;
     u16 ViewCount;              // Количество представлений, которые нужно отобразить. 
     RenderView::Packet* views;  // Массив представлений, которые нужно отобразить.
-    // constexpr RenderPacket() : DeltaTime(), ViewCount(), views(nullptr) {}
-    /*constexpr RenderPacket(f64 DeltaTime, u16 ViewCount, RenderView::Packet* views)
-    : DeltaTime(DeltaTime), ViewCount(ViewCount), views(views) {}*/
 };
 
 struct UiPacketData {
@@ -94,13 +87,9 @@ class RendererType
 {
 public:
     u64 FrameNumber;
-
-    // Указатель на текстуру по умолчанию.
-    //class Texture* DefaultDiffuse;
 public:
     virtual ~RendererType() = default;
 
-    // virtual bool Initialize(class MWindow* window, const char* ApplicationName) = 0;
     virtual void ShutDown() = 0;
     virtual void Resized(u16 width, u16 height) = 0;
     virtual bool BeginFrame(f32 Deltatime) = 0;

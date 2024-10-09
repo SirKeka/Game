@@ -9,6 +9,7 @@
 #include "containers/hashtable.hpp"
 #include "renderer/views/render_view.hpp"
 
+class LinearAllocator;
 
 class RenderViewSystem
 {
@@ -25,7 +26,7 @@ public:
     RenderViewSystem(const RenderViewSystem&) = delete;
     RenderViewSystem& operator= (const RenderViewSystem&) = delete;
 
-    static bool Initialize(u16 MaxViewCount);
+    static bool Initialize(u16 MaxViewCount, LinearAllocator& SystemAllocator);
     static void Shutdown();
 
     /// @brief Создает новый вид с использованием предоставленной конфигурации. Затем новый вид может быть получен с помощью вызова RenderViewSystem::Get.
@@ -41,14 +42,15 @@ public:
     /// @brief Получает указатель на представление с указанным именем.
     /// @param name имя представления.
     /// @return Указатель на представление, если оно найдено; в противном случае 0.
-    static RenderView* Get(const char* name);
+    MAPI static RenderView* Get(const char* name);
 
     /// @brief Создает пакет представления рендеринга, используя предоставленное представление и сетки.
     /// @param view указатель на представление для использования.
+    /// @param  распределитель использовал этот кадр для создания пакета.
     /// @param data данные свободной формы, используемые для создания пакета.
     /// @param OutPacket указатель для хранения сгенерированного пакета.
     /// @return true в случае успеха; в противном случае false.
-    static bool BuildPacket(const RenderView* view, void* data, struct RenderView::Packet& OutPacket);
+    MAPI static bool BuildPacket(RenderView* view, LinearAllocator& FrameAllocator, void* data, struct RenderView::Packet& OutPacket);
 
     /// @brief Использует заданное представление и пакет для визуализации содержимого.
     /// @param view указатель на представление для использования.
@@ -56,7 +58,7 @@ public:
     /// @param FrameNumber текущий номер кадра визуализатора, обычно используемый для синхронизации данных.
     /// @param RenderTargetIndex текущий индекс цели визуализации для визуализаторов, которые используют несколько целей визуализации одновременно (например, Vulkan).
     /// @return true в случае успеха; в противном случае false.
-    static bool OnRender(const RenderView* view, const RenderView::Packet& packet, u64 FrameNumber, u64 RenderTargetIndex);
+    static bool OnRender(RenderView* view, const RenderView::Packet& packet, u64 FrameNumber, u64 RenderTargetIndex);
     
     static void RegenerateRenderTargets(RenderView* view);
 };

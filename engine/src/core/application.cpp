@@ -1,4 +1,6 @@
 #include "application.hpp"
+#include "version.hpp"
+
 //#include "memory/linear_allocator.hpp"
 #include "game_types.hpp"
 #include "renderer/renderer.hpp"
@@ -14,14 +16,12 @@
 #include "systems/job_systems.hpp"
 #include "systems/font_system.hpp"
 
+#include "renderer/views/render_view_pick.hpp"
+
 // Компоненты ядра движка
-#include "identifier.hpp"
 #include "uuid.hpp"
 
-// ЗАДАЧА: временно
-#include "math/geometry_utils.hpp"
-#include "math/transform.hpp"
-// ЗАДАЧА: временно
+#include <new>
 
 ApplicationState* Application::State = nullptr;
 
@@ -49,24 +49,19 @@ bool Application::Create(GameTypes *GameInst)
     State->GameInst = GameInst;
 
     u64 SystemsAllocatorTotalSize = 64 * 1024 * 1024;  // 64 mb
-    LinearAllocator::Instance().Initialize(SystemsAllocatorTotalSize);
+    State->SystemAllocator.Initialize(SystemsAllocatorTotalSize);
 
     // Инициализируйте подсистемы.
-    State->logger = new Logger();
+    State->logger = reinterpret_cast<Logger*>(State->SystemAllocator.Allocate(sizeof(Logger)));
     if (!State->logger->Initialize()) { // State->logger->Initialize();
         MERROR("Не удалось инициализировать систему ведения журнала; завершение работы.");
         return false;
     }
 
-    Input::Instance()->Initialize();
+    Input::Initialize(State->SystemAllocator);
 
     State->IsRunning = true;
     State->IsSuspended = false;
-
-    // ЗАДАЧА: temp debug
-    State->ModelsLoaded = false;
-    // ЗАДАЧА: end temp debug
-
     
     if (!Event::Initialize()) {
         MERROR("Система событий не смогла инициализироваться. Приложение не может быть продолжено.");
@@ -75,14 +70,9 @@ bool Application::Create(GameTypes *GameInst)
     State->Events = Event::GetInstance();
 
     State->Events->Register(EVENT_CODE_APPLICATION_QUIT, nullptr, OnEvent);
-    State->Events->Register(EVENT_CODE_KEY_PRESSED, nullptr, OnKey);
-    State->Events->Register(EVENT_CODE_KEY_RELEASED, nullptr, OnKey);
     State->Events->Register(EVENT_CODE_RESIZED, nullptr, OnResized);
     State->Events->Register(EVENT_CODE_OBJECT_HOVER_ID_CHANGED, nullptr, OnEvent);
-    //ЗАДАЧА: временно
-    State->Events->Register(EVENT_CODE_DEBUG0, nullptr, OnDebugEvent);
-    State->Events->Register(EVENT_CODE_DEBUG1, nullptr, OnDebugEvent);
-    //ЗАДАЧА: временно
+
     State->Window = new MWindow(GameInst->AppConfig.name,
                         GameInst->AppConfig.StartPosX, 
                         GameInst->AppConfig.StartPosY, 
@@ -94,25 +84,39 @@ bool Application::Create(GameTypes *GameInst)
     } else State->Window->Create();
 
     // Система ресурсов
-    if (!ResourceSystem::Initialize(32, "../assets")) {
+    if (!ResourceSystem::Initialize(32, "../assets", State->SystemAllocator)) {
         MFATAL("Не удалось инициализировать систему ресурсов. Приложение не может быть продолжено.");
         return false;
     }
     State->ResourceSystemInst = ResourceSystem::Instance();
 
     // Система шейдеров
-    if(!ShaderSystem::Initialize(1024, 128, 31, 31)) {
+    ShaderSystem::Config ShaderSysConfig;
+    ShaderSysConfig.MaxShaderCount      = 1024;
+    ShaderSysConfig.MaxUniformCount     =  128;
+    ShaderSysConfig.MaxGlobalTextures   =   31;
+    ShaderSysConfig.MaxInstanceTextures =   31;
+    if(!ShaderSystem::Initialize(ShaderSysConfig, State->SystemAllocator)) {
         MFATAL("Не удалось инициализировать шейдерную систему. Прерывание приложения.");
         return false;
     }
     
-    State->Render = new Renderer(State->Window, GameInst->AppConfig.name, ERendererType::VULKAN);
+    void* ptrRendererMem = State->SystemAllocator.Allocate(sizeof(Renderer));
+    State->Render = new(ptrRendererMem) Renderer(State->Window, GameInst->AppConfig.name, ERendererType::VULKAN, State->SystemAllocator);
     // Запуск рендерера
     if (!State->Render) {
         MFATAL("Не удалось инициализировать средство визуализации. Прерывание приложения.");
         return false;
     }
     bool RendererMultithreaded = State->Render->IsMultithreaded();
+
+    if (!State->GameInst->Boot()) {
+        MFATAL("Game::Boot - Сбой последовательности загрузки игры; прерывание работы приложения.");
+        return false;
+    }
+
+    // Сообщить о версии движка
+    MINFO("Moon Engine v. %s", MVERSION);
 
     // Это действительно количество ядер. Вычтите 1, чтобы учесть, что основной поток уже используется.
     i32 ThreadCount = PlatformGetProcessorCount() - 1;
@@ -151,302 +155,57 @@ bool Application::Create(GameTypes *GameInst)
     }
 
     // Система заданий(потоков)
-    if (!JobSystem::Initialize(ThreadCount, JobThreadTypes)) {
+    if (!JobSystem::Initialize(ThreadCount, JobThreadTypes, State->SystemAllocator)) {
         MFATAL("Не удалось инициализировать систему заданий. Отмена приложения.");
         return false;
     }
     State->JobSystemInst = JobSystem::Instance();
 
     // Система текстур.
-    if (!TextureSystem::Initialize(65536)) {
+    if (!TextureSystem::Initialize(65536, State->SystemAllocator)) {
         MFATAL("Не удалось инициализировать систему текстур. Приложение не может быть продолжено.");
         return false;
     }
 
     // Система шрифтов.
-    BitmapFontConfig BmpFontConfig { "Metrika 21px", 21, "Metrika" };
-    SystemFontConfig SysFontConfig { "Noto Sans", 20, "NotoSansCJK" };
-    FontSystemConfig FontSysConfig { 1, &SysFontConfig, 1, &BmpFontConfig, 101, 101, false };
-    
-    if (!FontSystem::Initialize(FontSysConfig)) {
+    if (!FontSystem::Initialize(State->GameInst->AppConfig.FontConfig, State->SystemAllocator)) {
         MFATAL("Не удалось инициализировать систему шрифтов. Приложение не может продолжать работу.");
         return false;
     }
 
     // Система камер
-    if (!CameraSystem::Initialize(61)) {
+    if (!CameraSystem::Initialize(61, State->SystemAllocator)) {
         MFATAL("Не удалось инициализировать систему камер. Приложение не может быть продолжено.");
         return false;
     }
     
     // Система визуадизаций
-    if (!RenderViewSystem::Initialize(251)) {
+    if (!RenderViewSystem::Initialize(251, State->SystemAllocator)) {
         MFATAL("Не удалось инициализировать систему визуализаций. Приложение не может быть продолжено.");
         return false;
     }
 
     // Загрузка визуализатора вида
-
-    RenderTargetAttachmentConfig SkyboxTargetAttachment {
-        RenderTargetAttachmentType::Colour,
-        RenderTargetAttachmentSource::Default,
-        RenderTargetAttachmentLoadOperation::DontCare,
-        RenderTargetAttachmentStoreOperation::Store,
-        false
-    };
-
-    // Конфигурация подпрохода рендеринга
-    RenderpassConfig SkyboxPasses[1] = {
-        {
-            "Renderpass.Bultin.Skybox", 
-            1.F, 0, 
-            FVec4(0.F, 0.F, 1280.F, 720.F), // Разрешение области рендеринга по умолчанию.
-            FVec4(0.F, 0.F, 0.2F, 1.F), 
-            RenderpassClearFlag::ColourBuffer,
-            Renderer::WindowAttachmentCountGet(), RenderTargetConfig (1, &SkyboxTargetAttachment)
+    const auto& ViewCount = GameInst->AppConfig.RenderViews.Length();
+    for(u32 i = 0; i < ViewCount; ++i) {
+        auto& view = GameInst->AppConfig.RenderViews[i];
+        if (!State->RenderViewSystemInst->Create(view)) {
+            MFATAL("Не удалось создать представление скайбокса. Отмена приложения.");
+            return false;
         }
-    };
-
-    // Skybox view
-    RenderView::Config SkyboxConfig {
-        "skybox",
-        0, 0, 
-        RenderView::KnownTypeSkybox,
-        RenderView::ViewMatrixSourceSceneCamera,
-        1, SkyboxPasses
-    };
-
-    if (!State->RenderViewSystemInst->Create(SkyboxConfig)) {
-        MFATAL("Не удалось создать представление скайбокса. Отмена приложения.");
-        return false;
-    }
-
-    // World view
-    
-    RenderTargetAttachmentConfig WorldTargetAttachment[2] = {
-        {
-            RenderTargetAttachmentType::Colour,
-            RenderTargetAttachmentSource::Default,
-            RenderTargetAttachmentLoadOperation::Load,
-            RenderTargetAttachmentStoreOperation::Store,
-            false
-        },
-        {
-            RenderTargetAttachmentType::Depth,
-            RenderTargetAttachmentSource::Default,
-            RenderTargetAttachmentLoadOperation::DontCare,
-            RenderTargetAttachmentStoreOperation::Store,
-            false
-        }
-    };
-
-    // Конфигурация подпрохода рендеринга
-    RenderpassConfig WorldPasses[1] = {
-        {
-            "Renderpass.Bultin.World", 
-            1.F, 0, 
-            FVec4(0.F, 0.F, 1280.F, 720.F), // Разрешение области рендеринга по умолчанию.
-            FVec4(0.F, 0.F, 0.2F, 1.F), 
-            RenderpassClearFlag::DepthBuffer | RenderpassClearFlag::StencilBuffer,
-            Renderer::WindowAttachmentCountGet(), RenderTargetConfig (2, WorldTargetAttachment)
-        }
-    };
-
-    RenderView::Config WorldConfig {
-        "world", 
-        0, 0, 
-        RenderView::KnownTypeWorld, 
-        RenderView::ViewMatrixSourceSceneCamera, 
-        1, WorldPasses
-    };
-
-    if (!State->RenderViewSystemInst->Create(WorldConfig)) {
-        MFATAL("Не удалось создать представление мира. Отмена приложения.");
-        return false;
-    }
-
-    // UI view
-
-    RenderTargetAttachmentConfig UiTargetAttachment {
-        RenderTargetAttachmentType::Colour,
-        RenderTargetAttachmentSource::Default,
-        RenderTargetAttachmentLoadOperation::Load,
-        RenderTargetAttachmentStoreOperation::Store,
-        false
-    };
-
-    // Конфигурация подпрохода рендеринга
-    RenderpassConfig UIPasses[1] = {
-        {
-            "Renderpass.Bultin.UI", 
-            1.F, 0, 
-            FVec4(0.F, 0.F, 1280.F, 720.F), // Разрешение области рендеринга по умолчанию.
-            FVec4(0.F, 0.F, 0.2F, 1.F), 
-            RenderpassClearFlag::None,
-            Renderer::WindowAttachmentCountGet(), RenderTargetConfig (1, &UiTargetAttachment)
-        }
-    };
-
-    RenderView::Config UIViewConfig {
-        "ui",
-        0, 0,
-        RenderView::KnownTypeUI,
-        RenderView::ViewMatrixSourceUiCamera,
-        1, UIPasses
-    };
-
-    if (!State->RenderViewSystemInst->Create(UIViewConfig)) {
-        MFATAL("Не удалось создать представление пользовательского интерфейса. Отмена приложения.");
-        return false;
     }
 
     // Система материалов
-    if (!MaterialSystem::Initialize(4096)) {
+    if (!MaterialSystem::Initialize(4096, State->SystemAllocator)) {
         MFATAL("Не удалось инициализировать систему материалов. Приложение не может быть продолжено.");
         return false;
     }
 
     // Система геометрии
-    if (!GeometrySystem::Initialize(4096)) {
+    if (!GeometrySystem::Initialize(4096, State->SystemAllocator)) {
         MFATAL("Не удалось инициализировать систему геометрии. Приложение не может быть продолжено.");
         return false;
     }
-    auto GeometrySystemInst = GeometrySystem::Instance();
-    
-    // ЗАДАЧА: временно
-    // Создать тестовые текстовые объекты пользовательского интерфейса
-    
-    if (!State->TestText.Create(TextType::Bitmap, "Metrika 21px", 21, "Какой-то тестовый текст 123,\n\tyo!")) {
-        MERROR("Не удалось загрузить базовый растровый текст пользовательского интерфейса.");
-        return false;
-    }
-    // Переместить отладочный текст в новую нижнюю часть экрана.
-    State->TestText.SetPosition(FVec3(20, State->height - 75, 0)); 
-
-    if(!State->TestSysText.Create(TextType::System, "Noto Sans CJK JP", 31, "Какой-то тестовый текст 123, \n\tyo!\n\n\tこんにちは 한")) {
-        MERROR("Не удалось загрузить базовый системный текст пользовательского интерфейса.");
-        return false;
-    }
-    State->TestSysText.SetPosition(FVec3(50, 250, 0));
-
-    if(!State->TestSysText.Create(TextType::System, "Noto Sans CJK JP", 31, "Какой-то тестовый текст 123, \n\tyo!\n\n\tこんにちは 한")) {
-        MERROR("Не удалось загрузить базовый системный текст пользовательского интерфейса.");
-        return false;
-    }
-    State->TestSysText.SetPosition(FVec3(50, 200, 0));
-
-    // Skybox
-    auto* CubeMap = &State->sb.cubemap;
-    CubeMap->FilterMagnify = CubeMap->FilterMinify = TextureFilter::ModeLinear;
-    CubeMap->RepeatU = CubeMap->RepeatV = CubeMap->RepeatW = TextureRepeat::ClampToEdge;
-    CubeMap->use = TextureUse::Cubemap;
-    if (!Renderer::TextureMapAcquireResources(CubeMap)) {
-        MFATAL("Невозможно получить ресурсы для текстуры кубической карты.");
-        return false;
-    }
-    CubeMap->texture = TextureSystem::Instance()->AcquireCube("skybox", true);
-    auto SkyboxCubeConfig = GeometrySystemInst->GenerateCubeConfig(10.0f, 10.0f, 10.0f, 1.0f, 1.0f, "skybox_cube", nullptr);
-    // Удалите название материала.
-    SkyboxCubeConfig.MaterialName[0] = '\0';
-    State->sb.g = GeometrySystemInst->Acquire(SkyboxCubeConfig, true);
-    State->sb.RenderFrameNumber = INVALID::U64ID;
-    auto SkyboxShader = ShaderSystem::GetShader("Shader.Builtin.Skybox");
-    TextureMap* maps[1] = {&State->sb.cubemap};
-    if (!Renderer::ShaderAcquireInstanceResources(SkyboxShader, maps, State->sb.InstanceID)) {
-        MFATAL("Невозможно получить ресурсы шейдера для текстуры скайбокса.");
-        return false;
-    }
-
-    // Мировые сетки
-    // Отменить все сетки.
-    for (u32 i = 0; i < 10; ++i) {
-        State->meshes[i].generation = INVALID::U8ID;
-        State->UIMeshes[i].generation = INVALID::U8ID;
-    }
-
-    u8 MeshCount = 0;
-    // Загрузите конфигурацию и загрузите из нее геометрию.
-    auto& CubeMesh = State->meshes[MeshCount];
-    CubeMesh = Mesh(1, new GeometryID*[1], Transform());
-    GeometryConfig gConfig = GeometrySystemInst->GenerateCubeConfig(10.f, 10.f, 10.f, 1.f, 1.f, "test_cube", "test_material");
-    CubeMesh.geometries[0] = GeometrySystemInst->Acquire(gConfig, true);
-
-    MeshCount++;
-    CubeMesh.generation = 0;
-    CubeMesh.UniqueID = Identifier::AquireNewID(&CubeMesh);
-    // Очистите места для конфигурации геометрии.
-    gConfig.Dispose();
-
-    auto& CubeMesh2 = State->meshes[MeshCount];
-    CubeMesh2 = Mesh(1, new GeometryID*[1], Transform(FVec3(10.f, 0.f, 1.f)));
-    gConfig = GeometrySystemInst->GenerateCubeConfig(5.f, 5.f, 5.f, 1.f, 1.f, "test_cube2", "test_material");
-    CubeMesh2.geometries[0] = GeometrySystemInst->Acquire(gConfig, true);
-    CubeMesh2.transform.SetParent(&CubeMesh.transform);
-    MeshCount++;
-    CubeMesh2.generation = 0;
-    CubeMesh2.UniqueID = Identifier::AquireNewID(&CubeMesh2);
-    // Очистите места для конфигурации геометрии.
-    gConfig.Dispose();
-
-    auto& CubeMesh3 = State->meshes[MeshCount];
-    CubeMesh3 = Mesh(1, new GeometryID*[1], Transform(FVec3(5.f, 0.f, 1.f)));
-    gConfig = GeometrySystemInst->GenerateCubeConfig(2.f, 2.f, 2.f, 1.f, 1.f, "test_cube3", "test_material");
-    CubeMesh3.geometries[0] = GeometrySystemInst->Acquire(gConfig, true);
-    CubeMesh3.transform.SetParent(&CubeMesh2.transform);
-    MeshCount++;
-    CubeMesh3.generation = 0;
-    CubeMesh3.UniqueID = Identifier::AquireNewID(&CubeMesh3);
-    // Очистите места для конфигурации геометрии.
-    gConfig.Dispose();
-    // Тестовая модель загружается из файла
-    State->CarMesh = &State->meshes[MeshCount];
-    State->CarMesh->UniqueID = Identifier::AquireNewID(&State->CarMesh);
-    State->CarMesh->transform = Transform(FVec3(15.f, 0.f, 1.f));
-    MeshCount++;
-
-    State->SponzaMesh = &State->meshes[MeshCount];
-    State->SponzaMesh->UniqueID = Identifier::AquireNewID(&State->SponzaMesh);
-    State->SponzaMesh->transform = Transform(FVec3(), Quaternion::Identity(), FVec3(0.05, 0.05, 0.05));
-    MeshCount++;
-
-    const f32 w = 128.f;
-    const f32 h = 49.f;
-    Vertex2D uiverts [4];
-    uiverts[0].position.x = 0.0f;  // 0    3
-    uiverts[0].position.y = 0.0f;  //
-    uiverts[0].texcoord.x = 0.0f;  //
-    uiverts[0].texcoord.y = 0.0f;  // 2    1
-
-    uiverts[1].position.y = h;
-    uiverts[1].position.x = w;
-    uiverts[1].texcoord.x = 1.0f;
-    uiverts[1].texcoord.y = 1.0f;
-
-    uiverts[2].position.x = 0.0f;
-    uiverts[2].position.y = h;
-    uiverts[2].texcoord.x = 0.0f;
-    uiverts[2].texcoord.y = 1.0f;
-
-    uiverts[3].position.x = w;
-    uiverts[3].position.y = 0.0;
-    uiverts[3].texcoord.x = 1.0f;
-    uiverts[3].texcoord.y = 0.0f;
-
-    // Индексы - против часовой стрелки
-    u32 uiindices[6] = {2, 1, 0, 3, 0, 1};
-    GeometryConfig UI_Config {sizeof(Vertex2D), 4, uiverts, sizeof(u32), 6, uiindices, "test_ui_geometry", "test_ui_material"};
-
-    // Получите геометрию пользовательского интерфейса из конфигурации.
-    State->UIMeshes[0].UniqueID = Identifier::AquireNewID(&State->UIMeshes[0]);
-    State->UIMeshes[0].GeometryCount = 1;
-    State->UIMeshes[0].geometries = new GeometryID*[1];
-    State->UIMeshes[0].geometries[0] = GeometrySystemInst->Acquire(UI_Config, true);
-    State->UIMeshes[0].transform = Transform();
-    State->UIMeshes[0].generation = 0;
-
-    // Загрузите геометрию по умолчанию.
-    // State->TestGeometry = GeometrySystemInst->GetDefault();
-    // ЗАДАЧА: временно 
 
     // Инициализируйте игру.
     if (!GameInst->Initialize()) {
@@ -461,7 +220,6 @@ bool Application::Create(GameTypes *GameInst)
     return true;
 }
 
-constexpr u8 AVG_COUNT = 30;
 bool Application::ApplicationRun() {
     State->clock.Start();
     State->clock.Update();
@@ -470,12 +228,6 @@ bool Application::ApplicationRun() {
     [[maybe_unused]]u8 FrameCount = 0;      // 
     f64 TargetFrameSeconds = 1.0f / 60;
     f64 FrameElapsedTime = 0;
-    u8 FrameAvgCounter = 0;
-    f64 MsTimes[AVG_COUNT] = {};
-    f64 MsAvg = 0;
-    f64 frames = 0;
-    f64 AccumulatedFrameMs = 0;
-    f64 fps = 0;
 
     MINFO(MMemory::GetMemoryUsageStr().c_str());
 
@@ -486,13 +238,16 @@ bool Application::ApplicationRun() {
 
         if(!State->IsSuspended) {
             // Обновите часы и получите разницу во времени.
-                State->clock.Update();
-                f64 CurrentTime = State->clock.elapsed;
-                f64 delta = (CurrentTime - State->LastTime);
-                f64 FrameStartTime = MWindow::PlatformGetAbsoluteTime();
+            State->clock.Update();
+            f64 CurrentTime = State->clock.elapsed;
+            f64 delta = (CurrentTime - State->LastTime);
+            f64 FrameStartTime = MWindow::PlatformGetAbsoluteTime();
 
-                // Обновлление системы работы(потоков)
-                State->JobSystemInst->Update();
+            // Обновлление системы работы(потоков)
+            State->JobSystemInst->Update();
+
+            //Обновление метрик(статистики)
+            State->metrics.Update(FrameElapsedTime);
 
             if (!State->GameInst->Update(delta)) {
                 MFATAL("Ошибка обновления игры, выключение.");
@@ -500,139 +255,22 @@ bool Application::ApplicationRun() {
                 break;
             }
 
+            RenderPacket packet = {};
+            packet.DeltaTime = delta;
+
             // Вызовите процедуру рендеринга игры.
-            if (!State->GameInst->Render(delta)) {
+            if (!State->GameInst->Render(packet, delta)) {
                 MFATAL("Ошибка рендеринга игры, выключение.");
                 State->IsRunning = false;
                 break;
             }
-
-            // Выполните небольшой поворот на первой сетке.
-            Quaternion rotation( FVec3(0.f, 1.f, 0.f), 0.5f * delta, false );
-            State->meshes[0].transform.Rotate(rotation);
-
-            // Выполняем аналогичное вращение для второй сетки, если она существует.
-            // «Родительский» второй куб по отношению к первому.
-            State->meshes[1].transform.Rotate(rotation);
-
-            // Выполняем аналогичное вращение для второй сетки, если она существует.
-            // «Родительский» второй куб по отношению к первому.
-            State->meshes[2].transform.Rotate(rotation);
-
-            RenderView::Packet views[3]{};
-            RenderPacket packet {
-                delta,
-                3, //ЗАДАЧА: Прочтите конфигурацию фрейма.
-                views
-            };
-
-            // Скайбокс
-            SkyboxPacketData SkyboxData { &State->sb };
-            if (!State->RenderViewSystemInst->BuildPacket(State->RenderViewSystemInst->Get("skybox"), &SkyboxData, packet.views[0])) {
-                MERROR("Не удалось построить пакет для представления «skybox».");
-                return false;
-            }
-
-            // Мир 
-            u32 MeshCount = 0;
-            Mesh* meshes[10];
-            // ЗАДАЧА: массив гибкого размера
-            for (u32 i = 0; i < 10; ++i) {
-                if (State->meshes[i].generation != INVALID::U8ID) {
-                    meshes[MeshCount] = &State->meshes[i];
-                    MeshCount++;
-                }
-            }
-            Mesh::PacketData WorldMeshData { MeshCount, meshes };
-            // ЗАДАЧА: выполняет поиск в каждом кадре.
-            if (!State->RenderViewSystemInst->BuildPacket(State->RenderViewSystemInst->Get("world"), &WorldMeshData, packet.views[1])) {
-                MERROR("Не удалось построить пакет для представления «world_opaque».");
-                return false;
-            }
-
-            // пользовательский интерфейс
-            // Обновите текст битмапа с позицией камеры. ПРИМЕЧАНИЕ: пока используйте камеру по умолчанию.
-            auto WorldCamera = CameraSystem::Instance()->GetDefault();
-            const auto& pos = WorldCamera->GetPosition();
-            const auto& rot = WorldCamera->GetRotationEuler();
-
-            // Также прикрепите текущее состояние мыши.
-            auto InputInst = Input::Instance();
-            bool LeftDown = InputInst->IsButtonDown(Buttons::Left);
-            bool RightDown = InputInst->IsButtonDown(Buttons::Right);
-            i16 MouseX, MouseY;
-            InputInst->GetMousePosition(MouseX, MouseY);
-
-            // Преобразовать в NDC
-            f32 mouseXNdc = Math::RangeConvertF32((f32)MouseX, 0.0f, (f32)State->width, -1.0f, 1.0f);
-            f32 MouseYNdc = Math::RangeConvertF32((f32)MouseY, 0.0f, (f32)State->height, -1.0f, 1.0f);
-
-            // Рассчитать среднее значение кадра мс
-            f64 FrameMs = (FrameElapsedTime * 1000.0);
-            MsTimes[FrameAvgCounter] = FrameMs;
-            if (FrameAvgCounter == AVG_COUNT - 1) {
-                for (u8 i = 0; i < AVG_COUNT; ++i) {
-                    MsAvg += MsTimes[i];
-                }
-
-                MsAvg /= AVG_COUNT;
-            }
-            FrameAvgCounter++;
-            FrameAvgCounter %= AVG_COUNT;
-
-            // Рассчитать количество кадров в секунду.
-            AccumulatedFrameMs += FrameMs;
-            if (AccumulatedFrameMs > 1000) {
-                fps = frames;
-                AccumulatedFrameMs -= 1000;
-                frames = 0;
-            }
-
-            char TextBuffer[256]{};
-            MString::Format(
-                TextBuffer,
-                "\
-                FPS: %5.1f(%4.1fмс) Позиция=[%7.3F, %7.3F, %7.3F] Вращение=[%7.3F, %7.3F, %7.3F]\n\
-                Мышь: X=%-5d Y=%-5d   L=%s R=%s   NDC: X=%.6f, Y=%.6f\n\
-                Hovered: %s%u",
-                fps,
-                MsAvg,
-                pos.x, pos.y, pos.z,
-                Math::RadToDeg(rot.x), Math::RadToDeg(rot.y), Math::RadToDeg(rot.z),
-                MouseX, MouseY,
-                LeftDown ? "Y" : "N",
-                RightDown ? "Y" : "N",
-                mouseXNdc,
-                MouseYNdc,
-                State->HoveredObjectID == INVALID::ID ? "none" : "",
-                State->HoveredObjectID == INVALID::ID ? 0 : State->HoveredObjectID
-            );
-            State->TestText.SetText(TextBuffer);
-
-            u32 UIMeshCount = 0;
-            Mesh* UIMeshes[10]{};
-            // ЗАДАЧА: массив гибкого размера
-            for (u32 i = 0; i < 10; ++i) {
-                if (State->UIMeshes[i].generation != INVALID::U8ID) {
-                    UIMeshes[UIMeshCount] = &State->UIMeshes[i];
-                    UIMeshCount++;
-                }
-            }
-            Mesh::PacketData UIMeshData = { UIMeshCount, UIMeshes };
-            Text* texts[2] = { &State->TestText, &State->TestSysText };
-            UiPacketData UiPacket { UIMeshData, 2, texts };
-            if (!State->RenderViewSystemInst->BuildPacket(State->RenderViewSystemInst->Get("ui"), &UiPacket, packet.views[2])) {
-                MERROR("Не удалось построить пакет для представления «ui».");
-                return false;
-            }
-            // ЗАДАЧА: временно
 
             State->Render->DrawFrame(packet);
 
             // Выясните, сколько времени занял кадр и, если ниже
             f64 FrameEndTime = MWindow::PlatformGetAbsoluteTime();
             FrameElapsedTime = FrameEndTime - FrameStartTime;
-            RunningTime += FrameElapsedTime;
+            // RunningTime += FrameElapsedTime;
             f64 RemainingSeconds = TargetFrameSeconds - FrameElapsedTime;
 
             if (RemainingSeconds > 0) {
@@ -647,9 +285,6 @@ bool Application::ApplicationRun() {
                 FrameCount++;
             }
 
-            // Подсчет всех кадров
-            frames++;
-
             // ПРИМЕЧАНИЕ. Обновление/копирование состояния ввода всегда
             // должно выполняться после записи любого ввода; т.е. перед этой
             // строкой. В целях безопасности входные данные обновляются в
@@ -663,24 +298,15 @@ bool Application::ApplicationRun() {
 
     State->IsRunning = false;
 
-    // ЗАДАЧА: Временное
-    // ЗАДАЧА: реализовать уничтожение скайбокса.
-    Renderer::TextureMapReleaseResources(&State->sb.cubemap);
-
-    // State->TestText.~Text(); 
-    // ЗАДАЧА: Конец временного
-
+    // Выключение игры
+    State->GameInst->Shutdown();
     // Отключение системы событий.
     State->Events->Unregister(EVENT_CODE_APPLICATION_QUIT, nullptr, OnEvent);
-    State->Events->Unregister(EVENT_CODE_KEY_PRESSED, nullptr, OnKey);
-    State->Events->Unregister(EVENT_CODE_KEY_RELEASED, nullptr, OnKey);
     State->Events->Unregister(EVENT_CODE_RESIZED, nullptr, OnResized);
-    //ЗАДАЧА: временно
-    State->Events->Unregister(EVENT_CODE_DEBUG0, nullptr, OnDebugEvent);
-    //ЗАДАЧА: временно
     State->Events->Shutdown(); // ЗАДАЧА: при удалении указателя на систему событий происходит ошибка
     Input::Instance()->Sutdown();
     FontSystem::Shutdown();
+    RenderViewSystem::Shutdown();
     GeometrySystem::Instance()->Shutdown();
     MaterialSystem::Shutdown();
     TextureSystem::Instance()->Shutdown();
@@ -721,40 +347,6 @@ bool Application::OnEvent(u16 code, void *sender, void *ListenerInst, EventConte
             State->IsRunning = false;
             return true;
         }
-        case EVENT_CODE_OBJECT_HOVER_ID_CHANGED: {
-            State->HoveredObjectID = context.data.u32[0];
-            return true;
-        }
-    }
-
-    return false;
-}
-
-bool Application::OnKey(u16 code, void *sender, void *ListenerInst, EventContext context)
-{
-    if (code == EVENT_CODE_KEY_PRESSED) {
-        u16 KeyCode = context.data.u16[0];
-        if (KeyCode == Keys::ESCAPE) {
-            // ПРИМЕЧАНИЕ. Технически событие генерируется само по себе, но могут быть и другие прослушиватели.
-            EventContext data = {};
-            Event::GetInstance()->Fire(EVENT_CODE_APPLICATION_QUIT, 0, data);
-
-            // Заблокируйте что-либо еще от обработки этого.
-            return true;
-        } else if (KeyCode == Keys::A) {
-            // Пример проверки ключа
-            MDEBUG("Явно — клавиша A нажата!");
-        } else {
-            MDEBUG("'%c' нажатие клавиши в окне.", KeyCode);
-        }
-    } else if (code == EVENT_CODE_KEY_RELEASED) {
-        u16 KeyCode = context.data.u16[0];
-        if (KeyCode == Keys::B) {
-            // Пример проверки ключа
-            MDEBUG("Явно — клавиша B отущена!");
-        } else {
-            MDEBUG("'%c' клавиша отпущена в окне.", KeyCode);
-        }
     }
 
     return false;
@@ -787,63 +379,8 @@ bool Application::OnResized(u16 code, void *sender, void *ListenerInst, EventCon
                 State->Render->OnResized(width, height);
                 return true;
             }
-            // ЗАДАЧА: временно
-            // Переместить отладочный текст в новую нижнюю часть экрана.
-            State->TestText.SetPosition(FVec3(20, State->height - 75, 0));
-            // ЗАДАЧА: конец временно
         }
     }
     // Событие намеренно не обрабатывается, чтобы другие слушатели могли его получить.
     return false;
 }
-
-// ЗАДАЧА: временно
-bool Application::OnDebugEvent(u16 code, void *sender, void *ListenerInst, EventContext context)
-{
-    if (code == EVENT_CODE_DEBUG0) {
-        const char* names[3] = {
-            "Ice",
-            "Sand",
-            "Rope"
-        };
-        static i8 choice = 2;
-
-        // Сохраните старое имя.
-        const char* OldName = names[choice];
-
-        choice++;
-        choice %= 3;
-
-        auto MaterialSystemInst = MaterialSystem::Instance();
-        // Просто замените материал на первой сетке, если она существует.
-        auto& g = State->meshes[0].geometries[0];
-        if (g) {
-            // Приобретите новый материал.
-            g->material = MaterialSystemInst->Acquire(names[choice]);
-
-        if (!g->material) {
-                MWARN("Application::OnDebugEvent: материал не найден! Использование материала по умолчанию.");
-                g->material = MaterialSystemInst->GetDefaultMaterial();
-            }
-
-            // Освободите старый рассеянный материал.
-            MaterialSystemInst->Release(OldName);
-        }
-        return true;
-    } else if (code == EVENT_CODE_DEBUG1) {
-        if (!State->ModelsLoaded) {
-            MDEBUG("Загружаем модели...");
-            State->ModelsLoaded = true;
-            if (!State->CarMesh->LoadFromResource("falcon")) {
-                MERROR("Не удалось загрузить Falcon Mesh!");
-            }
-            if (!State->SponzaMesh->LoadFromResource("sponza")) {
-                MERROR("Не удалось загрузить Falcon Mesh!");
-            }
-        }
-        return true;
-    }
-
-    return true;
-}
-//ЗАДАЧА: временно

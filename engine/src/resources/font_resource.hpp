@@ -68,7 +68,7 @@ struct FontData {
     baseline(f.baseline), 
     AtlasSizeX(f.AtlasSizeX), 
     AtlasSizeY(f.AtlasSizeY), 
-    atlas(std::move(f.atlas)), 
+    atlas(static_cast<TextureMap&&>(f.atlas)), 
     GlyphCount(f.GlyphCount), 
     glyphs(f.glyphs), 
     KerningCount(f.KerningCount), 
@@ -96,7 +96,7 @@ struct FontData {
         baseline = f.baseline; 
         AtlasSizeX = f.AtlasSizeX; 
         AtlasSizeY = f.AtlasSizeY;
-        atlas = std::move(f.atlas);
+        atlas = static_cast<TextureMap&&>(f.atlas);
         GlyphCount = f.GlyphCount;
         glyphs = f.glyphs;
         KerningCount = f.KerningCount;
@@ -130,7 +130,7 @@ struct BitmapFontResourceData {
     BitmapFontPage* pages;
 
     constexpr BitmapFontResourceData() : data(), PageCount(), pages(nullptr) {}
-    constexpr BitmapFontResourceData(BitmapFontResourceData&& d) : data(std::move(d.data)), PageCount(d.PageCount), pages(d.pages) {
+    constexpr BitmapFontResourceData(BitmapFontResourceData&& d) : data(static_cast<FontData&&>(d.data)), PageCount(d.PageCount), pages(d.pages) {
         d.PageCount = 0;
         d.pages = nullptr;
     }

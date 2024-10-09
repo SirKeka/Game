@@ -10,23 +10,22 @@ template<typename> class DArray;
 class MAPI MString
 {
 private:
-    u32 length           {};
-    bool autorelease {true};
-    char* str     {nullptr};
+    u32 length      {};
+    char* str{nullptr};
 
 public:
-   constexpr MString() : length(), autorelease(true), str(nullptr) {}
+   constexpr MString() : length(), str(nullptr) {}
    /// @brief Создает строку из двух строк
    /// @param str1 первая строка
    /// @param str2 вторая строка
    /// @param autorealease указывает нужно ли удалять данные строки или нет ПРИМЕЧАНИЕ: по умолчанию true
-   constexpr MString(const char *str1, const char *str2, bool autorelease = true);
-   constexpr MString(const MString &str1, const MString &str2, bool autorelease = true);
+   constexpr MString(const char *str1, const char *str2);
+   constexpr MString(const MString &str1, const MString &str2);
    /// @brief Создает строку на основе си строки
    /// @param s си строка
    /// @param DelCon указывает на то нужно ли копировать управляющие символы. По умолчанию false
    /// @param autorelease указывает на то нужно ли автоматически удалять данные строки
-   constexpr MString(const char *s, bool DelCon = false, bool autorelease = true);
+   constexpr MString(const char *s, bool DelCon = false);
    constexpr MString(const MString &s);
    constexpr MString(MString&& s);
     ~MString();
@@ -67,6 +66,10 @@ public:
 
     void Create(char* str, u64 length, bool autorelease = true);
 
+    /// @brief Зануляет внутренний указатель на строку. 
+    /// ПРИМЕЧАНИЕ: Например, полезен в случае с многопоточностью, когда нужно чтобы деструктор не удалил строку до выполнения потока
+    void SetNullString() { length = 0; str = nullptr; }
+
     /// @brief Извлекает каталог из полного пути к файлу.
     /// @tparam N количество символов в массиве
     /// @param arr массив символов в который нужно скопировать путь
@@ -87,8 +90,6 @@ public:
 
     bool operator== (const MString& rhs) const;
     bool operator== (const char* s) const;
-
-    void SetAutoRealease(bool autorealease) { this->autorelease = autorealease; }
 
     /// @brief Получает длину заданной строки.
     /// @return Длину строки

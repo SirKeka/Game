@@ -1,7 +1,8 @@
 #pragma once
 #include "defines.hpp"
 #include "core/mmemory.hpp"
-#include <new>
+
+#include <utility>
 
 template<typename T>
 void Swap(T& a, T& b) {
@@ -63,17 +64,7 @@ private:
 public:
     constexpr DArray() : size(), capacity(), data(nullptr) {}
     constexpr DArray(T&& value) { PushBack(value); }
-    constexpr DArray(u64 capacity) : size(), capacity(capacity), data(capacity ? MMemory::TAllocate<T>(Memory::DArray, capacity, true) : nullptr) {}
-    constexpr DArray(u64 size, const T& value) {
-        if(size > 0) {
-            this->size = size;
-            this->capacity = size;
-            data = MMemory::TAllocate<T>(Memory::DArray, capacity, true);
-            for (u64 i = 0; i < size; i++) {
-                data[i] = value;
-            }
-        }
-    }
+    constexpr DArray(u64 size) : size(), capacity(size), data(size ? MMemory::TAllocate<T>(Memory::DArray, capacity, true) : nullptr) {}
     
     /// @brief Конструктор копирования
     /// @param other динамический массив из которого нужно копировать данные
@@ -97,6 +88,7 @@ public:
 
     ~DArray() {
         if(this->data) {
+
             Clear();
             MMemory::Free(data, sizeof(T) * capacity, Memory::DArray);
             size = capacity = 0;
@@ -143,14 +135,14 @@ public:
 
     // Доступ к элементу------------------------------------------------------------------------
 
-    T& operator [] (u64 index) {
+    constexpr T& operator [] (u64 index) {
         if(index < 0 || index >= size) {
             MERROR("Индекс за пределами этого массива! Длина: %i, индекс: %i", size, index);
         }
         return data[index];
     }
     // Доступ к элементу
-    constexpr const T& operator [] (u64 index) const {
+    const T& operator [] (u64 index) const {
         if(index < 0 || index >= size) {
             MERROR("Индекс за пределами этого массива! Длина: %i, индекс: %i", size, index);
         }
@@ -198,7 +190,7 @@ public:
         else if (NewCap > capacity) {
             T* ptrNew = MMemory::TAllocate<T>(Memory::DArray, NewCap, true);
             for (u64 i = 0; i < size; i++) {
-                ptrNew[i] = std::move(data[i]);
+                ptrNew[i] = static_cast<T&&>(data[i]);
             }
             MMemory::Free(data, sizeof(T) * capacity, Memory::DArray);
             data = ptrNew;
@@ -245,7 +237,7 @@ public:
         } else if(size == capacity) {
             Reserve(capacity * 2);
         }
-        data[size] = std::move(value);
+        data[size] = static_cast<T&&>(value);
         size++;
     }
 
@@ -296,9 +288,17 @@ public:
         size--;
     }
 
-    /// @brief Изменяет размер контейнера, чтобы он содержал NewSize элементы, ничего не делает, если NewSize == size().
+    /// @brief Изменяет размер контейнера, чтобы он содержал NewSize элементов инициализируемых по умолчанию.
+    void Resize(u64 NewSize) {
+        if(NewSize > capacity) {
+            Reserve(NewSize);
+        }
+        size = NewSize;
+    }
+
+    /// @brief Изменяет размер контейнера, чтобы он содержал NewSize value элементов.
     /// @param NewSize новый размер контейнера
-    void Resize(u64 NewSize, const T& value = T()) {
+    void Resize(u64 NewSize, const T& value) {
         if(NewSize > capacity) {
             Reserve(NewSize);
             // ЗАДАЧА: изменить

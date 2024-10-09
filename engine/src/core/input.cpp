@@ -2,6 +2,8 @@
 #include "event.hpp"
 #include "memory/linear_allocator.hpp"
 
+#include <new>
+
 Input* Input::input = nullptr;
 
 Input::~Input()
@@ -10,10 +12,11 @@ Input::~Input()
     
 }
 
-void Input::Initialize()
+void Input::Initialize(LinearAllocator& SystemAllocator)
 {
     if (!input) {
-        input = new Input();
+        void* ptrMem = SystemAllocator.Allocate(sizeof(Input));
+        input = new(ptrMem) Input();
     };
     
     MINFO("Подсистема ввода инициализирована.");
@@ -198,11 +201,6 @@ void Input::ProcessMouseWheel(i8 z_delta)
 Input *Input::Instance()
 {
     return input;
-}
-
-void *Input::operator new(u64 size)
-{
-    return LinearAllocator::Instance().Allocate(size);
 }
 
 constexpr u16 Input::ToInt(Keys key)

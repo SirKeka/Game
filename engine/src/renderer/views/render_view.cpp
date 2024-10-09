@@ -19,18 +19,19 @@ bool RenderViewOnEvent(u16 code, void *sender, void *ListenerInst, EventContext 
     return false;
 }
 
-RenderView::RenderView(u16 id, MString &&name, KnownType type, u8 RenderpassCount, const char *CustomShaderName, RenderpassConfig *config)
+RenderView::RenderView(u16 id, const Config &config)
 : id(id), 
-name(std::move(name)), 
+name(config.name), 
 width(), height(), 
-type(type), 
-RenderpassCount(RenderpassCount), 
+type(config.type), 
+RenderpassCount(config.PassCount), 
 passes(MMemory::TAllocate<Renderpass>(Memory::Renderer, RenderpassCount)), 
-CustomShaderName(CustomShaderName) {
+CustomShaderName(config.CustomShaderName) {
     for (u32 i = 0; i < RenderpassCount; ++i) {
+        auto& PassConfig = config.passes[i];
         // Создаем проходы рендеринга в соответствии с конфигурацией.
-        if (!Renderer::RenderpassCreate(config[i], this->passes[i])) {
-            MERROR("RenderViewSystem::Create - Не удалось создать проход рендеринга '%s'", config[i].name);
+        if (!Renderer::RenderpassCreate(PassConfig, this->passes[i])) {
+            MERROR("RenderViewSystem::Create - Не удалось создать проход рендеринга '%s'", PassConfig.name);
             return;
         }
     }
@@ -47,7 +48,10 @@ constexpr RenderView::RenderView(u16 id, MString &&name, u16 width, u16 height, 
 
 RenderView::~RenderView()
 {
-    MMemory::Free(passes, sizeof(Renderpass*) * RenderpassCount, Memory::Renderer);
+    for (u32 i = 0; i < RenderpassCount; i++) {
+        Renderer::RenderpassDestroy(&passes[i]);
+    }
+    id = INVALID::U16ID;
 }
 
 bool RenderView::RegenerateAttachmentTarget(u32 PassIndex, RenderTargetAttachment *attachment)

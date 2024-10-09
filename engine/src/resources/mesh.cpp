@@ -7,10 +7,7 @@
 struct MeshLoadParams {
     const char* ResourceName;
     Mesh* OutMesh;
-    MeshResource MeshRes;
-    constexpr MeshLoadParams() : ResourceName(), OutMesh(), MeshRes() {}
-    MeshLoadParams(const char* ResourceName, Mesh* OutMesh, MeshResource MeshResource)
-    : ResourceName(ResourceName), OutMesh(OutMesh), MeshRes(MeshResource) {}
+    MeshResource MeshRes{};
 };
 
 /// @brief Вызывается при успешном завершении задания.
@@ -21,7 +18,7 @@ void MeshLoadJobSuccess(void* params) {
     // Это также обрабатывает загрузку GPU. Не может быть джобифицировано, пока рендерер не станет многопоточным.
     auto configs = MeshParams->MeshRes.data.Data();
     MeshParams->OutMesh->GeometryCount = MeshParams->MeshRes.data.Length();
-    MeshParams->OutMesh->geometries = MMemory::TAllocate<GeometryID*>(Memory::Array, MeshParams->OutMesh->GeometryCount);
+    MeshParams->OutMesh->geometries = MMemory::TAllocate<GeometryID*>(Memory::Array, MeshParams->OutMesh->GeometryCount, true);
     for (u32 i = 0; i < MeshParams->OutMesh->GeometryCount; ++i) {
         MeshParams->OutMesh->geometries[i] = GeometrySystem::Instance()->Acquire(configs[i], true);
     }
@@ -59,8 +56,9 @@ bool MeshLoadJobStart(void* params, void* ResultData) {
 bool Mesh::LoadFromResource(const char *ResourceName)
 {
     generation = INVALID::U8ID;
-    MeshResource res;
-    MeshLoadParams params {ResourceName, this, res};
+    MeshLoadParams params;
+    params.ResourceName = ResourceName;
+    params.OutMesh = this;
 
     JobInfo job { MeshLoadJobStart, MeshLoadJobSuccess, MeshLoadJobFail, &params, sizeof(MeshLoadParams), sizeof(MeshLoadParams) };
     JobSystem::Instance()->Submit(job);

@@ -1,5 +1,6 @@
 #pragma once
 #include "math/vector4d_fwd.hpp"
+#include "containers/darray.hpp"
 #include "core/mmemory.hpp"
 
 class Texture;
@@ -26,28 +27,25 @@ enum RenderTargetAttachmentStoreOperation {
 };
 
 struct RenderTargetAttachmentConfig {
-    RenderTargetAttachmentType type                    {};
-    RenderTargetAttachmentSource source                {};
-    RenderTargetAttachmentLoadOperation LoadOperation  {};
-    RenderTargetAttachmentStoreOperation StoreOperation{};
-    bool PresentAfter                             {false};
-    constexpr RenderTargetAttachmentConfig(RenderTargetAttachmentType type, RenderTargetAttachmentSource source, RenderTargetAttachmentLoadOperation LoadOperation, RenderTargetAttachmentStoreOperation StoreOperation, bool PresentAfter)
-    : type(type), source(source), LoadOperation(LoadOperation), StoreOperation(StoreOperation), PresentAfter(PresentAfter) {}
+    RenderTargetAttachmentType type;
+    RenderTargetAttachmentSource source;
+    RenderTargetAttachmentLoadOperation LoadOperation;
+    RenderTargetAttachmentStoreOperation StoreOperation;
+    bool PresentAfter;
 };
 
 struct RenderTargetConfig {
-    u8 AttachmentCount                       ;
+    u8 AttachmentCount;
     RenderTargetAttachmentConfig* attachments;
-    constexpr RenderTargetConfig(u8 AttachmentCount, RenderTargetAttachmentConfig* attachments) : AttachmentCount(AttachmentCount), attachments(attachments) {}
 };
 
 struct RenderTargetAttachment {
-    RenderTargetAttachmentType type                    {};
-    RenderTargetAttachmentSource source                {};
-    RenderTargetAttachmentLoadOperation LoadOperation  {};
-    RenderTargetAttachmentStoreOperation StoreOperation{};
-    bool PresentAfter                             {false};
-    Texture* texture                            {nullptr};
+    RenderTargetAttachmentType type;
+    RenderTargetAttachmentSource source;
+    RenderTargetAttachmentLoadOperation LoadOperation;
+    RenderTargetAttachmentStoreOperation StoreOperation;
+    bool PresentAfter;
+    Texture* texture;
 };
 
 /// @brief Представляет цель рендеринга, которая используется для рендеринга в текстуру или набор текстур.
@@ -71,17 +69,14 @@ namespace RenderpassClearFlag {
 } // namespace RenderpassClear
 
 struct RenderpassConfig {
-    const char* name{nullptr};    // Имя этого прохода рендеринга.
-    f32 depth              {};
-    u32 stencil            {};
-    FVec4 RenderArea       {};    // Текущая область рендеринга прохода рендеринга.
-    FVec4 ClearColour      {};    // Чистый цвет, используемый для этого прохода рендеринга.
-    u8 ClearFlags          {};    // Флаги очистки для этого прохода рендеринга.
-    u8 RenderTargetCount   {};    // Количество целей рендеринга, созданных в соответствии с конфигурацией цели рендеринга.
-    RenderTargetConfig target;    // Конфигурация цели рендеринга.
-
-    constexpr RenderpassConfig(const char* name, f32 depth, u32 stencil, FVec4 RenderArea, FVec4 ClearColour, u8 ClearFlags, u8 RenderTargetCount, RenderTargetConfig target)
-    : name(name), depth(depth), stencil(stencil), RenderArea(RenderArea), ClearColour(ClearColour), ClearFlags(ClearFlags), RenderTargetCount(RenderTargetCount), target(target) {}
+    const char* name;           // Имя этого прохода рендеринга.
+    f32 depth;  
+    u32 stencil;    
+    FVec4 RenderArea;           // Текущая область рендеринга прохода рендеринга.
+    FVec4 ClearColour;          // Чистый цвет, используемый для этого прохода рендеринга.
+    u8 ClearFlags;              // Флаги очистки для этого прохода рендеринга.
+    u8 RenderTargetCount;       // Количество целей рендеринга, созданных в соответствии с конфигурацией цели рендеринга.
+    RenderTargetConfig target;  // Конфигурация цели рендеринга.
 };
 
 /// @brief Представляет собой общий проход рендеринга.
@@ -117,3 +112,7 @@ struct Renderpass
     void operator delete[] (void* ptr, u64 size);
 
 };
+
+// Явное инстанцирование
+template class DArray<RenderTargetAttachmentConfig>; 
+template class DArray<RenderpassConfig>;

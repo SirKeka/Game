@@ -124,7 +124,7 @@ public:
     JobSystem(const JobSystem&) = delete;
     JobSystem& operator= (const JobSystem&) = delete;
 
-    static bool Initialize(u8 MaxJobThreadCount, u32 TypeMasks[]);
+    static bool Initialize(u8 MaxJobThreadCount, u32 TypeMasks[], class LinearAllocator& SystemAllocator);
     static void Shutdown();
 
     static JobSystem* Instance() { return state; }

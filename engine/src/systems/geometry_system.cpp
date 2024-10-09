@@ -24,13 +24,13 @@ GeometrySystem::GeometrySystem(u32 MaxGeometryCount, GeometryReference* Register
     // Сделать недействительными все геометрии в массиве.
     // new (reinterpret_cast<void*>(RegisteredGeometries)) GeometryReference[MaxGeometryCount]();
     for (u32 i = 0; i < MaxGeometryCount; ++i) {
-        this->RegisteredGeometries[i].gid.id = INVALID::ID;
-        this->RegisteredGeometries[i].gid.InternalID = INVALID::ID;
-        this->RegisteredGeometries[i].gid.generation = INVALID::U16ID;
+        RegisteredGeometries[i].gid.id = INVALID::ID;
+        RegisteredGeometries[i].gid.InternalID = INVALID::ID;
+        RegisteredGeometries[i].gid.generation = INVALID::U16ID;
     }
 }
 
-bool GeometrySystem::Initialize(u32 MaxGeometryCount)
+bool GeometrySystem::Initialize(u32 MaxGeometryCount, LinearAllocator& SystemAllocator)
 {
     if (MaxGeometryCount == 0) {
         MFATAL("«GeometrySystem::Initialize» — максимальное количество геометрии должно быть > 0.");
@@ -39,7 +39,7 @@ bool GeometrySystem::Initialize(u32 MaxGeometryCount)
 
     // Блок памяти будет содержать структуру состояния, затем блок массива, затем блок хеш-таблицы.
     u64 ArrayRequirement = sizeof(GeometryReference) * MaxGeometryCount;
-    u8* PtrGeometrySystem = reinterpret_cast<u8*>(LinearAllocator::Instance().Allocate(sizeof(GeometrySystem) + ArrayRequirement));
+    u8* PtrGeometrySystem = reinterpret_cast<u8*>(SystemAllocator.Allocate(sizeof(GeometrySystem) + ArrayRequirement));
     auto ArrayBlock = reinterpret_cast<GeometryReference*>(PtrGeometrySystem + sizeof(GeometrySystem));
 
     if (!state) {
@@ -89,16 +89,17 @@ GeometryConfig GeometrySystem::GeneratePlaneConfig(f32 width, f32 height, u32 xS
 
     u32 VertexCount = xSegmentCount * ySegmentCount * 4; // 4 вершины на сегмент
     u32 IndexCount  = xSegmentCount * ySegmentCount * 6; // 6 индексов на сегмент
-    GeometryConfig config{
-        sizeof(Vertex3D), 
-        VertexCount,  
-        MMemory::Allocate(VertexCount * sizeof(Vertex3D), Memory::Array, true),
-        sizeof(u32),
-        IndexCount,
-        MMemory::Allocate(IndexCount * sizeof(u32), Memory::Array, true),
-        MString::Length(name) ? name : DEFAULT_GEOMETRY_NAME,
-        MString::Length(MaterialName) ? MaterialName : DEFAULT_MATERIAL_NAME
-        };
+    GeometryConfig config;
+    config.VertexSize = sizeof(Vertex3D); 
+    config.VertexCount = VertexCount;  
+    config.vertices = MMemory::Allocate(VertexCount * config.VertexSize, Memory::Array, true);
+    config.IndexSize = sizeof(u32);
+    config.IndexCount = IndexCount;
+    config.indices = MMemory::Allocate(IndexCount * config.IndexSize, Memory::Array, true);
+    config.CopyNames(
+        name, // ? name : DEFAULT_GEOMETRY_NAME,
+        MaterialName // ? MaterialName : DEFAULT_MATERIAL_NAME
+    );
 
     // ЗАДАЧА: При этом создаются дополнительные вершины, но мы всегда можем дедуплицировать их позже.
     f32 SegWidth = width / xSegmentCount;
@@ -167,25 +168,24 @@ GeometryConfig GeometrySystem::GenerateCubeConfig(f32 width, f32 height, f32 dep
     f32 HalfHeight = height * 0.5f;
     f32 HalfDepth = depth * 0.5f;
 
-    GeometryConfig config{
-        sizeof(Vertex3D), 
-        4 * 6, // 4 вершины на сторону, 6 сторон
-        MMemory::Allocate(4 * 6 * sizeof(Vertex3D), Memory::Array, true), 
-        sizeof(u32), 
-        6 * 6, // 6 индексов на каждой стороне, 6 сторон
-        MMemory::Allocate(6 * 6 * sizeof(u32), Memory::Array, true), 
-        name ? name : DEFAULT_GEOMETRY_NAME,
-        MaterialName ? MaterialName : DEFAULT_MATERIAL_NAME,
-        FVec3(), FVec3(-HalfWidth, -HalfHeight, -HalfDepth),
-        FVec3(HalfWidth, HalfHeight, HalfDepth)
-    };
+    GeometryConfig config;
+    config.VertexSize = sizeof(Vertex3D);
+    config.VertexCount = 4 * 6; // 4 вершины на сторону, 6 сторон
+    config.vertices = MMemory::Allocate(4 * 6 * config.VertexSize, Memory::Array, true);
+    config.IndexSize = sizeof(u32);
+    config.IndexCount = 6 * 6; // 6 индексов на каждой стороне, 6 сторон
+    config.indices = MMemory::Allocate(6 * 6 * config.IndexSize, Memory::Array, true);
+    config.CopyNames(name, MaterialName);
+    // config.center = FVec3();
+    config.MinExtents = FVec3(-HalfWidth, -HalfHeight, -HalfDepth);
+    config.MaxExtents = FVec3(HalfWidth, HalfHeight, HalfDepth);
 
     f32 MinUVx = 0.f;
     f32 MinUVy = 0.f;
     f32 MaxUVx = TileX;
     f32 MaxUVy = TileY;
 
-    Vertex3D* vertex = reinterpret_cast<Vertex3D*>(config.vertices);
+    auto vertex = reinterpret_cast<Vertex3D*>(config.vertices);
     // Передняя поверхность
     vertex[0]  = Vertex3D(-HalfWidth, -HalfHeight,  HalfDepth,  0.F,  0.F,  1.F, MinUVx, MinUVy);
     vertex[1]  = Vertex3D( HalfWidth,  HalfHeight,  HalfDepth,  0.F,  0.F,  1.F, MaxUVx, MaxUVy);
@@ -244,8 +244,8 @@ bool GeometrySystem::CreateGeometry(const GeometryConfig &config, GeometryID *gi
     // Отправьте геометрию в рендерер для загрузки в графический процессор.
     if (!Renderer::Load(gid, config.VertexSize, config.VertexCount, config.vertices, config.IndexSize, config.IndexCount, config.indices)) {
         // Сделайте запись недействительной.
-        this->RegisteredGeometries[gid->id].ReferenceCount = 0;
-        this->RegisteredGeometries[gid->id].AutoRelease = false;
+        state->RegisteredGeometries[gid->id].ReferenceCount = 0;
+        state->RegisteredGeometries[gid->id].AutoRelease = false;
         gid->id = INVALID::ID;
         gid->generation = INVALID::U16ID;
         gid->InternalID = INVALID::ID;
@@ -311,13 +311,13 @@ bool GeometrySystem::CreateDefaultGeometries()
     u32 indices[6] = {0, 1, 2, 0, 3, 1};
 
     // Отправьте геометрию в рендерер для загрузки в графический процессор.
-    if (!Renderer::Load(&this->DefaultGeometry, sizeof(Vertex3D), 4, verts, sizeof(u32), 6, indices)) {
+    if (!Renderer::Load(&state->DefaultGeometry, sizeof(Vertex3D), 4, verts, sizeof(u32), 6, indices)) {
         MFATAL("Не удалось создать геометрию по умолчанию. Приложение не может быть продолжено.");
         return false;
     }
 
     // Получите материал по умолчанию.
-    this->DefaultGeometry.material = MaterialSystem::GetDefaultMaterial();
+    state->DefaultGeometry.material = MaterialSystem::GetDefaultMaterial();
 
     // Создайте 2d-геометрию по умолчанию.
     Vertex2D verts2d[4]{};
@@ -345,22 +345,22 @@ bool GeometrySystem::CreateDefaultGeometries()
     u32 indices2d[6] = {2, 1, 0, 3, 0, 1};
 
     // Отправьте геометрию в рендерер для загрузки в графический процессор.
-    if (!Renderer::Load(&this->Default2dGeometry, sizeof(Vertex2D), 4, verts2d, sizeof(u32), 6, indices2d)) {
+    if (!Renderer::Load(&state->Default2dGeometry, sizeof(Vertex2D), 4, verts2d, sizeof(u32), 6, indices2d)) {
         MFATAL("Не удалось создать 2D-геометрию по умолчанию. Приложение не может быть продолжено.");
         return false;
     }
 
     // Получите материал по умолчанию.
-    this->Default2dGeometry.material = MaterialSystem::GetDefaultMaterial();
+    state->Default2dGeometry.material = MaterialSystem::GetDefaultMaterial();
 
     return true;
 }
 
 GeometryID *GeometrySystem::Acquire(u32 id)
 {
-    if (id != INVALID::ID && this->RegisteredGeometries[id].gid.id != INVALID::ID) {
-        this->RegisteredGeometries[id].ReferenceCount++;
-        return &this->RegisteredGeometries[id].gid;
+    if (id != INVALID::ID && state->RegisteredGeometries[id].gid.id != INVALID::ID) {
+        state->RegisteredGeometries[id].ReferenceCount++;
+        return &state->RegisteredGeometries[id].gid;
     }
 
     // ПРИМЕЧАНИЕ. Следует ли вместо этого возвращать геометрию по умолчанию?
@@ -371,12 +371,12 @@ GeometryID *GeometrySystem::Acquire(u32 id)
 GeometryID *GeometrySystem::Acquire(const GeometryConfig& config, bool AutoRelease)
 {
     GeometryID* g = nullptr;
-    for (u32 i = 0; i < MaxGeometryCount; ++i) {
-        if (RegisteredGeometries[i].gid.id == INVALID::ID) {
+    for (u32 i = 0; i < state->MaxGeometryCount; ++i) {
+        if (state->RegisteredGeometries[i].gid.id == INVALID::ID) {
             // Поиск пустого слота.
-            RegisteredGeometries[i].AutoRelease = AutoRelease;
-            RegisteredGeometries[i].ReferenceCount = 1;
-            g = &RegisteredGeometries[i].gid;
+            state->RegisteredGeometries[i].AutoRelease = AutoRelease;
+            state->RegisteredGeometries[i].ReferenceCount = 1;
+            g = &state->RegisteredGeometries[i].gid;
             g->id = i;
             break;
         }
@@ -391,14 +391,14 @@ GeometryID *GeometrySystem::Acquire(const GeometryConfig& config, bool AutoRelea
         MERROR("Не удалось создать геометрию. Возвращение nullptr.");
         return nullptr;
     }
-    //this->RegisteredGeometries = buf; // Возвращаем слетевший указатель присваивая ему значение сохраненного ранее адреса
+    //state->RegisteredGeometries = buf; // Возвращаем слетевший указатель присваивая ему значение сохраненного ранее адреса
     return g;
 }
 
 void GeometrySystem::Release(GeometryID *gid)
 {
     if (gid && gid->id != INVALID::ID) {
-        GeometryReference* ref = &this->RegisteredGeometries[gid->id];
+        GeometryReference* ref = &state->RegisteredGeometries[gid->id];
 
         // Возьмите копию ID;
         if (ref->gid.id == gid->id) {
@@ -423,7 +423,7 @@ void GeometrySystem::Release(GeometryID *gid)
 
 GeometryID *GeometrySystem::GetDefault()
 {
-    return &DefaultGeometry;
+    return &state->DefaultGeometry;
 
     MFATAL("GeometrySystem::GetDefault вызывается перед инициализацией системы. Возвращение nullptr.");
     return nullptr;
@@ -431,7 +431,7 @@ GeometryID *GeometrySystem::GetDefault()
 
 GeometryID *GeometrySystem::GetDefault2D()
 {
-    return &Default2dGeometry;
+    return &state->Default2dGeometry;
 }
 
 void GeometryConfig::Dispose()
@@ -445,19 +445,23 @@ void GeometryConfig::Dispose()
     MMemory::ZeroMem(this, sizeof(GeometryConfig));
 }
 
-void GeometryConfig::CopyNames(const char (&name)[256], const char (&MaterialName)[256])
+void GeometryConfig::CopyNames(const char *name, const char *MaterialName)
 {
+    const char* n = name ? name : DEFAULT_GEOMETRY_NAME;
+    const char* mn = MaterialName ? MaterialName : DEFAULT_MATERIAL_NAME;
+
     for (u64 i = 0, j = 0; i < 256;) {
-            if(name[i]) {
-                this->name[i] = name[i];
-                i++;
-            }
-            if(MaterialName[j]) {
-                this->MaterialName[j] = MaterialName[j];
-                j++;
-            }
-            if (!name[i] && !MaterialName[j]) {
-                break;
-            }
+        if(n[i]) {
+            this->name[i] = n[i];
+            i++;
         }
+        if(mn[j]) {
+            this->MaterialName[j] = mn[j];
+            j++;
+        }
+        if (!n[i] && !mn[j]) {
+            this->name[i] = this->MaterialName[j] = 0;
+            break;
+        }
+    }
 }

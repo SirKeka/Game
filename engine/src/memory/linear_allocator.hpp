@@ -1,7 +1,6 @@
 #pragma once
 
 #include "core/logger.hpp"
-//#include <new>
 
 class MAPI LinearAllocator
 {
@@ -10,22 +9,17 @@ public:
     u64 allocated{0};
     void* memory{nullptr};
     bool OwnsMemory{false};
-
-    static LinearAllocator state;
-private:
-    LinearAllocator() : TotalSize(0), allocated(0), memory(nullptr), OwnsMemory(false) {}
-    LinearAllocator(u64 TotalSize, void* memory = nullptr);
-    LinearAllocator& operator= (const LinearAllocator&) = default;
-    //LinearAllocator& operator= (const LinearAllocator&&);
 public:
+    constexpr LinearAllocator() : TotalSize(0), allocated(0), memory(nullptr), OwnsMemory(false) {}
+    constexpr LinearAllocator(u64 TotalSize, void* memory = nullptr);
+
+    void Initialize(u64 TotalSize, void* memory = nullptr);
+
     ~LinearAllocator();
     LinearAllocator(const LinearAllocator&) = delete;
 
     void* Allocate(u64 size);
     void FreeAll();
-
-    void Initialize(u64 TotalSize, void* memory = nullptr);
-    static MINLINE LinearAllocator& Instance() { return state; }
 
     /// @brief 
     /// @tparam T 
@@ -41,17 +35,3 @@ public:
     return {};
     }
 };
-
-/*template <typename T>
-class WrapLinearAllocator
-{
-
-    static LinearAllocator la () {
-        static LinearAllocator linearallocator(sizeof(T));
-        return linearallocator;
-    }
-public:
-    static void* Allocate(u64 size) { return la().Allocate(size); }
-    static void  Free(void* ptr) { la().FreeAll; }
-
-};*/

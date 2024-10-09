@@ -21,7 +21,7 @@ constexpr ResourceSystem::ResourceSystem(u32 MaxLoaderCount, const char* BasePat
     RegisterLoader(eResource::Type::SystemFont, MString(),     "fonts");
 }
 
-bool ResourceSystem::Initialize(u32 MaxLoaderCount, const char* BasePath)
+bool ResourceSystem::Initialize(u32 MaxLoaderCount, const char* BasePath, LinearAllocator& SystemAllocator)
 {
     if (MaxLoaderCount == 0) {
         MFATAL("ResourceSystem::Initialize е удалось, поскольку максимальное количество загрузчиков (MaxLoaderCount) = 0.");
@@ -30,7 +30,7 @@ bool ResourceSystem::Initialize(u32 MaxLoaderCount, const char* BasePath)
 
     if (!state) {
         u64 ResourceSystemSize = sizeof(ResourceSystem) + (sizeof(ResourceLoader) * MaxLoaderCount);
-        void* ResourceSystemPtr = LinearAllocator::Instance().Allocate(ResourceSystemSize); 
+        void* ResourceSystemPtr = SystemAllocator.Allocate(ResourceSystemSize); 
         ResourceLoader* ResourceLoaderPtr = reinterpret_cast<ResourceLoader*> (reinterpret_cast<u8*>(ResourceSystemPtr) + sizeof(ResourceSystem));
         state = new(ResourceSystemPtr) ResourceSystem(MaxLoaderCount, BasePath, ResourceLoaderPtr);
     }

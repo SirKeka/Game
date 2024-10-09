@@ -19,7 +19,7 @@ public:
     ResourceSystem(const ResourceSystem&) = delete;
     ResourceSystem& operator= (const ResourceSystem&) = delete;
 
-    static bool Initialize(u32 MaxLoaderCount, const char* BasePath);
+    static bool Initialize(u32 MaxLoaderCount, const char* BasePath, class LinearAllocator& SystemAllocator);
     static void Shutdown();
 
     /// @brief Регистрирует указанный загрузчик ресурсов в системе.
@@ -63,9 +63,9 @@ public:
     /// @brief Выгружает указанный ресурс.
     /// @param resource ссылка на ресурс который нужно выгрузить.
     template<typename T>
-    MAPI void Unload(T& resource) {
+    MAPI static void Unload(T& resource) {
         if (resource.LoaderID != INVALID::ID) {
-            auto& l = RegisteredLoaders[resource.LoaderID];
+            auto& l = state->RegisteredLoaders[resource.LoaderID];
             if (l.id != INVALID::ID) {
                 l.Unload(resource);
             }

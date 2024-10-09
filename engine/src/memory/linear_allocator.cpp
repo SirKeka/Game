@@ -2,24 +2,13 @@
 
 #include "core/mmemory.hpp"
 
-LinearAllocator LinearAllocator::state;
-
-LinearAllocator::LinearAllocator(u64 TotalSize, void *memory)
+constexpr LinearAllocator::LinearAllocator(u64 TotalSize, void *memory)
 :
     TotalSize(TotalSize),
     allocated(),
     memory(memory ? memory : MMemory::Allocate(TotalSize, Memory::LinearAllocator, true)),
     OwnsMemory(memory == nullptr)
-{
-    /*this->TotalSize = TotalSize;
-    this->allocated = 0;
-    this->OwnsMemory = memory == nullptr;
-    if (memory) {
-        this->memory = memory;
-    } else {
-        this->memory = MMemory::Allocate(TotalSize, Memory::LinearAllocator);
-    }*/
-}
+{}
 
 LinearAllocator::~LinearAllocator()
 {
@@ -33,6 +22,13 @@ LinearAllocator::~LinearAllocator()
         TotalSize = 0;
         OwnsMemory = false;
     }
+}
+
+void LinearAllocator::Initialize(u64 TotalSize, void *memory)
+{
+    this->TotalSize = TotalSize;
+    this->memory = memory ? memory : MMemory::Allocate(TotalSize, Memory::LinearAllocator, true);
+    OwnsMemory = memory == nullptr;
 }
 
 void *LinearAllocator::Allocate(u64 size)
@@ -57,9 +53,4 @@ void LinearAllocator::FreeAll()
        allocated = 0;
         MMemory::ZeroMem(memory, TotalSize);
     }
-}
-
-void LinearAllocator::Initialize(u64 TotalSize, void *memory)
-{
-    state = LinearAllocator(TotalSize, memory);
 }

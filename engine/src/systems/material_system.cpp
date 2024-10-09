@@ -39,7 +39,7 @@ MaterialSystem::~MaterialSystem()
     DestroyMaterial(&state->DefaultMaterial);
 }
 
-bool MaterialSystem::Initialize(u32 MaxMaterialCount)
+bool MaterialSystem::Initialize(u32 MaxMaterialCount, LinearAllocator& SystemAllocator)
 {
     if (MaxMaterialCount == 0) {
         MFATAL("MaterialSystem::Initialize — MaxMaterialCount должен быть > 0.");
@@ -52,7 +52,7 @@ bool MaterialSystem::Initialize(u32 MaxMaterialCount)
         u64 ArrayRequirement = sizeof(Material) * MaxMaterialCount;
         u64 HashtableRequirement = sizeof(MaterialReference) * MaxMaterialCount;
         u64 MemoryRequirement = StructRequirement + ArrayRequirement + HashtableRequirement;
-        u8* ptrMatSys = reinterpret_cast<u8*>(LinearAllocator::Instance().Allocate(MemoryRequirement));
+        u8* ptrMatSys = reinterpret_cast<u8*>(SystemAllocator.Allocate(MemoryRequirement));
         Material* RegisteredMaterials = reinterpret_cast<Material*>(ptrMatSys + StructRequirement);
         MaterialReference* HashTableBlock = reinterpret_cast<MaterialReference*>(RegisteredMaterials + MaxMaterialCount);
         state = new(ptrMatSys) MaterialSystem(MaxMaterialCount, RegisteredMaterials, HashTableBlock);

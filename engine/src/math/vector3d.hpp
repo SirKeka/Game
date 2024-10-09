@@ -309,7 +309,7 @@ template<typename T>
 /// @param b Синее значение [0-255].
 /// @param OutV Указатель для хранения вектора значений с плавающей точкой.
 /// @return 
-MINLINE Vector3D<T> RGBu32ToFVec3(u32 r, u32 g, u32 b) 
+MINLINE void RGBu32ToFVec3(u32 r, u32 g, u32 b, Vector3D<T>& v) 
 {
-	return (Vector3D<T>(r, g, b) /= 255.F);
+	v /= 255.F;
 }

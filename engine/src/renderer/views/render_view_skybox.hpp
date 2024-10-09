@@ -17,12 +17,12 @@ private:
     u16 ViewLocation                {};
     u16 CubeMapLocation             {};
 public:
-    RenderViewSkybox(u16 id, MString&& name, KnownType type, u8 RenderpassCount, const char* CustomShaderName, RenderpassConfig* PassConfig);
+    RenderViewSkybox(u16 id, const Config &config);
     ~RenderViewSkybox();
 
     void Resize(u32 width, u32 height) override;
-    bool BuildPacket(void* data, Packet& OutPacket) const override;
-    bool Render(const Packet& packet, u64 FrameNumber, u64 RenderTargetIndex) const override;
+    bool BuildPacket(class LinearAllocator& FrameAllocator, void* data, Packet& OutPacket) override;
+    bool Render(const Packet& packet, u64 FrameNumber, u64 RenderTargetIndex) override;
 
     void* operator new(u64 size);
     void operator delete(void* ptr, u64 size);

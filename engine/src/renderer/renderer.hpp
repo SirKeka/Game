@@ -41,7 +41,7 @@ public:
     /// @param window указатель на класс окна/поверхности на которой орисовщик будет рисовать
     /// @param ApplicationName Имя приложения.
     /// @param type тип отрисовщика с которым первоначально будет инициализироваться интерфейс/система
-    Renderer(MWindow* window, const char *ApplicationName, ERendererType type);
+    Renderer(MWindow* window, const char *ApplicationName, ERendererType type, LinearAllocator& SystemAllocator);
     ~Renderer();
 
     /// @brief Инициализирует интерфейс/систему рендеринга.
@@ -249,7 +249,7 @@ public:
     static u8 WindowAttachmentIndexGet();
 
     /// @brief Возвращает количество вложений, необходимых для целей визуализации на основе окна.
-    static u8 WindowAttachmentCountGet();
+    MAPI static u8 WindowAttachmentCountGet();
     
     /// @brief Указывает, поддерживает ли рендерер многопоточность.
     static bool IsMultithreaded();
@@ -346,9 +346,5 @@ public:
     /// @param BindOnly только связывает буфер, но не вызывает draw.
     /// @return True в случае успеха; в противном случае false.
     static bool RenderBufferDraw(RenderBuffer& buffer, u64 offset, u32 ElementCount, bool BindOnly);
-
-    void* operator new(u64 size);
-    // void operator delete(void* ptr);
-
 };
 

@@ -9,11 +9,11 @@
 /// @tparam T 
 template<typename T>
 struct Resource {
-    u32 LoaderID{};     // Идентификатор загрузчика, обрабатывающего этот ресурс.
+    u32 LoaderID;       // Идентификатор загрузчика, обрабатывающего этот ресурс.
     const char* name;   // Название ресурса.
     MString FullPath;   // Полный путь к файлу ресурса.
     //u64 DataSize {};    // Размер данных ресурса в байтах.
-    T data{};           // Данные ресурса.
+    T data;             // Данные ресурса.
     constexpr Resource() : LoaderID(), name(nullptr), FullPath(),/* DataSize(), */data() {}
 };
 

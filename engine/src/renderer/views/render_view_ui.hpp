@@ -15,12 +15,12 @@ private:
     // u32 RenderMode;
 public:
     // constexpr RenderViewUI();
-    /*constexpr */RenderViewUI(u16 id, MString&& name, KnownType type, u8 RenderpassCount, const char* CustomShaderName, RenderpassConfig* PassConfig);
+    /*constexpr */RenderViewUI(u16 id, const Config &config);
     ~RenderViewUI();
 
     void Resize(u32 width, u32 height) override;
-    bool BuildPacket(void* data, Packet& OutPacket) const override;
-    bool Render(const Packet& packet, u64 FrameNumber, u64 RenderTargetIndex) const override;
+    bool BuildPacket(class LinearAllocator& FrameAllocator, void* data, Packet& OutPacket) override;
+    bool Render(const Packet& packet, u64 FrameNumber, u64 RenderTargetIndex) override;
 
     void* operator new(u64 size);
     void operator delete(void* ptr, u64 size);

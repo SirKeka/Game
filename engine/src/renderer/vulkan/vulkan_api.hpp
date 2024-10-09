@@ -99,7 +99,7 @@ public:
     void RenderTargetCreate(u8 AttachmentCount, RenderTargetAttachment* attachments, Renderpass* pass, u32 width, u32 height, RenderTarget& OutTarget) override;
     void RenderTargetDestroy(RenderTarget& target, bool FreeInternalMemory = false) override;
     bool RenderpassCreate(const RenderpassConfig& config, Renderpass& OutRenderpass) override;
-    void RenderpassDestroy(Renderpass* OutRenderpass) override;
+    void RenderpassDestroy(Renderpass* renderpass) override;
 
     Texture* WindowAttachmentGet(u8 index)  override;
     Texture* DepthAttachmentGet(u8 index)   override;
@@ -124,7 +124,6 @@ public:
     bool RenderBufferCopyRange      (RenderBuffer& source, u64 SourceOffset, RenderBuffer& dest, u64 DestOffset, u64 size) override;
     bool RenderBufferDraw           (RenderBuffer& buffer, u64 offset, u32 ElementCount, bool BindOnly)                    override;
 
-    void* operator new(u64 size);
     /// @brief Функция поиска индекса памяти заданного типа и с заданными свойствами.
     /// @param TypeFilter типы памяти для поиска.
     /// @param PropertyFlags обязательные свойства, которые должны присутствовать.
