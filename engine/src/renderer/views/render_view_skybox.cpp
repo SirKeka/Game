@@ -106,7 +106,7 @@ bool RenderViewSkybox::Render(const Packet &packet, u64 FrameNumber, u64 RenderT
         ViewMatrix(12) = ViewMatrix(13) = ViewMatrix(14) = 0.f;
 
         // Применить глобальные переменные
-        // TODO: Это ужасно. Нужно привязать по идентификатору.
+        // ЗАДАЧА: Это ужасно. Нужно привязать по идентификатору.
         ShaderSystem::GetShader(ShaderID)->BindGlobals();
         if (!ShaderSystem::UniformSet(ProjectionLocation, &packet.ProjectionMatrix)) {
             MERROR("Не удалось применить единообразие проекции скайбокса.");

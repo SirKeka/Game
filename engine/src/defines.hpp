@@ -149,3 +149,6 @@ struct Range {
         return Range{GetAligned(offset, granularity), GetAligned(size, granularity)};
     }
 };
+
+#define MMIN(x, y) (x < y ? x : y)
+#define MMAX(x, y) (x > y ? x : y)

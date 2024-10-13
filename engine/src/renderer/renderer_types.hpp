@@ -12,7 +12,6 @@
 struct StaticMeshData;
 class Texture;
 class Renderer;
-struct GeometryID;
 
 enum class ERendererType 
 {
@@ -52,13 +51,6 @@ struct VulkanUI_ShaderInstanceUniformObject {
     FVec4 vReserved0;   // 16 bytes, зарезервировано для будущего использования.
     FVec4 vReserved1;   // 16 bytes, зарезервировано для будущего использования.
     FVec4 vReserved2;   // 16 bytes, зарезервировано для будущего использования.
-};
-
-struct GeometryRenderData 
-{
-    Matrix4D model;
-    GeometryID* gid;
-    u32 UniqueID;
 };
 
 /// @brief Структура, которая генерируется приложением и отправляется один раз рендереру для рендеринга заданного кадра. 

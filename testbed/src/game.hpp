@@ -1,6 +1,7 @@
 #pragma once
 
 #include <game_types.hpp>
+#include <math/frustrum.hpp>
 
 class Game : public GameTypes
 {
@@ -10,6 +11,8 @@ public:
         class Camera* WorldCamera;
 
         u16 width, height;
+
+        Frustrum CameraFrustrum;
 
         // ЗАДАЧА: временно
         Skybox sb;

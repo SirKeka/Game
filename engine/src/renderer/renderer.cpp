@@ -78,7 +78,6 @@ bool Renderer::DrawFrame(const RenderPacket &packet)
             return true;
         }
     }
-    
 
     // Если начальный кадр возвращается успешно, операции в середине кадра могут продолжаться.
     if (ptrRenderer->BeginFrame(packet.DeltaTime)) {

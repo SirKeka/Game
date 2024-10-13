@@ -3,6 +3,14 @@
 #include "math/matrix4d.hpp"
 
 struct Renderpass;
+struct GeometryID;
+
+struct GeometryRenderData 
+{
+    Matrix4D model;
+    GeometryID* gid;
+    u32 UniqueID;
+};
 
 struct SkyboxPacketData {
     struct Skybox* sb;
@@ -100,7 +108,7 @@ public:
         FVec3 ViewPosition;                             // Текущая позиция представления, если применимо.
         FVec4 AmbientColour;                            // Текущий окружающий цвет сцены, если применимо.
         u32 GeometryCount;                              // Количество геометрий для рисования.
-        DArray<struct GeometryRenderData> geometries;   // Геометрии для рисования.
+        DArray<GeometryRenderData> geometries;   // Геометрии для рисования.
         const char* CustomShaderName;                   // Имя используемого пользовательского шейдера, если применимо. В противном случае 0.
         void* ExtendedData;                             // Содержит указатель на данные свободной формы, обычно понимаемые как объектом, так и потребляющим представлением.
     };
@@ -109,3 +117,4 @@ public:
 bool RenderViewOnEvent(u16 code, void* sender, void* ListenerInst, EventContext context);
 
 template class DArray<RenderView::Config>; // Явное инстанцирование
+template class DArray<GeometryRenderData>;

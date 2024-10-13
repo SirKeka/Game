@@ -206,6 +206,15 @@ MINLINE Vector3D<T> operator *(const Vector3D<T>& v, T s)
 }
 
 template<typename T>
+MINLINE Vector3D<T> operator *(const Vector3D<T>& v, const Matrix4D& m)
+{
+	return Vector3D<T>(
+        v.x * m.data[0] + v.y * m.data[4] + v.z * m.data[8]  + m.data[12],
+        v.x * m.data[1] + v.y * m.data[5] + v.z * m.data[9]  + m.data[13],
+        v.x * m.data[2] + v.y * m.data[6] + v.z * m.data[10] + m.data[14]);
+}
+
+template<typename T>
 MINLINE Vector3D<T> operator /(const Vector3D<T>& a, const Vector3D<T>& b)
 {
 	return Vector3D<T>(a.x / b.x, a.y / b.y, a.z / b.z);

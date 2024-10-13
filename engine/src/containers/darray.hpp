@@ -98,16 +98,18 @@ public:
 
     // Операторы--------------------------------------------------------------------------------
 
-    DArray& operator=(const DArray& darr) {
+    /// @brief Присваивает внутренние данные одного массива другому.
+    /// ПРИМЕЧАНИЕ: если будет удалены данные одного массива то и второго тоже
+    /// @param darr константная ссылка на массив данные которого нужно присвоить
+    /// @return Возвращает ссылку на динамический массив
+    DArray& operator=(const DArray& da) {
         Clear();
-        if (data && capacity < darr.capacity) {
-            MMemory::Free(data, capacity * sizeof(T), Memory::DArray);
-            data = MMemory::TAllocate<T>(Memory::DArray, darr.capacity);
-            size = darr.size;
-            capacity = darr.capacity;
+        if (!data && capacity < da.size) {
+            Reserve(da.size);
+            size = da.size;
         }
-        for (u64 i = 0; i < darr.size; i++) {
-            data[i] = darr.data[i];
+        for (u64 i = 0; i < da.size; i++) {
+            data[i] = da.data[i];
         }
         
         return *this;
@@ -141,6 +143,7 @@ public:
         }
         return data[index];
     }
+
     // Доступ к элементу
     const T& operator [] (u64 index) const {
         if(index < 0 || index >= size) {
@@ -198,11 +201,11 @@ public:
         }
     }
     /// @return количество элементов контейнера
-    constexpr u64 Length() const noexcept {
+    constexpr const u64& Length() const noexcept {
         return size;
     }
     /// @return количество зарезервированных ячеек памяти типа Т
-    constexpr u64 Capacity() const noexcept {
+    constexpr const u64 Capacity() const noexcept {
         return capacity;
     }
     //-----------------------------------------------------------------------------------Емкость

@@ -281,6 +281,12 @@ bool Game::Initialize()
 
 bool Game::Update(f32 DeltaTime)
 {
+    // Убедитесь, что это очищено, чтобы избежать утечки памяти.
+    // ЗАДАЧА: Нужна версия этого, которая использует распределитель кадров.
+    if (WorldGeometries) {
+        WorldGeometries.Clear();
+    }
+
     FrameAllocator.FreeAll();
 
     auto InputInst = Input::Instance();
@@ -383,7 +389,7 @@ bool Game::Update(f32 DeltaTime)
     // ЗАДАЧА: временно
 
     // Выполните небольшой поворот на первой сетке.
-    Quaternion rotation( FVec3(0.f, 1.f, 0.f), 0.5f * DeltaTime, false );
+    Quaternion rotation( FVec3(0.F, 1.F, 0.F), 0.5F * DeltaTime, false );
     state->meshes[0].transform.Rotate(rotation);
 
     // Выполняем аналогичное вращение для второй сетки, если она существует.
@@ -406,11 +412,84 @@ bool Game::Update(f32 DeltaTime)
     InputInst->GetMousePosition(MouseX, MouseY);
 
     // Преобразовать в NDC
-    f32 mouseXNdc = Math::RangeConvertF32((f32)MouseX, 0.0f, (f32)state->width, -1.0f, 1.0f);
-    f32 MouseYNdc = Math::RangeConvertF32((f32)MouseY, 0.0f, (f32)state->height, -1.0f, 1.0f);
+    f32 mouseXNdc = Math::RangeConvertF32((f32)MouseX, 0.F, (f32)state->width,  -1.F, 1.F);
+    f32 MouseYNdc = Math::RangeConvertF32((f32)MouseY, 0.F, (f32)state->height, -1.F, 1.F);
 
     f64 fps, FrameTime;
     application->State->metrics.Frame(fps, FrameTime);
+
+    // Обновите усеченную пирамиду
+    const auto& forward = state->WorldCamera->Forward();
+    const auto& right = state->WorldCamera->Right();
+    const auto& up = state->WorldCamera->Up();
+    // ЗАДАЧА: получите поле зрения камеры, аспект и т. д.
+    state->CameraFrustrum.Create(state->WorldCamera->GetPosition(), forward, right, up, (f32)state->width / state->height, Math::DegToRad(45.F), 0.1F, 1000.F);
+
+    // ПРИМЕЧАНИЕ: начните с разумного значения по умолчанию, чтобы избежать слишком большого количества перераспределений.
+    WorldGeometries.Reserve(512);
+    u32 DrawCount = 0;
+    for (u32 i = 0; i < 10; ++i) {
+        auto& m = state->meshes[i];
+        if (m.generation != INVALID::U8ID) {
+            auto model = m.transform.GetWorld();
+
+            for (u32 j = 0; j < m.GeometryCount; ++j) {
+                auto g = m.geometries[j];
+
+                // Расчет ограничивающей сферы.
+                // {
+                //     // Переместите/масштабируйте экстенты.
+                //     auto ExtentsMin = g->extents.MinSize * model;
+                //     auto ExtentsMax = g->extents.MaxSize * model;
+
+                //     f32 min = MMIN(MMIN(ExtentsMin.x, ExtentsMin.y), ExtentsMin.z);
+                //     f32 max = MMAX(MMAX(ExtentsMax.x, ExtentsMax.y), ExtentsMax.z);
+                //     f32 diff = Math::abs(max - min);
+                //     f32 radius = diff * 0.5f;
+
+                //     // Переместите/масштабируйте центр.
+                //     auto center = g->center * model;
+
+                //     if (state->CameraFrustrum.IntersectsSphere(center, radius)) {
+                //         // Добавьте его в список для рендеринга.
+                //         GeometryRenderData data = {};
+                //         data.model = model;
+                //         data.gid = g;
+                //         data.UniqueID = m.UniqueID;
+                //         WorldGeometries.PushBack(data);
+
+                //         DrawCount++;
+                //     }
+                // }
+
+                // Расчет AABB
+                {
+                    // Переместите/масштабируйте экстенты.
+                    // auto ExtentsMin = g->extents.MinSize * model;
+                    auto ExtentsMax = g->extents.MaxSize * model;
+                    
+                    // Переместить/масштабировать центр.
+                    auto center = g->center * model;
+                    FVec3 HalfExtents{
+                        Math::abs(ExtentsMax.x - center.x),
+                        Math::abs(ExtentsMax.y - center.y),
+                        Math::abs(ExtentsMax.z - center.z),
+                    };
+
+                    if (state->CameraFrustrum.IntersectsAABB(center, HalfExtents)) {
+                        // Добавьте его в список для рендеринга.
+                        GeometryRenderData data = {};
+                        data.model = model;
+                        data.gid = g;
+                        data.UniqueID = m.UniqueID;
+                        WorldGeometries.PushBack(data);
+
+                        DrawCount++;
+                    }
+                }
+            }
+        }
+    }
 
     char TextBuffer[256]{};
             MString::Format(
@@ -418,7 +497,7 @@ bool Game::Update(f32 DeltaTime)
                 "\
                 FPS: %5.1f(%4.1fмс) Позиция=[%7.3F, %7.3F, %7.3F] Вращение=[%7.3F, %7.3F, %7.3F]\n\
                 Мышь: X=%-5d Y=%-5d   L=%s R=%s   NDC: X=%.6f, Y=%.6f\n\
-                Hovered: %s%u",
+                Draw: %-5u Hovered: %s%u",
                 fps,
                 FrameTime,
                 pos.x, pos.y, pos.z,
@@ -428,6 +507,7 @@ bool Game::Update(f32 DeltaTime)
                 RightDown ? "Y" : "N",
                 mouseXNdc,
                 MouseYNdc,
+                DrawCount,
                 state->HoveredObjectID == INVALID::ID ? "none" : "",
                 state->HoveredObjectID == INVALID::ID ? 0 : state->HoveredObjectID
             );
@@ -455,21 +535,8 @@ bool Game::Render(RenderPacket& packet, f32 DeltaTime)
     }
     
     // Мир 
-    u32 MeshCount = 0;
-    u32 MaxMeshes = 10;
-    Mesh** meshes = reinterpret_cast<Mesh**>(FrameAllocator.Allocate(sizeof(Mesh*) * MaxMeshes));
-    // ЗАДАЧА: массив гибкого размера
-    for (u32 i = 0; i < 10; ++i) {
-        if (state->meshes[i].generation != INVALID::U8ID) {
-            meshes[MeshCount] = &state->meshes[i];
-            MeshCount++;
-        }
-    }
-    Mesh::PacketData WorldMeshData;
-    WorldMeshData.MeshCount = MeshCount;
-    WorldMeshData.meshes = meshes;
     // ЗАДАЧА: выполняет поиск в каждом кадре.
-    if (!RenderViewSystem::BuildPacket(RenderViewSystem::Get("world"), FrameAllocator, &WorldMeshData, packet.views[1])) {
+    if (!RenderViewSystem::BuildPacket(RenderViewSystem::Get("world"), FrameAllocator, &WorldGeometries, packet.views[1])) {
         MERROR("Не удалось построить пакет для представления «world_opaque».");
         return false;
     }
@@ -498,11 +565,10 @@ bool Game::Render(RenderPacket& packet, f32 DeltaTime)
 
     RenderViewPick::PacketData PickPacket;
     PickPacket.UiMeshData = UiPacket.MeshData;
-    PickPacket.WorldMeshData = WorldMeshData;
+    PickPacket.WorldMeshData = WorldGeometries;
     PickPacket.texts = UiPacket.texts;
     PickPacket.TextCount = UiPacket.TextCount;
     PickPacket.UiGeometryCount = 0;
-    PickPacket.WorldGeometryCount = 0;
 
     if (!RenderViewSystem::BuildPacket(RenderViewSystem::Get("pick"), FrameAllocator, &PickPacket, packet.views[3])) {
         MERROR("Не удалось построить пакет для представления «pick».");

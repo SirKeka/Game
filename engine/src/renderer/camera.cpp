@@ -63,6 +63,11 @@ FVec3 Camera::Right()
     return Matrix4D::Right(GetView());
 }
 
+FVec3 Camera::Up()
+{
+    return Matrix4D::Up(GetView());
+}
+
 void Camera::MoveForward(f32 amount)
 {
     position += (Forward() * amount);

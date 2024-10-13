@@ -7,8 +7,7 @@ class RenderViewPick : public RenderView
 {
 public:
     struct PacketData {
-    Mesh::PacketData WorldMeshData;
-    u32 WorldGeometryCount;
+    DArray<GeometryRenderData> WorldMeshData; // Копия данных кадра
     Mesh::PacketData UiMeshData;
     u32 UiGeometryCount;
     // ЗАДАЧА: временно

@@ -500,7 +500,7 @@ bool VulkanDevice::PhysicalDeviceMeetsRequirements(
         // Device extensions.
         if (requirements->DeviceExtensionNames.Data()) {
             u32 AvailableExtensionCount = 0;
-            VkExtensionProperties* AvailableExtensions = 0;
+            VkExtensionProperties* AvailableExtensions = nullptr;
             VK_CHECK(vkEnumerateDeviceExtensionProperties(
                 device,
                 0,

@@ -23,6 +23,11 @@ struct ApplicationConfig {
     DArray<RenderView::Config> RenderViews{}; // Массив конфигураций представления рендеринга.
 };
 
+struct GameFrameData {
+    // Динамический массив мировой геометрии, которая отрисовывается в этом кадре.
+    DArray<GeometryRenderData> WorldGeometries;
+};
+
 // Представляет базовое состояние игры. Вызывается для создания приложением.
 class MAPI GameTypes
 {
@@ -30,11 +35,12 @@ private:
 
 public:
     ApplicationConfig AppConfig;
-    Application* application;       // Указатель на блок памяти в котором храненится состояние приложения. Создается и управляется движком.
-    void* state;                    // Указатель на блок памяти в котором храненится состояние игры. Создается и управляется игрой.
-    u64 StateMemoryRequirement;     // Требуемый размер для игрового состояния.
-    LinearAllocator FrameAllocator; // Распределитель, используемый для распределений, которые необходимо делать в каждом кадре. Содержимое стирается в начале кадра.
-    
+    Application* application;                   // Указатель на блок памяти в котором храненится состояние приложения. Создается и управляется движком.
+    void* state;                                // Указатель на блок памяти в котором храненится состояние игры. Создается и управляется игрой.
+    u64 StateMemoryRequirement;                 // Требуемый размер для игрового состояния.
+    LinearAllocator FrameAllocator;             // Распределитель, используемый для распределений, которые необходимо делать в каждом кадре. Содержимое стирается в начале кадра.
+    DArray<GeometryRenderData> WorldGeometries; // GameFrameData FrameData;        // Данные, которые создаются, используются и удаляются в каждом кадре
+
     constexpr GameTypes(const ApplicationConfig& AppConfig, u64 StateMemoryRequirement) : AppConfig(AppConfig), application(nullptr), state(nullptr), StateMemoryRequirement(StateMemoryRequirement), FrameAllocator() {}
     virtual ~GameTypes() = default;
 

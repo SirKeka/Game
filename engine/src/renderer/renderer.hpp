@@ -15,6 +15,7 @@
 #include "core/event.hpp"
 
 class MWindow;
+class LinearAllocator;
 struct StaticMeshData;
 struct PlatformState;
 class VulkanAPI;

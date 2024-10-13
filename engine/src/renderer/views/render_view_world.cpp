@@ -123,7 +123,7 @@ bool RenderViewWorld::BuildPacket(class LinearAllocator& FrameAllocator, void *d
         return false;
     }
 
-    auto MeshData = reinterpret_cast<Mesh::PacketData*>(data);
+    auto& GeometryData = *reinterpret_cast<DArray<GeometryRenderData>*>(data);
     
     OutPacket.view = this;
 
@@ -137,29 +137,27 @@ bool RenderViewWorld::BuildPacket(class LinearAllocator& FrameAllocator, void *d
     // Получить все геометрии из текущей сцены.
     DArray<GeometryDistance> GeometryDistances;
     
-    for (u32 i = 0; i < MeshData->MeshCount; ++i) {
-        auto m = MeshData->meshes[i];
-        const auto& model = m->transform.GetWorld();
-        for (u32 j = 0; j < m->GeometryCount; ++j) {
-            GeometryRenderData RenderData;
-            RenderData.gid = m->geometries[j];
-            RenderData.model = model;
-            // ЗАДАЧА: Добавить что-то к материалу для проверки прозрачности.
-            if ((m->geometries[j]->material->DiffuseMap.texture->flags & TextureFlag::HasTransparency) == 0) {
-                OutPacket.geometries.PushBack(RenderData);
-                OutPacket.GeometryCount++;
-            } else {
-                // Для сеток _с_ прозрачностью добавьте их в отдельный список, чтобы позже отсортировать по расстоянию.
-                // Получите центр, извлеките глобальную позицию из матрицы модели и добавьте ее в центр, 
-                // затем вычислите расстояние между ней и камерой и, наконец, сохраните ее в списке для сортировки.
-                // ПРИМЕЧАНИЕ: это не идеально для полупрозрачных сеток, которые пересекаются, но для наших целей сейчас достаточно.
-                auto center = FVec3::Transform(m->geometries[j]->center, model);
-                auto distance = Distance(center, WorldCamera->GetPosition());
-                GeometryDistance GeoDist;
-                GeoDist.g = RenderData;
-                GeoDist.distance = Math::abs(distance);
-                GeometryDistances.PushBack(GeoDist);
-            }
+    for (u32 i = 0; i < GeometryData.Length(); ++i) {
+        auto& gData = GeometryData[i];
+        if (!gData.gid) {
+            continue;
+        }
+
+        // ЗАДАЧА: Добавить что-то к материалу для проверки прозрачности.
+        if ((gData.gid->material->DiffuseMap.texture->flags & TextureFlag::HasTransparency) == 0) {
+            OutPacket.geometries.PushBack(gData);
+            OutPacket.GeometryCount++;
+        } else {
+            // Для сеток _с_ прозрачностью добавьте их в отдельный список, чтобы позже отсортировать по расстоянию.
+            // Получите центр, извлеките глобальную позицию из матрицы модели и добавьте ее в центр, 
+            // затем вычислите расстояние между ней и камерой и, наконец, сохраните ее в списке для сортировки.
+            // ПРИМЕЧАНИЕ: это не идеально для полупрозрачных сеток, которые пересекаются, но для наших целей сейчас достаточно.
+            auto center = FVec3::Transform(gData.gid->center, gData.model);
+            auto distance = Distance(center, WorldCamera->GetPosition());
+            GeometryDistance GeoDist;
+            GeoDist.g = gData;
+            GeoDist.distance = Math::abs(distance);
+            GeometryDistances.PushBack(GeoDist);
         }
     }
 

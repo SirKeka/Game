@@ -284,7 +284,8 @@ MultithreadingEnabled(false)
     // Получите список доступных уровней проверки.
     u32 AvailableLayerCount = 0;
     VK_CHECK(vkEnumerateInstanceLayerProperties(&AvailableLayerCount, nullptr));
-    DArray<VkLayerProperties> AvailableLayers(AvailableLayerCount);
+    DArray<VkLayerProperties> AvailableLayers;
+    AvailableLayers.Resize(AvailableLayerCount);
     VK_CHECK(vkEnumerateInstanceLayerProperties(&AvailableLayerCount, AvailableLayers.Data())); 
 
     // Убедитесь, что доступны все необходимые слои.

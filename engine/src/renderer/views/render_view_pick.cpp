@@ -136,26 +136,18 @@ bool RenderViewPick::BuildPacket(LinearAllocator& FrameAllocator, void *data, Pa
     WorldShaderInfo.view = WorldCamera->GetView();
 
     // Установить данные пакета выбора на расширенные данные.
-    PacketData->WorldGeometryCount = 0;
     PacketData->UiGeometryCount = 0;
     OutPacket.ExtendedData = FrameAllocator.Allocate(sizeof(RenderViewPick::PacketData));
 
+    const u64& WorldGeometryCount = PacketData->WorldMeshData.Length();
+
     i32 HighestInstanceID = 0;
     // Итерировать все сетки в мировых данных.
-    for (u32 i = 0; i < PacketData->WorldMeshData.MeshCount; ++i) {
-        auto m = PacketData->WorldMeshData.meshes[i];
-        for (u32 j = 0; j < m->GeometryCount; ++j) {
-            GeometryRenderData RenderData;
-            RenderData.gid = m->geometries[j];
-            RenderData.model = m->transform.GetWorld();
-            RenderData.UniqueID = m->UniqueID;
-            OutPacket.geometries.PushBack(RenderData);
-            OutPacket.GeometryCount++;
-            PacketData->WorldGeometryCount++;
-        }
+    for (u32 i = 0; i < WorldGeometryCount; ++i) {
         // Подсчитать все геометрии как один идентификатор.
-        if (m->UniqueID > HighestInstanceID) {
-            HighestInstanceID = m->UniqueID;
+        OutPacket.geometries.PushBack(PacketData->WorldMeshData[i]);
+        if (PacketData->WorldMeshData[i].UniqueID > HighestInstanceID) {
+            HighestInstanceID =PacketData->WorldMeshData[i].UniqueID;
         }
     }
 
@@ -243,8 +235,9 @@ bool RenderViewPick::Render(const Packet &packet, u64 FrameNumber, u64 RenderTar
         }
         ShaderSystem::ApplyGlobal();
 
+        const u64& WorldGeometryCount = PacketData->WorldMeshData.Length();
         // Нарисовать геометрию. Начните с 0, так как геометрия мира добавляется первой, и остановитесь на количестве геометрий мира.
-        for (u32 i = 0; i < PacketData->WorldGeometryCount; ++i) {
+        for (u32 i = 0; i < WorldGeometryCount; ++i) {
             const auto& geo = packet.geometries[i];
             CurrentInstanceID = geo.UniqueID;
 
@@ -302,7 +295,7 @@ bool RenderViewPick::Render(const Packet &packet, u64 FrameNumber, u64 RenderTar
         ShaderSystem::ApplyGlobal();
 
         // Нарисовать геометрию. Начните с того места, где остановились мировые геометрии.
-        for (u32 i = PacketData->WorldGeometryCount; i < packet.GeometryCount; ++i) {
+        for (u32 i = WorldGeometryCount; i < packet.GeometryCount; ++i) {
             auto& geo = packet.geometries[i];
             CurrentInstanceID = geo.UniqueID;
 
