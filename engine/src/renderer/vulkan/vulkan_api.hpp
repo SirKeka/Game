@@ -47,6 +47,7 @@ public:
     u32 ImageIndex{};                                   // Индекс текущего изображения.
     u32 CurrentFrame{};                                 // Текущий кадр.
     bool RecreatingSwapchain{false};                    // Указывает, воссоздается ли в данный момент цепочка обмена.
+    bool RenderFlagChanged{false};
     Geometry geometries[VULKAN_MAX_GEOMETRY_COUNT]{};   // ЗАДАЧА: динамическим, копии геометрий хранятся в системе геометрий, возможно стоит хранить здесь указатели на геометрии
     RenderTarget WorldRenderTargets[3]{};               // Цели рендера, используемые для рендеринга мира, по одному на кадр.
     bool MultithreadingEnabled;                         // Указывает, поддерживает ли данное устройство многопоточность.
@@ -130,7 +131,9 @@ public:
     /// @return Индекс найденного типа памяти. Возвращает -1, если не найден.
     i32 FindMemoryIndex(u32 TypeFilter, VkMemoryPropertyFlags PropertyFlags);
     /// @brief Указывает, поддерживает ли рендерер многопоточность.
-    bool IsMultithreaded() override;
+    const bool& IsMultithreaded() override;
+    bool FlagEnabled(RendererConfigFlags flag) override;
+    void FlagSetEnabled(RendererConfigFlags flag, bool enabled) override;
 
 private:
     void CreateCommandBuffers();

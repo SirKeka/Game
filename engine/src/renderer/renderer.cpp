@@ -23,7 +23,10 @@ FramebufferHeight(720),
 resizing(false),
 FramesSinceResize()
 {    
-    RendererConfig RConfig { ApplicationName };
+    RendererConfig RConfig;
+    RConfig.ApplicationName = ApplicationName;
+    // ЗАДАЧА: предоставить это приложению для настройки.
+    RConfig.flags = VsyncEnabledBit | PowerSavingBit;
     void* ptrMem = SystemAllocator.Allocate(sizeof(VulkanAPI));
     if (!(ptrRenderer = new(ptrMem) VulkanAPI(window, RConfig, WindowRenderTargetCount))) {
         MERROR("Систему рендеринга не удалось инициализировать. Выключение.");
@@ -278,9 +281,19 @@ u8 Renderer::WindowAttachmentCountGet()
     return ptrRenderer->WindowAttachmentCountGet();
 }
 
-bool Renderer::IsMultithreaded()
+const bool& Renderer::IsMultithreaded()
 {
     return ptrRenderer->IsMultithreaded();
+}
+
+bool Renderer::FlagEnabled(RendererConfigFlags flag)
+{
+    return ptrRenderer->FlagEnabled(flag);
+}
+
+void Renderer::FlagSetEnabled(RendererConfigFlags flag, bool enabled)
+{
+    return ptrRenderer->FlagSetEnabled(flag, enabled);
 }
 
 bool Renderer::RenderBufferCreate(RenderBuffer &buffer)

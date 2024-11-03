@@ -10,21 +10,23 @@ template<typename> class DArray;
 class MAPI MString
 {
 private:
+    /// @brief Длина строки(количество символов в строке без терминального нуля).
     u32 length      {};
+    /// @brief Размер строки в байтах.
+    u32 size        {};
+    /// @brief Указатель на память где хранится строка.
     char* str{nullptr};
 
 public:
-   constexpr MString() : length(), str(nullptr) {}
+   constexpr MString() : length(), size(), str(nullptr) {}
    /// @brief Создает строку из двух строк
    /// @param str1 первая строка
    /// @param str2 вторая строка
-   /// @param autorealease указывает нужно ли удалять данные строки или нет ПРИМЕЧАНИЕ: по умолчанию true
    constexpr MString(const char *str1, const char *str2);
    constexpr MString(const MString &str1, const MString &str2);
    /// @brief Создает строку на основе си строки
    /// @param s си строка
    /// @param DelCon указывает на то нужно ли копировать управляющие символы. По умолчанию false
-   /// @param autorelease указывает на то нужно ли автоматически удалять данные строки
    constexpr MString(const char *s, bool DelCon = false);
    constexpr MString(const MString &s);
    constexpr MString(MString&& s);
@@ -39,7 +41,12 @@ public:
     //MString& operator= (char c);
     //MString& operator= (MString&& s) noexcept;
 
-    /// @brief Добавляет добавление к источнику и возвращает новую строку.
+    /// @brief Добавляет строку к источнику и возвращает новую строку.
+    /// @param s 
+    /// @return 
+    MString& operator+= (const char* s);
+
+    /// @brief Добавляет строку к источнику и возвращает новую строку.
     /// @param s строка которую нужно добавить
     /// @return ссылку на строку
     MString& operator+=(const MString& s);
@@ -64,7 +71,7 @@ public:
     /// @return ссылку на строку
     MString& operator+=(char c);
 
-    void Create(char* str, u64 length, bool autorelease = true);
+    void Create(char* str, u64 length);
 
     /// @brief Зануляет внутренний указатель на строку. 
     /// ПРИМЕЧАНИЕ: Например, полезен в случае с многопоточностью, когда нужно чтобы деструктор не удалил строку до выполнения потока
@@ -93,7 +100,10 @@ public:
 
     /// @brief Получает длину заданной строки.
     /// @return Длину строки
-    constexpr u32 Length() const noexcept;
+    constexpr const u32& Length() const noexcept;
+
+    /// @return Размер строки в байтах.
+    constexpr const u32& Size() const noexcept;
 
     /// @brief Функция считает количество символов в строке ПРИМЕЧАНИЕ: может не совпадать с длиной строки
     /// @return Количество символов в строке
@@ -118,7 +128,7 @@ public:
     static bool BytesToCodepoint(const char* bytes, u32 offset, i32& OutCodepoint, u8& OutAdvance);
     bool BytesToCodepoint(u32 offset, i32& OutCodepoint, u8& OutAdvance);
 private:
-    constexpr u32 Len(const char* s, bool DelCon = false);
+    constexpr u32 Len(const char* s, u32& size, bool DelCon = false);
 public:
     //char* Copy(const char* s);
     /// @brief Добавляет к массиву символов строку
@@ -241,7 +251,7 @@ public:
     // static char* Concat();
 private:
     constexpr char* Copy(const char* source, u64 length, bool DelCon = false);
-    char* Copy(const MString& source);
+    constexpr char* Copy(const MString& source);
     constexpr char* Concat(const char *str1, const char *str2, u64 length);
 public:
     void Trim();
@@ -392,13 +402,22 @@ public:
     /// @param TrimEntries обрезает каждую запись, если это true.
     /// @param IncludeEmpty указывает, следует ли включать пустые записи.
     /// @return Количество записей, полученных в результате операции разделения.
-    u32 Split(char delimiter, DArray<MString>& darray, bool TrimEntries, bool IncludeEmpty);
+    u32 Split(char delimiter, DArray<MString>& darray, bool TrimEntries, bool IncludeEmpty) const;
 
     void Clear();
+
+    /// @brief Удаляет последний символ строки.
+    void DeleteLastChar();
     // void* operator new(u64 size);
     // void operator delete(void* ptr, u64 size);
     // void* operator new[](u64 size);
     // void operator delete[](void* ptr, u64 size);
+private:
+
+    /// @brief Проверяет размер символа.
+    /// @param c константная ссылка на символ.
+    /// @return возвращает размер символа в байтах.
+    static u32 CheckSymbol(const char& c);
 };
 
 /// @brief Функция конкатенации строк

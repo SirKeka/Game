@@ -2,8 +2,6 @@
 
 #include "platform/platform.hpp"
 
-Clock::Clock() : StartTime(0), elapsed(0) {}
-
 Clock::~Clock()
 {
 }
@@ -24,4 +22,9 @@ void Clock::Start()
 void Clock::Stop()
 {
     StartTime = 0;
+}
+
+void Clock::Zero()
+{
+    StartTime = elapsed = 0;
 }

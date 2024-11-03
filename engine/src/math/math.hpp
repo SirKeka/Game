@@ -2,24 +2,27 @@
 
 #include "defines.hpp"
 
-constexpr f32 M_PI = 3.14159265358979323846f;
-constexpr f32 M_PI_2 = 2.0f * M_PI;
-constexpr f32 M_HALF_PI = 0.5f * M_PI;
-constexpr f32 M_QUARTER_PI = 0.25f * M_PI;
-constexpr f32 M_ONE_OVER_PI = 1.0f / M_PI;
-constexpr f32 M_ONE_OVER_TWO_PI = 1.0f / M_PI_2;
-constexpr f32 M_SQRT_TWO = 1.41421356237309504880f;
-constexpr f32 M_SQRT_THREE = 1.73205080756887729352f;
-constexpr f32 M_SQRT_ONE_OVER_TWO = 0.70710678118654752440f;
-constexpr f32 M_SQRT_ONE_OVER_THREE = 0.57735026918962576450f;
-constexpr f32 M_DEG2RAD_MULTIPLIER = M_PI / 180.0f;
-constexpr f32 M_RAD2DEG_MULTIPLIER = 180.0f / M_PI;
+constexpr f32 M_PI = 3.14159265358979323846F;
+constexpr f32 M_PI_2 = 2.0F * M_PI;
+constexpr f32 M_HALF_PI = 0.5F * M_PI;
+constexpr f32 M_QUARTER_PI = 0.25F * M_PI;
+constexpr f32 M_ONE_OVER_PI = 1.F / M_PI;
+constexpr f32 M_ONE_OVER_TWO_PI = 1.F / M_PI_2;
+constexpr f32 M_SQRT_TWO = 1.41421356237309504880F;
+constexpr f32 M_SQRT_THREE = 1.73205080756887729352F;
+constexpr f32 M_SQRT_ONE_OVER_TWO = 0.70710678118654752440F;
+constexpr f32 M_SQRT_ONE_OVER_THREE = 0.57735026918962576450F;
+constexpr f32 M_DEG2RAD_MULTIPLIER = M_PI / 180.F;
+constexpr f32 M_RAD2DEG_MULTIPLIER = 180.F / M_PI;
+
+/** @brief Множитель для преобразования секунд в микросекунды. */
+constexpr f32 M_SEC_TO_US_MULTIPLIER = 1000.F * 1000.F;
 
 // Множитель для преобразования секунд в миллисекунды.
-constexpr f32 M_SEC_TO_MS_MULTIPLIER = 1000.0f;
+constexpr f32 M_SEC_TO_MS_MULTIPLIER = 1000.F;
 
 // Множитель для преобразования миллисекунд в секунды.
-constexpr f32 M_MS_TO_SEC_MULTIPLIER = 0.001f;
+constexpr f32 M_MS_TO_SEC_MULTIPLIER = 0.001F;
 
 // Огромное число, которое должно быть больше любого используемого допустимого числа.
 constexpr f32 M_INFINITY = 1e30f;

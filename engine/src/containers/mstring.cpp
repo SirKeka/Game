@@ -4,22 +4,33 @@
 
 #include <string>
 #include <stdarg.h>
+// #include <locale.h>
 
 constexpr MString::MString(const char *str1, const char *str2)
-: length(UTF8Length(str1) + UTF8Length(str2) + 1), str(Concat(str1, str2, length)) {}
+{
+    length = Len(str1, size);
+    length += Len(str2, size);
+    size--;
+    Concat(str1, str2, size);
+}
 
 constexpr MString::MString(const MString &str1, const MString &str2) 
-: length(str1.Length() + str2.length), str(Concat(str1.str, str2.str, length)) {}
+: length(str1.length + str2.length), size(str1.size + str2.size - 1), str(Concat(str1.str, str2.str, size)) {}
 
-constexpr MString::MString(const char *s, bool DelCon) 
-: length(Len(s, DelCon)), str(Copy(s, length, DelCon)) {}
+constexpr MString::MString(const char *s, bool DelCon)
+{
+    if (s && *s != 0) {
+        length = Len(s, size, DelCon);
+        str = Copy(s, size, DelCon);
+    }
+}
 
-constexpr MString::MString(const MString &s) : length(s.length), str(Copy(s)) {}
+constexpr MString::MString(const MString &s) : length(s.length), size(s.size), str(Copy(s)) {}
 
-constexpr MString::MString(MString &&s) : length(s.length), str(s.str) 
+constexpr MString::MString(MString &&s) : length(s.length), size(s.size), str(s.str) 
 {
     s.str = nullptr;
-    s.length = 0;
+    s.size = s.length = 0;
 }
 
 MString::~MString()
@@ -38,7 +49,7 @@ char MString::operator[](u64 i)
 */
 const char MString::operator[](u16 i) const
 {
-    if (!str || i >= length) {
+    if (!str || i >= size) {
         return '\0';
     } else {
         return str[i];
@@ -47,70 +58,89 @@ const char MString::operator[](u16 i) const
 
 MString &MString::operator=(const MString &s)
 {
-    if (str && length != s.length) {
-        Clear();
+    if (s.str) {
+        if (str && length != s.length) {
+            Clear();
+        }
+
+        if (length != s.length) {
+            length = s.length;
+            size = s.size;
+            str = MMemory::TAllocate<char>(Memory::String, size);
+        } 
+
+        nCopy(s, length + 1);
     }
-
-    if (length != s.length) {
-        length = s.length;
-        str = MMemory::TAllocate<char>(Memory::String, length);
-    } 
-
-    nCopy(s, length);
     return *this;
 }
 
 MString &MString::operator=(MString &&s)
 {
-    if (str && length != s.length) {
-        Clear();
-    }
-    if (length != s.length) {
-        length = s.length;
-    } 
+    if (s.str) {
+        if (str && length != s.length) {
+            Clear();
+        }
 
-    str = s.str;
-    s.length = 0;
-    s.str = nullptr;
+        if (length != s.length) {
+            length = s.length;
+            size = s.size;
+        } 
+
+        str = s.str;
+        s.length = s.size = 0;
+        s.str = nullptr;
+    }
 
     return *this;
 }
 
 MString &MString::operator=(const char *s)
 {
-    u16 slength = 0;
-    if (s && *s != '\0') {
-        slength = Length(s) + 1;
+    if (s && *s != 0) {
+        u32 ssize = 0;
+        u16 slength = Len(s, ssize);
+
+        if (ssize > size) {
+            str = reinterpret_cast<char*>(MMemory::Realloc(str, size, ssize, Memory::String));
+        } else {
+            MMemory::Free(str + ssize + 1, size - ssize, Memory::String);
+        }
+
+        length = slength;
+        size = ssize;
+
+        Copy(str, s);
     }
-    if(str && slength != length) {
-        Clear();
+
+    return *this;
+}
+
+MString &MString::operator+=(const char *s)
+{
+    u32 c_size = 0;
+    u32 c_length = Len(s, c_size);
+    u32 NewSize = size + c_size - 1;
+    str = reinterpret_cast<char*>(MMemory::Realloc(str, size, NewSize, Memory::String));
+    for (u64 i = length, j = 0; i < c_size; i++, j++) {
+        str[i] = s[j];
     }
-    length = slength;
-    if (!str) {
-        str = MMemory::TAllocate<char>(Memory::String, length);
-    }
-    
-    Copy(this->str, s);
-    
+
+    length += c_length;
+    size = NewSize;
+
     return *this;
 }
 
 MString &MString::operator+=(const MString &s)
 {
-    char* NewString = MMemory::TAllocate<char>(Memory::String, length + s.length - 1);
-    for (u64 i = 0, j = 0; i < length + s.length - 1; i++) {
-        if (i < length - 1) {
-           NewString[i] = str[i];
-        } else {
-            NewString[i] = s.str[j];
-            j++;
-        }
+    length += s.length;
+    u32 NewSize = size + s.size - 1;
+    str = reinterpret_cast<char*>(MMemory::Realloc(str, size, NewSize, Memory::String));
+    for (u64 i = size, j = 0; i < s.size; i++, j++) {
+        str[i] = s.str[j];
     }
-    if (str) {
-        Clear();
-    }
-    str = NewString;
-    length = length + s.length - 1;
+
+    size = NewSize;
 
     return *this;
 }
@@ -128,21 +158,20 @@ MString &MString::Append(const char* source, f32 f)
 
 MString &MString::operator+=(bool b)
 {
-    char* NewString = nullptr;
+    // char* NewString = nullptr;
     const char* bl = nullptr;
     if (b) {
         bl = "true";
-        NewString = MMemory::TAllocate<char>(Memory::String, length + 4);
+        str = reinterpret_cast<char*>(MMemory::Realloc(str, size, size + 4, Memory::String)); // NewString = MMemory::TAllocate<char>(Memory::String, size + 4);
     } else {
         bl = "false";
-        NewString = MMemory::TAllocate<char>(Memory::String, length + 5);
+        str = reinterpret_cast<char*>(MMemory::Realloc(str, size, size + 5, Memory::String)); // NewString = MMemory::TAllocate<char>(Memory::String, size + 5);
     }
-    for (u64 i = 0, j = 0; i < length + 5; i++) {
+    for (u64 i = length, j = 0; i < size + 5; i++, j++) {
         if(str[i]) {
-            NewString[i] = str[i];
+            str[i] = bl[j];
         } else {
-            NewString[i] = bl[j];
-            j++;
+            str[i] = bl[j];
         }
     }
     
@@ -151,12 +180,27 @@ MString &MString::operator+=(bool b)
 
 MString &MString::operator+=(char c)
 {
+    if (c != 0) {
+        u32 CharSize = CheckSymbol(c); // Получаем размер символа ПРИМЕЧАНИЕ: для UTF8 может быть больше 1го байта
+        length++;
+        size = CharSize + 1; // Размер данной строки равен развмер символа + '\0'
+        if (!str) {
+            str = reinterpret_cast<char*>(MMemory::Allocate(size, Memory::String));
+        } else {
+            str = reinterpret_cast<char*>(MMemory::Realloc(str, size, size, Memory::String));
+        }
+        
+        str[length] = c;
+        str[size] = '\0';
+    }
+
     return *this;
 }
 
-void MString::Create(char *str, u64 length, bool autorelease)
+void MString::Create(char *str, u64 length)
 {
     this->str = str;
+
     this->length = length;
 }
 
@@ -222,7 +266,8 @@ bool MString::operator==(const MString &rhs) const
     if (length != rhs.length) {
         return false;
     }
-    for (u64 i = 0; i < length; i++) {
+
+    for (u64 i = 0; i < size; i++) {
         if (str[i] != rhs.str[i]) {
             return false;
         }
@@ -234,10 +279,7 @@ bool MString::operator==(const MString &rhs) const
 
 bool MString::operator==(const char *s) const
 {
-    if (length - 1 != Length(s)) {
-        return false;
-    }
-    for (u64 i = 0; i < length - 1; i++) {
+    for (u64 i = 0; i < size; i++) {
         if (str[i] != s[i]) {
             return false;
         }
@@ -246,14 +288,19 @@ bool MString::operator==(const char *s) const
     return true;
 }
 
-constexpr u32 MString::Length() const noexcept
+constexpr const u32& MString::Length() const noexcept
 {
-    return length ? length - 1 : 0;
+    return length;
+}
+
+constexpr const u32 &MString::Size() const noexcept
+{
+    return size;
 }
 
 u32 MString::nChar()
 {
-    return Length(str);
+    return size ? size : size - 1;
 }
 
 const u32 MString::Length(const char *s)
@@ -274,28 +321,12 @@ const u32 MString::Length(const char *s)
 const u32 MString::UTF8Length(const char *str)
 {
     u32 length = 0;
-    for (u32 i = 0; i < __UINT32_MAX__; ++i, ++length) {
-        i32 c = (i32)str[i];
-        if (c == '\0') {
+
+    for (u32 i = 0; i < __UINT32_MAX__; ++length) {
+        if (str[i] == '\0') {
             break;
         }
-        if (c >= 0 && c < 127) {
-            // Обычный символ ascii, не увеличивать снова.
-            // i += 0; // В основном это так.
-        } else if ((c & 0xE0) == 0xC0) {
-            // Двухбайтовый символ, увеличить еще раз.
-            i += 1;
-        } else if ((c & 0xF0) == 0xE0) {
-            // Трехбайтовый символ, увеличить еще вдвое.
-            i += 2;
-        } else if ((c & 0xF8) == 0xF0) {
-            // 4-байтовый символ, увеличить еще втрое.
-            i += 3;
-        } else {
-            // ПРИМЕЧАНИЕ: Не поддерживаются 5- и 6-байтовые символы; возвращается как недопустимый UTF-8.
-            MERROR("MString::UTF8Length - Не поддерживаются 5- и 6-байтовые символы; Недопустимый UTF-8.");
-            return 0;
-        }
+        i += CheckSymbol(str[i]);
     }
 
     return length;
@@ -347,21 +378,37 @@ bool MString::BytesToCodepoint(u32 offset, i32 &OutCodepoint, u8 &OutAdvance)
     return BytesToCodepoint(str, offset, OutCodepoint, OutAdvance);
 }
 
-constexpr u32 MString::Len(const char *s, bool DelCon)
-{
+constexpr u32 MString::Len(const char *s, u32& size, bool DelCon)
+{   
     u32 len = 0;
+    u8 CharSize = 0;
     if (!DelCon) {
-        len = UTF8Length(s);
+        while (*s) {
+            CharSize = CheckSymbol(*s);
+            size += CharSize;
+            len++;
+            s += CharSize;
+        }
+        size++;
+        
     } else {
         while (*s) {
+            CharSize = CheckSymbol(*s);
+
             if (*s != '\a' && *s != '\b' && *s != '\t' && 
                 *s != '\n' && *s != '\v' && *s != '\f' && *s != '\r') {
                 len++;
+                size += CharSize;
             }
-            s++;
+            
+            s += CharSize;
         }
+        if (size) { // size = size ? size++ : size;
+            size++;
+        }
+         
     }
-    return len ? len + 1 : 0;
+    return len;
 }
 
 const char *MString::c_str() const noexcept
@@ -663,29 +710,29 @@ void MString::nCopy(const MString& source, u64 length)
         }
 }
 
-constexpr char* MString::Copy(const char *source, u64 lenght, bool DelCon)
+constexpr char* MString::Copy(const char *source, u64 length, bool DelCon)
 {
-    if(source && lenght) {
-        str = MMemory::TAllocate<char>(Memory::String, length); 
+    if(source && length) {
+        str = reinterpret_cast<char*>(MMemory::Allocate(length, Memory::String)); 
         return Copy(str, source, length, DelCon);
     }
     return nullptr;
 }
 
-char *MString::Copy(const MString &source)
+constexpr char *MString::Copy(const MString &source)
 {   
     if (!source) {
         return nullptr;
     }
-    str = MMemory::TAllocate<char>(Memory::String, length); 
-    nCopy(source, length);
+    str = reinterpret_cast<char*>(MMemory::Allocate(length + 1, Memory::String)); 
+    nCopy(source, length + 1);
     return str;
 }
 
 constexpr char* MString::Concat(const char *str1, const char *str2, u64 length)
 {
     if(!str) {
-        str = MMemory::TAllocate<char>(Memory::String, length);
+        str = reinterpret_cast<char*>(MMemory::Allocate(length, Memory::String));
     }
     u64 j = 0;
     for (u64 i = 0; i < length; i++) {
@@ -1026,7 +1073,7 @@ u32 MString::Split(const char *str, char delimiter, DArray<MString> &darray, boo
     return EntryCount;
 }
 
-u32 MString::Split(char delimiter, DArray<MString> &darray, bool TrimEntries, bool IncludeEmpty)
+u32 MString::Split(char delimiter, DArray<MString> &darray, bool TrimEntries, bool IncludeEmpty) const
 {
     return MString::Split(str, delimiter, darray, TrimEntries, IncludeEmpty);
 }
@@ -1039,6 +1086,37 @@ void MString::Clear()
         str = nullptr;
     }
 }
+
+void MString::DeleteLastChar()
+{
+    if (str && length) {
+        MMemory::Free(&str[length], 1, Memory::String);
+        length--;
+    }
+}
+
+u32 MString::CheckSymbol(const char &c)
+{
+    i32 ch = static_cast<i32>(c);
+    if (ch >= 0 && ch < 127) {
+        // Обычный символ ascii, не увеличивать снова.
+        return 1;// i += 0; // В основном это так.
+    } else if ((ch & 0xE0) == 0xC0) {
+        // Двухбайтовый символ, увеличить еще раз.
+        return 2;
+    } else if ((ch & 0xF0) == 0xE0) {
+        // Трехбайтовый символ, увеличить еще вдвое.
+        return 3;
+    } else if ((ch & 0xF8) == 0xF0) {
+        // 4-байтовый символ, увеличить еще втрое.
+        return 4;
+    } else {
+        // ПРИМЕЧАНИЕ: Не поддерживаются 5- и 6-байтовые символы; возвращается как недопустимый UTF-8.
+        MERROR("MString::UTF8Length - Не поддерживаются 5- и 6-байтовые символы; Недопустимый UTF-8.");
+        return 0;
+    }
+}
+
 /*
 void *MString::operator new(u64 size)
 {

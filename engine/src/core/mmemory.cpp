@@ -1,44 +1,23 @@
 #include "mmemory.hpp"
 
 #include "platform/platform.hpp"
-#include "core/application.hpp"
+#include "core/engine.hpp"
 
 #include <cstring>
 #include <stdio.h>
 #include <new>
 
-struct MemoryState 
-{
-    u64 TotalAllocSize{};                       // Общий размер памяти в байтах, используемый внутренним распределителем для этой системы.
-    u64 TotalAllocated{};
-    u64 TaggedAllocations[Memory::MaxTags]{};
-    u64 AllocCount{};
-    u64 AllocatorMemoryRequirement{};
-    DynamicAllocator allocator{};
-    void* AllocatorBlock{nullptr};
-    MMutex AllocationMutex{};                   // Мьютекс для выделений/освобождений
-
-    MemoryState(u64 TotalAllocSize, u64 AllocatorMemoryRequirement, void* AllocatorBlock) : 
-    TotalAllocSize(TotalAllocSize), 
-    TotalAllocated(), 
-    TaggedAllocations(), 
-    AllocCount(),
-    AllocatorMemoryRequirement(AllocatorMemoryRequirement),
-    allocator(),
-    AllocatorBlock(AllocatorBlock),
-    AllocationMutex() {}
-};
-
 static const char* MemoryTagStrings[Memory::MaxTags] = {
     "UNKNOWN    ",
     "ARRAY      ",
+    "STACK      ",
     "LINEAR ALLC",
     "DARRAY     ",
     "DICT       ",
     "RING QUEUE ",
     "BST        ",
     "STRING     ",
-    "APPLICATION",
+    "ENGINE     ",
     "JOB        ",
     "TEXTURE    ",
     "MAT INST   ",
@@ -58,7 +37,19 @@ static const char* MemoryTagStrings[Memory::MaxTags] = {
     "BITMAP_FONT",
     "SYSTEM_FONT"};
 
-MemoryState* MMemory::state = nullptr;
+MMemory* MMemory::state = nullptr;
+
+MMemory::MMemory(u64 TotalAllocSize, u64 AllocatorMemoryRequirement, void* AllocatorBlock) 
+: 
+TotalAllocSize(TotalAllocSize), 
+TotalAllocated(), 
+TaggedAllocations(), 
+AllocCount(), 
+AllocatorMemoryRequirement(AllocatorMemoryRequirement), 
+allocator(), 
+AllocatorBlock(AllocatorBlock), 
+AllocationMutex()
+{}
 
 MMemory::~MMemory()
 {
@@ -73,7 +64,7 @@ MMemory::~MMemory()
 bool MMemory::Initialize(u64 TotalAllocSize)
 {
     // Сумма, необходимая состоянию системы.
-    u64 StateMemoryRequirement = sizeof(MemoryState);
+    u64 StateMemoryRequirement = sizeof(MMemory);
 
     // Выясните, сколько места нужно динамическому распределителю.
     u64 AllocRequirement = 0;
@@ -88,7 +79,7 @@ bool MMemory::Initialize(u64 TotalAllocSize)
     }
 
     // Состояние находится в первой части массивного блока памяти.
-    state = new(block) MemoryState(
+    state = new(block) MMemory(
         TotalAllocSize, 
         AllocRequirement, 
         block + StateMemoryRequirement // Блок распределителя находится в том же блоке памяти, но после состояния.
@@ -174,6 +165,44 @@ void *MMemory::AllocateAligned(u64 bytes, u16 alignment, Memory::Tag tag, bool n
     return nullptr;
 }
 
+void *MMemory::Realloc(void *ptr, u64 size, u64 NewSize, Memory::Tag tag)
+{
+    if (tag == Memory::Unknown) {
+        MWARN("MMemory::AllocateAligned вызывается с использованием MemoryTag::Unknown. Переклассифицировать это распределение.");
+    }
+
+    // Либо выделяйте из системного распределителя, либо из ОС. Последнее никогда не должно произойти.
+    u8* block = nullptr;
+    u64 DeltaSize = NewSize - size;
+
+    if (state) {
+        // Убедитесь, что многопоточные запросы не мешают друг другу.
+        if (!state->AllocationMutex.Lock()) {
+            MFATAL("Ошибка получения блокировки мьютекса во время выделения.");
+            return nullptr;
+        }
+        state->TotalAllocated += DeltaSize;
+        state->TaggedAllocations[tag] += DeltaSize;
+
+        if (ptr) {
+            block = reinterpret_cast<u8*>(state->allocator.Realloc(ptr, size, NewSize));
+
+            if (ptr != block) {
+                CopyMem(block, ptr, size);
+            }
+        } else {
+            block = reinterpret_cast<u8*>(state->allocator.Allocate(NewSize));
+        }
+        
+        state->AllocationMutex.Unlock();
+    }
+
+    return block;
+    
+    MFATAL("MMemory::AllocateAligned не удалось успешно распределить.");
+    return nullptr;
+}
+
 void MMemory::AllocateReport(u64 size, Memory::Tag tag)
 {
     // Убедитесь, что многопоточные запросы не подавляют друг друга.
@@ -207,7 +236,6 @@ void MMemory::FreeAligned(void *block, u64 size, bool alignment, Memory::Tag tag
             state->TaggedAllocations[tag] -= size;
             state->AllocCount--;
             [[maybe_unused]]bool result = state->allocator.Free(block, size, alignment);
-            block = nullptr;
             // Если освобождение не удалось, возможно, это связано с тем, что выделение было выполнено до запуска этой системы. 
             // Поскольку это абсолютно должно быть исключением из правил, попробуйте освободить его на уровне платформы. 
             // Если это не удастся, значит, начнется какой-то другой вид мошенничества, и у нас возникнут более серьезные проблемы.
@@ -293,7 +321,7 @@ MString MMemory::GetMemoryUsageStr()
 
         f64 PercentUsed = (f64)(UsedSpace) / TotalSpace;
 
-        i32 length = snprintf(buffer + offset, 8000, " Total memory usage: %.2f%s of %.2f%s (%.2f%%)\n", UsedAmount, UsedUnit, TotalAmount, TotalUnit, PercentUsed);
+        i32 length = snprintf(buffer + offset, 8000, " Общее использование памяти: %.2f%s of %.2f%s (%.2f%%)\n", UsedAmount, UsedUnit, TotalAmount, TotalUnit, PercentUsed);
         offset += length;
     }
     

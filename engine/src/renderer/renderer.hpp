@@ -23,13 +23,6 @@ class Shader;
 
 class Renderer
 {
-public:
-    enum DebugViewMode : u32 {
-        Default = 0,
-        Lighting = 1,
-        Normals = 2
-    };
-private:
     u8 WindowRenderTargetCount{};   // Количество целей рендеринга. Обычно совпадает с количеством изображений swapchain.
     u32 FramebufferWidth{};         // Текущая ширина буфера кадра окна.
     u32 FramebufferHeight{};        // Текущая высота буфера кадра окна.
@@ -253,7 +246,17 @@ public:
     MAPI static u8 WindowAttachmentCountGet();
     
     /// @brief Указывает, поддерживает ли рендерер многопоточность.
-    static bool IsMultithreaded();
+    static const bool& IsMultithreaded();
+
+    /// @brief Указывает, включен ли предоставленный флаг рендерера. Если передано несколько флагов, все они должны быть установлены, чтобы вернуть значение true.
+    /// @param flag проверяемый флаг.
+    /// @return True, если флаг(и) установлены; в противном случае false.
+    MAPI static bool FlagEnabled(RendererConfigFlags flag);
+
+    /// @brief Устанавливает, включены ли включенные флаг(и). Если передано несколько флагов, несколько из них устанавливаются одновременно.
+    /// @param flag проверяемый флаг.
+    /// @param enabled Указывает, следует ли включать флаг(и).
+    MAPI static void FlagSetEnabled(RendererConfigFlags flag, bool enabled);
 
     //////////////////////////////////////////////////////////////////////
     //                           RenderBuffer                           //

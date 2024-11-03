@@ -15,32 +15,32 @@
 
 MAPI void ReportAssertionFailure(const char* expression, const char* message, const char* file, i32 line);
 
-#define MASSERT(expr)                                                \
-    {                                                                \
-        if (expr) {                                                  \
-        } else {                                                     \
-            ReportAssertionFailure(#expr, "", __FILE__, __LINE__); \
-            debugBreak();                                            \
-        }                                                            \
+#define MASSERT(expr)                                             \
+    {                                                             \
+        if (expr) {                                               \
+        } else {                                                  \
+            ReportAssertionFailure(#expr, "", __FILE__, __LINE__);\
+            debugBreak();                                         \
+        }                                                         \
     }
 
-#define MASSERT_MSG(expr, message)                                        \
-    {                                                                     \
-        if (expr) {                                                       \
-        } else {                                                          \
-            ReportAssertionFailure(#expr, message, __FILE__, __LINE__); \
-            debugBreak();                                                 \
-        }                                                                 \
+#define MASSERT_MSG(expr, message)                                     \
+    {                                                                  \
+        if (expr) {                                                    \
+        } else {                                                       \
+            ReportAssertionFailure(#expr, message, __FILE__, __LINE__);\
+            debugBreak();                                              \
+        }                                                              \
     }
 
 #ifdef _DEBUG
-#define MASSERT_DEBUG(expr)                                          \
-    {                                                                \
-        if (expr) {                                                  \
-        } else {                                                     \
+#define MASSERT_DEBUG(expr)                                        \
+    {                                                              \
+        if (expr) {                                                \
+        } else {                                                   \
             ReportAssertionFailure(#expr, "", __FILE__, __LINE__); \
-            debugBreak();                                            \
-        }                                                            \
+            debugBreak();                                          \
+        }                                                          \
     }
 #else
 #define MASSERT_DEBUG(expr)  // Ничего не делает вообще

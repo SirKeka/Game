@@ -55,3 +55,5 @@ void PlatformSleep(u64 ms);
 /// @brief Получает количество логических ядер процессора.
 /// @return Количество логических ядер процессора.
 i32 PlatformGetProcessorCount();
+
+const char* PlatformGetKeyboardLayout();

@@ -1,9 +1,11 @@
-#include "application.hpp"
+#include "engine.hpp"
 #include "version.hpp"
 
 //#include "memory/linear_allocator.hpp"
-#include "game_types.hpp"
+#include "application_types.hpp"
 #include "renderer/renderer.hpp"
+
+#include "console.hpp"
 
 // Системы
 #include "systems/texture_system.hpp"
@@ -23,12 +25,30 @@
 
 #include <new>
 
-ApplicationState* Application::State = nullptr;
+Engine* Engine::pEngine = nullptr;
 
-bool Application::Create(GameTypes *GameInst)
+constexpr Engine::Engine() 
+: 
+SystemAllocator(),
+logger(),
+Events(),
+IsRunning(),
+IsSuspended(),
+Window(),
+Render(),
+GameInst(),
+JobSystemInst(),
+RenderViewSystemInst(),
+ResourceSystemInst(),
+width(),
+height(),
+clock(),
+LastTime() {}
+
+bool Engine::Create(Application *GameInst)
 {
-    if (GameInst->application) {
-        MERROR("ApplicationCreate вызывался более одного раза.");
+    if (GameInst->engine) {
+        MERROR("Engine::Create вызывался более одного раза.");
         return false;
     }
 
@@ -43,52 +63,56 @@ bool Application::Create(GameTypes *GameInst)
     // ЗАДАЧА: Добавить более лучший начальный генератор.
     uuid::Seed(101);
 
-    GameInst->state = MMemory::Allocate(GameInst->StateMemoryRequirement, Memory::Application);
-    GameInst->application->State = MMemory::TAllocate<ApplicationState>(Memory::Application); // ЗАДАЧА: Переделать.
-    State = GameInst->application->State;
-    State->GameInst = GameInst;
+    Metrics::Initialize();
+
+    GameInst->state = MMemory::Allocate(GameInst->StateMemoryRequirement, Memory::Engine);
+    GameInst->engine = new Engine();
+    pEngine = GameInst->engine;
+    pEngine->GameInst = GameInst;
 
     u64 SystemsAllocatorTotalSize = 64 * 1024 * 1024;  // 64 mb
-    State->SystemAllocator.Initialize(SystemsAllocatorTotalSize);
+    pEngine->SystemAllocator.Initialize(SystemsAllocatorTotalSize);
 
     // Инициализируйте подсистемы.
-    State->logger = reinterpret_cast<Logger*>(State->SystemAllocator.Allocate(sizeof(Logger)));
-    if (!State->logger->Initialize()) { // State->logger->Initialize();
+    Console::Initialize(pEngine->SystemAllocator);
+
+    pEngine->logger = reinterpret_cast<Logger*>(pEngine->SystemAllocator.Allocate(sizeof(Logger)));
+    if (!pEngine->logger->Initialize()) { // State->logger->Initialize();
         MERROR("Не удалось инициализировать систему ведения журнала; завершение работы.");
         return false;
     }
 
-    Input::Initialize(State->SystemAllocator);
+    Input::Initialize(pEngine->SystemAllocator);
 
-    State->IsRunning = true;
-    State->IsSuspended = false;
+    pEngine->IsRunning = true;
+    pEngine->IsSuspended = false;
     
     if (!Event::Initialize()) {
         MERROR("Система событий не смогла инициализироваться. Приложение не может быть продолжено.");
         return false;
     }
-    State->Events = Event::GetInstance();
+    pEngine->Events = Event::GetInstance();
 
-    State->Events->Register(EVENT_CODE_APPLICATION_QUIT, nullptr, OnEvent);
-    State->Events->Register(EVENT_CODE_RESIZED, nullptr, OnResized);
-    State->Events->Register(EVENT_CODE_OBJECT_HOVER_ID_CHANGED, nullptr, OnEvent);
+    pEngine->Events->Register(EVENT_CODE_APPLICATION_QUIT, nullptr, OnEvent);
+    pEngine->Events->Register(EVENT_CODE_RESIZED, nullptr, OnResized);
+    pEngine->Events->Register(EVENT_CODE_OBJECT_HOVER_ID_CHANGED, nullptr, OnEvent);
 
-    State->Window = new MWindow(GameInst->AppConfig.name,
+    pEngine->Window = new MWindow(GameInst->AppConfig.name,
                         GameInst->AppConfig.StartPosX, 
                         GameInst->AppConfig.StartPosY, 
                         GameInst->AppConfig.StartHeight, 
                         GameInst->AppConfig.StartWidth);
 
-    if (!State->Window) {
+    if (!pEngine->Window) {
         return false;
-    } else State->Window->Create();
+    } else pEngine->Window->Create();
 
     // Система ресурсов
-    if (!ResourceSystem::Initialize(32, "../assets", State->SystemAllocator)) {
+    if (!ResourceSystem::Initialize(32, "../assets", pEngine->SystemAllocator)) {
         MFATAL("Не удалось инициализировать систему ресурсов. Приложение не может быть продолжено.");
         return false;
     }
-    State->ResourceSystemInst = ResourceSystem::Instance();
+    pEngine->ResourceSystemInst = ResourceSystem::Instance();
 
     // Система шейдеров
     ShaderSystem::Config ShaderSysConfig;
@@ -96,21 +120,21 @@ bool Application::Create(GameTypes *GameInst)
     ShaderSysConfig.MaxUniformCount     =  128;
     ShaderSysConfig.MaxGlobalTextures   =   31;
     ShaderSysConfig.MaxInstanceTextures =   31;
-    if(!ShaderSystem::Initialize(ShaderSysConfig, State->SystemAllocator)) {
+    if(!ShaderSystem::Initialize(ShaderSysConfig, pEngine->SystemAllocator)) {
         MFATAL("Не удалось инициализировать шейдерную систему. Прерывание приложения.");
         return false;
     }
     
-    void* ptrRendererMem = State->SystemAllocator.Allocate(sizeof(Renderer));
-    State->Render = new(ptrRendererMem) Renderer(State->Window, GameInst->AppConfig.name, ERendererType::VULKAN, State->SystemAllocator);
+    void* ptrRendererMem = pEngine->SystemAllocator.Allocate(sizeof(Renderer));
+    pEngine->Render = new(ptrRendererMem) Renderer(pEngine->Window, GameInst->AppConfig.name, ERendererType::VULKAN, pEngine->SystemAllocator);
     // Запуск рендерера
-    if (!State->Render) {
+    if (!pEngine->Render) {
         MFATAL("Не удалось инициализировать средство визуализации. Прерывание приложения.");
         return false;
     }
-    bool RendererMultithreaded = State->Render->IsMultithreaded();
+    bool RendererMultithreaded = pEngine->Render->IsMultithreaded();
 
-    if (!State->GameInst->Boot()) {
+    if (!pEngine->GameInst->Boot()) {
         MFATAL("Game::Boot - Сбой последовательности загрузки игры; прерывание работы приложения.");
         return false;
     }
@@ -155,32 +179,32 @@ bool Application::Create(GameTypes *GameInst)
     }
 
     // Система заданий(потоков)
-    if (!JobSystem::Initialize(ThreadCount, JobThreadTypes, State->SystemAllocator)) {
+    if (!JobSystem::Initialize(ThreadCount, JobThreadTypes, pEngine->SystemAllocator)) {
         MFATAL("Не удалось инициализировать систему заданий. Отмена приложения.");
         return false;
     }
-    State->JobSystemInst = JobSystem::Instance();
+    pEngine->JobSystemInst = JobSystem::Instance();
 
     // Система текстур.
-    if (!TextureSystem::Initialize(65536, State->SystemAllocator)) {
+    if (!TextureSystem::Initialize(65536, pEngine->SystemAllocator)) {
         MFATAL("Не удалось инициализировать систему текстур. Приложение не может быть продолжено.");
         return false;
     }
 
     // Система шрифтов.
-    if (!FontSystem::Initialize(State->GameInst->AppConfig.FontConfig, State->SystemAllocator)) {
+    if (!FontSystem::Initialize(pEngine->GameInst->AppConfig.FontConfig, pEngine->SystemAllocator)) {
         MFATAL("Не удалось инициализировать систему шрифтов. Приложение не может продолжать работу.");
         return false;
     }
 
     // Система камер
-    if (!CameraSystem::Initialize(61, State->SystemAllocator)) {
+    if (!CameraSystem::Initialize(61, pEngine->SystemAllocator)) {
         MFATAL("Не удалось инициализировать систему камер. Приложение не может быть продолжено.");
         return false;
     }
     
     // Система визуадизаций
-    if (!RenderViewSystem::Initialize(251, State->SystemAllocator)) {
+    if (!RenderViewSystem::Initialize(251, pEngine->SystemAllocator)) {
         MFATAL("Не удалось инициализировать систему визуализаций. Приложение не может быть продолжено.");
         return false;
     }
@@ -189,20 +213,20 @@ bool Application::Create(GameTypes *GameInst)
     const auto& ViewCount = GameInst->AppConfig.RenderViews.Length();
     for(u32 i = 0; i < ViewCount; ++i) {
         auto& view = GameInst->AppConfig.RenderViews[i];
-        if (!State->RenderViewSystemInst->Create(view)) {
+        if (!pEngine->RenderViewSystemInst->Create(view)) {
             MFATAL("Не удалось создать представление скайбокса. Отмена приложения.");
             return false;
         }
     }
 
     // Система материалов
-    if (!MaterialSystem::Initialize(4096, State->SystemAllocator)) {
+    if (!MaterialSystem::Initialize(4096, pEngine->SystemAllocator)) {
         MFATAL("Не удалось инициализировать систему материалов. Приложение не может быть продолжено.");
         return false;
     }
 
     // Система геометрии
-    if (!GeometrySystem::Initialize(4096, State->SystemAllocator)) {
+    if (!GeometrySystem::Initialize(4096, pEngine->SystemAllocator)) {
         MFATAL("Не удалось инициализировать систему геометрии. Приложение не может быть продолжено.");
         return false;
     }
@@ -214,16 +238,16 @@ bool Application::Create(GameTypes *GameInst)
     }
 
     // Вызовите resize один раз, чтобы убедиться, что установлен правильный размер.
-    State->Render->OnResized(State->width, State->height);
-    GameInst->OnResize(State->width, State->height);
+    pEngine->Render->OnResized(pEngine->width, pEngine->height);
+    GameInst->OnResize(pEngine->width, pEngine->height);
 
     return true;
 }
 
-bool Application::ApplicationRun() {
-    State->clock.Start();
-    State->clock.Update();
-    State->LastTime = State->clock.elapsed;
+bool Engine::Run() {
+    clock.Start();
+    clock.Update();
+    LastTime = clock.elapsed;
     // f64 RunningTime = 0;
     [[maybe_unused]]u8 FrameCount = 0;      // 
     f64 TargetFrameSeconds = 1.0f / 60;
@@ -231,27 +255,27 @@ bool Application::ApplicationRun() {
 
     MINFO(MMemory::GetMemoryUsageStr().c_str());
 
-    while (State->IsRunning) {
-        if(!State->Window->Messages()) {
-            State->IsRunning = false;
+    while (IsRunning) {
+        if(!Window->Messages()) {
+            IsRunning = false;
         }
 
-        if(!State->IsSuspended) {
+        if(!IsSuspended) {
             // Обновите часы и получите разницу во времени.
-            State->clock.Update();
-            f64 CurrentTime = State->clock.elapsed;
-            f64 delta = (CurrentTime - State->LastTime);
+            clock.Update();
+            f64 CurrentTime = clock.elapsed;
+            f64 delta = (CurrentTime - LastTime);
             f64 FrameStartTime = MWindow::PlatformGetAbsoluteTime();
 
             // Обновлление системы работы(потоков)
-            State->JobSystemInst->Update();
+            JobSystemInst->Update();
 
             //Обновление метрик(статистики)
-            State->metrics.Update(FrameElapsedTime);
+            Metrics::Update(FrameElapsedTime);
 
-            if (!State->GameInst->Update(delta)) {
+            if (!GameInst->Update(delta)) {
                 MFATAL("Ошибка обновления игры, выключение.");
-                State->IsRunning = false;
+                IsRunning = false;
                 break;
             }
 
@@ -259,13 +283,13 @@ bool Application::ApplicationRun() {
             packet.DeltaTime = delta;
 
             // Вызовите процедуру рендеринга игры.
-            if (!State->GameInst->Render(packet, delta)) {
+            if (!GameInst->Render(packet, delta)) {
                 MFATAL("Ошибка рендеринга игры, выключение.");
-                State->IsRunning = false;
+                IsRunning = false;
                 break;
             }
 
-            State->Render->DrawFrame(packet);
+            Render->DrawFrame(packet);
 
             // Выясните, сколько времени занял кадр и, если ниже
             f64 FrameEndTime = MWindow::PlatformGetAbsoluteTime();
@@ -292,18 +316,18 @@ bool Application::ApplicationRun() {
             Input::Instance()->Update(delta);
 
             // Update last time
-            State->LastTime = CurrentTime;
+            LastTime = CurrentTime;
         }
     }
 
-    State->IsRunning = false;
+    IsRunning = false;
 
     // Выключение игры
-    State->GameInst->Shutdown();
+    GameInst->Shutdown();
     // Отключение системы событий.
-    State->Events->Unregister(EVENT_CODE_APPLICATION_QUIT, nullptr, OnEvent);
-    State->Events->Unregister(EVENT_CODE_RESIZED, nullptr, OnResized);
-    State->Events->Shutdown(); // ЗАДАЧА: при удалении указателя на систему событий происходит ошибка
+    Events->Unregister(EVENT_CODE_APPLICATION_QUIT, nullptr, OnEvent);
+    Events->Unregister(EVENT_CODE_RESIZED, nullptr, OnResized);
+    Events->Shutdown(); // ЗАДАЧА: при удалении указателя на систему событий происходит ошибка
     Input::Instance()->Sutdown();
     FontSystem::Shutdown();
     RenderViewSystem::Shutdown();
@@ -312,39 +336,34 @@ bool Application::ApplicationRun() {
     TextureSystem::Instance()->Shutdown();
 
     ShaderSystem::Shutdown();
-    State->Render->Shutdown();
+    Render->Shutdown();
     ResourceSystem::Shutdown();
     JobSystem::Shutdown();
 
-    State->Window->Close();
-    State->logger->Shutdown();
+    Window->Close();
+    logger->Shutdown();
+    Console::Shutdown();
     MMemory::Shutdown();
 
     return true;
 }
 
-void Application::ApplicationGetFramebufferSize(u32 & width, u32 & height)
+void *Engine::operator new(u64 size)
 {
-    width = State->width;
-    height = State->height;
+    return MMemory::Allocate(size, Memory::Engine);
 }
 
-void *Application::operator new(u64 size)
+void Engine::operator delete(void *ptr, u64 size)
 {
-    return MMemory::Allocate(size, Memory::Application);
+    return MMemory::Free(ptr, size, Memory::Engine);
 }
 
-void Application::operator delete(void *ptr)
-{
-    return MMemory::Free(ptr, sizeof(Application), Memory::Application);
-}
-
-bool Application::OnEvent(u16 code, void *sender, void *ListenerInst, EventContext context)
+bool Engine::OnEvent(u16 code, void *sender, void *ListenerInst, EventContext context)
 {
     switch (code) {
         case EVENT_CODE_APPLICATION_QUIT: {
             MINFO("Получено событие EVENT_CODE_APPLICATION_QUIT, завершение работы.\n");
-            State->IsRunning = false;
+            pEngine->IsRunning = false;
             return true;
         }
     }
@@ -352,31 +371,31 @@ bool Application::OnEvent(u16 code, void *sender, void *ListenerInst, EventConte
     return false;
 }
 
-bool Application::OnResized(u16 code, void *sender, void *ListenerInst, EventContext context)
+bool Engine::OnResized(u16 code, void *sender, void *ListenerInst, EventContext context)
 {
     if (code == EVENT_CODE_RESIZED) {
         u16 width = context.data.u16[0];
         u16 height = context.data.u16[1];
 
         // Проверьте, отличается ли это. Если да, запустите событие изменения размера.
-        if (width != State->width || height != State->height) {
-            State->width = width;
-            State->height = height;
+        if (width != pEngine->width || height != pEngine->height) {
+            pEngine->width = width;
+            pEngine->height = height;
 
             MDEBUG("Изменение размера окна: %i, %i", width, height);
 
             // Обработка сворачивания
             if (width == 0 || height == 0) {
                 MINFO("Окно свернуто, приложение приостанавливается.");
-                State->IsSuspended = true;
+                pEngine->IsSuspended = true;
                 return true;
             } else {
-                if (State->IsSuspended) {
+                if (pEngine->IsSuspended) {
                     MINFO("Окно восстановлено, возобновляется приложение.");
-                    State->IsSuspended = false;
+                    pEngine->IsSuspended = false;
                 }
-                State->GameInst->OnResize(width, height);
-                State->Render->OnResized(width, height);
+                pEngine->GameInst->OnResize(width, height);
+                pEngine->Render->OnResized(width, height);
                 return true;
             }
         }

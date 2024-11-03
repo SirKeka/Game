@@ -2,6 +2,7 @@
 #include "asserts.hpp"
 #include "platform/platform.hpp"
 #include "memory/linear_allocator.hpp"
+#include "console.hpp"
 
 // ЗАДАЧА: временное
 #include <stdio.h>
@@ -65,6 +66,9 @@ void Logger::Output(LogLevel level, const char *message, ...)
     const u8& lvl = static_cast<u8>(level);
     // Добавить уровень журнала к сообщению.
     MString::Format(OutMessage, "%s%s\n", LevelStrings[lvl], OutMessage);
+
+    // Передать сообщение в консоль.
+    Console::WriteLine(level, OutMessage);
 
     if (IsError) {
         PlatformConsoleWriteError(OutMessage, lvl);

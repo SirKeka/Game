@@ -14,7 +14,8 @@ Text::~Text()
         kfree(text->text, sizeof(char) * TextLength, MEMORY_TAG_STRING);
         text->text = 0;
     }*/
-    // Release the unique identifier.
+   
+    // Освободите уникальный идентификатор.
     Identifier::ReleaseID(UniqueID);
 
     // Уничтожить буферы.
@@ -106,7 +107,7 @@ void Text::SetPosition(const FVec3& position)
     transform.SetPosition(position);
 }
 
-void Text::SetText(const char *text)
+void Text::SetText(const MString &text)
 {
     if (text) {
         // Если строки уже равны, ничего не делайте.
@@ -117,8 +118,67 @@ void Text::SetText(const char *text)
         this->text = text;
 
         // Проверьте, есть ли в атласе необходимые глифы.
-        if (!FontSystem::VerifyAtlas(data, text)) {
+        if (!FontSystem::VerifyAtlas(data, text.c_str())) {
             MERROR("Проверка атласа шрифтов не удалась.");
+        }
+
+        RegenerateGeometry();
+    }
+}
+
+void Text::SetText(MString &&text)
+{
+    if (text) {
+        // Если строки уже равны, ничего не делайте.
+        if (this->text == text) {
+            return;
+        }
+
+        this->text = static_cast<MString&&>(text);
+
+        // Проверьте, есть ли в атласе необходимые глифы.
+        if (!FontSystem::VerifyAtlas(data, text.c_str())) {
+            MERROR("Проверка атласа шрифтов не удалась.");
+        }
+
+        RegenerateGeometry();
+    }
+}
+
+void Text::DeleteLastSymbol()
+{
+    if (text) {
+        text.DeleteLastChar();
+
+        RegenerateGeometry();
+    }
+    
+}
+
+void Text::Append(const char* text)
+{
+    if (text) {
+        // Проверьте, есть ли в атласе необходимые глифы.
+        if (!FontSystem::VerifyAtlas(data, text)) {
+            MERROR("Проверка атласа шрифтов не удалась. Текст не будет изменен.");
+            return;
+        }
+
+        this->text += text;
+
+        RegenerateGeometry();
+    }
+}
+
+void Text::Append(char c)
+{
+    if (c) {
+        this->text += c;
+
+        // Проверьте, есть ли в атласе необходимые глифы.
+        if (!FontSystem::VerifyAtlas(data, text.c_str())) {
+            MERROR("Проверка атласа шрифтов не удалась. Текст не будет изменен.");
+            return;
         }
 
         RegenerateGeometry();
@@ -142,9 +202,14 @@ void Text::Draw()
 void Text::RegenerateGeometry()
 {
     // Получить длину строки UTF-8
-    u32 TextLengthUTF8 = text.Length();
+    const u32& TextLengthUTF8 = text.Length();
     // Также получить длину в символах.
     u32 CharLength = text.nChar();
+
+    // Не пытайтесь воссоздать геометрию объекта, в котором нет текста.
+    if (TextLengthUTF8 < 1) {
+        return;
+    }
 
     // Рассчитать размеры буфера.
     static const u64 VertsPerQuad = 4;

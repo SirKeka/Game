@@ -1,4 +1,4 @@
-/// @file game_types.hpp
+/// @file application_types.hpp
 /// @author 
 /// @brief Этот файл содержит типы, которые будут использоваться игровой библиотекой.
 /// @version 1.0
@@ -7,10 +7,12 @@
 /// @copyright 
 #pragma once
 
-#include "core/application.hpp"
+#include "core/engine.hpp"
 #include "core/mmemory.hpp"
 #include "systems/font_system.hpp"
 #include "renderer/views/render_view.hpp"
+
+template class DArray<MString>;
 
 // Конфигурация приложения.
 struct ApplicationConfig {
@@ -23,26 +25,24 @@ struct ApplicationConfig {
     DArray<RenderView::Config> RenderViews{}; // Массив конфигураций представления рендеринга.
 };
 
-struct GameFrameData {
+struct ApplicationFrameData {
     // Динамический массив мировой геометрии, которая отрисовывается в этом кадре.
     DArray<GeometryRenderData> WorldGeometries;
 };
 
 // Представляет базовое состояние игры. Вызывается для создания приложением.
-class MAPI GameTypes
+class MAPI Application
 {
-private:
-
 public:
     ApplicationConfig AppConfig;
-    Application* application;                   // Указатель на блок памяти в котором храненится состояние приложения. Создается и управляется движком.
-    void* state;                                // Указатель на блок памяти в котором храненится состояние игры. Создается и управляется игрой.
+    Engine* engine;                             // Указатель на блок памяти в котором хранится движок. Создается и управляется движком.
+    void* state;                                // Указатель на блок памяти в котором хранится состояние игры. Создается и управляется игрой.
     u64 StateMemoryRequirement;                 // Требуемый размер для игрового состояния.
     LinearAllocator FrameAllocator;             // Распределитель, используемый для распределений, которые необходимо делать в каждом кадре. Содержимое стирается в начале кадра.
-    DArray<GeometryRenderData> WorldGeometries; // GameFrameData FrameData;        // Данные, которые создаются, используются и удаляются в каждом кадре
+    DArray<GeometryRenderData> WorldGeometries; // ApplicationFrameData FrameData;        // Данные, которые создаются, используются и удаляются в каждом кадре
 
-    constexpr GameTypes(const ApplicationConfig& AppConfig, u64 StateMemoryRequirement) : AppConfig(AppConfig), application(nullptr), state(nullptr), StateMemoryRequirement(StateMemoryRequirement), FrameAllocator() {}
-    virtual ~GameTypes() = default;
+    constexpr Application(const ApplicationConfig& AppConfig, u64 StateMemoryRequirement) : AppConfig(AppConfig), engine(nullptr), state(nullptr), StateMemoryRequirement(StateMemoryRequirement), FrameAllocator() {}
+    virtual ~Application() = default;
 
     /// @brief Указатель функции на последовательность загрузки игры. Это должно заполнить конфигурацию приложения конкретными требованиями игры.
     /// @return True в случае успеха; в противном случае false.

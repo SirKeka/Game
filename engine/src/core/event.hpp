@@ -25,7 +25,7 @@ struct EventContext {
 };
 
 // Должен возвращать true, если обработано.
-typedef bool (*PFN_OnEvent)(u16 code, void* sender, void* ListenerInst, EventContext data);
+using PFN_OnEvent = bool(*)(u16, void*, void*, EventContext);
 
 /// @brief Реализация класса инициатора для синхронных действий
 class Executor

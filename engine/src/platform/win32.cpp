@@ -4,7 +4,7 @@
 #if MPLATFORM_WINDOWS
 
 #include "core/logger.hpp"
-#include "core/application.hpp"
+#include "core/engine.hpp"
 #include "core/input.hpp"
 #include "core/mthread.hpp"
 #include "core/mmutex.hpp"
@@ -217,6 +217,16 @@ i32 PlatformGetProcessorCount()
     GetSystemInfo(&sysinfo);
     MINFO("Обнаружено %i ядер процессора.", sysinfo.dwNumberOfProcessors);
     return sysinfo.dwNumberOfProcessors;
+}
+
+const char* PlatformGetKeyboardLayout()
+{
+    // ЗАДАЧА: изменить.
+    LPSTR str = nullptr;
+    if (GetKeyboardLayoutNameA(str)) {
+        return str;
+    }
+    return nullptr;
 }
 
 // ПРИМЕЧАНИЕ: начало потоков---------------------------------------------------------------------------------------------

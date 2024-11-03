@@ -1,14 +1,18 @@
 #include "game.hpp"
 
 #include <core/logger.hpp>
-#include <core/identifier.hpp>
+
 #include <systems/camera_system.hpp>
+#include <renderer/renderer.hpp>
+#include <new>
+
+// ЗАДАЧА: временный код
+#include <core/identifier.hpp>
 #include <systems/geometry_system.hpp>
 #include <systems/render_view_system.hpp>
-#include <renderer/renderer.hpp>
-//#include <renderer/renderpass.hpp>
 #include <renderer/views/render_view_pick.hpp>
-#include <new>
+#include "debug_console.hpp"
+// ЗАДАЧА: конец временного кода
 
 bool Game::OnEvent(u16 code, void *sender, void *ListenerInst, EventContext context)
 {
@@ -79,30 +83,23 @@ bool Game::OnDebugEvent(u16 code, void *sender, void *ListenerInst, EventContext
 
 bool GameOnKey(u16 code, void *sender, void *ListenerInst, EventContext context)
 {
-    if (code == EVENT_CODE_KEY_PRESSED) {
-        u16 KeyCode = context.data.u16[0];
-        if (KeyCode == Keys::ESCAPE) {
-            // ПРИМЕЧАНИЕ. Технически событие генерируется само по себе, но могут быть и другие прослушиватели.
-            EventContext data = {};
-            Event::GetInstance()->Fire(EVENT_CODE_APPLICATION_QUIT, nullptr, data);
-
-            // Заблокируйте что-либо еще от обработки этого.
-            return true;
-        } else if (KeyCode == Keys::A) {
-            // Пример проверки ключа
-            MDEBUG("Явно — клавиша A нажата!");
-        } else {
-            MDEBUG("'%c' нажатие клавиши в окне.", KeyCode);
-        }
-    } else if (code == EVENT_CODE_KEY_RELEASED) {
-        u16 KeyCode = context.data.u16[0];
-        if (KeyCode == Keys::B) {
-            // Пример проверки ключа
-            MDEBUG("Явно — клавиша B отущена!");
-        } else {
-            MDEBUG("'%c' клавиша отпущена в окне.", KeyCode);
-        }
-    }
+    // if (code == EVENT_CODE_KEY_PRESSED) {
+    //     u16 KeyCode = context.data.u16[0];
+    //     if (KeyCode == Keys::A) {
+    //         // Пример проверки клавиши
+    //         MDEBUG("Явно — клавиша A нажата!");
+    //     } else {
+    //         MDEBUG("'%c' нажатие клавиши в окне.", KeyCode);
+    //     }
+    // } else if (code == EVENT_CODE_KEY_RELEASED) {
+    //     u16 KeyCode = context.data.u16[0];
+    //     if (KeyCode == Keys::B) {
+    //         // Пример проверки клавиши
+    //         MDEBUG("Явно — клавиша B отущена!");
+    //     } else {
+    //         MDEBUG("'%c' клавиша отпущена в окне.", KeyCode);
+    //     }
+    // }
 
     return false;
 }
@@ -116,6 +113,8 @@ bool Game::Boot()
 {
     MINFO("Загрузка испытательной сборки...");
 
+    DebugConsole::Create();
+
     // Установка распределителя кадра
     FrameAllocator.Initialize(MEBIBYTES(64), nullptr);
 
@@ -127,7 +126,7 @@ bool Game::Boot()
 
     // SystemFontConfig SysFontConfig { "Noto Sans", 20, "NotoSansCJK" };
     AppConfig.FontConfig.DefaultSystemFontCount = 1;
-    AppConfig.FontConfig.SystemFontConfigs = new SystemFontConfig("Noto Sans", 20, "NotoSansCJK");
+    AppConfig.FontConfig.SystemFontConfigs = new SystemFontConfig("Metrika", 20, "Metrika");
 
     AppConfig.FontConfig.MaxBitmapFontCount = AppConfig.FontConfig.MaxSystemFontCount = 101;
 
@@ -137,12 +136,19 @@ bool Game::Boot()
         return false;
     }
 
+    // Раскладки клавиатуры
+    SetupKeymaps();
+    // Консольные команды
+    SetupCommands();
+
     return true;
 }
 
 bool Game::Initialize()
 {
     MDEBUG("Game::Initialize вызван!");
+
+    DebugConsole::Load();
 
     auto state = reinterpret_cast<State*>(this->state);
 
@@ -156,17 +162,11 @@ bool Game::Initialize()
     // Переместить отладочный текст в новую нижнюю часть экрана.
     state->TestText.SetPosition(FVec3(20.F, state->height - 75.F, 0.F)); 
 
-    if(!state->TestSysText.Create(TextType::System, "Noto Sans CJK JP", 31, "Какой-то тестовый текст 123, \n\tyo!")) {
+    if(!state->TestSysText.Create(TextType::System, "Metrika", 31, "Какой-то тестовый текст 123, \n\tyo!\n\n\t")) { // Noto Sans CJK JP こんにちは 한
         MERROR("Не удалось загрузить базовый системный текст пользовательского интерфейса.");
         return false;
     }
-    state->TestSysText.SetPosition(FVec3(50.F, 250.F, 0.F));
-
-    if(!state->TestSysText.Create(TextType::System, "Noto Sans CJK JP", 31, "Какой-то тестовый текст 123, \n\tyo!\n\n\tこんにちは 한")) {
-        MERROR("Не удалось загрузить базовый системный текст пользовательского интерфейса.");
-        return false;
-    }
-    state->TestSysText.SetPosition(FVec3(50.F, 200.F, 0.F));
+    state->TestSysText.SetPosition(FVec3(500.F, 250.F, 0.F));
 
     state->sb.Create("skybox_cube");
 
@@ -263,6 +263,8 @@ bool Game::Initialize()
     state->UiMeshes[0].geometries[0] = GeometrySystem::Acquire(UI_Config, true);
     state->UiMeshes[0].transform = Transform();
     state->UiMeshes[0].generation = 0;
+
+    state->UiMeshes[0].transform.Translate(FVec3(650, 5, 0));
     
     state->WorldCamera = CameraSystem::GetDefault();
     state->WorldCamera->SetPosition(FVec3(10.5F, 5.F, 9.5F));
@@ -275,6 +277,9 @@ bool Game::Initialize()
 
     Event::Register(EVENT_CODE_KEY_PRESSED,  this, GameOnKey);
     Event::Register(EVENT_CODE_KEY_RELEASED, this, GameOnKey);
+
+    state->UpdateClock.Zero();
+    state->RenderClock.Zero();
     
     return true;
 }
@@ -289,104 +294,18 @@ bool Game::Update(f32 DeltaTime)
 
     FrameAllocator.FreeAll();
 
-    auto InputInst = Input::Instance();
-    static u64 AllocCount = 0;
-    u64 PrevAllocCount = AllocCount;
-    AllocCount = MMemory::GetMemoryAllocCount();
-    if (InputInst->IsKeyUp(Keys::M) && InputInst->WasKeyDown(Keys::M)) {        
-        MINFO(MMemory::GetMemoryUsageStr().c_str());
-        MDEBUG("Распределено: %llu (%llu в этом кадре)", AllocCount, AllocCount - PrevAllocCount);
-    }
-
-    // ЗАДАЧА: temp
-    if (InputInst->IsKeyUp(Keys::T) && InputInst->WasKeyDown(Keys::T)) {
-        MDEBUG("Swapping texture!");
-        EventContext context = {};
-        Event::Fire(EVENT_CODE_DEBUG0, this, context);
-    }
-    // ЗАДАЧА: end temp
-
     auto state = reinterpret_cast<State*>(this->state);
 
-    // ВЗЛОМ: временный взлом для перемещения камеры по кругу.
-    if (InputInst->IsKeyDown(Keys::A) || InputInst->IsKeyDown(Keys::LEFT)) {
-        state->WorldCamera->Yaw(1.0f * DeltaTime);
-    }
+    state->UpdateClock.Start();
+    state->DeltaTime = DeltaTime;
 
-    if (InputInst->IsKeyDown(Keys::D) || InputInst->IsKeyDown(Keys::RIGHT)) {
-        state->WorldCamera->Yaw(-1.0f * DeltaTime);
-    }
+    // Отслеживайте различия в распределении.
+    state->PrevAllocCount = state->AllocCount;
+    state->AllocCount = MMemory::GetMemoryAllocCount();
 
-    if (InputInst->IsKeyDown(Keys::UP)) {
-        state->WorldCamera->Pitch(1.0f * DeltaTime);
-    }
-
-    if (InputInst->IsKeyDown(Keys::DOWN)) {
-        state->WorldCamera->Pitch(-1.0f * DeltaTime);
-    }
-
-    static const f32 TempMoveSpeed = 50.0f;
-
-    if (InputInst->IsKeyDown(Keys::W)) {
-        state->WorldCamera->MoveForward(TempMoveSpeed * DeltaTime);
-    }
-
-    if (InputInst->IsKeyDown(Keys::S)) {
-        state->WorldCamera->MoveBackward(TempMoveSpeed * DeltaTime);
-    }
-
-    if (InputInst->IsKeyDown(Keys::Q)) {
-        state->WorldCamera->MoveLeft(TempMoveSpeed * DeltaTime);
-    }
-
-    if (InputInst->IsKeyDown(Keys::E)) {
-        state->WorldCamera->MoveRight(TempMoveSpeed * DeltaTime);
-    }
-
-    if (InputInst->IsKeyDown(Keys::SPACE)) {
-        state->WorldCamera->MoveUp(TempMoveSpeed * DeltaTime);
-    }
-
-    if (InputInst->IsKeyDown(Keys::X)) {
-        state->WorldCamera->MoveDown(TempMoveSpeed * DeltaTime);
-    }
-
-    // ЗАДАЧА: временно
-    if (InputInst->IsKeyUp(Keys::P) && InputInst->WasKeyDown(Keys::P)) {
-        MDEBUG(
-            "Позиция:[%.2f, %.2f, %.2f",
-            state->WorldCamera->GetPosition().x,
-            state->WorldCamera->GetPosition().y,
-            state->WorldCamera->GetPosition().z);
-    }
-
-    // RENDERER DEBUG FUNCTIONS
-    if (InputInst->IsKeyUp(Keys::KEY_1) && InputInst->WasKeyDown(Keys::KEY_1)) {
-        EventContext data = {};
-        data.data.i32[0] = Renderer::Lighting;
-        Event::Fire(EVENT_CODE_SET_RENDER_MODE, this, data);
-    }
-
-    if (InputInst->IsKeyUp(Keys::KEY_2) && InputInst->WasKeyDown(Keys::KEY_2)) {
-        EventContext data = {};
-        data.data.i32[0] = Renderer::Normals;
-        Event::Fire(EVENT_CODE_SET_RENDER_MODE, this, data);
-    }
-
-    if (InputInst->IsKeyUp(Keys::KEY_0) && InputInst->WasKeyDown(Keys::KEY_0)) {
-        EventContext data = {};
-        data.data.i32[0] = Renderer::Default;
-        Event::Fire(EVENT_CODE_SET_RENDER_MODE, this, data);
-    }
-
-    // ЗАДАЧА: временно
-    // Привяжите клавишу для загрузки некоторых данных.
-    if (InputInst->IsKeyUp(Keys::L) && InputInst->WasKeyDown(Keys::L)) {
-        EventContext context = {};
-        Event::Fire(EVENT_CODE_DEBUG1, this, context);
-    }
-
-    // ЗАДАЧА: временно
+    // Отслеживайте различия в распределении.
+    // state->PrevAllocCount = state->AllocCount;
+    // state->AllocCount = GetMemoryAllocCount();
 
     // Выполните небольшой поворот на первой сетке.
     Quaternion rotation( FVec3(0.F, 1.F, 0.F), 0.5F * DeltaTime, false );
@@ -406,17 +325,17 @@ bool Game::Update(f32 DeltaTime)
     const auto& rot = WorldCamera->GetRotationEuler();
 
     // Также прикрепите текущее состояние мыши.
-    bool LeftDown = InputInst->IsButtonDown(Buttons::Left);
-    bool RightDown = InputInst->IsButtonDown(Buttons::Right);
+    bool LeftDown = Input::IsButtonDown(Buttons::Left);
+    bool RightDown = Input::IsButtonDown(Buttons::Right);
     i16 MouseX, MouseY;
-    InputInst->GetMousePosition(MouseX, MouseY);
+    Input::GetMousePosition(MouseX, MouseY);
 
     // Преобразовать в NDC
     f32 mouseXNdc = Math::RangeConvertF32((f32)MouseX, 0.F, (f32)state->width,  -1.F, 1.F);
     f32 MouseYNdc = Math::RangeConvertF32((f32)MouseY, 0.F, (f32)state->height, -1.F, 1.F);
 
     f64 fps, FrameTime;
-    application->State->metrics.Frame(fps, FrameTime);
+    Metrics::Frame(fps, FrameTime);
 
     // Обновите усеченную пирамиду
     const auto& forward = state->WorldCamera->Forward();
@@ -491,27 +410,36 @@ bool Game::Update(f32 DeltaTime)
         }
     }
 
-    char TextBuffer[256]{};
-            MString::Format(
-                TextBuffer,
-                "\
-                FPS: %5.1f(%4.1fмс) Позиция=[%7.3F, %7.3F, %7.3F] Вращение=[%7.3F, %7.3F, %7.3F]\n\
-                Мышь: X=%-5d Y=%-5d   L=%s R=%s   NDC: X=%.6f, Y=%.6f\n\
-                Draw: %-5u Hovered: %s%u",
-                fps,
-                FrameTime,
-                pos.x, pos.y, pos.z,
-                Math::RadToDeg(rot.x), Math::RadToDeg(rot.y), Math::RadToDeg(rot.z),
-                MouseX, MouseY,
-                LeftDown ? "Y" : "N",
-                RightDown ? "Y" : "N",
-                mouseXNdc,
-                MouseYNdc,
-                DrawCount,
-                state->HoveredObjectID == INVALID::ID ? "none" : "",
-                state->HoveredObjectID == INVALID::ID ? 0 : state->HoveredObjectID
-            );
-            state->TestText.SetText(TextBuffer);
+    const char* VsyncText = Renderer::FlagEnabled(RendererConfigFlagBits::VsyncEnabledBit) ? "Вкл" : "Выкл";
+    char TextBuffer[2048]{};
+    MString::Format(
+        TextBuffer,
+        "\
+        FPS: %5.1f(%4.1fмс) Позиция=[%7.3F, %7.3F, %7.3F] Вращение=[%7.3F, %7.3F, %7.3F]\n\
+        Upd: %8.3fмкс, Rend: %8.3fмкс Мышь: X=%-5d Y=%-5d   L=%s R=%s   NDC: X=%.6f, Y=%.6f\n\
+        Vsync: %s Draw: %-5u Hovered: %s%u",
+        fps,
+        FrameTime,
+        pos.x, pos.y, pos.z,
+        Math::RadToDeg(rot.x), Math::RadToDeg(rot.y), Math::RadToDeg(rot.z),
+        state->LastUpdateElapsed * M_SEC_TO_US_MULTIPLIER,
+        state->RenderClock.elapsed * M_SEC_TO_US_MULTIPLIER,
+        MouseX, MouseY,
+        LeftDown ? "Y" : "N",
+        RightDown ? "Y" : "N",
+        mouseXNdc,
+        MouseYNdc,
+        VsyncText,
+        DrawCount,
+        state->HoveredObjectID == INVALID::ID ? "none" : "",
+        state->HoveredObjectID == INVALID::ID ? 0 : state->HoveredObjectID
+    );
+    state->TestText.SetText(TextBuffer);
+
+    DebugConsole::Update();
+
+    state->UpdateClock.Update();
+    state->LastUpdateElapsed = state->UpdateClock.elapsed;
 
     return true;
 }
@@ -520,6 +448,7 @@ bool Game::Render(RenderPacket& packet, f32 DeltaTime)
 {
     auto state = reinterpret_cast<State*>(this->state);
 
+    state->RenderClock.Start();
     // ЗАДАЧА: временный код
 
     // ЗАДАЧА: Чтение из конфигурации кадра
@@ -541,6 +470,8 @@ bool Game::Render(RenderPacket& packet, f32 DeltaTime)
         return false;
     }
 
+    // Пользовательский интерфейс
+    UiPacketData UiPacket{};
     u32 UIMeshCount = 0;
     u32 MaxUiMeshes = 10;
     Mesh** UIMeshes = reinterpret_cast<Mesh**>(FrameAllocator.Allocate(sizeof(Mesh*) * MaxUiMeshes));
@@ -551,13 +482,22 @@ bool Game::Render(RenderPacket& packet, f32 DeltaTime)
             UIMeshCount++;
         }
     }
-    Mesh::PacketData UIMeshData;
-    UIMeshData.MeshCount = UIMeshCount;
-    UIMeshData.meshes = UIMeshes;
-    Text** texts = reinterpret_cast<Text**>(FrameAllocator.Allocate(sizeof(Text*) * 2));
+    UiPacket.MeshData.MeshCount = UIMeshCount;
+    UiPacket.MeshData.meshes = UIMeshes;
+    UiPacket.TextCount = 2;
+    Text* DebugConsoleText = DebugConsole::GetText();
+    bool RenderDebugConsole = DebugConsoleText && DebugConsole::Visible();
+    if (RenderDebugConsole) {
+        UiPacket.TextCount += 2;
+    }
+    Text** texts = reinterpret_cast<Text**>(FrameAllocator.Allocate(sizeof(Text*) * UiPacket.TextCount));
     texts[0] = &state->TestText;
     texts[1] = &state->TestSysText;
-    UiPacketData UiPacket { UIMeshData, 2, texts };
+    if (RenderDebugConsole) {
+        texts[2] = DebugConsoleText;
+        texts[3] = DebugConsole::GetEntryText();
+    }
+    UiPacket.texts = texts;
     if (!RenderViewSystem::BuildPacket(RenderViewSystem::Get("ui"), FrameAllocator, &UiPacket, packet.views[2])) {
         MERROR("Не удалось построить пакет для представления «ui».");
         return false;
@@ -576,6 +516,8 @@ bool Game::Render(RenderPacket& packet, f32 DeltaTime)
     }
 
     // ЗАДАЧА: конец временного кода
+
+    state->RenderClock.Update();
     
     return true;
 }

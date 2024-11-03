@@ -15,7 +15,8 @@
 #include "resources/skybox.hpp"
 #include "resources/ui_text.hpp"
 
-struct ApplicationState {
+class Engine
+{
     LinearAllocator SystemAllocator;
     //MMemory* mem;
     Logger* logger;
@@ -25,7 +26,7 @@ struct ApplicationState {
     bool IsSuspended;
     MWindow* Window;
     class Renderer* Render;
-    class GameTypes* GameInst;
+    class Application* GameInst;
 
     //Системы
     //TextureSystem* TexSys;
@@ -33,30 +34,27 @@ struct ApplicationState {
     class RenderViewSystem* RenderViewSystemInst;
     class ResourceSystem* ResourceSystemInst;
 
-    Metrics metrics;
+    // Metrics metrics;
     
     u32 width;
     u32 height;
     Clock clock;
     f64 LastTime;
-};
 
-class Application
-{
+    MAPI static Engine* pEngine; //ЗАДАЧА: убрать MAPI 
+
+    constexpr Engine();
 public:
-    MAPI static ApplicationState* State; //ЗАДАЧА: убрать MAPI 
-public:
-    Application() = default;
-    ~Application() {}
+    ~Engine() {}
+    Engine(const Engine&) = delete;
+    Engine& operator= (const Engine&) = delete;
 
-    MAPI bool Create(GameTypes* GameInst);
+    MAPI static bool Create(Application* GameInst);
 
-    MAPI bool ApplicationRun();
-
-    static void ApplicationGetFramebufferSize(u32& width, u32& height);
+    MAPI bool Run();
 
     MAPI void* operator new(u64 size);
-    MAPI void operator delete(void* ptr);
+    MAPI void operator delete(void* ptr, u64 size);
 
 private:
     // Обработчики событий

@@ -79,12 +79,11 @@ void FreeList::Create(u64 TotalSize, void *memory)
 
 bool FreeList::AllocateBlock(u64 size, u64 &OutOffset)
 {
-    FreelistNode* node = state->head;
+    auto node = state->head;
     FreelistNode* previous = nullptr;
     while (node) {
         if (node->size == size) {
-            // Точное совпадение. Просто верните узел *если он также правильно выровнен*.
-            // Если не выровнен, этого будет недостаточно.  
+            // Точное совпадение. Просто верните узел.
             OutOffset = node->offset;
             FreelistNode* NodeToReturn = nullptr;
             if (previous) {
@@ -99,7 +98,7 @@ bool FreeList::AllocateBlock(u64 size, u64 &OutOffset)
             ReturnNode(NodeToReturn);
             return true;
         } else if (node->size > size) {
-            // Узел больше, чем требование + смещение выравнивания.
+            // Узел больше, чем требование.
             // Вычтите из него память и переместите смещение на эту величину.
             OutOffset = node->offset;
             node->size -= size;
@@ -113,6 +112,89 @@ bool FreeList::AllocateBlock(u64 size, u64 &OutOffset)
 
     u64 freeSpace = FreeSpace();
     MWARN("Freelist::FindBlock, не найден блок с достаточным количеством свободного места (запрошено: %uбайт, доступно: %lluбайт).", size, freeSpace);
+    return false;
+}
+
+bool FreeList::ReallocateBlock(u64 size, u64 NewSize, u64 &BlockOffset)
+{
+    auto node = state->head;
+    FreelistNode* previous = nullptr;
+    FreelistNode* buff = nullptr; 
+    FreelistNode* PreviousBuff = nullptr;
+    u64 DeltaSize = NewSize - size;
+    bool free = false;
+    // ЗАДАЧА: переделать в приватные функции?----------------------------------
+    auto ExactMatch = [=]() {
+        FreelistNode* NodeToReturn = nullptr;
+        if (previous) {
+            previous->next = node->next;
+            NodeToReturn = node;
+        } else {
+            // Этот узел является заголовком списка. Переназначьте 
+            // заголовок и верните предыдущий заголовочный узел.
+            NodeToReturn = state->head;
+            state->head = node->next;
+        }
+        
+        ReturnNode(NodeToReturn);
+        return true;
+    };
+    //--------------------------------------------------------------------------
+
+    while (node) {
+        // Запоминаем какой блок памяти может подойти в случае, если нам придется выделять новый.
+        if (!buff && node->size >= NewSize) {
+            buff = node;
+            PreviousBuff = previous;
+        }
+        // ЗАДАЧА: проверен на правильную работоспособность-----------------------------------------------------
+        if (node->offset == BlockOffset + size && !free) {
+            if (node->size == DeltaSize) {
+                ExactMatch();
+
+            } else if (node->size > DeltaSize) {
+                node->size -= DeltaSize;
+                node->offset += DeltaSize;
+                return true;
+        // ЗАДАЧА: проверен на правильную работоспособность-----------------------------------------------------
+            // Если в данном блоке не достаточно памяти, то освобождаем его и ищем новый блок
+            } else {
+                node->size += size;
+                node->offset = BlockOffset;
+
+                // Проверьте, соединяет ли это диапазон между этим и следующим узлом, 
+                // и если да, объедините их и верните второй узел.
+                if (node->next && node->next->offset == node->offset + node->size) {
+                    node->size += node->next->size;
+                    auto next = node->next;
+                    node->next = node->next->next;
+                    ReturnNode(next);
+                }
+                // Помечаем что мы освободили данный блок памяти, 
+                // т.к. не смогли его увеличить
+                // и теперь нам требуется выделить новый
+                free = true;
+            }
+        } else if (free) {
+            if (buff) {
+                previous = PreviousBuff;
+                node = buff;
+            }
+            if (node->size == size) {
+                BlockOffset = node->offset;
+                ExactMatch();
+            } else if (node->size > size) {
+                BlockOffset = node->offset;
+                node->size -= NewSize;
+                node->offset += NewSize;
+                return true;
+            }
+        }
+
+        previous = node;
+        node = node->next;
+    }
+    
     return false;
 }
 

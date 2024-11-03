@@ -27,17 +27,17 @@ bool RenderViewWorld::OnEvent(u16 code, void* sender, void* ListenerInst, EventC
             i32 mode = context.data.i32[0];
             switch (mode) {
                 default:
-                case Renderer::Default:
+                case Render::Default:
                     MDEBUG("Режим рендеринга установлен на значение по умолчанию.");
-                    self->RenderMode = Renderer::Default;
+                    self->RenderMode = Render::Default;
                     break;
-                case Renderer::Lighting:
+                case Render::Lighting:
                     MDEBUG("Режим рендеринга установлен на освещение.");
-                    self->RenderMode = Renderer::Lighting;
+                    self->RenderMode = Render::Lighting;
                     break;
-                case Renderer::Normals:
+                case Render::Normals:
                     MDEBUG("Режим рендеринга установлен на нормали.");
-                    self->RenderMode = Renderer::Normals;
+                    self->RenderMode = Render::Normals;
                     break;
             }
             return true;

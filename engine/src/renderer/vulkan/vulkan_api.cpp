@@ -202,7 +202,10 @@ instance(), allocator(nullptr), surface(),
 Device(), swapchain(),
 ObjectVertexBuffer(RenderBufferType::Vertex, sizeof(Vertex3D) * 1024 * 1024, true),
 ObjectIndexBuffer(RenderBufferType::Index, sizeof(u32) * 1024 * 1024, true),
+RecreatingSwapchain(false),
+RenderFlagChanged(false),
 MultithreadingEnabled(false)
+
 {
     // ПРИМЕЧАНИЕ: Пользовательский распределитель.
 #if MVULKAN_USE_CUSTOM_ALLOCATOR == 1
@@ -354,7 +357,7 @@ MultithreadingEnabled(false)
     }
 
     // Swapchain
-    swapchain.Create(this, FramebufferWidth, FramebufferHeight);
+    swapchain.Create(this, FramebufferWidth, FramebufferHeight, config.flags);
 
     // Сохраните количество имеющихся у нас изображений в качестве необходимого количества целей рендеринга.
     OutWindowRenderTargetCount = swapchain.ImageCount;
@@ -502,11 +505,16 @@ bool VulkanAPI::BeginFrame(f32 Deltatime)
     }
 
     // Проверьте, был ли изменен размер фреймбуфера. Если это так, необходимо создать новую цепочку подкачки.
-    if (FramebufferSizeGeneration != FramebufferSizeLastGeneration) {
+    // Также включите проверку изменения вертикальной синхронизации.
+    if (FramebufferSizeGeneration != FramebufferSizeLastGeneration || RenderFlagChanged) {
         VkResult result = vkDeviceWaitIdle(Device.LogicalDevice);
         if (!VulkanResultIsSuccess(result)) {
             MERROR("Ошибка VulkanBeginFrame vkDeviceWaitIdle (2): '%shader'", VulkanResultString(result, true));
             return false;
+        }
+
+        if (RenderFlagChanged) {
+            RenderFlagChanged = false;
         }
 
         // Если воссоздание цепочки обмена не удалось (например, из-за того, 
@@ -1825,9 +1833,20 @@ i32 VulkanAPI::FindMemoryIndex(u32 TypeFilter, VkMemoryPropertyFlags PropertyFla
     return -1;
 }
 
-bool VulkanAPI::IsMultithreaded()
+const bool& VulkanAPI::IsMultithreaded()
 {
     return MultithreadingEnabled;
+}
+
+bool VulkanAPI::FlagEnabled(RendererConfigFlags flag)
+{
+    return bool(swapchain.flags & flag);
+}
+
+void VulkanAPI::FlagSetEnabled(RendererConfigFlags flag, bool enabled)
+{
+    swapchain.flags = (enabled ? (swapchain.flags | flag) : swapchain.flags & ~flag);
+    RenderFlagChanged = true;
 }
 
 void VulkanAPI::CreateCommandBuffers()

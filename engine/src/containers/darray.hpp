@@ -87,8 +87,7 @@ public:
     }
 
     ~DArray() {
-        if(this->data) {
-
+        if(data) {
             Clear();
             MMemory::Free(data, sizeof(T) * capacity, Memory::DArray);
             size = capacity = 0;
@@ -105,8 +104,7 @@ public:
     DArray& operator=(const DArray& da) {
         Clear();
         if (!data && capacity < da.size) {
-            Reserve(da.size);
-            size = da.size;
+            Resize(da.size);
         }
         for (u64 i = 0; i < da.size; i++) {
             data[i] = da.data[i];

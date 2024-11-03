@@ -176,6 +176,34 @@ void *DynamicAllocator::AllocateAligned(u64 size, u16 alignment)
     return nullptr;
 }
 
+void *DynamicAllocator::Realloc(void *block, u64 size, u64 NewSize)
+{
+    if (state->MemoryBlock && block && size && NewSize) {
+        if (block < state->MemoryBlock || block > reinterpret_cast<u8*>(state->MemoryBlock) + state->TotalSize) {
+            void* EndOfBlock = reinterpret_cast<u8*>(state->MemoryBlock) + state->TotalSize;
+            MERROR("DynamicAllocator::Realloc попытка перераспределить блок (0x%p) за пределами диапазона распределителя (0x%p)-(0x%p).", block, state->MemoryBlock, EndOfBlock);
+            return nullptr;
+        }
+
+        // Смещение блока памяти, который нужно увеличить
+        u64 MemOffset = reinterpret_cast<u64>(block);
+        u64 offset = MemOffset - reinterpret_cast<u64>(state->MemoryBlock);
+
+        if (state->list.ReallocateBlock(size, NewSize, offset)) {
+            u8* ptr = reinterpret_cast<u8*>(state->MemoryBlock) + offset;
+            return ptr;
+        } else {
+            MERROR("DynamicAllocator::AllocateBlockAligned нет блоков памяти, достаточно больших для выделения.");
+            u64 available = state->list.FreeSpace();
+            MERROR("Запрошенный размер: %llu, общее доступное пространство: %llu", size, available);
+            // ЗАДАЧА: Report fragmentation?
+            return nullptr;
+        }
+    }
+    MERROR("DynamicAllocator::AllocateBlockAligned требуется размер.");
+    return nullptr;
+}
+
 bool DynamicAllocator::Free(void *block, u64 size, bool aligned)
 {
     if (!block) {

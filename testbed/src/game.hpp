@@ -1,9 +1,9 @@
 #pragma once
 
-#include <game_types.hpp>
+#include <application_types.hpp>
 #include <math/frustrum.hpp>
 
-class Game : public GameTypes
+class Game : public Application
 {
 public:
     struct State{
@@ -13,6 +13,10 @@ public:
         u16 width, height;
 
         Frustrum CameraFrustrum;
+
+        Clock UpdateClock;
+        Clock RenderClock;
+        f64 LastUpdateElapsed;
 
         // ЗАДАЧА: временно
         Skybox sb;
@@ -28,11 +32,16 @@ public:
 
         // Уникальный идентификатор текущего объекта, на который наведен курсор.
         u32 HoveredObjectID;
+
+        Keymap ConsoleKeymap;
+
+        u64 AllocCount;
+        u64 PrevAllocCount;
         // ЗАДАЧА: конец временно
     };
     
 public:
-    constexpr Game(const ApplicationConfig& config) : GameTypes(config, sizeof(State)) {}
+    constexpr Game(const ApplicationConfig& config) : Application(config, sizeof(State)) {}
     ~Game();
 
     bool Boot() override;
@@ -55,6 +64,9 @@ public:
 
     /// @brief Завершает игру, вызывая высвобождение ресурсов.
     void Shutdown() override;
+
+    void SetupCommands();
+    void SetupKeymaps();
 
 private:
     bool ConfigureRenderViews();

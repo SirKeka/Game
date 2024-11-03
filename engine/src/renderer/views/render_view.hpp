@@ -12,6 +12,8 @@ struct GeometryRenderData
     u32 UniqueID;
 };
 
+template class DArray<GeometryRenderData>;
+
 struct SkyboxPacketData {
     struct Skybox* sb;
     constexpr SkyboxPacketData(Skybox* sb) : sb(sb) {}
@@ -116,5 +118,3 @@ public:
 
 bool RenderViewOnEvent(u16 code, void* sender, void* ListenerInst, EventContext context);
 
-template class DArray<RenderView::Config>; // Явное инстанцирование
-template class DArray<GeometryRenderData>;

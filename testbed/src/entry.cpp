@@ -1,7 +1,7 @@
 #include <entry.hpp>
 #include "game.hpp"
 
-bool CreateGame(GameTypes*& OutGame)
+bool CreateApplication(Application*& OutApplication)
 {
     ApplicationConfig config;
     config.StartPosX = 100;
@@ -11,7 +11,7 @@ bool CreateGame(GameTypes*& OutGame)
     config.name = "Moon Engine";
     // config.FontConfig = 
     // config.RenderViews = 
-    OutGame = new Game(config);
+    OutApplication = new Game(config);
 
     return true;
 }

@@ -2,11 +2,13 @@
 #include "containers/mstring.hpp"
 #include "containers/hashtable.hpp"
 
+struct Text;
+
 struct SystemFontConfig {
     MString name        {};
     u16 DefaultSize     {};
     MString ResourceName{};
-    constexpr SystemFontConfig(MString&& name, u16 DefaultSize, MString&& ResourceName) : name(name), DefaultSize(DefaultSize), ResourceName(ResourceName) {}
+    constexpr SystemFontConfig(MString&& name, u16 DefaultSize, MString&& ResourceName) : name(static_cast<MString&&>(name)), DefaultSize(DefaultSize), ResourceName(static_cast<MString&&>(ResourceName)) {}
     void* operator new(u64 size)              { return MMemory::Allocate(size, Memory::SystemFont); }
     void operator delete(void* ptr, u64 size) { MMemory::Free(ptr, size, Memory::SystemFont); }
 };
@@ -22,32 +24,13 @@ struct BitmapFontConfig {
 };
 
 struct FontSystemConfig {
-    u8 DefaultSystemFontCount                 {};
-    SystemFontConfig* SystemFontConfigs{nullptr};
-    u8 DefaultBitmapFontCount                 {};
-    BitmapFontConfig* BitmapFontConfigs{nullptr};
-    u8 MaxSystemFontCount                     {};
-    u8 MaxBitmapFontCount                     {};
-    bool AutoRelease                          {};
-
-    constexpr FontSystemConfig() 
-    : 
-    DefaultSystemFontCount(), 
-    SystemFontConfigs(nullptr), 
-    DefaultBitmapFontCount(), 
-    BitmapFontConfigs(nullptr), 
-    MaxSystemFontCount(),
-    MaxBitmapFontCount(),
-    AutoRelease() {}
-    constexpr FontSystemConfig(u8 DefaultSystemFontCount, SystemFontConfig* SystemFontConfigs, u8 DefaultBitmapFontCount, BitmapFontConfig* BitmapFontConfigs, u8 MaxSystemFontCount, u8 MaxBitmapFontCount, bool AutoRelease)
-    :
-    DefaultSystemFontCount(DefaultSystemFontCount), 
-    SystemFontConfigs(SystemFontConfigs), 
-    DefaultBitmapFontCount(DefaultBitmapFontCount), 
-    BitmapFontConfigs(BitmapFontConfigs), 
-    MaxSystemFontCount(MaxSystemFontCount),
-    MaxBitmapFontCount(MaxBitmapFontCount),
-    AutoRelease(AutoRelease) {}
+    u8 DefaultSystemFontCount;
+    SystemFontConfig* SystemFontConfigs;
+    u8 DefaultBitmapFontCount;
+    BitmapFontConfig* BitmapFontConfigs;
+    u8 MaxSystemFontCount;
+    u8 MaxBitmapFontCount;
+    bool AutoRelease;
 };
 
 struct BitmapFontLookup;
@@ -87,11 +70,11 @@ public:
     /// @param FontSize Размер шрифта. Игнорируется для растровых шрифтов.
     /// @param text Указатель на текстовый объект, для которого необходимо получить шрифт.
     /// @return True в случае успеха; в противном случае false.
-    static bool Acquire(const char* FontName, u16 FontSize, class Text& text);
+    static bool Acquire(const char* FontName, u16 FontSize, Text& text);
     /// @brief Освобождает ссылки на шрифт, хранящийеся в предоставленном Text.
     /// @param text Указатель на текстовый объект, из которого следует освободить шрифт.
     /// @return True в случае успеха; в противном случае false.
-    static bool Release(class Text& text);
+    static bool Release(Text& text);
 
     static bool VerifyAtlas(struct FontData* font, const char* text);
 };

@@ -8,6 +8,7 @@
 #include "renderbuffer.hpp"
 #include "resources/mesh.hpp"
 #include "resources/ui_text.hpp"
+#include "renderer_structs.hpp"
 
 struct StaticMeshData;
 class Texture;
@@ -67,12 +68,7 @@ struct UiPacketData {
     // ЗАДАЧА: временно
     u32 TextCount;
     Text** texts;
-    constexpr UiPacketData(Mesh::PacketData MeshData, u32 TextCount, Text** texts) : MeshData(MeshData), TextCount(TextCount), texts(texts) {}
-};
-
-/// @brief Общая конфигурация для рендерера.
-struct RendererConfig {
-    const char* ApplicationName;            // Имя приложения.
+    // constexpr UiPacketData(Mesh::PacketData MeshData, u32 TextCount, Text** texts) : MeshData(MeshData), TextCount(TextCount), texts(texts) {}
 };
 
 class RendererType
@@ -361,5 +357,15 @@ public:
     virtual u8 WindowAttachmentCountGet() = 0;
     
     /// @brief Указывает, поддерживает ли рендерер многопоточность.
-    virtual bool IsMultithreaded() = 0;
+    virtual const bool& IsMultithreaded() = 0;
+
+    /// @brief Указывает, включен ли предоставленный флаг рендерера. Если передано несколько флагов, все они должны быть установлены, чтобы вернуть значение true.
+    /// @param flag проверяемый флаг.
+    /// @return True, если флаг(и) установлены; в противном случае false.
+    virtual bool FlagEnabled(RendererConfigFlags flag) = 0;
+
+    /// @brief Устанавливает, включены ли включенные флаг(и). Если передано несколько флагов, несколько из них устанавливаются одновременно.
+    /// @param flag проверяемый флаг.
+    /// @param enabled указывает, следует ли включать флаг(и).
+    virtual void FlagSetEnabled(RendererConfigFlags flag, bool enabled) = 0;
     };

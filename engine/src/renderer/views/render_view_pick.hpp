@@ -12,7 +12,7 @@ public:
     u32 UiGeometryCount;
     // ЗАДАЧА: временно
     u32 TextCount;
-    class Text** texts;
+    struct Text** texts;
 };
 private:
     struct ShaderInfo {

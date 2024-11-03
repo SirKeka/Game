@@ -83,18 +83,18 @@ void VulkanSwapchain::Destroy(VulkanAPI *VkAPI)
     }*/
 }
 
-VulkanSwapchain::VulkanSwapchain(VulkanAPI *VkAPI, u32 width, u32 height)
+VulkanSwapchain::VulkanSwapchain(VulkanAPI *VkAPI, u32 width, u32 height, RendererConfigFlags flags)
 {
-    Create(VkAPI, width, height);
+    Create(VkAPI, width, height, flags);
 }
 
 VulkanSwapchain::~VulkanSwapchain()
 {
 }
 
-void VulkanSwapchain::Create(VulkanAPI *VkAPI, u32 width, u32 height)
+void VulkanSwapchain::Create(VulkanAPI *VkAPI, u32 width, u32 height, RendererConfigFlags flags)
 {
-    VkExtent2D SwapchainExtent = {width, height};
+    VkExtent2D SwapchainExtent {width, height};
 
     // Выберите формат поверхности подкачки.
     bool found = false;
@@ -113,15 +113,30 @@ void VulkanSwapchain::Create(VulkanAPI *VkAPI, u32 width, u32 height)
         ImageFormat = VkAPI->Device.SwapchainSupport.formats[0];
     }
 
-    // При высокой скорости рендера кадров выбирается самый последний
-    VkPresentModeKHR PresentMode = VK_PRESENT_MODE_FIFO_KHR;
-    for (u32 i = 0; i < VkAPI->Device.SwapchainSupport.PresentModeCount; ++i) {
-        VkPresentModeKHR mode = VkAPI->Device.SwapchainSupport.PresentModes[i];
-        if (mode == VK_PRESENT_MODE_MAILBOX_KHR) {
-            PresentMode = mode;
-            break;
+    // FIFO и MAILBOX поддерживают vsync, IMMEDIATE — нет.
+    // ЗАДАЧА: vsync, похоже, по какой-то причине задерживает обновление игры.
+    // Теоретически это должно происходить после обновления и до рендеринга.
+    this->flags = flags;
+    VkPresentModeKHR PresentMode;
+    if (flags & RendererConfigFlagBits::VsyncEnabledBit) {
+        PresentMode = VK_PRESENT_MODE_FIFO_KHR;
+        // Пробуйте режим почтового ящика только в том случае, если не включен режим энергосбережения.
+        if ((flags & RendererConfigFlagBits::PowerSavingBit) == 0) {
+            for (u32 i = 0; i < VkAPI->Device.SwapchainSupport.PresentModeCount; ++i) {
+                VkPresentModeKHR mode = VkAPI->Device.SwapchainSupport.PresentModes[i];
+                if (mode == VK_PRESENT_MODE_MAILBOX_KHR) {
+                    PresentMode = mode;
+                    break;
+                }
+            }
         }
+        
+    } else {
+        PresentMode = VK_PRESENT_MODE_IMMEDIATE_KHR;
     }
+    
+    
+    
 
     // Запросить поддержку цепочки обмена. ЗАДАЧА: переделать
     VkAPI->Device.QuerySwapchainSupport(VkAPI->Device.PhysicalDevice, VkAPI->surface, &VkAPI->Device.SwapchainSupport);
@@ -287,5 +302,5 @@ void VulkanSwapchain::Recreate(VulkanAPI *VkAPI, u32 width, u32 height)
 {
     // Уничтожте старую и создайте новую.
     Destroy(VkAPI);
-    Create(VkAPI, width, height);
+    Create(VkAPI, width, height, this->flags);
 }
