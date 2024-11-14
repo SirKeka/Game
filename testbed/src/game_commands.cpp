@@ -6,7 +6,7 @@
 
 void GameCommandExit(ConsoleCommandContext context) {
     MDEBUG("Game exit called!");
-    Event::Fire(EVENT_CODE_APPLICATION_QUIT, nullptr, (EventContext){});
+    EventSystem::Fire(EVENT_CODE_APPLICATION_QUIT, nullptr, (EventContext){});
 }
 
 void Game::SetupCommands() {

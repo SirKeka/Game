@@ -2,6 +2,7 @@
 
 #include <application_types.hpp>
 #include <math/frustrum.hpp>
+#include <core/keymap.hpp>
 
 class Game : public Application
 {

@@ -60,7 +60,7 @@ bool ResourceLoader::Load(const char *name, void* params, ImageResource &OutReso
     i32 height;
     i32 СhannelСount;
 
-    u8* RawData = MMemory::TAllocate<u8>(Memory::Texture, FileSize);
+    u8* RawData = MemorySystem::TAllocate<u8>(Memory::Texture, FileSize);
     if (!RawData) {
         MERROR("Невозможно прочитать файл «%s».", FullFilePath);
         Filesystem::Close(f);
@@ -88,7 +88,7 @@ bool ResourceLoader::Load(const char *name, void* params, ImageResource &OutReso
         return false;
     }
 
-    MMemory::Free(RawData, FileSize, Memory::Texture);
+    MemorySystem::Free(RawData, FileSize, Memory::Texture);
 
     // ЗАДАЧА: Здесь следует использовать распределитель.
     auto& image = OutResource.data;

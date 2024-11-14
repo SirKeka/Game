@@ -16,7 +16,7 @@ struct sMetrics
     constexpr sMetrics() : FrameAvgCounter(), MsTimes(), MsAvg(), frames(), AccumulatedFrameMs(), fps() {}
 
     void* operator new(u64 size) {
-        return MMemory::Allocate(size, Memory::Engine);
+        return MemorySystem::Allocate(size, Memory::Engine);
     }
 };
 

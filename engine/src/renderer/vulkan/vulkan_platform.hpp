@@ -2,13 +2,10 @@
 
 #include "defines.hpp"
 
-class MWindow;
 class VulkanAPI;
 template<typename T> class DArray;
 
-bool PlatformCreateVulkanSurface(
-    MWindow *window, 
-    VulkanAPI *VkAPI);
+bool PlatformCreateVulkanSurface(VulkanAPI *VkAPI);
 
 /*
  * Добавляет имена необходимых расширений для этой платформы 

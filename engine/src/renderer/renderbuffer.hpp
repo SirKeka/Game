@@ -37,7 +37,7 @@ struct RenderBuffer
         // При необходимости создайте бесплатный список.
         if (UseFreelist) {
             FreelistMemoryRequirement = FreeList::GetMemoryRequirement(TotalSize);
-            FreelistBlock = MMemory::Allocate(FreelistMemoryRequirement, Memory::Renderer);
+            FreelistBlock = MemorySystem::Allocate(FreelistMemoryRequirement, Memory::Renderer);
             BufferFreelist.Create(TotalSize, FreelistBlock);
         }
     }

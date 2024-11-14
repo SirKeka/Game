@@ -17,16 +17,23 @@ namespace ETexture {
 
 using ETextureFlag = u8;
 
+/// @brief Конфигурация системы текстур.
+struct TextureSystemConfig
+{
+    /// @brief Максимальное количество текстур, которые можно загрузить одновременно.
+    u32 MaxTextureCount;
+};
+
 class TextureSystem
 {
 private:
     u32 MaxTextureCount{};
     Texture DefaultTexture[4]{}; // DefaultTexture, DefaultDiffuseTexture, DefaultSpecularTexture, DefaultNormalTexture
 
-    // Массив зарегистрированных текстур.
+    /// @brief Массив зарегистрированных текстур.
     Texture* RegisteredTextures{};
 
-    // Хэш-таблица для поиска текстур.
+    /// @brief Хэш-таблица для поиска текстур.
     HashTable<TextureReference> RegisteredTextureTable{};
 
     static TextureSystem* state;
@@ -37,7 +44,7 @@ public:
     TextureSystem(const TextureSystem&) = delete;
     TextureSystem& operator= (const TextureSystem&) = delete;
 
-    static bool Initialize(u32 MaxTextureCount, class LinearAllocator& SystemAllocator);
+    static bool Initialize(u64& MemoryRequirement, void* memory, void* config);
     static void Shutdown();
 
     /// @brief Пытается получить текстуру с заданным именем. Если она еще не загружена, это запускает её загрузку. 

@@ -144,7 +144,7 @@ namespace Math
         // Выделить новый массив вершин
         *OutVertices = new Vertex3D[OutVertexCount];
         // Копировать уникальные
-        MMemory::CopyMem(*OutVertices, UniqueVerts, sizeof(Vertex3D) * (OutVertexCount));
+        MemorySystem::CopyMem(*OutVertices, UniqueVerts, sizeof(Vertex3D) * (OutVertexCount));
         // Уничтожить временный массив
         delete[] UniqueVerts;
 

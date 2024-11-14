@@ -1,6 +1,14 @@
 #include "debug_console.hpp"
 #include <core/console.hpp>
 #include <core/input.hpp>
+#include <platform/platform.hpp>
+
+// struct ComandHistoryEntry
+// {
+//     MString command;
+// };
+
+using CommandHistoryEntry = MString;
 
 struct sDebugConsole 
 {
@@ -8,19 +16,22 @@ struct sDebugConsole
     i32 LineOffset;         // Количество строк, смещенных от низа списка.
     DArray<MString> lines;
 
+    DArray<CommandHistoryEntry> history;
+    i32 HistoryOffset;
+
     bool dirty;
     bool visible;
 
     Text TextControl;
     Text EntryControl;
 
-    sDebugConsole() : LineDisplayCount(10), LineOffset(), lines(), dirty(), visible(false), TextControl(), EntryControl() {}
+    sDebugConsole() : LineDisplayCount(10), LineOffset(), lines(), history(), HistoryOffset(), dirty(), visible(false), TextControl(), EntryControl() {}
 
     void* operator new(u64 size) {
-        return MMemory::Allocate(size, Memory::Game);
+        return MemorySystem::Allocate(size, Memory::Game);
     }
     void operator delete(void* ptr, u64 size){
-        MMemory::Free(ptr, size, Memory::Game);
+        MemorySystem::Free(ptr, size, Memory::Game);
     }
 };
 
@@ -29,7 +40,7 @@ static sDebugConsole* pDebugConsole = nullptr;
 
 namespace DebugConsole
 {
-    bool DebugConsoleConsumerWrite(void* inst, LogLevel level, const char* message) 
+    bool DebugConsoleConsumerWrite(void* inst, Log::Level level, const char* message) 
     {
         // Создайте новую копию строки и попробуйте разбить ее по новым строкам, 
         // чтобы каждая из них считалась новой строкой.
@@ -55,11 +66,14 @@ namespace DebugConsole
         }
         if (code == EVENT_CODE_KEY_PRESSED) {
             const u16& KeyCode = context.data.u16[0];
-            bool ShiftHeld = Input::IsKeyDown(Keys::LSHIFT) || Input::IsKeyDown(Keys::RSHIFT) || Input::IsKeyDown(Keys::SHIFT);
+            bool ShiftHeld = InputSystem::IsKeyDown(Keys::LSHIFT) || InputSystem::IsKeyDown(Keys::RSHIFT) || InputSystem::IsKeyDown(Keys::SHIFT);
 
             if (KeyCode == Keys::ENTER) {
                 u32 len = pDebugConsole->EntryControl.text.Length();
                 if (len > 0) {
+                    //Сохранить команду в списке истории.
+                    pDebugConsole->history.PushBack(pDebugConsole->EntryControl.text);
+
                     // Выполните команду и очистите текст.
                     if (!Console::ExecuteCommand(pDebugConsole->EntryControl.text)) {
                         // ЗАДАЧА: обработать ошибку?
@@ -101,6 +115,12 @@ namespace DebugConsole
                     switch (KeyCode) {
                         case static_cast<u16>(Keys::SPACE):
                             CharCode = KeyCode;
+                            break;
+                        case static_cast<u16>(Keys::MINUS):
+                        CharCode = ShiftHeld ? '_' : '-';
+                        break;
+                        case static_cast<u16>(Keys::Equal):
+                            CharCode = ShiftHeld ? '+' : '=';
                             break;
                         default:
                             // Недействительно для ввода, используйте 0
@@ -147,7 +167,7 @@ namespace DebugConsole
         }
 
         // Создать текстовый элемент управления пользовательского интерфейса для рендеринга.
-        if (!pDebugConsole->TextControl.Create(TextType::System, "Metrika", 31, "")) {
+        if (!pDebugConsole->TextControl.Create(TextType::System, "Noto Sans CJK JP", 31, "")) {
             MFATAL("Невозможно создать текстовый элемент управления для консоли отладки.");
             return false;
         }
@@ -155,15 +175,15 @@ namespace DebugConsole
         pDebugConsole->TextControl.SetPosition(FVec3(3.F, 30.F, 0.F));
 
         // Создать еще один текстовый элемент управления пользовательского интерфейса для рендеринга введенного текста.
-        if (!pDebugConsole->EntryControl.Create(TextType::System, "Metrika", 31, "")) {
+        if (!pDebugConsole->EntryControl.Create(TextType::System, "Noto Sans CJK JP", 31, "")) {
             MFATAL("Невозможно создать текстовый элемент управления ввода для консоли отладки.");
             return false;
         }
 
         pDebugConsole->EntryControl.SetPosition(FVec3(3.F, 30.F + (31.F * pDebugConsole->LineDisplayCount), 0.F));
 
-        Event::Register(EVENT_CODE_KEY_PRESSED, nullptr, OnKey);
-        Event::Register(EVENT_CODE_KEY_RELEASED, nullptr, OnKey);
+        EventSystem::Register(EVENT_CODE_KEY_PRESSED, nullptr, OnKey);
+        EventSystem::Register(EVENT_CODE_KEY_RELEASED, nullptr, OnKey);
 
         return true;
     }
@@ -296,6 +316,28 @@ namespace DebugConsole
         if (pDebugConsole) {
             pDebugConsole->dirty = true;
             pDebugConsole->LineOffset = 0;
+        }
+    }
+
+    void HistoryBack()
+    {
+        if (pDebugConsole) {
+            const u32& lenght = pDebugConsole->history.Length();
+            if (lenght > 0) {
+                pDebugConsole->HistoryOffset = MMAX(pDebugConsole->HistoryOffset++, lenght - 1);
+                pDebugConsole->EntryControl.SetText(pDebugConsole->history[lenght - pDebugConsole->HistoryOffset - 1]);
+            }
+        }
+    }
+
+    void HistoryForward()
+    {
+        if (pDebugConsole) {
+            const u32& lenght = pDebugConsole->history.Length();
+            if (lenght > 0) {
+                pDebugConsole->HistoryOffset = MMAX(pDebugConsole->HistoryOffset--, 0);
+                pDebugConsole->EntryControl.SetText(pDebugConsole->history[lenght - pDebugConsole->HistoryOffset - 1]);
+            }
         }
     }
 } // namespace name

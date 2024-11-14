@@ -6,6 +6,13 @@
 
 constexpr const char* DEFAULT_GEOMETRY_NAME = "default";
 
+/// @brief Конфигурация геометрической системы.
+struct GeometrySystemConfig {
+    /// @brief ПРИМЕЧАНИЕ: Должна быть значительно больше, чем количество статических сеток, 
+    /// поскольку их может быть и будет больше одной на сетку. Примите во внимание и другие системы.
+    u32 MaxGeometryCount;
+};
+
 class GeometrySystem
 {
 private:
@@ -30,7 +37,7 @@ public:
 
     static MINLINE GeometrySystem* Instance() { return state; }
 
-    static bool Initialize(u32 MaxGeometryCount, class LinearAllocator& SystemAllocator);
+    static bool Initialize(u64& MemoryRequirement, void* memory, void* config);
     static void Shutdown();
 
     /// @brief Получает существующую геометрию по идентификатору.

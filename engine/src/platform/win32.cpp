@@ -18,13 +18,16 @@
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_win32.h>
 
-
 struct PlatformState
 {
     HINSTANCE HInstance;   // Дескриптор экземпляра приложения
     HWND hwnd;             // Дескриптор окна
     VkSurfaceKHR surface;
+
+    constexpr PlatformState() : HInstance(), hwnd(), surface() {}
 };
+
+static PlatformState* state = nullptr;
 
 // Прототип функции обратного вызова для обработки сообщений
 LRESULT CALLBACK Win32MessageProcessor(HWND, u32, WPARAM, LPARAM);
@@ -33,19 +36,16 @@ LRESULT CALLBACK Win32MessageProcessor(HWND, u32, WPARAM, LPARAM);
 static f64 ClockFrequency;
 static LARGE_INTEGER StartTime;
 
-MWindow::MWindow(const char *name, i32 x, i32 y, i32 width, i32 height)
-: name(name), x(x), y(y), width(width), height(height) {}
-
-MWindow::~MWindow()
+bool WindowSystem::Initialize(u64& MemoryRequirement, void* memory, void* config)
 {
-    PlatformState *state = reinterpret_cast<PlatformState*>(InternalState);
-    delete state;
-}
+    MemoryRequirement = sizeof(PlatformState);
 
-bool MWindow::Create()
-{
-    InternalState = new PlatformState();
-    PlatformState *state = reinterpret_cast<PlatformState*>(InternalState);
+    if (!memory) {
+        return true;
+    }
+
+    auto pConfig = reinterpret_cast<ApplicationConfig*>(config);
+    state = reinterpret_cast<PlatformState*>(memory);
     state->HInstance = GetModuleHandleA(0);
 
     // Настройка и регистрация класса окна.
@@ -79,6 +79,10 @@ bool MWindow::Create()
     RECT BorderRect = {0, 0, 0, 0};
     AdjustWindowRectEx(&BorderRect, WinStyle, 0, WinExStyle);
 
+    u32 x = pConfig->StartPosX;
+    u32 y = pConfig->StartPosY;
+    u32 width  = pConfig->StartWidth;
+    u32 height = pConfig->StartHeight;
     // В этом случае прямоугольник рамки имеет отрицательное значение.
     x += BorderRect.left;
     y += BorderRect.top;
@@ -90,7 +94,7 @@ bool MWindow::Create()
     HWND handle = CreateWindowExA(
         WinExStyle, 
         "Moon Window Class", // Имя класса
-        name,                // Текст заголовка
+        pConfig->name,       // Текст заголовка
         WinStyle,            // Стиль окна
         x,                   // Инициализация позиции х окна
         y,                   // Инициализация позиции y окна
@@ -122,20 +126,18 @@ bool MWindow::Create()
     ClockSetup();
 
     return true;
-
 }
 
-void MWindow::Close()
+void WindowSystem::Shutdown()
 {
-    PlatformState *state = reinterpret_cast<PlatformState*>(InternalState);
     if (state->hwnd) {
         DestroyWindow(state->hwnd);
         state->hwnd = 0;
     }
-    //this->~MWindow();
+
 }
 
-bool MWindow::Messages()
+bool WindowSystem::Messages()
 {
     MSG message;
     while (PeekMessageA(&message, NULL, 0, 0, PM_REMOVE)) {
@@ -146,7 +148,7 @@ bool MWindow::Messages()
     return true;
 }
 
-f64 MWindow::PlatformGetAbsoluteTime()
+f64 WindowSystem::PlatformGetAbsoluteTime()
 {
     if (!ClockFrequency) {
         ClockSetup();
@@ -157,7 +159,7 @@ f64 MWindow::PlatformGetAbsoluteTime()
     return (f64)NowTime.QuadPart * ClockFrequency;
 }
 
-void MWindow::ClockSetup()
+void WindowSystem::ClockSetup()
 {
     LARGE_INTEGER Frequency;
     QueryPerformanceFrequency(&Frequency);          // Тактовая чистота процессора
@@ -192,8 +194,8 @@ void PlatformConsoleWrite(const char *message, u8 colour) {
     SetConsoleTextAttribute(ConsoleHandle, levels[colour]);
     OutputDebugStringA(message);  // Позволяет вывести сообщение в консоль отладки vs code
     u64 length = strlen(message);
-    LPDWORD NumberWritten = 0;
-    WriteConsoleA(GetStdHandle(STD_OUTPUT_HANDLE), message, (DWORD)length, NumberWritten, 0);
+    DWORD NumberWritten = 0;
+    WriteConsoleA(GetStdHandle(STD_OUTPUT_HANDLE), message, (DWORD)length, &NumberWritten, 0);
 }
 
 void PlatformConsoleWriteError(const char *message, u8 colour) {
@@ -203,8 +205,8 @@ void PlatformConsoleWriteError(const char *message, u8 colour) {
     SetConsoleTextAttribute(ConsoleHandle, levels[colour]);
     OutputDebugStringA(message);
     u64 length = strlen(message);
-    LPDWORD NumberWritten = 0;
-    WriteConsoleA(GetStdHandle(STD_ERROR_HANDLE), message, (DWORD)length, NumberWritten, 0);
+    DWORD NumberWritten = 0;
+    WriteConsoleA(GetStdHandle(STD_ERROR_HANDLE), message, (DWORD)length, &NumberWritten, 0);
 }
 
 void PlatformSleep(u64 ms) {
@@ -219,15 +221,14 @@ i32 PlatformGetProcessorCount()
     return sysinfo.dwNumberOfProcessors;
 }
 
-const char* PlatformGetKeyboardLayout()
-{
-    // ЗАДАЧА: изменить.
-    LPSTR str = nullptr;
-    if (GetKeyboardLayoutNameA(str)) {
-        return str;
-    }
-    return nullptr;
-}
+// const char* PlatformGetKeyboardLayout()
+// {
+//     // ЗАДАЧА: изменить.
+//     HKL hk = GetKeyboardLayout(0);
+//     i32 lang = LOWORD (hk);
+// 
+//     return nullptr;
+// }
 
 // ПРИМЕЧАНИЕ: начало потоков---------------------------------------------------------------------------------------------
 
@@ -364,8 +365,7 @@ void PlatformGetRequiredExtensionNames(DArray<const char*>& NameDarray)
 }
 
 // Создание поверхности для Vulkan
-bool PlatformCreateVulkanSurface(MWindow *window, VulkanAPI *VkAPI) {
-    PlatformState *state = reinterpret_cast<PlatformState*>(window->InternalState);
+bool PlatformCreateVulkanSurface(VulkanAPI *VkAPI) {
 
     VkWin32SurfaceCreateInfoKHR CreateInfo = {VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR};
     CreateInfo.hinstance = state->HInstance;
@@ -389,7 +389,7 @@ LRESULT CALLBACK Win32MessageProcessor(HWND hwnd, u32 msg, WPARAM w_param, LPARA
         case WM_CLOSE:
             // ЗАДАЧА: Вызов события для закрытия приложения.
             EventContext data;
-            Event::GetInstance()->Fire(EVENT_CODE_APPLICATION_QUIT, nullptr, data);
+            EventSystem::Fire(EVENT_CODE_APPLICATION_QUIT, nullptr, data);
             return 0;
             // Вызывается, когда пользователь закрывает окно
         case WM_DESTROY:
@@ -407,7 +407,7 @@ LRESULT CALLBACK Win32MessageProcessor(HWND hwnd, u32 msg, WPARAM w_param, LPARA
             EventContext context;
             context.data.u16[0] = (u16)width;
             context.data.u16[1] = (u16)height;
-            Event::GetInstance()->Fire(EVENT_CODE_RESIZED, nullptr, context);
+            EventSystem::Fire(EVENT_CODE_RESIZED, nullptr, context);
         } break;
         case WM_KEYDOWN:
         case WM_SYSKEYDOWN:
@@ -431,7 +431,7 @@ LRESULT CALLBACK Win32MessageProcessor(HWND hwnd, u32 msg, WPARAM w_param, LPARA
             }
 
             // Перейдите к подсистеме ввода для обработки.
-            Input::Instance()->ProcessKey(key, pressed);
+            InputSystem::ProcessKey(key, pressed);
 
             // Верните 0, чтобы предотвратить поведение окна по умолчанию при некоторых нажатиях клавиш, таких как alt.
             return 0;
@@ -442,14 +442,14 @@ LRESULT CALLBACK Win32MessageProcessor(HWND hwnd, u32 msg, WPARAM w_param, LPARA
             i16 yPos = GET_Y_LPARAM(l_param);
 
             // Переходим к подсистеме ввода.
-            Input::Instance()->ProcessMouseMove(xPos, yPos);
+            InputSystem::ProcessMouseMove(xPos, yPos);
         } break;
         case WM_MOUSEWHEEL: {
             i32 zDelta = GET_WHEEL_DELTA_WPARAM(w_param);
             if (zDelta != 0) {
                 // Свести входные данные в независимый от ОС (-1, 1)
                 zDelta = (zDelta < 0) ? -1 : 1;
-                Input::Instance()->ProcessMouseWheel(zDelta);
+                InputSystem::ProcessMouseWheel(zDelta);
             }
         } break;
         case WM_LBUTTONDOWN:
@@ -477,9 +477,28 @@ LRESULT CALLBACK Win32MessageProcessor(HWND hwnd, u32 msg, WPARAM w_param, LPARA
             }
             // Переходим к подсистеме ввода.
             if (MouseButtons != Buttons::Max) {
-                Input::Instance()->ProcessButton(MouseButtons, pressed);
+                InputSystem::ProcessButton(MouseButtons, pressed);
             }
         } break;
+        case WM_INPUTLANGCHANGE:
+        {
+            HKL hkl = (HKL)l_param;
+            // LANGID устарели. По возможности используйте имена локалей BCP 47.
+            LANGID langId = LOWORD(HandleToUlong(hkl));
+
+            WCHAR localeName[LOCALE_NAME_MAX_LENGTH];
+            LCIDToLocaleName(MAKELCID(langId, SORT_DEFAULT), localeName, LOCALE_NAME_MAX_LENGTH, 0);
+
+            // Получите сокращенное название языка по стандарту ISO (например, «eng»).
+            WCHAR lang[9];
+            GetLocaleInfoEx(localeName, LOCALE_SISO639LANGNAME2, lang, 9);
+
+            // Получите идентификатор раскладки клавиатуры (например, «00020409» для раскладки клавиатуры «США — международная»).
+            WCHAR keyboardLayoutId[KL_NAMELENGTH];
+            GetKeyboardLayoutNameW(keyboardLayoutId);
+            // LoadKeyboardLayoutW(keyboardLayoutId, KLF_ACTIVATE);
+        }
+        break;
     }
 
     return DefWindowProcA(hwnd, msg, w_param, l_param);

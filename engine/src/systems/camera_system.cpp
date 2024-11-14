@@ -19,22 +19,28 @@ CameraSystem::CameraSystem(u16 MaxCameraCount, void* HashtableBlock, CameraLooku
     DefaultCamera()
 {}
 
-bool CameraSystem::Initialize(u16 MaxCameraCount, LinearAllocator& SystemAllocator)
+bool CameraSystem::Initialize(u64& MemoryRequirement, void* memory, void* config)
 {
-    if (MaxCameraCount == 0) {
+    auto pConfig = reinterpret_cast<CameraSystemConfig*>(config);
+
+    if (pConfig->MaxCameraCount == 0) {
         MFATAL("CameraSystem::Initialize - максимальное количество камер должно быть > 0.");
         return false;
     }
 
     // Блок памяти будет содержать структуру состояния, затем блок для массива, затем блок для хеш-таблицы.
     u64 StructRequirement = sizeof(CameraSystem);
-    u64 ArrayRequirement = sizeof(CameraLookup) * MaxCameraCount;
-    u64 HashtableRequirement = sizeof(u16) * MaxCameraCount;
-    u64 MemoryRequirement = StructRequirement + ArrayRequirement + HashtableRequirement;
+    u64 ArrayRequirement = sizeof(CameraLookup) * pConfig->MaxCameraCount;
+    u64 HashtableRequirement = sizeof(u16) * pConfig->MaxCameraCount;
+    MemoryRequirement = StructRequirement + ArrayRequirement + HashtableRequirement;
 
-    u8* CSPointer = reinterpret_cast<u8*>(SystemAllocator.Allocate(MemoryRequirement)); // выделяем память под систему камер
+    if (!memory) {
+        return true;
+    }
 
-    if (!(state = new(CSPointer) CameraSystem(MaxCameraCount, CSPointer + StructRequirement + ArrayRequirement, reinterpret_cast<CameraLookup*>(CSPointer + ArrayRequirement)))) {
+    u8* CSPointer = reinterpret_cast<u8*>(memory); // выделяем память под систему камер
+
+    if (!(state = new(CSPointer) CameraSystem(pConfig->MaxCameraCount, CSPointer + StructRequirement + ArrayRequirement, reinterpret_cast<CameraLookup*>(CSPointer + ArrayRequirement)))) {
         return false;
     }
 
@@ -43,6 +49,7 @@ bool CameraSystem::Initialize(u16 MaxCameraCount, LinearAllocator& SystemAllocat
 
 void CameraSystem::Shutdown()
 {
+    state = nullptr;
 }
 
 Camera *CameraSystem::Acquire(const char *name)

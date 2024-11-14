@@ -6,8 +6,8 @@ bool CreateApplication(Application*& OutApplication)
     ApplicationConfig config;
     config.StartPosX = 100;
     config.StartPosY = 100;
-    config.StartWidth = 720;
-    config.StartHeight = 1280;
+    config.StartWidth = 1280;
+    config.StartHeight = 720;
     config.name = "Moon Engine";
     // config.FontConfig = 
     // config.RenderViews = 

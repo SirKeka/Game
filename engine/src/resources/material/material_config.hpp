@@ -64,6 +64,6 @@ struct MaterialConfig {
         return true;
     }
         
-    void* operator new(u64 size) { return MMemory::Allocate(size, Memory::MaterialInstance); }
-    void operator delete(void* ptr, u64 size) { MMemory::Free(ptr, size, Memory::MaterialInstance); }
+    void* operator new(u64 size) { return MemorySystem::Allocate(size, Memory::MaterialInstance); }
+    void operator delete(void* ptr, u64 size) { MemorySystem::Free(ptr, size, Memory::MaterialInstance); }
 };

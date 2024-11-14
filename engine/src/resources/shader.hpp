@@ -143,8 +143,8 @@ public:
 
         Config() : name(), CullMode(FaceCullMode::Back), AttributeCount(), attributes(), UniformCount(), uniforms(), StageCount(), stages(), StageNames(), StageFilenames() {}
         void Clear();
-        void* operator new(u64 size) { return MMemory::Allocate(size, Memory::Resource); }
-        void operator delete(void* ptr, u64 size) { MMemory::Free(ptr, size, Memory::Resource); }
+        void* operator new(u64 size) { return MemorySystem::Allocate(size, Memory::Resource); }
+        void operator delete(void* ptr, u64 size) { MemorySystem::Free(ptr, size, Memory::Resource); }
     };
 
     /// @brief Представляет текущее состояние данного шейдера.
@@ -173,13 +173,7 @@ public:
         constexpr Attribute(const MString& name, AttributeType type, u32 size) : name(name), type(type), size(size) {}
         constexpr Attribute(const Attribute& sa) : name(sa.name), type(sa.type), size(sa.size) {}
     };  
-private:
-    friend class ShaderSystem;                        // Система шейдеров является дружественным класом для шейдера
-    friend class VulkanAPI;                           // Указание рендера в качестве друга для доступа к переменным класса.
-    friend class MaterialSystem;                      // Указывает что система материалов является дружественным классом
-public:
     u32 id                                      {};   // Идентификатор шейдера
-private:
     MString name                                {};   // Имя шейдера
     FlagBits flags                              {};   // 
     bool UseInstances                           {};   // Указывает, использует ли шейдер экземпляры. В противном случае предполагается, что используются только глобальные униформы и сэмплеры.

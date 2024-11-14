@@ -16,7 +16,7 @@
     MASSERT(expr == VK_SUCCESS); \
 }
 
-class VulkanAPI : public RendererType
+class VulkanAPI : public Renderer
 {
 public:
     f32 FrameDeltaTime{};                               // Время в секундах с момента последнего кадра.
@@ -57,7 +57,7 @@ public:
     /// @param window указатель на общий интерфейс рендера.
     /// @param config указатель на конфигурацию, которая будет использоваться при инициализации рендераа.
     /// @param OutWindowRenderTargetCount Указатель для хранения необходимого количества целей рендеринга для проходов рендеринга, нацеленных на окно.
-    VulkanAPI(class MWindow* window, const RendererConfig& config, u8& OutWindowRenderTargetCount);
+    VulkanAPI(const RendererConfig& config, u8& OutWindowRenderTargetCount);
     ~VulkanAPI();
     
     void ShutDown()                                              override;

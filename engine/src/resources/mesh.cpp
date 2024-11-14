@@ -18,7 +18,7 @@ void MeshLoadJobSuccess(void* params) {
     // Это также обрабатывает загрузку GPU. Не может быть джобифицировано, пока рендерер не станет многопоточным.
     auto configs = MeshParams->MeshRes.data.Data();
     MeshParams->OutMesh->GeometryCount = MeshParams->MeshRes.data.Length();
-    MeshParams->OutMesh->geometries = MMemory::TAllocate<GeometryID*>(Memory::Array, MeshParams->OutMesh->GeometryCount, true);
+    MeshParams->OutMesh->geometries = MemorySystem::TAllocate<GeometryID*>(Memory::Array, MeshParams->OutMesh->GeometryCount, true);
     for (u32 i = 0; i < MeshParams->OutMesh->GeometryCount; ++i) {
         MeshParams->OutMesh->geometries[i] = GeometrySystem::Instance()->Acquire(configs[i], true);
     }
@@ -48,7 +48,7 @@ bool MeshLoadJobStart(void* params, void* ResultData) {
     bool result = ResourceSystem::Instance()->Load(LoadParams->ResourceName, eResource::Type::Mesh, nullptr, LoadParams->MeshRes);
 
     // ПРИМЕЧАНИЕ: Параметры нагрузки также используются здесь в качестве результирующих данных, теперь заполняется только поле mesh_resource.
-    MMemory::CopyMem(ResultData, LoadParams, sizeof(MeshLoadParams));
+    MemorySystem::CopyMem(ResultData, LoadParams, sizeof(MeshLoadParams));
 
     return result;
 }
@@ -60,8 +60,8 @@ bool Mesh::LoadFromResource(const char *ResourceName)
     params.ResourceName = ResourceName;
     params.OutMesh = this;
 
-    JobInfo job { MeshLoadJobStart, MeshLoadJobSuccess, MeshLoadJobFail, &params, sizeof(MeshLoadParams), sizeof(MeshLoadParams) };
-    JobSystem::Instance()->Submit(job);
+    Job::Info job { MeshLoadJobStart, MeshLoadJobSuccess, MeshLoadJobFail, &params, sizeof(MeshLoadParams), sizeof(MeshLoadParams) };
+    JobSystem::Submit(job);
 
     return true;
 }
@@ -72,7 +72,7 @@ void Mesh::Unload()
         GeometrySystem::Instance()->Release(geometries[i]);
     }
 
-    MMemory::Free(geometries, sizeof(GeometryID*) * GeometryCount, Memory::Array);
+    MemorySystem::Free(geometries, sizeof(GeometryID*) * GeometryCount, Memory::Array);
     geometries = nullptr;
     generation = INVALID::U8ID; // Для верности сделайте геометрию недействительной, чтобы она не пыталась визуализироваться.
     GeometryCount = 0;

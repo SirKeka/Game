@@ -1,6 +1,6 @@
 #include "texture_system.hpp"
 #include "containers/mstring.hpp"
-#include "renderer/renderer.hpp"
+#include "renderer/rendering_system.hpp"
 #include "systems/resource_system.hpp"
 #include "systems/job_systems.hpp"
 
@@ -42,30 +42,37 @@ TextureSystem::~TextureSystem()
         for (u32 i = 0; i < this->MaxTextureCount; ++i) {
             Texture* t = &this->RegisteredTextures[i];
             if (t->generation != INVALID::ID) {
-                Renderer::Unload(t);
+                RenderingSystem::Unload(t);
             }
         }
         DestroyDefaultTexture();
     }
 }
 
-bool TextureSystem::Initialize(u32 MaxTextureCount, LinearAllocator& SystemAllocator)
+bool TextureSystem::Initialize(u64& MemoryRequirement, void* memory, void* config)
 {
-    if (MaxTextureCount == 0) {
+    auto pConfig = reinterpret_cast<TextureSystemConfig*>(config);
+
+    if (pConfig->MaxTextureCount == 0) {
         MFATAL("TextureSystemInitialize — MaxTextureCount должно быть > 0.");
         return false;
     }
 
     // Блок памяти будет содержать структуру состояния, затем блок массива, затем блок хеш-таблицы.
     u64 StructRequirement = sizeof(TextureSystem);
-    u64 ArrayRequirement = sizeof(Texture) * MaxTextureCount;
-    u64 HashtableRequirement = sizeof(TextureReference) * MaxTextureCount;
-    u64 MemoryRequirement = StructRequirement + ArrayRequirement + HashtableRequirement;
-    u8* strTextureSystem = reinterpret_cast<u8*> (SystemAllocator.Allocate(MemoryRequirement));
-    Texture* ArrayBlock = reinterpret_cast<Texture*> (strTextureSystem + StructRequirement);
-    TextureReference* HashTableBlock = reinterpret_cast<TextureReference*> (strTextureSystem + StructRequirement + ArrayRequirement);
+    u64 ArrayRequirement = sizeof(Texture) * pConfig->MaxTextureCount;
+    u64 HashtableRequirement = sizeof(TextureReference) * pConfig->MaxTextureCount;
+    MemoryRequirement = StructRequirement + ArrayRequirement + HashtableRequirement;
+
+    if (!memory) {
+        return true;
+    }
+    
+    u8* ptrTextureSystem = reinterpret_cast<u8*> (memory);
+    Texture* ArrayBlock = reinterpret_cast<Texture*> (ptrTextureSystem + StructRequirement);
+    TextureReference* HashTableBlock = reinterpret_cast<TextureReference*> (ptrTextureSystem + StructRequirement + ArrayRequirement);
     if (!state) {
-        state = new(strTextureSystem) TextureSystem(MaxTextureCount, ArrayBlock, HashTableBlock);
+        state = new(ptrTextureSystem) TextureSystem(pConfig->MaxTextureCount, ArrayBlock, HashTableBlock);
     }
 
     // Создайте текстуры по умолчанию для использования в системе.
@@ -76,7 +83,7 @@ bool TextureSystem::Initialize(u32 MaxTextureCount, LinearAllocator& SystemAlloc
 
 void TextureSystem::Shutdown()
 {
-    //delete state;
+    state = nullptr;
 }
 
 Texture *TextureSystem::Acquire(const char* name, bool AutoRelease)
@@ -131,7 +138,7 @@ Texture *TextureSystem::AquireWriteable(const char *name, u32 width, u32 height,
     flags |= HasTransparency ? TextureFlag::HasTransparency : 0;
     flags |= TextureFlag::IsWriteable;
     texture = Texture(id, TextureType::_2D, width, height, ChannelCount, flags, name, nullptr);
-    Renderer::LoadTextureWriteable(&texture);
+    RenderingSystem::LoadTextureWriteable(&texture);
     return &texture;
 }
 
@@ -163,7 +170,7 @@ bool TextureSystem::Resize(Texture *texture, u32 width, u32 height, bool Regener
         // а затем вызывать эту функцию, чтобы получить вышеуказанные обновления параметров и обновление генерации.
         if (!(texture->flags & TextureFlag::IsWrapped) && RegenerateInternalData) {
             // Восстановить внутренние детали до нового размера.
-            Renderer::TextureResize(texture, width, height);
+            RenderingSystem::TextureResize(texture, width, height);
             return false;
         }
         texture->generation++;
@@ -175,7 +182,7 @@ bool TextureSystem::Resize(Texture *texture, u32 width, u32 height, bool Regener
 bool TextureSystem::WriteData(Texture *texture, u32 offset, u32 size, u8* pixels)
 {
     if (texture) {
-        Renderer::TextureWriteData(texture, offset, size, pixels);
+        RenderingSystem::TextureWriteData(texture, offset, size, pixels);
         return true;
     }
     return false;
@@ -200,7 +207,7 @@ bool TextureSystem::CreateDefaultTexture()
     const u32 channels = 4;
     const u32 PixelCount = TexDimension * TexDimension;
     u8 pixels[PixelCount * channels];
-    MMemory::SetMemory(pixels, 255, PixelCount * channels);
+    MemorySystem::SetMemory(pixels, 255, PixelCount * channels);
 
     // Каждый пиксель.
     for (u64 row = 0; row < TexDimension; ++row) {
@@ -221,23 +228,23 @@ bool TextureSystem::CreateDefaultTexture()
         }
     }
     DefaultTexture[ETexture::Default] = Texture(DEFAULT_TEXTURE_NAME, TextureType::_2D, TexDimension, TexDimension, 4, 0);
-    Renderer::Load(pixels, &DefaultTexture[ETexture::Default]);
+    RenderingSystem::Load(pixels, &DefaultTexture[ETexture::Default]);
 
     // Вручную установите недействительную генерацию текстуры, поскольку это текстура по умолчанию.
     DefaultTexture[ETexture::Default].generation = INVALID::ID;
 
     // Диффузная текстура
     u8 DiffPixels[16 * 16 * 4];
-    MMemory::SetMemory(DiffPixels, 255, 16 * 16 * 4);
+    MemorySystem::SetMemory(DiffPixels, 255, 16 * 16 * 4);
     DefaultTexture[ETexture::Diffuse] = Texture(DEFAULT_DIFFUSE_TEXTURE_NAME, TextureType::_2D, 16, 16, 4, 0);
-    Renderer::Load(DiffPixels, &DefaultTexture[ETexture::Diffuse]);
+    RenderingSystem::Load(DiffPixels, &DefaultTexture[ETexture::Diffuse]);
     DefaultTexture[ETexture::Diffuse].generation = INVALID::ID;
 
     // Зеркальная текстура.
     // MTRACE("Создание зеркальной текстуры по умолчанию...");
     u8 SpecPixels[16 * 16 * 4]{}; // Карта спецификации по умолчанию черная (без бликов).
     DefaultTexture[ETexture::Specular] = Texture(DEFAULT_SPECULAR_TEXTURE_NAME, TextureType::_2D, 16, 16, 4, 0);
-    Renderer::Load(SpecPixels, &DefaultTexture[ETexture::Specular]);
+    RenderingSystem::Load(SpecPixels, &DefaultTexture[ETexture::Specular]);
     // Вручную установите недействительное поколение текстуры, поскольку это текстура по умолчанию.
     DefaultTexture[ETexture::Specular].generation = INVALID::ID;
 
@@ -257,7 +264,7 @@ bool TextureSystem::CreateDefaultTexture()
         }
     }
     DefaultTexture[ETexture::Normal] = Texture(DEFAULT_NORMAL_TEXTURE_NAME, TextureType::_2D, 16, 16, 4, 0);
-    Renderer::Load(NormalPixels, &DefaultTexture[ETexture::Normal]);
+    RenderingSystem::Load(NormalPixels, &DefaultTexture[ETexture::Normal]);
     DefaultTexture[ETexture::Normal].generation = INVALID::ID;
 
     return true;
@@ -266,7 +273,7 @@ bool TextureSystem::CreateDefaultTexture()
 void TextureSystem::DestroyDefaultTexture()
 {
     for (auto &&texture : DefaultTexture) {
-            Renderer::Unload(&texture);
+            RenderingSystem::Unload(&texture);
         }
 }
 
@@ -278,7 +285,7 @@ void LoadJobSuccess(void* params)
     auto& ResourceData = TextureParams->ImgRes.data;
 
     // Получить внутренние ресурсы текстуры и загрузить в GPU. Не может быть определено, пока рендерер не станет многопоточным.
-    Renderer::Load(ResourceData.pixels, &TextureParams->TempTexture);
+    RenderingSystem::Load(ResourceData.pixels, &TextureParams->TempTexture);
 
     // Сделать копию старой текстуры.
     auto old = static_cast<Texture&&>(*TextureParams->OutTexture);
@@ -288,7 +295,7 @@ void LoadJobSuccess(void* params)
     TextureParams->OutTexture->id = old.id;
 
     // Уничтожить старую текстуру.
-    Renderer::Unload(&old);
+    RenderingSystem::Unload(&old);
     old.Clear();
 
     if (TextureParams->CurrentGeneration == INVALID::ID) {
@@ -349,7 +356,7 @@ bool LoadJobStart(void *params, void *ResultData)
     TempTexture.flags |= HasTransparency ? TextureFlag::HasTransparency : 0;
 
     // ПРИМЕЧАНИЕ: Параметры загрузки также используются здесь в качестве результирующих данных, теперь заполняется только поле image_resource.
-    MMemory::CopyMem(ResultData, LoadParams, sizeof(TextureLoadParams));
+    MemorySystem::CopyMem(ResultData, LoadParams, sizeof(TextureLoadParams));
 
     return result;
 }
@@ -363,8 +370,8 @@ bool TextureSystem::LoadTexture(const char *TextureName, Texture &t)
     params.OutTexture = &t;
     params.CurrentGeneration = t.generation;
 
-    JobInfo job { LoadJobStart, LoadJobSuccess, LoadJobFail, &params, sizeof(TextureLoadParams), sizeof(TextureLoadParams) };
-    JobSystem::Instance()->Submit(job);
+    Job::Info job { LoadJobStart, LoadJobSuccess, LoadJobFail, &params, sizeof(TextureLoadParams), sizeof(TextureLoadParams) };
+    JobSystem::Submit(job);
     params.ResourceName.SetNullString();
     return true;
 }
@@ -515,28 +522,28 @@ bool LoadCubeTextures(const char *name, const char TextureNames[6][TEXTURE_NAME_
             ImageSize = t.width * t.height * t.ChannelCount;
             // ПРИМЕЧАНИЕ: в кубических картах прозрачность не нужна, поэтому ее не проверяем.
 
-            pixels = MMemory::TAllocate<u8>(Memory::Array, ImageSize * 6);
+            pixels = MemorySystem::TAllocate<u8>(Memory::Array, ImageSize * 6);
         } else {
             // Убедитесь, что все текстуры имеют одинаковый размер.
             if (t.width != ResourceData.width || t.height != ResourceData.height || t.ChannelCount != ResourceData.ChannelCount) {
                 MERROR("LoadCubeTextures - Все текстуры должны иметь одинаковое разрешение и битовую глубину.");
-                MMemory::Free(pixels, sizeof(u8) * ImageSize * 6, Memory::Array);
+                MemorySystem::Free(pixels, sizeof(u8) * ImageSize * 6, Memory::Array);
                 pixels = 0;
                 return false;
             }
         }
 
         // Копировать в соответствующую часть массива.
-        MMemory::CopyMem(pixels + ImageSize * i, ResourceData.pixels, ImageSize);
+        MemorySystem::CopyMem(pixels + ImageSize * i, ResourceData.pixels, ImageSize);
 
         // Очистить данные.
         ResourceSystemInst->Unload(ImgResource);
     }
 
     // Получить внутренние ресурсы текстур и загрузить их в графический процессор.
-    Renderer::Load(pixels, &t);
+    RenderingSystem::Load(pixels, &t);
 
-    MMemory::Free(pixels, sizeof(u8) * ImageSize * 6, Memory::Array);
+    MemorySystem::Free(pixels, sizeof(u8) * ImageSize * 6, Memory::Array);
     pixels = 0;
 
     return true;

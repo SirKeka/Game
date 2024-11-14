@@ -15,7 +15,7 @@ void Keymap::BindingAdd(Keys key, EntryBindType type, Modifier modifiers, void *
         node = node->next;
     }
 
-    auto NewEntry = reinterpret_cast<Binding*>(MMemory::Allocate(sizeof(Binding), Memory::Unknown));
+    auto NewEntry = reinterpret_cast<Binding*>(MemorySystem::Allocate(sizeof(Binding), Memory::Unknown));
     NewEntry->callback = callback;
     NewEntry->modifiers = static_cast<ModifierBits>(modifiers);
     NewEntry->type = type;
@@ -38,7 +38,7 @@ void Keymap::BindingRemove(Keys key, EntryBindType type, Modifier modifiers, Cal
         if (node->callback == callback && node->modifiers == modifiers && node->type == type) {
             // Удалить
             previous->next = node->next;
-            MMemory::Free(node, sizeof(Binding), Memory::Unknown);
+            MemorySystem::Free(node, sizeof(Binding), Memory::Unknown);
             return;
         }
         previous = node;

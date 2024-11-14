@@ -2,6 +2,8 @@
 
 #include "defines.hpp"
 
+struct FreelistNode;
+
 /// @brief Структура данных, которая будет использоваться вместе с распределителем 
 /// для динамического распределения памяти. Отслеживает свободные области памяти.
 class MAPI FreeList
@@ -10,8 +12,8 @@ private:
     struct FreeListState {
         u64 TotalSize{};
         u64 MaxNodes{};
-        struct FreelistNode* head{};
-        struct FreelistNode* nodes{};
+        FreelistNode* head{};
+        FreelistNode* nodes{};
     }* state;
 
 public:
@@ -79,4 +81,6 @@ public:
 private:
     struct FreelistNode* GetNode();
     void ReturnNode(struct FreelistNode* node);
+    /// @brief Присоединяет новый узел к существующием
+    void AttachNode(FreelistNode* node, FreelistNode* previous, FreelistNode* NewNode);
 };

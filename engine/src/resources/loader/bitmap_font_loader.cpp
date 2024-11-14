@@ -102,17 +102,17 @@ void ResourceLoader::Unload(BitmapFontResource &resource)
 {
     auto& data = resource.data;
     if (data.data.GlyphCount && data.data.glyphs) {
-        MMemory::Free(data.data.glyphs, sizeof(FontGlyph) * data.data.GlyphCount, Memory::Array);
+        MemorySystem::Free(data.data.glyphs, sizeof(FontGlyph) * data.data.GlyphCount, Memory::Array);
         data.data.glyphs = nullptr;
     }
 
     if (data.data.KerningCount && data.data.kernings) {
-        MMemory::Free(data.data.kernings, sizeof(FontKerning) * data.data.KerningCount, Memory::Array);
+        MemorySystem::Free(data.data.kernings, sizeof(FontKerning) * data.data.KerningCount, Memory::Array);
         data.data.kernings = nullptr;
     }
 
     if (data.PageCount && data.pages) {
-        MMemory::Free(data.pages, sizeof(BitmapFontPage) * data.PageCount, Memory::Array);
+        MemorySystem::Free(data.pages, sizeof(BitmapFontPage) * data.PageCount, Memory::Array);
         data.pages = nullptr;
     }
 
@@ -181,7 +181,7 @@ bool ImportFntFile(FileHandle &FntFile, const char *OutMbfFilename, BitmapFontRe
                     // Выделите массив страниц.
                     if (OutData.PageCount > 0) {
                         if (!OutData.pages) {
-                            OutData.pages = MMemory::TAllocate<BitmapFontPage>(Memory::Array, OutData.PageCount);
+                            OutData.pages = MemorySystem::TAllocate<BitmapFontPage>(Memory::Array, OutData.PageCount);
                         }
                     } else {
                         MERROR("Страниц 0, что не должно быть возможным. Чтение файла шрифта прервано.");
@@ -196,7 +196,7 @@ bool ImportFntFile(FileHandle &FntFile, const char *OutMbfFilename, BitmapFontRe
                         // Выделите массив глифов.
                         if (OutData.data.GlyphCount > 0) {
                             if (!OutData.data.glyphs) {
-                                OutData.data.glyphs = MMemory::TAllocate<FontGlyph>(Memory::Array, OutData.data.GlyphCount);
+                                OutData.data.glyphs = MemorySystem::TAllocate<FontGlyph>(Memory::Array, OutData.data.GlyphCount);
                             }
                         } else {
                             MERROR("Количество глифов равно 0, что не должно быть возможным. Чтение файла шрифта прервано.");
@@ -254,7 +254,7 @@ bool ImportFntFile(FileHandle &FntFile, const char *OutMbfFilename, BitmapFontRe
 
                     // Выделить массив кернингов
                     if (!OutData.data.kernings) {
-                        OutData.data.kernings = MMemory::TAllocate<FontKerning>(Memory::Array, OutData.data.KerningCount);
+                        OutData.data.kernings = MemorySystem::TAllocate<FontKerning>(Memory::Array, OutData.data.KerningCount);
                     }
                 } else if (LineBuf[7] == ' ') {
                     // Запись кернингов
@@ -335,7 +335,7 @@ bool ReadMbfFile(FileHandle &MbfFile, BitmapFontResourceData &data)
     CLOSE_IF_FAILED(Filesystem::Read(MbfFile, ReadSize, &data.PageCount, BytesRead), MbfFile);
 
     // Выделение массива страниц
-    data.pages = MMemory::TAllocate<BitmapFontPage>(Memory::Array, data.PageCount);
+    data.pages = MemorySystem::TAllocate<BitmapFontPage>(Memory::Array, data.PageCount);
 
     // Чтение страниц
     for (u32 i = 0; i < data.PageCount; ++i) {
@@ -360,7 +360,7 @@ bool ReadMbfFile(FileHandle &MbfFile, BitmapFontResourceData &data)
     CLOSE_IF_FAILED(Filesystem::Read(MbfFile, ReadSize, &data.data.GlyphCount, BytesRead), MbfFile);
 
     // Выделить массив глифов
-    data.data.glyphs = MMemory::TAllocate<FontGlyph>(Memory::Array, data.data.GlyphCount);
+    data.data.glyphs = MemorySystem::TAllocate<FontGlyph>(Memory::Array, data.data.GlyphCount);
 
     // Считать глифы. Они не содержат никаких строк, поэтому можно просто прочитать весь блок.
     ReadSize = sizeof(FontGlyph) * data.data.GlyphCount;
@@ -373,7 +373,7 @@ bool ReadMbfFile(FileHandle &MbfFile, BitmapFontResourceData &data)
     // Возможно, у шрифта нет кернингов. В этом случае ничего нельзя прочитать. Вот почему это делается в последнюю очередь.
     if (data.data.KerningCount > 0) {
         // Выделить массив кернингов
-        data.data.kernings = MMemory::TAllocate<FontKerning>(Memory::Array, data.data.KerningCount);
+        data.data.kernings = MemorySystem::TAllocate<FontKerning>(Memory::Array, data.data.KerningCount);
 
         // Нет строк для кернингов, поэтому можно прочитать весь блок.
         ReadSize = sizeof(FontKerning) * data.data.KerningCount;

@@ -201,7 +201,7 @@ void VulkanSwapchain::Create(VulkanAPI *VkAPI, u32 width, u32 height, RendererCo
     auto TextureSystemInst = TextureSystem::Instance();
 
     if (!RenderTextures) {
-        RenderTextures = MMemory::TAllocate<Texture>(Memory::Renderer, this->ImageCount);
+        RenderTextures = MemorySystem::TAllocate<Texture>(Memory::Renderer, this->ImageCount);
         // При создании массива внутренние объекты текстуры также еще не созданы.
         for (u32 i = 0; i < this->ImageCount; ++i) {
             auto data = new VulkanImage();
@@ -258,7 +258,7 @@ void VulkanSwapchain::Create(VulkanAPI *VkAPI, u32 width, u32 height, RendererCo
     }
 
     if (!DepthTextures) {
-        DepthTextures = MMemory::TAllocate<Texture>(Memory::Renderer, ImageCount);
+        DepthTextures = MemorySystem::TAllocate<Texture>(Memory::Renderer, ImageCount);
     }
 
     // Ресурсы глубины

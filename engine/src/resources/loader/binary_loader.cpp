@@ -29,7 +29,7 @@ bool ResourceLoader::Load(const char *name, void* params, BinaryResource &OutRes
     }
 
     // ЗАДАЧА: Здесь следует использовать распределитель.
-    u8* ResourceData = MMemory::TAllocate<u8>(Memory::DArray, FileSize);
+    u8* ResourceData = MemorySystem::TAllocate<u8>(Memory::DArray, FileSize);
     u64 ReadSize = 0;
     if (!Filesystem::ReadAllBytes(f, ResourceData, ReadSize)) {
         MERROR("Невозможно прочитать файл в двоичном формате: %s.", FullFilePath);

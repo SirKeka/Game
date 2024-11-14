@@ -17,5 +17,5 @@ using RendererConfigFlags = u32;
 /// @brief Общая конфигурация для рендерера.
 struct RendererConfig {
     const char* ApplicationName;    // Имя приложения.
-    RendererConfigFlags flags;              // Различные флаги конфигурации для настройки рендерера.
+    RendererConfigFlags flags;      // Различные флаги конфигурации для настройки рендерера.
 };

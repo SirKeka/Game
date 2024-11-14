@@ -64,7 +64,7 @@ private:
 public:
     constexpr DArray() : size(), capacity(), data(nullptr) {}
     constexpr DArray(T&& value) { PushBack(value); }
-    constexpr DArray(u64 size) : size(), capacity(size), data(size ? MMemory::TAllocate<T>(Memory::DArray, capacity, true) : nullptr) {}
+    constexpr DArray(u64 size) : size(), capacity(size), data(size ? MemorySystem::TAllocate<T>(Memory::DArray, capacity, true) : nullptr) {}
     
     /// @brief Конструктор копирования
     /// @param other динамический массив из которого нужно копировать данные
@@ -73,7 +73,7 @@ public:
             return;
         }
         
-        data = MMemory::TAllocate<T>(Memory::DArray, capacity);
+        data = MemorySystem::TAllocate<T>(Memory::DArray, capacity);
         for (u64 i = 0; i < size; i++) {
             data[i] = other.data[i];
         }
@@ -89,7 +89,7 @@ public:
     ~DArray() {
         if(data) {
             Clear();
-            MMemory::Free(data, sizeof(T) * capacity, Memory::DArray);
+            MemorySystem::Free(data, sizeof(T) * capacity, Memory::DArray);
             size = capacity = 0;
             data = nullptr;
         }
@@ -102,6 +102,10 @@ public:
     /// @param darr константная ссылка на массив данные которого нужно присвоить
     /// @return Возвращает ссылку на динамический массив
     DArray& operator=(const DArray& da) {
+        if (!da) {
+            return *this;
+        }
+        
         Clear();
         if (!data && capacity < da.size) {
             Resize(da.size);
@@ -185,15 +189,15 @@ public:
         }
         
         if (capacity == 0) {
-            data = MMemory::TAllocate<T>(Memory::DArray, NewCap, true);
+            data = MemorySystem::TAllocate<T>(Memory::DArray, NewCap, true);
             capacity = NewCap;
         }
         else if (NewCap > capacity) {
-            T* ptrNew = MMemory::TAllocate<T>(Memory::DArray, NewCap, true);
+            T* ptrNew = MemorySystem::TAllocate<T>(Memory::DArray, NewCap, true);
             for (u64 i = 0; i < size; i++) {
                 ptrNew[i] = static_cast<T&&>(data[i]);
             }
-            MMemory::Free(data, sizeof(T) * capacity, Memory::DArray);
+            MemorySystem::Free(data, sizeof(T) * capacity, Memory::DArray);
             data = ptrNew;
             capacity = NewCap;
         }
@@ -273,7 +277,7 @@ public:
         }
         // Если не последний элемент, скопируйте остальное наружу.
         if (index != size - 1) {
-            MMemory::CopyMem((data + index), (data + index + 1), size - 1);
+            MemorySystem::CopyMem((data + index), (data + index + 1), size - 1);
         }
         size++;
     }
@@ -284,7 +288,7 @@ public:
 
         // Если не последний элемент, вырезаем запись и копируем остальное внутрь. ЗАДАЧА: оптимизироваать
         if (index != size - 1) {
-            MMemory::CopyMem(data + index, data + index + 1, size - 1);
+            MemorySystem::CopyMem(data + index, data + index + 1, size - 1);
         }
         size--;
     }

@@ -5,34 +5,46 @@
 #include "platform/platform.hpp"
 // Основные компоненты ядра
 #include "clock.hpp"
-#include "event.hpp"
-#include "input.hpp"
-#include "logger.hpp"
+// #include "event.hpp"
+// #include "logger.hpp"
 #include "metrics.hpp"
-#include "mmemory.hpp"
+// #include "mmemory.hpp"
+#include "systems_manager.hpp"
+
+#include "systems/font_system.hpp"
 // Ресурсы
 #include "resources/mesh.hpp"
 #include "resources/skybox.hpp"
 #include "resources/ui_text.hpp"
+#include "renderer/views/render_view.hpp"
+
+/// @brief Конфигурация приложения.
+struct ApplicationConfig {
+    i16 StartPosX;                            // Начальное положение окна по оси X, если применимо.
+    i16 StartPosY;                            // Начальное положение окна по оси Y, если применимо.
+    i16 StartWidth;                           // Начальная ширина окна, если применимо.
+    i16 StartHeight;                          // Начальная высота окна, если применимо.
+    const char* name;                         // Имя приложения, используемое в оконном режиме, если применимо.
+    FontSystemConfig FontConfig;              // Конфигурация для системы шрифтов.
+    DArray<RenderView::Config> RenderViews{}; // Массив конфигураций представления рендеринга.
+};
 
 class Engine
 {
     LinearAllocator SystemAllocator;
-    //MMemory* mem;
-    Logger* logger;
-    //Input Inputs;
-    Event* Events ;
+    
     bool IsRunning;
     bool IsSuspended;
-    MWindow* Window;
-    class Renderer* Render;
+    // WindowSystem* Window;
+    //class RendererSystem* Render;
     class Application* GameInst;
 
     //Системы
     //TextureSystem* TexSys;
-    class JobSystem* JobSystemInst;
     class RenderViewSystem* RenderViewSystemInst;
     class ResourceSystem* ResourceSystemInst;
+
+    SystemsManager SysManager;
 
     // Metrics metrics;
     
@@ -55,6 +67,7 @@ public:
 
     MAPI void* operator new(u64 size);
     MAPI void operator delete(void* ptr, u64 size);
+    static void OnEventSystemInitialized();
 
 private:
     // Обработчики событий

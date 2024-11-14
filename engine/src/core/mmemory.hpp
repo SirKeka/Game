@@ -57,7 +57,7 @@ namespace Memory {
     };
 }
 
-class MAPI MMemory
+class MAPI MemorySystem
 {
 private:
     /*struct SharPtr
@@ -69,7 +69,7 @@ private:
 
     //static DArray<SharPtr> ptr;
 
-    [[maybe_unused]]u64 TotalAllocSize{};                       // Общий размер памяти в байтах, используемый внутренним распределителем для этой системы.
+    [[maybe_unused]]u64 TotalAllocSize{};       // Общий размер памяти в байтах, используемый внутренним распределителем для этой системы.
     u64 TotalAllocated{};
     u64 TaggedAllocations[Memory::MaxTags]{};
     u64 AllocCount{};
@@ -78,14 +78,14 @@ private:
     void* AllocatorBlock{nullptr};
     MMutex AllocationMutex{};                   // Мьютекс для выделений/освобождений
     
-    static MMemory* state;
+    static MemorySystem* state;
 
-    MMemory(u64 TotalAllocSize, u64 AllocatorMemoryRequirement, void* AllocatorBlock);
+    MemorySystem(u64 TotalAllocSize, u64 AllocatorMemoryRequirement, void* AllocatorBlock);
 public:
     
-    MMemory(const MMemory&) = delete;
-    MMemory& operator=(MMemory&) = delete;
-    ~MMemory(); /*noexcept*/ //= default;
+    MemorySystem(const MemorySystem&) = delete;
+    MemorySystem& operator=(MemorySystem&) = delete;
+    ~MemorySystem(); /*noexcept*/ //= default;
 
     /// @brief Инициализирует систему памяти.
     /// @param TotalAllocSize общий размер распределителя

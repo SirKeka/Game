@@ -34,11 +34,11 @@ public:
         return;
     }
 
-    // TODO: Возможно, вам понадобится распределитель и вместо этого выделите эту память.
+    // ЗАДАЧА: Возможно, вам понадобится распределитель и вместо этого выделите эту память.
     this->memory = memory;
     this->ElementCount = ElementCount;
     this->IsPointerType = IsPointerType;
-    MMemory::ZeroMem(this->memory, sizeof(T) * ElementCount);
+    MemorySystem::ZeroMem(this->memory, sizeof(T) * ElementCount);
     }
 
     /// @brief Уничтожает предоставленную хэш-таблицу. Не освобождает память для типов указателей.
@@ -62,7 +62,7 @@ public:
         }
 
         u64 hash = Name(name, ElementCount);
-        MMemory::CopyMem(memory + (sizeof(T) * hash), value, sizeof(T));
+        MemorySystem::CopyMem(memory + (sizeof(T) * hash), value, sizeof(T));
         return true;
     }
 
@@ -105,7 +105,7 @@ public:
             *OutValue = this->memory[hash];
             return *((void**)(OutValue)) != 0;
             }
-        else MMemory::CopyMem(OutValue, this->memory + (sizeof(T) * hash), sizeof(T));
+        else MemorySystem::CopyMem(OutValue, this->memory + (sizeof(T) * hash), sizeof(T));
         return true;
     }
 

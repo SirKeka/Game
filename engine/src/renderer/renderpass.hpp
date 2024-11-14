@@ -101,7 +101,7 @@ struct Renderpass
     ClearColour(config.ClearColour), 
     ClearFlags(config.ClearFlags), 
     RenderTargetCount(config.RenderTargetCount), 
-    targets(MMemory::TAllocate<RenderTarget>(Memory::Array, RenderTargetCount)), 
+    targets(MemorySystem::TAllocate<RenderTarget>(Memory::Array, RenderTargetCount)), 
     InternalData(nullptr) {}
     
     ~Renderpass();

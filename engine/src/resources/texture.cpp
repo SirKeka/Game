@@ -1,5 +1,5 @@
 #include "texture.hpp"
-#include "renderer/renderer.hpp"
+#include "renderer/rendering_system.hpp"
 #include "renderer/vulkan/vulkan_image.hpp"
 
 
@@ -13,7 +13,7 @@ Texture::~Texture()
 
 void Texture::Destroy()
 {
-    Renderer::Unload(this);
+    RenderingSystem::Unload(this);
     MString::Zero(name);
     id           = 0;
     width        = 0;
@@ -103,20 +103,20 @@ Texture::operator bool() const
 
 void *Texture::operator new(u64 size)
 {
-    return MMemory::Allocate(size, Memory::Texture);
+    return MemorySystem::Allocate(size, Memory::Texture);
 }
 
 void *Texture::operator new[](u64 size)
 {
-    return MMemory::Allocate(size, Memory::Renderer);
+    return MemorySystem::Allocate(size, Memory::Renderer);
 }
 
 void Texture::operator delete(void *ptr, u64 size)
 {
-    MMemory::Free(ptr, size, Memory::Texture);
+    MemorySystem::Free(ptr, size, Memory::Texture);
 }
 
 void Texture::operator delete[](void *ptr, u64 size)
 {
-    MMemory::Free(ptr, size, Memory::Renderer);
+    MemorySystem::Free(ptr, size, Memory::Renderer);
 }

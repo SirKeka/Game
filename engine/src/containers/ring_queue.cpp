@@ -3,7 +3,7 @@
 RingQueue::~RingQueue()
 {
     if (OwnsMemory) {
-        MMemory::Free(block, capacity * stride, Memory::RingQueue);
+        MemorySystem::Free(block, capacity * stride, Memory::RingQueue);
     }
     length = stride = capacity = 0;
     block = nullptr;
@@ -21,7 +21,7 @@ bool RingQueue::Enqueue(void *value)
 
         tail = (tail + 1) % capacity;
 
-        MMemory::CopyMem(block + (tail * stride), value, stride);
+        MemorySystem::CopyMem(block + (tail * stride), value, stride);
         length++;
         return true;
     }
@@ -38,7 +38,7 @@ bool RingQueue::Dequeue(void *OutValue)
             return false;
         }
 
-        MMemory::CopyMem(OutValue, block + (head * stride), stride);
+        MemorySystem::CopyMem(OutValue, block + (head * stride), stride);
         head = (head + 1) % capacity;
         length--;
         return true;
@@ -56,7 +56,7 @@ bool RingQueue::Peek(void *OutValue)
             return false;
         }
 
-        MMemory::CopyMem(OutValue, block + (head * stride), stride);
+        MemorySystem::CopyMem(OutValue, block + (head * stride), stride);
         return true;
     }
 

@@ -1,6 +1,6 @@
 #include "geometry_system.hpp"
 #include "material_system.hpp"
-#include "renderer/renderer.hpp"
+#include "renderer/rendering_system.hpp"
 #include "math/geometry_utils.hpp"
 #include "memory/linear_allocator.hpp"
 #include <new>
@@ -30,20 +30,27 @@ GeometrySystem::GeometrySystem(u32 MaxGeometryCount, GeometryReference* Register
     }
 }
 
-bool GeometrySystem::Initialize(u32 MaxGeometryCount, LinearAllocator& SystemAllocator)
+bool GeometrySystem::Initialize(u64& MemoryRequirement, void* memory, void* config)
 {
-    if (MaxGeometryCount == 0) {
+    auto pConfig = reinterpret_cast<GeometrySystemConfig*>(config);
+
+    if (pConfig->MaxGeometryCount == 0) {
         MFATAL("«GeometrySystem::Initialize» — максимальное количество геометрии должно быть > 0.");
         return false;
     }
 
     // Блок памяти будет содержать структуру состояния, затем блок массива, затем блок хеш-таблицы.
-    u64 ArrayRequirement = sizeof(GeometryReference) * MaxGeometryCount;
-    u8* PtrGeometrySystem = reinterpret_cast<u8*>(SystemAllocator.Allocate(sizeof(GeometrySystem) + ArrayRequirement));
-    auto ArrayBlock = reinterpret_cast<GeometryReference*>(PtrGeometrySystem + sizeof(GeometrySystem));
+    u64 ArrayRequirement = sizeof(GeometryReference) * pConfig->MaxGeometryCount;
+    MemoryRequirement = sizeof(GeometrySystem) + ArrayRequirement;
+
+    if (!memory) {
+        return true;
+    }
 
     if (!state) {
-        state = new(PtrGeometrySystem) GeometrySystem(MaxGeometryCount, ArrayBlock);
+        u8* PtrGeometrySystem = reinterpret_cast<u8*>(memory);
+        auto ArrayBlock = reinterpret_cast<GeometryReference*>(PtrGeometrySystem + sizeof(GeometrySystem));
+        state = new(PtrGeometrySystem) GeometrySystem(pConfig->MaxGeometryCount, ArrayBlock);
     }
 
     if (!state->CreateDefaultGeometries()) {
@@ -92,10 +99,10 @@ GeometryConfig GeometrySystem::GeneratePlaneConfig(f32 width, f32 height, u32 xS
     GeometryConfig config;
     config.VertexSize = sizeof(Vertex3D); 
     config.VertexCount = VertexCount;  
-    config.vertices = MMemory::Allocate(VertexCount * config.VertexSize, Memory::Array, true);
+    config.vertices = MemorySystem::Allocate(VertexCount * config.VertexSize, Memory::Array, true);
     config.IndexSize = sizeof(u32);
     config.IndexCount = IndexCount;
-    config.indices = MMemory::Allocate(IndexCount * config.IndexSize, Memory::Array, true);
+    config.indices = MemorySystem::Allocate(IndexCount * config.IndexSize, Memory::Array, true);
     config.CopyNames(
         name, // ? name : DEFAULT_GEOMETRY_NAME,
         MaterialName // ? MaterialName : DEFAULT_MATERIAL_NAME
@@ -187,10 +194,10 @@ GeometryConfig GeometrySystem::GenerateCubeConfig(f32 width, f32 height, f32 dep
     GeometryConfig config;
     config.VertexSize = sizeof(Vertex3D);
     config.VertexCount = 4 * 6; // 4 вершины на сторону, 6 сторон
-    config.vertices = MMemory::Allocate(4 * 6 * config.VertexSize, Memory::Array, true);
+    config.vertices = MemorySystem::Allocate(4 * 6 * config.VertexSize, Memory::Array, true);
     config.IndexSize = sizeof(u32);
     config.IndexCount = 6 * 6; // 6 индексов на каждой стороне, 6 сторон
-    config.indices = MMemory::Allocate(6 * 6 * config.IndexSize, Memory::Array, true);
+    config.indices = MemorySystem::Allocate(6 * 6 * config.IndexSize, Memory::Array, true);
     config.CopyNames(name, MaterialName);
     // config.center = FVec3();
     config.MinExtents = FVec3(-HalfWidth, -HalfHeight, -HalfDepth);
@@ -306,7 +313,7 @@ bool GeometrySystem::CreateGeometry(const GeometryConfig &config, GeometryID *gi
     }
 
     // Отправьте геометрию в рендерер для загрузки в графический процессор.
-    if (!Renderer::Load(gid, config.VertexSize, config.VertexCount, config.vertices, config.IndexSize, config.IndexCount, config.indices)) {
+    if (!RenderingSystem::Load(gid, config.VertexSize, config.VertexCount, config.vertices, config.IndexSize, config.IndexCount, config.indices)) {
         // Сделайте запись недействительной.
         state->RegisteredGeometries[gid->id].ReferenceCount = 0;
         state->RegisteredGeometries[gid->id].AutoRelease = false;
@@ -335,12 +342,12 @@ bool GeometrySystem::CreateGeometry(const GeometryConfig &config, GeometryID *gi
 
 void GeometrySystem::DestroyGeometry(GeometryID *gid)
 {
-    Renderer::Unload(gid);
+    RenderingSystem::Unload(gid);
 
     gid->id = INVALID::ID; 
     gid->InternalID = INVALID::ID;
     gid->generation = INVALID::U16ID; 
-    MMemory::SetMemory(gid->name, 0, GEOMETRY_NAME_MAX_LENGTH);
+    MemorySystem::SetMemory(gid->name, 0, GEOMETRY_NAME_MAX_LENGTH);
     if (gid->material && MString::Length(gid->material->name) > 0) {
     MaterialSystem::Instance()->Release(gid->material->name);
     gid->material = nullptr;
@@ -375,7 +382,7 @@ bool GeometrySystem::CreateDefaultGeometries()
     u32 indices[6] = {0, 1, 2, 0, 3, 1};
 
     // Отправьте геометрию в рендерер для загрузки в графический процессор.
-    if (!Renderer::Load(&state->DefaultGeometry, sizeof(Vertex3D), 4, verts, sizeof(u32), 6, indices)) {
+    if (!RenderingSystem::Load(&state->DefaultGeometry, sizeof(Vertex3D), 4, verts, sizeof(u32), 6, indices)) {
         MFATAL("Не удалось создать геометрию по умолчанию. Приложение не может быть продолжено.");
         return false;
     }
@@ -409,7 +416,7 @@ bool GeometrySystem::CreateDefaultGeometries()
     u32 indices2d[6] = {2, 1, 0, 3, 0, 1};
 
     // Отправьте геометрию в рендерер для загрузки в графический процессор.
-    if (!Renderer::Load(&state->Default2dGeometry, sizeof(Vertex2D), 4, verts2d, sizeof(u32), 6, indices2d)) {
+    if (!RenderingSystem::Load(&state->Default2dGeometry, sizeof(Vertex2D), 4, verts2d, sizeof(u32), 6, indices2d)) {
         MFATAL("Не удалось создать 2D-геометрию по умолчанию. Приложение не может быть продолжено.");
         return false;
     }
@@ -501,12 +508,12 @@ GeometryID *GeometrySystem::GetDefault2D()
 void GeometryConfig::Dispose()
 {
     if (vertices) {
-        MMemory::Free(vertices, VertexSize * VertexCount, Memory::Array);
+        MemorySystem::Free(vertices, VertexSize * VertexCount, Memory::Array);
     }
     if (indices) {
-        MMemory::Free(indices, IndexSize * IndexCount, Memory::Array);
+        MemorySystem::Free(indices, IndexSize * IndexCount, Memory::Array);
     }
-    MMemory::ZeroMem(this, sizeof(GeometryConfig));
+    MemorySystem::ZeroMem(this, sizeof(GeometryConfig));
 }
 
 void GeometryConfig::CopyNames(const char *name, const char *MaterialName)

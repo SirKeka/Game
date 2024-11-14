@@ -17,7 +17,7 @@ u8 FreelistShouldCreateAndDestroy() {
     list.GetMemoryRequirement(TotalSize, MemoryRequirement);
 
     // Выделите и создайте FreeList.
-    void* block = MMemory::Allocate(MemoryRequirement, Memory::Engine);
+    void* block = MemorySystem::Allocate(MemoryRequirement, Memory::Engine);
     list.Create(TotalSize, block);
 
     // Убедитесь, что память назначена.
@@ -29,7 +29,7 @@ u8 FreelistShouldCreateAndDestroy() {
     // Уничтожьте и убедитесь, что память не назначена.
     list.~FreeList();
     ExpectShouldBe(0, (bool)list);
-    MMemory::Free(block, MemoryRequirement, Memory::Engine);
+    MemorySystem::Free(block, MemoryRequirement, Memory::Engine);
 
     return true;
 }
@@ -43,7 +43,7 @@ u8 FreelistShouldAllocateOneAndFreeOne() {
     list.GetMemoryRequirement(TotalSize, MemoryRequirement);
 
     // Выделите и создайте FreeList.
-    void* block = MMemory::Allocate(MemoryRequirement, Memory::Engine);
+    void* block = MemorySystem::Allocate(MemoryRequirement, Memory::Engine);
     list.Create(TotalSize, block);
 
     // Выделите немного места.
@@ -69,7 +69,7 @@ u8 FreelistShouldAllocateOneAndFreeOne() {
     // Уничтожьте и убедитесь, что память не назначена.
     list.~FreeList();
     ExpectShouldBe(0, (bool)list);
-    MMemory::Free(block, MemoryRequirement, Memory::Engine);
+    MemorySystem::Free(block, MemoryRequirement, Memory::Engine);
 
     return true;
 }
@@ -83,7 +83,7 @@ u8 FreelistShouldAllocateOneAndFreeMulti() {
     list.GetMemoryRequirement(TotalSize, MemoryRequirement);
 
     // Выделите и создайте FreeList.
-    void* block = MMemory::Allocate(MemoryRequirement, Memory::Engine);
+    void* block = MemorySystem::Allocate(MemoryRequirement, Memory::Engine);
     list.Create(TotalSize, block);
 
     // Выделите немного места.
@@ -152,7 +152,7 @@ u8 FreelistShouldAllocateOneAndFreeMulti() {
     // Уничтожьте и убедитесь, что память не назначена.
     list.~FreeList();
     ExpectShouldBe(0, (bool)list);
-    MMemory::Free(block, MemoryRequirement, Memory::Engine);
+    MemorySystem::Free(block, MemoryRequirement, Memory::Engine);
 
     return true;
 }
@@ -166,7 +166,7 @@ u8 FreelistShouldAllocateOneAndFreeMultiVaryingSizes() {
     list.GetMemoryRequirement(TotalSize, MemoryRequirement);
 
     // Выделите и создайте FreeList.
-    void* block = MMemory::Allocate(MemoryRequirement, Memory::Engine);
+    void* block = MemorySystem::Allocate(MemoryRequirement, Memory::Engine);
     list.Create(TotalSize, block);
 
     // Allocate some space.
@@ -236,7 +236,7 @@ u8 FreelistShouldAllocateOneAndFreeMultiVaryingSizes() {
     // Уничтожьте и убедитесь, что память не назначена.
     list.~FreeList();
     ExpectShouldBe(0, (bool)list);
-    MMemory::Free(block, MemoryRequirement, Memory::Engine);
+    MemorySystem::Free(block, MemoryRequirement, Memory::Engine);
 
     return true;
 }
@@ -250,7 +250,7 @@ u8 FreelistShouldAllocateToFullAndFailToAllocateMore() {
     list.GetMemoryRequirement(TotalSize, MemoryRequirement);
 
     // Выделите и создайте FreeList.
-    void* block = MMemory::Allocate(MemoryRequirement, Memory::Engine);
+    void* block = MemorySystem::Allocate(MemoryRequirement, Memory::Engine);
     list.Create(TotalSize, block);
 
     // Выделите все пространство.
@@ -279,7 +279,7 @@ u8 FreelistShouldAllocateToFullAndFailToAllocateMore() {
     // Уничтожьте и убедитесь, что память не назначена.
     list.~FreeList();
     ExpectShouldBe(0, (bool)list);
-    MMemory::Free(block, MemoryRequirement, Memory::Engine);
+    MemorySystem::Free(block, MemoryRequirement, Memory::Engine);
 
     return true;
 }

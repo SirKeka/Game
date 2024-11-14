@@ -95,7 +95,7 @@ void ResourceLoader::Unload(SystemFontResource &resource)
     }*/
 
     if (data.FontBinary) {
-        MMemory::Free(data.FontBinary, data.BinarySize, Memory::Resource);
+        MemorySystem::Free(data.FontBinary, data.BinarySize, Memory::Resource);
         data.FontBinary = nullptr;
         data.BinarySize = 0;
     }
@@ -163,7 +163,7 @@ bool ImportFontConfigFile(FileHandle &f, const MString &TypePath, const char *Ou
                 MERROR("Невозможно получить размер двоичного файла шрифта. Процесс загрузки не удался.");
                 return false;
             }
-            OutResource.FontBinary = MMemory::Allocate(FileSize, Memory::Resource);
+            OutResource.FontBinary = MemorySystem::Allocate(FileSize, Memory::Resource);
             if (!Filesystem::ReadAllBytes(FontBinaryHandle, reinterpret_cast<u8*>(OutResource.FontBinary), OutResource.BinarySize)) {
                 MERROR("Невозможно выполнить двоичное чтение файла шрифта. Процесс загрузки не удался.");
                 return false;

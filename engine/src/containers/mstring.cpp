@@ -66,7 +66,7 @@ MString &MString::operator=(const MString &s)
         if (length != s.length) {
             length = s.length;
             size = s.size;
-            str = MMemory::TAllocate<char>(Memory::String, size);
+            str = MemorySystem::TAllocate<char>(Memory::String, size);
         } 
 
         nCopy(s, length + 1);
@@ -101,9 +101,9 @@ MString &MString::operator=(const char *s)
         u16 slength = Len(s, ssize);
 
         if (ssize > size) {
-            str = reinterpret_cast<char*>(MMemory::Realloc(str, size, ssize, Memory::String));
+            str = reinterpret_cast<char*>(MemorySystem::Realloc(str, size, ssize, Memory::String));
         } else {
-            MMemory::Free(str + ssize + 1, size - ssize, Memory::String);
+            MemorySystem::Free(str + ssize + 1, size - ssize, Memory::String);
         }
 
         length = slength;
@@ -120,7 +120,7 @@ MString &MString::operator+=(const char *s)
     u32 c_size = 0;
     u32 c_length = Len(s, c_size);
     u32 NewSize = size + c_size - 1;
-    str = reinterpret_cast<char*>(MMemory::Realloc(str, size, NewSize, Memory::String));
+    str = reinterpret_cast<char*>(MemorySystem::Realloc(str, size, NewSize, Memory::String));
     for (u64 i = length, j = 0; i < c_size; i++, j++) {
         str[i] = s[j];
     }
@@ -135,7 +135,7 @@ MString &MString::operator+=(const MString &s)
 {
     length += s.length;
     u32 NewSize = size + s.size - 1;
-    str = reinterpret_cast<char*>(MMemory::Realloc(str, size, NewSize, Memory::String));
+    str = reinterpret_cast<char*>(MemorySystem::Realloc(str, size, NewSize, Memory::String));
     for (u64 i = size, j = 0; i < s.size; i++, j++) {
         str[i] = s.str[j];
     }
@@ -162,10 +162,10 @@ MString &MString::operator+=(bool b)
     const char* bl = nullptr;
     if (b) {
         bl = "true";
-        str = reinterpret_cast<char*>(MMemory::Realloc(str, size, size + 4, Memory::String)); // NewString = MMemory::TAllocate<char>(Memory::String, size + 4);
+        str = reinterpret_cast<char*>(MemorySystem::Realloc(str, size, size + 4, Memory::String)); // NewString = MMemory::TAllocate<char>(Memory::String, size + 4);
     } else {
         bl = "false";
-        str = reinterpret_cast<char*>(MMemory::Realloc(str, size, size + 5, Memory::String)); // NewString = MMemory::TAllocate<char>(Memory::String, size + 5);
+        str = reinterpret_cast<char*>(MemorySystem::Realloc(str, size, size + 5, Memory::String)); // NewString = MMemory::TAllocate<char>(Memory::String, size + 5);
     }
     for (u64 i = length, j = 0; i < size + 5; i++, j++) {
         if(str[i]) {
@@ -181,17 +181,24 @@ MString &MString::operator+=(bool b)
 MString &MString::operator+=(char c)
 {
     if (c != 0) {
-        u32 CharSize = CheckSymbol(c); // Получаем размер символа ПРИМЕЧАНИЕ: для UTF8 может быть больше 1го байта
-        length++;
-        size = CharSize + 1; // Размер данной строки равен развмер символа + '\0'
-        if (!str) {
-            str = reinterpret_cast<char*>(MMemory::Allocate(size, Memory::String));
+        u32 CharSize = CheckSymbol(c);  // Получаем размер символа ПРИМЕЧАНИЕ: для UTF8 может быть больше 1го байта
+
+        if (!length) {
+            size = CharSize + 1;        // Размер данной строки равен развмеру символа + '\0'
         } else {
-            str = reinterpret_cast<char*>(MMemory::Realloc(str, size, size, Memory::String));
+            size += CharSize;
+        }
+        length++;
+        
+        if (!str) {
+            str = reinterpret_cast<char*>(MemorySystem::Allocate(size, Memory::String));
+        } else {
+            str = reinterpret_cast<char*>(MemorySystem::Realloc(str, size - CharSize, size, Memory::String));
         }
         
-        str[length] = c;
-        str[size] = '\0';
+        u32 n = size - 1;               // Номер последней ячейки памяти где должен быть '\0'.
+        str[n - CharSize] = c;
+        str[n] = '\0';
     }
 
     return *this;
@@ -223,7 +230,7 @@ MString &MString::FilenameFromPath(const char *path)
         Clear();
     }
     this->length = length + 1;
-    str = MMemory::TAllocate<char>(Memory::String, this->length);
+    str = MemorySystem::TAllocate<char>(Memory::String, this->length);
     for (i32 i = length; i >= 0; --i) {
         char c = path[i];
         if (c == '/' || c == '\\') {
@@ -271,7 +278,6 @@ bool MString::operator==(const MString &rhs) const
         if (str[i] != rhs.str[i]) {
             return false;
         }
-        
     }
     
     return true;
@@ -494,7 +500,7 @@ const bool MString::nComparei(const char *string1, const char *string2, u64 leng
 char *MString::Duplicate(const char *s)
 {
     u64 length = Length(s);
-    char* copy = MMemory::TAllocate<char>(Memory::String, length + 1);
+    char* copy = MemorySystem::TAllocate<char>(Memory::String, length + 1);
     Copy(copy, s, length);
     copy[length] = '\0';
     return copy;
@@ -519,7 +525,7 @@ i32 MString::FormatV(char *dest, const char *format, char *va_list)
         char buffer[32000]{};
         i32 written = vsnprintf(buffer, 32000, format, va_list);
         buffer[written] = '\0';
-        MMemory::CopyMem(dest, buffer, written + 1);
+        MemorySystem::CopyMem(dest, buffer, written + 1);
 
         return written;
     }
@@ -554,7 +560,7 @@ MString& MString::IntToString(i64 n)
         Clear();
     }
     this->length = length + 1;
-    str = MMemory::TAllocate<char>(Memory::String, this->length);
+    str = MemorySystem::TAllocate<char>(Memory::String, this->length);
     str[length] = '\0';
     
 
@@ -713,7 +719,7 @@ void MString::nCopy(const MString& source, u64 length)
 constexpr char* MString::Copy(const char *source, u64 length, bool DelCon)
 {
     if(source && length) {
-        str = reinterpret_cast<char*>(MMemory::Allocate(length, Memory::String)); 
+        str = reinterpret_cast<char*>(MemorySystem::Allocate(length, Memory::String)); 
         return Copy(str, source, length, DelCon);
     }
     return nullptr;
@@ -724,7 +730,7 @@ constexpr char *MString::Copy(const MString &source)
     if (!source) {
         return nullptr;
     }
-    str = reinterpret_cast<char*>(MMemory::Allocate(length + 1, Memory::String)); 
+    str = reinterpret_cast<char*>(MemorySystem::Allocate(length + 1, Memory::String)); 
     nCopy(source, length + 1);
     return str;
 }
@@ -732,7 +738,7 @@ constexpr char *MString::Copy(const MString &source)
 constexpr char* MString::Concat(const char *str1, const char *str2, u64 length)
 {
     if(!str) {
-        str = reinterpret_cast<char*>(MMemory::Allocate(length, Memory::String));
+        str = reinterpret_cast<char*>(MemorySystem::Allocate(length, Memory::String));
     }
     u64 j = 0;
     for (u64 i = 0; i < length; i++) {
@@ -938,7 +944,7 @@ bool MString::ToInt(char *str, i16 &i)
     return result != -1;
 }
 
-bool MString::ToInt(char *str, i32 &i)
+bool MString::ToInt(const char *str, i32 &i)
 {
     if (!str) {
         return false;
@@ -949,7 +955,7 @@ bool MString::ToInt(char *str, i32 &i)
     return result != -1;
 }
 
-bool MString::ToInt(char *str, i64 &i)
+bool MString::ToInt(const char *str, i64 &i)
 {
     if (!str) {
         return false;
@@ -1047,7 +1053,7 @@ u32 MString::Split(const char *str, char delimiter, DArray<MString> &darray, boo
             } 
 
             // Очистка буфера.
-            MMemory::ZeroMem(buffer, sizeof(char) * 16384);
+            MemorySystem::ZeroMem(buffer, sizeof(char) * 16384);
             CurrentLength = 0;
             continue;
         }
@@ -1081,18 +1087,34 @@ u32 MString::Split(char delimiter, DArray<MString> &darray, bool TrimEntries, bo
 void MString::Clear()
 {
     if (str) {
-        MMemory::Free(str, length, Memory::String);  
-        length = 0;
+        MemorySystem::Free(str, size, Memory::String);  
+        length = size = 0;
         str = nullptr;
     }
 }
 
 void MString::DeleteLastChar()
 {
-    if (str && length) {
-        MMemory::Free(&str[length], 1, Memory::String);
-        length--;
+    if (str && length == 1) {
+        Clear();
+        return;
     }
+    
+    if (str && length) {
+        u32 i = 0;
+        //u32 len = 0; 
+        u8 CharSize = 0;
+        while (i < size - 1) {
+            CharSize = CheckSymbol(str[i]);
+            i += CharSize;
+            //len++;
+        }
+        length--;
+        size -= CharSize;
+        MemorySystem::Free(&str[size], CharSize, Memory::String);
+        
+        str[size - 1] = '\0';
+    }    
 }
 
 u32 MString::CheckSymbol(const char &c)
@@ -1112,7 +1134,7 @@ u32 MString::CheckSymbol(const char &c)
         return 4;
     } else {
         // ПРИМЕЧАНИЕ: Не поддерживаются 5- и 6-байтовые символы; возвращается как недопустимый UTF-8.
-        MERROR("MString::UTF8Length - Не поддерживаются 5- и 6-байтовые символы; Недопустимый UTF-8.");
+        MERROR("MString::CheckSymbol - Не поддерживаются 5- и 6-байтовые символы; Недопустимый UTF-8.");
         return 0;
     }
 }
@@ -1145,6 +1167,10 @@ bool MString::Equal(const char *strL, const char *strR)
 
 bool MString::Equali(const char *str0, const char *str1)
 {
+    if (!str0 || !str1) {
+        return false;
+    }
+    
 #if defined(__GNUC__)
     return strcasecmp(str0, str1) == 0;
 #elif (defined _MSC_VER)

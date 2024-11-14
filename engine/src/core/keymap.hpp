@@ -24,8 +24,8 @@ enum class Keys : u16 {
     MODECHANGE  = 0x1F,
 
     SPACE       = 0x20,
-    PRIOR       = 0x21,
-    NEXT        = 0x22,
+    PAGEUP      = 0x21,
+    PAGEDOWN    = 0x22,
     END         = 0x23,
     HOME        = 0x24,
     LEFT        = 0x25,
@@ -138,7 +138,7 @@ enum class Keys : u16 {
     RALT        = 0xA5,
 
     SEMICOLON   = 0xBA,    // Ж ; :
-    PLUS        = 0xBB, 
+    Equal       = 0xBB, 
     COMMA       = 0xBC,    // Б , <
     MINUS       = 0xBD,
     PERIOD      = 0xBE,    // Ю .
@@ -160,7 +160,6 @@ constexpr bool operator== (u16 l, Keys r)
 
 class MAPI Keymap 
 {
-    friend class Input;
 public:
     enum ModifierBits {
         ModifierNoneBit    = 0x0,
@@ -201,9 +200,8 @@ public:
     };
 
     bool OverridesAll;
-private:
     Entry entries[static_cast<u16>(Keys::MaxKeys)];
-public:
+
     constexpr Keymap() : OverridesAll(false), entries() {
         for (u16 i = 0; i < static_cast<u16>(Keys::MaxKeys); i++) {
             entries->key = static_cast<Keys>(i);

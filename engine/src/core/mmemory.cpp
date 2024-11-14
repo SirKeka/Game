@@ -37,9 +37,9 @@ static const char* MemoryTagStrings[Memory::MaxTags] = {
     "BITMAP_FONT",
     "SYSTEM_FONT"};
 
-MMemory* MMemory::state = nullptr;
+MemorySystem* MemorySystem::state = nullptr;
 
-MMemory::MMemory(u64 TotalAllocSize, u64 AllocatorMemoryRequirement, void* AllocatorBlock) 
+MemorySystem::MemorySystem(u64 TotalAllocSize, u64 AllocatorMemoryRequirement, void* AllocatorBlock) 
 : 
 TotalAllocSize(TotalAllocSize), 
 TotalAllocated(), 
@@ -51,7 +51,7 @@ AllocatorBlock(AllocatorBlock),
 AllocationMutex()
 {}
 
-MMemory::~MMemory()
+MemorySystem::~MemorySystem()
 {
     if (state) {
         state->allocator.Destroy();
@@ -61,10 +61,10 @@ MMemory::~MMemory()
     }
 }
 
-bool MMemory::Initialize(u64 TotalAllocSize)
+bool MemorySystem::Initialize(u64 TotalAllocSize)
 {
     // Сумма, необходимая состоянию системы.
-    u64 StateMemoryRequirement = sizeof(MMemory);
+    u64 StateMemoryRequirement = sizeof(MemorySystem);
 
     // Выясните, сколько места нужно динамическому распределителю.
     u64 AllocRequirement = 0;
@@ -79,7 +79,7 @@ bool MMemory::Initialize(u64 TotalAllocSize)
     }
 
     // Состояние находится в первой части массивного блока памяти.
-    state = new(block) MMemory(
+    state = new(block) MemorySystem(
         TotalAllocSize, 
         AllocRequirement, 
         block + StateMemoryRequirement // Блок распределителя находится в том же блоке памяти, но после состояния.
@@ -102,7 +102,7 @@ bool MMemory::Initialize(u64 TotalAllocSize)
     return true;
 }
 
-MINLINE void MMemory::Shutdown()
+MINLINE void MemorySystem::Shutdown()
 {
     if (state) {
         //state->allocator.Destroy();
@@ -114,12 +114,12 @@ MINLINE void MMemory::Shutdown()
     }
 }
 
-void *MMemory::Allocate(u64 bytes, Memory::Tag tag, bool nullify, bool def)
+void *MemorySystem::Allocate(u64 bytes, Memory::Tag tag, bool nullify, bool def)
 {
     return AllocateAligned(bytes, 1, tag, nullify, def);
 }
 
-void *MMemory::AllocateAligned(u64 bytes, u16 alignment, Memory::Tag tag, bool nullify, bool def)
+void *MemorySystem::AllocateAligned(u64 bytes, u16 alignment, Memory::Tag tag, bool nullify, bool def)
 {
     if (tag == Memory::Unknown) {
         MWARN("MMemory::AllocateAligned вызывается с использованием MemoryTag::Unknown. Переклассифицировать это распределение.");
@@ -156,7 +156,7 @@ void *MMemory::AllocateAligned(u64 bytes, u16 alignment, Memory::Tag tag, bool n
 
     if (block) {
         if (nullify) {
-            MMemory::ZeroMem(block, bytes);
+            MemorySystem::ZeroMem(block, bytes);
         }
         return block;
     }
@@ -165,7 +165,7 @@ void *MMemory::AllocateAligned(u64 bytes, u16 alignment, Memory::Tag tag, bool n
     return nullptr;
 }
 
-void *MMemory::Realloc(void *ptr, u64 size, u64 NewSize, Memory::Tag tag)
+void *MemorySystem::Realloc(void *ptr, u64 size, u64 NewSize, Memory::Tag tag)
 {
     if (tag == Memory::Unknown) {
         MWARN("MMemory::AllocateAligned вызывается с использованием MemoryTag::Unknown. Переклассифицировать это распределение.");
@@ -197,13 +197,15 @@ void *MMemory::Realloc(void *ptr, u64 size, u64 NewSize, Memory::Tag tag)
         state->AllocationMutex.Unlock();
     }
 
-    return block;
+    if (block) {
+        return block;
+    }
     
-    MFATAL("MMemory::AllocateAligned не удалось успешно распределить.");
+    MFATAL("MMemory::Realloc не удалось успешно распределить.");
     return nullptr;
 }
 
-void MMemory::AllocateReport(u64 size, Memory::Tag tag)
+void MemorySystem::AllocateReport(u64 size, Memory::Tag tag)
 {
     // Убедитесь, что многопоточные запросы не подавляют друг друга.
     if (!state->AllocationMutex.Lock()) {
@@ -216,12 +218,12 @@ void MMemory::AllocateReport(u64 size, Memory::Tag tag)
     state->AllocationMutex.Unlock();
 }
 
-void MMemory::Free(void *block, u64 bytes, Memory::Tag tag, bool def)
+void MemorySystem::Free(void *block, u64 bytes, Memory::Tag tag, bool def)
 {
     FreeAligned(block, bytes, false, tag, def);
 }
 
-void MMemory::FreeAligned(void *block, u64 size, bool alignment, Memory::Tag tag, bool def)
+void MemorySystem::FreeAligned(void *block, u64 size, bool alignment, Memory::Tag tag, bool def)
 {
     if (block) {
         if (tag == Memory::Unknown) {
@@ -252,7 +254,7 @@ void MMemory::FreeAligned(void *block, u64 size, bool alignment, Memory::Tag tag
     }
 }
 
-void MMemory::FreeReport(u64 size, Memory::Tag tag)
+void MemorySystem::FreeReport(u64 size, Memory::Tag tag)
 {
     // Убедитесь, что многопоточные запросы не подавляют друг друга.
     if (!state->AllocationMutex.Lock()) {
@@ -265,38 +267,38 @@ void MMemory::FreeReport(u64 size, Memory::Tag tag)
     state->AllocationMutex.Unlock();
 }
 
-bool MMemory::GetSizeAlignment(void *block, u64 &OutSize, u16 &OutAlignment)
+bool MemorySystem::GetSizeAlignment(void *block, u64 &OutSize, u16 &OutAlignment)
 {
     return DynamicAllocator::GetSizeAlignment(block, OutSize, OutAlignment);
 }
 
-void *MMemory::ZeroMem(void *block, u64 bytes)
+void *MemorySystem::ZeroMem(void *block, u64 bytes)
 {
     return memset(block, 0, bytes);
 }
 
-void MMemory::CopyMem(void *dest, const void *source, u64 bytes)
+void MemorySystem::CopyMem(void *dest, const void *source, u64 bytes)
 {
     std::memmove(dest, source, bytes);
 }
 
-void *MMemory::SetMemory(void *dest, i32 value, u64 bytes)
+void *MemorySystem::SetMemory(void *dest, i32 value, u64 bytes)
 {
     return std::memset(dest, value, bytes);
 }
 
-u64 MMemory::GetMemoryAllocCount()
+u64 MemorySystem::GetMemoryAllocCount()
 {
     return state->AllocCount;
 }
 
 template <class U, class... Args>
-inline void MMemory::Construct(U *ptr, Args &&...args)
+inline void MemorySystem::Construct(U *ptr, Args &&...args)
 {
     new(start) U(std::forward<Args>(args)...);
 }
 
-MString MMemory::GetMemoryUsageStr()
+MString MemorySystem::GetMemoryUsageStr()
 {
     char buffer[8000] = "Использование системной памяти (с тегами):\n";
     u64 offset = MString::Length(buffer);
@@ -328,7 +330,7 @@ MString MMemory::GetMemoryUsageStr()
     return buffer;
 }
 
-const char* MMemory::GetUnitForSize(u64 SizeBytes, f32 &OutAmount)
+const char* MemorySystem::GetUnitForSize(u64 SizeBytes, f32 &OutAmount)
 {
     if (SizeBytes >= GIBIBYTES(1)) {
         OutAmount = SizeBytes / GIBIBYTES(1);

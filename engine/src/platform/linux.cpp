@@ -223,7 +223,7 @@ bool Messages() {
                 Keys key = translate_keycode(key_sym);
 
                 // Передайте в подсистему ввода для обработки.
-                Input::InputProcessKey(key, pressed);
+                InputSystem::InputProcessKey(key, pressed);
             } break;
             case XCB_BUTTON_PRESS:
             case XCB_BUTTON_RELEASE: {
@@ -244,7 +244,7 @@ bool Messages() {
 
                 // Переходим к подсистеме ввода.
                 if (mouse_button != BUTTON_MAX_BUTTONS) {
-                    Input::ProcessButton(mouse_button, pressed);
+                    InputSystem::ProcessButton(mouse_button, pressed);
                 }
             }
             case XCB_MOTION_NOTIFY:
@@ -252,7 +252,7 @@ bool Messages() {
                  xcb_motion_notify_event_t *move_event = (xcb_motion_notify_event_t *)event;
 
                 // Переходим к подсистеме ввода.
-                Input::InputProcessMouseMove(move_event->event_x, move_event->event_y);
+                InputSystem::InputProcessMouseMove(move_event->event_x, move_event->event_y);
                 break;
 
             case XCB_CONFIGURE_NOTIFY: {

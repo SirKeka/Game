@@ -28,7 +28,7 @@ public:
     }
 
     ~DArray() {
-        if(this->capacity != 0) MMemory::Free(reinterpret_cast<void*>(data), sizeof(T) * capacity, Memory::DArray);
+        if(this->capacity != 0) MemorySystem::Free(reinterpret_cast<void*>(data), sizeof(T) * capacity, Memory::DArray);
     }
 
     // Конструктор копирования
@@ -71,15 +71,14 @@ public:
     /// большего или равного NewCap. Если значение NewCap больше текущей capacity(емкости), 
     /// выделяется новое хранилище, в противном случае функция ничего не делает.
     void Reserve(const u64& NewCap) {
-        // TODO: добавить std::move()
         if (capacity == 0) {
-            data = MMemory::TAllocate<T>(Memory::DArray, NewCap);
+            data = MemorySystem::TAllocate<T>(Memory::DArray, NewCap);
             capacity = NewCap;
         }
         else if (NewCap > capacity) {
-            void* ptrNew = MMemory::Allocate(sizeof(T) * NewCap, Memory::DArray);
-            MMemory::CopyMem(ptrNew, reinterpret_cast<void*>(data), sizeof(T) * capacity);
-            MMemory::Free(data, sizeof(T) * capacity, Memory::DArray);
+            void* ptrNew = MemorySystem::Allocate(sizeof(T) * NewCap, Memory::DArray);
+            MemorySystem::CopyMem(ptrNew, reinterpret_cast<void*>(data), sizeof(T) * capacity);
+            MemorySystem::Free(data, sizeof(T) * capacity, Memory::DArray);
             data = reinterpret_cast<T*> (ptrNew);
             capacity = NewCap;
         }

@@ -193,14 +193,14 @@ void *DynamicAllocator::Realloc(void *block, u64 size, u64 NewSize)
             u8* ptr = reinterpret_cast<u8*>(state->MemoryBlock) + offset;
             return ptr;
         } else {
-            MERROR("DynamicAllocator::AllocateBlockAligned нет блоков памяти, достаточно больших для выделения.");
+            MERROR("DynamicAllocator::Realloc нет блоков памяти, достаточно больших для выделения.");
             u64 available = state->list.FreeSpace();
             MERROR("Запрошенный размер: %llu, общее доступное пространство: %llu", size, available);
             // ЗАДАЧА: Report fragmentation?
             return nullptr;
         }
     }
-    MERROR("DynamicAllocator::AllocateBlockAligned требуется размер.");
+    MERROR("DynamicAllocator::Realloc требуется размер.");
     return nullptr;
 }
 

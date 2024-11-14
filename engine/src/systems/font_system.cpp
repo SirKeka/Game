@@ -4,7 +4,7 @@
 #include "resources/font_resource.hpp"
 #include "resources/ui_text.hpp"
 #include "memory/linear_allocator.hpp"
-#include "renderer/renderer.hpp"
+#include "renderer/rendering_system.hpp"
 
 #include <new>
 
@@ -53,32 +53,37 @@ bool VerifySystemFontSizeVariant(SystemFontLookup& lookup, FontData* variant, co
 
 FontSystem* FontSystem::state;
 
-bool FontSystem::Initialize(FontSystemConfig& config, LinearAllocator& SystemAllocator)
+bool FontSystem::Initialize(u64& MemoryRequirement, void* memory, void* config)
 {
-    if (config.MaxBitmapFontCount == 0 || config.MaxSystemFontCount == 0) {
+    auto pConfig = reinterpret_cast<FontSystemConfig*>(config);
+    if (pConfig->MaxBitmapFontCount == 0 || pConfig->MaxSystemFontCount == 0) {
         MFATAL("FontSystems::Initialize - config.MaxBitmapFontCount и config.MaxSystemFontCount должны быть > 0.");
         return false;
     }
 
     // Блок памяти будет содержать структуру состояния, затем блоки для массивов, затем блоки для хэш-таблиц.
     u64 StructRequirement = sizeof(FontSystem);
-    u64 BmpArrayRequirement = sizeof(BitmapFontLookup) * config.MaxBitmapFontCount;
-    u64 SysArrayRequirement = sizeof(SystemFontLookup) * config.MaxSystemFontCount;
-    u64 BmpHashTableRequirement = sizeof(u16) * config.MaxBitmapFontCount;
-    u64 SysHashTableRequirement = sizeof(u16) * config.MaxSystemFontCount;
-    u64 MemoryRequirement = StructRequirement + BmpArrayRequirement + SysArrayRequirement + BmpHashTableRequirement + SysHashTableRequirement;
+    u64 BmpArrayRequirement = sizeof(BitmapFontLookup) * pConfig->MaxBitmapFontCount;
+    u64 SysArrayRequirement = sizeof(SystemFontLookup) * pConfig->MaxSystemFontCount;
+    u64 BmpHashTableRequirement = sizeof(u16) * pConfig->MaxBitmapFontCount;
+    u64 SysHashTableRequirement = sizeof(u16) * pConfig->MaxSystemFontCount;
+    MemoryRequirement = StructRequirement + BmpArrayRequirement + SysArrayRequirement + BmpHashTableRequirement + SysHashTableRequirement;
 
-    u8* MemBlock = reinterpret_cast<u8*>(SystemAllocator.Allocate(MemoryRequirement));
+    if (!memory) {
+        return true;
+    }
+
+    u8* MemBlock = reinterpret_cast<u8*>(memory);
 
     // Блоки массивов находятся после состояния. Уже выделены, поэтому просто установите указатель.
-    auto BmpArrayBlock = new(MemBlock + StructRequirement) BitmapFontLookup[config.MaxBitmapFontCount];
-    auto SysArrayBlock = new(BmpArrayBlock + config.MaxBitmapFontCount) SystemFontLookup[config.MaxSystemFontCount];
+    auto BmpArrayBlock = new(MemBlock + StructRequirement) BitmapFontLookup[pConfig->MaxBitmapFontCount];
+    auto SysArrayBlock = new(BmpArrayBlock + pConfig->MaxBitmapFontCount) SystemFontLookup[pConfig->MaxSystemFontCount];
 
     // Блоки хэш-таблиц находятся после массивов.
-    u16* BmpHashtableBlock = reinterpret_cast<u16*>(SysArrayBlock + config.MaxSystemFontCount);
-    u16* SysHashtableBlock = BmpHashtableBlock + config.MaxBitmapFontCount;
+    u16* BmpHashtableBlock = reinterpret_cast<u16*>(SysArrayBlock + pConfig->MaxSystemFontCount);
+    u16* SysHashtableBlock = BmpHashtableBlock + pConfig->MaxBitmapFontCount;
 
-    state = new(MemBlock) FontSystem(config, BmpArrayBlock, SysArrayBlock, BmpHashtableBlock, SysHashtableBlock);
+    state = new(MemBlock) FontSystem(*pConfig, BmpArrayBlock, SysArrayBlock, BmpHashtableBlock, SysHashtableBlock);
 
     // Загрузите все шрифты по умолчанию.
     // Растровые шрифты.
@@ -93,7 +98,6 @@ bool FontSystem::Initialize(FontSystemConfig& config, LinearAllocator& SystemAll
             MERROR("Не удалось загрузить растровый шрифт: %s", state->config.SystemFontConfigs[i].name.c_str());
         }
     }
-    
 
     return true;
 }
@@ -379,7 +383,7 @@ bool SetupFontData(FontData &font)
     font.atlas.FilterMagnify = font.atlas.FilterMinify = TextureFilter::ModeLinear;
     font.atlas.RepeatU = font.atlas.RepeatV = font.atlas.RepeatW = TextureRepeat::ClampToEdge;
     font.atlas.use = TextureUse::MapDiffuse;
-    if (!Renderer::TextureMapAcquireResources(&font.atlas)) {
+    if (!RenderingSystem::TextureMapAcquireResources(&font.atlas)) {
         MERROR("Невозможно получить ресурсы для карты текстур атласа шрифтов.");
         return false;
     }
@@ -415,7 +419,7 @@ bool SetupFontData(FontData &font)
 void CleanupFontData(FontData &font)
 {
     // Освободите ресурсы карты текстуры.
-    Renderer::TextureMapReleaseResources(&font.atlas);
+    RenderingSystem::TextureMapReleaseResources(&font.atlas);
 
     // Если это растровый шрифт, освободите ссылку на текстуру.
     if (font.type == FontType::Bitmap && font.atlas.texture) {
@@ -432,7 +436,7 @@ bool CreateSystemFontVariant(SystemFontLookup &lookup, u16 size, const char *Fon
     OutVariant.type = FontType::System;
     MString::Copy(OutVariant.face, FontName, 255);
     OutVariant.InternalDataSize = sizeof(SystemFontVariantData);
-    OutVariant.InternalData = MMemory::Allocate(OutVariant.InternalDataSize, Memory::SystemFont, true);
+    OutVariant.InternalData = MemorySystem::Allocate(OutVariant.InternalDataSize, Memory::SystemFont, true);
 
     auto InternalData = reinterpret_cast<SystemFontVariantData*>(OutVariant.InternalData);
 
@@ -463,9 +467,9 @@ bool RebuildSystemFontVariantAtlas(SystemFontLookup &lookup, FontData &variant)
     auto InternalData = reinterpret_cast<SystemFontVariantData*>(variant.InternalData);
 
     u32 PackImageSize = variant.AtlasSizeX * variant.AtlasSizeY * sizeof(u8);
-    u8* pixels = MMemory::TAllocate<u8>(Memory::Array, PackImageSize);
+    u8* pixels = MemorySystem::TAllocate<u8>(Memory::Array, PackImageSize);
     const auto& CodepointCount = InternalData->codepoints.Length();
-    auto PackedChars = MMemory::TAllocate<stbtt_packedchar>(Memory::Array, CodepointCount);
+    auto PackedChars = MemorySystem::TAllocate<stbtt_packedchar>(Memory::Array, CodepointCount);
 
     // Начните упаковывать все известные символы в атлас. 
     // Это создаст одноканальное изображение с визуализированными глифами заданного размера.
@@ -491,7 +495,7 @@ bool RebuildSystemFontVariantAtlas(SystemFontLookup &lookup, FontData &variant)
     // Упаковка завершена.
 
     // Конвертируйте из одноканального в RGBA или pack_image_size * 4.
-    u8* RgbaPixels = MMemory::TAllocate<u8>(Memory::Array, PackImageSize * 4);
+    u8* RgbaPixels = MemorySystem::TAllocate<u8>(Memory::Array, PackImageSize * 4);
     for (i32 j = 0; j < PackImageSize; ++j) {
         RgbaPixels[(j * 4) + 0] = pixels[j];
         RgbaPixels[(j * 4) + 1] = pixels[j];
@@ -503,15 +507,15 @@ bool RebuildSystemFontVariantAtlas(SystemFontLookup &lookup, FontData &variant)
     TextureSystem::Instance()->WriteData(variant.atlas.texture, 0, PackImageSize * 4, RgbaPixels);
 
     // Освободите данные пикселей/rgba_pixel.
-    MMemory::Free(pixels, PackImageSize, Memory::Array);
-    MMemory::Free(RgbaPixels, PackImageSize * 4, Memory::Array);
+    MemorySystem::Free(pixels, PackImageSize, Memory::Array);
+    MemorySystem::Free(RgbaPixels, PackImageSize * 4, Memory::Array);
 
     // Регенерируйте глифы
     if (variant.glyphs && variant.GlyphCount) {
-        MMemory::Free(variant.glyphs, sizeof(FontGlyph) * variant.GlyphCount, Memory::Array);
+        MemorySystem::Free(variant.glyphs, sizeof(FontGlyph) * variant.GlyphCount, Memory::Array);
     }
     variant.GlyphCount = CodepointCount;
-    variant.glyphs = MMemory::TAllocate<FontGlyph>(Memory::Array, CodepointCount);
+    variant.glyphs = MemorySystem::TAllocate<FontGlyph>(Memory::Array, CodepointCount);
     for (u16 i = 0; i < variant.GlyphCount; ++i) {
         stbtt_packedchar* pc = &PackedChars[i];
         auto& g = variant.glyphs[i];
@@ -528,13 +532,13 @@ bool RebuildSystemFontVariantAtlas(SystemFontLookup &lookup, FontData &variant)
 
     // Регенерируйте кернинги
     if (variant.kernings && variant.KerningCount) {
-        MMemory::Free(variant.kernings, sizeof(FontKerning) * variant.KerningCount, Memory::Array);
+        MemorySystem::Free(variant.kernings, sizeof(FontKerning) * variant.KerningCount, Memory::Array);
     }
     variant.KerningCount= stbtt_GetKerningTableLength(&lookup.info);
     if (variant.KerningCount) {
-        variant.kernings = MMemory::TAllocate<FontKerning>(Memory::Array, variant.KerningCount);
+        variant.kernings = MemorySystem::TAllocate<FontKerning>(Memory::Array, variant.KerningCount);
         // Получите таблицу кернинга для текущего шрифта.
-        stbtt_kerningentry* KerningTable = MMemory::TAllocate<stbtt_kerningentry>(Memory::Array, variant.KerningCount);
+        stbtt_kerningentry* KerningTable = MemorySystem::TAllocate<stbtt_kerningentry>(Memory::Array, variant.KerningCount);
         i32 EntryCount = stbtt_GetKerningTable(&lookup.info, KerningTable, variant.KerningCount);
         if (EntryCount != variant.KerningCount) {
             MERROR("Несоответствие количества записей кернинга: %i->%i", EntryCount, variant.KerningCount);

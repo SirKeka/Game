@@ -27,7 +27,7 @@ public:
     length(),
     stride(stride),
     capacity(capacity),
-    block(memory ? (u8*)memory : MMemory::TAllocate<u8>(Memory::RingQueue, capacity * stride)),
+    block(memory ? (u8*)memory : MemorySystem::TAllocate<u8>(Memory::RingQueue, capacity * stride)),
     OwnsMemory(memory ? false : true),
     head(),
     tail(-1) {}

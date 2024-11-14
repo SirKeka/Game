@@ -1,9 +1,10 @@
 #include "game.hpp"
 
 #include <core/logger.hpp>
+#include <core/input.hpp>
 
 #include <systems/camera_system.hpp>
-#include <renderer/renderer.hpp>
+#include <renderer/rendering_system.hpp>
 #include <new>
 
 // ЗАДАЧА: временный код
@@ -126,7 +127,7 @@ bool Game::Boot()
 
     // SystemFontConfig SysFontConfig { "Noto Sans", 20, "NotoSansCJK" };
     AppConfig.FontConfig.DefaultSystemFontCount = 1;
-    AppConfig.FontConfig.SystemFontConfigs = new SystemFontConfig("Metrika", 20, "Metrika");
+    AppConfig.FontConfig.SystemFontConfigs = new SystemFontConfig("Noto Sans", 20, "NotoSansCJK");
 
     AppConfig.FontConfig.MaxBitmapFontCount = AppConfig.FontConfig.MaxSystemFontCount = 101;
 
@@ -162,11 +163,11 @@ bool Game::Initialize()
     // Переместить отладочный текст в новую нижнюю часть экрана.
     state->TestText.SetPosition(FVec3(20.F, state->height - 75.F, 0.F)); 
 
-    if(!state->TestSysText.Create(TextType::System, "Metrika", 31, "Какой-то тестовый текст 123, \n\tyo!\n\n\t")) { // Noto Sans CJK JP こんにちは 한
+    if(!state->TestSysText.Create(TextType::System, "Noto Sans CJK JP", 31, "Какой-то тестовый текст 123, \n\tyo!\n\n\tこんにちは 한")) {
         MERROR("Не удалось загрузить базовый системный текст пользовательского интерфейса.");
         return false;
     }
-    state->TestSysText.SetPosition(FVec3(500.F, 250.F, 0.F));
+    state->TestSysText.SetPosition(FVec3(500.F, 550.F, 0.F));
 
     state->sb.Create("skybox_cube");
 
@@ -270,13 +271,13 @@ bool Game::Initialize()
     state->WorldCamera->SetPosition(FVec3(10.5F, 5.F, 9.5F));
 
     //ЗАДАЧА: временно
-    Event::Register(EVENT_CODE_DEBUG0, this, OnDebugEvent);
-    Event::Register(EVENT_CODE_DEBUG1, this, OnDebugEvent);
-    Event::Register(EVENT_CODE_OBJECT_HOVER_ID_CHANGED, this, OnEvent);
+    EventSystem::Register(EVENT_CODE_DEBUG0, this, OnDebugEvent);
+    EventSystem::Register(EVENT_CODE_DEBUG1, this, OnDebugEvent);
+    EventSystem::Register(EVENT_CODE_OBJECT_HOVER_ID_CHANGED, this, OnEvent);
     //ЗАДАЧА: временно
 
-    Event::Register(EVENT_CODE_KEY_PRESSED,  this, GameOnKey);
-    Event::Register(EVENT_CODE_KEY_RELEASED, this, GameOnKey);
+    EventSystem::Register(EVENT_CODE_KEY_PRESSED,  this, GameOnKey);
+    EventSystem::Register(EVENT_CODE_KEY_RELEASED, this, GameOnKey);
 
     state->UpdateClock.Zero();
     state->RenderClock.Zero();
@@ -301,7 +302,7 @@ bool Game::Update(f32 DeltaTime)
 
     // Отслеживайте различия в распределении.
     state->PrevAllocCount = state->AllocCount;
-    state->AllocCount = MMemory::GetMemoryAllocCount();
+    state->AllocCount = MemorySystem::GetMemoryAllocCount();
 
     // Отслеживайте различия в распределении.
     // state->PrevAllocCount = state->AllocCount;
@@ -325,10 +326,10 @@ bool Game::Update(f32 DeltaTime)
     const auto& rot = WorldCamera->GetRotationEuler();
 
     // Также прикрепите текущее состояние мыши.
-    bool LeftDown = Input::IsButtonDown(Buttons::Left);
-    bool RightDown = Input::IsButtonDown(Buttons::Right);
+    bool LeftDown = InputSystem::IsButtonDown(Buttons::Left);
+    bool RightDown = InputSystem::IsButtonDown(Buttons::Right);
     i16 MouseX, MouseY;
-    Input::GetMousePosition(MouseX, MouseY);
+    InputSystem::GetMousePosition(MouseX, MouseY);
 
     // Преобразовать в NDC
     f32 mouseXNdc = Math::RangeConvertF32((f32)MouseX, 0.F, (f32)state->width,  -1.F, 1.F);
@@ -410,7 +411,7 @@ bool Game::Update(f32 DeltaTime)
         }
     }
 
-    const char* VsyncText = Renderer::FlagEnabled(RendererConfigFlagBits::VsyncEnabledBit) ? "Вкл" : "Выкл";
+    const char* VsyncText = RenderingSystem::FlagEnabled(RendererConfigFlagBits::VsyncEnabledBit) ? "Вкл" : "Выкл";
     char TextBuffer[2048]{};
     MString::Format(
         TextBuffer,
@@ -546,18 +547,18 @@ void Game::Shutdown()
     // state->TestText.~Text();
     // state->TestSysText.~Text();
 
-    Event::Unregister(EVENT_CODE_DEBUG0, this, OnDebugEvent);
-    Event::Unregister(EVENT_CODE_DEBUG1, this, OnDebugEvent);
-    Event::Unregister(EVENT_CODE_OBJECT_HOVER_ID_CHANGED, this, OnEvent);
+    EventSystem::Unregister(EVENT_CODE_DEBUG0, this, OnDebugEvent);
+    EventSystem::Unregister(EVENT_CODE_DEBUG1, this, OnDebugEvent);
+    EventSystem::Unregister(EVENT_CODE_OBJECT_HOVER_ID_CHANGED, this, OnEvent);
     // ЗАДАЧА: конец временного блока кода
 
-    Event::Unregister(EVENT_CODE_KEY_PRESSED, this, GameOnKey);
-    Event::Unregister(EVENT_CODE_KEY_RELEASED, this, GameOnKey);
+    EventSystem::Unregister(EVENT_CODE_KEY_PRESSED, this, GameOnKey);
+    EventSystem::Unregister(EVENT_CODE_KEY_RELEASED, this, GameOnKey);
 }
 
 bool Game::ConfigureRenderViews()
 {
-    AppConfig.RenderViews.Resize(4); // .Resize(4);
+    AppConfig.RenderViews.Resize(4);
 
     DArray<RenderTargetAttachmentConfig> SkyboxTargetAttachment;
     SkyboxTargetAttachment.Resize(1);
@@ -576,7 +577,7 @@ bool Game::ConfigureRenderViews()
     SkyboxPasses[0].RenderArea = FVec4(0.F, 0.F, 1280.F, 720.F);
     SkyboxPasses[0].ClearColour = FVec4(0.F, 0.F, 0.2F, 1.F);
     SkyboxPasses[0].ClearFlags = RenderpassClearFlag::ColourBuffer;
-    SkyboxPasses[0].RenderTargetCount = Renderer::WindowAttachmentCountGet();
+    SkyboxPasses[0].RenderTargetCount = RenderingSystem::WindowAttachmentCountGet();
     SkyboxPasses[0].target.AttachmentCount = 1;
     SkyboxPasses[0].target.attachments = SkyboxTargetAttachment.MovePtr();
 
@@ -615,7 +616,7 @@ bool Game::ConfigureRenderViews()
     WorldPasses[0].RenderArea = FVec4(0.F, 0.F, 1280.F, 720.F); // Разрешение области рендеринга по умолчанию.
     WorldPasses[0].ClearColour = FVec4(0.F, 0.F, 0.2F, 1.F); 
     WorldPasses[0].ClearFlags = RenderpassClearFlag::DepthBuffer | RenderpassClearFlag::StencilBuffer;
-    WorldPasses[0].RenderTargetCount = Renderer::WindowAttachmentCountGet();
+    WorldPasses[0].RenderTargetCount = RenderingSystem::WindowAttachmentCountGet();
     WorldPasses[0].target.AttachmentCount = 2;
     WorldPasses[0].target.attachments = WorldTargetAttachment.MovePtr();
 
@@ -645,7 +646,7 @@ bool Game::ConfigureRenderViews()
     UIPasses[0].RenderArea = FVec4(0.F, 0.F, 1280.F, 720.F); // Разрешение области рендеринга по умолчанию.
     UIPasses[0].ClearColour = FVec4(0.F, 0.F, 0.2F, 1.F);
     UIPasses[0].ClearFlags = RenderpassClearFlag::None;
-    UIPasses[0].RenderTargetCount = Renderer::WindowAttachmentCountGet();
+    UIPasses[0].RenderTargetCount = RenderingSystem::WindowAttachmentCountGet();
     UIPasses[0].target.AttachmentCount = 1;
     UIPasses[0].target.attachments = UiTargetAttachment.MovePtr();
 

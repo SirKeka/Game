@@ -166,7 +166,7 @@ struct VulkanRenderpass
         VkAttachmentReference* ColourAttachmentReferences = nullptr;
         u32 ColourAttachmentCount = ColourAttachmentDescs.Length();
         if (ColourAttachmentCount > 0) {
-            ColourAttachmentReferences = MMemory::TAllocate<VkAttachmentReference>(Memory::Array, ColourAttachmentCount);
+            ColourAttachmentReferences = MemorySystem::TAllocate<VkAttachmentReference>(Memory::Array, ColourAttachmentCount);
             for (u32 i = 0; i < ColourAttachmentCount; ++i) {
                 ColourAttachmentReferences[i].attachment = AttachmentsAdded;  // Индекс массива описания вложения
                 ColourAttachmentReferences[i].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
@@ -185,7 +185,7 @@ struct VulkanRenderpass
         u32 DepthAttachmentCount = DepthAttachmentDescs.Length();
         if (DepthAttachmentCount > 0) {
             MASSERT_MSG(DepthAttachmentCount == 1, "Вложения с несколькими глубинами не поддерживаются.");
-            DepthAttachmentReferences = MMemory::TAllocate<VkAttachmentReference>(Memory::Array, DepthAttachmentCount);
+            DepthAttachmentReferences = MemorySystem::TAllocate<VkAttachmentReference>(Memory::Array, DepthAttachmentCount);
             for (u32 i = 0; i < DepthAttachmentCount; ++i) {
                 DepthAttachmentReferences[i].attachment = AttachmentsAdded;  // Индекс массива описания прикрепления
                 DepthAttachmentReferences[i].layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
@@ -240,11 +240,11 @@ struct VulkanRenderpass
         );
 
         if (ColourAttachmentReferences) {
-            MMemory::Free(ColourAttachmentReferences, sizeof(VkAttachmentReference) * ColourAttachmentCount, Memory::Array);
+            MemorySystem::Free(ColourAttachmentReferences, sizeof(VkAttachmentReference) * ColourAttachmentCount, Memory::Array);
         }
 
         if (DepthAttachmentReferences) {
-            MMemory::Free(DepthAttachmentReferences, sizeof(VkAttachmentReference) * DepthAttachmentCount, Memory::Array);
+            MemorySystem::Free(DepthAttachmentReferences, sizeof(VkAttachmentReference) * DepthAttachmentCount, Memory::Array);
         }
 
         //return true;

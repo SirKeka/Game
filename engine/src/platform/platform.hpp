@@ -2,29 +2,16 @@
 
 #include "defines.hpp"
 
-class MWindow
+namespace WindowSystem
 {
-public:
-    void* InternalState;
-private:
-    const char* name; 
-    i32 x; 
-    i32 y; 
-    i32 width; 
-    i32 height;
-
-public:
-    //Конструктор инициализирующий параметры окна
-    MWindow(const char* name, i32 x, i32 y, i32 width, i32 height);
-    ~MWindow();
-    bool Create();
-    void Close();
+    bool Initialize(u64& MemoryRequirement, void* memory, void* config);
+    void Shutdown();
     bool Messages();
     // Получение времени
-    static f64 PlatformGetAbsoluteTime();
+    f64 PlatformGetAbsoluteTime();
 
     // Настройка часов
-    static void ClockSetup();
+    void ClockSetup();
 };
 
 // Функции управления памятью--------------------------------------------------------------------------------------------------
@@ -56,4 +43,4 @@ void PlatformSleep(u64 ms);
 /// @return Количество логических ядер процессора.
 i32 PlatformGetProcessorCount();
 
-const char* PlatformGetKeyboardLayout();
+// MAPI const char* PlatformGetKeyboardLayout();

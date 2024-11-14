@@ -23,5 +23,5 @@ VulkanShader::~VulkanShader()
 
 void *VulkanShader::operator new(u64 size)
 {
-    return MMemory::Allocate(size, Memory::Renderer);
+    return MemorySystem::Allocate(size, Memory::Renderer);
 }

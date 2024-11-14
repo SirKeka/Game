@@ -14,33 +14,36 @@
 
 #include "core/engine.hpp"
 #include "core/logger.hpp"
-#include "core/mmemory.hpp"
 #include "application_types.hpp"
 
 #include <stdlib.h>
-
-// Внешне определенная функция для создания игры.
+#include <locale.h>
 
 /// @brief Определенная извне функция для создания приложения, предоставленная потребителем этой библиотеки.
-/// @param OutApplication Ссылка на созданный объект приложения, предоставленный потребителем.
 /// @return True при успешном создании; в противном случае false.
 extern bool CreateApplication(Application*& OutApplication);
 
-// Основная точка входа в приложение.Основная точка входа в приложение.
+// Основная точка входа в приложение.
 int main(void) {
     system("chcp 65001 > nul"); // для отображения русских символов в консоли
-
+    // setlocale(LC_ALL, "en_US.UTF-8");
 
     // Запросите экземпляр игры из приложения.
-    Application* ApplicationInst;
-    
-    if (!CreateApplication(ApplicationInst)) {
-        MFATAL("Не удалось создать игру!");
+    Application* ApplicationInst = nullptr;
+
+    // Система памяти должна быть установлена в первую очередь. 
+    if (!MemorySystem::Initialize(GIBIBYTES(1))) {
+        MERROR("Не удалось инициализировать систему памяти!");
         return -1;
     }
     
+    if (!CreateApplication(ApplicationInst)) {
+        MFATAL("Не удалось создать конфигурацию игры!");
+        return -2;
+    }
+    
     // Инициализация.
-    if (!ApplicationInst->engine->Create(ApplicationInst)) {
+    if (!Engine::Create(ApplicationInst)) {
         MINFO("Приложение не удалось создать!");
         return 1;
     }

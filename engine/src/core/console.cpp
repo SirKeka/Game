@@ -3,23 +3,47 @@
 #include "asserts.hpp"
 #include <new>
 
+struct Consumer {
+    PFN_ConsoleConsumerWrite callback;
+    void* instance;
+};
+
+struct Command {
+    MString name;
+    u8 ArgCount;
+    PFN_ConsoleCommand func;
+};
+
+struct sConsole
+{
+    u8 ConsumerCount;
+    Consumer* consumers;
+
+    DArray<Command> RegisteredCommands;
+
+    constexpr sConsole(Consumer* consumers) : ConsumerCount(), consumers(consumers), RegisteredCommands() {}
+};
+
 constexpr u32 MAX_CONSUMER_COUNT = 10;
 
-Console *Console::pConsole = nullptr;
+static sConsole* pConsole = nullptr;
 
-constexpr Console::Console(Consumer* consumers) : ConsumerCount(), consumers(consumers), RegisteredCommands() {}
-
-Console::~Console()
+bool Console::Initialize(u64& MemoryRequirement, void* memory, void* config) // LinearAllocator &SystemAllocator
 {
-}
+    MemoryRequirement = sizeof(sConsole) + sizeof(Consumer) * MAX_CONSUMER_COUNT;
+    
+    if (!memory) {
+        return true;
+    }
 
-void Console::Initialize(LinearAllocator &SystemAllocator)
-{
-    u64 MemoryRequirement = sizeof(Console) + sizeof(Consumer) * MAX_CONSUMER_COUNT;
-    void* pRawMem = SystemAllocator.Allocate(MemoryRequirement);
-    auto ConsumerMem = reinterpret_cast<Consumer*>(reinterpret_cast<u8*>(pRawMem) + sizeof(Console));
+    auto ConsumerMem = reinterpret_cast<Consumer*>(reinterpret_cast<u8*>(memory) + sizeof(sConsole));
 
-    pConsole = new(pRawMem) Console(ConsumerMem);
+    pConsole = new(memory) sConsole(ConsumerMem);
+    if (!pConsole) {
+        return false;
+    }
+    
+    return true;
 }
 
 void Console::Shutdown()
@@ -27,7 +51,7 @@ void Console::Shutdown()
     if (pConsole) {
         pConsole->RegisteredCommands.~DArray();
 
-        MMemory::ZeroMem(pConsole, sizeof(Console) + (sizeof(Consumer) * MAX_CONSUMER_COUNT));
+        MemorySystem::ZeroMem(pConsole, sizeof(sConsole) + (sizeof(Consumer) * MAX_CONSUMER_COUNT));
     }
 
     pConsole = nullptr;
@@ -45,7 +69,7 @@ void Console::RegisterConsumer(void *inst, PFN_ConsoleConsumerWrite callback)
     }
 }
 
-void Console::WriteLine(LogLevel level, const char *message)
+void Console::WriteLine(Log::Level level, const char *message)
 {
     if (pConsole) {
         // Сообщите каждому потребителю, что строка была добавлена.
@@ -93,7 +117,7 @@ bool Console::ExecuteCommand(const MString &command)
     // Запишите строку обратно в консоль для справки.
     char temp[512] = {};
     MString::Format(temp, "-->%s", command.c_str());
-    WriteLine(LogLevel::Info, temp);
+    WriteLine(Log::Level::Info, temp);
 
     // Да, строки медленные. Но это консоль. Она не должна быть молниеносной...
     bool HasError = false;
@@ -114,7 +138,7 @@ bool Console::ExecuteCommand(const MString &command)
                 ConsoleCommandContext context = {};
                 context.ArgumentCount = cmd.ArgCount;
                 if (context.ArgumentCount > 0) {
-                    context.arguments = MMemory::TAllocate<ConsoleCommandArgument>(Memory::Array, cmd.ArgCount);
+                    context.arguments = MemorySystem::TAllocate<ConsoleCommandArgument>(Memory::Array, cmd.ArgCount);
                     for (u8 j = 0; j < cmd.ArgCount; ++j) {
                         context.arguments[j].value = parts[j + 1].c_str();
                     }
@@ -123,7 +147,7 @@ bool Console::ExecuteCommand(const MString &command)
                 cmd.func(context);
 
                 if (context.arguments) {
-                    MMemory::Free(context.arguments, sizeof(ConsoleCommandArgument) * cmd.ArgCount, Memory::Array);
+                    MemorySystem::Free(context.arguments, sizeof(ConsoleCommandArgument) * cmd.ArgCount, Memory::Array);
                 }
             }
             break;

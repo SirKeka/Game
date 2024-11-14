@@ -42,7 +42,7 @@ f32 Math::abs(f32 x)
 i32 Math::iRandom()
 {
     if (!RandSeeded) {
-        srand((u32)MWindow::PlatformGetAbsoluteTime());
+        srand((u32)WindowSystem::PlatformGetAbsoluteTime());
         RandSeeded = true;
     }
     return rand();
@@ -51,7 +51,7 @@ i32 Math::iRandom()
 i32 Math::RandomInRange(i32 min, i32 max)
 {
     if (!RandSeeded) {
-        srand((u32)MWindow::PlatformGetAbsoluteTime());
+        srand((u32)WindowSystem::PlatformGetAbsoluteTime());
         RandSeeded = true;
     }
     return (rand() % (max - min + 1)) + min;

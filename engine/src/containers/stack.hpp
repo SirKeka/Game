@@ -14,29 +14,29 @@ public:
     void EnsureAllocated(u32 count) {
         
         if (allocated < ElementSize * count) {
-            T* temp = MMemory::TAllocate<T>(Memory::Stack, count * ElementSize);
+            T* temp = MemorySystem::TAllocate<T>(Memory::Stack, count * ElementSize);
             if (data) {
                 for (u32 i = 0; i < ElementCount; i++) {
                     temp[i] = static_cast<T&&>(data[i]);
                 }
-                MMemory::Free(data, allocated, Memory::Stack);
+                MemorySystem::Free(data, allocated, Memory::Stack);
             }
             data = temp;
             allocated = count * ElementSize;
         }
     }
 public:
-    constexpr Stack(): ElementSize(sizeof(T)), ElementCount(), allocated(1), data(reinterpret_cast<T*>(MMemory::Allocate(ElementSize, Memory::Stack, true))) {}
+    constexpr Stack(): ElementSize(sizeof(T)), ElementCount(), allocated(1), data(reinterpret_cast<T*>(MemorySystem::Allocate(ElementSize, Memory::Stack, true))) {}
 
-    constexpr Stack(const T& element) : ElementSize(sizeof(T)), ElementCount(1), allocated(1), data(MMemory::Allocate(ElementSize, Memory::Stack, true)) {
+    constexpr Stack(const T& element) : ElementSize(sizeof(T)), ElementCount(1), allocated(1), data(MemorySystem::Allocate(ElementSize, Memory::Stack, true)) {
         Push(element);
     }
 
-    constexpr Stack(T&& element) : ElementSize(sizeof(T)), ElementCount(1), allocated(1), data(MMemory::Allocate(ElementSize, Memory::Stack, true)) {
+    constexpr Stack(T&& element) : ElementSize(sizeof(T)), ElementCount(1), allocated(1), data(MemorySystem::Allocate(ElementSize, Memory::Stack, true)) {
         Push(static_cast<T&&>(element));
     }
 
-    ~Stack() { MMemory::Free(data, ElementSize * ElementCount, Memory::Stack); }
+    ~Stack() { MemorySystem::Free(data, ElementSize * ElementCount, Memory::Stack); }
 
     bool Push(const T& element) {
         EnsureAllocated(ElementCount + 1);

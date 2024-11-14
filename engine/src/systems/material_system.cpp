@@ -1,6 +1,6 @@
 #include "material_system.hpp"
 #include "systems/texture_system.hpp"
-#include "renderer/renderer.hpp"
+#include "renderer/rendering_system.hpp"
 #include "systems/resource_system.hpp"
 #include "systems/shader_system.hpp"
 
@@ -39,23 +39,29 @@ MaterialSystem::~MaterialSystem()
     DestroyMaterial(&state->DefaultMaterial);
 }
 
-bool MaterialSystem::Initialize(u32 MaxMaterialCount, LinearAllocator& SystemAllocator)
+bool MaterialSystem::Initialize(u64& MemoryRequirement, void* memory, void* config)
 {
-    if (MaxMaterialCount == 0) {
+    auto pConfig = reinterpret_cast<MaterialSystemConfig*>(config);
+    if (pConfig->MaxMaterialCount == 0) {
         MFATAL("MaterialSystem::Initialize — MaxMaterialCount должен быть > 0.");
         return false;
     }
 
+    // Блок памяти будет содержать структуру состояния, затем блок массива, затем блок хеш-таблицы.
+    u64 StructRequirement = sizeof(MaterialSystem);
+    u64 ArrayRequirement = sizeof(Material) * pConfig->MaxMaterialCount;
+    u64 HashtableRequirement = sizeof(MaterialReference) * pConfig->MaxMaterialCount;
+    MemoryRequirement = StructRequirement + ArrayRequirement + HashtableRequirement;
+
+    if (!memory) {
+        return true;
+    }
+
     if (!state) {
-        // Блок памяти будет содержать структуру состояния, затем блок массива, затем блок хеш-таблицы.
-        u64 StructRequirement = sizeof(MaterialSystem);
-        u64 ArrayRequirement = sizeof(Material) * MaxMaterialCount;
-        u64 HashtableRequirement = sizeof(MaterialReference) * MaxMaterialCount;
-        u64 MemoryRequirement = StructRequirement + ArrayRequirement + HashtableRequirement;
-        u8* ptrMatSys = reinterpret_cast<u8*>(SystemAllocator.Allocate(MemoryRequirement));
+        u8* ptrMatSys = reinterpret_cast<u8*>(memory);
         Material* RegisteredMaterials = reinterpret_cast<Material*>(ptrMatSys + StructRequirement);
-        MaterialReference* HashTableBlock = reinterpret_cast<MaterialReference*>(RegisteredMaterials + MaxMaterialCount);
-        state = new(ptrMatSys) MaterialSystem(MaxMaterialCount, RegisteredMaterials, HashTableBlock);
+        MaterialReference* HashTableBlock = reinterpret_cast<MaterialReference*>(RegisteredMaterials + pConfig->MaxMaterialCount);
+        state = new(ptrMatSys) MaterialSystem(pConfig->MaxMaterialCount, RegisteredMaterials, HashTableBlock);
     }
 
     if (!state->CreateDefaultMaterial()) {
@@ -308,7 +314,7 @@ bool MaterialSystem::CreateDefaultMaterial()
 { 
     TextureMap* maps[3] = {&DefaultMaterial.DiffuseMap, &DefaultMaterial.SpecularMap, &DefaultMaterial.NormalMap};
     Shader* s = ShaderSystem::GetShader("Shader.Builtin.Material");
-    if (!Renderer::ShaderAcquireInstanceResources(s, maps, DefaultMaterial.InternalId)) {
+    if (!RenderingSystem::ShaderAcquireInstanceResources(s, maps, DefaultMaterial.InternalId)) {
         MFATAL("Не удалось получить ресурсы средства рендеринга для материала по умолчанию. Приложение не может быть продолжено.");
         return false;
     }
@@ -335,7 +341,7 @@ bool MaterialSystem::LoadMaterial(const MaterialConfig &config, Material *m)
     // ЗАДАЧА: настроить
     m->DiffuseMap.FilterMinify = m->DiffuseMap.FilterMagnify = TextureFilter::ModeLinear;
     m->DiffuseMap.RepeatU = m->DiffuseMap.RepeatV = m->DiffuseMap.RepeatW = TextureRepeat::Repeat;
-    if (!Renderer::TextureMapAcquireResources(&m->DiffuseMap)) {
+    if (!RenderingSystem::TextureMapAcquireResources(&m->DiffuseMap)) {
         MERROR("Невозможно получить ресурсы для карты диффузных текстур.");
         return false;
     }
@@ -357,7 +363,7 @@ bool MaterialSystem::LoadMaterial(const MaterialConfig &config, Material *m)
     // Карта блеска
     m->SpecularMap.FilterMinify = m->SpecularMap.FilterMagnify = TextureFilter::ModeLinear;
     m->SpecularMap.RepeatU = m->SpecularMap.RepeatV = m->SpecularMap.RepeatW = TextureRepeat::Repeat;
-    if (!Renderer::TextureMapAcquireResources(&m->SpecularMap)) {
+    if (!RenderingSystem::TextureMapAcquireResources(&m->SpecularMap)) {
         MERROR("Невозможно получить ресурсы для карты зеркальных текстур.");
         return false;
     }
@@ -377,7 +383,7 @@ bool MaterialSystem::LoadMaterial(const MaterialConfig &config, Material *m)
     // Карта нормалей
     m->NormalMap.FilterMinify = m->NormalMap.FilterMagnify = TextureFilter::ModeLinear;
     m->NormalMap.RepeatU = m->NormalMap.RepeatV = m->NormalMap.RepeatW = TextureRepeat::Repeat;
-    if (!Renderer::TextureMapAcquireResources(&m->NormalMap)) {
+    if (!RenderingSystem::TextureMapAcquireResources(&m->NormalMap)) {
         MERROR("Невозможно получить ресурсы для карты нормалей текстур.");
         return false;
     }
@@ -404,7 +410,7 @@ bool MaterialSystem::LoadMaterial(const MaterialConfig &config, Material *m)
     }
     // Соберите список указателей на карты текстур.
     TextureMap* maps[3] = {&m->DiffuseMap, &m->SpecularMap, &m->NormalMap};
-    if(!Renderer::ShaderAcquireInstanceResources(s, maps, m->InternalId)) {
+    if(!RenderingSystem::ShaderAcquireInstanceResources(s, maps, m->InternalId)) {
         MERROR("Не удалось получить ресурсы средства визуализации для материала '%s'.", m->name);
         return false;
     }
@@ -429,13 +435,13 @@ void MaterialSystem::DestroyMaterial(Material *m)
     }
 
     // Освободите ресурсы карт текстур.
-    Renderer::TextureMapReleaseResources(&m->DiffuseMap);
-    Renderer::TextureMapReleaseResources(&m->SpecularMap);
-    Renderer::TextureMapReleaseResources(&m->NormalMap);
+    RenderingSystem::TextureMapReleaseResources(&m->DiffuseMap);
+    RenderingSystem::TextureMapReleaseResources(&m->SpecularMap);
+    RenderingSystem::TextureMapReleaseResources(&m->NormalMap);
 
     // Освободите ресурсы средства рендеринга.
     if (m->ShaderID != INVALID::ID && m->InternalId != INVALID::ID) {
-        Renderer::ShaderReleaseInstanceResources(ShaderSystem::GetShader(m->ShaderID), m->InternalId);
+        RenderingSystem::ShaderReleaseInstanceResources(ShaderSystem::GetShader(m->ShaderID), m->InternalId);
         m->ShaderID = INVALID::ID;
     }
 

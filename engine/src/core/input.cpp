@@ -5,34 +5,62 @@
 
 #include <new>
 
-Input* Input::input = nullptr;
-
-constexpr Input::Input() : KeyboardCurrent(), KeyboardPrevious(), MouseCurrent(), MousePrevious(), KeymapStack() {}
-
-Input::~Input()
+/// @brief Параметры клавиатуры
+struct Keyboard
 {
-    // ЗАДАЧА: Добавить процедуры выключения при необходимости.
+    bool keys[256];
+};
+
+/// @brief Параметры мыши
+struct Mouse
+{
+    // ЗАДАЧА: исправить на i32 если мы хотим добавить поддержку нескольких мониторов с высоким разрешением
+    i16 PosX;
+    i16 PosY;
+    bool Buttons[static_cast<u32>(Buttons::Max)];
+};
+
+struct Input
+{
+    Keyboard KeyboardCurrent;
+    Keyboard KeyboardPrevious;
+    Mouse MouseCurrent;
+    Mouse MousePrevious;
+
+    Stack<Keymap> KeymapStack;
+
+    constexpr Input() : KeyboardCurrent(), KeyboardPrevious(), MouseCurrent(), MousePrevious(), KeymapStack() {}
+};
+
+static Input* pInput = nullptr;
+
+bool InputSystem::Initialize(u64& MemoryRequirement, void* memory, void* config)
+{
+    MemoryRequirement = sizeof(Input);
+    if (!memory) {
+        return true;
+    }
     
-}
-
-void Input::Initialize(LinearAllocator& SystemAllocator)
-{
-    if (!input) {
-        void* ptrMem = SystemAllocator.Allocate(sizeof(Input));
-        input = new(ptrMem) Input();
+    if (!pInput) {
+        pInput = new(memory) Input();
     };
+
+    if (!pInput) {
+        return false;
+    }
     
     MINFO("Подсистема ввода инициализирована.");
+    return true;
 }
 
-void Input::Sutdown()
+void InputSystem::Shutdown()
 {
-    //delete input;
+    pInput = nullptr;
 }
 
-void Input::Update(f64 DeltaTime)
+void InputSystem::Update(f64 DeltaTime)
 {
-    if (!input) {
+    if (!pInput) {
         return;
     }
 
@@ -40,8 +68,8 @@ void Input::Update(f64 DeltaTime)
     for (u32 k = 0; k < ToInt(Keys::MaxKeys); ++k) {
         Keys key = static_cast<Keys>(k);
         if (IsKeyDown(key) && WasKeyDown(key)) {
-            u32 MapCount = input->KeymapStack.ElementCount;
-            auto maps = input->KeymapStack.data;
+            u32 MapCount = pInput->KeymapStack.ElementCount;
+            auto maps = pInput->KeymapStack.data;
             for (i32 m = MapCount - 1; m >= 0; --m) {
                 auto& map = maps[m];
                 auto binding = &map.entries[k].bindings[0];
@@ -68,71 +96,71 @@ void Input::Update(f64 DeltaTime)
     }
 
     // Копировать текущие состояния в предыдущие состояния. ЗАДАЧА: подумать о перемещении, а не копировании
-    input->KeyboardPrevious = input->KeyboardCurrent;
-    input->MousePrevious = input->MouseCurrent;
+    pInput->KeyboardPrevious = pInput->KeyboardCurrent;
+    pInput->MousePrevious = pInput->MouseCurrent;
 }
 
-bool Input::IsKeyDown(Keys key)
+bool InputSystem::IsKeyDown(Keys key)
 {
-    if (!input) {
+    if (!pInput) {
         return false;
     }
-    return input->KeyboardCurrent.keys[ToInt(key)] == true;
+    return pInput->KeyboardCurrent.keys[ToInt(key)] == true;
 }
 
-bool Input::IsKeyUp(Keys key)
+bool InputSystem::IsKeyUp(Keys key)
 {
-    if (!input) {
+    if (!pInput) {
         return true;
     }
-    return input->KeyboardCurrent.keys[ToInt(key)] == false;
+    return pInput->KeyboardCurrent.keys[ToInt(key)] == false;
 }
 
-bool Input::WasKeyDown(Keys key)
+bool InputSystem::WasKeyDown(Keys key)
 {
-    if (!input) {
+    if (!pInput) {
         return false;
     }
-    return input->KeyboardPrevious.keys[ToInt(key)] == true;
+    return pInput->KeyboardPrevious.keys[ToInt(key)] == true;
 }
 
-bool Input::WasKeyUp(Keys key)
+bool InputSystem::WasKeyUp(Keys key)
 {
-    if (!input) {
+    if (!pInput) {
         return true;
     }
-    return input->KeyboardPrevious.keys[ToInt(key)] == false;
+    return pInput->KeyboardPrevious.keys[ToInt(key)] == false;
 }
 
-void Input::ProcessKey(Keys key, bool pressed)
+void InputSystem::ProcessKey(Keys key, bool pressed)
 {
     // Обрабатывайте это только в том случае, если состояние действительно изменилось.
-    if (input->KeyboardCurrent.keys[ToInt(key)] != pressed) {
+    if (pInput->KeyboardCurrent.keys[ToInt(key)] != pressed) {
         // Обновить внутреннее состояние.
-        input->KeyboardCurrent.keys[ToInt(key)] = pressed;
+        pInput->KeyboardCurrent.keys[ToInt(key)] = pressed;
 
-        if (key == Keys::LALT) {
-            MINFO("Левая клавиша alt %s.", pressed ? "нажата" : "отпущена");
-        } else if (key == Keys::RALT) {
-            MINFO("Правая клавиша alt %s.", pressed ? "нажата" : "отпущена");
-        }
+        // if (key == Keys::LALT) {
+        //     MINFO("Левая клавиша alt %s.", pressed ? "нажата" : "отпущена");
+        // } else if (key == Keys::RALT) {
+        //     MINFO("Правая клавиша alt %s.", pressed ? "нажата" : "отпущена");
+        // }
 
-        if (key == Keys::LCONTROL) {
-            MINFO("Левая клавиша ctrl %s.", pressed ? "нажата" : "отпущена");
-        } else if (key == Keys::RCONTROL) {
-            MINFO("Правая клавиша ctrl %s.", pressed ? "нажата" : "отпущена");
-        }
+        // if (key == Keys::LCONTROL) {
+        //     MINFO("Левая клавиша ctrl %s.", pressed ? "нажата" : "отпущена");
+        // } else if (key == Keys::RCONTROL) {
+        //     MINFO("Правая клавиша ctrl %s.", pressed ? "нажата" : "отпущена");
+        // }
 
-        if (key == Keys::LSHIFT) {
-            MINFO("Левая клавиша shift %s.", pressed ? "нажата" : "отпущена");
-        } else if (key == Keys::RSHIFT) {
-            MINFO("Правая клавиша shift %s.", pressed ? "нажата" : "отпущена");
-        }
+        // if (key == Keys::LSHIFT) {
+        //     MINFO("Левая клавиша shift %s.", pressed ? "нажата" : "отпущена");
+        // } else if (key == Keys::RSHIFT) {
+        //     MINFO("Правая клавиша shift %s.", pressed ? "нажата" : "отпущена");
+        // }
 
         // Проверка привязок клавиш
         // Итерация сопоставлений клавиш сверху вниз по стеку.
-        u32 MapCount = input->KeymapStack.ElementCount;
-        auto maps = input->KeymapStack.data;
+        u32 MapCount = pInput->KeymapStack.ElementCount;
+        auto maps = pInput->KeymapStack.data;
         for (i32 m = MapCount - 1; m >= 0; --m) {
             auto& map = maps[m];
             auto binding = &map.entries[ToInt(key)].bindings[0];
@@ -163,135 +191,130 @@ void Input::ProcessKey(Keys key, bool pressed)
         // Запустите событие для немедленной обработки.
         EventContext context;
         context.data.u16[0] = ToInt(key);
-        Event::GetInstance()->Fire(pressed ? EVENT_CODE_KEY_PRESSED : EVENT_CODE_KEY_RELEASED, 0, context);
+        EventSystem::Fire(pressed ? EVENT_CODE_KEY_PRESSED : EVENT_CODE_KEY_RELEASED, 0, context);
     }
 }
 
-bool Input::IsButtonDown(Buttons button)
+bool InputSystem::IsButtonDown(Buttons button)
 {
-    if (!input) {
+    if (!pInput) {
         return false;
     }
-    return input->MouseCurrent.Buttons[ToInt(button)] == true;
+    return pInput->MouseCurrent.Buttons[ToInt(button)] == true;
 }
 
-bool Input::IsButtonUp(Buttons button)
+bool InputSystem::IsButtonUp(Buttons button)
 {
-    if (!input) {
+    if (!pInput) {
         return true;
     }
-    return input->MouseCurrent.Buttons[ToInt(button)] == false;
+    return pInput->MouseCurrent.Buttons[ToInt(button)] == false;
 }
 
-bool Input::WasButtonDown(Buttons button)
+bool InputSystem::WasButtonDown(Buttons button)
 {
-    if (!input) {
+    if (!pInput) {
         return false;
     }
-    return input->MousePrevious.Buttons[ToInt(button)] == true;
+    return pInput->MousePrevious.Buttons[ToInt(button)] == true;
 }
 
-bool Input::WasButtonUp(Buttons button)
+bool InputSystem::WasButtonUp(Buttons button)
 {
-    if (!input) {
+    if (!pInput) {
         return true;
     }
-    return input->MousePrevious.Buttons[ToInt(button)] == false;
+    return pInput->MousePrevious.Buttons[ToInt(button)] == false;
 }  
 
-void Input::GetMousePosition(i16& x, i16& y)
+void InputSystem::GetMousePosition(i16& x, i16& y)
 {
-    if (!input) {
+    if (!pInput) {
         x = 0;
         y = 0;
         return;
     }
-    x = input->MouseCurrent.PosX;
-    y = input->MouseCurrent.PosY;
+    x = pInput->MouseCurrent.PosX;
+    y = pInput->MouseCurrent.PosY;
 }
 
-void Input::GetPreviousMousePosition(i16& x, i16& y)
+void InputSystem::GetPreviousMousePosition(i16& x, i16& y)
 {
-    if (!input) {
+    if (!pInput) {
         x = 0;
         y = 0;
         return;
     }
-    x = input->MousePrevious.PosX;
-    y = input->MousePrevious.PosY;
+    x = pInput->MousePrevious.PosX;
+    y = pInput->MousePrevious.PosY;
 }
 
-void Input::ProcessButton(Buttons button, bool pressed)
+void InputSystem::ProcessButton(Buttons button, bool pressed)
 {
     // Если состояние изменилось, создайте событие.
-    if (input->MouseCurrent.Buttons[ToInt(button)] != pressed) {
-        input->MouseCurrent.Buttons[ToInt(button)] = pressed;
+    if (pInput->MouseCurrent.Buttons[ToInt(button)] != pressed) {
+        pInput->MouseCurrent.Buttons[ToInt(button)] = pressed;
 
         // Запустите событие.
         EventContext context;
         context.data.u16[0] = ToInt(button);
-        Event::GetInstance()->Fire(pressed ? EVENT_CODE_BUTTON_PRESSED : EVENT_CODE_BUTTON_RELEASED, 0, context);
+        EventSystem::Fire(pressed ? EVENT_CODE_BUTTON_PRESSED : EVENT_CODE_BUTTON_RELEASED, 0, context);
     }
 }
 
-void Input::ProcessMouseMove(i16 x, i16 y)
+void InputSystem::ProcessMouseMove(i16 x, i16 y)
 {
     // Обрабатывайте только в том случае, если на самом деле они разные
-    if (input->MouseCurrent.PosX != x || input->MouseCurrent.PosY != y) {
+    if (pInput->MouseCurrent.PosX != x || pInput->MouseCurrent.PosY != y) {
         // ПРИМЕЧАНИЕ. Включите это при отладке.
         //MDEBUG("Позиция мыши: %i, %i!", x, y);
 
         // Обновить внутреннее состояние.
-        input->MouseCurrent.PosX = x;
-        input->MouseCurrent.PosY = y;
+        pInput->MouseCurrent.PosX = x;
+        pInput->MouseCurrent.PosY = y;
 
         // Запустите событие.
         EventContext context;
         context.data.u16[0] = x;
         context.data.u16[1] = y;
-        Event::GetInstance()->Fire(EVENT_CODE_MOUSE_MOVED, 0, context);
+        EventSystem::Fire(EVENT_CODE_MOUSE_MOVED, 0, context);
     }
 }
 
-void Input::ProcessMouseWheel(i8 z_delta)
+void InputSystem::ProcessMouseWheel(i8 z_delta)
 {
     // ПРИМЕЧАНИЕ. Внутреннее состояние для обновления отсутствует.
 
     // Запустите событие.
     EventContext context;
     context.data.i8[0] = z_delta;
-    Event::GetInstance()->Fire(EVENT_CODE_MOUSE_WHEEL, 0, context);
+    EventSystem::Fire(EVENT_CODE_MOUSE_WHEEL, 0, context);
 }
 
-void Input::KeymapPush(const Keymap &map)
+void InputSystem::KeymapPush(const Keymap &map)
 {
-    if (input) {
+    if (pInput) {
         // Добавьте раскладку в стек, затем примените ее.
-        if (!input->KeymapStack.Push(map)) {
+        if (!pInput->KeymapStack.Push(map)) {
             MERROR("Не удалось отправить раскладку клавиатуры!");
             return;
         }
     }
 }
 
-void Input::KeymapPop()
+void InputSystem::KeymapPop()
 {
-    if (input) {
+    if (pInput) {
         // Извлеките раскладку из стека, затем повторно примените стек.
         Keymap popped;
-        if (!input->KeymapStack.Pop(popped)) {
+        if (!pInput->KeymapStack.Pop(popped)) {
             MERROR("Не удалось извлечь раскладку клавиатуры!");
             return;
         }
     }
 }
 
-Input *Input::Instance()
-{
-    return input;
-}
-
-bool Input::CheckModifiers(Keymap::Modifier modifiers)
+bool InputSystem::CheckModifiers(Keymap::Modifier modifiers)
 {
     if (modifiers & Keymap::ModifierShiftBit) {
         if (!IsKeyDown(Keys::SHIFT) && !IsKeyDown(Keys::LSHIFT) && !IsKeyDown(Keys::RSHIFT)) {
@@ -312,12 +335,12 @@ bool Input::CheckModifiers(Keymap::Modifier modifiers)
     return true;
 }
 
-constexpr u16 Input::ToInt(Keys key)
+constexpr u16 InputSystem::ToInt(Keys key)
 {
     return (u16)key;
 }
 
-constexpr u32 Input::ToInt(Buttons button)
+constexpr u32 InputSystem::ToInt(Buttons button)
 {
     return (u32)button;
 }

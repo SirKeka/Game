@@ -1,7 +1,7 @@
 #include "render_view_system.hpp"
 #include "memory/linear_allocator.hpp"
 #include "containers/hashtable.hpp"
-#include "renderer/renderer.hpp"
+#include "renderer/rendering_system.hpp"
 
 #include <new>
 
@@ -20,22 +20,27 @@ TableBlock(TableBlock),
 MaxViewCount(MaxViewCount),
 RegisteredViews(RegisteredViews) {}
 
-bool RenderViewSystem::Initialize(u16 MaxViewCount, LinearAllocator& SystemAllocator)
+bool RenderViewSystem::Initialize(u64& MemoryRequirement, void* memory, void* config)
 {
-    if (MaxViewCount == 0) {
+    auto pConfig = reinterpret_cast<RenderViewSystemConfig*>(config);
+    if (pConfig->MaxViewCount == 0) {
         MFATAL("RenderViewSystem::Initialize - MaxViewCount должен быть > 0.");
         return false;
     }
 
     // Блок памяти будет содержать структуру состояния, затем блок для хеш-таблицы, затем блок для массива.
     u64 ClassRequirement = sizeof(RenderViewSystem);
-    u64 HashtableRequirement = sizeof(u16) * MaxViewCount;
-    u64 ArrayRequirement = sizeof(RenderView*) * MaxViewCount;
-    u64 MemoryRequirement = ClassRequirement + HashtableRequirement + ArrayRequirement;
+    u64 HashtableRequirement = sizeof(u16) * pConfig->MaxViewCount;
+    u64 ArrayRequirement = sizeof(RenderView*) * pConfig->MaxViewCount;
+    MemoryRequirement = ClassRequirement + HashtableRequirement + ArrayRequirement;
 
-    u8* RVSPointer = reinterpret_cast<u8*>(SystemAllocator.Allocate(MemoryRequirement));
+    if (!memory) {
+        return true;
+    }
 
-    state = new(RVSPointer) RenderViewSystem(MaxViewCount, reinterpret_cast<u16*>(RVSPointer + ClassRequirement), reinterpret_cast<RenderView**>(RVSPointer + ClassRequirement + HashtableRequirement));
+    u8* RVSPointer = reinterpret_cast<u8*>(memory);
+
+    state = new(RVSPointer) RenderViewSystem(pConfig->MaxViewCount, reinterpret_cast<u16*>(RVSPointer + ClassRequirement), reinterpret_cast<RenderView**>(RVSPointer + ClassRequirement + HashtableRequirement));
 
     if (!state) {
         return false;
@@ -177,15 +182,15 @@ void RenderViewSystem::RegenerateRenderTargets(RenderView* view)
             auto& target = pass.targets[i];
             // Сначала уничтожьте старую, если она существует.
             // ЗАДАЧА: проверьте, действительно ли требуется изменение размера для этой цели.
-            Renderer::RenderTargetDestroy(target, false);
+            RenderingSystem::RenderTargetDestroy(target, false);
 
             for (u32 a = 0; a < target.AttachmentCount; ++a) {
                 auto& attachment = target.attachments[a];
                 if (attachment.source == RenderTargetAttachmentSource::Default) {
                     if (attachment.type == RenderTargetAttachmentType::Colour) {
-                        attachment.texture = Renderer::WindowAttachmentGet(i);
+                        attachment.texture = RenderingSystem::WindowAttachmentGet(i);
                     } else if (attachment.type == RenderTargetAttachmentType::Depth) {
-                        attachment.texture = Renderer::DepthAttachmentGet(i);
+                        attachment.texture = RenderingSystem::DepthAttachmentGet(i);
                     } else {
                         MFATAL("Неподдерживаемый тип вложения: 0x%x", attachment.type);
                         continue;
@@ -202,7 +207,7 @@ void RenderViewSystem::RegenerateRenderTargets(RenderView* view)
             }
 
             // Создайте цель рендеринга.
-            Renderer::RenderTargetCreate(
+            RenderingSystem::RenderTargetCreate(
                 target.AttachmentCount,
                 target.attachments,
                 &pass,

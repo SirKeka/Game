@@ -9,21 +9,8 @@
 
 #include "core/engine.hpp"
 #include "core/mmemory.hpp"
-#include "systems/font_system.hpp"
-#include "renderer/views/render_view.hpp"
 
 template class DArray<MString>;
-
-// Конфигурация приложения.
-struct ApplicationConfig {
-    i16 StartPosX;                            // Начальное положение окна по оси X, если применимо.
-    i16 StartPosY;                            // Начальное положение окна по оси Y, если применимо.
-    i16 StartWidth;                           // Начальная ширина окна, если применимо.
-    i16 StartHeight;                          // Начальная высота окна, если применимо.
-    const char* name;                         // Имя приложения, используемое в оконном режиме, если применимо.
-    FontSystemConfig FontConfig;              // Конфигурация для системы шрифтов.
-    DArray<RenderView::Config> RenderViews{}; // Массив конфигураций представления рендеринга.
-};
 
 struct ApplicationFrameData {
     // Динамический массив мировой геометрии, которая отрисовывается в этом кадре.

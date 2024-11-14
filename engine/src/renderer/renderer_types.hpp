@@ -12,7 +12,7 @@
 
 struct StaticMeshData;
 class Texture;
-class Renderer;
+class RendererSystem;
 
 enum class ERendererType 
 {
@@ -71,12 +71,12 @@ struct UiPacketData {
     // constexpr UiPacketData(Mesh::PacketData MeshData, u32 TextCount, Text** texts) : MeshData(MeshData), TextCount(TextCount), texts(texts) {}
 };
 
-class RendererType
+class Renderer
 {
 public:
     u64 FrameNumber;
 public:
-    virtual ~RendererType() = default;
+    virtual ~Renderer() = default;
 
     virtual void ShutDown() = 0;
     virtual void Resized(u16 width, u16 height) = 0;

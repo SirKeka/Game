@@ -1,7 +1,6 @@
 #pragma once
 
 #include "defines.hpp"
-#include "containers/darray.hpp"
 
 struct EventContext {
     // 128 байт
@@ -39,35 +38,10 @@ public:
 using PFN_OnEventStatic = bool(*) (u16, void*, void*, EventContext);
 using PFN_OnEventMethod = bool(Executor::*)(u16, void*, void*, EventContext, Executor*);
 
-struct RegisteredEvent {
-    void* listener;
-    PFN_OnEvent callback;
-    constexpr RegisteredEvent(void* listener, PFN_OnEvent callback) : listener(listener), callback(callback) {}
-};
-
-struct EventCodeEntry {
-    DArray<RegisteredEvent> events;
-};
-
-// Кодов должно быть более чем достаточно...
-constexpr u16 MAX_MESSAGE_CODES = 16384;
-
-class MAPI Event
+namespace EventSystem
 {
-private:
-    // Таблица поиска кодов событий.
-    EventCodeEntry registered[MAX_MESSAGE_CODES];
-
-    static Event* event;
-    Event() : registered() {};
-public:
-    ~Event() = default;
-
-    Event(const Event&) = delete;
-    Event& operator= (const Event&) = delete;
-
-    static bool Initialize();
-    static void Shutdown();
+    bool Initialize(u64& MemoryRequirement, void* memory, void* config);
+    void Shutdown();
 
     /// @brief Зарегистрируйте, следить за отправкой событий с предоставленным кодом. 
     /// События с повторяющимися комбинациями прослушивателя и обратного вызова не будут регистрироваться снова 
@@ -76,7 +50,7 @@ public:
     /// @param listener Указатель на экземпляр прослушивателя. Может быть 0/NULL.
     /// @param OnEvent Указатель функции обратного вызова, который будет вызываться при запуске кода события.
     /// @return true, если событие успешно зарегистрировано; в противном случае false.
-    static bool Register(u16 code, void* listener, PFN_OnEvent OnEvent);
+    MAPI bool Register(u16 code, void* listener, PFN_OnEvent OnEvent);
 
     /// @brief Отмените регистрацию от прослушивания событий, отправляемых с помощью предоставленного кода.
     /// Если соответствующая регистрация не найдена, эта функция возвращает false.
@@ -84,7 +58,7 @@ public:
     /// @param listener Указатель на экземпляр прослушивателя. Может быть 0/NULL.
     /// @param OnEvent Указатель функции обратного вызова, регистрацию которого необходимо отменить.
     /// @return true, если событие успешно отменено; в противном случае false.
-    static bool Unregister(u16 code, void* listener, PFN_OnEvent OnEvent);
+    MAPI bool Unregister(u16 code, void* listener, PFN_OnEvent OnEvent);
 
     /// @brief Вызывает событие для слушателей данного кода. Если обработчик событий возвращает true, 
     /// событие считается обработанным и больше не передается прослушивателям.
@@ -92,15 +66,7 @@ public:
     /// @param sender Указатель на отправителя. Может быть 0/NULL.
     /// @param data Данные о событии.
     /// @return true, если обработано, иначе false.
-    static bool Fire(u16 code, void* sender, EventContext context);
-
-    static MINLINE Event* GetInstance() {
-        /*if (!event) {
-            MERROR("Функция Event::GetInstance вызывается перед инициализацией!");
-        }*/
-        
-        return event;
-    }
+    MAPI bool Fire(u16 code, void* sender, EventContext context);
 };
 
 // Коды внутренних событий системы. Приложение должно использовать коды, превышающие 255.

@@ -193,7 +193,7 @@ void VulkanImage::CopyFromBuffer(
 {
     // Region to copy
     VkBufferImageCopy region;
-    MMemory::ZeroMem(&region, sizeof(VkBufferImageCopy));
+    MemorySystem::ZeroMem(&region, sizeof(VkBufferImageCopy));
     region.bufferOffset = 0;
     region.bufferRowLength = 0;
     region.bufferImageHeight = 0;
@@ -284,16 +284,16 @@ void VulkanImage::Destroy(VulkanAPI *VkAPI)
     }
     // Сообщить, что память больше не используется.
     bool IsDeviceMemory = (MemoryFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) == VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-    MMemory::FreeReport(MemoryRequirements.size, IsDeviceMemory ? Memory::GPULocal : Memory::Vulkan);
-    MMemory::ZeroMem(&MemoryRequirements, sizeof(VkMemoryRequirements));
+    MemorySystem::FreeReport(MemoryRequirements.size, IsDeviceMemory ? Memory::GPULocal : Memory::Vulkan);
+    MemorySystem::ZeroMem(&MemoryRequirements, sizeof(VkMemoryRequirements));
 }
 
 void *VulkanImage::operator new(u64 size)
 {
-    return MMemory::Allocate(size, Memory::Texture);
+    return MemorySystem::Allocate(size, Memory::Texture);
 }
 
 void VulkanImage::operator delete(void *ptr, u64 size)
 {
-    MMemory::Free(ptr, size, Memory::Texture);
+    MemorySystem::Free(ptr, size, Memory::Texture);
 }

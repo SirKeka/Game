@@ -48,7 +48,7 @@ void* VulkanAllocAllocation(void* UserData, size_t size, size_t alignment, VkSys
         return nullptr;
     }
 
-    void* result = MMemory::AllocateAligned(size, (u16)alignment, Memory::Vulkan, true);
+    void* result = MemorySystem::AllocateAligned(size, (u16)alignment, Memory::Vulkan, true);
 #ifdef MVULKAN_ALLOCATOR_TRACE
     MTRACE("Выделенный блок %p. Размер=%llu, Выравнивание=%llu", result, size, alignment);
 #endif
@@ -73,12 +73,12 @@ void VulkanAllocFree(void* UserData, void* memory) {
 #endif
     u64 size;
     u16 alignment;
-    bool result = MMemory::GetSizeAlignment(memory, size, alignment);
+    bool result = MemorySystem::GetSizeAlignment(memory, size, alignment);
     if (result) {
 #ifdef MVULKAN_ALLOCATOR_TRACE
         MTRACE("Найден блок %p с размером/выравниванием: %llu/%u. Освобождение выровненного блока...", memory, size, alignment);
 #endif
-        MMemory::FreeAligned(memory, size, true, Memory::Vulkan);
+        MemorySystem::FreeAligned(memory, size, true, Memory::Vulkan);
     } else {
         MERROR("VulkanAllocFree не удалось получить поиск выравнивания для блока %p.", memory);
     }
@@ -105,7 +105,7 @@ void* VulkanAllocReallocation(void* UserData, void* original, size_t size, size_
     // ПРИМЕЧАНИЕ: если pOriginal не равен нулю, для нового выделения должно использоваться то же выравнивание, что и для исходного.
     u64 AllocSize;
     u16 AllocAlignment;
-    bool IsAligned = MMemory::GetSizeAlignment(original, AllocSize, AllocAlignment);
+    bool IsAligned = MemorySystem::GetSizeAlignment(original, AllocSize, AllocAlignment);
     if (!IsAligned) {
         MERROR("vulkan_alloc_reallocation невыровненного блока %p", original);
         return nullptr;
@@ -127,12 +127,12 @@ void* VulkanAllocReallocation(void* UserData, void* original, size_t size, size_
 #endif
 
         // Копирование поверх исходной памяти.
-        MMemory::CopyMem(result, original, size);
+        MemorySystem::CopyMem(result, original, size);
 #ifdef MVULKAN_ALLOCATOR_TRACE
         MTRACE("Освобождение исходного выровненного блока %p...", original);
 #endif
         // Освобождение исходной памяти только в случае успешного нового выделения.
-        MMemory::FreeAligned(original, AllocSize, true, Memory::Vulkan);
+        MemorySystem::FreeAligned(original, AllocSize, true, Memory::Vulkan);
     } else {
 #ifdef MVULKAN_ALLOCATOR_TRACE
         MERROR("Не удалось перераспределить %p.", original);
@@ -153,7 +153,7 @@ void VulkanAllocInternalAlloc(void* pUserData, size_t size, VkInternalAllocation
 #ifdef MVULKAN_ALLOCATOR_TRACE
     MTRACE("Внешнее распределение размера: %llu", size);
 #endif
-    MMemory::AllocateReport((u64)size, Memory::VulkanEXT);
+    MemorySystem::AllocateReport((u64)size, Memory::VulkanEXT);
 }
 
 /// @brief Реализация PFN_vkInternalFreeNotification. Чисто информационная, с ней ничего нельзя сделать, кроме как отслеживать.
@@ -167,7 +167,7 @@ void VulkanAllocInternalFree(void* pUserData, size_t size, VkInternalAllocationT
 #ifdef MVULKAN_ALLOCATOR_TRACE
     MTRACE("Внешний свободный размер: %llu", size);
 #endif
-    MMemory::FreeReport((u64)size, Memory::VulkanEXT);
+    MemorySystem::FreeReport((u64)size, Memory::VulkanEXT);
 }
 
 /// @brief Создайте объект распределителя Vulkan, заполнив указатели функций в предоставленной структуре.
@@ -189,7 +189,7 @@ bool VulkanAPI::CreateVulkanAllocator(VkAllocationCallbacks* callbacks) {
 }
 #endif // MVULKAN_USE_CUSTOM_ALLOCATOR == 1
 
-VulkanAPI::VulkanAPI(MWindow *window,  const RendererConfig& config, u8& OutWindowRenderTargetCount)
+VulkanAPI::VulkanAPI(const RendererConfig& config, u8& OutWindowRenderTargetCount)
 : FrameDeltaTime(),
 // Просто установите некоторые значения по умолчанию для буфера кадра на данный момент.
 // На самом деле неважно, что это, потому что они будут переопределены, но они необходимы для создания цепочки обмена.
@@ -209,11 +209,11 @@ MultithreadingEnabled(false)
 {
     // ПРИМЕЧАНИЕ: Пользовательский распределитель.
 #if MVULKAN_USE_CUSTOM_ALLOCATOR == 1
-    allocator = MMemory::TAllocate<VkAllocationCallbacks>(Memory::Renderer);
+    allocator = MemorySystem::TAllocate<VkAllocationCallbacks>(Memory::Renderer);
     if (!CreateVulkanAllocator(allocator)) {
         // Если это не удается, аккуратно вернитесь к распределителю по умолчанию.
         MFATAL("Не удалось создать пользовательский распределитель Vulkan. Продолжаем использовать распределитель драйвера по умолчанию.");
-        MMemory::Free(allocator, sizeof(VkAllocationCallbacks), Memory::Renderer);
+        MemorySystem::Free(allocator, sizeof(VkAllocationCallbacks), Memory::Renderer);
         allocator = nullptr;
         }
 #else
@@ -344,7 +344,7 @@ MultithreadingEnabled(false)
 
     // Поверхность
     MDEBUG("Создание Vulkan поверхности...");
-    if (!PlatformCreateVulkanSurface(window, this)) {
+    if (!PlatformCreateVulkanSurface(this)) {
         MERROR("Не удалось создать поверхность платформы!");
         return;
     }
@@ -683,7 +683,7 @@ bool VulkanAPI::RenderpassBegin(Renderpass* pass, RenderTarget& target)
     VkClearValue ClearValues[2]{};
     bool DoClearColour = (pass->ClearFlags & RenderpassClearFlag::ColourBuffer) != 0;
     if (DoClearColour) {
-        MMemory::CopyMem(ClearValues[BeginInfo.clearValueCount].color.float32, pass->ClearColour.elements, sizeof(f32) * 4);
+        MemorySystem::CopyMem(ClearValues[BeginInfo.clearValueCount].color.float32, pass->ClearColour.elements, sizeof(f32) * 4);
         BeginInfo.clearValueCount++;
     } else {
         // Все равно добавьте его, но не беспокойтесь о копировании данных, так как они будут проигнорированы.
@@ -692,7 +692,7 @@ bool VulkanAPI::RenderpassBegin(Renderpass* pass, RenderTarget& target)
 
     bool DoClearDepth = (pass->ClearFlags & RenderpassClearFlag::DepthBuffer) != 0;
     if (DoClearDepth) {
-        MMemory::CopyMem(ClearValues[BeginInfo.clearValueCount].color.float32, pass->ClearColour.elements, sizeof(f32) * 4);
+        MemorySystem::CopyMem(ClearValues[BeginInfo.clearValueCount].color.float32, pass->ClearColour.elements, sizeof(f32) * 4);
         ClearValues[BeginInfo.clearValueCount].depthStencil.depth = VkRenderpass->depth;
 
         bool DoClearStencil = (pass->ClearFlags & RenderpassClearFlag::StencilBuffer) != 0;
@@ -1328,10 +1328,10 @@ void VulkanAPI::Unload(Shader *shader)
         }
 
         // Уничтожьте конфигурацию.
-        MMemory::ZeroMem(&VkShader->config, sizeof(VulkanShaderConfig));
+        MemorySystem::ZeroMem(&VkShader->config, sizeof(VulkanShaderConfig));
 
         // Освободите внутреннюю память данных.
-        MMemory::Free(shader->ShaderData, sizeof(VulkanShader), Memory::Renderer);
+        MemorySystem::Free(shader->ShaderData, sizeof(VulkanShader), Memory::Renderer);
         shader->ShaderData = 0;
     }
 }
@@ -1706,9 +1706,9 @@ bool VulkanAPI::ShaderAcquireInstanceResources(Shader *shader, TextureMap** maps
     // Настраивайте только в том случае, если шейдер действительно этого требует.
     if (shader->InstanceTextureCount > 0) {
         // Очистите память всего массива, даже если она не вся использована.
-        InstanceState.InstanceTextureMaps = MMemory::TAllocate<TextureMap*>(Memory::Array, shader->InstanceTextureCount, true);
+        InstanceState.InstanceTextureMaps = MemorySystem::TAllocate<TextureMap*>(Memory::Array, shader->InstanceTextureCount, true);
         Texture* DefaultTexture = TextureSystem::Instance()->GetDefaultTexture(ETexture::Default);
-        MMemory::CopyMem(InstanceState.InstanceTextureMaps, maps, sizeof(TextureMap*) * shader->InstanceTextureCount);
+        MemorySystem::CopyMem(InstanceState.InstanceTextureMaps, maps, sizeof(TextureMap*) * shader->InstanceTextureCount);
         // Установите для всех указателей текстур значения по умолчанию, пока они не будут назначены.
         for (u32 i = 0; i < InstanceTextureCount; ++i) {
             if (!maps[i]->texture) {
@@ -1779,10 +1779,10 @@ bool VulkanAPI::ShaderReleaseInstanceResources(Shader *shader, u32 InstanceID)
     }
 
     // Уничтожить состояния дескриптора.
-    MMemory::ZeroMem(InstanceState.DescriptorSetState.DescriptorStates, sizeof(VulkanDescriptorState) * VulkanShaderConstants::MaxBindings);
+    MemorySystem::ZeroMem(InstanceState.DescriptorSetState.DescriptorStates, sizeof(VulkanDescriptorState) * VulkanShaderConstants::MaxBindings);
 
     if (InstanceState.InstanceTextureMaps) {
-        MMemory::Free(InstanceState.InstanceTextureMaps, sizeof(TextureMap*) * shader->InstanceTextureCount, Memory::Array);
+        MemorySystem::Free(InstanceState.InstanceTextureMaps, sizeof(TextureMap*) * shader->InstanceTextureCount, Memory::Array);
         InstanceState.InstanceTextureMaps = nullptr;
     }
 
@@ -1949,7 +1949,7 @@ bool VulkanAPI::RecreateSwapchain()
 
     // Укажите слушателям, что требуется обновление цели рендеринга.
     EventContext EventContext = {0};
-    Event::GetInstance()->Fire(EVENT_CODE_DEFAULT_RENDERTARGET_REFRESH_REQUIRED, 0, EventContext);
+    EventSystem::Fire(EVENT_CODE_DEFAULT_RENDERTARGET_REFRESH_REQUIRED, 0, EventContext);
 
     CreateCommandBuffers();
 
@@ -1977,7 +1977,7 @@ bool VulkanAPI::SetUniform(Shader *shader, Shader::Uniform *uniform, const void 
             // Сопоставьте подходящую ячейку памяти и скопируйте данные.
             u64 addr = (u64)VkShader->MappedUniformBufferBlock;
             addr += shader->BoundUboOffset + uniform->offset;
-            MMemory::CopyMem((void*)addr, value, uniform->size);
+            MemorySystem::CopyMem((void*)addr, value, uniform->size);
             if (addr) {
             }
         }
@@ -2036,7 +2036,7 @@ void VulkanAPI::RenderTargetCreate(u8 AttachmentCount, RenderTargetAttachment *a
         AttachmentViews[i] = attachments[i].texture->Data->view;
     }
     
-    MMemory::CopyMem(OutTarget.attachments, attachments, sizeof(RenderTargetAttachment) * AttachmentCount);
+    MemorySystem::CopyMem(OutTarget.attachments, attachments, sizeof(RenderTargetAttachment) * AttachmentCount);
 
     VkFramebufferCreateInfo FramebufferCreateInfo = {VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
     FramebufferCreateInfo.renderPass = reinterpret_cast<VulkanRenderpass*>(pass->InternalData)->handle;
@@ -2055,7 +2055,7 @@ void VulkanAPI::RenderTargetDestroy(RenderTarget &target, bool FreeInternalMemor
         vkDestroyFramebuffer(Device.LogicalDevice, (VkFramebuffer)target.InternalFramebuffer, allocator);
         target.InternalFramebuffer = 0;
         if (FreeInternalMemory) {
-            MMemory::Free(target.attachments, sizeof(RenderTargetAttachment) * target.AttachmentCount, Memory::Array);
+            MemorySystem::Free(target.attachments, sizeof(RenderTargetAttachment) * target.AttachmentCount, Memory::Array);
             target.attachments = nullptr;
             target.AttachmentCount = 0;
         }
@@ -2068,13 +2068,13 @@ bool VulkanAPI::RenderpassCreate(const RenderpassConfig& config, Renderpass& Out
     OutRenderpass.ClearColour = config.ClearColour;
     OutRenderpass.ClearFlags = config.ClearFlags;
     OutRenderpass.RenderTargetCount = config.RenderTargetCount;
-    OutRenderpass.targets = MMemory::TAllocate<RenderTarget>(Memory::Array, OutRenderpass.RenderTargetCount, true);
+    OutRenderpass.targets = MemorySystem::TAllocate<RenderTarget>(Memory::Array, OutRenderpass.RenderTargetCount, true);
 
     // Скопируйте конфигурацию для каждой цели.
     for (u32 t = 0; t < OutRenderpass.RenderTargetCount; ++t) {
         auto& target = OutRenderpass.targets[t];
         target.AttachmentCount = config.target.AttachmentCount;
-        target.attachments = MMemory::TAllocate<RenderTargetAttachment>(Memory::Array, target.AttachmentCount);
+        target.attachments = MemorySystem::TAllocate<RenderTargetAttachment>(Memory::Array, target.AttachmentCount);
 
         // Каждое вложение для цели.
         for (u32 a = 0; a < target.AttachmentCount; ++a) {
@@ -2160,7 +2160,7 @@ bool VulkanAPI::RenderBufferCreate(RenderBufferType type, u64 TotalSize, bool Us
     buffer.TotalSize = TotalSize;
     if (UseFreelist) {
         buffer.FreelistMemoryRequirement = FreeList::GetMemoryRequirement(TotalSize);
-        buffer.FreelistBlock = MMemory::Allocate(buffer.FreelistMemoryRequirement, Memory::Renderer);
+        buffer.FreelistBlock = MemorySystem::Allocate(buffer.FreelistMemoryRequirement, Memory::Renderer);
         buffer.BufferFreelist.Create(TotalSize, buffer.FreelistBlock);
     }
     if (!RenderBufferCreateInternal(buffer)) {
@@ -2232,7 +2232,7 @@ bool VulkanAPI::RenderBufferCreateInternal(RenderBuffer &buffer)
     bool IsDeviceMemory = (InternalBuffer.MemoryPropertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) == VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
     // Сообщите о памяти как об используемой.
-    MMemory::AllocateReport(InternalBuffer.MemoryRequirements.size, IsDeviceMemory ? Memory::GPULocal : Memory::Vulkan);
+    MemorySystem::AllocateReport(InternalBuffer.MemoryRequirements.size, IsDeviceMemory ? Memory::GPULocal : Memory::Vulkan);
 
     if (result != VK_SUCCESS) {
         MERROR("Не удалось создать буфер vulkan, так как требуемое выделение памяти не удалось. Ошибка: %i", result);
@@ -2260,8 +2260,8 @@ void VulkanAPI::RenderBufferDestroyInternal(RenderBuffer &buffer)
 
         // Сообщить о свободной памяти.
         bool IsDeviceMemory = (VkBuf->MemoryPropertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) == VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-        MMemory::FreeReport(VkBuf->MemoryRequirements.size, IsDeviceMemory ? Memory::GPULocal : Memory::Vulkan);
-        MMemory::ZeroMem(&VkBuf->MemoryRequirements, sizeof(VkMemoryRequirements));
+        MemorySystem::FreeReport(VkBuf->MemoryRequirements.size, IsDeviceMemory ? Memory::GPULocal : Memory::Vulkan);
+        MemorySystem::ZeroMem(&VkBuf->MemoryRequirements, sizeof(VkMemoryRequirements));
 
         VkBuf->usage = static_cast<VkBufferUsageFlagBits>(0);
         VkBuf->IsLocked = false;
@@ -2363,7 +2363,7 @@ bool VulkanAPI::RenderBufferRead(RenderBuffer &buffer, u64 offset, u64 size, voi
         // Map/copy/unmap
         void* MappedData;
         VK_CHECK(vkMapMemory(Device.LogicalDevice, ReadInternal->memory, 0, size, 0, &MappedData));
-        MMemory::CopyMem(*OutMemory, MappedData, size);
+        MemorySystem::CopyMem(*OutMemory, MappedData, size);
         vkUnmapMemory(Device.LogicalDevice, ReadInternal->memory);
 
         // Очистите буфер чтения.
@@ -2373,7 +2373,7 @@ bool VulkanAPI::RenderBufferRead(RenderBuffer &buffer, u64 offset, u64 size, voi
         // Если промежуточный буфер не нужен, отобразите/скопируйте/отмените отображение.
         void* PtrData;
         VK_CHECK(vkMapMemory(Device.LogicalDevice, VkBuf->memory, offset, size, 0, &PtrData));
-        MMemory::CopyMem(*OutMemory, PtrData, size);
+        MemorySystem::CopyMem(*OutMemory, PtrData, size);
         vkUnmapMemory(Device.LogicalDevice, VkBuf->memory);
     }
 
@@ -2438,9 +2438,9 @@ bool VulkanAPI::RenderBufferResize(RenderBuffer &buffer, u64 NewTotalSize)
     // Отчет об освобождении старого, выделение нового.
     bool IsDeviceMemory = (VkBuf->MemoryPropertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) == VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
-    MMemory::FreeReport(VkBuf->MemoryRequirements.size, IsDeviceMemory ? Memory::GPULocal : Memory::Vulkan);
+    MemorySystem::FreeReport(VkBuf->MemoryRequirements.size, IsDeviceMemory ? Memory::GPULocal : Memory::Vulkan);
     VkBuf->MemoryRequirements = requirements;
-    MMemory::AllocateReport(VkBuf->MemoryRequirements.size, IsDeviceMemory ? Memory::GPULocal : Memory::Vulkan);
+    MemorySystem::AllocateReport(VkBuf->MemoryRequirements.size, IsDeviceMemory ? Memory::GPULocal : Memory::Vulkan);
 
     // Установить новые свойства
     VkBuf->memory = NewMemory;
@@ -2482,7 +2482,7 @@ bool VulkanAPI::RenderBufferLoadRange(RenderBuffer &buffer, u64 offset, u64 size
         // Если промежуточный буфер не нужен, отобразите/скопируйте/отмените отображение.
         void* ptrData;
         VK_CHECK(vkMapMemory(Device.LogicalDevice, VkBuf->memory, offset, size, 0, &ptrData));
-        MMemory::CopyMem(ptrData, data, size);
+        MemorySystem::CopyMem(ptrData, data, size);
         vkUnmapMemory(Device.LogicalDevice, VkBuf->memory);
     }
 

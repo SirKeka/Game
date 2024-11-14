@@ -1,19 +1,26 @@
-/**
- * @file material_system.hpp
- * @author
- * @brief Система материалов отвечает за управление материалами в движке, включая подсчет ссылок и автоматическую выгрузку.
- * @version 1.0
- * @date
- * 
- * @copyright
- * 
- */
+/// @file material_system.hpp
+/// @author
+/// @brief Система материалов отвечает за управление материалами в движке, включая подсчет ссылок и автоматическую выгрузку.
+/// @version 1.0
+/// @date
+/// 
+/// @copyright
 #pragma once
 #include "resources/material/material.hpp"
 #include "containers/hashtable.hpp"
+
 class Matrix4D;
 
+/// @brief Имя материала по умолчанию.
 constexpr const char* DEFAULT_MATERIAL_NAME = "default";    // Имя материала по умолчанию.
+
+/// @brief Конфигурация для системы материалов.
+struct MaterialSystemConfig
+{
+    /// @brief Максимальное количество загруженных материалов.
+    u32 MaxMaterialCount;
+};
+
 
 class MaterialSystem
 {
@@ -79,7 +86,7 @@ public:
     /// @brief Функция создает объект класса и инициализирует его
     /// @param MaxMaterialCount максимальное количество загружаемых материалов.
     /// @return true если инициализаця прошла успешно или false если нет
-    static bool Initialize(u32 MaxMaterialCount, class LinearAllocator& SystemAllocator);
+    static bool Initialize(u64& MemoryRequirement, void* memory, void* config);
     static void Shutdown();
     //-------------------------------------------------------------------------------------------------------------------------------
 

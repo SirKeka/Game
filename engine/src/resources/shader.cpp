@@ -1,5 +1,5 @@
 #include "shader.hpp"
-#include "renderer/renderer.hpp"
+#include "renderer/rendering_system.hpp"
 #include "renderer/vulkan/vulkan_shader.hpp"
 
 constexpr Shader::Shader()
@@ -49,7 +49,7 @@ Shader::Shader(u32 id, const Config &config)
     BoundScope(), 
     BoundInstanceID(INVALID::ID), 
     BoundUboOffset(), 
-    HashtableBlock(MMemory::Allocate(1024 * sizeof(u16), Memory::Renderer, true)), 
+    HashtableBlock(MemorySystem::Allocate(1024 * sizeof(u16), Memory::Renderer, true)), 
     UniformLookup(1024, false, reinterpret_cast<u16*>(HashtableBlock), true, INVALID::U16ID), 
     uniforms(config.UniformCount), 
     attributes(), 
@@ -68,7 +68,7 @@ Shader::Shader(u32 id, const Config &config)
 
 Shader::~Shader()
 {
-    Renderer::Unload(this);
+    RenderingSystem::Unload(this);
 
     // Сразу же сделайте его непригодным для использования.
     state = State::NotCreated;
@@ -84,7 +84,7 @@ bool Shader::Create(u32 id, const Config &config)
     this->state = State::NotCreated;
     this->name = config.name;
     this->PushConstantRangeCount = 0;
-    MMemory::ZeroMem(this->PushConstantRanges, sizeof(Range) * 32);
+    MemorySystem::ZeroMem(this->PushConstantRanges, sizeof(Range) * 32);
     this->BoundInstanceID = INVALID::ID;
     this->AttributeStride = 0;
 
@@ -92,7 +92,7 @@ bool Shader::Create(u32 id, const Config &config)
     // Это обеспечивает прямой индекс массива «uniforms», хранящегося в шейдере, для быстрого поиска по имени.
     u64 ElementSize = sizeof(u16);  // Индексы хранятся как u16.
     u64 ElementCount = 1024;        // Это больше униформ, чем нам когда-либо понадобится, но стол большего размера снижает вероятность столкновений.
-    this->HashtableBlock = MMemory::Allocate(ElementSize * ElementCount, Memory::HashTable);
+    this->HashtableBlock = MemorySystem::Allocate(ElementSize * ElementCount, Memory::HashTable);
     this->UniformLookup.Create(ElementCount, false, reinterpret_cast<u16*>(this->HashtableBlock));
 
     // Сделайте недействительными все места в хеш-таблице.

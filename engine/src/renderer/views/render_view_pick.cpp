@@ -1,7 +1,7 @@
 #include "render_view_pick.hpp"
 #include "memory/linear_allocator.hpp"
 #include "core/uuid.hpp"
-#include "renderer/renderer.hpp"
+#include "renderer/rendering_system.hpp"
 #include "resources/ui_text.hpp"
 #include "systems/camera_system.hpp"
 #include "systems/resource_system.hpp"
@@ -76,12 +76,12 @@ MouseX(), MouseY()
     // InstanceCount = 0;
 
     // Регистрация для события перемещения мыши.
-    if (!Event::Register(EVENT_CODE_MOUSE_MOVED, this, OnMouseMoved)) {
+    if (!EventSystem::Register(EVENT_CODE_MOUSE_MOVED, this, OnMouseMoved)) {
         MERROR("Не удалось прослушать событие перемещения мыши, создание не удалось.");
         return;
     }
 
-    if (!Event::Register(EVENT_CODE_DEFAULT_RENDERTARGET_REFRESH_REQUIRED, this, RenderViewOnEvent)) {
+    if (!EventSystem::Register(EVENT_CODE_DEFAULT_RENDERTARGET_REFRESH_REQUIRED, this, RenderViewOnEvent)) {
         MERROR("Не удалось прослушать требуемое событие обновления, создание не удалось.");
         return;
     }
@@ -90,13 +90,13 @@ MouseX(), MouseY()
 
 RenderViewPick::~RenderViewPick()
 {
-    Event::Unregister(EVENT_CODE_MOUSE_MOVED, this, OnMouseMoved);
-    Event::Unregister(EVENT_CODE_DEFAULT_RENDERTARGET_REFRESH_REQUIRED, this, RenderViewOnEvent);
+    EventSystem::Unregister(EVENT_CODE_MOUSE_MOVED, this, OnMouseMoved);
+    EventSystem::Unregister(EVENT_CODE_DEFAULT_RENDERTARGET_REFRESH_REQUIRED, this, RenderViewOnEvent);
 
     ReleaseShaderInstances();
 
-    Renderer::Unload(&ColoureTargetAttachmentTexture);
-    Renderer::Unload(&DepthTargetAttachmentTexture);
+    RenderingSystem::Unload(&ColoureTargetAttachmentTexture);
+    RenderingSystem::Unload(&DepthTargetAttachmentTexture);
 }
 
 void RenderViewPick::Resize(u32 width, u32 height)
@@ -188,7 +188,7 @@ bool RenderViewPick::BuildPacket(LinearAllocator& FrameAllocator, void *data, Pa
     }
 
     // Копируем данные пакета.
-    MMemory::CopyMem(OutPacket.ExtendedData, PacketData, sizeof(RenderViewPick::PacketData));
+    MemorySystem::CopyMem(OutPacket.ExtendedData, PacketData, sizeof(RenderViewPick::PacketData));
 
     return true;
 }
@@ -196,7 +196,7 @@ bool RenderViewPick::BuildPacket(LinearAllocator& FrameAllocator, void *data, Pa
 void RenderViewPick::DestroyPacket(Packet &packet)
 {
     packet.geometries.Clear();
-    MMemory::ZeroMem(&packet, sizeof(Packet));
+    MemorySystem::ZeroMem(&packet, sizeof(Packet));
 }
 
 bool RenderViewPick::Render(const Packet &packet, u64 FrameNumber, u64 RenderTargetIndex)
@@ -211,7 +211,7 @@ bool RenderViewPick::Render(const Packet &packet, u64 FrameNumber, u64 RenderTar
             InstanceUpdate[i] = false;
         }
 
-        if (!Renderer::RenderpassBegin(pass, pass->targets[RenderTargetIndex])) {
+        if (!RenderingSystem::RenderpassBegin(pass, pass->targets[RenderTargetIndex])) {
             MERROR("RenderViewPick::Render Не удалось запустить индекс прохода рендеринга %u.", p);
             return false;
         }
@@ -263,10 +263,10 @@ bool RenderViewPick::Render(const Packet &packet, u64 FrameNumber, u64 RenderTar
             }
 
             // Нарисовать ее.
-            Renderer::DrawGeometry(packet.geometries[i]);
+            RenderingSystem::DrawGeometry(packet.geometries[i]);
         }
 
-        if (!Renderer::RenderpassEnd(pass)) {
+        if (!RenderingSystem::RenderpassEnd(pass)) {
             MERROR("RenderViewPick::Render Индекс прохода рендеринга %u не удалось завершить.", p);
             return false;
         }
@@ -274,7 +274,7 @@ bool RenderViewPick::Render(const Packet &packet, u64 FrameNumber, u64 RenderTar
         p++;
         pass = &passes[p];  // Второй проход
 
-        if (!Renderer::RenderpassBegin(pass, pass->targets[RenderTargetIndex])) {
+        if (!RenderingSystem::RenderpassBegin(pass, pass->targets[RenderTargetIndex])) {
             MERROR("RenderViewPick::Render индекс прохода %u не удалось запустить.", p);
             return false;
         }
@@ -321,7 +321,7 @@ bool RenderViewPick::Render(const Packet &packet, u64 FrameNumber, u64 RenderTar
             }
 
             // Нарисовать ее.
-            Renderer::DrawGeometry(packet.geometries[i]);
+            RenderingSystem::DrawGeometry(packet.geometries[i]);
         }
 
         // Нарисовать растровый текст
@@ -352,7 +352,7 @@ bool RenderViewPick::Render(const Packet &packet, u64 FrameNumber, u64 RenderTar
             text->Draw();
         }
 
-        if (!Renderer::RenderpassEnd(pass)) {
+        if (!RenderingSystem::RenderpassEnd(pass)) {
             MERROR("RenderViewPick::Render индекс прохода %u не завершился.", p);
             return false;
         }
@@ -365,7 +365,7 @@ bool RenderViewPick::Render(const Packet &packet, u64 FrameNumber, u64 RenderTar
     // Прижать к размеру изображения
     // u16 xCoord = MCLAMP(MouseX, 0, width - 1);
     // u16 yCoord = MCLAMP(MouseY, 0, height - 1);
-    Renderer::TextureReadPixel(&ColoureTargetAttachmentTexture, MouseX, MouseY, &pixel);
+    RenderingSystem::TextureReadPixel(&ColoureTargetAttachmentTexture, MouseX, MouseY, &pixel);
 
     // Извлечь идентификатор из выбранного цвета.
     u32 id = INVALID::ID;
@@ -377,7 +377,7 @@ bool RenderViewPick::Render(const Packet &packet, u64 FrameNumber, u64 RenderTar
 
     EventContext context;
     context.data.u32[0] = id;
-    Event::Fire(EVENT_CODE_OBJECT_HOVER_ID_CHANGED, nullptr, context);
+    EventSystem::Fire(EVENT_CODE_OBJECT_HOVER_ID_CHANGED, nullptr, context);
 
     return true;
 }
@@ -405,8 +405,8 @@ bool RenderViewPick::RegenerateAttachmentTarget(u32 PassIndex, RenderTargetAttac
 
     // Уничтожьте текущее прикрепленное приложение, если оно существует.
     if (attachment->texture->Data) {
-        Renderer::Unload(attachment->texture);
-        MMemory::ZeroMem(attachment->texture, sizeof(Texture));
+        RenderingSystem::Unload(attachment->texture);
+        MemorySystem::ZeroMem(attachment->texture, sizeof(Texture));
     }
 
     // Настройте новую текстуру.
@@ -431,7 +431,7 @@ bool RenderViewPick::RegenerateAttachmentTarget(u32 PassIndex, RenderTargetAttac
     }
     attachment->texture->Data = nullptr;
 
-    Renderer::LoadTextureWriteable(attachment->texture);
+    RenderingSystem::LoadTextureWriteable(attachment->texture);
 
     return true;
 }
@@ -443,12 +443,12 @@ void RenderViewPick::GetMatrices(Matrix4D &OutView, Matrix4D &OutProjection)
 
 void *RenderViewPick::operator new(u64 size)
 {
-    return MMemory::Allocate(size, Memory::Renderer);
+    return MemorySystem::Allocate(size, Memory::Renderer);
 }
 
 void RenderViewPick::operator delete(void *ptr, u64 size)
 {
-    MMemory::Free(ptr, size, Memory::Renderer);
+    MemorySystem::Free(ptr, size, Memory::Renderer);
 }
 
 bool RenderViewPick::OnMouseMoved(u16 code, void *sender, void *ListenerInst, EventContext EventData)
@@ -473,12 +473,12 @@ void RenderViewPick::AcquireShaderInstances()
     // Не сохраняем идентификатор экземпляра, так как это не имеет значения.
     u32 instance;
     // Шейдер пользовательского интерфейса
-    if (!Renderer::ShaderAcquireInstanceResources(UiShaderInfo.s, nullptr, instance)) {
+    if (!RenderingSystem::ShaderAcquireInstanceResources(UiShaderInfo.s, nullptr, instance)) {
         MFATAL("RenderViewPick не удалось получить ресурсы шейдера.");
         return;
     }
     // Шейдер мира
-    if (!Renderer::ShaderAcquireInstanceResources(WorldShaderInfo.s, nullptr, instance)) {
+    if (!RenderingSystem::ShaderAcquireInstanceResources(WorldShaderInfo.s, nullptr, instance)) {
         MFATAL("RenderViewPick не удалось получить ресурсы шейдера.");
         return;
     }
@@ -490,12 +490,12 @@ void RenderViewPick::ReleaseShaderInstances()
 {
     for (u32 i = 0; i < InstanceCount; ++i) {
         // Шейдер пользовательского интерфейса
-        if (!Renderer::ShaderReleaseInstanceResources(UiShaderInfo.s, i)) {
+        if (!RenderingSystem::ShaderReleaseInstanceResources(UiShaderInfo.s, i)) {
             MWARN("Не удалось освободить ресурсы шейдера.");
         }
 
         // Шейдер мира
-        if (!Renderer::ShaderReleaseInstanceResources(WorldShaderInfo.s, i)) {
+        if (!RenderingSystem::ShaderReleaseInstanceResources(WorldShaderInfo.s, i)) {
             MWARN("Не удалось освободить ресурсы шейдера.");
         }
     }

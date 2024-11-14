@@ -9,7 +9,12 @@
 #include "containers/hashtable.hpp"
 #include "renderer/views/render_view.hpp"
 
-class LinearAllocator;
+/// @brief Конфигурация для системы рендеринга представлений.
+struct RenderViewSystemConfig
+{
+    /// @brief Максимальное количество представлений, которые могут быть зарегистрированы в системе.
+    u16 MaxViewCount;
+};
 
 class RenderViewSystem
 {
@@ -26,7 +31,7 @@ public:
     RenderViewSystem(const RenderViewSystem&) = delete;
     RenderViewSystem& operator= (const RenderViewSystem&) = delete;
 
-    static bool Initialize(u16 MaxViewCount, LinearAllocator& SystemAllocator);
+    static bool Initialize(u64& MemoryRequirement, void* memory, void* config);
     static void Shutdown();
 
     /// @brief Создает новый вид с использованием предоставленной конфигурации. Затем новый вид может быть получен с помощью вызова RenderViewSystem::Get.

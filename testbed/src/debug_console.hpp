@@ -21,6 +21,9 @@ namespace DebugConsole
     void MoveDown();
     void MoveToTop();
     void MoveToBottom();
+
+    void HistoryBack();
+    void HistoryForward();
 }; // namespace DebugConsole
 
 

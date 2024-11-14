@@ -135,10 +135,10 @@ struct BitmapFontResourceData {
         d.pages = nullptr;
     }
     void* operator new(u64 size) {
-        return MMemory::Allocate(size, Memory::Resource);
+        return MemorySystem::Allocate(size, Memory::Resource);
     }
     void operator delete(void* ptr, u64 size) {
-        MMemory::Free(ptr, size, Memory::Resource);
+        MemorySystem::Free(ptr, size, Memory::Resource);
     }
 };
 

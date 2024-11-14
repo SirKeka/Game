@@ -34,9 +34,9 @@ struct VulkanBuffer
     MemoryPropertyFlags(b.MemoryPropertyFlags) {}
 
     void* operator new(u64 size) {
-        return MMemory::Allocate(size, Memory::Vulkan);
+        return MemorySystem::Allocate(size, Memory::Vulkan);
     }
     void operator delete(void* ptr, u64 size) {
-        MMemory::Free(ptr, size, Memory::Vulkan);
+        MemorySystem::Free(ptr, size, Memory::Vulkan);
     }
 };

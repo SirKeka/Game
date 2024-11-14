@@ -9,8 +9,8 @@ struct SystemFontConfig {
     u16 DefaultSize     {};
     MString ResourceName{};
     constexpr SystemFontConfig(MString&& name, u16 DefaultSize, MString&& ResourceName) : name(static_cast<MString&&>(name)), DefaultSize(DefaultSize), ResourceName(static_cast<MString&&>(ResourceName)) {}
-    void* operator new(u64 size)              { return MMemory::Allocate(size, Memory::SystemFont); }
-    void operator delete(void* ptr, u64 size) { MMemory::Free(ptr, size, Memory::SystemFont); }
+    void* operator new(u64 size)              { return MemorySystem::Allocate(size, Memory::SystemFont); }
+    void operator delete(void* ptr, u64 size) { MemorySystem::Free(ptr, size, Memory::SystemFont); }
 };
 
 struct BitmapFontConfig {
@@ -19,8 +19,8 @@ struct BitmapFontConfig {
     MString ResourceName{};
     constexpr BitmapFontConfig(MString&& name, u16 size, MString&& ResourceName) : name(name), size(size), ResourceName(ResourceName) {}
 
-    void* operator new(u64 size)              { return MMemory::Allocate(size, Memory::BitmapFont); }
-    void operator delete(void* ptr, u64 size) { MMemory::Free(ptr, size, Memory::BitmapFont); }
+    void* operator new(u64 size)              { return MemorySystem::Allocate(size, Memory::BitmapFont); }
+    void operator delete(void* ptr, u64 size) { MemorySystem::Free(ptr, size, Memory::BitmapFont); }
 };
 
 struct FontSystemConfig {
@@ -44,8 +44,8 @@ private:
     HashTable<u16> systemFontLookup     {};
     BitmapFontLookup* BitmapFonts{nullptr};
     SystemFontLookup* SystemFonts{nullptr};
-    void* BitmapHashTableBlock   {nullptr};
-    void* SystemHashtableBlock   {nullptr};
+    [[maybe_unused]]void* BitmapHashTableBlock   {nullptr};
+    [[maybe_unused]]void* SystemHashtableBlock   {nullptr};
 
     static FontSystem* state;
 
@@ -59,7 +59,7 @@ private:
 public:
     ~FontSystem() = default;
 
-    static bool Initialize(FontSystemConfig& config, class LinearAllocator& SystemAllocator);
+    static bool Initialize(u64& MemoryRequirement, void* memory, void* config);
     static void Shutdown();
 
     static bool LoadFont(SystemFontConfig& config);

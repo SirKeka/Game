@@ -1,5 +1,6 @@
 #pragma once
 #include "defines.hpp"
+#include <iostream>
 
 // Указатель функции, которая будет вызвана при запуске потока.
 typedef u32 (*PFN_ThreadStart)(void *);
@@ -9,11 +10,12 @@ typedef u32 (*PFN_ThreadStart)(void *);
 /// Это вызывает реализацию потока, специфичную для платформы.
 class MThread
 {
-friend class JobSystem;
+// friend class JobSystem;
 private:
     void* data;
-    u32 ThreadID;
 public:
+    u32 ThreadID;
+
     constexpr MThread() : data(nullptr), ThreadID() {}
     /// @brief Создает новый поток, немедленно вызывая указанную функцию.
     /// @param StartFunctionPtr указатель на функцию, которая будет вызвана немедленно. Обязательно.

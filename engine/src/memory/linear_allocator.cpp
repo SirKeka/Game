@@ -6,7 +6,7 @@ constexpr LinearAllocator::LinearAllocator(u64 TotalSize, void *memory)
 :
     TotalSize(TotalSize),
     allocated(),
-    memory(memory ? memory : MMemory::Allocate(TotalSize, Memory::LinearAllocator, true)),
+    memory(memory ? memory : MemorySystem::Allocate(TotalSize, Memory::LinearAllocator, true)),
     OwnsMemory(memory == nullptr)
 {}
 
@@ -16,7 +16,7 @@ LinearAllocator::~LinearAllocator()
         allocated = 0;
         OwnsMemory = memory == nullptr;
 
-        if (OwnsMemory && memory) MMemory::Free(memory, TotalSize, Memory::LinearAllocator);
+        if (OwnsMemory && memory) MemorySystem::Free(memory, TotalSize, Memory::LinearAllocator);
 
         memory = nullptr;
         TotalSize = 0;
@@ -27,7 +27,7 @@ LinearAllocator::~LinearAllocator()
 void LinearAllocator::Initialize(u64 TotalSize, void *memory)
 {
     this->TotalSize = TotalSize;
-    this->memory = memory ? memory : MMemory::Allocate(TotalSize, Memory::LinearAllocator, true);
+    this->memory = memory ? memory : MemorySystem::Allocate(TotalSize, Memory::LinearAllocator, true);
     OwnsMemory = memory == nullptr;
 }
 
@@ -51,6 +51,6 @@ void LinearAllocator::FreeAll()
 {
     if (memory) {
        allocated = 0;
-        MMemory::ZeroMem(memory, TotalSize);
+        MemorySystem::ZeroMem(memory, TotalSize);
     }
 }

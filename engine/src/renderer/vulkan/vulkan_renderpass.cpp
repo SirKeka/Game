@@ -10,10 +10,10 @@ void VulkanRenderpass::Destroy(VulkanAPI *VkAPI)
 
 void *VulkanRenderpass::operator new(u64 size)
 {
-    return MMemory::Allocate(size, Memory::Renderer);
+    return MemorySystem::Allocate(size, Memory::Renderer);
 }
 
 void VulkanRenderpass::operator delete(void *ptr, u64 size)
 {
-    MMemory::Free(ptr, size, Memory::Renderer);
+    MemorySystem::Free(ptr, size, Memory::Renderer);
 }

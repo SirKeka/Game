@@ -19,19 +19,28 @@ struct GeometryID {
     char name[GEOMETRY_NAME_MAX_LENGTH];
     class Material* material;
     GeometryID(u32 id, u16 generation) : id(id), InternalID(INVALID::ID), generation(generation), name(), material(nullptr) {}
-    GeometryID(const char* name) : id(INVALID::ID), InternalID(INVALID::ID), generation(INVALID::U16ID), material(nullptr) {MMemory::CopyMem(this->name, name, GEOMETRY_NAME_MAX_LENGTH);}
-    void* operator new[](u64 size) { return MMemory::Allocate(size, Memory::Array); }
-    void operator delete[](void* ptr, u64 size) { MMemory::Free(ptr, size, Memory::Array); }
+    GeometryID(const char* name) : id(INVALID::ID), InternalID(INVALID::ID), generation(INVALID::U16ID), material(nullptr) {MemorySystem::CopyMem(this->name, name, GEOMETRY_NAME_MAX_LENGTH);}
+    void* operator new[](u64 size) { return MemorySystem::Allocate(size, Memory::Array); }
+    void operator delete[](void* ptr, u64 size) { MemorySystem::Free(ptr, size, Memory::Array); }
 };
 
+/// @brief Представляет конфигурацию геометрии.
 struct MAPI GeometryConfig {
+    /// @brief Размер каждой вершины.
     u32 VertexSize;
+    /// @brief Количество вершин.
     u32 VertexCount;
+    /// @brief Массив вершин.
     void* vertices;
+    /// @brief Размер каждого индекса.
     u32 IndexSize;
+    /// @brief Количество индексов.
     u32 IndexCount;
+    /// @brief Массив индексов.
     void* indices;
+    /// @brief Имя геометрии.
     char name[GEOMETRY_NAME_MAX_LENGTH];
+    /// @brief Имя материала, используемого геометрией.
     char MaterialName[MATERIAL_NAME_MAX_LENGTH];
 
     FVec3 center;
@@ -42,9 +51,9 @@ struct MAPI GeometryConfig {
     /// @param config ссылка на конфигурацию, которую нужно удалить.
     void Dispose();
 
-    /// @brief 
-    /// @param name 
-    /// @param MaterialName 
+    /// @brief Копирует имя и название материала.
+    /// @param name имя геометрии.
+    /// @param MaterialName имя материала, который используется геометрией.
     void CopyNames(const char *name, const char *MaterialName);
 };
 

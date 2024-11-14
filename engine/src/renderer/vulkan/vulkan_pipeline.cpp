@@ -63,7 +63,7 @@ bool VulkanPipeline::Create(VulkanAPI* VkAPI, const Config& config)
     }
 
     VkPipelineColorBlendAttachmentState ColorBlendAttachmentState;
-    MMemory::ZeroMem(&ColorBlendAttachmentState, sizeof(VkPipelineColorBlendAttachmentState));
+    MemorySystem::ZeroMem(&ColorBlendAttachmentState, sizeof(VkPipelineColorBlendAttachmentState));
     ColorBlendAttachmentState.blendEnable = VK_TRUE;
     ColorBlendAttachmentState.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
     ColorBlendAttachmentState.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;

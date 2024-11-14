@@ -2,7 +2,7 @@
 #include "memory/linear_allocator.hpp"
 #include "renderer/renderpass.hpp"
 #include "renderer/camera.hpp"
-#include "renderer/renderer.hpp"
+#include "renderer/rendering_system.hpp"
 #include "systems/render_view_system.hpp"
 #include "systems/resource_system.hpp"
 #include "systems/shader_system.hpp"
@@ -40,7 +40,7 @@ ProjectionLocation(), ViewLocation(), CubeMapLocation()
     ViewLocation = ShaderSystem::UniformIndex(shader, "view");
     CubeMapLocation = ShaderSystem::UniformIndex(shader, "cube_texture");
 
-    if(!Event::Register(EVENT_CODE_DEFAULT_RENDERTARGET_REFRESH_REQUIRED, this, RenderViewOnEvent)) {
+    if(!EventSystem::Register(EVENT_CODE_DEFAULT_RENDERTARGET_REFRESH_REQUIRED, this, RenderViewOnEvent)) {
         MERROR("Не удалось прослушать событие, требующее обновления, создание не удалось.");
         return;
     }
@@ -49,7 +49,7 @@ ProjectionLocation(), ViewLocation(), CubeMapLocation()
 RenderViewSkybox::~RenderViewSkybox()
 {
     // Отменить регистрацию на мероприятии.
-    Event::Unregister(EVENT_CODE_DEFAULT_RENDERTARGET_REFRESH_REQUIRED, this, RenderViewOnEvent);
+    EventSystem::Unregister(EVENT_CODE_DEFAULT_RENDERTARGET_REFRESH_REQUIRED, this, RenderViewOnEvent);
 }
 
 void RenderViewSkybox::Resize(u32 width, u32 height)
@@ -91,7 +91,7 @@ bool RenderViewSkybox::Render(const Packet &packet, u64 FrameNumber, u64 RenderT
 
     for (u32 p = 0; p < RenderpassCount; ++p) {
         auto& pass = passes[p];
-        if (!Renderer::RenderpassBegin(&pass, pass.targets[RenderTargetIndex])) {
+        if (!RenderingSystem::RenderpassBegin(&pass, pass.targets[RenderTargetIndex])) {
             MERROR("RenderViewSkybox::Render индекс прохода %u ошибка запуска.", p);
             return false;
         }
@@ -133,9 +133,9 @@ bool RenderViewSkybox::Render(const Packet &packet, u64 FrameNumber, u64 RenderT
         // Нарисовать его.
         GeometryRenderData RenderData = {};
         RenderData.gid = SkyboxData->sb->g;
-        Renderer::DrawGeometry(RenderData);
+        RenderingSystem::DrawGeometry(RenderData);
 
-        if (!Renderer::RenderpassEnd(&pass)) {
+        if (!RenderingSystem::RenderpassEnd(&pass)) {
             MERROR("RenderViewSkybox::Render проход под индексом %u не завершился.", p);
             return false;
         }
@@ -146,10 +146,10 @@ bool RenderViewSkybox::Render(const Packet &packet, u64 FrameNumber, u64 RenderT
 
 void *RenderViewSkybox::operator new(u64 size)
 {
-    return MMemory::Allocate(size, Memory::Renderer);
+    return MemorySystem::Allocate(size, Memory::Renderer);
 }
 
 void RenderViewSkybox::operator delete(void *ptr, u64 size)
 {
-    MMemory::Free(ptr, size, Memory::Renderer);
+    MemorySystem::Free(ptr, size, Memory::Renderer);
 }

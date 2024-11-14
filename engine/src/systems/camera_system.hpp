@@ -13,6 +13,14 @@
 constexpr const char* DEFAULT_CAMERA_NAME = "default";
 struct CameraLookup;
 
+/// @brief Конфигурация системы камер.
+struct CameraSystemConfig
+{
+    /// @brief ПРИМЕЧАНИЕ: Максимальное количество камер, которыми может управлять система.
+    u16 MaxCameraCount;
+};
+
+
 class CameraSystem
 {
 private:
@@ -37,7 +45,7 @@ public:
     /// @brief Инициализирует систему камеры.
     /// 
     /// @return True в случае успеха, иначе false.
-    static bool Initialize(u16 MaxCameraCount, class LinearAllocator& SystemAllocator);
+    static bool Initialize(u64& MemoryRequirement, void* memory, void* config);
     /// @brief Выключает систему камер.
     static void Shutdown();
 

@@ -17,7 +17,7 @@ FreeList::~FreeList()
 {
     if (state) {
         // Просто обнулите память, прежде чем вернуть ее.
-        MMemory::ZeroMem(state, sizeof(FreeListState) + (sizeof(FreelistNode) * state->MaxNodes));
+        MemorySystem::ZeroMem(state, sizeof(FreeListState) + (sizeof(FreelistNode) * state->MaxNodes));
     }
 }
 
@@ -124,7 +124,7 @@ bool FreeList::ReallocateBlock(u64 size, u64 NewSize, u64 &BlockOffset)
     u64 DeltaSize = NewSize - size;
     bool free = false;
     // ЗАДАЧА: переделать в приватные функции?----------------------------------
-    auto ExactMatch = [=]() {
+    auto ExactMatch = [&]() {
         FreelistNode* NodeToReturn = nullptr;
         if (previous) {
             previous->next = node->next;
@@ -137,7 +137,6 @@ bool FreeList::ReallocateBlock(u64 size, u64 NewSize, u64 &BlockOffset)
         }
         
         ReturnNode(NodeToReturn);
-        return true;
     };
     //--------------------------------------------------------------------------
 
@@ -151,7 +150,7 @@ bool FreeList::ReallocateBlock(u64 size, u64 NewSize, u64 &BlockOffset)
         if (node->offset == BlockOffset + size && !free) {
             if (node->size == DeltaSize) {
                 ExactMatch();
-
+                return true;
             } else if (node->size > DeltaSize) {
                 node->size -= DeltaSize;
                 node->offset += DeltaSize;
@@ -175,15 +174,22 @@ bool FreeList::ReallocateBlock(u64 size, u64 NewSize, u64 &BlockOffset)
                 // и теперь нам требуется выделить новый
                 free = true;
             }
+        } else if (node->offset > BlockOffset + size && !free) {
+            auto NewNode = GetNode();
+            NewNode->offset = BlockOffset;
+            NewNode->size = size;
+            AttachNode(node, previous, NewNode);
+            free = true;
         } else if (free) {
             if (buff) {
                 previous = PreviousBuff;
                 node = buff;
             }
-            if (node->size == size) {
+            if (node->size == NewSize) {
                 BlockOffset = node->offset;
                 ExactMatch();
-            } else if (node->size > size) {
+                return true;
+            } else if (node->size > NewSize) {
                 BlockOffset = node->offset;
                 node->size -= NewSize;
                 node->offset += NewSize;
@@ -204,13 +210,13 @@ bool FreeList::FreeBlock(u64 size, u64 offset)
         return false;
     }
     
-    FreelistNode* node = state->head;
+    auto node = state->head;
     FreelistNode* previous = nullptr;
 
     if (!node) {
         // Проверка случая, когда выделено все.
         // В этом случае во главе необходим новый узел.
-        FreelistNode* NewNode = GetNode();
+        auto NewNode = GetNode();
         NewNode->offset = offset;
         NewNode->size = size;
         NewNode->next = nullptr;
@@ -229,7 +235,7 @@ bool FreeList::FreeBlock(u64 size, u64 offset)
                 // и если да, объедините их и верните второй узел.
                 if (node->next && node->next->offset == node->offset + node->size) {
                     node->size += node->next->size;
-                    FreelistNode* next = node->next;
+                    auto next = node->next;
                     node->next = node->next->next;
                     ReturnNode(next);
                 }
@@ -241,42 +247,17 @@ bool FreeList::FreeBlock(u64 size, u64 offset)
                 return false;
             } else if (node->offset > offset) {
                 // Выходит за пределы освобождаемого пространства. Нужен новый узел.
-                FreelistNode* NewNode = GetNode();
+                auto NewNode = GetNode();
                 NewNode->offset = offset;
                 NewNode->size = size;
-
-                // Если существует предыдущий узел, новый узел должен быть вставлен между этим и ним.
-                if (previous) {
-                    previous->next = NewNode;
-                    NewNode->next = node;
-                } else {
-                    // В противном случае новый узел становится заголовочным.
-                    NewNode->next = node;
-                    state->head = NewNode;
-                }
-
-                // Дважды проверьте следующий узел, чтобы узнать, можно ли к нему присоединиться.
-                if (NewNode->next && NewNode->offset + NewNode->size == NewNode->next->offset) {
-                    NewNode->size += NewNode->next->size;
-                    FreelistNode* rubbish = NewNode->next;
-                    NewNode->next = rubbish->next;
-                    ReturnNode(rubbish);
-                }
-
-                // Дважды проверьте предыдущий узел, чтобы увидеть, можно ли к нему присоединить new_node.
-                if (previous && previous->offset + previous->size == NewNode->offset) {
-                    previous->size += NewNode->size;
-                    FreelistNode* rubbish = NewNode;
-                    previous->next = rubbish->next;
-                    ReturnNode(rubbish);
-                }
+                AttachNode(node, previous, NewNode);
 
                 return true;
             }
 
             // Если на последнем узле смещение + размер < свободное смещение, требуется новый узел.
             if (!node->next && node->offset + node->size < offset) {
-                FreelistNode* NewNode = GetNode();
+                auto NewNode = GetNode();
                 NewNode->offset = offset;
                 NewNode->size = size;
                 NewNode->next = nullptr;
@@ -313,7 +294,7 @@ bool FreeList::Resize(void *NewMemory, u64 NewSize, void **OutOldMemory)
 
     // Компоновка блока начинается с заголовка*, затем массива доступных узлов.
     u64 MaxNodes = NewSize / (sizeof(void*) * sizeof(FreelistNode));
-    MMemory::ZeroMem(NewMemory, NewSize);
+    MemorySystem::ZeroMem(NewMemory, NewSize);
 
     // Настройте новое состояние.
     state->nodes = reinterpret_cast<FreelistNode*>(state + 1);
@@ -322,7 +303,7 @@ bool FreeList::Resize(void *NewMemory, u64 NewSize, void **OutOldMemory)
 
     // Сделайте недействительным смещение для всех узлов, кроме первого. 
     // Недопустимое значение будет проверяться при поиске нового узла из списка.
-    MMemory::ZeroMem(state->nodes, sizeof(FreelistNode) * state->MaxNodes);
+    MemorySystem::ZeroMem(state->nodes, sizeof(FreelistNode) * state->MaxNodes);
 
     state->head = &state->nodes[0];
 
@@ -380,7 +361,7 @@ void FreeList::Clear()
 
     // Сделайте недействительным смещение для всех узлов, кроме первого. 
     // Недопустимое значение будет проверяться при поиске нового узла из списка.
-    MMemory::ZeroMem(state->nodes, sizeof(FreelistNode) * state->MaxNodes);
+    MemorySystem::ZeroMem(state->nodes, sizeof(FreelistNode) * state->MaxNodes);
 
     // Сбросьте настройки заголовка, чтобы занять всю вещь.
     state->head->offset = 0;
@@ -415,7 +396,6 @@ FreeList::operator bool() const
 
 FreelistNode *FreeList::GetNode()
 {
-    //InternalState* state = reinterpret_cast<InternalState*>(state->memory);
     for (u64 i = 1; i < state->MaxNodes; ++i) {
         if (state->nodes[i].size == 0) {
             state->nodes[i].next = nullptr;
@@ -433,4 +413,33 @@ void FreeList::ReturnNode(FreelistNode *node)
     node->offset = 0;
     node->size = 0;
     node->next = nullptr;
+}
+
+void FreeList::AttachNode(FreelistNode* node, FreelistNode* previous, FreelistNode* NewNode)
+{
+    // Если существует предыдущий узел, новый узел должен быть вставлен между этим и ним.
+    if (previous) {
+        previous->next = NewNode;
+        NewNode->next = node;
+    } else {
+        // В противном случае новый узел становится заголовочным.
+        NewNode->next = node;
+        state->head = NewNode;
+    }
+
+    // Дважды проверьте следующий узел, чтобы узнать, можно ли к нему присоединиться.
+    if (NewNode->next && NewNode->offset + NewNode->size == NewNode->next->offset) {
+        NewNode->size += NewNode->next->size;
+        auto rubbish = NewNode->next;
+        NewNode->next = rubbish->next;
+        ReturnNode(rubbish);
+    }
+
+    // Дважды проверьте предыдущий узел, чтобы увидеть, можно ли к нему присоединить NewNode.
+    if (previous && previous->offset + previous->size == NewNode->offset) {
+        previous->size += NewNode->size;
+        auto rubbish = NewNode;
+        previous->next = rubbish->next;
+        ReturnNode(rubbish);
+    }
 }

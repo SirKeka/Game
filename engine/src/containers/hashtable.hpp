@@ -61,7 +61,7 @@ public:
         this->memory = memory;
         this->ElementCount = ElementCount;
         this->IsPointerType = IsPointerType;
-        MMemory::ZeroMem(this->memory, sizeof(T) * ElementCount);
+        MemorySystem::ZeroMem(this->memory, sizeof(T) * ElementCount);
     }
     
 

@@ -7,8 +7,8 @@
 
 ResourceSystem* ResourceSystem::state = nullptr;
 
-constexpr ResourceSystem::ResourceSystem(u32 MaxLoaderCount, const char* BasePath, ResourceLoader* RegisteredLoaders) 
-: MaxLoaderCount(MaxLoaderCount), AssetBasePath(BasePath), RegisteredLoaders(RegisteredLoaders) 
+constexpr ResourceSystem::ResourceSystem(ResourceSystemConfig* config, ResourceLoader* RegisteredLoaders) 
+: MaxLoaderCount(config->MaxLoaderCount), AssetBasePath(config->AssetBasePath), RegisteredLoaders(RegisteredLoaders) 
 {
     // ПРИМЕЧАНИЕ: Здесь можно автоматически зарегистрировать известные типы загрузчиков.
     RegisterLoader(eResource::Type::Text,       MString(),          "");
@@ -21,18 +21,23 @@ constexpr ResourceSystem::ResourceSystem(u32 MaxLoaderCount, const char* BasePat
     RegisterLoader(eResource::Type::SystemFont, MString(),     "fonts");
 }
 
-bool ResourceSystem::Initialize(u32 MaxLoaderCount, const char* BasePath, LinearAllocator& SystemAllocator)
+bool ResourceSystem::Initialize(u64& MemoryRequirement, void* memory, void* config)
 {
-    if (MaxLoaderCount == 0) {
-        MFATAL("ResourceSystem::Initialize е удалось, поскольку максимальное количество загрузчиков (MaxLoaderCount) = 0.");
-        return false;
+    auto pConfig = reinterpret_cast<ResourceSystemConfig*>(config);
+    if (pConfig->MaxLoaderCount == 0) {
+    MFATAL("ResourceSystem::Initialize е удалось, поскольку максимальное количество загрузчиков (MaxLoaderCount) = 0.");
+    return false;
+    }
+
+    MemoryRequirement = sizeof(ResourceSystem) + (sizeof(ResourceLoader) * pConfig->MaxLoaderCount);
+
+    if (!memory) {
+        return true;
     }
 
     if (!state) {
-        u64 ResourceSystemSize = sizeof(ResourceSystem) + (sizeof(ResourceLoader) * MaxLoaderCount);
-        void* ResourceSystemPtr = SystemAllocator.Allocate(ResourceSystemSize); 
-        ResourceLoader* ResourceLoaderPtr = reinterpret_cast<ResourceLoader*> (reinterpret_cast<u8*>(ResourceSystemPtr) + sizeof(ResourceSystem));
-        state = new(ResourceSystemPtr) ResourceSystem(MaxLoaderCount, BasePath, ResourceLoaderPtr);
+        ResourceLoader* ResourceLoaderPtr = reinterpret_cast<ResourceLoader*> (reinterpret_cast<u8*>(memory) + sizeof(ResourceSystem));
+        state = new(memory) ResourceSystem(pConfig, ResourceLoaderPtr);
     }
 
     MINFO("Система ресурсов инициализируется с использованием базового пути '%s'.", state->AssetBasePath);

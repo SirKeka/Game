@@ -300,11 +300,11 @@ bool ImportObjFile(FileHandle &ObjFile, const char *OutMsmFilename, DArray<Geome
 
                     // Увеличьте количество объектов.
                     //darray_destroy(groups[i].faces);
-                    MMemory::ZeroMem(MaterialNames[i], 64);
+                    MemorySystem::ZeroMem(MaterialNames[i], 64);
                 }
                 CurrentMatNameCount = 0;
                 groups.Clear();
-                MMemory::ZeroMem(name, 512);
+                MemorySystem::ZeroMem(name, 512);
 
                 // Прочтите имя
                 char t[2];
@@ -674,13 +674,13 @@ bool LoadMsmFile(FileHandle &MsmFile, DArray<GeometryConfig> &OutGeometries)
         // Вершины (размер/количество/массив)
         Filesystem::Read(MsmFile, sizeof(u32), &g.VertexSize, BytesRead);
         Filesystem::Read(MsmFile, sizeof(u32), &g.VertexCount, BytesRead);
-        g.vertices = MMemory::Allocate(g.VertexSize * g.VertexCount, Memory::Array);
+        g.vertices = MemorySystem::Allocate(g.VertexSize * g.VertexCount, Memory::Array);
         Filesystem::Read(MsmFile, g.VertexSize * g.VertexCount, g.vertices, BytesRead);
 
         // Индексы (размер/количество/массив)
         Filesystem::Read(MsmFile, sizeof(u32), &g.IndexSize, BytesRead);
         Filesystem::Read(MsmFile, sizeof(u32), &g.IndexCount, BytesRead);
-        g.indices = MMemory::Allocate(g.IndexSize * g.IndexCount, Memory::Array);
+        g.indices = MemorySystem::Allocate(g.IndexSize * g.IndexCount, Memory::Array);
         Filesystem::Read(MsmFile, g.IndexSize * g.IndexCount, g.indices, BytesRead);
 
         // Имя

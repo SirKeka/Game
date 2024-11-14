@@ -1,10 +1,10 @@
 #include "renderbuffer.hpp"
-#include "renderer/renderer.hpp"
+#include "renderer/rendering_system.hpp"
 
 RenderBuffer::~RenderBuffer()
 {
     if (FreelistBlock && FreelistMemoryRequirement > 0) {
-        MMemory::Free(FreelistBlock, FreelistMemoryRequirement, Memory::Renderer);
+        MemorySystem::Free(FreelistBlock, FreelistMemoryRequirement, Memory::Renderer);
         FreelistMemoryRequirement = 0;
         FreelistBlock = nullptr;
     }
@@ -51,16 +51,16 @@ bool RenderBuffer::Resize(u64 NewTotalSize)
         // Сначала измените размер списка свободных ресурсов, если он используется.
         u64 NewMemoryRequirement = 0;
         BufferFreelist.GetMemoryRequirement(NewTotalSize, NewMemoryRequirement);
-        void* NewBlock = MMemory::Allocate(NewMemoryRequirement, Memory::Renderer);
+        void* NewBlock = MemorySystem::Allocate(NewMemoryRequirement, Memory::Renderer);
         void* OldBlock = nullptr;
         if (!BufferFreelist.Resize(NewBlock, NewTotalSize, &OldBlock)) {
             MERROR("Renderer::RenderBufferResize не удалось изменить размер внутреннего списка свободных ресурсов.");
-            MMemory::Free(NewBlock, NewMemoryRequirement, Memory::Renderer);
+            MemorySystem::Free(NewBlock, NewMemoryRequirement, Memory::Renderer);
             return false;
         }
 
         // Очистите старую память, затем назначьте новые свойства поверх.
-        MMemory::Free(OldBlock, FreelistMemoryRequirement, Memory::Renderer);
+        MemorySystem::Free(OldBlock, FreelistMemoryRequirement, Memory::Renderer);
         FreelistMemoryRequirement = NewMemoryRequirement;
         FreelistBlock = NewBlock;
     }

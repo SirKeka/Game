@@ -24,7 +24,7 @@ namespace VulkanShadersUtil
             return false;
         }
 
-        MMemory::ZeroMem(&ShaderStages[StageIndex].CreateInfo, sizeof(VkShaderModuleCreateInfo));
+        MemorySystem::ZeroMem(&ShaderStages[StageIndex].CreateInfo, sizeof(VkShaderModuleCreateInfo));
         ShaderStages[StageIndex].CreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
         // Используйте размер и данные ресурса напрямую.
         ShaderStages[StageIndex].CreateInfo.codeSize = BinRes.data.Length();
@@ -37,7 +37,7 @@ namespace VulkanShadersUtil
             &ShaderStages[StageIndex].handle));
 
         // Информация о стадии шейдера
-        MMemory::ZeroMem(&ShaderStages[StageIndex].ShaderStageCreateInfo, sizeof(VkPipelineShaderStageCreateInfo));
+        MemorySystem::ZeroMem(&ShaderStages[StageIndex].ShaderStageCreateInfo, sizeof(VkPipelineShaderStageCreateInfo));
         ShaderStages[StageIndex].ShaderStageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
         ShaderStages[StageIndex].ShaderStageCreateInfo.stage = ShaderStageFlag;
         ShaderStages[StageIndex].ShaderStageCreateInfo.module = ShaderStages[StageIndex].handle;

@@ -13,25 +13,25 @@ RenderTarget::~RenderTarget()
 
 Renderpass::~Renderpass()
 {
-    MMemory::Free(targets, sizeof(RenderTarget) * RenderTargetCount, Memory::Array); // delete targets;
+    MemorySystem::Free(targets, sizeof(RenderTarget) * RenderTargetCount, Memory::Array); // delete targets;
 }
 
 void *Renderpass::operator new(u64 size)
 {
-    return MMemory::Allocate(size, Memory::Renderer);
+    return MemorySystem::Allocate(size, Memory::Renderer);
 }
 
 void *Renderpass::operator new[](u64 size)
 {
-    return MMemory::Allocate(size, Memory::Array);
+    return MemorySystem::Allocate(size, Memory::Array);
 }
 
 void Renderpass::operator delete(void *ptr, u64 size)
 {
-    MMemory::Free(ptr, size, Memory::Renderer);
+    MemorySystem::Free(ptr, size, Memory::Renderer);
 }
 
 void Renderpass::operator delete[](void *ptr, u64 size)
 {
-    MMemory::Free(ptr, size, Memory::Array);
+    MemorySystem::Free(ptr, size, Memory::Array);
 }

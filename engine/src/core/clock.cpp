@@ -9,13 +9,13 @@ Clock::~Clock()
 void Clock::Update()
 {
     if (StartTime != 0) {
-        elapsed = MWindow::PlatformGetAbsoluteTime() - StartTime;
+        elapsed = WindowSystem::PlatformGetAbsoluteTime() - StartTime;
     }
 }
 
 void Clock::Start()
 {
-    StartTime = MWindow::PlatformGetAbsoluteTime();
+    StartTime = WindowSystem::PlatformGetAbsoluteTime();
     elapsed = 0;
 }
 

@@ -19,7 +19,7 @@ RenderFrameNumber(m.RenderFrameNumber)
 Material::~Material()
 {
     MTRACE("Уничтожение материала '%s'...", name);
-    MMemory::ZeroMem(this, sizeof(Material));
+    MemorySystem::ZeroMem(this, sizeof(Material));
     id = generation = InternalId = RenderFrameNumber = INVALID::ID;
 }
 
@@ -43,5 +43,5 @@ void Material::Reset()
 
 void Material::SetName(const char *name)
 {
-    MMemory::CopyMem(this->name, name, MATERIAL_NAME_MAX_LENGTH);
+    MemorySystem::CopyMem(this->name, name, MATERIAL_NAME_MAX_LENGTH);
 }

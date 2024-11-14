@@ -5,7 +5,7 @@
 
 class LinearAllocator;
 
-using PFN_ConsoleConsumerWrite = bool(*)(void*, LogLevel, const char*);
+using PFN_ConsoleConsumerWrite = bool(*)(void*, Log::Level, const char*);
 
 struct ConsoleCommandArgument {
     const char* value;
@@ -18,40 +18,17 @@ struct ConsoleCommandContext {
 
 using PFN_ConsoleCommand = void(*)(ConsoleCommandContext);
 
-class Console
+namespace Console
 {
-    struct Consumer {
-        PFN_ConsoleConsumerWrite callback;
-        void* instance;
-    };
+    bool Initialize(u64& MemoryRequirement, void* memory, void* config); // LinearAllocator& SystemAllocator
+    void Shutdown();
 
-    struct Command {
-        MString name;
-        u8 ArgCount;
-        PFN_ConsoleCommand func;
-    };
+    MAPI void RegisterConsumer(void* inst, PFN_ConsoleConsumerWrite callback);
 
-    u8 ConsumerCount;
-    Consumer* consumers;
+    void WriteLine(Log::Level level, const char* message);
 
-    DArray<Command> RegisteredCommands;
+    MAPI bool RegisterCommand(const char* command, u8 ArgCount, PFN_ConsoleCommand func);
 
-    static Console* pConsole;
-
-    constexpr Console(Consumer* consumers);
-
-public:
-    ~Console();
-
-    static void Initialize(LinearAllocator& SystemAllocator);
-    static void Shutdown();
-
-    MAPI static void RegisterConsumer(void* inst, PFN_ConsoleConsumerWrite callback);
-
-    static void WriteLine(LogLevel level, const char* message);
-
-    MAPI static bool RegisterCommand(const char* command, u8 ArgCount, PFN_ConsoleCommand func);
-
-    MAPI static bool ExecuteCommand(const MString& command);
+    MAPI bool ExecuteCommand(const MString& command);
 };
 

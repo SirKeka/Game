@@ -3,6 +3,14 @@
 #include "resources/loader/resource_loader.hpp"
 #include "core/mmemory.hpp"
 
+/// @brief Конфигурация для системы ресурсов
+struct ResourceSystemConfig {
+    /// @brief Максимальное количество загрузчиков, которые могут быть зарегистрированы в этой системе.
+    u32 MaxLoaderCount;
+    /// @brief Относительный базовый путь для активов.
+    const char* AssetBasePath;
+};
+
 // ЗАДАЧА: переделать
 class ResourceSystem
 {
@@ -13,13 +21,13 @@ private:
     class ResourceLoader* RegisteredLoaders;
 
     static ResourceSystem* state;
-    constexpr ResourceSystem(u32 MaxLoaderCount, const char* BasePath, ResourceLoader* RegisteredLoaders);
+    constexpr ResourceSystem(ResourceSystemConfig* config, ResourceLoader* RegisteredLoaders);
 public:
     ~ResourceSystem() = default;
     ResourceSystem(const ResourceSystem&) = delete;
     ResourceSystem& operator= (const ResourceSystem&) = delete;
 
-    static bool Initialize(u32 MaxLoaderCount, const char* BasePath, class LinearAllocator& SystemAllocator);
+    static bool Initialize(u64& MemoryRequirement, void* memory, void* config);
     static void Shutdown();
 
     /// @brief Регистрирует указанный загрузчик ресурсов в системе.

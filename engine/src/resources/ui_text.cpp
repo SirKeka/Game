@@ -1,6 +1,6 @@
 #include "ui_text.hpp"
 #include "core/identifier.hpp"
-#include "renderer/renderer.hpp"
+#include "renderer/rendering_system.hpp"
 #include "systems/font_system.hpp"
 #include "systems/shader_system.hpp"
 #include "math/vertex.hpp"
@@ -19,15 +19,15 @@ Text::~Text()
     Identifier::ReleaseID(UniqueID);
 
     // Уничтожить буферы.
-    Renderer::RenderBufferDestroy(VertexBuffer);
-    Renderer::RenderBufferDestroy(IndexBuffer);
+    RenderingSystem::RenderBufferDestroy(VertexBuffer);
+    RenderingSystem::RenderBufferDestroy(IndexBuffer);
 
     // Освободить ресурсы для карты текстуры шрифта.
     auto UiShader = ShaderSystem::GetShader("Shader.Builtin.UI");  // ЗАДАЧА: Текстовый шейдер.
-    if (!Renderer::ShaderReleaseInstanceResources(UiShader, InstanceID)) {
+    if (!RenderingSystem::ShaderReleaseInstanceResources(UiShader, InstanceID)) {
         MFATAL("Невозможно освободить ресурсы шейдера для текстурной карты шрифта.");
     }
-    MMemory::ZeroMem(this, sizeof(Text));
+    MemorySystem::ZeroMem(this, sizeof(Text));
 }
 
 bool Text::Create(TextType type, const char *FontName, u16 FontSize, const char *TextContent)
@@ -61,28 +61,28 @@ bool Text::Create(TextType type, const char *FontName, u16 FontSize, const char 
     // Получите ресурсы для карты текстуры шрифта.
     auto UiShader = ShaderSystem::GetShader("Shader.Builtin.UI");  // ЗАДАЧА: Текстовый шейдер.
     TextureMap* FontMaps[1] = { &data->atlas };
-    if (!Renderer::ShaderAcquireInstanceResources(UiShader, FontMaps, InstanceID)) {
+    if (!RenderingSystem::ShaderAcquireInstanceResources(UiShader, FontMaps, InstanceID)) {
         MFATAL("Не удалось получить ресурсы шейдера для карты текстуры шрифта.");
         return false;
     }
 
     // Сгенерируйте буфер вершин.
-    if (!Renderer::RenderBufferCreate(RenderBufferType::Vertex, TextLength * QuadSize, false, VertexBuffer)) {
+    if (!RenderingSystem::RenderBufferCreate(RenderBufferType::Vertex, TextLength * QuadSize, false, VertexBuffer)) {
         MERROR("text_create не удалось создать буфер рендеринга вершин.");
         return false;
     }
-    if (!Renderer::RenderBufferBind(VertexBuffer, 0)) {
+    if (!RenderingSystem::RenderBufferBind(VertexBuffer, 0)) {
         MERROR("text_create не удалось привязать буфер рендеринга вершин.");
         return false;
     }
 
     // Сгенерируйте буфер индексов.
     static const u8 QuadIndexSize = sizeof(u32) * 6;
-    if (!Renderer::RenderBufferCreate(RenderBufferType::Index, TextLength * QuadIndexSize, false, IndexBuffer)) {
+    if (!RenderingSystem::RenderBufferCreate(RenderBufferType::Index, TextLength * QuadIndexSize, false, IndexBuffer)) {
         MERROR("text_create не удалось создать буфер рендеринга индекса.");
         return false;
     }
-    if (!Renderer::RenderBufferBind(IndexBuffer, 0)) {
+    if (!RenderingSystem::RenderBufferBind(IndexBuffer, 0)) {
         MERROR("text_create не удалось привязать буфер рендеринга индекса.");
         return false;
     }
@@ -137,7 +137,7 @@ void Text::SetText(MString &&text)
         this->text = static_cast<MString&&>(text);
 
         // Проверьте, есть ли в атласе необходимые глифы.
-        if (!FontSystem::VerifyAtlas(data, text.c_str())) {
+        if (!FontSystem::VerifyAtlas(data, this->text.c_str())) {
             MERROR("Проверка атласа шрифтов не удалась.");
         }
 
@@ -189,12 +189,12 @@ void Text::Draw()
 {
     // ЗАДАЧА: длина utf8
     static const u64 QuadVertCount = 4;
-    if (!Renderer::RenderBufferDraw(VertexBuffer, 0, text.Length() * QuadVertCount, true)) {
+    if (!RenderingSystem::RenderBufferDraw(VertexBuffer, 0, text.Length() * QuadVertCount, true)) {
         MERROR("Не удалось нарисовать буфер вершин шрифта пользовательского интерфейса.");
     }
 
     static const u8 QuadIndexCount = 6;
-    if (!Renderer::RenderBufferDraw(IndexBuffer, 0, text.Length() * QuadIndexCount, false)) {
+    if (!RenderingSystem::RenderBufferDraw(IndexBuffer, 0, text.Length() * QuadIndexCount, false)) {
         MERROR("Не удалось нарисовать буфер индекса шрифта пользовательского интерфейса.");
     }
 }
@@ -219,7 +219,7 @@ void Text::RegenerateGeometry()
 
     // Изменить размер буфера вершин, но только если он больше.
     if (VertexBufferSize > VertexBuffer.TotalSize) {
-        if (!Renderer::RenderBufferResize(VertexBuffer, VertexBufferSize)) {
+        if (!RenderingSystem::RenderBufferResize(VertexBuffer, VertexBufferSize)) {
             MERROR("Text::RegenerateGeometry для текста пользовательского интерфейса не удалось изменить размер буфера визуализации вершин.");
             return;
         }
@@ -227,7 +227,7 @@ void Text::RegenerateGeometry()
 
     // Изменить размер буфера индексов, но только если он больше.
     if (IndexBufferSize > IndexBuffer.TotalSize) {
-        if (!Renderer::RenderBufferResize(IndexBuffer, IndexBufferSize)) {
+        if (!RenderingSystem::RenderBufferResize(IndexBuffer, IndexBufferSize)) {
             MERROR("Text::RegenerateGeometry для текста пользовательского интерфейса не удалось изменить размер индексного буфера визуализации.");
             return;
         }
@@ -237,8 +237,8 @@ void Text::RegenerateGeometry()
     f32 x = 0;
     f32 y = 0;
     // Временные массивы для хранения данных вершин/индексов.
-    Vertex2D* VertexBufferData = MMemory::TAllocate<Vertex2D>(Memory::Array, VertexBufferSize);
-    u32* IndexBufferData = MMemory::TAllocate<u32>(Memory::Array, IndexBufferSize);
+    Vertex2D* VertexBufferData = MemorySystem::TAllocate<Vertex2D>(Memory::Array, VertexBufferSize);
+    u32* IndexBufferData = MemorySystem::TAllocate<u32>(Memory::Array, IndexBufferSize);
 
     // Возьмите длину в символах и получите из нее правильный код.
     for (u32 c = 0, uc = 0; c < CharLength; ++c) {
@@ -358,12 +358,12 @@ void Text::RegenerateGeometry()
     }
 
     // Загрузить данные.
-    bool VertexLoadResult = Renderer::RenderBufferLoadRange(VertexBuffer, 0, VertexBufferSize, VertexBufferData);
-    bool IndexLoadResult = Renderer::RenderBufferLoadRange(IndexBuffer, 0, IndexBufferSize, IndexBufferData);
+    bool VertexLoadResult = RenderingSystem::RenderBufferLoadRange(VertexBuffer, 0, VertexBufferSize, VertexBufferData);
+    bool IndexLoadResult = RenderingSystem::RenderBufferLoadRange(IndexBuffer, 0, IndexBufferSize, IndexBufferData);
 
     // Очистить.
-    MMemory::Free(VertexBufferData, VertexBufferSize * sizeof(Vertex2D), Memory::Array);
-    MMemory::Free(IndexBufferData, IndexBufferSize * sizeof(u32), Memory::Array);
+    MemorySystem::Free(VertexBufferData, VertexBufferSize * sizeof(Vertex2D), Memory::Array);
+    MemorySystem::Free(IndexBufferData, IndexBufferSize * sizeof(u32), Memory::Array);
 
     // Проверить результаты.
     if (!VertexLoadResult) {

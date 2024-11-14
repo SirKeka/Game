@@ -1,5 +1,5 @@
 #include "skybox.hpp"
-#include "renderer/renderer.hpp"
+#include "renderer/rendering_system.hpp"
 #include "systems/geometry_system.hpp"
 #include "systems/shader_system.hpp"
 #include "systems/texture_system.hpp"
@@ -11,7 +11,7 @@
 
 bool Skybox::Create(const char *CubemapName)
 {
-    if (!Renderer::TextureMapAcquireResources(&cubemap)) {
+    if (!RenderingSystem::TextureMapAcquireResources(&cubemap)) {
         MFATAL("Невозможно получить ресурсы для текстуры кубической карты.");
         return false;
     }
@@ -23,7 +23,7 @@ bool Skybox::Create(const char *CubemapName)
     RenderFrameNumber = INVALID::U64ID;
     auto SkyboxShader = ShaderSystem::GetShader("Shader.Builtin.Skybox");   // ЗАДАЧА: разрешить настраиваемый шейдер.
     TextureMap* maps[1] = {&cubemap};
-    if (!Renderer::ShaderAcquireInstanceResources(SkyboxShader, maps, InstanceID)) {
+    if (!RenderingSystem::ShaderAcquireInstanceResources(SkyboxShader, maps, InstanceID)) {
         MFATAL("Невозможно получить ресурсы шейдера для текстуры скайбокса.");
         return false;
     }
@@ -32,5 +32,5 @@ bool Skybox::Create(const char *CubemapName)
 
 void Skybox::Destroy()
 {
-    Renderer::TextureMapReleaseResources(&cubemap);
+    RenderingSystem::TextureMapReleaseResources(&cubemap);
 }

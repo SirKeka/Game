@@ -4,7 +4,7 @@
 #include "renderer/renderpass.hpp"
 #include "resources/font_resource.hpp"
 #include "resources/mesh.hpp"
-#include "renderer/renderer.hpp"
+#include "renderer/rendering_system.hpp"
 #include "renderer/renderpass.hpp"
 #include "systems/material_system.hpp"
 #include "systems/resource_system.hpp"
@@ -44,7 +44,7 @@ ModelLocation()
     DiffuseColourLocation = ShaderSystem::UniformIndex(shader, "diffuse_colour");
     ModelLocation         = ShaderSystem::UniformIndex(shader, "model");
 
-    if(!Event::Register(EVENT_CODE_DEFAULT_RENDERTARGET_REFRESH_REQUIRED, this, RenderViewOnEvent)) {
+    if(!EventSystem::Register(EVENT_CODE_DEFAULT_RENDERTARGET_REFRESH_REQUIRED, this, RenderViewOnEvent)) {
         MERROR("Не удалось прослушать событие, требующее обновления, создание не удалось.");
         return;
     }
@@ -53,7 +53,7 @@ ModelLocation()
 RenderViewUI::~RenderViewUI()
 {
     // Отменить регистрацию на мероприятии.
-    Event::Unregister(EVENT_CODE_DEFAULT_RENDERTARGET_REFRESH_REQUIRED, this, RenderViewOnEvent);
+    EventSystem::Unregister(EVENT_CODE_DEFAULT_RENDERTARGET_REFRESH_REQUIRED, this, RenderViewOnEvent);
 }
 
 void RenderViewUI::Resize(u32 width, u32 height)
@@ -88,7 +88,7 @@ bool RenderViewUI::BuildPacket(LinearAllocator& FrameAllocator, void *data, Pack
 
     // ЗАДАЧА: временно установить расширенные данные для тестовых текстовых объектов на данный момент.
     OutPacket.ExtendedData = FrameAllocator.Allocate(sizeof(UiPacketData));
-    MMemory::CopyMem(OutPacket.ExtendedData, PacketData, sizeof(UiPacketData));
+    MemorySystem::CopyMem(OutPacket.ExtendedData, PacketData, sizeof(UiPacketData));
 
     // Получить все геометрии из текущей сцены.
     // Итерировать все сетки и добавить их в коллекцию геометрий пакета
@@ -111,7 +111,7 @@ bool RenderViewUI::Render(const Packet &packet, u64 FrameNumber, u64 RenderTarge
     const auto& ShaderID = shader->id;
     for (u32 p = 0; p < RenderpassCount; ++p) {
         auto pass = &passes[p];
-        if (!Renderer::RenderpassBegin(pass, pass->targets[RenderTargetIndex])) {
+        if (!RenderingSystem::RenderpassBegin(pass, pass->targets[RenderTargetIndex])) {
             MERROR("RenderViewUI::Render pass index %u не удалось запустить.", p);
             return false;
         }
@@ -155,7 +155,7 @@ bool RenderViewUI::Render(const Packet &packet, u64 FrameNumber, u64 RenderTarge
             MaterialSystemInst->ApplyLocal(m, packet.geometries[i].model);
 
             // Нарисуйте его.
-            Renderer::DrawGeometry(packet.geometries[i]);
+            RenderingSystem::DrawGeometry(packet.geometries[i]);
         }
 
         // Нарисовать растровый текст
@@ -190,7 +190,7 @@ bool RenderViewUI::Render(const Packet &packet, u64 FrameNumber, u64 RenderTarge
             text->Draw();
         }
 
-        if (!Renderer::RenderpassEnd(pass)) {
+        if (!RenderingSystem::RenderpassEnd(pass)) {
             MERROR("RenderViewUI::Render Проход рендеринга с индексом %u не завершился.", p);
             return false;
         }
@@ -201,10 +201,10 @@ bool RenderViewUI::Render(const Packet &packet, u64 FrameNumber, u64 RenderTarge
 
 void *RenderViewUI::operator new(u64 size)
 {
-    return MMemory::Allocate(size, Memory::Renderer);
+    return MemorySystem::Allocate(size, Memory::Renderer);
 }
 
 void RenderViewUI::operator delete(void *ptr, u64 size)
 {
-    MMemory::Free(ptr, size, Memory::Renderer);
+    MemorySystem::Free(ptr, size, Memory::Renderer);
 }

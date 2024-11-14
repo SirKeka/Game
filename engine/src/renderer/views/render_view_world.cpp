@@ -1,6 +1,6 @@
 #include "render_view_world.hpp"
 // #include "memory/linear_allocator.hpp"
-#include "renderer/renderer.hpp"
+#include "renderer/rendering_system.hpp"
 #include "systems/shader_system.hpp"
 #include "systems/camera_system.hpp"
 #include "systems/material_system.hpp"
@@ -83,12 +83,12 @@ RenderMode()
     shader = ShaderSystem::GetShader(CustomShaderName ? CustomShaderName : ShaderName);
 
     // Следите за изменениями режима.
-    if (!Event::GetInstance()->Register(EVENT_CODE_SET_RENDER_MODE, this, OnEvent)) {
+    if (!EventSystem::Register(EVENT_CODE_SET_RENDER_MODE, this, OnEvent)) {
         MERROR("Не удалось прослушать событие установки режима рендеринга, создание не удалось.");
         return;
     }
 
-    if (!Event::GetInstance()->Register(EVENT_CODE_DEFAULT_RENDERTARGET_REFRESH_REQUIRED, this, OnEvent)) {
+    if (!EventSystem::Register(EVENT_CODE_DEFAULT_RENDERTARGET_REFRESH_REQUIRED, this, OnEvent)) {
         MERROR("Не удалось прослушать событие установки режима рендеринга, создание не удалось.");
         return;
     }
@@ -96,8 +96,8 @@ RenderMode()
 
 RenderViewWorld::~RenderViewWorld()
 {
-    Event::Unregister(EVENT_CODE_DEFAULT_RENDERTARGET_REFRESH_REQUIRED, this, OnEvent);
-    Event::Unregister(EVENT_CODE_SET_RENDER_MODE, this, OnEvent);
+    EventSystem::Unregister(EVENT_CODE_DEFAULT_RENDERTARGET_REFRESH_REQUIRED, this, OnEvent);
+    EventSystem::Unregister(EVENT_CODE_SET_RENDER_MODE, this, OnEvent);
 }
 
 void RenderViewWorld::Resize(u32 width, u32 height)
@@ -180,7 +180,7 @@ bool RenderViewWorld::Render(const Packet &packet, u64 FrameNumber, u64 RenderTa
     const auto& ShaderID = shader->id;
     for (u32 p = 0; p < RenderpassCount; ++p) {
         auto pass = &passes[p];
-        if (!Renderer::RenderpassBegin(pass, pass->targets[RenderTargetIndex])) {
+        if (!RenderingSystem::RenderpassBegin(pass, pass->targets[RenderTargetIndex])) {
             MERROR("RenderViewWorld::Render pass index %u не удалось запустить.", p);
             return false;
         }
@@ -224,10 +224,10 @@ bool RenderViewWorld::Render(const Packet &packet, u64 FrameNumber, u64 RenderTa
             MaterialSystemInst->ApplyLocal(m, packet.geometries[i].model);
 
             // Нарисуйте его.
-            Renderer::DrawGeometry(packet.geometries[i]);
+            RenderingSystem::DrawGeometry(packet.geometries[i]);
         }
 
-        if (!Renderer::RenderpassEnd(pass)) {
+        if (!RenderingSystem::RenderpassEnd(pass)) {
             MERROR("Не удалось завершить проход RenderViewWorld::Render индекс %u.", p);
             return false;
         }
@@ -238,10 +238,10 @@ bool RenderViewWorld::Render(const Packet &packet, u64 FrameNumber, u64 RenderTa
 
 void *RenderViewWorld::operator new(u64 size)
 {
-    return MMemory::Allocate(size, Memory::Renderer);
+    return MemorySystem::Allocate(size, Memory::Renderer);
 }
 
 void RenderViewWorld::operator delete(void *ptr, u64 size)
 {
-    MMemory::Free(ptr, size, Memory::Renderer);
+    MemorySystem::Free(ptr, size, Memory::Renderer);
 }
