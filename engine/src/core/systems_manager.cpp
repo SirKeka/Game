@@ -283,5 +283,5 @@ void SystemsManager::ShutdownKnownSystems()
     systems[MSystem::MVar].shutdown();
     systems[MSystem::Console].shutdown();
 
-    systems[MSystem::Memory].shutdown();
+    systems[MSystem::Memory].shutdown(); // ЗАДАЧА: Возможно стоит вызывать данную функцию перед завершением работы программы
 }

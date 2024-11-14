@@ -1,31 +1,31 @@
 BUILD_DIR := bin
 OBJ_DIR := obj
 
-# NOTE: ASSEMBLY must be set on calling this makefile
+# ПРИМЕЧАНИЕ: ASSEMBLY должен быть установлен при вызове этого makefile
 
 DEFINES := -DMIMPORT
 
 ENGINE_LINK := -lengine
-# HACK: Do not link with engine for version gen.
+# HACK: Не связываться с движком для генерации версии.
 ifeq ($(ASSEMBLY),versiongen)
 	ENGINE_LINK =
 endif
 
-# Detect OS and architecture.
+# Определение ОС и архитектуры.
 ifeq ($(OS),Windows_NT)
     # WIN32
 	BUILD_PLATFORM := windows
 	EXTENSION := .exe
 	COMPILER_FLAGS := -Wall -Werror -Wvla -Werror=vla -Wgnu-folding-constant -Wno-missing-braces -fdeclspec
 	INCLUDE_FLAGS := -Iengine\src -I$(ASSEMBLY)\src 
-# 	Because Windows requires the .lib extension...
+# 	Поскольку Windows требует расширения .lib...
 	ifneq ($(ENGINE_LINK),)
 		ENGINE_LINK :=$(ENGINE_LINK).lib
 	endif
 	LINKER_FLAGS := $(ENGINE_LINK) -L$(OBJ_DIR)\engine -L$(BUILD_DIR)
 	DEFINES += -D_CRT_SECURE_NO_WARNINGS
 
-# Make does not offer a recursive wildcard function, and Windows needs one, so here it is:
+# Make не предлагает рекурсивную функцию подстановочных знаков, а Windows она нужна, поэтому вот она:
 	rwildcard=$(wildcard $1$2) $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2))
 	DIR := $(subst /,\,${CURDIR})
 	
@@ -59,19 +59,6 @@ else
 		DIRECTORIES := $(shell find $(ASSEMBLY) -type d)
 		OBJ_FILES := $(SRC_FILES:%=$(OBJ_DIR)/%.o)
     endif
-    ifeq ($(UNAME_S),Darwin)
-        # OSX
-		BUILD_PLATFORM := macos
-		EXTENSION := 
-		COMPILER_FLAGS := -Wall -Werror -Wvla -Werror=vla -Wgnu-folding-constant -Wno-missing-braces -fdeclspec -fPIC
-		INCLUDE_FLAGS := -Iengine/src -I$(ASSEMBLY)\src 
-		LINKER_FLAGS := -L./$(BUILD_DIR) $(ENGINE_LINK) -Wl,-rpath,.
-		# .cpp files
-		SRC_FILES := $(shell find $(ASSEMBLY) -name *.cpp)
-		# directories with .hpp files
-		DIRECTORIES := $(shell find $(ASSEMBLY) -type d)
-		OBJ_FILES := $(SRC_FILES:%=$(OBJ_DIR)/%.o)
-    endif
     UNAME_P := $(shell uname -p)
     ifeq ($(UNAME_P),x86_64)
         # AMD64
@@ -84,7 +71,7 @@ else
     endif
 endif
 
-# Defaults to debug unless release is specified.
+# По умолчанию отладка, если не указан релиз.
 ifeq ($(TARGET),release)
 # release
 else
@@ -97,7 +84,7 @@ endif
 all: scaffold compile link
 
 .PHONY: scaffold
-scaffold: # create build directory
+scaffold: # создать каталог сборки
 ifeq ($(BUILD_PLATFORM),windows)
 	-@setlocal enableextensions enabledelayedexpansion && mkdir $(addprefix $(OBJ_DIR), $(DIRECTORIES)) 2>NUL || cd .
 	-@setlocal enableextensions enabledelayedexpansion && mkdir $(BUILD_DIR) 2>NUL || cd .
@@ -107,7 +94,7 @@ else
 endif
 
 .PHONY: link
-link: scaffold $(OBJ_FILES) # link
+link: scaffold $(OBJ_FILES) # ссылка
 	@echo Linking "$(ASSEMBLY)"...
 ifeq ($(BUILD_PLATFORM),windows)
 	clang++ $(OBJ_FILES) -o $(BUILD_DIR)\$(ASSEMBLY)$(EXTENSION) $(LINKER_FLAGS)
@@ -121,11 +108,11 @@ compile:
 -include $(OBJ_FILES:.o=.d)
 
 .PHONY: clean
-clean: # clean build directory
+clean: # очистить каталог сборки
 	@echo --- Cleaning "$(ASSEMBLY)" ---
 ifeq ($(BUILD_PLATFORM),windows)
 	@if exist $(BUILD_DIR)\$(ASSEMBLY)$(EXTENSION) del $(BUILD_DIR)\$(ASSEMBLY)$(EXTENSION)
-# Windows builds include a lot of files... get them all.
+# Сборки Windows включают много файлов... получить их все.
 	@if exist $(BUILD_DIR)\$(ASSEMBLY).* del $(BUILD_DIR)\$(ASSEMBLY).*
 	@if exist $(OBJ_DIR)\$(ASSEMBLY) rmdir /s /q $(OBJ_DIR)\$(ASSEMBLY)
 else
@@ -133,7 +120,7 @@ else
 	@rm -rf $(OBJ_DIR)/$(ASSEMBLY)
 endif
 
-# compile .cpp to .o object for windows, linux and mac
+# скомпилировать .cpp в объект .o для Windows и Linux
 $(OBJ_DIR)/%.cpp.o: %.cpp 
 	@echo   $<...
 	@clang++ $< $(COMPILER_FLAGS) -c -o $@ $(DEFINES) $(INCLUDE_FLAGS)

@@ -181,6 +181,8 @@ bool Engine::Run() {
     // Отключение системы событий.
     EventSystem::Unregister(EVENT_CODE_APPLICATION_QUIT, nullptr, OnEvent);
 
+    pEngine->SysManager.~SystemsManager();
+
     return true;
 }
 
