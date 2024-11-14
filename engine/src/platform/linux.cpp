@@ -34,7 +34,6 @@
 // Для создания поверхности
 #define VK_USE_PLATFORM_XCB_KHR
 #include <vulkan/vulkan.h>
-#include "renderer/vulkan/vulkan_types.inl"
 #include "mthread.hpp"
 #include "mmutex.hpp"
 
@@ -46,38 +45,42 @@ struct PlatformState {
     xcb_atom_t wmProtocols;
     xcb_atom_t wmDeleteWin;
     VkSurfaceKHR surface;
+
+    constexpr PlatformState() : display(nullptr), connection(nullptr), window(), screen(nullptr), wmProtocols(), wmDeleteWin(), surface() {}
 };
+
+static PlatformState* pState = nullptr;
 
 // Перевод ключа
 Keys TranslateKeycode(u32 x_keycode);
 
-bool Create(
-    PlatformState* PlatState,
-    const char* ApplicationName,
-    i32 x,
-    i32 y,
-    i32 width,
-    i32 height) {
-    // Создание внутреннего состояния.
-    PlatState->InternalState = malloc(sizeof(PlatformState));
-    PlatformState* state = (PlatformState*)PlatState->InternalState;
+bool WindowSystem::Initialize(u64& MemoryRequirement, void* memory, void* config) {
+    MemoryRequirement = sizeof(PlatformState);
+
+    if (pState) {
+        return true;
+    }
+
+    auto pConfig = reinterpret_cast<ApplicationConfig*>(config);
+
+    pState = new(memory) PlatformState();
 
     // Подключиться к X
-    state->display = XOpenDisplay(NULL);
+    pState->display = XOpenDisplay(NULL);
 
     // Отключите повтор клавиш.
-    XAutoRepeatOff(state->display);
+    XAutoRepeatOff(pState->display);
 
     // Retrieve the connection from the display. Извлеките соединение с дисплея.
-    state->connection = XGetXCBConnection(state->display);
+    pState->connection = XGetXCBConnection(pState->display);
 
-    if (xcb_connection_has_error(state->connection)) {
+    if (xcb_connection_has_error(pState->connection)) {
         MFATAL("Не удалось подключиться к X-серверу через XCB.");
         return false;
     }
 
     // Получить данные с X-сервера
-    const struct xcb_setup_t* setup = xcb_get_setup(state->connection);
+    const struct xcb_setup_t* setup = xcb_get_setup(pState->connection);
 
     // Перебор экранов с помощью итератора
     xcb_screen_iterator_t it = xcb_setup_roots_iterator(setup);
@@ -87,10 +90,10 @@ bool Create(
     }
 
     // После того, как экраны будут перебраны, назначьте его.
-    state->screen = it.data;
+    pState->screen = it.data;
 
     // Выделите XID для создаваемого окна.
-    state->window = xcb_generate_id(state->connection);
+    pState->window = xcb_generate_id(pState->connection);
 
     // Регистрация типов событий.
     // XCB_CW_BACK_PIXEL = заполнение фона окна одним цветом
@@ -104,62 +107,62 @@ bool Create(
                        XCB_EVENT_MASK_STRUCTURE_NOTIFY;
 
     // Значения для отправки через XCB (цвет фона, события)
-    u32 value_list[] = {state->screen->black_pixel, event_values};
+    u32 value_list[] = {pState->screen->black_pixel, event_values};
 
     // Создайте окно
-    xcb_void_cookie_t cookie = xcb_create_window(
-        state->connection,
+    xcb_create_window(
+        pState->connection,
         XCB_COPY_FROM_PARENT,           // глубина
-        state->window,
-        state->screen->root,            // родитель
-        x,                              // x
-        y,                              // y
-        width,                          // ширина
-        height,                         // высота
+        pState->window,
+        pState->screen->root,           // родитель
+        pConfig->StartPosX,             // x
+        pConfig->StartPosY,             // y
+        pConfig->StartWidth,            // ширина
+        pConfig->StartHeight,           // высота
         0,                              // Без рамки
         XCB_WINDOW_CLASS_INPUT_OUTPUT,  // класс
-        state->screen->root_visual,
+        pState->screen->root_visual,
         event_mask,
         value_list);
 
     // Изменить заголовок
     xcb_change_property(
-        state->connection,
+        pState->connection,
         XCB_PROP_MODE_REPLACE,
-        state->window,
+        pState->window,
         XCB_ATOM_WM_NAME,
         XCB_ATOM_STRING,
         8,  // данные следует просматривать по 8 бит за раз
-        strlen(ApplicationName),
-        ApplicationName);
+        strlen(pConfig->name),
+        pConfig->name);
 
     // Скажите серверу, чтобы он уведомлял, 
     // когда оконный менеджер пытается уничтожить окно.
     xcb_intern_atom_cookie_t wm_delete_cookie = xcb_intern_atom(
-        state->connection,
+        pState->connection,
         0,
         strlen("WM_DELETE_WINDOW"),
         "WM_DELETE_WINDOW");
     xcb_intern_atom_cookie_t wm_protocols_cookie = xcb_intern_atom(
-        state->connection,
+        pState->connection,
         0,
         strlen("WM_PROTOCOLS"),
         "WM_PROTOCOLS");
     xcb_intern_atom_reply_t* wm_delete_reply = xcb_intern_atom_reply(
-        state->connection,
+        pState->connection,
         wm_delete_cookie,
         NULL);
     xcb_intern_atom_reply_t* wm_protocols_reply = xcb_intern_atom_reply(
-        state->connection,
+        pState->connection,
         wm_protocols_cookie,
         NULL);
-    state->wmDeleteWin = wm_delete_reply->atom;
-    state->wmProtocols = wm_protocols_reply->atom;
+    pState->wmDeleteWin = wm_delete_reply->atom;
+    pState->wmProtocols = wm_protocols_reply->atom;
 
     xcb_change_property(
-        state->connection,
+        pState->connection,
         XCB_PROP_MODE_REPLACE,
-        state->window,
+        pState->window,
         wm_protocols_reply->atom,
         4,
         32,
@@ -167,10 +170,10 @@ bool Create(
         &wm_delete_reply->atom);
 
     // Сопоставьте окно с экраном
-    xcb_map_window(state->connection, state->window);
+    xcb_map_window(pState->connection, pState->window);
 
     // Очистка потока
-    i32 stream_result = xcb_flush(state->connection);
+    i32 stream_result = xcb_flush(pState->connection);
     if (stream_result <= 0) {
         MFATAL("Произошла ошибка при очистке потока: %d", stream_result);
         return false;
@@ -179,110 +182,110 @@ bool Create(
     return true;
 }
 
-void Close() {
-    // Просто метод холодного приведения к известному типу.
-    PlatformState* state = (PlatformState*)PlatState->InternalState;
+void WindowSystem::Shutdown() {
+    if (pState) {
 
-    // Повторное включение клавиши, поскольку это глобально для ОС... просто... вау.
-    XAutoRepeatOn(state->display);
+        // Повторное включение клавиши, поскольку это глобально для ОС... просто... вау.
+        XAutoRepeatOn(pState->display);
 
-    xcb_destroy_window(state->connection, state->window);
+        xcb_destroy_window(pState->connection, pState->window);
+    }
 }
 
 bool Messages() {
-    // Простое легкое приведение к известному типу.
-    PlatformState* state = (PlatformState*)PlatState->InternalState;
+    if (pState) {
 
-    xcb_generic_event_t* event;
-    xcb_client_message_event_t* cm;
+        xcb_generic_event_t* event;
+        xcb_client_message_event_t* cm;
 
-    bool quit_flagged = false;
+        bool quit_flagged = false;
 
-    // Опрос событий до тех пор, пока не будет возвращено значение null.
-    while (event != 0) {
-        event = xcb_poll_for_event(state->connection);
-        if (event == 0) {
-            break;
-        }
-        //while ((event = xcb_poll_for_event(state->connection))) вместо конструкции выше
-
-         // Входные события
-        switch (event->response_type & ~0x80) {
-            case XCB_KEY_PRESS:
-            case XCB_KEY_RELEASE: {
-                // Событие нажатия клавиши - xcb_key_press_event_t и xcb_key_release_event_t совпадают
-                xcb_key_press_event_t *kb_event = (xcb_key_press_event_t *)event;
-                bool pressed = event->response_type == XCB_KEY_PRESS;
-                xcb_keycode_t code = kb_event->detail;
-                KeySym key_sym = XkbKeycodeToKeysym(
-                    state->display,
-                    (KeyCode)code,  //event.xkey.keycode,
-                    0,
-                    0/*code & ShiftMask ? 1 : 0*/);
-
-                Keys key = translate_keycode(key_sym);
-
-                // Передайте в подсистему ввода для обработки.
-                InputSystem::InputProcessKey(key, pressed);
-            } break;
-            case XCB_BUTTON_PRESS:
-            case XCB_BUTTON_RELEASE: {
-                xcb_button_press_event_t *mouse_event = (xcb_button_press_event_t *)event;
-                bool pressed = event->response_type == XCB_BUTTON_PRESS;
-                buttons mouse_button = BUTTON_MAX_BUTTONS;
-                switch (mouse_event->detail) {
-                    case XCB_BUTTON_INDEX_1:
-                        mouse_button = BUTTON_LEFT;
-                        break;
-                    case XCB_BUTTON_INDEX_2:
-                        mouse_button = BUTTON_MIDDLE;
-                        break;
-                    case XCB_BUTTON_INDEX_3:
-                        mouse_button = BUTTON_RIGHT;
-                        break;
-                }
-
-                // Переходим к подсистеме ввода.
-                if (mouse_button != BUTTON_MAX_BUTTONS) {
-                    InputSystem::ProcessButton(mouse_button, pressed);
-                }
-            }
-            case XCB_MOTION_NOTIFY:
-                // Движение мыши
-                 xcb_motion_notify_event_t *move_event = (xcb_motion_notify_event_t *)event;
-
-                // Переходим к подсистеме ввода.
-                InputSystem::InputProcessMouseMove(move_event->event_x, move_event->event_y);
+        // Опрос событий до тех пор, пока не будет возвращено значение null.
+        while (event != 0) {
+            event = xcb_poll_for_event(pState->connection);
+            if (event == 0) {
                 break;
+            }
+            //while ((event = xcb_poll_for_event(pState->connection))) вместо конструкции выше
 
-            case XCB_CONFIGURE_NOTIFY: {
-                // Изменение размера — обратите внимание, что это также запускается при перемещении окна, но в любом случае
-                // должно быть передано, поскольку изменение x/y может означать изменение размера в верхнем левом углу.
-                // Уровень приложения может решить, что с этим делать.
-                xcb_configure_notify_event_t *configure_event = (xcb_configure_notify_event_t *)event;
+             // Входные события
+            switch (event->response_type & ~0x80) {
+                case XCB_KEY_PRESS:
+                case XCB_KEY_RELEASE: {
+                    // Событие нажатия клавиши - xcb_key_press_event_t и xcb_key_release_event_t совпадают
+                    xcb_key_press_event_t *kb_event = (xcb_key_press_event_t *)event;
+                    bool pressed = event->response_type == XCB_KEY_PRESS;
+                    xcb_keycode_t code = kb_event->detail;
+                    KeySym key_sym = XkbKeycodeToKeysym(
+                        pState->display,
+                        (KeyCode)code,  //event.xkey.keycode,
+                        0,
+                        0/*code & ShiftMask ? 1 : 0*/);
 
-                // Запустите событие. Уровень приложения должен уловить это, но не обрабатывать, 
-                // поскольку это должно быть видно другим частям приложения.
-                EventContext context;
-                context.data.u16[0] = configure_event->width;
-                context.data.u16[1] = configure_event->height;
-                Event::Fire(EVENT_CODE_RESIZED, nullptr, context);
+                    Keys key = translate_keycode(key_sym);
+
+                    // Передайте в подсистему ввода для обработки.
+                    InputSystem::InputProcessKey(key, pressed);
+                } break;
+                case XCB_BUTTON_PRESS:
+                case XCB_BUTTON_RELEASE: {
+                    xcb_button_press_event_t *mouse_event = (xcb_button_press_event_t *)event;
+                    bool pressed = event->response_type == XCB_BUTTON_PRESS;
+                    buttons mouse_button = BUTTON_MAX_BUTTONS;
+                    switch (mouse_event->detail) {
+                        case XCB_BUTTON_INDEX_1:
+                            mouse_button = BUTTON_LEFT;
+                            break;
+                        case XCB_BUTTON_INDEX_2:
+                            mouse_button = BUTTON_MIDDLE;
+                            break;
+                        case XCB_BUTTON_INDEX_3:
+                            mouse_button = BUTTON_RIGHT;
+                            break;
+                    }
+
+                    // Переходим к подсистеме ввода.
+                    if (mouse_button != BUTTON_MAX_BUTTONS) {
+                        InputSystem::ProcessButton(mouse_button, pressed);
+                    }
+                }
+                case XCB_MOTION_NOTIFY:
+                    // Движение мыши
+                     xcb_motion_notify_event_t *move_event = (xcb_motion_notify_event_t *)event;
+
+                    // Переходим к подсистеме ввода.
+                    InputSystem::InputProcessMouseMove(move_event->event_x, move_event->event_y);
+                    break;
+
+                case XCB_CONFIGURE_NOTIFY: {
+                    // Изменение размера — обратите внимание, что это также запускается при перемещении окна, но в любом случае
+                    // должно быть передано, поскольку изменение x/y может означать изменение размера в верхнем левом углу.
+                    // Уровень приложения может решить, что с этим делать.
+                    xcb_configure_notify_event_t *configure_event = (xcb_configure_notify_event_t *)event;
+
+                    // Запустите событие. Уровень приложения должен уловить это, но не обрабатывать, 
+                    // поскольку это должно быть видно другим частям приложения.
+                    EventContext context;
+                    context.data.u16[0] = configure_event->width;
+                    context.data.u16[1] = configure_event->height;
+                    Event::Fire(EVENT_CODE_RESIZED, nullptr, context);
+                }
+
+                case XCB_CLIENT_MESSAGE: {
+                    cm = (xcb_client_message_event_t*)event;
+
+                    // Закрытие окна
+                    if (cm->data.data32[0] == pState->wmDeleteWin) {
+                        quit_flagged = true;
+                    }
+                } break;
+                default:
+                    // Что-то еще
+                    break;
             }
 
-            case XCB_CLIENT_MESSAGE: {
-                cm = (xcb_client_message_event_t*)event;
-
-                // Закрытие окна
-                if (cm->data.data32[0] == state->wmDeleteWin) {
-                    quit_flagged = true;
-                }
-            } break;
-            default:
-                // Что-то еще
-                break;
+            free(event);
         }
-
-        free(event);
     }
     return !quit_flagged;
 }
@@ -560,23 +563,23 @@ void PlatformGetRequiredExtensionNames(DArray<const char *> &NameDarray)
 // Создание поверхности для Vulkan
 b8 PlatformCreateVulkanSurface(MWindow *window, VulkanAPI *VkAPI) {
     // Simply cold-cast to the known type.
-    PlatformState *state = (PlatformState *)plat_state->internal_state;
+    PlatformState *pState = (PlatformState *)plat_state->internal_state;
 
     VkXcbSurfaceCreateInfoKHR create_info = {VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR};
-    create_info.connection = state->connection;
-    create_info.window = state->window;
+    create_info.connection = pState->connection;
+    create_info.window = pState->window;
 
     VkResult result = vkCreateXcbSurfaceKHR(
         context->instance,
         &create_info,
         context->allocator,
-        &state->surface);
+        &pState->surface);
     if (result != VK_SUCCESS) {
         KFATAL("Vulkan surface creation failed.");
         return false;
     }
 
-    context->surface = state->surface;
+    context->surface = pState->surface;
     return true;
 }
 
