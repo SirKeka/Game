@@ -136,7 +136,7 @@ bool FontSystem::LoadFont(SystemFontConfig &config)
     // Для системных шрифтов они фактически могут содержать несколько шрифтов. 
     // По этой причине копия данных ресурса будет храниться в каждом результирующем варианте, а сам ресурс будет освобожден.
     SystemFontResource LoadedResource;
-    if (!ResourceSystem::Load(config.ResourceName.c_str(), eResource::Type::SystemFont, 0, LoadedResource)) {
+    if (!ResourceSystem::Load(config.ResourceName.c_str(), eResource::Type::SystemFont, nullptr, LoadedResource)) {
         MERROR("Не удалось загрузить системный шрифт.");
         return false;
     }
@@ -245,7 +245,7 @@ bool FontSystem::LoadFont(BitmapFontConfig &config)
     // Получить поиск.
    auto& lookup = state->BitmapFonts[id];
 
-    if (!ResourceSystem::Instance()->Load(config.ResourceName.c_str(), eResource::Type::BitmapFont, 0, lookup.font.LoadedResource)) {
+    if (!ResourceSystem::Load(config.ResourceName.c_str(), eResource::Type::BitmapFont, nullptr, lookup.font.LoadedResource)) {
         MERROR("Не удалось загрузить растровый шрифт.");
         return false;
     }
@@ -255,7 +255,7 @@ bool FontSystem::LoadFont(BitmapFontConfig &config)
 
     // Получить текстуру.
     // ЗАДАЧА: на данный момент занимает только одну страницу.
-    lookup.font.ResourceData->data.atlas.texture = TextureSystem::Instance()->Acquire(lookup.font.ResourceData->pages[0].file, true);
+    lookup.font.ResourceData->data.atlas.texture = TextureSystem::Acquire(lookup.font.ResourceData->pages[0].file, true);
 
     bool result = SetupFontData(lookup.font.ResourceData->data);
 
@@ -423,7 +423,7 @@ void CleanupFontData(FontData &font)
 
     // Если это растровый шрифт, освободите ссылку на текстуру.
     if (font.type == FontType::Bitmap && font.atlas.texture) {
-        TextureSystem::Instance()->Release(font.atlas.texture->name);
+        TextureSystem::Release(font.atlas.texture->name);
     }
     font.atlas.texture = nullptr;
 }
@@ -451,7 +451,7 @@ bool CreateSystemFontVariant(SystemFontLookup &lookup, u16 size, const char *Fon
     // Создать текстуру.
     char FontTexName[255];
     MString::Format(FontTexName, "__system_text_atlas_%s_i%i_sz%i__", FontName, lookup.index, size);
-    OutVariant.atlas.texture = TextureSystem::Instance()->AquireWriteable(FontTexName, OutVariant.AtlasSizeX, OutVariant.AtlasSizeY, 4, true);
+    OutVariant.atlas.texture = TextureSystem::AquireWriteable(FontTexName, OutVariant.AtlasSizeX, OutVariant.AtlasSizeY, 4, true);
 
     // Получить некоторые метрики
     InternalData->scale = stbtt_ScaleForPixelHeight(&lookup.info, (f32)size);
@@ -504,7 +504,7 @@ bool RebuildSystemFontVariantAtlas(SystemFontLookup &lookup, FontData &variant)
     }
 
     // Запишите данные текстуры в атлас.
-    TextureSystem::Instance()->WriteData(variant.atlas.texture, 0, PackImageSize * 4, RgbaPixels);
+    TextureSystem::WriteData(variant.atlas.texture, 0, PackImageSize * 4, RgbaPixels);
 
     // Освободите данные пикселей/rgba_pixel.
     MemorySystem::Free(pixels, PackImageSize, Memory::Array);

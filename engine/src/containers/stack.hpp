@@ -2,13 +2,19 @@
 #include "defines.hpp"
 #include "core/mmemory.hpp"
 
+/// @brief Простой стековый контейнер. Элементы могут быть только вставлены в стек или вытащены из него.
+/// @tparam T Тип элемента который может быть вставлен в стек.
 template<typename T>
 class Stack
 {
 public:
+    /// @brief Размер элемента, который хранится в байтах.
     u32 ElementSize;
+    /// @brief Количество хранящихся элементов.
     u32 ElementCount;
+    /// @brief Общий объем выделенной в данный момент памяти.
     u32 allocated;
+    /// @brief Выделенный блок памяти, где хранятся данные.
     T* data;
 
     void EnsureAllocated(u32 count) {

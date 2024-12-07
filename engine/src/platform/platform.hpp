@@ -43,4 +43,10 @@ void PlatformSleep(u64 ms);
 /// @return Количество логических ядер процессора.
 i32 PlatformGetProcessorCount();
 
+/// @brief Получает требуемый объем памяти для специфичных для платформы данных дескриптора и опционально получает копию этих данных. 
+/// Вызвать дважды, один раз с памятью = 0, чтобы получить размер, затем второй раз, когда память = выделенный блок.
+/// @param OutSize Ссылка на переменную для хранения требований к памяти.
+/// @param memory Выделенный блок памяти.
+MAPI void PlatformGetHandleInfo(u64& OutSize, void* memory);
+
 // MAPI const char* PlatformGetKeyboardLayout();

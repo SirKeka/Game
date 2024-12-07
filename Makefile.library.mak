@@ -1,7 +1,8 @@
 BUILD_DIR := bin
 OBJ_DIR := obj
 
-ASSEMBLY := engine
+# Должен быть установлен вызывающей стороной.
+# ASSEMBLY := engine
 
 DEFINES := -DMEXPORT
 
@@ -11,8 +12,8 @@ ifeq ($(OS),Windows_NT)
 	BUILD_PLATFORM := windows
 	EXTENSION := .dll
 	COMPILER_FLAGS := -Wall -Werror -Wvla -Wgnu-folding-constant -Wno-missing-braces -fdeclspec
-	INCLUDE_FLAGS := -Iengine\src -I$(VULKAN_SDK)\include
-	LINKER_FLAGS := -shared -luser32 -lgdi32 -lvulkan-1 -L$(VULKAN_SDK)\Lib -L$(OBJ_DIR)\engine
+	INCLUDE_FLAGS := -I$(ASSEMBLY)\src $(ADDL_INC_FLAGS)
+	LINKER_FLAGS := -shared -luser32 -lgdi32 -L$(OBJ_DIR)\$(ASSEMBLY) -L.\$(BUILD_DIR) $(ADDL_LINK_FLAGS)
 	DEFINES += -D_CRT_SECURE_NO_WARNINGS
 
 # Make не предлагает рекурсивную функцию подстановочных знаков, а Windows она нужна, поэтому вот она:
@@ -41,8 +42,8 @@ else
 		BUILD_PLATFORM := linux
 		EXTENSION := .so
 		COMPILER_FLAGS := -Wall -Werror -Wvla -Wgnu-folding-constant -Wno-missing-braces -fdeclspec -fPIC
-		INCLUDE_FLAGS := -Iengine/src -I$(VULKAN_SDK)/include
-		LINKER_FLAGS := -shared -lvulkan -lxcb -lX11 -lX11-xcb -lxkbcommon -L$(VULKAN_SDK)/lib -L/usr/X11R6/lib
+		INCLUDE_FLAGS := -I$(ASSEMBLY)/src -I$(VULKAN_SDK)/include $(ADDL_INC_FLAGS)
+		LINKER_FLAGS := -shared -lvulkan -lxcb -lX11 -lX11-xcb -lxkbcommon -L$(VULKAN_SDK)/lib -L/usr/X11R6/lib -L./$(BUILD_DIR) $(ADDL_LINK_FLAGS)
 		# .cpp files
 		SRC_FILES := $(shell find $(ASSEMBLY) -name *.cpp)
 		# directories with .hpp files
@@ -94,18 +95,19 @@ else
 	@mkdir -p $(addprefix $(OBJ_DIR)/,$(DIRECTORIES))
 endif
 
+# ЗАДАЧА: снова включить это при необходимости
 # Создать файл версии
-ifeq ($(BUILD_PLATFORM),windows)
-	@if exist $(VERFILE) del $(VERFILE)
+# ifeq ($(BUILD_PLATFORM),windows)
+# 	@if exist $(VERFILE) del $(VERFILE)
 # Запиcь файла версии.
-	@echo $(VER_COMMENT)\n > $(VERFILE)
-	@echo #define MVERSION "$(MVERSION)" >> $(VERFILE)
-else
-	@rm -rf $(VERFILE)
+# 	@echo $(VER_COMMENT)\n > $(VERFILE)
+# 	@echo #define MVERSION "$(MVERSION)" >> $(VERFILE)
+# else
+# 	@rm -rf $(VERFILE)
 # Запиcь файла версии.
-	@echo $(VER_COMMENT)\n > $(VERFILE)
-	@echo "#define MVERSION \"$(MVERSION)\"" >> $(VERFILE)
-endif
+# 	@echo $(VER_COMMENT)\n > $(VERFILE)
+# 	@echo "#define MVERSION \"$(MVERSION)\"" >> $(VERFILE)
+# endif
 
 .PHONY: link
 link: scaffold $(OBJ_FILES) # ссылка

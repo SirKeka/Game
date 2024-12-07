@@ -76,12 +76,12 @@ MouseX(), MouseY()
     // InstanceCount = 0;
 
     // Регистрация для события перемещения мыши.
-    if (!EventSystem::Register(EVENT_CODE_MOUSE_MOVED, this, OnMouseMoved)) {
+    if (!EventSystem::Register(EventSystem::MouseMoved, this, OnMouseMoved)) {
         MERROR("Не удалось прослушать событие перемещения мыши, создание не удалось.");
         return;
     }
 
-    if (!EventSystem::Register(EVENT_CODE_DEFAULT_RENDERTARGET_REFRESH_REQUIRED, this, RenderViewOnEvent)) {
+    if (!EventSystem::Register(EventSystem::DefaultRendertargetRefreshRequired, this, RenderViewOnEvent)) {
         MERROR("Не удалось прослушать требуемое событие обновления, создание не удалось.");
         return;
     }
@@ -90,8 +90,8 @@ MouseX(), MouseY()
 
 RenderViewPick::~RenderViewPick()
 {
-    EventSystem::Unregister(EVENT_CODE_MOUSE_MOVED, this, OnMouseMoved);
-    EventSystem::Unregister(EVENT_CODE_DEFAULT_RENDERTARGET_REFRESH_REQUIRED, this, RenderViewOnEvent);
+    EventSystem::Unregister(EventSystem::MouseMoved, this, OnMouseMoved);
+    EventSystem::Unregister(EventSystem::DefaultRendertargetRefreshRequired, this, RenderViewOnEvent);
 
     ReleaseShaderInstances();
 
@@ -377,7 +377,7 @@ bool RenderViewPick::Render(const Packet &packet, u64 FrameNumber, u64 RenderTar
 
     EventContext context;
     context.data.u32[0] = id;
-    EventSystem::Fire(EVENT_CODE_OBJECT_HOVER_ID_CHANGED, nullptr, context);
+    EventSystem::Fire(EventSystem::OojectHoverIdChanged, nullptr, context);
 
     return true;
 }
@@ -404,7 +404,7 @@ bool RenderViewPick::RegenerateAttachmentTarget(u32 PassIndex, RenderTargetAttac
     }
 
     // Уничтожьте текущее прикрепленное приложение, если оно существует.
-    if (attachment->texture->Data) {
+    if (attachment->texture->data) {
         RenderingSystem::Unload(attachment->texture);
         MemorySystem::ZeroMem(attachment->texture, sizeof(Texture));
     }
@@ -424,12 +424,12 @@ bool RenderViewPick::RegenerateAttachmentTarget(u32 PassIndex, RenderTargetAttac
     attachment->texture->height = height;
     attachment->texture->ChannelCount = 4;  // ЗАДАЧА: настраиваемый
     attachment->texture->generation = INVALID::ID;
-    attachment->texture->flags |= HasTransparency ? TextureFlag::HasTransparency : 0;
-    attachment->texture->flags |= TextureFlag::IsWriteable;
+    attachment->texture->flags |= HasTransparency ? Texture::Flag::HasTransparency : 0;
+    attachment->texture->flags |= Texture::Flag::IsWriteable;
     if (attachment->type == RenderTargetAttachmentType::Depth) {
-        attachment->texture->flags |= TextureFlag::Depth;
+        attachment->texture->flags |= Texture::Flag::Depth;
     }
-    attachment->texture->Data = nullptr;
+    attachment->texture->data = nullptr;
 
     RenderingSystem::LoadTextureWriteable(attachment->texture);
 
@@ -453,7 +453,7 @@ void RenderViewPick::operator delete(void *ptr, u64 size)
 
 bool RenderViewPick::OnMouseMoved(u16 code, void *sender, void *ListenerInst, EventContext EventData)
 {
-    if (code == EVENT_CODE_MOUSE_MOVED) {
+    if (code == EventSystem::MouseMoved) {
         auto self = reinterpret_cast<RenderViewPick*>(ListenerInst);
 
         // Обновите положение и регенерируйте матрицу проекции.

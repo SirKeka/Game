@@ -1,13 +1,11 @@
 #include "texture.hpp"
 #include "renderer/rendering_system.hpp"
-#include "renderer/vulkan/vulkan_image.hpp"
-
 
 Texture::~Texture()
 {
-    if(Data) {
-        delete Data;
-        Data = nullptr;
+    if(data) {
+        // delete data;
+        data = nullptr;
     }
 }
 
@@ -33,23 +31,23 @@ Texture::Texture(const Texture &t)
     flags(t.flags), 
     generation(t.generation), 
     name(), 
-    Data(t.Data ? new VulkanImage(*t.Data) : nullptr) { 
-    MString::Copy(this->name, t.name, TEXTURE_NAME_MAX_LENGTH); 
+    data(t.data ? RenderingSystem::TextureCopyData(&t) : nullptr) { 
+    SetName(t.name); 
 }
 
-Texture &Texture::operator=(const Texture &t)
-{
-    id = t.id;
-    type = t.type;
-    width = t.width;
-    height = t.height;
-    ChannelCount = t.ChannelCount;
-    flags = t.flags;
-    generation = t.generation;
-    MString::Copy(this->name, t.name, TEXTURE_NAME_MAX_LENGTH);
-    Data = new VulkanImage(*t.Data);
-    return *this;
-}
+// Texture &Texture::operator=(const Texture &t)
+// {
+//     id = t.id;
+//     type = t.type;
+//     width = t.width;
+//     height = t.height;
+//     ChannelCount = t.ChannelCount;
+//     flags = t.flags;
+//     generation = t.generation;
+//     SetName(t.name);
+//     data = t.data;
+//     return *this;
+// }
 
 Texture &Texture::operator=(Texture &&t)
 {
@@ -60,8 +58,8 @@ Texture &Texture::operator=(Texture &&t)
     ChannelCount = t.ChannelCount;
     flags = t.flags;
     generation = t.generation;
-    MString::Copy(this->name, t.name, TEXTURE_NAME_MAX_LENGTH);
-    Data = t.Data;
+    SetName(t.name);
+    data = t.data;
 
     t.id = 0;
     //t.type = 0;
@@ -71,7 +69,7 @@ Texture &Texture::operator=(Texture &&t)
     t.flags = 0;
     t.generation = 0;
     MString::Zero(t.name);
-    t.Data = nullptr;
+    t.data = nullptr;
 
     return *this;
 }
@@ -82,9 +80,14 @@ void Texture::Create(const char* name, i32 width, i32 height, i32 ChannelCount, 
     this->height = height;
     this->ChannelCount = ChannelCount;
     this->generation = INVALID::ID;
-    MString::Copy(this->name, name, TEXTURE_NAME_MAX_LENGTH); // this->name = name;
+    SetName(name);
     this->flags = flags;
     this->generation++;
+}
+
+void Texture::Create(const TextureConfig &config)
+{
+    
 }
 
 void Texture::Clear()
@@ -93,9 +96,28 @@ void Texture::Clear()
     MString::Zero(name);
 }
 
+Texture& Texture::Copy(const Texture& texture)
+{
+    id = texture.id;
+    type = texture.type;
+    width = texture.width;
+    height = texture.height;
+    ChannelCount = texture.ChannelCount;
+    flags = texture.flags;
+    generation = texture.generation;
+    SetName(texture.name);
+    data = RenderingSystem::TextureCopyData(&texture);
+    return *this;
+}
+
+void Texture::SetName(const char *string)
+{
+    MString::Copy(name, string, TEXTURE_NAME_MAX_LENGTH);
+}
+
 Texture::operator bool() const
 {
-    if (id != 0 && width  != 0 && height != 0 && ChannelCount != 0 && flags != 0 && generation != 0 && Data != nullptr) {
+    if (id != 0 && width  != 0 && height != 0 && ChannelCount != 0 && flags != 0 && generation != 0 && data != nullptr) {
         return true;
     }
     return false;

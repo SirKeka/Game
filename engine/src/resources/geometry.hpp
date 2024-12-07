@@ -59,7 +59,7 @@ struct MAPI GeometryConfig {
 
 /// @brief Представляет фактическую геометрию в мире.
 /// Обычно (но не всегда, в зависимости от использования) в сочетается с материалом.
-class Geometry {
+class MAPI Geometry {
 private:
     u32 id;
     u32 generation;

@@ -8,6 +8,7 @@
 #include "console.hpp"
 #include "mvar.hpp"
 #include "input.hpp"
+#include "metrics.hpp"
 
 // Системы
 #include "systems/texture_system.hpp"
@@ -19,6 +20,7 @@
 #include "systems/render_view_system.hpp"
 #include "systems/job_systems.hpp"
 #include "systems/font_system.hpp"
+#include "platform/platform.hpp"
 
 #include "renderer/views/render_view_pick.hpp"
 
@@ -32,15 +34,9 @@ Engine* Engine::pEngine = nullptr;
 constexpr Engine::Engine() 
 : 
 SystemAllocator(),
-// logger(),
-//Events(),
 IsRunning(),
 IsSuspended(),
-//Window(),
-//Render(),
 GameInst(),
-RenderViewSystemInst(),
-ResourceSystemInst(),
 SysManager(),
 width(),
 height(),
@@ -179,7 +175,7 @@ bool Engine::Run() {
     // Выключение игры
     GameInst->Shutdown();
     // Отключение системы событий.
-    EventSystem::Unregister(EVENT_CODE_APPLICATION_QUIT, nullptr, OnEvent);
+    EventSystem::Unregister(EventSystem::ApplicationQuit, nullptr, OnEvent);
 
     pEngine->SysManager.~SystemsManager();
 
@@ -199,8 +195,8 @@ void Engine::operator delete(void *ptr, u64 size)
 bool Engine::OnEvent(u16 code, void *sender, void *ListenerInst, EventContext context)
 {
     switch (code) {
-        case EVENT_CODE_APPLICATION_QUIT: {
-            MINFO("Получено событие EVENT_CODE_APPLICATION_QUIT, завершение работы.\n");
+        case EventSystem::ApplicationQuit: {
+            MINFO("Получено событие EventSystem::ApplicationQuit, завершение работы.\n");
             pEngine->IsRunning = false;
             return true;
         }
@@ -211,7 +207,7 @@ bool Engine::OnEvent(u16 code, void *sender, void *ListenerInst, EventContext co
 
 bool Engine::OnResized(u16 code, void *sender, void *ListenerInst, EventContext context)
 {
-    if (code == EVENT_CODE_RESIZED) {
+    if (code == EventSystem::Resized) {
         u16 width = context.data.u16[0];
         u16 height = context.data.u16[1];
 
@@ -244,7 +240,7 @@ bool Engine::OnResized(u16 code, void *sender, void *ListenerInst, EventContext 
 
 void Engine::OnEventSystemInitialized()
 {
-    EventSystem::Register(EVENT_CODE_APPLICATION_QUIT, nullptr, OnEvent);
-    EventSystem::Register(EVENT_CODE_RESIZED, nullptr, OnResized);
+    EventSystem::Register(EventSystem::ApplicationQuit, nullptr, OnEvent);
+    EventSystem::Register(EventSystem::Resized, nullptr, OnResized);
     // EventSystem::Register(EVENT_CODE_OBJECT_HOVER_ID_CHANGED, nullptr, OnEvent);
 }

@@ -1,6 +1,6 @@
 #include "shader.hpp"
 #include "renderer/rendering_system.hpp"
-#include "renderer/vulkan/vulkan_shader.hpp"
+//#include "renderer/vulkan/vulkan_shader.hpp"
 
 constexpr Shader::Shader()
     :
@@ -164,13 +164,6 @@ bool Shader::BindGlobals()
 {
     // Глобальный UBO всегда находится в начале, но все равно используйте его.
     BoundUboOffset = GlobalUboOffset;
-    return true;
-}
-
-bool Shader::BindInstance(u32 InstanceID)
-{
-    BoundInstanceID = InstanceID;
-    BoundUboOffset = ShaderData->InstanceStates[InstanceID].offset;
     return true;
 }
 

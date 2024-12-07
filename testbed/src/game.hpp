@@ -3,6 +3,7 @@
 #include <application_types.hpp>
 #include <math/frustrum.hpp>
 #include <core/keymap.hpp>
+#include <resources/skybox.hpp>
 
 class Game : public Application
 {

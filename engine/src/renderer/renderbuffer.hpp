@@ -12,7 +12,7 @@ enum class RenderBufferType {
     Storage   // Буфер используется для хранения данных.
 };
 
-struct RenderBuffer
+struct MAPI RenderBuffer
 {
     RenderBufferType type;         // Тип буфера, который обычно определяет его использование.
     u64 TotalSize;                 // Общий размер буфера в байтах.

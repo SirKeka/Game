@@ -3,13 +3,14 @@
 #include <core/event.hpp>
 #include <core/logger.hpp>
 #include <core/input.hpp>
+#include <core/console.hpp>
 #include <renderer/camera.hpp>
 #include <renderer/rendering_system.hpp>
 #include "debug_console.hpp"
 
 void GameOnEscapeCallback(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) {
     MDEBUG("GameOnEscapeCallback");
-    EventSystem::Fire(EVENT_CODE_APPLICATION_QUIT, nullptr, (EventContext){});
+    EventSystem::Fire(EventSystem::ApplicationQuit, nullptr, (EventContext){});
 }
 
 void GameOnYaw(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) {
@@ -98,23 +99,23 @@ void GameOnConsoleChangeVisibility(Keys key, Keymap::EntryBindType type, Keymap:
 void GameOnSetRenderModeDefault(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) {
     EventContext data = {};
     data.data.i32[0] = Render::Default;
-    EventSystem::Fire(EVENT_CODE_SET_RENDER_MODE, /*(Game*)*/UserData, data);
+    EventSystem::Fire(EventSystem::SetRenderMode, /*(Game*)*/UserData, data);
 }
 
 void GameOnSetRenderModeLighting(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) {
     EventContext data = {};
     data.data.i32[0] = Render::Lighting;
-    EventSystem::Fire(EVENT_CODE_SET_RENDER_MODE, /*(Game*)*/UserData, data);
+    EventSystem::Fire(EventSystem::SetRenderMode, /*(Game*)*/UserData, data);
 }
 
 void GameOnSetRenderModeNormals(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) {
     EventContext data = {};
     data.data.i32[0] = Render::Normals;
-    EventSystem::Fire(EVENT_CODE_SET_RENDER_MODE, /*(Game*)*/UserData, data);
+    EventSystem::Fire(EventSystem::SetRenderMode, /*(Game*)*/UserData, data);
 }
 
 void GameOnLoadScene(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) {
-    EventSystem::Fire(EVENT_CODE_DEBUG1, /*(Game*)*/UserData, (EventContext){});
+    EventSystem::Fire(EventSystem::DEBUG1, /*(Game*)*/UserData, (EventContext){});
 }
 
 void GameOnConsoleScroll(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) {
@@ -153,7 +154,7 @@ void GameOnConsoleChangeHistory(Keys key, Keymap::EntryBindType type, Keymap::Mo
 void GameOnDebugTextureSwap(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) {
     MDEBUG("Swapping texture!");
     EventContext context = {};
-    EventSystem::Fire(EVENT_CODE_DEBUG0, UserData, context);
+    EventSystem::Fire(EventSystem::DEBUG0, UserData, context);
 }
 
 void GameOnDebugCamPosition(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) {
@@ -167,10 +168,19 @@ void GameOnDebugCamPosition(Keys key, Keymap::EntryBindType type, Keymap::Modifi
         state->WorldCamera->GetPosition().z);
 }
 
-void GameOnDebugVsyncToggle(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) {
-    bool VsyncEnabled = RenderingSystem::FlagEnabled(RendererConfigFlagBits::VsyncEnabledBit);
+static void ToggleVsync() {
+    bool VsyncEnabled = RenderingSystem::FlagEnabled(RenderingConfigFlagBits::VsyncEnabledBit);
     VsyncEnabled = !VsyncEnabled;
-    RenderingSystem::FlagSetEnabled(RendererConfigFlagBits::VsyncEnabledBit, VsyncEnabled);
+    RenderingSystem::FlagSetEnabled(RenderingConfigFlagBits::VsyncEnabledBit, VsyncEnabled);
+}
+
+void GameOnDebugVsyncToggle(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) {
+    char cmd[30];
+    MString::Copy(cmd, "mvar_set_int vsync 0", 29);
+    bool VsyncEnabled = RenderingSystem::FlagEnabled(VsyncEnabledBit);
+    u32 length = MString::Length(cmd);
+    cmd[length - 1] = VsyncEnabled ? '1' : '0';
+    Console::ExecuteCommand(cmd);
 }
 
 void GamePrintMemoryMetrics(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) {
@@ -182,7 +192,16 @@ void GamePrintMemoryMetrics(Keys key, Keymap::EntryBindType type, Keymap::Modifi
     MDEBUG("Распределения: %llu (%llu в этом кадре)", state->AllocCount, state->AllocCount - state->PrevAllocCount);
 }
 
+static bool GameOnMVarChanged(u16 code, void* sender, void* ListenerInst, EventContext data) {
+    if (code == EventSystem::MVarChanged && MString::Equali(data.data.c, "vsync")) {
+        ToggleVsync();
+    }
+    return false;
+}
+
 void Game::SetupKeymaps() {
+    EventSystem::Register(EventSystem::MVarChanged, nullptr, GameOnMVarChanged);
+    
     // Глобальная раскладка клавиатуры
     Keymap GlobalKeymap;
     GlobalKeymap.BindingAdd(Keys::ESCAPE, Keymap::BindTypePress, Keymap::ModifierNoneBit, this, GameOnEscapeCallback);

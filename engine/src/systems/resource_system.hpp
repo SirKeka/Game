@@ -12,23 +12,10 @@ struct ResourceSystemConfig {
 };
 
 // ЗАДАЧА: переделать
-class ResourceSystem
+namespace ResourceSystem
 {
-private:
-    u32 MaxLoaderCount;
-    const char* AssetBasePath;              // Относительный базовый путь для активов.
-
-    class ResourceLoader* RegisteredLoaders;
-
-    static ResourceSystem* state;
-    constexpr ResourceSystem(ResourceSystemConfig* config, ResourceLoader* RegisteredLoaders);
-public:
-    ~ResourceSystem() = default;
-    ResourceSystem(const ResourceSystem&) = delete;
-    ResourceSystem& operator= (const ResourceSystem&) = delete;
-
-    static bool Initialize(u64& MemoryRequirement, void* memory, void* config);
-    static void Shutdown();
+    bool Initialize(u64& MemoryRequirement, void* memory, void* config);
+    void Shutdown();
 
     /// @brief Регистрирует указанный загрузчик ресурсов в системе.
     /// @param type
@@ -40,23 +27,22 @@ public:
     /// @param name имя ресурса для загрузки.
     /// @param type тип ресурса для загрузки.
     /// @param params параметры, передаваемые загрузчику, или nullptr.
-    /// @param OutResource ссылка на недавно загруженный ресурс.
+    /// @param OutResource указатель на недавно загруженный ресурс.
     /// @return true в случае успеха; в противном случае false.
     template<typename T>
-    MAPI static bool Load(const char* name, eResource::Type type, void* params, T& OutResource) {
+    bool Load(const char *name, eResource::Type type, void *params, T &OutResource)
+    {
+        auto& l = GetLoader(type);
         if (type != eResource::Type::Custom) {
-            // Выбор загрузчика.
-            for (u32 i = 0; i < state->MaxLoaderCount; ++i) {
-                auto& l = state->RegisteredLoaders[i];
-                if (l.id != INVALID::ID && l.type == type) {
-                    return l.Load(name, params, OutResource);
-                }
+            if (l.id != INVALID::ID && l.type == type) {
+                return l.Load(name, params, OutResource);
             }
         }
 
         OutResource.LoaderID = INVALID::ID;
         MERROR("ResourceSystem::Load — загрузчик для типа %d не найден.", type);
         return false;
+
     }
 
     /// @brief Загружает ресурс с указанным именем и пользовательского типа.
@@ -71,19 +57,17 @@ public:
     /// @brief Выгружает указанный ресурс.
     /// @param resource ссылка на ресурс который нужно выгрузить.
     template<typename T>
-    MAPI static void Unload(T& resource) {
+    MAPI void Unload(T& resource) {
         if (resource.LoaderID != INVALID::ID) {
-            auto& l = state->RegisteredLoaders[resource.LoaderID];
+            auto& l = GetLoader(resource.LoaderID);
             if (l.id != INVALID::ID) {
                 l.Unload(resource);
             }
         }
     }
-    MAPI static const char* BasePath();
 
-    static MINLINE ResourceSystem* Instance() { return state; }
-/*private:
-    bool Load(const char* name, ResourceLoader& loader, void* params, Resource& OutResource);
-public:
-    // void* operator new(u64 size);*/
+    MAPI const char* BasePath();
+
+    MAPI ResourceLoader& GetLoader(u32 index);
 };
+

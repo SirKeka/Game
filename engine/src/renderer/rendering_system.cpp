@@ -1,7 +1,7 @@
 #include "rendering_system.hpp"
 #include "memory/linear_allocator.hpp"
 #include "platform/platform.hpp"
-#include "renderer/vulkan/vulkan_api.hpp"
+// #include "renderer/vulkan/vulkan_api.hpp"
 #include "systems/resource_system.hpp"
 #include "systems/texture_system.hpp"
 #include "systems/material_system.hpp"
@@ -9,19 +9,22 @@
 #include "systems/camera_system.hpp"
 #include "systems/render_view_system.hpp"
 #include "views/render_view.hpp"
+#include "core/mvar.hpp"
 
 #include <new>
 
 struct sRenderingSystem
 {
-    u8 WindowRenderTargetCount{};   // Количество целей рендеринга. Обычно совпадает с количеством изображений swapchain.
-    u32 FramebufferWidth{};         // Текущая ширина буфера кадра окна.
-    u32 FramebufferHeight{};        // Текущая высота буфера кадра окна.
-    bool resizing{};                // Указывает, изменяется ли размер окна в данный момент.
-    u8 FramesSinceResize{};         // Текущее количество кадров с момента последней операции изменения размера. Устанавливается только если resizing = true. В противном случае 0.
-
-    Renderer* ptrRenderer{};
-    /* ptrRenderer(new(this + 1) VulkanAPI(config, WindowRenderTargetCount)) {}*/
+    RendererPlugin* ptrRenderer;
+    /// @brief Текущая ширина буфера кадра окна.
+    u32 FramebufferWidth;
+    /// @brief Текущая высота буфера кадра окна.
+    u32 FramebufferHeight;
+    u8 WindowRenderTargetCount;   // Количество целей рендеринга. Обычно совпадает с количеством изображений swapchain.
+    bool resizing;                // Указывает, изменяется ли размер окна в данный момент.
+    u8 FramesSinceResize;         // Текущее количество кадров с момента последней операции изменения размера. Устанавливается только если resizing = true. В противном случае 0.
+    // Размер буфера кадра по умолчанию. Переопределяется при создании окна.
+    constexpr sRenderingSystem(RendererPlugin* plugin) : ptrRenderer(plugin), FramebufferWidth(1280), FramebufferHeight(720), WindowRenderTargetCount(), resizing(false), FramesSinceResize() {}
 };
 
 static sRenderingSystem* pRenderingSystem = nullptr;
@@ -30,23 +33,23 @@ bool RenderingSystem::Initialize(u64& MemoryRequirement, void* memory, void* con
 {
     auto pConfig = reinterpret_cast<RenderingSystemConfig*>(config);
 
-    MemoryRequirement = sizeof(sRenderingSystem) + sizeof(VulkanAPI);
+    MemoryRequirement = sizeof(sRenderingSystem);
     
     if (!memory) {
         return true;
     }
 
-    pRenderingSystem = reinterpret_cast<sRenderingSystem*>(memory);
-    // Размер буфера кадра по умолчанию. Переопределяется при создании окна.
-    pRenderingSystem->FramebufferWidth  = 1280;
-    pRenderingSystem->FramebufferHeight = 720;
+    pRenderingSystem = new(memory) sRenderingSystem(pConfig->plugin);
 
-    RendererConfig RConfig;
+    RenderingConfig RConfig;
     RConfig.ApplicationName = pConfig->ApplicationName;
     // ЗАДАЧА: предоставить это приложению для настройки.
     RConfig.flags = VsyncEnabledBit | PowerSavingBit;
 
-    pRenderingSystem->ptrRenderer = new(pRenderingSystem + 1) VulkanAPI(RConfig, pRenderingSystem->WindowRenderTargetCount);
+    // Создайте vsync mvar
+    MVar::CreateInt("vsync", (RConfig.flags & VsyncEnabledBit) ? 1 : 0);
+
+    pRenderingSystem->ptrRenderer->Initialize(RConfig, pRenderingSystem->WindowRenderTargetCount);
 
     if (!pRenderingSystem && !pRenderingSystem->ptrRenderer) {
         MERROR("Систему рендеринга не удалось инициализировать. Выключение.");
@@ -153,6 +156,11 @@ void RenderingSystem::TextureReadPixel(Texture *texture, u32 x, u32 y, u8 **OutR
     pRenderingSystem->ptrRenderer->TextureReadPixel(texture, x, y, OutRgba);
 }
 
+void *RenderingSystem::TextureCopyData(const Texture *texture)
+{
+    return pRenderingSystem->ptrRenderer->TextureCopyData(texture);
+}
+
 void RenderingSystem::Unload(Texture *texture)
 {
     pRenderingSystem->ptrRenderer->Unload(texture);
@@ -236,6 +244,11 @@ bool RenderingSystem::ShaderApplyInstance(Shader *shader, bool NeedsUpdate)
 bool RenderingSystem::ShaderAcquireInstanceResources(Shader *shader, TextureMap **maps, u32 &OutInstanceID)
 {
     return pRenderingSystem->ptrRenderer->ShaderAcquireInstanceResources(shader, maps, OutInstanceID);
+}
+
+bool RenderingSystem::ShaderBindInstance(Shader *shader, u32 InstanceID)
+{
+    return pRenderingSystem->ptrRenderer->ShaderBindInstance(shader, InstanceID);
 }
 
 bool RenderingSystem::ShaderReleaseInstanceResources(Shader *shader, u32 InstanceID)

@@ -23,7 +23,7 @@ bool RenderViewWorld::OnEvent(u16 code, void* sender, void* ListenerInst, EventC
     }
 
     switch (code) {
-        case EVENT_CODE_SET_RENDER_MODE: {
+        case EventSystem::SetRenderMode: {
             i32 mode = context.data.i32[0];
             switch (mode) {
                 default:
@@ -42,7 +42,7 @@ bool RenderViewWorld::OnEvent(u16 code, void* sender, void* ListenerInst, EventC
             }
             return true;
         }
-        case EVENT_CODE_DEFAULT_RENDERTARGET_REFRESH_REQUIRED: {
+        case EventSystem::DefaultRendertargetRefreshRequired: {
             RenderViewSystem::RegenerateRenderTargets(self);
             // Это должно быть использовано другими представлениями, поэтому считайте, что это _не_ обработано.
             return false;
@@ -83,12 +83,12 @@ RenderMode()
     shader = ShaderSystem::GetShader(CustomShaderName ? CustomShaderName : ShaderName);
 
     // Следите за изменениями режима.
-    if (!EventSystem::Register(EVENT_CODE_SET_RENDER_MODE, this, OnEvent)) {
+    if (!EventSystem::Register(EventSystem::SetRenderMode, this, OnEvent)) {
         MERROR("Не удалось прослушать событие установки режима рендеринга, создание не удалось.");
         return;
     }
 
-    if (!EventSystem::Register(EVENT_CODE_DEFAULT_RENDERTARGET_REFRESH_REQUIRED, this, OnEvent)) {
+    if (!EventSystem::Register(EventSystem::DefaultRendertargetRefreshRequired, this, OnEvent)) {
         MERROR("Не удалось прослушать событие установки режима рендеринга, создание не удалось.");
         return;
     }
@@ -96,8 +96,8 @@ RenderMode()
 
 RenderViewWorld::~RenderViewWorld()
 {
-    EventSystem::Unregister(EVENT_CODE_DEFAULT_RENDERTARGET_REFRESH_REQUIRED, this, OnEvent);
-    EventSystem::Unregister(EVENT_CODE_SET_RENDER_MODE, this, OnEvent);
+    EventSystem::Unregister(EventSystem::DefaultRendertargetRefreshRequired, this, OnEvent);
+    EventSystem::Unregister(EventSystem::SetRenderMode, this, OnEvent);
 }
 
 void RenderViewWorld::Resize(u32 width, u32 height)
@@ -144,7 +144,7 @@ bool RenderViewWorld::BuildPacket(class LinearAllocator& FrameAllocator, void *d
         }
 
         // ЗАДАЧА: Добавить что-то к материалу для проверки прозрачности.
-        if ((gData.gid->material->DiffuseMap.texture->flags & TextureFlag::HasTransparency) == 0) {
+        if ((gData.gid->material->DiffuseMap.texture->flags & Texture::Flag::HasTransparency) == 0) {
             OutPacket.geometries.PushBack(gData);
             OutPacket.GeometryCount++;
         } else {
@@ -176,7 +176,6 @@ bool RenderViewWorld::BuildPacket(class LinearAllocator& FrameAllocator, void *d
 
 bool RenderViewWorld::Render(const Packet &packet, u64 FrameNumber, u64 RenderTargetIndex)
 {
-    auto MaterialSystemInst = MaterialSystem::Instance();
     const auto& ShaderID = shader->id;
     for (u32 p = 0; p < RenderpassCount; ++p) {
         auto pass = &passes[p];
@@ -192,7 +191,7 @@ bool RenderViewWorld::Render(const Packet &packet, u64 FrameNumber, u64 RenderTa
 
         // Применить глобальные переменные
         // ЗАДАЧА: Найти общий способ запроса данных, таких как окружающий цвет (который должен быть из сцены) и режим (из рендерера)
-        if (!MaterialSystemInst->ApplyGlobal(ShaderID, FrameNumber, packet.ProjectionMatrix, packet.ViewMatrix, packet.AmbientColour, packet.ViewPosition, RenderMode)) {
+        if (!MaterialSystem::ApplyGlobal(ShaderID, FrameNumber, packet.ProjectionMatrix, packet.ViewMatrix, packet.AmbientColour, packet.ViewPosition, RenderMode)) {
             MERROR("Не удалось использовать применить глобальные переменные для шейдера материала. Не удалось отрисовать кадр.");
             return false;
         }
@@ -204,7 +203,7 @@ bool RenderViewWorld::Render(const Packet &packet, u64 FrameNumber, u64 RenderTa
             if (packet.geometries[i].gid->material) {
                 m = packet.geometries[i].gid->material;
             } else {
-                m = MaterialSystemInst->GetDefaultMaterial();
+                m = MaterialSystem::GetDefaultMaterial();
             }
 
             // Обновите материал, если он еще не был в этом кадре. 
@@ -212,7 +211,7 @@ bool RenderViewWorld::Render(const Packet &packet, u64 FrameNumber, u64 RenderTa
             // Его все равно нужно привязать в любом случае, поэтому этот результат проверки передается на бэкэнд, 
             // который либо обновляет внутренние привязки шейдера и привязывает их, либо только привязывает их.
             bool NeedsUpdate = m->RenderFrameNumber != FrameNumber;
-            if (!MaterialSystemInst->ApplyInstance(m, NeedsUpdate)) {
+            if (!MaterialSystem::ApplyInstance(m, NeedsUpdate)) {
                 MWARN("Не удалось применить материал '%s'. Пропуск отрисовки.", m->name);
                 continue;
             } else {
@@ -221,7 +220,7 @@ bool RenderViewWorld::Render(const Packet &packet, u64 FrameNumber, u64 RenderTa
             }
 
             // Примените локальные переменные
-            MaterialSystemInst->ApplyLocal(m, packet.geometries[i].model);
+            MaterialSystem::ApplyLocal(m, packet.geometries[i].model);
 
             // Нарисуйте его.
             RenderingSystem::DrawGeometry(packet.geometries[i]);

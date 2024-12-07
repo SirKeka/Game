@@ -2,6 +2,22 @@
 #include "vulkan_api.hpp"
 #include "containers/mstring.hpp"
 
+struct VulkanPhysicalDeviceRequirements {
+        bool graphics;
+        bool present;
+        bool compute;
+        bool transfer;
+        DArray<const char*> DeviceExtensionNames;
+        bool SamplerAnisotropy;
+        bool DiscreteGPU;
+        constexpr VulkanPhysicalDeviceRequirements()
+        : graphics(), present(), compute(), transfer(), DeviceExtensionNames(), SamplerAnisotropy(), DiscreteGPU() {}
+        constexpr VulkanPhysicalDeviceRequirements(bool graphics, bool present, bool transfer, const char* DeviceExtensionNames, bool SamplerAnisotropy, bool DiscreteGPU)
+        : graphics(graphics), present(present), compute(), transfer(transfer), DeviceExtensionNames(), SamplerAnisotropy(SamplerAnisotropy), DiscreteGPU(DiscreteGPU) { this->DeviceExtensionNames.PushBack(DeviceExtensionNames); }
+        constexpr VulkanPhysicalDeviceRequirements(bool graphics, bool present, bool compute, bool transfer, const char* DeviceExtensionNames, bool SamplerAnisotropy, bool DiscreteGPU)
+        : graphics(graphics), present(present), compute(compute), transfer(transfer), DeviceExtensionNames(), SamplerAnisotropy(SamplerAnisotropy), DiscreteGPU(DiscreteGPU) { this->DeviceExtensionNames.PushBack(DeviceExtensionNames); }
+    };
+
 bool VulkanDevice::Create(VulkanAPI* VkAPI)
 {
     if (!SelectPhysicalDevice(VkAPI)) {

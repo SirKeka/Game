@@ -5,24 +5,14 @@ OBJ_DIR := obj
 
 DEFINES := -DMIMPORT
 
-ENGINE_LINK := -lengine
-# HACK: Не связываться с движком для генерации версии.
-ifeq ($(ASSEMBLY),versiongen)
-	ENGINE_LINK =
-endif
-
 # Определение ОС и архитектуры.
 ifeq ($(OS),Windows_NT)
     # WIN32
 	BUILD_PLATFORM := windows
 	EXTENSION := .exe
 	COMPILER_FLAGS := -Wall -Werror -Wvla -Werror=vla -Wgnu-folding-constant -Wno-missing-braces -fdeclspec
-	INCLUDE_FLAGS := -Iengine\src -I$(ASSEMBLY)\src 
-# 	Поскольку Windows требует расширения .lib...
-	ifneq ($(ENGINE_LINK),)
-		ENGINE_LINK :=$(ENGINE_LINK).lib
-	endif
-	LINKER_FLAGS := $(ENGINE_LINK) -L$(OBJ_DIR)\engine -L$(BUILD_DIR)
+	INCLUDE_FLAGS := -I$(ASSEMBLY)\src $(ADDL_INC_FLAGS)
+	LINKER_FLAGS := -L$(BUILD_DIR) $(ADDL_LINK_FLAGS)
 	DEFINES += -D_CRT_SECURE_NO_WARNINGS
 
 # Make не предлагает рекурсивную функцию подстановочных знаков, а Windows она нужна, поэтому вот она:
@@ -50,8 +40,8 @@ else
         # LINUX
 		BUILD_PLATFORM := linux
 		EXTENSION := 
-		COMPILER_FLAGS := -Wall -Werror -Wvla -Werror=vla -Wgnu-folding-constant -Wno-missing-braces -fdeclspec -fPIC
-		INCLUDE_FLAGS := -Iengine/src -I$(ASSEMBLY)\src 
+		INCLUDE_FLAGS := -I$(ASSEMBLY)\src $(ADDL_INC_FLAGS)
+		LINKER_FLAGS := -L./$(BUILD_DIR) $(ADDL_LINK_FLAGS) -Wl,-rpath,.
 		LINKER_FLAGS := -L./$(BUILD_DIR) $(ENGINE_LINK) -Wl,-rpath,.
 		# .cpp files
 		SRC_FILES := $(shell find $(ASSEMBLY) -name *.cpp)

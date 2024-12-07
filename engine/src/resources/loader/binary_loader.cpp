@@ -10,7 +10,7 @@ bool ResourceLoader::Load(const char *name, void* params, BinaryResource &OutRes
 
     const char* FormatStr = "%s/%s/%s%s";
     char FullFilePath[512];
-    MString::Format(FullFilePath, FormatStr, ResourceSystem::Instance()->BasePath(), TypePath.c_str(), name, "");
+    MString::Format(FullFilePath, FormatStr, ResourceSystem::BasePath(), TypePath.c_str(), name, "");
 
     FileHandle f;
     if (!Filesystem::Open(FullFilePath, FileModes::Read, true, f)) {

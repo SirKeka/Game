@@ -26,7 +26,7 @@ void MeshLoadJobSuccess(void* params) {
 
     MTRACE("Успешно загружена сетка '%s'.", MeshParams->ResourceName);
 
-    ResourceSystem::Instance()->Unload(MeshParams->MeshRes);
+    ResourceSystem::Unload(MeshParams->MeshRes);
 }
 
 /// @brief Вызывается при сбое задания.
@@ -36,7 +36,7 @@ void MeshLoadJobFail(void* params) {
 
     MERROR("Не удалось загрузить сетку '%s'.", MeshParams->ResourceName);
 
-    ResourceSystem::Instance()->Unload(MeshParams->MeshRes);
+    ResourceSystem::Unload(MeshParams->MeshRes);
 }
 
 /// @brief Вызывается, когда начинается задание по загрузке сетки.
@@ -45,7 +45,7 @@ void MeshLoadJobFail(void* params) {
 /// @return Истина при успешном выполнении задания; в противном случае ложь.
 bool MeshLoadJobStart(void* params, void* ResultData) {
     auto LoadParams = reinterpret_cast<MeshLoadParams*>(params);
-    bool result = ResourceSystem::Instance()->Load(LoadParams->ResourceName, eResource::Type::Mesh, nullptr, LoadParams->MeshRes);
+    bool result = ResourceSystem::Load(LoadParams->ResourceName, eResource::Type::Mesh, nullptr, LoadParams->MeshRes);
 
     // ПРИМЕЧАНИЕ: Параметры нагрузки также используются здесь в качестве результирующих данных, теперь заполняется только поле mesh_resource.
     MemorySystem::CopyMem(ResultData, LoadParams, sizeof(MeshLoadParams));

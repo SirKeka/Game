@@ -2,6 +2,7 @@
 
 #include <core/logger.hpp>
 #include <core/input.hpp>
+#include <core/metrics.hpp>
 
 #include <systems/camera_system.hpp>
 #include <renderer/rendering_system.hpp>
@@ -20,7 +21,7 @@ bool Game::OnEvent(u16 code, void *sender, void *ListenerInst, EventContext cont
     auto GameInst = reinterpret_cast<Game*>(ListenerInst);
     auto state = reinterpret_cast<Game::State*>(GameInst->state);
     switch (code) {
-        case EVENT_CODE_OBJECT_HOVER_ID_CHANGED: {
+        case EventSystem::OojectHoverIdChanged: {
             state->HoveredObjectID = context.data.u32[0];
             return true;
         }
@@ -34,7 +35,7 @@ bool Game::OnDebugEvent(u16 code, void *sender, void *ListenerInst, EventContext
 {
     auto GameInst = reinterpret_cast<Game*>(ListenerInst);
     auto state = reinterpret_cast<Game::State*>(GameInst->state);
-    if (code == EVENT_CODE_DEBUG0) {
+    if (code == EventSystem::DEBUG0) {
         const char* names[3] = {
             "Ice",
             "Sand",
@@ -48,23 +49,22 @@ bool Game::OnDebugEvent(u16 code, void *sender, void *ListenerInst, EventContext
         choice++;
         choice %= 3;
 
-        auto MaterialSystemInst = MaterialSystem::Instance();
         // Просто замените материал на первой сетке, если она существует.
         auto& g = state->meshes[0].geometries[0];
         if (g) {
             // Приобретите новый материал.
-            g->material = MaterialSystemInst->Acquire(names[choice]);
+            g->material = MaterialSystem::Acquire(names[choice]);
 
         if (!g->material) {
                 MWARN("Application::OnDebugEvent: материал не найден! Использование материала по умолчанию.");
-                g->material = MaterialSystemInst->GetDefaultMaterial();
+                g->material = MaterialSystem::GetDefaultMaterial();
             }
 
             // Освободите старый рассеянный материал.
-            MaterialSystemInst->Release(OldName);
+            MaterialSystem::Release(OldName);
         }
         return true;
-    } else if (code == EVENT_CODE_DEBUG1) {
+    } else if (code == EventSystem::DEBUG1) {
         if (!state->ModelsLoaded) {
             MDEBUG("Загружаем модели...");
             state->ModelsLoaded = true;
@@ -271,13 +271,13 @@ bool Game::Initialize()
     state->WorldCamera->SetPosition(FVec3(10.5F, 5.F, 9.5F));
 
     //ЗАДАЧА: временно
-    EventSystem::Register(EVENT_CODE_DEBUG0, this, OnDebugEvent);
-    EventSystem::Register(EVENT_CODE_DEBUG1, this, OnDebugEvent);
-    EventSystem::Register(EVENT_CODE_OBJECT_HOVER_ID_CHANGED, this, OnEvent);
+    EventSystem::Register(EventSystem::DEBUG0, this, OnDebugEvent);
+    EventSystem::Register(EventSystem::DEBUG1, this, OnDebugEvent);
+    EventSystem::Register(EventSystem::OojectHoverIdChanged, this, OnEvent);
     //ЗАДАЧА: временно
 
-    EventSystem::Register(EVENT_CODE_KEY_PRESSED,  this, GameOnKey);
-    EventSystem::Register(EVENT_CODE_KEY_RELEASED, this, GameOnKey);
+    EventSystem::Register(EventSystem::KeyPressed,  this, GameOnKey);
+    EventSystem::Register(EventSystem::KeyReleased, this, GameOnKey);
 
     state->UpdateClock.Zero();
     state->RenderClock.Zero();
@@ -411,7 +411,7 @@ bool Game::Update(f32 DeltaTime)
         }
     }
 
-    const char* VsyncText = RenderingSystem::FlagEnabled(RendererConfigFlagBits::VsyncEnabledBit) ? "Вкл" : "Выкл";
+    const char* VsyncText = RenderingSystem::FlagEnabled(RenderingConfigFlagBits::VsyncEnabledBit) ? "Вкл" : "Выкл";
     char TextBuffer[2048]{};
     MString::Format(
         TextBuffer,
@@ -547,13 +547,13 @@ void Game::Shutdown()
     // state->TestText.~Text();
     // state->TestSysText.~Text();
 
-    EventSystem::Unregister(EVENT_CODE_DEBUG0, this, OnDebugEvent);
-    EventSystem::Unregister(EVENT_CODE_DEBUG1, this, OnDebugEvent);
-    EventSystem::Unregister(EVENT_CODE_OBJECT_HOVER_ID_CHANGED, this, OnEvent);
+    EventSystem::Unregister(EventSystem::DEBUG0, this, OnDebugEvent);
+    EventSystem::Unregister(EventSystem::DEBUG1, this, OnDebugEvent);
+    EventSystem::Unregister(EventSystem::OojectHoverIdChanged, this, OnEvent);
     // ЗАДАЧА: конец временного блока кода
 
-    EventSystem::Unregister(EVENT_CODE_KEY_PRESSED, this, GameOnKey);
-    EventSystem::Unregister(EVENT_CODE_KEY_RELEASED, this, GameOnKey);
+    EventSystem::Unregister(EventSystem::KeyPressed, this, GameOnKey);
+    EventSystem::Unregister(EventSystem::KeyReleased, this, GameOnKey);
 }
 
 bool Game::ConfigureRenderViews()

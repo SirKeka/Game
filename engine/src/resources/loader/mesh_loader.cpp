@@ -80,7 +80,7 @@ bool ResourceLoader::Load(const char *name, void* params, MeshResource &OutResou
     MeshFileType type = MeshFileType::NotFound;
     // Попробуйте каждое поддерживаемое расширение.
     for (u32 i = 0; i < SUPPORTED_FILETYPE_COUNT; ++i) {
-        MString::Format(FullFilePath, FormatString, ResourceSystem::Instance()->BasePath(), TypePath.c_str(), name, SupportedFiletypes[i].extension.c_str());
+        MString::Format(FullFilePath, FormatString, ResourceSystem::BasePath(), TypePath.c_str(), name, SupportedFiletypes[i].extension.c_str());
         // Если файл существует, откройте его и перестаньте искать.
         if (Filesystem::Exists(FullFilePath)) {
             if (Filesystem::Open(FullFilePath, FileModes::Read, SupportedFiletypes[i].IsBinary, f)) {
@@ -103,7 +103,7 @@ bool ResourceLoader::Load(const char *name, void* params, MeshResource &OutResou
         case MeshFileType::OBJ: {
             // Создайте имя файла ksm.
             char MsmFileName[512];
-            MString::Format(MsmFileName, "%s/%s/%s%s", ResourceSystem::Instance()->BasePath(), TypePath.c_str(), name, ".msm");
+            MString::Format(MsmFileName, "%s/%s/%s%s", ResourceSystem::BasePath(), TypePath.c_str(), name, ".msm");
             result = ImportObjFile(f, MsmFileName, OutResource.data);
             break;
         }

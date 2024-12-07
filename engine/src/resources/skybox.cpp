@@ -15,7 +15,7 @@ bool Skybox::Create(const char *CubemapName)
         MFATAL("Невозможно получить ресурсы для текстуры кубической карты.");
         return false;
     }
-    cubemap.texture = TextureSystem::Instance()->AcquireCube("skybox", true);  // ЗАДАЧА: имя жестко закодировано.
+    cubemap.texture = TextureSystem::AcquireCube("skybox", true);  // ЗАДАЧА: имя жестко закодировано.
     auto SkyboxCubeConfig = GeometrySystem::GenerateCubeConfig(10.0f, 10.0f, 10.0f, 1.0f, 1.0f, CubemapName, nullptr);
     // Удалите название материала.
     SkyboxCubeConfig.MaterialName[0] = '\0';

@@ -197,7 +197,7 @@ bool ShaderSystem::Use(u32 ShaderID)
 {
     // Выполняйте использование только в том случае, если идентификатор шейдера отличается.
     if (pShaderSystem->CurrentShaderID != ShaderID) {
-        Shader* NextShader = GetShader(ShaderID);
+        auto NextShader = GetShader(ShaderID);
         pShaderSystem->CurrentShaderID = ShaderID;
         if (!RenderingSystem::ShaderUse(NextShader)) {
             MERROR("Не удалось использовать шейдер '%s'.", NextShader->name.c_str());
@@ -235,7 +235,7 @@ bool ShaderSystem::UniformSet(u16 index, const void *value)
         if (uniform.scope == Shader::Scope::Global) {
             shader.BindGlobals();
         } else if (uniform.scope == Shader::Scope::Instance) {
-            shader.BindInstance(shader.BoundInstanceID);
+            RenderingSystem::ShaderBindInstance(&shader, shader.BoundInstanceID);
         } else {
             // ПРИМЕЧАНИЕ: Больше здесь делать нечего, просто установите униформу.
         }
@@ -268,7 +268,7 @@ bool ShaderSystem::BindInstance(u32 InstanceID)
 {
     auto& s = pShaderSystem->shaders[pShaderSystem->CurrentShaderID];
     s.BoundInstanceID = InstanceID;
-    return s.BindInstance(InstanceID);
+    return RenderingSystem::ShaderBindInstance(&s, InstanceID);
 }
 
 bool AddSampler(Shader *shader, const Shader::UniformConfig &config)
@@ -302,7 +302,7 @@ bool AddSampler(Shader *shader, const Shader::UniformConfig &config)
             return false;
         }
 
-        DefaultMap->texture = TextureSystem::Instance()->GetDefaultTexture(ETexture::Default);
+        DefaultMap->texture = TextureSystem::GetDefaultTexture(Texture::Default);
         shader->GlobalTextureMaps.PushBack(DefaultMap);
     } else {
         // В противном случае это происходит на уровне экземпляра, поэтому подсчитывайте, сколько ресурсов необходимо добавить во время получения ресурса.

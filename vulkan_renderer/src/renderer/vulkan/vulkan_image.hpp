@@ -11,9 +11,9 @@ struct VulkanCommandBuffer;
 class VulkanImage
 {
 public:
-    VkImage handle{};                           // Дескриптор внутреннего объекта изображения.
-    VkDeviceMemory memory{};                    // Память, используемая изображением.
-    VkImageView view{};                         // Вид для изображения, который используется для доступа к изображению.
+    VkImage handle;                             // Дескриптор внутреннего объекта изображения.
+    VkDeviceMemory memory;                      // Память, используемая изображением.
+    VkImageView view;                           // Вид для изображения, который используется для доступа к изображению.
     VkMemoryRequirements MemoryRequirements;    // Требования к памяти графического процессора для этого изображения.
     VkMemoryPropertyFlags MemoryFlags;          // Флаги свойств памяти
     u32 width = 0;                              // Ширина изображения.
@@ -56,6 +56,7 @@ public:
         b32 CreateView,
         VkImageAspectFlags ViewAspectFlags
     );
+    
     /// @brief Создает представление для заданного изображения.
     /// @param VkAPI указатель на контекст Vulkan.
     /// @param type тип текстуры. Предоставляет подсказки для создания.

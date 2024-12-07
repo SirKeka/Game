@@ -224,10 +224,7 @@ public:
     /// @brief Связывает глобальные ресурсы для использования и обновления.
     /// @return true в случае успеха, иначе false.
     bool BindGlobals();
-    /// @brief Связывает ресурсы экземпляра для использования и обновления.
-    /// @param InstanceID идентификатор экземпляра, который необходимо привязать.
-    /// @return true в случае успеха, иначе false.
-    bool BindInstance(u32 InstanceID);
+    
     bool UniformAdd(const MString& UniformName, u32 size, UniformType type, Scope scope, u32 SetLocation, bool IsSampler);
     bool UniformNameValid(const MString& UniformName);
     bool UniformAddStateValid();

@@ -146,7 +146,7 @@ bool SystemsManager::RegisterKnownSystemsPreBoot(ApplicationConfig &AppConfig)
     // Система отрисовки
     RenderingSystemConfig RendererSysConfig = {0};
     RendererSysConfig.ApplicationName = AppConfig.name;
-    RendererSysConfig.type = ERendererType::VULKAN;
+    RendererSysConfig.plugin = AppConfig.RenderPlugin;
     if (!Register(MSystem::Renderer, RenderingSystem::Initialize, RenderingSystem::Shutdown, nullptr, &RendererSysConfig)) {
         MERROR("Не удалось зарегистрировать систему отрисовки.");
         return false;

@@ -27,6 +27,7 @@ public:
     u64 StateMemoryRequirement;                 // Требуемый размер для игрового состояния.
     LinearAllocator FrameAllocator;             // Распределитель, используемый для распределений, которые необходимо делать в каждом кадре. Содержимое стирается в начале кадра.
     DArray<GeometryRenderData> WorldGeometries; // ApplicationFrameData FrameData;        // Данные, которые создаются, используются и удаляются в каждом кадре
+    // RendererPlugin* RenderPlugin;               // ЗАДАЧА: Переместить это в лучшее место...
 
     constexpr Application(const ApplicationConfig& AppConfig, u64 StateMemoryRequirement) : AppConfig(AppConfig), engine(nullptr), state(nullptr), StateMemoryRequirement(StateMemoryRequirement), FrameAllocator() {}
     virtual ~Application() = default;

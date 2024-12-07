@@ -30,7 +30,6 @@ using SystemFontResource = Resource<SystemFontResourceData>;
 namespace eResource
 {
     enum Type : u8 {
-        Invalid,     // 
         Text,        // Тип ресурса Text.
         Binary,      // Тип ресурса Binary.
         Image,       // Тип ресурса Image.
@@ -39,11 +38,11 @@ namespace eResource
         Shader,      // Тип ресурса Shader (или, точнее, конфигурация шейдера).
         BitmapFont,  // Тип ресурса растрового шрифта.
         SystemFont,  // Тип ресурса системного шрифта.
-        Custom       // Тип пользовательского ресурса. Используется загрузчиками вне основного движка.
+        Custom,      // Тип пользовательского ресурса. Используется загрузчиками вне основного движка.
+
+        Invalid = 255
     };
 } // namespace Resource
-
-    
 
 /// @brief Магическое число, указывающее на файл как двоичный файл.
 constexpr u32 RESOURCE_MAGIC = 0xcafebabe;
@@ -56,16 +55,14 @@ struct ResourceHeader {
     u16 reserved;       // Зарезервировано для будущих данных заголовка.
 };
 
-class ResourceLoader
+struct ResourceLoader
 {
-    friend class ResourceSystem;
-private:
-    u32 id{INVALID::ID};
+    u32 id;
     eResource::Type type;
     MString CustomType;
     MString TypePath;
-public:
-    // constexpr ResourceLoader() : id(INVALID::ID), type(), CustomType(), TypePath() {}
+
+    constexpr ResourceLoader() : id(INVALID::ID), type(eResource::Type::Invalid), CustomType(), TypePath() {}
     constexpr ResourceLoader(eResource::Type type, const MString& CustomType, const MString& TypePath) : id(INVALID::ID), type(type), CustomType(CustomType), TypePath(TypePath) {}
     ~ResourceLoader() {
         id = INVALID::ID;
@@ -81,7 +78,7 @@ public:
     MINLINE void Destroy() { this->~ResourceLoader(); }
 
     bool Load(const char* name, void* params,       TextResource& OutResource);
-    bool Load(const char* name, void* params,     BinaryResource& OutResource);
+    MAPI bool Load(const char* name, void* params,     BinaryResource& OutResource);
     bool Load(const char* name, void* params,      ImageResource& OutResource);
     bool Load(const char* name, void* params,   MaterialResource& OutResource);
     bool Load(const char* name, void* params,       MeshResource& OutResource);
@@ -91,7 +88,7 @@ public:
     //bool Load(const char* name, void* params, CustomResource& OutResource);
     
     void Unload(TextResource&       resource);
-    void Unload(BinaryResource&     resource);
+    MAPI void Unload(BinaryResource&     resource);
     void Unload(ImageResource&      resource);
     void Unload(MaterialResource&   resource);
     void Unload(MeshResource&       resource);

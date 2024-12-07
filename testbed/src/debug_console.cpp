@@ -64,7 +64,7 @@ namespace DebugConsole
         if (!pDebugConsole->visible) {
             return false;
         }
-        if (code == EVENT_CODE_KEY_PRESSED) {
+        if (code == EventSystem::KeyPressed) {
             const u16& KeyCode = context.data.u16[0];
             bool ShiftHeld = InputSystem::IsKeyDown(Keys::LSHIFT) || InputSystem::IsKeyDown(Keys::RSHIFT) || InputSystem::IsKeyDown(Keys::SHIFT);
 
@@ -182,8 +182,8 @@ namespace DebugConsole
 
         pDebugConsole->EntryControl.SetPosition(FVec3(3.F, 30.F + (31.F * pDebugConsole->LineDisplayCount), 0.F));
 
-        EventSystem::Register(EVENT_CODE_KEY_PRESSED, nullptr, OnKey);
-        EventSystem::Register(EVENT_CODE_KEY_RELEASED, nullptr, OnKey);
+        EventSystem::Register(EventSystem::KeyPressed, nullptr, OnKey);
+        EventSystem::Register(EventSystem::KeyReleased, nullptr, OnKey);
 
         return true;
     }

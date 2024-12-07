@@ -6,7 +6,7 @@
 //#include "renderer/renderer_structs.hpp"
 
 class VulkanAPI;
-class Texture;
+struct Texture;
 using RendererConfigFlags = u32;
 
 class VulkanSwapchain

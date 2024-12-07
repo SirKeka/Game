@@ -9,22 +9,19 @@
 #include "core/mthread.hpp"
 #include "core/mmutex.hpp"
 
+#define WIN32_LEAN_AND_MEAN
 #include <windowsx.h>  // извлечение входных параметров
 #include <windows.h>
 #include <stdlib.h>
 
-// Для создания поверхности
-#include "renderer/vulkan/vulkan_api.hpp"
-#include <vulkan/vulkan.h>
-#include <vulkan/vulkan_win32.h>
+struct Win32HandleInfo {
+    HINSTANCE HInstance;   // Дескриптор экземпляра приложения
+    HWND hwnd;             // Дескриптор окна
+};
 
 struct PlatformState
 {
-    HINSTANCE HInstance;   // Дескриптор экземпляра приложения
-    HWND hwnd;             // Дескриптор окна
-    VkSurfaceKHR surface;
-
-    constexpr PlatformState() : HInstance(), hwnd(), surface() {}
+    Win32HandleInfo handle;
 };
 
 static PlatformState* state = nullptr;
@@ -46,17 +43,17 @@ bool WindowSystem::Initialize(u64& MemoryRequirement, void* memory, void* config
 
     auto pConfig = reinterpret_cast<ApplicationConfig*>(config);
     state = reinterpret_cast<PlatformState*>(memory);
-    state->HInstance = GetModuleHandleA(0);
+    state->handle.HInstance = GetModuleHandleA(0);
 
     // Настройка и регистрация класса окна.
-    HICON icon = LoadIcon(state->HInstance, IDI_APPLICATION);
+    HICON icon = LoadIcon(state->handle.HInstance, IDI_APPLICATION);
     WNDCLASSA wc;
     memset(&wc, 0, sizeof(wc));
     wc.style = CS_DBLCLKS;                     // Получайте двойные клики
     wc.lpfnWndProc = Win32MessageProcessor;
     wc.cbClsExtra = 0;
     wc.cbWndExtra = 0;
-    wc.hInstance = state->HInstance;
+    wc.hInstance = state->handle.HInstance;
     wc.hIcon = icon;
     wc.hCursor = LoadCursor(NULL, IDC_ARROW);  // NULL; // Управление курсором вручную
     wc.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH);           // Прозрачный
@@ -102,7 +99,7 @@ bool WindowSystem::Initialize(u64& MemoryRequirement, void* memory, void* config
         height,              // Инициализация высоты окна
         NULL,                // Дескриптор родительского окна
         NULL,                // Дескриптор меню окна
-        state->HInstance,    // Дескриптор экземпляра программы
+        state->handle.HInstance,    // Дескриптор экземпляра программы
         NULL
     );
 
@@ -112,7 +109,7 @@ bool WindowSystem::Initialize(u64& MemoryRequirement, void* memory, void* config
     MFATAL("Не удалось создать окно!");
     return false;
     } else {
-    state->hwnd = handle;
+    state->handle.hwnd = handle;
     }
 
     // Показывает окно
@@ -120,8 +117,8 @@ bool WindowSystem::Initialize(u64& MemoryRequirement, void* memory, void* config
     i32 ShowWindowCommandFlags = ShouldActivate ? SW_SHOW : SW_SHOWNOACTIVATE;
     // Если изначально свернуто, используйте SW_MINIMIZE : SW_SHOWMINNOACTIVE;
     // Если изначально развернуто, используйте SW_SHOWMAXIMIZED : SW_MAXIMIZE
-    ShowWindow(state->hwnd, ShowWindowCommandFlags);
-    //UpdateWindow(state->hwnd);
+    ShowWindow(state->handle.hwnd, ShowWindowCommandFlags);
+    //UpdateWindow(state->handle.hwnd);
 
     ClockSetup();
 
@@ -130,9 +127,9 @@ bool WindowSystem::Initialize(u64& MemoryRequirement, void* memory, void* config
 
 void WindowSystem::Shutdown()
 {
-    if (state->hwnd) {
-        DestroyWindow(state->hwnd);
-        state->hwnd = 0;
+    if (state->handle.hwnd) {
+        DestroyWindow(state->handle.hwnd);
+        state->handle.hwnd = 0;
     }
 
 }
@@ -219,6 +216,15 @@ i32 PlatformGetProcessorCount()
     GetSystemInfo(&sysinfo);
     MINFO("Обнаружено %i ядер процессора.", sysinfo.dwNumberOfProcessors);
     return sysinfo.dwNumberOfProcessors;
+}
+
+void PlatformGetHandleInfo(u64& OutSize, void* memory)
+{
+    OutSize = sizeof(Win32HandleInfo);
+    if (!memory) {
+        return;
+    }
+    MemorySystem::CopyMem(memory, &state->handle, OutSize);
 }
 
 // const char* PlatformGetKeyboardLayout()
@@ -359,28 +365,6 @@ bool MMutex::Unlock()
 
 // ПРИМЕЧАНИЕ: конец мьютексов
 
-void PlatformGetRequiredExtensionNames(DArray<const char*>& NameDarray)
-{
-    NameDarray.PushBack("VK_KHR_win32_surface");
-}
-
-// Создание поверхности для Vulkan
-bool PlatformCreateVulkanSurface(VulkanAPI *VkAPI) {
-
-    VkWin32SurfaceCreateInfoKHR CreateInfo = {VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR};
-    CreateInfo.hinstance = state->HInstance;
-    CreateInfo.hwnd = state->hwnd;
-
-    VkResult result = vkCreateWin32SurfaceKHR(VkAPI->instance, &CreateInfo, VkAPI->allocator, &state->surface);
-    if (result != VK_SUCCESS) {
-        MFATAL("Не удалось создать поверхность Вулкана.");
-        return false;
-    }
-
-    VkAPI->surface = state->surface;
-    return true;
-}
-
 LRESULT CALLBACK Win32MessageProcessor(HWND hwnd, u32 msg, WPARAM w_param, LPARAM l_param) {
     switch (msg) {
         /*case WM_ERASEBKGND:
@@ -389,7 +373,7 @@ LRESULT CALLBACK Win32MessageProcessor(HWND hwnd, u32 msg, WPARAM w_param, LPARA
         case WM_CLOSE:
             // ЗАДАЧА: Вызов события для закрытия приложения.
             EventContext data;
-            EventSystem::Fire(EVENT_CODE_APPLICATION_QUIT, nullptr, data);
+            EventSystem::Fire(EventSystem::ApplicationQuit, nullptr, data);
             return 0;
             // Вызывается, когда пользователь закрывает окно
         case WM_DESTROY:
@@ -407,7 +391,7 @@ LRESULT CALLBACK Win32MessageProcessor(HWND hwnd, u32 msg, WPARAM w_param, LPARA
             EventContext context;
             context.data.u16[0] = (u16)width;
             context.data.u16[1] = (u16)height;
-            EventSystem::Fire(EVENT_CODE_RESIZED, nullptr, context);
+            EventSystem::Fire(EventSystem::Resized, nullptr, context);
         } break;
         case WM_KEYDOWN:
         case WM_SYSKEYDOWN:

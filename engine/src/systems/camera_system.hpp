@@ -20,7 +20,6 @@ struct CameraSystemConfig
     u16 MaxCameraCount;
 };
 
-
 class CameraSystem
 {
 private:

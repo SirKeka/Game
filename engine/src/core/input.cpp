@@ -191,7 +191,7 @@ void InputSystem::ProcessKey(Keys key, bool pressed)
         // Запустите событие для немедленной обработки.
         EventContext context;
         context.data.u16[0] = ToInt(key);
-        EventSystem::Fire(pressed ? EVENT_CODE_KEY_PRESSED : EVENT_CODE_KEY_RELEASED, 0, context);
+        EventSystem::Fire(pressed ? EventSystem::KeyPressed : EventSystem::KeyReleased, 0, context);
     }
 }
 
@@ -258,7 +258,7 @@ void InputSystem::ProcessButton(Buttons button, bool pressed)
         // Запустите событие.
         EventContext context;
         context.data.u16[0] = ToInt(button);
-        EventSystem::Fire(pressed ? EVENT_CODE_BUTTON_PRESSED : EVENT_CODE_BUTTON_RELEASED, 0, context);
+        EventSystem::Fire(pressed ? EventSystem::ButtonPressed : EventSystem::ButtonReleased, nullptr, context);
     }
 }
 
@@ -277,7 +277,7 @@ void InputSystem::ProcessMouseMove(i16 x, i16 y)
         EventContext context;
         context.data.u16[0] = x;
         context.data.u16[1] = y;
-        EventSystem::Fire(EVENT_CODE_MOUSE_MOVED, 0, context);
+        EventSystem::Fire(EventSystem::MouseMoved, nullptr, context);
     }
 }
 
@@ -288,7 +288,7 @@ void InputSystem::ProcessMouseWheel(i8 z_delta)
     // Запустите событие.
     EventContext context;
     context.data.i8[0] = z_delta;
-    EventSystem::Fire(EVENT_CODE_MOUSE_WHEEL, 0, context);
+    EventSystem::Fire(EventSystem::MouseWheel, nullptr, context);
 }
 
 void InputSystem::KeymapPush(const Keymap &map)

@@ -40,7 +40,7 @@ ProjectionLocation(), ViewLocation(), CubeMapLocation()
     ViewLocation = ShaderSystem::UniformIndex(shader, "view");
     CubeMapLocation = ShaderSystem::UniformIndex(shader, "cube_texture");
 
-    if(!EventSystem::Register(EVENT_CODE_DEFAULT_RENDERTARGET_REFRESH_REQUIRED, this, RenderViewOnEvent)) {
+    if(!EventSystem::Register(EventSystem::DefaultRendertargetRefreshRequired, this, RenderViewOnEvent)) {
         MERROR("Не удалось прослушать событие, требующее обновления, создание не удалось.");
         return;
     }
@@ -49,7 +49,7 @@ ProjectionLocation(), ViewLocation(), CubeMapLocation()
 RenderViewSkybox::~RenderViewSkybox()
 {
     // Отменить регистрацию на мероприятии.
-    EventSystem::Unregister(EVENT_CODE_DEFAULT_RENDERTARGET_REFRESH_REQUIRED, this, RenderViewOnEvent);
+    EventSystem::Unregister(EventSystem::DefaultRendertargetRefreshRequired, this, RenderViewOnEvent);
 }
 
 void RenderViewSkybox::Resize(u32 width, u32 height)

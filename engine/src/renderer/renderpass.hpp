@@ -3,7 +3,7 @@
 #include "containers/darray.hpp"
 #include "core/mmemory.hpp"
 
-class Texture;
+struct Texture;
 
 enum class RenderTargetAttachmentType {
     Colour = 0x1,

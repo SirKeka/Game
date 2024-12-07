@@ -24,7 +24,7 @@ class Shader;
 struct RenderingSystemConfig
 {
     const char *ApplicationName;
-    ERendererType type;
+    RendererPlugin* plugin;
 };
 
 namespace RenderingSystem
@@ -89,6 +89,11 @@ namespace RenderingSystem
     /// @param y Координата y пикселя.
     /// @param OutRgba Указатель на массив u8 для хранения данных пикселей (должен быть sizeof(u8) * 4)
     void TextureReadPixel(Texture* texture, u32 x, u32 y, u8** OutRgba);
+
+    /// @brief Копирует данные структуры и возвращает указатель на них
+    /// @param texture текстура данные которой нужно скопировать
+    /// @return укахатель на данные
+    void* TextureCopyData(const Texture* texture);
 
     /// @brief Выгружает данные текстуры из графического процессора.
     /// @param texture указатель на текстуру которую нужно выгрузить.
@@ -178,6 +183,12 @@ namespace RenderingSystem
     /// @param OutInstanceID ссылка для хранения нового идентификатора экземпляра.
     /// @return true в случае успеха, иначе false.
     bool ShaderAcquireInstanceResources(Shader* shader, TextureMap** maps, u32& OutInstanceID);
+
+    /// @brief Связывает ресурсы экземпляра для использования и обновления.
+    /// @param шейдер 
+    /// @param InstanceID идентификатор экземпляра, который необходимо привязать.
+    /// @return true в случае успеха, иначе false.
+    bool ShaderBindInstance(Shader* shader, u32 InstanceID);
 
     /// @brief Освобождает внутренние ресурсы уровня экземпляра для данного идентификатора экземпляра.------------------------------------------------
     /// @param shader указатель на шейдер, из которого необходимо освободить ресурсы.

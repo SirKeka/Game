@@ -26,28 +26,45 @@ struct TextureLoadParams {
 
 bool LoadCubeTextures(const char* name, const char TextureNames[6][TEXTURE_NAME_MAX_LENGTH], Texture& t);
 
-TextureSystem* TextureSystem::state = nullptr;
+bool CreateDefaultTexture();
+void DestroyDefaultTexture();
+bool LoadTexture(const char* TextureName, Texture& t);
+bool ProcessTextureReference(const char *name, TextureType type, i8 ReferenceDiff, bool AutoRelease, bool SkipLoad, u32 &OutTextureId);
 
-TextureSystem::TextureSystem(u32 MaxTextureCount, Texture* RegisteredTextures, TextureReference* HashtableBlock) 
-: 
+struct sTextureSystem
+{
+    u32 MaxTextureCount{};
+    Texture DefaultTexture[4]; // DefaultTexture, DefaultDiffuseTexture, DefaultSpecularTexture, DefaultNormalTexture
+
+    /// @brief Массив зарегистрированных текстур.
+    Texture* RegisteredTextures;
+
+    /// @brief Хэш-таблица для поиска текстур.
+    HashTable<TextureReference> RegisteredTextureTable;
+
+    sTextureSystem(u32 MaxTextureCount, Texture* RegisteredTextures, TextureReference* HashtableBlock)
+    : 
     MaxTextureCount(MaxTextureCount),
     DefaultTexture(), 
     RegisteredTextures(new(RegisteredTextures) Texture[MaxTextureCount]()), 
     RegisteredTextureTable(MaxTextureCount, false, HashtableBlock, true, TextureReference(0, INVALID::ID, false)) {}
 
-TextureSystem::~TextureSystem()
-{
-    if (this->RegisteredTextures) {
-        // Уничтожить все загруженные текстуры.
-        for (u32 i = 0; i < this->MaxTextureCount; ++i) {
-            Texture* t = &this->RegisteredTextures[i];
-            if (t->generation != INVALID::ID) {
-                RenderingSystem::Unload(t);
+    ~sTextureSystem()
+    {
+        if (this->RegisteredTextures) {
+            // Уничтожить все загруженные текстуры.
+            for (u32 i = 0; i < this->MaxTextureCount; ++i) {
+                Texture* t = &this->RegisteredTextures[i];
+                if (t->generation != INVALID::ID) {
+                    RenderingSystem::Unload(t);
+                }
             }
+            DestroyDefaultTexture();
         }
-        DestroyDefaultTexture();
     }
-}
+};
+
+static sTextureSystem* state = nullptr;
 
 bool TextureSystem::Initialize(u64& MemoryRequirement, void* memory, void* config)
 {
@@ -59,7 +76,7 @@ bool TextureSystem::Initialize(u64& MemoryRequirement, void* memory, void* confi
     }
 
     // Блок памяти будет содержать структуру состояния, затем блок массива, затем блок хеш-таблицы.
-    u64 StructRequirement = sizeof(TextureSystem);
+    u64 StructRequirement = sizeof(sTextureSystem);
     u64 ArrayRequirement = sizeof(Texture) * pConfig->MaxTextureCount;
     u64 HashtableRequirement = sizeof(TextureReference) * pConfig->MaxTextureCount;
     MemoryRequirement = StructRequirement + ArrayRequirement + HashtableRequirement;
@@ -72,11 +89,11 @@ bool TextureSystem::Initialize(u64& MemoryRequirement, void* memory, void* confi
     Texture* ArrayBlock = reinterpret_cast<Texture*> (ptrTextureSystem + StructRequirement);
     TextureReference* HashTableBlock = reinterpret_cast<TextureReference*> (ptrTextureSystem + StructRequirement + ArrayRequirement);
     if (!state) {
-        state = new(ptrTextureSystem) TextureSystem(pConfig->MaxTextureCount, ArrayBlock, HashTableBlock);
+        state = new(ptrTextureSystem) sTextureSystem(pConfig->MaxTextureCount, ArrayBlock, HashTableBlock);
     }
 
     // Создайте текстуры по умолчанию для использования в системе.
-    state->CreateDefaultTexture();
+    CreateDefaultTexture();
 
     return true;
 }
@@ -92,7 +109,7 @@ Texture *TextureSystem::Acquire(const char* name, bool AutoRelease)
     // ЗАДАЧА: Проверить наличие других названий текстур по умолчанию?
     if (MString::Equali(name, DEFAULT_TEXTURE_NAME)) {
         MWARN("TextureSystem::Acquire: вызывает текстуру по умолчанию. Используйте TextureSystem::GetDefaultTexture для текстуры «по умолчанию».");
-        return GetDefaultTexture(ETexture::Default);
+        return GetDefaultTexture(Texture::Default);
     }
 
     u32 id = INVALID::ID;
@@ -110,7 +127,7 @@ Texture *TextureSystem::AcquireCube(const char *name, bool AutoRelease)
     // ЗАДАЧА: Проверить по другим именам текстур по умолчанию?
     if (MString::Equali(name, DEFAULT_TEXTURE_NAME)) {
         MWARN("TextureSystem::AcquireCube вызван для текстуры по умолчанию. Использовать TextureSystem::GetDefaultTexture для текстуры 'default'.");
-        return &DefaultTexture[ETexture::Default];
+        return &state->DefaultTexture[Texture::Default];
     }
 
     u32 id = INVALID::ID;
@@ -120,7 +137,7 @@ Texture *TextureSystem::AcquireCube(const char *name, bool AutoRelease)
         return nullptr;
     }
 
-    return &RegisteredTextures[id];
+    return &state->RegisteredTextures[id];
 }
 
 Texture *TextureSystem::AquireWriteable(const char *name, u32 width, u32 height, u8 ChannelCount, bool HasTransparency)
@@ -135,9 +152,15 @@ Texture *TextureSystem::AquireWriteable(const char *name, u32 width, u32 height,
 
     auto& texture = state->RegisteredTextures[id];
     TextureFlagBits flags = 0;
-    flags |= HasTransparency ? TextureFlag::HasTransparency : 0;
-    flags |= TextureFlag::IsWriteable;
-    texture = Texture(id, TextureType::_2D, width, height, ChannelCount, flags, name, nullptr);
+    flags |= HasTransparency ? Texture::Flag::HasTransparency : 0;
+    flags |= Texture::Flag::IsWriteable;
+    texture.id = id;
+    texture.type = TextureType::_2D;
+    texture.width = width;
+    texture.height = height;
+    texture.ChannelCount = ChannelCount;
+    texture.flags = flags;
+    texture.SetName(name);
     RenderingSystem::LoadTextureWriteable(&texture);
     return &texture;
 }
@@ -156,10 +179,41 @@ void TextureSystem::Release(const char *name)
     }
 }
 
+MAPI void TextureSystem::WrapInternal(const TextureConfig* config, Texture *OutTexture)
+{
+    u32 id = INVALID::ID;
+        Texture* texture = nullptr;
+        if (config && config->RegisterTexture) {
+            // ПРИМЕЧАНИЕ: Обернутые текстуры никогда не выпускаются автоматически, поскольку это означает, 
+            // что их ресурсы создаются и управляются где-то во внутренних компонентах средства рендеринга.
+            if (!ProcessTextureReference(config->name, TextureType::_2D, 1, false, true, id)) {
+                MERROR("ТекстурнойСистеме::WrapInternal не удалось получить новый идентификатор текстуры.");
+                return;
+            }
+            texture = &state->RegisteredTextures[id];
+        } else {
+            if (OutTexture) {
+                texture = OutTexture;
+            } else {
+                if (!config) {
+                    MERROR("Конфигурация отсутвует. Текстура не создана.");
+                    return;
+                }
+
+                texture = new Texture(id, *config);
+                texture->flags |= config->HasTransparency ? Texture::Flag::HasTransparency : 0;
+                texture->flags |= config->IsWriteable ? Texture::Flag::IsWriteable : 0;
+            }
+            // MTRACE("TextureSystem::WrapInternal создала текстуру «%s», но не зарегистрировалась, что привело к выделению. Освобождение этой памяти зависит от вызывающего абонента.", name);
+        } 
+        
+        texture->flags |= Texture::Flag::IsWrapped;
+}
+
 bool TextureSystem::Resize(Texture *texture, u32 width, u32 height, bool RegenerateInternalData)
 {
     if (texture) {
-        if (!(texture->flags & TextureFlag::IsWriteable)) {
+        if (!(texture->flags & Texture::Flag::IsWriteable)) {
             MWARN("TextureSystem::Resize не следует вызывать для текстур, которые не доступны для записи.");
             return false;
         }
@@ -168,7 +222,7 @@ bool TextureSystem::Resize(Texture *texture, u32 width, u32 height, bool Regener
         // Разрешите это только для записываемых текстур, которые не обернуты. 
         // Обернутые текстуры могут вызывать TextureSystem::SetInternal, 
         // а затем вызывать эту функцию, чтобы получить вышеуказанные обновления параметров и обновление генерации.
-        if (!(texture->flags & TextureFlag::IsWrapped) && RegenerateInternalData) {
+        if (!(texture->flags & Texture::Flag::IsWrapped) && RegenerateInternalData) {
             // Восстановить внутренние детали до нового размера.
             RenderingSystem::TextureResize(texture, width, height);
             return false;
@@ -188,17 +242,17 @@ bool TextureSystem::WriteData(Texture *texture, u32 offset, u32 size, u8* pixels
     return false;
 }
 
-Texture *TextureSystem::GetDefaultTexture(ETextureFlag texture)
+Texture *TextureSystem::GetDefaultTexture(u8 texture)
 {
     if (state) {
-        return &DefaultTexture[texture];
+        return &state->DefaultTexture[texture];
     }
 
     MERROR("TextureSystem::GetDefaultTexture вызывается перед инициализацией системы текстур! Возвратился нулевой указатель.");
     return nullptr;
 }
 
-bool TextureSystem::CreateDefaultTexture()
+bool CreateDefaultTexture()
 {
     // ПРИМЕЧАНИЕ. Создайте текстуру по умолчанию — сине-белую шахматную доску размером 256x256.
     // Это делается в коде для устранения зависимостей активов.
@@ -227,26 +281,35 @@ bool TextureSystem::CreateDefaultTexture()
             }
         }
     }
-    DefaultTexture[ETexture::Default] = Texture(DEFAULT_TEXTURE_NAME, TextureType::_2D, TexDimension, TexDimension, 4, 0);
-    RenderingSystem::Load(pixels, &DefaultTexture[ETexture::Default]);
+    auto& DefTex = state->DefaultTexture[Texture::Default];
+    DefTex.SetName(DEFAULT_TEXTURE_NAME);
+    DefTex.width = DefTex.height = TexDimension;
+    DefTex.ChannelCount = 4;
+    RenderingSystem::Load(pixels, &DefTex);
 
     // Вручную установите недействительную генерацию текстуры, поскольку это текстура по умолчанию.
-    DefaultTexture[ETexture::Default].generation = INVALID::ID;
+    DefTex.generation = INVALID::ID;
 
     // Диффузная текстура
     u8 DiffPixels[16 * 16 * 4];
     MemorySystem::SetMemory(DiffPixels, 255, 16 * 16 * 4);
-    DefaultTexture[ETexture::Diffuse] = Texture(DEFAULT_DIFFUSE_TEXTURE_NAME, TextureType::_2D, 16, 16, 4, 0);
-    RenderingSystem::Load(DiffPixels, &DefaultTexture[ETexture::Diffuse]);
-    DefaultTexture[ETexture::Diffuse].generation = INVALID::ID;
+    auto& diffuse = state->DefaultTexture[Texture::Diffuse];
+    diffuse.SetName(DEFAULT_DIFFUSE_TEXTURE_NAME);
+    diffuse.width = diffuse.height = 16;
+    diffuse.ChannelCount = 4;
+    RenderingSystem::Load(DiffPixels, &diffuse);
+    diffuse.generation = INVALID::ID;
 
     // Зеркальная текстура.
     // MTRACE("Создание зеркальной текстуры по умолчанию...");
     u8 SpecPixels[16 * 16 * 4]{}; // Карта спецификации по умолчанию черная (без бликов).
-    DefaultTexture[ETexture::Specular] = Texture(DEFAULT_SPECULAR_TEXTURE_NAME, TextureType::_2D, 16, 16, 4, 0);
-    RenderingSystem::Load(SpecPixels, &DefaultTexture[ETexture::Specular]);
+    auto& specular = state->DefaultTexture[Texture::Specular];
+    specular.SetName(DEFAULT_SPECULAR_TEXTURE_NAME);
+    specular.width = specular.height = 16;
+    specular.ChannelCount = 4;
+    RenderingSystem::Load(SpecPixels, &state->DefaultTexture[Texture::Specular]);
     // Вручную установите недействительное поколение текстуры, поскольку это текстура по умолчанию.
-    DefaultTexture[ETexture::Specular].generation = INVALID::ID;
+    state->DefaultTexture[Texture::Specular].generation = INVALID::ID;
 
     // Текстура нормалей.
     // MTRACE("Создание текстуры нормалей по умолчанию...");
@@ -263,16 +326,19 @@ bool TextureSystem::CreateDefaultTexture()
             NormalPixels[IndexBpp + 3] = 255;
         }
     }
-    DefaultTexture[ETexture::Normal] = Texture(DEFAULT_NORMAL_TEXTURE_NAME, TextureType::_2D, 16, 16, 4, 0);
-    RenderingSystem::Load(NormalPixels, &DefaultTexture[ETexture::Normal]);
-    DefaultTexture[ETexture::Normal].generation = INVALID::ID;
+    auto& normal = state->DefaultTexture[Texture::Normal];
+    normal.SetName(DEFAULT_NORMAL_TEXTURE_NAME);
+    normal.width = normal.height = 16;
+    normal.ChannelCount = 4;
+    RenderingSystem::Load(NormalPixels, &normal);
+    normal.generation = INVALID::ID;
 
     return true;
 }
 
-void TextureSystem::DestroyDefaultTexture()
+void DestroyDefaultTexture()
 {
-    for (auto &&texture : DefaultTexture) {
+    for (auto &&texture : state->DefaultTexture) {
             RenderingSystem::Unload(&texture);
         }
 }
@@ -307,7 +373,7 @@ void LoadJobSuccess(void* params)
     MTRACE("Текстура «%s» успешно загружена.", TextureParams->ResourceName.c_str());
 
     // Очистите данные.
-    ResourceSystem::Instance()->Unload(TextureParams->ImgRes);
+    ResourceSystem::Unload(TextureParams->ImgRes);
     if (TextureParams->ResourceName) {
         TextureParams->ResourceName.Clear();
     }
@@ -319,7 +385,7 @@ void LoadJobFail(void *params)
 
     MERROR("Не удалось загрузить текстуру «%s».", TextureParams->ResourceName.c_str());
 
-    ResourceSystem::Instance()->Unload(TextureParams->ImgRes);
+    ResourceSystem::Unload(TextureParams->ImgRes);
 }
 
 bool LoadJobStart(void *params, void *ResultData)
@@ -329,7 +395,7 @@ bool LoadJobStart(void *params, void *ResultData)
 
     ImageResourceParams ResourceParams{ true };
 
-    bool result = ResourceSystem::Instance()->Load(LoadParams->ResourceName.c_str(), eResource::Type::Image, &ResourceParams, LoadParams->ImgRes);
+    bool result = ResourceSystem::Load(LoadParams->ResourceName.c_str(), eResource::Type::Image, &ResourceParams, LoadParams->ImgRes);
 
     auto& ResourceData = LoadParams->ImgRes.data;
 
@@ -353,7 +419,7 @@ bool LoadJobStart(void *params, void *ResultData)
     }
     
     MString::Copy(TempTexture.name, LoadParams->ResourceName, TEXTURE_NAME_MAX_LENGTH);
-    TempTexture.flags |= HasTransparency ? TextureFlag::HasTransparency : 0;
+    TempTexture.flags |= HasTransparency ? Texture::Flag::HasTransparency : 0;
 
     // ПРИМЕЧАНИЕ: Параметры загрузки также используются здесь в качестве результирующих данных, теперь заполняется только поле image_resource.
     MemorySystem::CopyMem(ResultData, LoadParams, sizeof(TextureLoadParams));
@@ -361,7 +427,7 @@ bool LoadJobStart(void *params, void *ResultData)
     return result;
 }
 
-bool TextureSystem::LoadTexture(const char *TextureName, Texture &t)
+bool LoadTexture(const char *TextureName, Texture &t)
 {
     // Запустить задание по загрузке текстур. Обрабатывает только загрузку с диска в ЦП. 
     // Загрузка в ГП выполняется после завершения этого задания.
@@ -376,12 +442,12 @@ bool TextureSystem::LoadTexture(const char *TextureName, Texture &t)
     return true;
 }
 
-bool TextureSystem::ProcessTextureReference(const char *name, TextureType type, i8 ReferenceDiff, bool AutoRelease, bool SkipLoad, u32 &OutTextureId)
+bool ProcessTextureReference(const char *name, TextureType type, i8 ReferenceDiff, bool AutoRelease, bool SkipLoad, u32 &OutTextureId)
 {
     OutTextureId = INVALID::ID;
     if (state) {
         TextureReference ref;
-        if (RegisteredTextureTable.Get(name, &ref)) {
+        if (state->RegisteredTextureTable.Get(name, &ref)) {
             // Если счетчик ссылок начинается с нуля, может быть верно одно из двух. 
             // Если ссылки увеличиваются, это означает, что запись новая. 
             // Если уменьшается, текстура не существует, если она не высвобождается автоматически.
@@ -482,7 +548,7 @@ bool TextureSystem::ProcessTextureReference(const char *name, TextureType type, 
             }
 
             // В любом случае обновите запись.
-            RegisteredTextureTable.Set(NameCopy, ref);
+            state->RegisteredTextureTable.Set(NameCopy, ref);
             return true;
         }
 
@@ -499,12 +565,12 @@ bool LoadCubeTextures(const char *name, const char TextureNames[6][TEXTURE_NAME_
 {
     u8* pixels = nullptr;
     u64 ImageSize = 0;
-    auto ResourceSystemInst = ResourceSystem::Instance();
+
     for (u8 i = 0; i < 6; ++i) {
         ImageResourceParams params { false };
 
         ImageResource ImgResource;
-        if (!ResourceSystemInst->Load(TextureNames[i], eResource::Type::Image, &params, ImgResource)) {
+        if (!ResourceSystem::Load(TextureNames[i], eResource::Type::Image, &params, ImgResource)) {
             MERROR("LoadCubeTextures() - Не удалось загрузить ресурс изображения для текстуры «%s»", TextureNames[i]);
             return false;
         }
@@ -537,7 +603,7 @@ bool LoadCubeTextures(const char *name, const char TextureNames[6][TEXTURE_NAME_
         MemorySystem::CopyMem(pixels + ImageSize * i, ResourceData.pixels, ImageSize);
 
         // Очистить данные.
-        ResourceSystemInst->Unload(ImgResource);
+        ResourceSystem::Unload(ImgResource);
     }
 
     // Получить внутренние ресурсы текстур и загрузить их в графический процессор.

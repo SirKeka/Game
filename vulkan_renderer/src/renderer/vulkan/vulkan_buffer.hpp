@@ -23,15 +23,15 @@ struct VulkanBuffer
     u32 MemoryPropertyFlags;                    // Флаги свойств для памяти, используемой буфером.
 
     constexpr VulkanBuffer() : handle(), usage(), IsLocked(), memory(), MemoryRequirements(), MemoryIndex(), MemoryPropertyFlags() {}
-    constexpr VulkanBuffer(const VulkanBuffer& b)
-    : 
-    handle(b.handle), 
-    usage(b.usage), 
-    IsLocked(b.IsLocked), 
-    memory(b.memory), 
-    MemoryRequirements(b.MemoryRequirements), 
-    MemoryIndex(b.MemoryIndex), 
-    MemoryPropertyFlags(b.MemoryPropertyFlags) {}
+    // constexpr VulkanBuffer(const VulkanBuffer& b)
+    // : 
+    // handle(b.handle), 
+    // usage(b.usage), 
+    // IsLocked(b.IsLocked), 
+    // memory(b.memory), 
+    // MemoryRequirements(b.MemoryRequirements), 
+    // MemoryIndex(b.MemoryIndex), 
+    // MemoryPropertyFlags(b.MemoryPropertyFlags) {}
 
     void* operator new(u64 size) {
         return MemorySystem::Allocate(size, Memory::Vulkan);

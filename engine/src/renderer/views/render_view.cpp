@@ -10,7 +10,7 @@ bool RenderViewOnEvent(u16 code, void *sender, void *ListenerInst, EventContext 
     }
 
     switch (code) {
-        case EVENT_CODE_DEFAULT_RENDERTARGET_REFRESH_REQUIRED:
+        case EventSystem::DefaultRendertargetRefreshRequired:
             RenderViewSystem::RegenerateRenderTargets(self);
             // Это должно быть использовано другими представлениями, поэтому считайте, что это _не_ обработано.
             return false;

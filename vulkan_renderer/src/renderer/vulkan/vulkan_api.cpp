@@ -1,16 +1,17 @@
 #include "vulkan_api.hpp"
-#include "core/event.hpp"
-#include "memory/linear_allocator.hpp"
 #include "vulkan_command_buffer.hpp"
-#include "renderer/renderbuffer.hpp"
 #include "vulkan_swapchain.hpp"
 #include "vulkan_image.hpp"
-#include "vulkan_platform.hpp"
+#include "vulkan_buffer.hpp"
+#include "platform\vulkan_platform.hpp"
 #include "vulkan_renderpass.hpp"
-#include "systems/material_system.hpp"
-#include "systems/resource_system.hpp"
+
+#include "renderer/renderbuffer.hpp"
+
+#include <systems/material_system.hpp>
 #include "systems/texture_system.hpp"
-#include "resources/geometry.hpp"
+#include "systems/resource_system.hpp"
+//#include "resources/geometry.hpp"
 
 #include "math/vertex.hpp"
 
@@ -189,7 +190,7 @@ bool VulkanAPI::CreateVulkanAllocator(VkAllocationCallbacks* callbacks) {
 }
 #endif // MVULKAN_USE_CUSTOM_ALLOCATOR == 1
 
-VulkanAPI::VulkanAPI(const RendererConfig& config, u8& OutWindowRenderTargetCount)
+VulkanAPI::VulkanAPI()
 : FrameDeltaTime(),
 // Просто установите некоторые значения по умолчанию для буфера кадра на данный момент.
 // На самом деле неважно, что это, потому что они будут переопределены, но они необходимы для создания цепочки обмена.
@@ -199,217 +200,30 @@ FramebufferSizeLastGeneration(),
 ViewportRect(), // 0.F, (f32)FramebufferHeight, (f32)FramebufferWidth, -(f32)FramebufferHeight
 ScissorRect(),  // 0, 0, FramebufferHeight, FramebufferHeight
 instance(), allocator(nullptr), surface(),
+
+#if defined(_DEBUG)
+DebugMessenger(),
+#endif
+
 Device(), swapchain(),
 ObjectVertexBuffer(RenderBufferType::Vertex, sizeof(Vertex3D) * 1024 * 1024, true),
 ObjectIndexBuffer(RenderBufferType::Index, sizeof(u32) * 1024 * 1024, true),
+GraphicsCommandBuffers(),
+ImageAvailableSemaphores(),
+QueueCompleteSemaphores(),
+InFlightFenceCount(),
+InFlightFences(),
+ImagesInFlight(),
+ImageIndex(),
+CurrentFrame(),
 RecreatingSwapchain(false),
 RenderFlagChanged(false),
+geometries(),
+WorldRenderTargets(),
 MultithreadingEnabled(false)
 
 {
-    // ПРИМЕЧАНИЕ: Пользовательский распределитель.
-#if MVULKAN_USE_CUSTOM_ALLOCATOR == 1
-    allocator = MemorySystem::TAllocate<VkAllocationCallbacks>(Memory::Renderer);
-    if (!CreateVulkanAllocator(allocator)) {
-        // Если это не удается, аккуратно вернитесь к распределителю по умолчанию.
-        MFATAL("Не удалось создать пользовательский распределитель Vulkan. Продолжаем использовать распределитель драйвера по умолчанию.");
-        MemorySystem::Free(allocator, sizeof(VkAllocationCallbacks), Memory::Renderer);
-        allocator = nullptr;
-        }
-#else
-    allocator = nullptr;
-#endif
 
-    // Общая структура информации о приложении.
-    VkApplicationInfo AppInfo = {VK_STRUCTURE_TYPE_APPLICATION_INFO};
-    AppInfo.apiVersion = VK_API_VERSION_1_2;
-    AppInfo.pApplicationName = config.ApplicationName;
-    AppInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0); // VK_MAKE_API_VERSION(0, 1, 0, 0);
-    AppInfo.pEngineName = "Moon Engine";
-    AppInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0); // VK_MAKE_API_VERSION(0, 1, 0, 0); 
-    // Создание экземпляра.
-    VkInstanceCreateInfo CreateInfo = {VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO};
-    CreateInfo.pApplicationInfo = &AppInfo;
-
-    // Получите список необходимых расширений
-    
-    DArray<const char*>RequiredExtensions{VK_KHR_SURFACE_EXTENSION_NAME};   // Общее расширение поверхности
-    PlatformGetRequiredExtensionNames(RequiredExtensions);                  // Расширения для конкретной платформы
-#if defined(_DEBUG)
-    RequiredExtensions.PushBack(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);         // утилиты отладки
-
-    MDEBUG("Необходимые расширения:");
-    const u32& RequiredExtensionCount = RequiredExtensions.Length();
-    for (u32 i = 0; i < RequiredExtensionCount; ++i) {
-        MDEBUG(RequiredExtensions[i]);
-    }
-#endif
-
-    CreateInfo.enabledExtensionCount = RequiredExtensions.Length();
-    CreateInfo.ppEnabledExtensionNames = RequiredExtensions.Data(); //ЗАДАЧА: указателю ppEnabledExtensionNames присваевается адрес указателя массива после выхода из функции данные стираются
-
-    u32 AvailableExtensionCount = 0;
-    vkEnumerateInstanceExtensionProperties(0, &AvailableExtensionCount, 0);
-    DArray<VkExtensionProperties> AvailableExtensions;
-    AvailableExtensions.Resize(AvailableExtensionCount);
-    vkEnumerateInstanceExtensionProperties(0, &AvailableExtensionCount, AvailableExtensions.Data());
-
-    // Проверьте доступность необходимых расширений.
-    for (u32 i = 0; i < RequiredExtensionCount; ++i) {
-        bool found = false;
-        for (u32 j = 0; j < AvailableExtensionCount; ++j) {
-            if (MString::Equali(RequiredExtensions[i], AvailableExtensions[j].extensionName)) {
-                found = true;
-                MINFO("Требуемое расширение найдено: %s...", RequiredExtensions[i]);
-                break;
-            }
-        }
-
-        if (!found) {
-            MFATAL("Отсутствует требуемое расширение: %s", RequiredExtensions[i]);
-            return;
-        }
-    }
-
-    // Уровни проверки.
-    DArray<const char*> RequiredValidationLayerNames; // указатель на массив символов ЗАДАЧА: придумать как использовать строки или другой способ отображать занятую память
-    u32 RequiredValidationLayerCount = 0;
-
-// Если необходимо выполнить проверку, получите список имен необходимых слоев проверки 
-// и убедитесь, что они существуют. Слои проверки следует включать только в нерелизных сборках.
-#if defined(_DEBUG)
-    MINFO("Уровни проверки включены. Перечисление...");
-
-    // Список требуемых уровней проверки.
-    RequiredValidationLayerNames.PushBack("VK_LAYER_KHRONOS_validation");
-    RequiredValidationLayerCount = RequiredValidationLayerNames.Length();
-
-    // Получите список доступных уровней проверки.
-    u32 AvailableLayerCount = 0;
-    VK_CHECK(vkEnumerateInstanceLayerProperties(&AvailableLayerCount, nullptr));
-    DArray<VkLayerProperties> AvailableLayers;
-    AvailableLayers.Resize(AvailableLayerCount);
-    VK_CHECK(vkEnumerateInstanceLayerProperties(&AvailableLayerCount, AvailableLayers.Data())); 
-
-    // Убедитесь, что доступны все необходимые слои.
-    for (u32 i = 0; i < RequiredValidationLayerCount; ++i) {
-        bool found = false;
-        for (u32 j = 0; j < AvailableLayerCount; ++j) {
-            if (MString::Equal(RequiredValidationLayerNames[i], AvailableLayers[j].layerName)) {
-                found = true;
-                MINFO("Найден слой проверки: %s...", RequiredValidationLayerNames[i]);
-                break;
-            }
-        }
-
-        if (!found) {
-            MFATAL("Необходимый уровень проверки отсутствует: %shader", RequiredValidationLayerNames[i]);
-            return;
-        }
-    }
-    MINFO("Присутствуют все необходимые уровни проверки.");
-#endif
-    CreateInfo.enabledLayerCount = RequiredValidationLayerCount;
-    CreateInfo.ppEnabledLayerNames = RequiredValidationLayerNames.Data();
-
-    VkResult InstanceResult = vkCreateInstance(&CreateInfo, allocator, &instance);
-    if (!VulkanResultIsSuccess(InstanceResult)) {
-        const char* ResultString = VulkanResultString(InstanceResult, true);
-        MFATAL("Создание экземпляра Vulkan не удалось, результат: '%s'", ResultString);
-        return;
-    }
-    MINFO("Создан экземпляр Vulkan.");
-
-    // ЗАДАЧА: реализовать многопоточность.
-
-    // Debugger
-#if defined(_DEBUG)
-    MDEBUG("Создание отладчика Vulkan...");
-    u32 LogSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT |
-                       VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
-                       VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT;  //|
-                                                                      //    VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT;
-
-    VkDebugUtilsMessengerCreateInfoEXT DebugCreateInfo = {VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT};
-    DebugCreateInfo.messageSeverity = LogSeverity;
-    DebugCreateInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT;
-    DebugCreateInfo.pfnUserCallback = VkDebugCallback;
-
-    PFN_vkCreateDebugUtilsMessengerEXT func =
-        (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
-    MASSERT_MSG(func, "Не удалось создать debug messenger!");
-    VK_CHECK(func(instance, &DebugCreateInfo, allocator, &DebugMessenger));
-    MDEBUG("Создан отладчик Vulkan.");
-#endif
-
-    // Поверхность
-    MDEBUG("Создание Vulkan поверхности...");
-    if (!PlatformCreateVulkanSurface(this)) {
-        MERROR("Не удалось создать поверхность платформы!");
-        return;
-    }
-    MDEBUG("Поверхность Vulkan создана.");
-
-    // Создание устройства
-    if (!Device.Create(this)) {
-        MERROR("Не удалось создать устройство!");
-        return;
-    }
-
-    // Swapchain
-    swapchain.Create(this, FramebufferWidth, FramebufferHeight, config.flags);
-
-    // Сохраните количество имеющихся у нас изображений в качестве необходимого количества целей рендеринга.
-    OutWindowRenderTargetCount = swapchain.ImageCount;
-
-    // Создайте буферы команд.
-    CreateCommandBuffers();
-
-    // Создайте объекты синхронизации.
-    ImageAvailableSemaphores.Resize(swapchain.MaxFramesInFlight);
-    QueueCompleteSemaphores.Resize(swapchain.MaxFramesInFlight);
-
-    for (u8 i = 0; i < swapchain.MaxFramesInFlight; ++i) {
-        VkSemaphoreCreateInfo SemaphoreCreateInfo = {VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
-        vkCreateSemaphore(Device.LogicalDevice, &SemaphoreCreateInfo, allocator, &ImageAvailableSemaphores[i]);
-        vkCreateSemaphore(Device.LogicalDevice, &SemaphoreCreateInfo, allocator, &QueueCompleteSemaphores[i]);
-
-        // Создайте ограждение в сигнальном состоянии, указывая, что первый кадр уже «отрисован».
-        // Это не позволит приложению бесконечно ждать рендеринга первого кадра, 
-        // поскольку он не может быть отрисован до тех пор, пока кадр не будет "отрисован" перед ним.
-        VkFenceCreateInfo FenceCreateInfo = {VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
-        FenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-        VK_CHECK(vkCreateFence(Device.LogicalDevice, &FenceCreateInfo, allocator, &InFlightFences[i]));
-    }
-
-    // На этом этапе ограждений в полете еще не должно быть, поэтому очистите список. 
-    // Они хранятся в указателях, поскольку начальное состояние должно быть 0 и будет 0, 
-    // когда не используется. Актуальные заборы не входят в этот список.
-    for (u32 i = 0; i < swapchain.ImageCount; ++i) {
-        ImagesInFlight[i] = 0;
-    }
-
-    // Создать буферы
-
-    // Буфер вершин геометрии
-    if (!RenderBufferCreateInternal(ObjectVertexBuffer)) {
-        MERROR("Ошибка создания буфера вершин.");
-        return;
-    }
-    RenderBufferBind(ObjectVertexBuffer, 0);
-    // Буфер индексов геометрии
-    if (!RenderBufferCreateInternal(ObjectIndexBuffer)) {
-        MERROR("Ошибка создания буфера индексов.");
-        return;
-    }
-    RenderBufferBind(ObjectIndexBuffer, 0);
-   
-    // Отметить все геометрии как недействительные
-    for (u32 i = 0; i < VULKAN_MAX_GEOMETRY_COUNT; ++i) {
-        geometries[i].id = INVALID::ID;
-    }
-
-    MINFO("Средство визуализации Vulkan успешно инициализировано.");
 }
 
 VulkanAPI::~VulkanAPI()
@@ -471,6 +285,214 @@ VulkanAPI::~VulkanAPI()
     }
     MDEBUG("Уничтожение экземпляра Vulkan...");
     vkDestroyInstance(instance, allocator);
+}
+
+bool VulkanAPI::Initialize(const RenderingConfig &config, u8 &OutWindowRenderTargetCount)
+{
+    // ПРИМЕЧАНИЕ: Пользовательский распределитель.
+#if MVULKAN_USE_CUSTOM_ALLOCATOR == 1
+    allocator = MemorySystem::TAllocate<VkAllocationCallbacks>(Memory::Renderer);
+    if (!CreateVulkanAllocator(allocator)) {
+        // Если это не удается, аккуратно вернитесь к распределителю по умолчанию.
+        MFATAL("Не удалось создать пользовательский распределитель Vulkan. Продолжаем использовать распределитель драйвера по умолчанию.");
+        MemorySystem::Free(allocator, sizeof(VkAllocationCallbacks), Memory::Renderer);
+        allocator = nullptr;
+        }
+#else
+    allocator = nullptr;
+#endif
+
+    // Общая структура информации о приложении.
+    VkApplicationInfo AppInfo = {VK_STRUCTURE_TYPE_APPLICATION_INFO};
+    AppInfo.apiVersion = VK_API_VERSION_1_2;
+    AppInfo.pApplicationName = config.ApplicationName;
+    AppInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0); // VK_MAKE_API_VERSION(0, 1, 0, 0);
+    AppInfo.pEngineName = "Moon Engine";
+    AppInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0); // VK_MAKE_API_VERSION(0, 1, 0, 0); 
+    // Создание экземпляра.
+    VkInstanceCreateInfo CreateInfo = {VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO};
+    CreateInfo.pApplicationInfo = &AppInfo;
+
+    // Получите список необходимых расширений
+    
+    DArray<const char*>RequiredExtensions{VK_KHR_SURFACE_EXTENSION_NAME};   // Общее расширение поверхности
+    PlatformGetRequiredExtensionNames(RequiredExtensions);                  // Расширения для конкретной платформы
+#if defined(_DEBUG)
+    RequiredExtensions.PushBack(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);         // утилиты отладки
+
+    MDEBUG("Необходимые расширения:");
+    const u32& RequiredExtensionCount = RequiredExtensions.Length();
+    for (u32 i = 0; i < RequiredExtensionCount; ++i) {
+        MDEBUG(RequiredExtensions[i]);
+    }
+#endif
+
+    CreateInfo.enabledExtensionCount = RequiredExtensions.Length();
+    CreateInfo.ppEnabledExtensionNames = RequiredExtensions.Data(); //ЗАДАЧА: указателю ppEnabledExtensionNames присваевается адрес указателя массива после выхода из функции данные стираются
+
+    u32 AvailableExtensionCount = 0;
+    vkEnumerateInstanceExtensionProperties(0, &AvailableExtensionCount, 0);
+    DArray<VkExtensionProperties> AvailableExtensions;
+    AvailableExtensions.Resize(AvailableExtensionCount);
+    vkEnumerateInstanceExtensionProperties(0, &AvailableExtensionCount, AvailableExtensions.Data());
+
+    // Проверьте доступность необходимых расширений.
+    for (u32 i = 0; i < RequiredExtensionCount; ++i) {
+        bool found = false;
+        for (u32 j = 0; j < AvailableExtensionCount; ++j) {
+            if (MString::Equali(RequiredExtensions[i], AvailableExtensions[j].extensionName)) {
+                found = true;
+                MINFO("Требуемое расширение найдено: %s...", RequiredExtensions[i]);
+                break;
+            }
+        }
+
+        if (!found) {
+            MFATAL("Отсутствует требуемое расширение: %s", RequiredExtensions[i]);
+            return false;
+        }
+    }
+
+    // Уровни проверки.
+    DArray<const char*> RequiredValidationLayerNames; // указатель на массив символов ЗАДАЧА: придумать как использовать строки или другой способ отображать занятую память
+    u32 RequiredValidationLayerCount = 0;
+
+// Если необходимо выполнить проверку, получите список имен необходимых слоев проверки 
+// и убедитесь, что они существуют. Слои проверки следует включать только в нерелизных сборках.
+#if defined(_DEBUG)
+    MINFO("Уровни проверки включены. Перечисление...");
+
+    // Список требуемых уровней проверки.
+    RequiredValidationLayerNames.PushBack("VK_LAYER_KHRONOS_validation");
+    RequiredValidationLayerCount = RequiredValidationLayerNames.Length();
+
+    // Получите список доступных уровней проверки.
+    u32 AvailableLayerCount = 0;
+    VK_CHECK(vkEnumerateInstanceLayerProperties(&AvailableLayerCount, nullptr));
+    DArray<VkLayerProperties> AvailableLayers;
+    AvailableLayers.Resize(AvailableLayerCount);
+    VK_CHECK(vkEnumerateInstanceLayerProperties(&AvailableLayerCount, AvailableLayers.Data())); 
+
+    // Убедитесь, что доступны все необходимые слои.
+    for (u32 i = 0; i < RequiredValidationLayerCount; ++i) {
+        bool found = false;
+        for (u32 j = 0; j < AvailableLayerCount; ++j) {
+            if (MString::Equal(RequiredValidationLayerNames[i], AvailableLayers[j].layerName)) {
+                found = true;
+                MINFO("Найден слой проверки: %s...", RequiredValidationLayerNames[i]);
+                break;
+            }
+        }
+
+        if (!found) {
+            MFATAL("Необходимый уровень проверки отсутствует: %shader", RequiredValidationLayerNames[i]);
+            return false;
+        }
+    }
+    MINFO("Присутствуют все необходимые уровни проверки.");
+#endif
+    CreateInfo.enabledLayerCount = RequiredValidationLayerCount;
+    CreateInfo.ppEnabledLayerNames = RequiredValidationLayerNames.Data();
+
+    VkResult InstanceResult = vkCreateInstance(&CreateInfo, allocator, &instance);
+    if (!VulkanResultIsSuccess(InstanceResult)) {
+        const char* ResultString = VulkanResultString(InstanceResult, true);
+        MFATAL("Создание экземпляра Vulkan не удалось, результат: '%s'", ResultString);
+        return false;
+    }
+    MINFO("Создан экземпляр Vulkan.");
+
+    // ЗАДАЧА: реализовать многопоточность.
+
+    // Debugger
+#if defined(_DEBUG)
+    MDEBUG("Создание отладчика Vulkan...");
+    u32 LogSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT |
+                       VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+                       VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT;  //|
+                                                                      //    VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT;
+
+    VkDebugUtilsMessengerCreateInfoEXT DebugCreateInfo = {VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT};
+    DebugCreateInfo.messageSeverity = LogSeverity;
+    DebugCreateInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT;
+    DebugCreateInfo.pfnUserCallback = VkDebugCallback;
+
+    PFN_vkCreateDebugUtilsMessengerEXT func =
+        (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+    MASSERT_MSG(func, "Не удалось создать debug messenger!");
+    VK_CHECK(func(instance, &DebugCreateInfo, allocator, &DebugMessenger));
+    MDEBUG("Создан отладчик Vulkan.");
+#endif
+
+    // Поверхность
+    MDEBUG("Создание Vulkan поверхности...");
+    if (!PlatformCreateVulkanSurface(this)) {
+        MERROR("Не удалось создать поверхность платформы!");
+        return false;
+    }
+    MDEBUG("Поверхность Vulkan создана.");
+
+    // Создание устройства
+    if (!Device.Create(this)) {
+        MERROR("Не удалось создать устройство!");
+        return false;
+    }
+
+    // Swapchain
+    swapchain.Create(this, FramebufferWidth, FramebufferHeight, config.flags);
+
+    // Сохраните количество имеющихся у нас изображений в качестве необходимого количества целей рендеринга.
+    OutWindowRenderTargetCount = swapchain.ImageCount;
+
+    // Создайте буферы команд.
+    CreateCommandBuffers();
+
+    // Создайте объекты синхронизации.
+    ImageAvailableSemaphores.Resize(swapchain.MaxFramesInFlight);
+    QueueCompleteSemaphores.Resize(swapchain.MaxFramesInFlight);
+
+    for (u8 i = 0; i < swapchain.MaxFramesInFlight; ++i) {
+        VkSemaphoreCreateInfo SemaphoreCreateInfo = {VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
+        vkCreateSemaphore(Device.LogicalDevice, &SemaphoreCreateInfo, allocator, &ImageAvailableSemaphores[i]);
+        vkCreateSemaphore(Device.LogicalDevice, &SemaphoreCreateInfo, allocator, &QueueCompleteSemaphores[i]);
+
+        // Создайте ограждение в сигнальном состоянии, указывая, что первый кадр уже «отрисован».
+        // Это не позволит приложению бесконечно ждать рендеринга первого кадра, 
+        // поскольку он не может быть отрисован до тех пор, пока кадр не будет "отрисован" перед ним.
+        VkFenceCreateInfo FenceCreateInfo = {VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
+        FenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+        VK_CHECK(vkCreateFence(Device.LogicalDevice, &FenceCreateInfo, allocator, &InFlightFences[i]));
+    }
+
+    // На этом этапе ограждений в полете еще не должно быть, поэтому очистите список. 
+    // Они хранятся в указателях, поскольку начальное состояние должно быть 0 и будет 0, 
+    // когда не используется. Актуальные заборы не входят в этот список.
+    for (u32 i = 0; i < swapchain.ImageCount; ++i) {
+        ImagesInFlight[i] = 0;
+    }
+
+    // Создать буферы
+
+    // Буфер вершин геометрии
+    if (!RenderBufferCreateInternal(ObjectVertexBuffer)) {
+        MERROR("Ошибка создания буфера вершин.");
+        return false;
+    }
+    RenderBufferBind(ObjectVertexBuffer, 0);
+    // Буфер индексов геометрии
+    if (!RenderBufferCreateInternal(ObjectIndexBuffer)) {
+        MERROR("Ошибка создания буфера индексов.");
+        return false;
+    }
+    RenderBufferBind(ObjectIndexBuffer, 0);
+   
+    // Отметить все геометрии как недействительные
+    for (u32 i = 0; i < VULKAN_MAX_GEOMETRY_COUNT; ++i) {
+        geometries[i].id = INVALID::ID;
+    }
+
+    MINFO("Средство визуализации Vulkan успешно инициализировано.");
+    return true;
 }
 
 void VulkanAPI::ShutDown()
@@ -717,7 +739,7 @@ bool VulkanAPI::RenderpassBegin(Renderpass* pass, RenderTarget& target)
 
 bool VulkanAPI::RenderpassEnd(Renderpass* pass)
 {
-    VulkanCommandBuffer& CommandBuffer = GraphicsCommandBuffers[ImageIndex];
+    auto& CommandBuffer = GraphicsCommandBuffers[ImageIndex];
 
     // Завершение рендеринга.
     vkCmdEndRenderPass(CommandBuffer.handle);
@@ -734,7 +756,7 @@ void VulkanAPI::Load(const u8* pixels, Texture *texture)
     VkFormat ImageFormat = VK_FORMAT_R8G8B8A8_UNORM;
 
     // ПРИМЕЧАНИЕ. Здесь много предположений, для разных типов текстур потребуются разные параметры.
-    texture->Data = new VulkanImage(
+    texture->data = new VulkanImage(
         this,
         texture->type,
         texture->width,
@@ -770,7 +792,7 @@ void VulkanAPI::LoadTextureWriteable(Texture *texture)
     VkImageUsageFlagBits usage;
     VkImageAspectFlagBits aspect;
     VkFormat ImageFormat;
-    if (texture->flags & TextureFlag::Depth) {
+    if (texture->flags & Texture::Flag::Depth) {
         usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
         aspect = VK_IMAGE_ASPECT_DEPTH_BIT;
         ImageFormat = Device.DepthFormat;
@@ -780,7 +802,7 @@ void VulkanAPI::LoadTextureWriteable(Texture *texture)
         ImageFormat = ChannelCountToFormat(texture->ChannelCount, VK_FORMAT_R8G8B8A8_UNORM);
     }
 
-    texture->Data = new VulkanImage(
+    texture->data = new VulkanImage(
         this,
         texture->type,
         texture->width,
@@ -796,16 +818,17 @@ void VulkanAPI::LoadTextureWriteable(Texture *texture)
 
 void VulkanAPI::TextureResize(Texture *texture, u32 NewWidth, u32 NewHeight)
 {
-    if (texture && texture->Data) {
+    if (texture && texture->data) {
+        auto image = reinterpret_cast<VulkanImage*>(texture->data);
         // Изменение размера на самом деле просто разрушает старое изображение и создает новое. 
         // Данные не сохраняются, поскольку не существует надежного способа сопоставить старые 
         // данные с новыми, поскольку объем данных различается.
-        texture->Data->Destroy(this);
+        image->Destroy(this);
 
         VkFormat ImageFormat = ChannelCountToFormat(texture->ChannelCount, VK_FORMAT_R8G8B8A8_UNORM);
 
         // ЗАДАЧА: здесь много предположений, разные типы текстур потребуют разных опций.
-        texture->Data->Create(
+        image->Create(
         this,
         texture->type,
         NewWidth,
@@ -823,8 +846,6 @@ void VulkanAPI::TextureResize(Texture *texture, u32 NewWidth, u32 NewHeight)
 
 void VulkanAPI::TextureWriteData(Texture *texture, u32 offset, u32 size, const u8 *pixels)
 {
-    //VkDeviceSize ImageSize = texture->width * texture->height * texture->ChannelCount * (texture->type == TextureType::Cube ? 6 : 1);
-
     VkFormat ImageFormat = ChannelCountToFormat(texture->ChannelCount, VK_FORMAT_R8G8B8A8_UNORM);
 
     // Создайте промежуточный буфер и загрузите в него данные.
@@ -841,14 +862,15 @@ void VulkanAPI::TextureWriteData(Texture *texture, u32 offset, u32 size, const u
     const auto& queue = Device.GraphicsQueue;
     VulkanCommandBufferAllocateAndBeginSingleUse(this, pool, TempBuffer);
 
+    auto image = reinterpret_cast<VulkanImage*>(texture->data);
     // Переведите макет от текущего к оптимальному для получения данных.
-    texture->Data->TransitionLayout(this, texture->type, TempBuffer, ImageFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    image->TransitionLayout(this, texture->type, TempBuffer, ImageFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
     // Скопируйте данные из буфера.
-    texture->Data->CopyFromBuffer(this, texture->type, reinterpret_cast<VulkanBuffer*>(staging.data)->handle, &TempBuffer);
+    image->CopyFromBuffer(this, texture->type, reinterpret_cast<VulkanBuffer*>(staging.data)->handle, &TempBuffer);
 
     // Переход от оптимального для приема данных к оптимальному макету, доступному только для чтения шейдеров.
-    texture->Data->TransitionLayout(
+    image->TransitionLayout(
         this, 
         texture->type,
         TempBuffer, 
@@ -867,7 +889,7 @@ void VulkanAPI::TextureWriteData(Texture *texture, u32 offset, u32 size, const u
 
 void VulkanAPI::TextureReadData(Texture *texture, u32 offset, u32 size, void **OutMemory)
 {
-    auto image = texture->Data;
+    auto image = reinterpret_cast<VulkanImage*>(texture->data);
 
     VkFormat ImageFormat = ChannelCountToFormat(texture->ChannelCount, VK_FORMAT_R8G8B8A8_UNORM);
 
@@ -918,7 +940,7 @@ void VulkanAPI::TextureReadData(Texture *texture, u32 offset, u32 size, void **O
 
 void VulkanAPI::TextureReadPixel(Texture *texture, u32 x, u32 y, u8 **OutRgba)
 {
-    auto image = texture->Data;
+    auto image = reinterpret_cast<VulkanImage*>(texture->data);
 
     auto ImageFormat = ChannelCountToFormat(texture->ChannelCount, VK_FORMAT_R8G8B8A8_UNORM);
 
@@ -972,15 +994,22 @@ void VulkanAPI::TextureReadPixel(Texture *texture, u32 x, u32 y, u8 **OutRgba)
     RenderBufferDestroyInternal(staging);
 }
 
+void *VulkanAPI::TextureCopyData(const Texture* texture)
+{
+    auto data = reinterpret_cast<VulkanImage*>(texture->data);
+    return (new VulkanImage(*data));
+}
+
 void VulkanAPI::Unload(Texture *texture)
 {
     vkDeviceWaitIdle(Device.LogicalDevice);
 
-    if (texture->Data) {
-        texture->Data->Destroy(this);
+    if (texture->data) {
+        auto data = reinterpret_cast<VulkanImage*>(texture->data);
+        data->Destroy(this);
 
-        delete texture->Data;
-        texture->Data = nullptr;
+        delete data;
+        data = nullptr;
     }
     //kzero_memory(texture, sizeof(struct texture));
 }
@@ -1593,7 +1622,6 @@ bool VulkanAPI::ShaderApplyInstance(Shader *shader, bool NeedsUpdate)
         if (VkShader->InstanceUniformSamplerCount > 0) {
             const u8& SamplerBindingIndex = VkShader->config.DescriptorSets[DESC_SET_INDEX_INSTANCE].SamplerBindingIndex;
             const u32& TotalSamplerCount = VkShader->config.DescriptorSets[DESC_SET_INDEX_INSTANCE].bindings[SamplerBindingIndex].descriptorCount;
-            auto TextureSystemInst = TextureSystem::Instance();
             u32 UpdateSamplerCount = 0;
             VkDescriptorImageInfo ImageInfos[VulkanShaderConstants::MaxGlobalTextures]{};
             for (u32 i = 0; i < TotalSamplerCount; ++i) {
@@ -1605,23 +1633,23 @@ bool VulkanAPI::ShaderApplyInstance(Shader *shader, bool NeedsUpdate)
                 if (t->generation == INVALID::ID) {
                     switch (map->use) {
                         case TextureUse::MapDiffuse:
-                            t = TextureSystemInst->GetDefaultTexture(ETexture::Default);
+                            t = TextureSystem::GetDefaultTexture(Texture::Default);
                             break;
                         case TextureUse::MapSpecular:
-                            t = TextureSystemInst->GetDefaultTexture(ETexture::Specular);
+                            t = TextureSystem::GetDefaultTexture(Texture::Specular);
                             break;
                         case TextureUse::MapNormal:
-                            t = TextureSystemInst->GetDefaultTexture(ETexture::Normal);
+                            t = TextureSystem::GetDefaultTexture(Texture::Normal);
                             break;
                         default:
                             MWARN("Использование неопределенной текстуры %d", map->use);
-                            t = TextureSystemInst->GetDefaultTexture(ETexture::Default);
+                            t = TextureSystem::GetDefaultTexture(Texture::Default);
                             break;
                     }
                 }
 
                 ImageInfos[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-                ImageInfos[i].imageView = t->Data->view;
+                ImageInfos[i].imageView = reinterpret_cast<VulkanImage*>(t->data)->view;
                 ImageInfos[i].sampler = reinterpret_cast<VkSampler>(map->sampler);
     
                 // ЗАДАЧА: измените состояние дескриптора, чтобы справиться с этим должным образом.
@@ -1652,6 +1680,13 @@ bool VulkanAPI::ShaderApplyInstance(Shader *shader, bool NeedsUpdate)
 
     // Привяжите набор дескрипторов для обновления или на случай изменения шейдера.
     vkCmdBindDescriptorSets(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, VkShader->pipeline.PipelineLayout, 1, 1, &ObjectDescriptorSet, 0, 0/*nullptr*/);
+    return true;
+}
+
+bool VulkanAPI::ShaderBindInstance(Shader *shader, u32 InstanceID)
+{
+    shader->BoundInstanceID = InstanceID;
+    shader->BoundUboOffset = shader->ShaderData->InstanceStates[InstanceID].offset;
     return true;
 }
 
@@ -1707,7 +1742,7 @@ bool VulkanAPI::ShaderAcquireInstanceResources(Shader *shader, TextureMap** maps
     if (shader->InstanceTextureCount > 0) {
         // Очистите память всего массива, даже если она не вся использована.
         InstanceState.InstanceTextureMaps = MemorySystem::TAllocate<TextureMap*>(Memory::Array, shader->InstanceTextureCount, true);
-        Texture* DefaultTexture = TextureSystem::Instance()->GetDefaultTexture(ETexture::Default);
+        Texture* DefaultTexture = TextureSystem::GetDefaultTexture(Texture::Default);
         MemorySystem::CopyMem(InstanceState.InstanceTextureMaps, maps, sizeof(TextureMap*) * shader->InstanceTextureCount);
         // Установите для всех указателей текстур значения по умолчанию, пока они не будут назначены.
         for (u32 i = 0; i < InstanceTextureCount; ++i) {
@@ -1875,10 +1910,9 @@ void VulkanAPI::CreateCommandBuffers()
 
 bool VulkanAPI::CreateModule(VulkanShader *shader, const VulkanShaderStageConfig& config, VulkanShaderStage *ShaderStage)
 {
-    auto ResourceSystemInst = ResourceSystem::Instance();
     // Прочтите ресурс.
     BinaryResource BinRes;
-    if (!ResourceSystemInst->Load(config.FileName, eResource::Type::Binary, nullptr, BinRes)) {
+    if (!ResourceSystem::Load(config.FileName, eResource::Type::Binary, nullptr, BinRes)) {
         MERROR("Невозможно прочитать модуль шейдера: %s.", config.FileName);
         return false;
     }
@@ -1896,7 +1930,7 @@ bool VulkanAPI::CreateModule(VulkanShader *shader, const VulkanShaderStageConfig
         &ShaderStage->handle));
 
     // Освободите ресурс.
-    ResourceSystemInst->Unload(BinRes);
+    ResourceSystem::Unload(BinRes);
 
     // Информация об этапе шейдера
     //MMemory::ZeroMem(&ShaderStage->ShaderStageCreateInfo, sizeof(VkPipelineShaderStageCreateInfo));
@@ -1949,7 +1983,7 @@ bool VulkanAPI::RecreateSwapchain()
 
     // Укажите слушателям, что требуется обновление цели рендеринга.
     EventContext EventContext = {0};
-    EventSystem::Fire(EVENT_CODE_DEFAULT_RENDERTARGET_REFRESH_REQUIRED, 0, EventContext);
+    EventSystem::Fire(EventSystem::DefaultRendertargetRefreshRequired, nullptr, EventContext);
 
     CreateCommandBuffers();
 
@@ -2033,7 +2067,7 @@ void VulkanAPI::RenderTargetCreate(u8 AttachmentCount, RenderTargetAttachment *a
     // Максимальное количество вложений
     VkImageView AttachmentViews[32];
     for (u32 i = 0; i < AttachmentCount; ++i) {
-        AttachmentViews[i] = attachments[i].texture->Data->view;
+        AttachmentViews[i] = reinterpret_cast<VulkanImage*>(attachments[i].texture->data)->view;
     }
     
     MemorySystem::CopyMem(OutTarget.attachments, attachments, sizeof(RenderTargetAttachment) * AttachmentCount);

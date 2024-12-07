@@ -5,6 +5,7 @@
 #include "containers/darray.hpp"
 
 class VulkanAPI;
+struct VulkanPhysicalDeviceRequirements;
 
 struct VulkanSwapchainSupportInfo 
 {
@@ -52,22 +53,6 @@ public:
     bool DetectDepthFormat();
 
 private:
-    struct VulkanPhysicalDeviceRequirements {
-        bool graphics;
-        bool present;
-        bool compute;
-        bool transfer;
-        DArray<const char*> DeviceExtensionNames;
-        bool SamplerAnisotropy;
-        bool DiscreteGPU;
-        constexpr VulkanPhysicalDeviceRequirements()
-        : graphics(), present(), compute(), transfer(), DeviceExtensionNames(), SamplerAnisotropy(), DiscreteGPU() {}
-        constexpr VulkanPhysicalDeviceRequirements(bool graphics, bool present, bool transfer, const char* DeviceExtensionNames, bool SamplerAnisotropy, bool DiscreteGPU)
-        : graphics(graphics), present(present), compute(), transfer(transfer), DeviceExtensionNames(), SamplerAnisotropy(SamplerAnisotropy), DiscreteGPU(DiscreteGPU) { this->DeviceExtensionNames.PushBack(DeviceExtensionNames); }
-        constexpr VulkanPhysicalDeviceRequirements(bool graphics, bool present, bool compute, bool transfer, const char* DeviceExtensionNames, bool SamplerAnisotropy, bool DiscreteGPU)
-        : graphics(graphics), present(present), compute(compute), transfer(transfer), DeviceExtensionNames(), SamplerAnisotropy(SamplerAnisotropy), DiscreteGPU(DiscreteGPU) { this->DeviceExtensionNames.PushBack(DeviceExtensionNames); }
-    };
-
     struct VulkanPhysicalDeviceQueueFamilyInfo {
         u32 GraphicsFamilyIndex;
         u32 PresentFamilyIndex;
@@ -85,6 +70,4 @@ private:
         VulkanPhysicalDeviceQueueFamilyInfo* OutQueueFamilyInfo,
         VulkanSwapchainSupportInfo* OutSwapchainSupport
     );
-
-
 };

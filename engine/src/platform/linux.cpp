@@ -8,6 +8,7 @@
 #include "core/input.hpp"
 #include "core/mthread.hpp"
 #include "core/mmutex.hpp"
+#include "core/mmemory.hpp"
 
 #include "containers/darray.hpp"
 
@@ -32,21 +33,21 @@
 #include <string.h>
 
 // Для создания поверхности
-#define VK_USE_PLATFORM_XCB_KHR
-#include <vulkan/vulkan.h>
-#include "mthread.hpp"
-#include "mmutex.hpp"
+struct linux_handle_info 
+{
+    xcb_connection_t* connection;
+    xcb_window_t window;
+};
+
 
 struct PlatformState {
     Display* display;
-    xcb_connection_t* connection;
-    xcb_window_t window;
+    linux_handle_info handle;
     xcb_screen_t* screen;
     xcb_atom_t wmProtocols;
     xcb_atom_t wmDeleteWin;
-    VkSurfaceKHR surface;
 
-    constexpr PlatformState() : display(nullptr), connection(nullptr), window(), screen(nullptr), wmProtocols(), wmDeleteWin(), surface() {}
+    // constexpr PlatformState() : display(nullptr), connection(nullptr), window(), screen(nullptr), wmProtocols(), wmDeleteWin(), surface() {}
 };
 
 static PlatformState* pState = nullptr;
@@ -72,9 +73,9 @@ bool WindowSystem::Initialize(u64& MemoryRequirement, void* memory, void* config
     XAutoRepeatOff(pState->display);
 
     // Retrieve the connection from the display. Извлеките соединение с дисплея.
-    pState->connection = XGetXCBConnection(pState->display);
+    pState->handle.connection = XGetXCBConnection(pState->display);
 
-    if (xcb_connection_has_error(pState->connection)) {
+    if (xcb_connection_has_error(pState->handle.connection)) {
         MFATAL("Не удалось подключиться к X-серверу через XCB.");
         return false;
     }
@@ -93,7 +94,7 @@ bool WindowSystem::Initialize(u64& MemoryRequirement, void* memory, void* config
     pState->screen = it.data;
 
     // Выделите XID для создаваемого окна.
-    pState->window = xcb_generate_id(pState->connection);
+    pState->handle.window = xcb_generate_id(pState->connection);
 
     // Регистрация типов событий.
     // XCB_CW_BACK_PIXEL = заполнение фона окна одним цветом
@@ -111,9 +112,9 @@ bool WindowSystem::Initialize(u64& MemoryRequirement, void* memory, void* config
 
     // Создайте окно
     xcb_create_window(
-        pState->connection,
+        pState->handle.connection,
         XCB_COPY_FROM_PARENT,           // глубина
-        pState->window,
+        pState->handle.window,
         pState->screen->root,           // родитель
         pConfig->StartPosX,             // x
         pConfig->StartPosY,             // y
@@ -127,9 +128,9 @@ bool WindowSystem::Initialize(u64& MemoryRequirement, void* memory, void* config
 
     // Изменить заголовок
     xcb_change_property(
-        pState->connection,
+        pState->handle.connection,
         XCB_PROP_MODE_REPLACE,
-        pState->window,
+        pState->handle.window,
         XCB_ATOM_WM_NAME,
         XCB_ATOM_STRING,
         8,  // данные следует просматривать по 8 бит за раз
@@ -139,30 +140,30 @@ bool WindowSystem::Initialize(u64& MemoryRequirement, void* memory, void* config
     // Скажите серверу, чтобы он уведомлял, 
     // когда оконный менеджер пытается уничтожить окно.
     xcb_intern_atom_cookie_t wm_delete_cookie = xcb_intern_atom(
-        pState->connection,
+        pState->handle.connection,
         0,
         strlen("WM_DELETE_WINDOW"),
         "WM_DELETE_WINDOW");
     xcb_intern_atom_cookie_t wm_protocols_cookie = xcb_intern_atom(
-        pState->connection,
+        pState->handle.connection,
         0,
         strlen("WM_PROTOCOLS"),
         "WM_PROTOCOLS");
     xcb_intern_atom_reply_t* wm_delete_reply = xcb_intern_atom_reply(
-        pState->connection,
+        pState->handle.connection,
         wm_delete_cookie,
         NULL);
     xcb_intern_atom_reply_t* wm_protocols_reply = xcb_intern_atom_reply(
-        pState->connection,
+        pState->handle.connection,
         wm_protocols_cookie,
         NULL);
     pState->wmDeleteWin = wm_delete_reply->atom;
     pState->wmProtocols = wm_protocols_reply->atom;
 
     xcb_change_property(
-        pState->connection,
+        pState->handle.connection,
         XCB_PROP_MODE_REPLACE,
-        pState->window,
+        pState->handle.window,
         wm_protocols_reply->atom,
         4,
         32,
@@ -170,10 +171,10 @@ bool WindowSystem::Initialize(u64& MemoryRequirement, void* memory, void* config
         &wm_delete_reply->atom);
 
     // Сопоставьте окно с экраном
-    xcb_map_window(pState->connection, pState->window);
+    xcb_map_window(pState->handle.connection, pState->handle.window);
 
     // Очистка потока
-    i32 stream_result = xcb_flush(pState->connection);
+    i32 stream_result = xcb_flush(pState->handle.connection);
     if (stream_result <= 0) {
         MFATAL("Произошла ошибка при очистке потока: %d", stream_result);
         return false;
@@ -188,7 +189,7 @@ void WindowSystem::Shutdown() {
         // Повторное включение клавиши, поскольку это глобально для ОС... просто... вау.
         XAutoRepeatOn(pState->display);
 
-        xcb_destroy_window(pState->connection, pState->window);
+        xcb_destroy_window(pState->handle.connection, pState->handle.window);
     }
 }
 
@@ -344,6 +345,17 @@ i32 PlatformGetProcessorCount()
     i32 ProcessorsAvailable = get_nprocs();
     MINFO("Обнаружено %i ядер процессора, доступно %i ядер.", ProcessorCount, ProcessorsAvailable);
     return ProcessorsAvailable;
+}
+
+void PlatformGetHandleInfo(u64 &OutSize, void *memory)
+{
+    OutSize = sizeof(linux_handle_info);
+
+    if (!memory) {
+        return;
+    }
+
+    MemorySystem::CopyMem(memory, &pState->handle, OutSize);
 }
 
 // ПРИМЕЧАНИЕ: Начало потоков.

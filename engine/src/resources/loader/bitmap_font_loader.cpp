@@ -43,12 +43,11 @@ bool ResourceLoader::Load(const char *name, void *params, BitmapFontResource &Ou
         {".fnt", BitmapFontFileType::FNT, false} 
     };
 
-    auto ResourceSystemInst = ResourceSystem::Instance();
     char FullFilePath[512];
     BitmapFontFileType type = BitmapFontFileType::NotFound;
     // Попробуйте каждое поддерживаемое расширение.
     for (u32 i = 0; i < SUPPORTED_FILETYPE_COUNT; ++i) {
-        MString::Format(FullFilePath, FormatStr, ResourceSystemInst->BasePath(), TypePath.c_str(), name, SupportedFiletypes[i].extension.c_str());
+        MString::Format(FullFilePath, FormatStr, ResourceSystem::BasePath(), TypePath.c_str(), name, SupportedFiletypes[i].extension.c_str());
         // Если файл существует, откройте его и прекратите поиск.
         if (Filesystem::Exists(FullFilePath)) {
             if (Filesystem::Open(FullFilePath, FileModes::Read, SupportedFiletypes[i].IsBinary, f)) {
@@ -74,7 +73,7 @@ bool ResourceLoader::Load(const char *name, void *params, BitmapFontResource &Ou
         case BitmapFontFileType::FNT: {
             // Сгенерируйте имя файла KBF.
             char MbfFileName[512];
-            MString::Format(MbfFileName, "%s/%s/%s%s", ResourceSystemInst->BasePath(), TypePath.c_str(), name, ".mbf");
+            MString::Format(MbfFileName, "%s/%s/%s%s", ResourceSystem::BasePath(), TypePath.c_str(), name, ".mbf");
             result = ImportFntFile(f, MbfFileName, res);
             break;
         }

@@ -24,40 +24,52 @@ fi
 
 echo "$ACTION_STR everything on $PLATFORM ($TARGET)..."
 
+# Генерация версии
 make -f Makefile.executable.mak $ACTION TARGET=$TARGET ASSEMBLY=versiongen
-
 ERRORLEVEL=$?
 if [ $ERRORLEVEL -ne 0 ]
 then
 echo "Ошибка:"$ERRORLEVEL && exit
 fi
 
-make -f Makefile.engine.mak $ACTION TARGET=$TARGET VER_MAJOR=0 VER_MINOR=1 DO_VERSION=$DO_VERSION
-ERRORLEVEL=$?
-if [ $ERRORLEVEL -ne 0 ]
-then
-echo "Error:"$ERRORLEVEL && exit
-fi
-
-make -f Makefile.executable.mak $ACTION TARGET=$TARGET ASSEMBLY=testbed
+# Engine
+make -f Makefile.library.mak $ACTION TARGET=$TARGET ASSEMBLY=engine VER_MAJOR=0 VER_MINOR=1 DO_VERSION=$DO_VERSION ADDL_INC_FLAGS="-I$VULKAN_SDK/include" ADDL_LINK_FLAGS="-lvulkan-1 -L$VULKAN_SDK/Lib"
 ERRORLEVEL=$?
 if [ $ERRORLEVEL -ne 0 ]
 then
 echo "Ошибка:"$ERRORLEVEL && exit
 fi
 
-make -f Makefile.executable.mak $ACTION TARGET=$TARGET ASSEMBLY=tests
+# Vulkan Renderer Lib
+make -f Makefile.library.mak $ACTION TARGET=$TARGET ASSEMBLY=vulkan_renderer VER_MAJOR=0 VER_MINOR=1 DO_VERSION=no ADDL_INC_FLAGS="-Iengine/src -I$VULKAN_SDK/include" ADDL_LINK_FLAGS="-lengine -lvulkan-1 -L$VULKAN_SDK/Lib"
 ERRORLEVEL=$?
 if [ $ERRORLEVEL -ne 0 ]
 then
-echo "Error:"$ERRORLEVEL && exit
+echo "Ошибка:"$ERRORLEVEL && exit
 fi
 
-make -f Makefile.executable.mak $ACTION TARGET=$TARGET ASSEMBLY=tools
+# Testbed
+make -f Makefile.executable.mak $ACTION TARGET=$TARGET ASSEMBLY=testbed ADDL_INC_FLAGS="-Iengine\src -Ivulkan_renderer\src" ADDL_LINK_FLAGS="-lengine -lvulkan_renderer"
 ERRORLEVEL=$?
 if [ $ERRORLEVEL -ne 0 ]
 then
-echo "Error:"$ERRORLEVEL && exit
+echo "Ошибка:"$ERRORLEVEL && exit
+fi
+
+# Tests
+make -f Makefile.executable.mak $ACTION TARGET=$TARGET ASSEMBLY=tests ADDL_INC_FLAGS=-Iengine/src ADDL_LINK_FLAGS=-lengine
+ERRORLEVEL=$?
+if [ $ERRORLEVEL -ne 0 ]
+then
+echo "Ошибка:"$ERRORLEVEL && exit
+fi
+
+# Tools
+make -f Makefile.executable.mak $ACTION TARGET=$TARGET ASSEMBLY=tools ADDL_INC_FLAGS=-Iengine/src ADDL_LINK_FLAGS=-lengine
+ERRORLEVEL=$?
+if [ $ERRORLEVEL -ne 0 ]
+then
+echo "Ошибка:"$ERRORLEVEL && exit
 fi
 
 echo "All assemblies $ACTION_STR_PAST successfully on $PLATFORM ($TARGET)."

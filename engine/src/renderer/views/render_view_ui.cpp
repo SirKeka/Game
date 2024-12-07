@@ -44,7 +44,7 @@ ModelLocation()
     DiffuseColourLocation = ShaderSystem::UniformIndex(shader, "diffuse_colour");
     ModelLocation         = ShaderSystem::UniformIndex(shader, "model");
 
-    if(!EventSystem::Register(EVENT_CODE_DEFAULT_RENDERTARGET_REFRESH_REQUIRED, this, RenderViewOnEvent)) {
+    if(!EventSystem::Register(EventSystem::DefaultRendertargetRefreshRequired, this, RenderViewOnEvent)) {
         MERROR("Не удалось прослушать событие, требующее обновления, создание не удалось.");
         return;
     }
@@ -53,7 +53,7 @@ ModelLocation()
 RenderViewUI::~RenderViewUI()
 {
     // Отменить регистрацию на мероприятии.
-    EventSystem::Unregister(EVENT_CODE_DEFAULT_RENDERTARGET_REFRESH_REQUIRED, this, RenderViewOnEvent);
+    EventSystem::Unregister(EventSystem::DefaultRendertargetRefreshRequired, this, RenderViewOnEvent);
 }
 
 void RenderViewUI::Resize(u32 width, u32 height)
@@ -107,7 +107,6 @@ bool RenderViewUI::BuildPacket(LinearAllocator& FrameAllocator, void *data, Pack
 
 bool RenderViewUI::Render(const Packet &packet, u64 FrameNumber, u64 RenderTargetIndex)
 {
-    auto MaterialSystemInst = MaterialSystem::Instance();
     const auto& ShaderID = shader->id;
     for (u32 p = 0; p < RenderpassCount; ++p) {
         auto pass = &passes[p];
@@ -122,7 +121,7 @@ bool RenderViewUI::Render(const Packet &packet, u64 FrameNumber, u64 RenderTarge
         }
 
         // Применить глобальные переменные
-        if (!MaterialSystemInst->ApplyGlobal(ShaderID, FrameNumber, packet.ProjectionMatrix, packet.ViewMatrix)) {
+        if (!MaterialSystem::ApplyGlobal(ShaderID, FrameNumber, packet.ProjectionMatrix, packet.ViewMatrix)) {
             MERROR("Не удалось использовать применение глобальных переменных для шейдера материала. Не удалось отрисовать кадр.");
             return false;
         }
@@ -134,7 +133,7 @@ bool RenderViewUI::Render(const Packet &packet, u64 FrameNumber, u64 RenderTarge
             if (packet.geometries[i].gid->material) {
                 m = packet.geometries[i].gid->material;
             } else {
-                m = MaterialSystemInst->GetDefaultMaterial();
+                m = MaterialSystem::GetDefaultMaterial();
             }
 
             // Обновить материал, если он еще не был в этом кадре. 
@@ -143,7 +142,7 @@ bool RenderViewUI::Render(const Packet &packet, u64 FrameNumber, u64 RenderTarge
             // поэтому результат этой проверки передается на бэкэнд, 
             // который либо обновляет внутренние привязки шейдера и привязывает их, либо только привязывает их.
             bool NeedsUpdate = m->RenderFrameNumber != FrameNumber;
-            if (!MaterialSystemInst->ApplyInstance(m, NeedsUpdate)) {
+            if (!MaterialSystem::ApplyInstance(m, NeedsUpdate)) {
                 MWARN("Не удалось применить материал '%s'. Пропуск рисования.", m->name);
                 continue;
             } else {
@@ -152,7 +151,7 @@ bool RenderViewUI::Render(const Packet &packet, u64 FrameNumber, u64 RenderTarge
             }
 
             // Примените локальные
-            MaterialSystemInst->ApplyLocal(m, packet.geometries[i].model);
+            MaterialSystem::ApplyLocal(m, packet.geometries[i].model);
 
             // Нарисуйте его.
             RenderingSystem::DrawGeometry(packet.geometries[i]);

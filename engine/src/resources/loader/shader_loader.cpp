@@ -9,7 +9,7 @@ bool ResourceLoader::Load(const char *name, void* params, ShaderResource &OutRes
 
     const char* FormatStr = "%s/%s/%s%s";
     char FullFilePath[512]{};
-    MString::Format(FullFilePath, FormatStr, ResourceSystem::Instance()->BasePath(), TypePath.c_str(), name, ".shadercfg");
+    MString::Format(FullFilePath, FormatStr, ResourceSystem::BasePath(), TypePath.c_str(), name, ".shadercfg");
 
     FileHandle f;
     if (!Filesystem::Open(FullFilePath, FileModes::Read, false, f)) {

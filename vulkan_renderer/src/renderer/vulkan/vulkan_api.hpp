@@ -1,11 +1,12 @@
 #pragma once
 
+#include <core/asserts.hpp>
+
 #include "renderer/renderer_types.hpp"
 
-#include "core/asserts.hpp"
 #include "vulkan_device.hpp"
 #include "vulkan_swapchain.hpp"
-#include "vulkan_buffer.hpp"
+#include "vulkan_command_buffer.hpp"
 #include "vulkan_shader.hpp"
 #include "resources/geometry.hpp"
 #include "math/vertex.hpp"
@@ -16,7 +17,7 @@
     MASSERT(expr == VK_SUCCESS); \
 }
 
-class VulkanAPI : public Renderer
+class VulkanAPI : public RendererPlugin
 {
 public:
     f32 FrameDeltaTime{};                               // Время в секундах с момента последнего кадра.
@@ -26,18 +27,18 @@ public:
     u64 FramebufferSizeLastGeneration{};                // Генерация кадрового буфера при его последнем создании. При обновлении установите значение FramebufferSizeGeneration.
     FVec4 ViewportRect;                                 // Прямоугольник области просмотра.
     FVec4 ScissorRect;                                  // Прямоугольник ножниц.
-    VkInstance instance{};                              // Дескриптор внутреннего экземпляра Vulkan.
+    VkInstance instance;                                // Дескриптор внутреннего экземпляра Vulkan.
     VkAllocationCallbacks* allocator{nullptr};          // Внутренний распределитель Vulkan.
-    VkSurfaceKHR surface{};                             // Внутренняя поверхность Vulkan, на которой будет отображаться окно.
+    VkSurfaceKHR surface;                               // Внутренняя поверхность Vulkan, на которой будет отображаться окно.
 
 #if defined(_DEBUG)
     VkDebugUtilsMessengerEXT DebugMessenger;            // Мессенджер отладки, если он активен.
 #endif
 
-    VulkanDevice Device{};                              // Устройство Vulkan.
-    VulkanSwapchain swapchain{};                        // Цепочка подкачки.
-    RenderBuffer ObjectVertexBuffer{};                  // Буфер вершин объекта, используемый для хранения вершин геометрии.
-    RenderBuffer ObjectIndexBuffer{};                   // Буфер индекса объекта, используемый для хранения индексов геометрии.
+    VulkanDevice Device;                                // Устройство Vulkan.
+    VulkanSwapchain swapchain;                          // Цепочка подкачки.
+    RenderBuffer ObjectVertexBuffer;                    // Буфер вершин объекта, используемый для хранения вершин геометрии.
+    RenderBuffer ObjectIndexBuffer;                     // Буфер индекса объекта, используемый для хранения индексов геометрии.
     DArray<VulkanCommandBuffer> GraphicsCommandBuffers; // Буферы графических команд, по одному на кадр.
     DArray<VkSemaphore> ImageAvailableSemaphores;       // Семафоры, используемые для обозначения доступности изображения, по одному на кадр.
     DArray<VkSemaphore> QueueCompleteSemaphores;        // Семафоры, используемые для обозначения доступности очереди, по одному на кадр.
@@ -57,19 +58,20 @@ public:
     /// @param window указатель на общий интерфейс рендера.
     /// @param config указатель на конфигурацию, которая будет использоваться при инициализации рендераа.
     /// @param OutWindowRenderTargetCount Указатель для хранения необходимого количества целей рендеринга для проходов рендеринга, нацеленных на окно.
-    VulkanAPI(const RendererConfig& config, u8& OutWindowRenderTargetCount);
+    VulkanAPI();
     ~VulkanAPI();
     
-    void ShutDown()                                              override;
-    void Resized(u16 width, u16 height)                          override;
-    bool BeginFrame(f32 Deltatime)                               override;
-    bool EndFrame(f32 DeltaTime)                                 override;
-    void ViewportSet(const FVec4& rect)                          override;
-    void ViewportReset()                                         override;
-    void ScissorSet(const FVec4& rect)                           override;
-    void ScissorReset()                                          override;
-    bool RenderpassBegin(Renderpass* pass, RenderTarget& target) override;
-    bool RenderpassEnd(Renderpass* pass)                         override;
+    bool Initialize(const RenderingConfig& config, u8& OutWindowRenderTargetCount)        override;
+    void ShutDown()                                                                       override;
+    void Resized(u16 width, u16 height)                                                   override;
+    bool BeginFrame(f32 Deltatime)                                                        override;
+    bool EndFrame(f32 DeltaTime)                                                          override;
+    void ViewportSet(const FVec4& rect)                                                   override;
+    void ViewportReset()                                                                  override;
+    void ScissorSet(const FVec4& rect)                                                    override;
+    void ScissorReset()                                                                   override;
+    bool RenderpassBegin(Renderpass* pass, RenderTarget& target)                          override;
+    bool RenderpassEnd(Renderpass* pass)                                                  override;
 
     void Load(const u8* pixels, Texture* texture)                                         override;
     void LoadTextureWriteable  (Texture* texture)                                         override;
@@ -77,6 +79,7 @@ public:
     void TextureWriteData      (Texture* texture, u32 offset, u32 size, const u8* pixels) override;
     void TextureReadData       (Texture* texture, u32 offset, u32 size, void** OutMemory) override;
     void TextureReadPixel      (Texture* texture, u32 x, u32 y, u8** OutRgba)             override;
+    void* TextureCopyData(const Texture* texture)                                         override;
     void Unload                (Texture* texture)                                         override;
     
     bool Load        (GeometryID* gid, u32 VertexSize, u32 VertexCount, const void* vertices, u32 IndexSize, u32 IndexCount, const void* indices) override;
@@ -91,6 +94,7 @@ public:
     bool ShaderUse                     (Shader* shader)                                                   override;
     bool ShaderApplyGlobals            (Shader* shader)                                                   override;
     bool ShaderApplyInstance           (Shader* shader, bool NeedsUpdate)                                 override;
+    bool ShaderBindInstance            (Shader* shader, u32 InstanceID)                                   override;
     bool ShaderAcquireInstanceResources(Shader* shader, TextureMap** maps, u32& OutInstanceID)            override;
     bool ShaderReleaseInstanceResources(Shader* shader, u32 InstanceID)                                   override;
     bool SetUniform                    (Shader* shader, struct Shader::Uniform* uniform, const void* value) override;
@@ -111,19 +115,19 @@ public:
                 //                           RenderBuffer                           //
     //////////////////////////////////////////////////////////////////////////////////////////////
 
-    bool RenderBufferCreate         (RenderBufferType type, u64 TotalSize, bool UseFreelist, RenderBuffer& buffer)         override;
-    bool RenderBufferCreateInternal (RenderBuffer& buffer)                                                                 override;
-    void RenderBufferDestroyInternal(RenderBuffer& buffer)                                                                 override;
-    bool RenderBufferBind           (RenderBuffer& buffer, u64 offset)                                                     override;
-    bool RenderBufferUnbind         (RenderBuffer& buffer)                                                                 override;
-    void* RenderBufferMapMemory     (RenderBuffer& buffer, u64 offset, u64 size)                                           override;
-    void RenderBufferUnmapMemory    (RenderBuffer& buffer, u64 offset, u64 size)                                           override;
-    bool RenderBufferFlush          (RenderBuffer& buffer, u64 offset, u64 size)                                           override;
-    bool RenderBufferRead           (RenderBuffer& buffer, u64 offset, u64 size, void** OutMemory)                         override;
-    bool RenderBufferResize         (RenderBuffer& buffer, u64 NewTotalSize)                                               override;
-    bool RenderBufferLoadRange      (RenderBuffer& buffer, u64 offset, u64 size, const void* data)                         override;
-    bool RenderBufferCopyRange      (RenderBuffer& source, u64 SourceOffset, RenderBuffer& dest, u64 DestOffset, u64 size) override;
-    bool RenderBufferDraw           (RenderBuffer& buffer, u64 offset, u32 ElementCount, bool BindOnly)                    override;
+    bool  RenderBufferCreate         (RenderBufferType type, u64 TotalSize, bool UseFreelist, RenderBuffer& buffer)         override;
+    bool  RenderBufferCreateInternal (RenderBuffer& buffer)                                                                 override;
+    void  RenderBufferDestroyInternal(RenderBuffer& buffer)                                                                 override;
+    bool  RenderBufferBind           (RenderBuffer& buffer, u64 offset)                                                     override;
+    bool  RenderBufferUnbind         (RenderBuffer& buffer)                                                                 override;
+    void* RenderBufferMapMemory      (RenderBuffer& buffer, u64 offset, u64 size)                                           override;
+    void  RenderBufferUnmapMemory    (RenderBuffer& buffer, u64 offset, u64 size)                                           override;
+    bool  RenderBufferFlush          (RenderBuffer& buffer, u64 offset, u64 size)                                           override;
+    bool  RenderBufferRead           (RenderBuffer& buffer, u64 offset, u64 size, void** OutMemory)                         override;
+    bool  RenderBufferResize         (RenderBuffer& buffer, u64 NewTotalSize)                                               override;
+    bool  RenderBufferLoadRange      (RenderBuffer& buffer, u64 offset, u64 size, const void* data)                         override;
+    bool  RenderBufferCopyRange      (RenderBuffer& source, u64 SourceOffset, RenderBuffer& dest, u64 DestOffset, u64 size) override;
+    bool  RenderBufferDraw           (RenderBuffer& buffer, u64 offset, u32 ElementCount, bool BindOnly)                    override;
 
     /// @brief Функция поиска индекса памяти заданного типа и с заданными свойствами.
     /// @param TypeFilter типы памяти для поиска.

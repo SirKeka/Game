@@ -5,8 +5,8 @@
 #include <core/event.hpp>
 
 void GameCommandExit(ConsoleCommandContext context) {
-    MDEBUG("Game exit called!");
-    EventSystem::Fire(EVENT_CODE_APPLICATION_QUIT, nullptr, (EventContext){});
+    MDEBUG("Команда выход из игры вызвана!");
+    EventSystem::Fire(EventSystem::ApplicationQuit, nullptr, (EventContext){});
 }
 
 void Game::SetupCommands() {

@@ -11,15 +11,8 @@
 #include "renderer_structs.hpp"
 
 struct StaticMeshData;
-class Texture;
+struct Texture;
 class RendererSystem;
-
-enum class ERendererType 
-{
-    VULKAN,
-    OPENGL,
-    DIRECTX
-};
 
 /*размер данной струтуры для карт Nvidia должен быть равен 256 байт*/
 struct VulkanMaterialShaderGlobalUniformObject
@@ -40,18 +33,18 @@ struct VulkanMaterialShaderInstanceUniformObject
 
 /// @brief 
 struct VulkanUI_ShaderGlobalUniformObject {
-    Matrix4D projection;    // 64 bytes
-    Matrix4D view;          // 64 bytes
-    Matrix4D mReserved0;    // 64 bytes, зарезервировано для будущего использования.
-    Matrix4D mReserved1;    // 64 bytes, зарезервировано для будущего использования.
+    Matrix4D projection;    // 64 байт
+    Matrix4D view;          // 64 байт
+    Matrix4D mReserved0;    // 64 байт, зарезервировано для будущего использования.
+    Matrix4D mReserved1;    // 64 байт, зарезервировано для будущего использования.
 };
 
 /// @brief Объект универсального буфера экземпляра материала пользовательского интерфейса, специфичный для Vulkan, для шейдера пользовательского интерфейса.
 struct VulkanUI_ShaderInstanceUniformObject {
-    FVec4 DiffuseColor; // 16 bytes
-    FVec4 vReserved0;   // 16 bytes, зарезервировано для будущего использования.
-    FVec4 vReserved1;   // 16 bytes, зарезервировано для будущего использования.
-    FVec4 vReserved2;   // 16 bytes, зарезервировано для будущего использования.
+    FVec4 DiffuseColor; // 16 байт
+    FVec4 vReserved0;   // 16 байт, зарезервировано для будущего использования.
+    FVec4 vReserved1;   // 16 байт, зарезервировано для будущего использования.
+    FVec4 vReserved2;   // 16 байт, зарезервировано для будущего использования.
 };
 
 /// @brief Структура, которая генерируется приложением и отправляется один раз рендереру для рендеринга заданного кадра. 
@@ -71,13 +64,16 @@ struct UiPacketData {
     // constexpr UiPacketData(Mesh::PacketData MeshData, u32 TextCount, Text** texts) : MeshData(MeshData), TextCount(TextCount), texts(texts) {}
 };
 
-class Renderer
+/// @brief Общий «интерфейс» для плагина рендеринга. Бэкенд рендеринга — это то, что отвечает за вызовы графического API, такого как Vulkan, OpenGL или DirectX. 
+/// Каждый из них должен реализовывать этот интерфейс. Фронтенд взаимодействует только через эту структуру и не имеет никаких знаний о том, как на самом деле все работает на бэкенде.
+class MAPI RendererPlugin
 {
 public:
-    u64 FrameNumber;
-public:
-    virtual ~Renderer() = default;
+    u64 FrameNumber{};
 
+    virtual ~RendererPlugin() = default;
+
+    virtual bool Initialize(const RenderingConfig& config, u8& OutWindowRenderTargetCount) = 0;
     virtual void ShutDown() = 0;
     virtual void Resized(u16 width, u16 height) = 0;
     virtual bool BeginFrame(f32 Deltatime) = 0;
@@ -159,6 +155,8 @@ public:
     /// @param OutRgba Указатель на массив u8 для хранения данных пикселей (должен быть sizeof(u8) * 4)
     virtual void TextureReadPixel(Texture* texture, u32 x, u32 y, u8** OutRgba) = 0;
 
+    virtual void* TextureCopyData(const Texture* texture) = 0;
+
     /// @brief Выгружает данные текстуры из графического процессора.
     /// @param texture указатель на текстуру которую нужно выгрузить.
     virtual void Unload(Texture* texture) = 0;
@@ -179,44 +177,59 @@ public:
     /// @param stages массив этапов шейдера(ShaderStage), указывающий, какие этапы рендеринга (вершина, фрагмент и т. д.) используются в этом шейдере.
     /// @return true в случае успеха, иначе false.
     virtual bool Load(Shader* shader, const Shader::Config& config, Renderpass* renderpass, u8 StageCount, const DArray<MString>& StageFilenames, const Shader::Stage* stages) = 0;
+
     /// @brief Уничтожает данный шейдер и освобождает все имеющиеся в нем ресурсы.--------------------------------------------------------------------
     /// @param shader указатель на шейдер, который нужно уничтожить.
     virtual void Unload(Shader* shader) = 0;
+
     /// @brief Инициализирует настроенный шейдер. Будет автоматически уничтожен, если этот шаг не удастся.--------------------------------------------
     /// Должен быть вызван после Shader::Create().
     /// @param shader указатель на шейдер, который необходимо инициализировать.
     /// @return true в случае успеха, иначе false.
     virtual bool ShaderInitialize(Shader* shader) = 0;
+
     /// @brief Использует заданный шейдер, активируя его для обновления атрибутов, униформы и т. д., а также для использования в вызовах отрисовки.---
     /// @param shader указатель на используемый шейдер.
     /// @return true в случае успеха, иначе false.
     virtual bool ShaderUse(Shader* shader) = 0;
+
     /// @brief Применяет глобальные данные к универсальному буферу.-----------------------------------------------------------------------------------
     /// @param shader указатель на шейдер, к которому нужно применить глобальные данные.
     /// @return true в случае успеха, иначе false.
     virtual bool ShaderApplyGlobals(Shader* shader) = 0;
+
     /// @brief Применяет данные для текущего привязанного экземпляра.---------------------------------------------------------------------------------
     /// @param shader указатель на шейдер, глобальные значения которого должны быть связаны.
     /// @param NeedsUpdate указывает на то что нужно обновить униформу шейдера или только привязать.
     /// @return true в случае успеха, иначе false.
     virtual bool ShaderApplyInstance(Shader* shader, bool NeedsUpdate) = 0;
+
+    /// @brief Связывает ресурсы экземпляра для использования и обновления.
+    /// @param InstanceID идентификатор экземпляра, который необходимо привязать.
+    /// @return true в случае успеха, иначе false.
+    virtual bool ShaderBindInstance(Shader* shader, u32 InstanceID) = 0;
+
     /// @brief Получает внутренние ресурсы уровня экземпляра и предоставляет идентификатор экземпляра.------------------------------------------------
     /// @param shader указатель на шейдер, к которому нужно применить данные экземпляра.
     /// @param OutInstanceID ссылка для хранения нового идентификатора экземпляра.
     /// @return true в случае успеха, иначе false.
     virtual bool ShaderAcquireInstanceResources(Shader* shader, struct TextureMap** maps, u32& OutInstanceID) = 0;
+
     /// @brief Освобождает внутренние ресурсы уровня экземпляра для данного идентификатора экземпляра.------------------------------------------------
     /// @param shader указатель на шейдер, из которого необходимо освободить ресурсы.
     /// @param InstanceID идентификатор экземпляра, ресурсы которого должны быть освобождены.
     /// @return true в случае успеха, иначе false.
     virtual bool ShaderReleaseInstanceResources(Shader* shader, u32 InstanceID) = 0;
+
     /// @brief Получает внутренние ресурсы для данной карты текстур.
     /// @param map указатель на карту текстуры, для которой нужно получить ресурсы.
     /// @return true в случае успеха; в противном случае false.
     virtual bool TextureMapAcquireResources(TextureMap* map) = 0;
+
     /// @brief Освобождает внутренние ресурсы для данной карты текстур.
     /// @param map указатель на карту текстур, из которой необходимо освободить ресурсы.
     virtual void TextureMapReleaseResources(TextureMap* map) = 0;
+    
     /// @brief Устанавливает униформу данного шейдера на указанное значение.--------------------------------------------------------------------------
     /// @param shader указатель на шейдер.
     /// @param uniform постоянный указатель на униформу.
@@ -229,14 +242,12 @@ public:
     //////////////////////////////////////////////////////////////////////
 
     /// @brief Создает и назначает буфер, специфичный для бэкэнда рендерера.
-    ///
     /// @param buffer Указатель для создания внутреннего буфера.
     /// @returns True в случае успеха; в противном случае false.
     virtual bool RenderBufferCreateInternal(RenderBuffer& buffer) = 0;
     virtual bool RenderBufferCreate(RenderBufferType type, u64 TotalSize, bool UseFreelist, RenderBuffer &buffer) = 0;
 
     /// @brief Уничтожает указанный буфер.
-    ///
     /// @param buffer Указатель на буфер, который необходимо уничтожить.
     virtual void RenderBufferDestroyInternal(RenderBuffer& buffer) = 0;
 

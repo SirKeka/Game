@@ -1,6 +1,7 @@
 #include "mvar.hpp"
 
 #include "console.hpp"
+#include "event.hpp"
 #include <new>
 
 struct MVarIntEntry
@@ -103,6 +104,10 @@ MAPI bool MVar::SetInt(const char *name, i32 value)
         auto& entry = pMVar->ints[i];
         if (entry.name && entry.name.Comparei(name)) {
             entry.value = value;
+            // ЗАДАЧА: also pass type?
+            EventContext context = {0};
+            MString::Copy(context.data.c, name, 16);
+            EventSystem::Fire(EventSystem::MVarChanged, nullptr, context);
             return true;
         }
     }

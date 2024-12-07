@@ -331,7 +331,7 @@ bool GeometrySystem::CreateGeometry(const GeometryConfig &config, GeometryID *gi
 
     // Получить материал
     if (MString::Length(config.MaterialName) > 0) {
-        gid->material = MaterialSystem::Instance()->Acquire(config.MaterialName);
+        gid->material = MaterialSystem::Acquire(config.MaterialName);
         if (!gid->material) {
             gid->material = MaterialSystem::GetDefaultMaterial();
         }
@@ -349,7 +349,7 @@ void GeometrySystem::DestroyGeometry(GeometryID *gid)
     gid->generation = INVALID::U16ID; 
     MemorySystem::SetMemory(gid->name, 0, GEOMETRY_NAME_MAX_LENGTH);
     if (gid->material && MString::Length(gid->material->name) > 0) {
-    MaterialSystem::Instance()->Release(gid->material->name);
+    MaterialSystem::Release(gid->material->name);
     gid->material = nullptr;
     }
 }
