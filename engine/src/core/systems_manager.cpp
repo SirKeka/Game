@@ -18,15 +18,21 @@
 
 #include <new>
 
+SystemsManager* SystemsManager::state = nullptr;
+
 SystemsManager::~SystemsManager()
 {
     ShutdownKnownSystems();
 }
 
-bool SystemsManager::Initialize(ApplicationConfig &AppConfig)
+bool SystemsManager::Initialize(SystemsManager* manager, ApplicationConfig &AppConfig)
 {
-    // Зарегистрировать известные системы
-    return RegisterKnownSystemsPreBoot(AppConfig);
+    if (!state) {
+        state = manager;
+        // Зарегистрировать известные системы
+        return RegisterKnownSystemsPreBoot(AppConfig);
+    }
+    return false;
 }
 
 bool SystemsManager::PostBootInitialize(ApplicationConfig &AppConfig)
@@ -79,46 +85,55 @@ bool SystemsManager::Register(u16 type, PFN_SystemInitialize initialize, PFN_Sys
     return true;
 }
 
+void *SystemsManager::GetState(u16 type)
+{
+    if (state) {
+        return state->systems[type].state;
+    }
+    
+    return nullptr;
+}
+
 bool SystemsManager::RegisterKnownSystemsPreBoot(ApplicationConfig &AppConfig)
 {
     // Память
-    if (!Register(MSystem::Memory, nullptr, MemorySystem::Shutdown)) {
+    if (!state->Register(MSystem::Memory, nullptr, MemorySystem::Shutdown)) {
         MERROR("Не удалось зарегистрировать систему памяти.");
         return false;
     }
 
     // Консоль
-    if (!Register(MSystem::Console, Console::Initialize, Console::Shutdown)) {
+    if (!state->Register(MSystem::Console, Console::Initialize, Console::Shutdown)) {
         MERROR("Не удалось зарегистрировать консольную систему.");
         return false;
     }
 
     // MVars
-    if (!Register(MSystem::MVar, MVar::Initialize, MVar::Shutdown)) {
+    if (!state->Register(MSystem::MVar, MVar::Initialize, MVar::Shutdown)) {
         MERROR("Не удалось зарегистрировать систему KVar.");
         return false;
     }
 
     // События
-    if (!Register(MSystem::Event, EventSystem::Initialize, EventSystem::Shutdown)) {
+    if (!state->Register(MSystem::Event, EventSystem::Initialize, EventSystem::Shutdown)) {
         MERROR("Не удалось зарегистрировать систему событий.");
         return false;
     }
 
     // Журнал
-    if (!Register(MSystem::Logging, Log::Initialize, Log::Shutdown)) {
+    if (!state->Register(MSystem::Logging, Log::Initialize, Log::Shutdown)) {
         MERROR("Не удалось зарегистрировать систему логирования.");
         return false;
     }
 
     // Ввод
-    if (!Register(MSystem::Input, InputSystem::Initialize, InputSystem::Shutdown)) {
+    if (!state->Register(MSystem::Input, InputSystem::Initialize, InputSystem::Shutdown)) {
         MERROR("Не удалось зарегистрировать систему ввода.");
         return false;
     }
 
     // Оконная система
-    if (!Register(MSystem::Platform, WindowSystem::Initialize, WindowSystem::Shutdown, nullptr, &AppConfig)) {
+    if (!state->Register(MSystem::Platform, WindowSystem::Initialize, WindowSystem::Shutdown, nullptr, &AppConfig)) {
         MERROR("Не удалось зарегистрировать систему окон.");
         return false;
     }
@@ -127,7 +142,7 @@ bool SystemsManager::RegisterKnownSystemsPreBoot(ApplicationConfig &AppConfig)
     ResourceSystemConfig ResourceSysConfig;
     ResourceSysConfig.AssetBasePath = "../assets";  // ЗАДАЧА: Вероятно, приложение должно это настроить.
     ResourceSysConfig.MaxLoaderCount = 32;
-    if (!Register(MSystem::Resource, ResourceSystem::Initialize, ResourceSystem::Shutdown, nullptr, &ResourceSysConfig)) {
+    if (!state->Register(MSystem::Resource, ResourceSystem::Initialize, ResourceSystem::Shutdown, nullptr, &ResourceSysConfig)) {
         MERROR("Не удалось зарегистрировать систему ресурсов.");
         return false;
     }
@@ -138,7 +153,7 @@ bool SystemsManager::RegisterKnownSystemsPreBoot(ApplicationConfig &AppConfig)
     ShaderSysConfig.MaxUniformCount = 128;
     ShaderSysConfig.MaxGlobalTextures = 31;
     ShaderSysConfig.MaxInstanceTextures = 31;
-    if (!Register(MSystem::Shader, ShaderSystem::Initialize, ShaderSystem::Shutdown, nullptr, &ShaderSysConfig)) {
+    if (!state->Register(MSystem::Shader, ShaderSystem::Initialize, ShaderSystem::Shutdown, nullptr, &ShaderSysConfig)) {
         MERROR("Не удалось зарегистрировать систему шейдеров.");
         return false;
     }
@@ -147,7 +162,7 @@ bool SystemsManager::RegisterKnownSystemsPreBoot(ApplicationConfig &AppConfig)
     RenderingSystemConfig RendererSysConfig = {0};
     RendererSysConfig.ApplicationName = AppConfig.name;
     RendererSysConfig.plugin = AppConfig.RenderPlugin;
-    if (!Register(MSystem::Renderer, RenderingSystem::Initialize, RenderingSystem::Shutdown, nullptr, &RendererSysConfig)) {
+    if (!state->Register(MSystem::Renderer, RenderingSystem::Initialize, RenderingSystem::Shutdown, nullptr, &RendererSysConfig)) {
         MERROR("Не удалось зарегистрировать систему отрисовки.");
         return false;
     }
@@ -193,7 +208,7 @@ bool SystemsManager::RegisterKnownSystemsPreBoot(ApplicationConfig &AppConfig)
     JobSystemConfig JobSysConfig = {0};
     JobSysConfig.MaxJobThreadCount = ThreadCount;
     JobSysConfig.TypeMasks = JobThreadTypes;
-    if (!Register(MSystem::Job, JobSystem::Initialize, JobSystem::Shutdown, JobSystem::Update, &JobSysConfig)) {
+    if (!state->Register(MSystem::Job, JobSystem::Initialize, JobSystem::Shutdown, JobSystem::Update, &JobSysConfig)) {
         MERROR("Не удалось зарегистрировать систему задач.");
         return false;
     }

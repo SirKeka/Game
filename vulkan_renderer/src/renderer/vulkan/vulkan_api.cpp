@@ -331,10 +331,10 @@ bool VulkanAPI::Initialize(const RenderingConfig &config, u8 &OutWindowRenderTar
     CreateInfo.ppEnabledExtensionNames = RequiredExtensions.Data(); //ЗАДАЧА: указателю ppEnabledExtensionNames присваевается адрес указателя массива после выхода из функции данные стираются
 
     u32 AvailableExtensionCount = 0;
-    vkEnumerateInstanceExtensionProperties(0, &AvailableExtensionCount, 0);
+    vkEnumerateInstanceExtensionProperties(nullptr, &AvailableExtensionCount, nullptr);
     DArray<VkExtensionProperties> AvailableExtensions;
     AvailableExtensions.Resize(AvailableExtensionCount);
-    vkEnumerateInstanceExtensionProperties(0, &AvailableExtensionCount, AvailableExtensions.Data());
+    vkEnumerateInstanceExtensionProperties(nullptr, &AvailableExtensionCount, AvailableExtensions.Data());
 
     // Проверьте доступность необходимых расширений.
     for (u32 i = 0; i < RequiredExtensionCount; ++i) {
@@ -651,8 +651,8 @@ void VulkanAPI::ViewportSet(const FVec4 &rect)
     viewport.y = rect.y;
     viewport.width = rect.z;
     viewport.height = rect.w;
-    viewport.minDepth = 0.0f;
-    viewport.maxDepth = 1.0f;
+    viewport.minDepth = 0.F;
+    viewport.maxDepth = 1.F;
 
     auto& CommandBuffer = GraphicsCommandBuffers[ImageIndex];
 
@@ -755,18 +755,19 @@ void VulkanAPI::Load(const u8* pixels, Texture *texture)
     // ПРИМЕЧАНИЕ: Предполагается, что на канал приходится 8 бит.
     VkFormat ImageFormat = VK_FORMAT_R8G8B8A8_UNORM;
 
-    // ПРИМЕЧАНИЕ. Здесь много предположений, для разных типов текстур потребуются разные параметры.
-    texture->data = new VulkanImage(
-        this,
-        texture->type,
-        texture->width,
-        texture->height,
-        ImageFormat,
-        VK_IMAGE_TILING_OPTIMAL,
-        VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-        true,
-        VK_IMAGE_ASPECT_COLOR_BIT);
+    // ПРИМЕЧАНИЕ: Здесь много предположений, для разных типов текстур потребуются разные параметры.
+    VulkanImage::Config config = { this };
+    config.type            = texture->type;
+    config.width           = texture->width;
+    config.height          = texture->height;
+    config.format          = ImageFormat;
+    config.tiling          = VK_IMAGE_TILING_OPTIMAL;
+    config.usage           = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    config.MemoryFlags     = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+    config.CreateView      = true;
+    config.ViewAspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
+
+    texture->data = new VulkanImage(config);
 
     TextureWriteData(texture, 0, ImageSize, pixels);
     texture->generation++;
@@ -802,17 +803,18 @@ void VulkanAPI::LoadTextureWriteable(Texture *texture)
         ImageFormat = ChannelCountToFormat(texture->ChannelCount, VK_FORMAT_R8G8B8A8_UNORM);
     }
 
-    texture->data = new VulkanImage(
-        this,
-        texture->type,
-        texture->width,
-        texture->height,
-        ImageFormat,
-        VK_IMAGE_TILING_OPTIMAL,
-        usage,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-        true,
-        aspect);
+    VulkanImage::Config config = { this };
+    config.type                = texture->type;
+    config.width               = texture->width;
+    config.height              = texture->height;
+    config.format              = ImageFormat;
+    config.tiling              = VK_IMAGE_TILING_OPTIMAL;
+    config.usage               = usage;
+    config.MemoryFlags         = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+    config.CreateView          = true;
+    config.ViewAspectFlags     = aspect;
+
+    texture->data = new VulkanImage(config);
     texture->generation++;
 }
 
@@ -828,17 +830,18 @@ void VulkanAPI::TextureResize(Texture *texture, u32 NewWidth, u32 NewHeight)
         VkFormat ImageFormat = ChannelCountToFormat(texture->ChannelCount, VK_FORMAT_R8G8B8A8_UNORM);
 
         // ЗАДАЧА: здесь много предположений, разные типы текстур потребуют разных опций.
-        image->Create(
-        this,
-        texture->type,
-        NewWidth,
-        NewHeight,
-        ImageFormat,
-        VK_IMAGE_TILING_OPTIMAL,
-        VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-        true,
-        VK_IMAGE_ASPECT_COLOR_BIT);
+        VulkanImage::Config config = { this };
+        config.type                = texture->type;
+        config.width               = NewWidth;
+        config.height              = NewHeight;
+        config.format              = ImageFormat;
+        config.tiling              = VK_IMAGE_TILING_OPTIMAL;
+        config.usage               = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+        config.MemoryFlags         = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+        config.CreateView          = true;
+        config.ViewAspectFlags     = VK_IMAGE_ASPECT_COLOR_BIT;
+
+        image->Create(config);
 
         texture->generation++;
     }
@@ -1442,12 +1445,12 @@ bool VulkanAPI::ShaderInitialize(Shader *shader)
     // ЗАДАЧА: Кажется неправильным иметь их здесь, по крайней мере, в таком виде. 
     // Вероятно, следует настроить получение из какого-либо места вместо области просмотра.
     VkViewport viewport;
-    viewport.x = 0.0f;
+    viewport.x = 0.F;
     viewport.y = (f32)FramebufferHeight;
     viewport.width = (f32)FramebufferWidth;
     viewport.height = -(f32)FramebufferHeight;
-    viewport.minDepth = 0.0f;
-    viewport.maxDepth = 1.0f;
+    viewport.minDepth = 0.F;
+    viewport.maxDepth = 1.F;
 
     // Scissor
     VkRect2D scissor;

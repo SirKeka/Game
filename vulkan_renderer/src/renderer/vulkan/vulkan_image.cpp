@@ -3,19 +3,9 @@
 #include "vulkan_command_buffer.hpp"
 #include "core/asserts.hpp"
 
-VulkanImage::VulkanImage(
-    VulkanAPI *VkAPI, 
-    TextureType type, 
-    u32 width, 
-    u32 height, 
-    VkFormat format, 
-    VkImageTiling tiling, 
-    VkImageUsageFlags usage, 
-    VkMemoryPropertyFlags MemoryFlags, 
-    b32 CreateView, 
-    VkImageAspectFlags ViewAspectFlags)
+VulkanImage::VulkanImage(const Config &config)
 {
-    Create(VkAPI, type, width, height, format, tiling, usage, MemoryFlags, CreateView, ViewAspectFlags);
+    Create(config);
 }
 
 VulkanImage::~VulkanImage()
@@ -27,43 +17,43 @@ VulkanImage::~VulkanImage()
     height = 0;*/
 }
 
-void VulkanImage::Create(VulkanAPI *VkAPI, TextureType type, u32 width, u32 height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags MemoryFlags, b32 CreateView, VkImageAspectFlags ViewAspectFlags)
+void VulkanImage::Create(const Config &config)
 {
     // Копировать параметры
-    this->MemoryFlags = MemoryFlags;
-    this->width = width;
-    this->height = height;
+    this->MemoryFlags = config.MemoryFlags;
+    this->width = config.width;
+    this->height = config.height;
 
     // Информация о создании.
     VkImageCreateInfo ImageCreateInfo = {VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
-    switch (type) {
+    switch (config.type) {
         default:
         case TextureType::_2D:
         case TextureType::Cube:  // Тип изображения куба намеренно не предусмотрен.
             ImageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
             break;
     }
-    ImageCreateInfo.extent.width = width;
-    ImageCreateInfo.extent.height = height;
-    ImageCreateInfo.extent.depth = 1;                                   // ЗАДАЧА: Поддержка настраиваемой глубины.
-    ImageCreateInfo.mipLevels = 4;                                      // ЗАДАЧА: Поддержка мип-маппинга
-    ImageCreateInfo.arrayLayers = type == TextureType::Cube ? 6 : 1;    // ЗАДАЧА: Поддержка количества слоев изображения.
-    ImageCreateInfo.format = format;
-    ImageCreateInfo.tiling = tiling;
+    ImageCreateInfo.extent.width = config.width;
+    ImageCreateInfo.extent.height = config.height;
+    ImageCreateInfo.extent.depth = 1;                                          // ЗАДАЧА: Поддержка настраиваемой глубины.
+    ImageCreateInfo.mipLevels = 4;                                             // ЗАДАЧА: Поддержка мип-маппинга
+    ImageCreateInfo.arrayLayers = config.type == TextureType::Cube ? 6 : 1;    // ЗАДАЧА: Поддержка количества слоев изображения.
+    ImageCreateInfo.format = config.format;
+    ImageCreateInfo.tiling = config.tiling;
     ImageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    ImageCreateInfo.usage = usage;
-    ImageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;          // ЗАДАЧА: Настраиваемое количество образцов.
-    ImageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;  // ЗАДАЧА: Настраиваемый режим обмена.
-    if (type == TextureType::Cube) {
+    ImageCreateInfo.usage = config.usage;
+    ImageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;                           // ЗАДАЧА: Настраиваемое количество образцов.
+    ImageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;                   // ЗАДАЧА: Настраиваемый режим обмена.
+    if (config.type == TextureType::Cube) {
         ImageCreateInfo.flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
     }
 
-    VK_CHECK(vkCreateImage(VkAPI->Device.LogicalDevice, &ImageCreateInfo, VkAPI->allocator, &handle));
+    VK_CHECK(vkCreateImage(config.VkAPI->Device.LogicalDevice, &ImageCreateInfo, config.VkAPI->allocator, &handle));
 
     // Запросить требования к памяти.
-    vkGetImageMemoryRequirements(VkAPI->Device.LogicalDevice, handle, &MemoryRequirements);
+    vkGetImageMemoryRequirements(config.VkAPI->Device.LogicalDevice, handle, &MemoryRequirements);
 
-    i32 MemoryType = VkAPI->FindMemoryIndex(MemoryRequirements.memoryTypeBits, MemoryFlags);
+    i32 MemoryType = config.VkAPI->FindMemoryIndex(MemoryRequirements.memoryTypeBits, config.MemoryFlags);
     if (MemoryType == -1) {
         MERROR("Требуемый тип памяти не найден. Изображение недействительно.");
     }
@@ -72,15 +62,15 @@ void VulkanImage::Create(VulkanAPI *VkAPI, TextureType type, u32 width, u32 heig
     VkMemoryAllocateInfo MemoryAllocateInfo = {VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
     MemoryAllocateInfo.allocationSize = MemoryRequirements.size;
     MemoryAllocateInfo.memoryTypeIndex = MemoryType;
-    VK_CHECK(vkAllocateMemory(VkAPI->Device.LogicalDevice, &MemoryAllocateInfo, VkAPI->allocator, &memory));
+    VK_CHECK(vkAllocateMemory(config.VkAPI->Device.LogicalDevice, &MemoryAllocateInfo, config.VkAPI->allocator, &memory));
 
     // Свяжите память
-    VK_CHECK(vkBindImageMemory(VkAPI->Device.LogicalDevice, handle, memory, 0));  // ЗАДАЧА: настраиваемое смещение памяти.
+    VK_CHECK(vkBindImageMemory(config.VkAPI->Device.LogicalDevice, handle, memory, 0));  // ЗАДАЧА: настраиваемое смещение памяти.
 
     // Создать представление
-    if (CreateView) {
+    if (config.CreateView) {
         view = 0;
-        ViewCreate(VkAPI, type, format, ViewAspectFlags);
+        ViewCreate(config.VkAPI, config.type, config.format, config.ViewAspectFlags);
     }
 }
 

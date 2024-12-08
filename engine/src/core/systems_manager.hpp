@@ -17,7 +17,7 @@ struct MSystem {
     /// @brief Указатель функции для процедуры обновления системы, вызываемой каждый кадр. Необязательно.
     PFN_SystemUpdate update;
 
-    enum Type {
+    enum Type : u16 {
         Memory = 0,
         Console,
         MVar,
@@ -50,22 +50,28 @@ struct ApplicationConfig;
 
 class SystemsManager
 {
-public:
+    friend class Engine;
     LinearAllocator SystemsAllocator;
     MSystem systems[K_SYSTEM_TYPE_MAX_COUNT];
+
+    static SystemsManager* state;
 
     /// @brief Создать линейный распределитель для всех систем (кроме памяти) для использования.
     constexpr SystemsManager() : SystemsAllocator(MEBIBYTES(64)), systems() {}
     ~SystemsManager();
+public:
+    SystemsManager(const SystemsManager& sm) = delete;
 
-    bool Initialize(ApplicationConfig& AppConfig);
+    static bool Initialize(SystemsManager* manager, ApplicationConfig& AppConfig);
     bool PostBootInitialize(ApplicationConfig& AppConfig);
 
     bool Update(u32 DeltaTime);
 
     bool Register(u16 type, PFN_SystemInitialize initialize = nullptr, PFN_SystemShutdown shutdown = nullptr, PFN_SystemUpdate update = nullptr, void* config = nullptr);
+
+    MAPI static void* GetState(u16 type);
 private:
-    bool RegisterKnownSystemsPreBoot(ApplicationConfig& AppConfig);
+    static bool RegisterKnownSystemsPreBoot(ApplicationConfig& AppConfig);
     bool RegisterKnownSystemsPostBoot(ApplicationConfig& AppConfig);
     void ShutdownKnownSystems();
 };

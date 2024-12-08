@@ -62,7 +62,7 @@ bool Engine::Create(Application* GameInst)
     pEngine->GameInst = GameInst;
 
     // Инициализируйте подсистемы.
-    if (!pEngine->SysManager.Initialize(GameInst->AppConfig)) {
+    if (!SystemsManager::Initialize(&pEngine->SysManager, GameInst->AppConfig)) {
         MFATAL("Системный менеджер не смог инициализироваться. Процесс прерывается.");
         return false;
     }

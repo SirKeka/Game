@@ -272,17 +272,18 @@ void VulkanSwapchain::Create(VulkanAPI *VkAPI, u32 width, u32 height, RendererCo
 
     for (u32 i = 0; i < VkAPI->swapchain.ImageCount; ++i) {
         // Создайте изображение глубины и его вид.
-        auto image = new VulkanImage(VkAPI,
-            TextureType::_2D,
-            SwapchainExtent.width,
-            SwapchainExtent.height,
-            VkAPI->Device.DepthFormat,
-            VK_IMAGE_TILING_OPTIMAL,
-            VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-            true,
-            VK_IMAGE_ASPECT_DEPTH_BIT
-        );
+        VulkanImage::Config config = { VkAPI };
+        config.type            = TextureType::_2D;
+        config.width           = SwapchainExtent.width;
+        config.height          = SwapchainExtent.height;
+        config.format          = VkAPI->Device.DepthFormat;
+        config.tiling          = VK_IMAGE_TILING_OPTIMAL;
+        config.usage           = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+        config.MemoryFlags     = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+        config.CreateView      = true;
+        config.ViewAspectFlags = VK_IMAGE_ASPECT_DEPTH_BIT;
+
+        auto image = new VulkanImage(config);
 
         auto& DepthTexture = VkAPI->swapchain.DepthTextures[i];
         DepthTexture.SetName ("__moon_default_depth_texture__");
@@ -293,10 +294,7 @@ void VulkanSwapchain::Create(VulkanAPI *VkAPI, u32 width, u32 height, RendererCo
         DepthTexture.data = image;
     
         // Оберните его в текстуру.
-        TextureSystem::WrapInternal(
-            nullptr,
-            &DepthTexture
-        );
+        TextureSystem::WrapInternal(nullptr, &DepthTexture);
     }
 
     MINFO("Swapchain успешно создан.");

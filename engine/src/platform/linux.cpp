@@ -567,34 +567,6 @@ bool MMutex::Unlock()
 
 // ПРИМЕЧАНИЕ: Конец мьютекса
 
-void PlatformGetRequiredExtensionNames(DArray<const char *> &NameDarray)
-{
-    NameDarray.PushBack("VK_KHR_xcb_surface"); // VK_KHR_xlib_surface?
-}
-
-// Создание поверхности для Vulkan
-b8 PlatformCreateVulkanSurface(MWindow *window, VulkanAPI *VkAPI) {
-    // Simply cold-cast to the known type.
-    PlatformState *pState = (PlatformState *)plat_state->internal_state;
-
-    VkXcbSurfaceCreateInfoKHR create_info = {VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR};
-    create_info.connection = pState->connection;
-    create_info.window = pState->window;
-
-    VkResult result = vkCreateXcbSurfaceKHR(
-        context->instance,
-        &create_info,
-        context->allocator,
-        &pState->surface);
-    if (result != VK_SUCCESS) {
-        KFATAL("Vulkan surface creation failed.");
-        return false;
-    }
-
-    context->surface = pState->surface;
-    return true;
-}
-
 // Key translation
 Keys translate_keycode(u32 x_keycode) {
     switch (x_keycode) {

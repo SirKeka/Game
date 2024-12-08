@@ -11,6 +11,30 @@ struct VulkanCommandBuffer;
 class VulkanImage
 {
 public:
+    /// @brief Структура содержащая параметры для создания экземмпляра изображения Vulkan
+    /// @param VkAPI указатель на контекст Vulkan.
+    /// @param type тип текстуры. Дает подсказки по созданию.
+    /// @param width ширина изображения. Для кубических карт это для каждой стороны куба.
+    /// @param height высота изображения. Для кубических карт это для каждой стороны куба.
+    /// @param format формат изображения.
+    /// @param tiling режим тайлинга изображения.
+    /// @param usage использование изображения.
+    /// @param MemoryFlags флаги памяти для памяти, используемой изображением.
+    /// @param CreateView указывает, следует ли создавать представление с изображением.
+    /// @param ViewAspectFlags флаги аспекта, которые следует использовать при создании представления, если применимо.
+    struct Config {
+        VulkanAPI* VkAPI;
+        TextureType type;
+        u32 width;
+        u32 height;
+        VkFormat format;
+        VkImageTiling tiling;
+        VkImageUsageFlags usage;
+        VkMemoryPropertyFlags MemoryFlags;
+        b32 CreateView;
+        VkImageAspectFlags ViewAspectFlags;
+    };
+    
     VkImage handle;                             // Дескриптор внутреннего объекта изображения.
     VkDeviceMemory memory;                      // Память, используемая изображением.
     VkImageView view;                           // Вид для изображения, который используется для доступа к изображению.
@@ -22,40 +46,11 @@ public:
     constexpr VulkanImage() : handle(), memory(), view(), MemoryRequirements(), MemoryFlags(), width(), height() {}
     constexpr VulkanImage(const VulkanImage& vi) : handle(vi.handle), memory(vi.memory), view(vi.view), MemoryRequirements(vi.MemoryRequirements), MemoryFlags(vi.MemoryFlags), width(vi.width), height(vi.height) {}
     /// @brief Создает новое изображение Vulkan.
-    /// @param VkAPI указатель на контекст Vulkan.
-    /// @param type тип текстуры. Дает подсказки по созданию.
-    /// @param width ширина изображения. Для кубических карт это для каждой стороны куба.
-    /// @param height высота изображения. Для кубических карт это для каждой стороны куба.
-    /// @param format формат изображения.
-    /// @param tiling режим тайлинга изображения.
-    /// @param usage использование изображения.
-    /// @param MemoryFlags флаги памяти для памяти, используемой изображением.
-    /// @param CreateView указывает, следует ли создавать представление с изображением.
-    /// @param ViewAspectFlags флаги аспекта, которые следует использовать при создании представления, если применимо.
-    VulkanImage(VulkanAPI* VkAPI,
-        TextureType type,
-        u32 width,
-        u32 height,
-        VkFormat format,
-        VkImageTiling tiling,
-        VkImageUsageFlags usage,
-        VkMemoryPropertyFlags MemoryFlags,
-        b32 CreateView,
-        VkImageAspectFlags ViewAspectFlags
-    );
+    /// @param config конфигурация изображения Vulkan
+    VulkanImage(const Config& config);
     ~VulkanImage();
 
-    void Create(VulkanAPI* VkAPI,
-        TextureType type,
-        u32 width,
-        u32 height,
-        VkFormat format,
-        VkImageTiling tiling,
-        VkImageUsageFlags usage,
-        VkMemoryPropertyFlags MemoryFlags,
-        b32 CreateView,
-        VkImageAspectFlags ViewAspectFlags
-    );
+    void Create(const Config& config);
     
     /// @brief Создает представление для заданного изображения.
     /// @param VkAPI указатель на контекст Vulkan.
