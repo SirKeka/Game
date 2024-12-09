@@ -1,12 +1,12 @@
 #include "vulkan_render_plugin_main.hpp"
 #include "renderer/vulkan/vulkan_api.hpp"
 
-RendererPlugin *VulkanRenderPluginCreate()
+RendererPlugin *PluginCreate()
 {
     return new VulkanAPI();
 }
 
-void VulkanRenderPluginDestroy(RendererPlugin* plugin)
+void PluginDestroy(RendererPlugin* plugin)
 {
     delete plugin;
 }

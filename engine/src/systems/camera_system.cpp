@@ -19,7 +19,12 @@ CameraSystem::CameraSystem(u16 MaxCameraCount, void* HashtableBlock, CameraLooku
     DefaultCamera()
 {}
 
-bool CameraSystem::Initialize(u64& MemoryRequirement, void* memory, void* config)
+CameraSystem *CameraSystem::Instance()
+{
+    return state;
+}
+
+bool CameraSystem::Initialize(u64 &MemoryRequirement, void *memory, void *config)
 {
     auto pConfig = reinterpret_cast<CameraSystemConfig*>(config);
 

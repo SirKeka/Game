@@ -1,6 +1,23 @@
 #pragma once
 
 #include "defines.hpp"
+#include "containers/darray.hpp"
+
+struct DynamicLibraryFunction {
+    MString name;
+    void* pfn;
+};
+
+struct DynamicLibrary {
+    MString name;
+    MString filename;
+    u64 InternalDataSize;
+    void* InternalData;
+
+    DArray<DynamicLibraryFunction> functions;
+};
+
+template class DArray<DynamicLibraryFunction>;
 
 namespace WindowSystem
 {
@@ -48,5 +65,22 @@ i32 PlatformGetProcessorCount();
 /// @param OutSize Ссылка на переменную для хранения требований к памяти.
 /// @param memory Выделенный блок памяти.
 MAPI void PlatformGetHandleInfo(u64& OutSize, void* memory);
+
+/// @brief Загружает динамическую библиотеку.
+/// @param name Имя файла библиотеки, *исключая* расширение. Обязательно.
+/// @param out_library Указатель для хранения загруженной библиотеки. Обязательно.
+/// @return True в случае успеха; в противном случае false.
+MAPI bool PlatformDynamicLibraryLoad(const char* name, DynamicLibrary& OutLibrary);
+
+/// @brief Выгружает указанную динамическую библиотеку.
+/// @param library Указатель на загруженную библиотеку. Обязательно.
+/// @return True в случае успеха; в противном случае false.
+MAPI bool PlatformDynamicLibraryUnload(DynamicLibrary& library);
+
+/// @brief Загружает экспортированную функцию с указанным именем из предоставленной загруженной библиотеки.
+/// @param name Имя функции, которая должна быть загружена.
+/// @param library Указатель на библиотеку, из которой должна быть загружена функция.
+/// @return True в случае успеха; в противном случае false.
+MAPI bool PlatformDynamicLibraryLoadFunction(const char* name, DynamicLibrary& library);
 
 // MAPI const char* PlatformGetKeyboardLayout();

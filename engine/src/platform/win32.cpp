@@ -227,6 +227,82 @@ void PlatformGetHandleInfo(u64& OutSize, void* memory)
     MemorySystem::CopyMem(memory, &state->handle, OutSize);
 }
 
+bool PlatformDynamicLibraryLoad(const char* name, DynamicLibrary& OutLibrary)
+{
+    // MemorySystem::ZeroMem(OutLibrary, sizeof(DynamicLibrary));
+    if (!name) {
+        return false;
+    }
+
+    char filename[MAX_PATH]{};
+    MString::Format(filename, "%s.dll", name);
+
+    HMODULE library = LoadLibraryA(filename);
+    if (!library) {
+        return false;
+    }
+
+    OutLibrary.name = name;
+    OutLibrary.filename = filename;
+
+    OutLibrary.InternalDataSize = sizeof(HMODULE);
+    OutLibrary.InternalData = library;
+
+    return true;
+}
+
+bool PlatformDynamicLibraryUnload(DynamicLibrary& library)
+{
+    HMODULE InternalModule = (HMODULE)library.InternalData;
+    if (!InternalModule) {
+        return false;
+    }
+
+    BOOL result = FreeLibrary(InternalModule);
+    if (result == 0) {
+        return false;
+    }
+
+    if (library.name) {
+        library.name.Clear();
+    }
+
+    if (library.filename) {
+        library.filename.Clear();
+    }
+
+    if (library.functions) {
+        library.functions.Clear();
+    }
+
+    MemorySystem::ZeroMem(&library, sizeof(DynamicLibrary));
+
+    return true;
+}
+
+bool PlatformDynamicLibraryLoadFunction(const char* name, DynamicLibrary& library)
+{
+    if (!name) {
+        return false;
+    }
+
+    if (!library.InternalData) {
+        return false;
+    }
+
+    FARPROC fAddr = GetProcAddress((HMODULE)library.InternalData, name);
+    if (!fAddr) {
+        return false;
+    }
+
+    DynamicLibraryFunction f = {0};
+    f.pfn = reinterpret_cast<void*>(fAddr);
+    f.name = name;
+    library.functions.PushBack(f);
+
+    return true;
+}
+
 // const char* PlatformGetKeyboardLayout()
 // {
 //     // ЗАДАЧА: изменить.

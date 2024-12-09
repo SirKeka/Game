@@ -7,7 +7,8 @@
 #include "systems_manager.hpp"
 
 #include "systems/font_system.hpp"
-// Ресурсы
+
+#include "platform/platform.hpp"
 #include "renderer/renderer_types.hpp"
 
 /// @brief Конфигурация приложения.
@@ -27,7 +28,9 @@ struct ApplicationConfig {
     /// @brief Массив конфигураций представления рендеринга.
     DArray<RenderView::Config> RenderViews{};
 
+    DynamicLibrary RendererLibrary;
     RendererPlugin* RenderPlugin;
+    DynamicLibrary GameLibrary;
 };
 
 class Engine

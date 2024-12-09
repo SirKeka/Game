@@ -29,7 +29,7 @@ public:
     DArray<GeometryRenderData> WorldGeometries; // ApplicationFrameData FrameData;        // Данные, которые создаются, используются и удаляются в каждом кадре
     // RendererPlugin* RenderPlugin;               // ЗАДАЧА: Переместить это в лучшее место...
 
-    constexpr Application(const ApplicationConfig& AppConfig, u64 StateMemoryRequirement) : AppConfig(AppConfig), engine(nullptr), state(nullptr), StateMemoryRequirement(StateMemoryRequirement), FrameAllocator() {}
+    constexpr Application(const ApplicationConfig& AppConfig, u64 StateMemoryRequirement) : AppConfig(AppConfig), engine(nullptr), state(nullptr), StateMemoryRequirement(StateMemoryRequirement), FrameAllocator(), WorldGeometries() {}
     virtual ~Application() = default;
 
     /// @brief Указатель функции на последовательность загрузки игры. Это должно заполнить конфигурацию приложения конкретными требованиями игры.

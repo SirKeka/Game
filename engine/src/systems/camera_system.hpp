@@ -30,16 +30,14 @@ private:
 
     Camera DefaultCamera;           // Незарегистрированная камера по умолчанию, которая всегда существует в качестве запасного варианта.
 
-    MAPI static CameraSystem* state;
+    static CameraSystem* state;
     CameraSystem(u16 MaxCameraCount, void* HashtableBlock, CameraLookup* cameras);
 public:
     CameraSystem(const CameraSystem&) = delete;
     CameraSystem& operator= (const CameraSystem&) = delete;
     ~CameraSystem() {}
 
-    MAPI static MINLINE CameraSystem* Instance() {
-        return state;
-    }
+    MAPI static CameraSystem* Instance();
 
     /// @brief Инициализирует систему камеры.
     /// 

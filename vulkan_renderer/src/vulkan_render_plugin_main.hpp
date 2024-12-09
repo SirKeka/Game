@@ -3,8 +3,8 @@
 
 /// @brief Создает новый плагин рендеринга указанного типа.
 /// @return указатель на плагин рендринга указанного типа.
-MAPI RendererPlugin* VulkanRenderPluginCreate();
+extern "C" MAPI RendererPlugin* PluginCreate();
 
 /// @brief 
 /// @return 
-MAPI void VulkanRenderPluginDestroy(RendererPlugin* plugin);
+MAPI void PluginDestroy(RendererPlugin* plugin);
