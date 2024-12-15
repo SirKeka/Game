@@ -21,7 +21,9 @@
 
 /// @brief Определенная извне функция для создания приложения, предоставленная потребителем этой библиотеки.
 /// @return True при успешном создании; в противном случае false.
-extern bool CreateApplication(Application*& OutApplication);
+extern bool CreateApplication(Application& OutApplication);
+
+extern bool InitializeApplication(Application& app);
 
 // Основная точка входа в приложение.
 int main(void) {
@@ -29,7 +31,7 @@ int main(void) {
     // setlocale(LC_ALL, "en_US.UTF-8");
 
     // Запросите экземпляр игры из приложения.
-    Application* ApplicationInst = nullptr;
+    Application ApplicationInst;
 
     // Система памяти должна быть установлена в первую очередь. 
     if (!MemorySystem::Initialize(GIBIBYTES(1))) {
@@ -44,12 +46,17 @@ int main(void) {
     
     // Инициализация.
     if (!Engine::Create(ApplicationInst)) {
-        MINFO("Приложение не удалось создать!");
+        MINFO("Не удалось создать движок!");
         return 1;
     }
 
+    if (!InitializeApplication(ApplicationInst)) {
+        MFATAL("Не удалось инициализировать приложение!");
+        return -1;
+    }
+
     // Начать игровой цикл.
-    if(!ApplicationInst->engine->Run()) {
+    if(!ApplicationInst.engine->Run()) {
         MINFO("Приложение не завершило работу корректно.");
         return 2;
     }

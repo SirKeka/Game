@@ -43,9 +43,9 @@ height(),
 clock(),
 LastTime() {}
 
-bool Engine::Create(Application* GameInst)
+bool Engine::Create(Application& GameInst)
 {
-    if (GameInst->engine) {
+    if (GameInst.engine) {
         MERROR("Engine::Create вызывался более одного раза.");
         return false;
     }
@@ -56,23 +56,23 @@ bool Engine::Create(Application* GameInst)
 
     Metrics::Initialize();
 
-    GameInst->state = MemorySystem::Allocate(GameInst->StateMemoryRequirement, Memory::Engine);
-    GameInst->engine = new Engine();
-    pEngine = GameInst->engine;
-    pEngine->GameInst = GameInst;
+    GameInst.engine = new Engine();
+    pEngine = GameInst.engine;
+    pEngine->GameInst = &GameInst;
 
     // Инициализируйте подсистемы.
-    if (!SystemsManager::Initialize(&pEngine->SysManager, GameInst->AppConfig)) {
+    if (!SystemsManager::Initialize(&pEngine->SysManager, GameInst.AppConfig)) {
         MFATAL("Системный менеджер не смог инициализироваться. Процесс прерывается.");
         return false;
     }
 
-    if (!pEngine->GameInst->Boot()) {
+    GameInst.stage = Application::Stage::Booting;
+    if (!GameInst.Boot(GameInst)) {
         MFATAL("Game::Boot - Сбой последовательности загрузки игры; прерывание работы приложения.");
         return false;
-    }
+    } GameInst.stage = Application::Stage::BootComplete;
 
-    if (!pEngine->SysManager.PostBootInitialize(GameInst->AppConfig)) {
+    if (!pEngine->SysManager.PostBootInitialize(GameInst.AppConfig)) {
         MFATAL("Инициализация системного менеджера после загрузки не удалась!")
         return false;
     }
@@ -81,20 +81,22 @@ bool Engine::Create(Application* GameInst)
     MINFO("Moon Engine v. %s", MVERSION);
 
     // Инициализируйте игру.
-    if (!GameInst->Initialize()) {
+    GameInst.stage = Application::Stage::Initializing;
+    if (!GameInst.Initialize(GameInst)) {
         MFATAL("Не удалось инициализировать игру.");
         return false;
-    }
+    } GameInst.stage = Application::Stage::Initialized;
 
     // Вызовите resize один раз, чтобы убедиться, что установлен правильный размер.
     RenderingSystem::OnResized(pEngine->width, pEngine->height);
-    GameInst->OnResize(pEngine->width, pEngine->height);
+    GameInst.OnResize(GameInst, pEngine->width, pEngine->height);
 
     return true;
 }
 
 bool Engine::Run() {
-    pEngine->IsRunning = true;
+    GameInst->stage = Application::Stage::Running;
+    IsRunning = true;
     clock.Start();
     clock.Update();
     LastTime = clock.elapsed;
@@ -123,7 +125,7 @@ bool Engine::Run() {
             //Обновление метрик(статистики)
             Metrics::Update(FrameElapsedTime);
 
-            if (!GameInst->Update(delta)) {
+            if (!GameInst->Update(*GameInst, delta)) {
                 MFATAL("Ошибка обновления игры, выключение.");
                 IsRunning = false;
                 break;
@@ -133,7 +135,7 @@ bool Engine::Run() {
             packet.DeltaTime = delta;
 
             // Вызовите процедуру рендеринга игры.
-            if (!GameInst->Render(packet, delta)) {
+            if (!GameInst->Render(*GameInst, packet, delta)) {
                 MFATAL("Ошибка рендеринга игры, выключение.");
                 IsRunning = false;
                 break;
@@ -173,11 +175,13 @@ bool Engine::Run() {
     IsRunning = false;
 
     // Выключение игры
-    GameInst->Shutdown();
+    GameInst->stage = Application::Stage::ShuttingDown;
+    GameInst->Shutdown(*GameInst);
     // Отключение системы событий.
     EventSystem::Unregister(EventSystem::ApplicationQuit, nullptr, OnEvent);
 
     pEngine->SysManager.~SystemsManager();
+    GameInst->stage = Application::Stage::Uninitialized;
 
     return true;
 }
@@ -228,7 +232,7 @@ bool Engine::OnResized(u16 code, void *sender, void *ListenerInst, EventContext 
                     MINFO("Окно восстановлено, возобновляется приложение.");
                     pEngine->IsSuspended = false;
                 }
-                pEngine->GameInst->OnResize(width, height);
+                pEngine->GameInst->OnResize(*pEngine->GameInst, width, height);
                 //pEngine->Render->OnResized(width, height);
                 return true;
             }

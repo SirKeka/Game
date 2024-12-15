@@ -52,6 +52,7 @@ namespace Memory {
         GPULocal,
         BitmapFont,
         SystemFont,
+        Keymap,
 
         MaxTags
     };

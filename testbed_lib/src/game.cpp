@@ -16,10 +16,14 @@
 #include "debug_console.hpp"
 // ЗАДАЧА: конец временного кода
 
-bool Game::OnEvent(u16 code, void *sender, void *ListenerInst, EventContext context)
+bool GameConfigureRenderViews(Application& app);
+void ApplicationRegisterEvents(Application& app);
+void ApplicationUnregisterEvents(Application& app);
+
+bool GameOnEvent(u16 code, void *sender, void *ListenerInst, EventContext context)
 {
-    auto GameInst = reinterpret_cast<Game*>(ListenerInst);
-    auto state = reinterpret_cast<Game::State*>(GameInst->state);
+    auto GameInst = reinterpret_cast<Application*>(ListenerInst);
+    auto state = reinterpret_cast<Game*>(GameInst->state);
     switch (code) {
         case EventSystem::OojectHoverIdChanged: {
             state->HoveredObjectID = context.data.u32[0];
@@ -31,10 +35,10 @@ bool Game::OnEvent(u16 code, void *sender, void *ListenerInst, EventContext cont
 }
 
 // ЗАДАЧА: временно
-bool Game::OnDebugEvent(u16 code, void *sender, void *ListenerInst, EventContext context)
+bool GameOnDebugEvent(u16 code, void *sender, void *ListenerInst, EventContext context)
 {
-    auto GameInst = reinterpret_cast<Game*>(ListenerInst);
-    auto state = reinterpret_cast<Game::State*>(GameInst->state);
+    auto GameInst = reinterpret_cast<Application*>(ListenerInst);
+    auto state = reinterpret_cast<Game*>(GameInst->state);
     if (code == EventSystem::DEBUG0) {
         const char* names[3] = {
             "Ice",
@@ -76,6 +80,14 @@ bool Game::OnDebugEvent(u16 code, void *sender, void *ListenerInst, EventContext
             }
         }
         return true;
+    } else if (code == EventSystem::DEBUG2) {
+        if (state->ModelsLoaded) {
+            MDEBUG("Выгрузка моделей...");
+            state->CarMesh->Unload();
+            state->SponzaMesh->Unload();
+            state->ModelsLoaded = true;
+        }
+        return true;
     }
 
     return true;
@@ -105,53 +117,49 @@ bool GameOnKey(u16 code, void *sender, void *ListenerInst, EventContext context)
     return false;
 }
 
-Game::~Game()
-{
-    Shutdown();
-}
-
-bool Game::Boot()
+bool ApplicationBoot(Application& app)
 {
     MINFO("Загрузка испытательной сборки...");
 
-    DebugConsole::Create();
+    app.state = MemorySystem::Allocate(sizeof(Game), Memory::Game);
+    app.state = new(app.state) Game();
 
     // Установка распределителя кадра
-    FrameAllocator.Initialize(MEBIBYTES(64), nullptr);
+    app.FrameAllocator.Initialize(MEBIBYTES(64));
 
-    AppConfig.FontConfig.AutoRelease = false;
-    AppConfig.FontConfig.DefaultBitmapFontCount = 1;
+    app.AppConfig.FontConfig.AutoRelease = false;
+    app.AppConfig.FontConfig.DefaultBitmapFontCount = 1;
 
     // BitmapFontConfig BmpFontConfig { "Metrika 21px", 21, "Metrika" };
-    AppConfig.FontConfig.BitmapFontConfigs = new BitmapFontConfig("Metrika 21px", 21, "Metrika");
+    app.AppConfig.FontConfig.BitmapFontConfigs = new BitmapFontConfig("Metrika 21px", 21, "Metrika");
 
     // SystemFontConfig SysFontConfig { "Noto Sans", 20, "NotoSansCJK" };
-    AppConfig.FontConfig.DefaultSystemFontCount = 1;
-    AppConfig.FontConfig.SystemFontConfigs = new SystemFontConfig("Noto Sans", 20, "NotoSansCJK");
+    app.AppConfig.FontConfig.DefaultSystemFontCount = 1;
+    app.AppConfig.FontConfig.SystemFontConfigs = new SystemFontConfig("Noto Sans", 20, "NotoSansCJK");
 
-    AppConfig.FontConfig.MaxBitmapFontCount = AppConfig.FontConfig.MaxSystemFontCount = 101;
+    app.AppConfig.FontConfig.MaxBitmapFontCount = app.AppConfig.FontConfig.MaxSystemFontCount = 101;
 
     // Настроить представления рендеринга. ЗАДАЧА: прочитать из файла?
-    if (!ConfigureRenderViews()) {
+    if (!GameConfigureRenderViews(app)) {
         MERROR("Не удалось настроить представления рендерера. Прерывание приложения.");
         return false;
     }
 
     // Раскладки клавиатуры
-    SetupKeymaps();
+    GameSetupKeymaps(&app);
     // Консольные команды
-    SetupCommands();
+    GameSetupCommands();
 
     return true;
 }
 
-bool Game::Initialize()
+bool ApplicationInitialize(Application& app)
 {
     MDEBUG("Game::Initialize вызван!");
 
-    DebugConsole::Load();
-
-    auto state = reinterpret_cast<State*>(this->state);
+    ApplicationRegisterEvents(app);
+    auto state = reinterpret_cast<Game*>(app.state);
+    state->console.Load();
 
     // ЗАДАЧА: временная загрузка/подготовка вещей
     state->ModelsLoaded = false;
@@ -270,32 +278,23 @@ bool Game::Initialize()
     state->WorldCamera = CameraSystem::GetDefault();
     state->WorldCamera->SetPosition(FVec3(10.5F, 5.F, 9.5F));
 
-    //ЗАДАЧА: временно
-    EventSystem::Register(EventSystem::DEBUG0, this, OnDebugEvent);
-    EventSystem::Register(EventSystem::DEBUG1, this, OnDebugEvent);
-    EventSystem::Register(EventSystem::OojectHoverIdChanged, this, OnEvent);
-    //ЗАДАЧА: временно
-
-    EventSystem::Register(EventSystem::KeyPressed,  this, GameOnKey);
-    EventSystem::Register(EventSystem::KeyReleased, this, GameOnKey);
-
     state->UpdateClock.Zero();
     state->RenderClock.Zero();
     
     return true;
 }
 
-bool Game::Update(f32 DeltaTime)
+bool ApplicationUpdate(Application& app, f32 DeltaTime)
 {
     // Убедитесь, что это очищено, чтобы избежать утечки памяти.
     // ЗАДАЧА: Нужна версия этого, которая использует распределитель кадров.
-    if (WorldGeometries) {
-        WorldGeometries.Clear();
+    if (app.WorldGeometries) {
+        app.WorldGeometries.Clear();
     }
 
-    FrameAllocator.FreeAll();
+    app.FrameAllocator.FreeAll();
 
-    auto state = reinterpret_cast<State*>(this->state);
+    auto state = reinterpret_cast<Game*>(app.state);
 
     state->UpdateClock.Start();
     state->DeltaTime = DeltaTime;
@@ -346,7 +345,7 @@ bool Game::Update(f32 DeltaTime)
     state->CameraFrustrum.Create(state->WorldCamera->GetPosition(), forward, right, up, (f32)state->width / state->height, Math::DegToRad(45.F), 0.1F, 1000.F);
 
     // ПРИМЕЧАНИЕ: начните с разумного значения по умолчанию, чтобы избежать слишком большого количества перераспределений.
-    WorldGeometries.Reserve(512);
+    app.WorldGeometries.Reserve(512);
     u32 DrawCount = 0;
     for (u32 i = 0; i < 10; ++i) {
         auto& m = state->meshes[i];
@@ -402,7 +401,7 @@ bool Game::Update(f32 DeltaTime)
                         data.model = model;
                         data.gid = g;
                         data.UniqueID = m.UniqueID;
-                        WorldGeometries.PushBack(data);
+                        app.WorldGeometries.PushBack(data);
 
                         DrawCount++;
                     }
@@ -437,7 +436,7 @@ bool Game::Update(f32 DeltaTime)
     );
     state->TestText.SetText(TextBuffer);
 
-    DebugConsole::Update();
+    state->console.Update();
 
     state->UpdateClock.Update();
     state->LastUpdateElapsed = state->UpdateClock.elapsed;
@@ -445,28 +444,28 @@ bool Game::Update(f32 DeltaTime)
     return true;
 }
 
-bool Game::Render(RenderPacket& packet, f32 DeltaTime) 
+bool ApplicationRender(Application& app, RenderPacket& packet, f32 DeltaTime) 
 {
-    auto state = reinterpret_cast<State*>(this->state);
+    auto state = reinterpret_cast<Game*>(app.state);
 
     state->RenderClock.Start();
     // ЗАДАЧА: временный код
 
     // ЗАДАЧА: Чтение из конфигурации кадра
     packet.ViewCount = 4;
-    packet.views = reinterpret_cast<RenderView::Packet*>(FrameAllocator.Allocate(sizeof(RenderView::Packet) * packet.ViewCount));
+    packet.views = reinterpret_cast<RenderView::Packet*>(app.FrameAllocator.Allocate(sizeof(RenderView::Packet) * packet.ViewCount));
 
     // Скайбокс
-    SkyboxPacketData* SkyboxData = reinterpret_cast<SkyboxPacketData*>(FrameAllocator.Allocate(sizeof(SkyboxPacketData)));
+    auto SkyboxData = reinterpret_cast<SkyboxPacketData*>(app.FrameAllocator.Allocate(sizeof(SkyboxPacketData)));
     SkyboxData->sb = &state->sb;
-    if (!RenderViewSystem::BuildPacket(RenderViewSystem::Get("skybox"), FrameAllocator, SkyboxData, packet.views[0])) {
+    if (!RenderViewSystem::BuildPacket(RenderViewSystem::Get("skybox"), app.FrameAllocator, SkyboxData, packet.views[0])) {
         MERROR("Не удалось построить пакет для представления «skybox».");
         return false;
     }
     
     // Мир 
     // ЗАДАЧА: выполняет поиск в каждом кадре.
-    if (!RenderViewSystem::BuildPacket(RenderViewSystem::Get("world"), FrameAllocator, &WorldGeometries, packet.views[1])) {
+    if (!RenderViewSystem::BuildPacket(RenderViewSystem::Get("world"), app.FrameAllocator, &app.WorldGeometries, packet.views[1])) {
         MERROR("Не удалось построить пакет для представления «world_opaque».");
         return false;
     }
@@ -475,7 +474,7 @@ bool Game::Render(RenderPacket& packet, f32 DeltaTime)
     UiPacketData UiPacket{};
     u32 UIMeshCount = 0;
     u32 MaxUiMeshes = 10;
-    Mesh** UIMeshes = reinterpret_cast<Mesh**>(FrameAllocator.Allocate(sizeof(Mesh*) * MaxUiMeshes));
+    auto UIMeshes = reinterpret_cast<Mesh**>(app.FrameAllocator.Allocate(sizeof(Mesh*) * MaxUiMeshes));
     // ЗАДАЧА: массив гибкого размера
     for (u32 i = 0; i < 10; ++i) {
         if (state->UiMeshes[i].generation != INVALID::U8ID) {
@@ -486,32 +485,32 @@ bool Game::Render(RenderPacket& packet, f32 DeltaTime)
     UiPacket.MeshData.MeshCount = UIMeshCount;
     UiPacket.MeshData.meshes = UIMeshes;
     UiPacket.TextCount = 2;
-    Text* DebugConsoleText = DebugConsole::GetText();
-    bool RenderDebugConsole = DebugConsoleText && DebugConsole::Visible();
+    auto& DebugConsoleText = state->console.GetText();
+    bool RenderDebugConsole = DebugConsoleText && state->console.Visible();
     if (RenderDebugConsole) {
         UiPacket.TextCount += 2;
     }
-    Text** texts = reinterpret_cast<Text**>(FrameAllocator.Allocate(sizeof(Text*) * UiPacket.TextCount));
+    auto texts = reinterpret_cast<Text**>(app.FrameAllocator.Allocate(sizeof(Text*) * UiPacket.TextCount));
     texts[0] = &state->TestText;
     texts[1] = &state->TestSysText;
     if (RenderDebugConsole) {
-        texts[2] = DebugConsoleText;
-        texts[3] = DebugConsole::GetEntryText();
+        texts[2] = &DebugConsoleText;
+        texts[3] = &state->console.GetEntryText();
     }
     UiPacket.texts = texts;
-    if (!RenderViewSystem::BuildPacket(RenderViewSystem::Get("ui"), FrameAllocator, &UiPacket, packet.views[2])) {
+    if (!RenderViewSystem::BuildPacket(RenderViewSystem::Get("ui"), app.FrameAllocator, &UiPacket, packet.views[2])) {
         MERROR("Не удалось построить пакет для представления «ui».");
         return false;
     }
 
     RenderViewPick::PacketData PickPacket;
     PickPacket.UiMeshData = UiPacket.MeshData;
-    PickPacket.WorldMeshData = WorldGeometries;
+    PickPacket.WorldMeshData = app.WorldGeometries;
     PickPacket.texts = UiPacket.texts;
     PickPacket.TextCount = UiPacket.TextCount;
     PickPacket.UiGeometryCount = 0;
 
-    if (!RenderViewSystem::BuildPacket(RenderViewSystem::Get("pick"), FrameAllocator, &PickPacket, packet.views[3])) {
+    if (!RenderViewSystem::BuildPacket(RenderViewSystem::Get("pick"), app.FrameAllocator, &PickPacket, packet.views[3])) {
         MERROR("Не удалось построить пакет для представления «pick».");
         return false;
     }
@@ -523,9 +522,13 @@ bool Game::Render(RenderPacket& packet, f32 DeltaTime)
     return true;
 }
 
-void Game::OnResize(u32 width, u32 height) 
+void ApplicationOnResize(Application& app, u32 width, u32 height) 
 {
-    auto state = reinterpret_cast<State*>(this->state);
+    if (!app.state) {
+        return;
+    }
+    
+    auto state = reinterpret_cast<Game*>(app.state);
 
     state->width = width;
     state->height = height;
@@ -536,9 +539,9 @@ void Game::OnResize(u32 width, u32 height)
     // ЗАДАЧА: конец временного блока кода
 }
 
-void Game::Shutdown()
+void ApplicationShutdown(Application& app)
 {
-    auto state = reinterpret_cast<State*>(this->state);
+    auto state = reinterpret_cast<Game*>(app.state);
 
     // ЗАДАЧА: Временный блок кода
     state->sb.Destroy();
@@ -547,18 +550,30 @@ void Game::Shutdown()
     // state->TestText.~Text();
     // state->TestSysText.~Text();
 
-    EventSystem::Unregister(EventSystem::DEBUG0, this, OnDebugEvent);
-    EventSystem::Unregister(EventSystem::DEBUG1, this, OnDebugEvent);
-    EventSystem::Unregister(EventSystem::OojectHoverIdChanged, this, OnEvent);
-    // ЗАДАЧА: конец временного блока кода
-
-    EventSystem::Unregister(EventSystem::KeyPressed, this, GameOnKey);
-    EventSystem::Unregister(EventSystem::KeyReleased, this, GameOnKey);
+    
 }
 
-bool Game::ConfigureRenderViews()
+void ApplicationLibOnLoad(Application& app)
 {
-    AppConfig.RenderViews.Resize(4);
+    ApplicationRegisterEvents(app);
+    reinterpret_cast<Game*>(app.state)->console.OnLibLoad(app.stage >= Application::Stage::BootComplete);
+    if (app.stage >= Application::Stage::BootComplete) {
+        GameSetupCommands();
+        GameSetupKeymaps(&app);
+    }
+}
+
+void ApplicationLibOnUnload(Application& app)
+{
+    ApplicationUnregisterEvents(app);
+    reinterpret_cast<Game*>(app.state)->console.OnLibUnload();
+    GameRemoveCommands();
+    GameRemoveKeymaps(&app);
+}
+
+bool GameConfigureRenderViews(Application& app)
+{
+    app.AppConfig.RenderViews.Resize(4);
 
     DArray<RenderTargetAttachmentConfig> SkyboxTargetAttachment;
     SkyboxTargetAttachment.Resize(1);
@@ -582,14 +597,14 @@ bool Game::ConfigureRenderViews()
     SkyboxPasses[0].target.attachments = SkyboxTargetAttachment.MovePtr();
 
     // Skybox view
-    AppConfig.RenderViews[0].name = "skybox";
-    // AppConfig.RenderViews[0].CustomShaderName
-    // AppConfig.RenderViews[0].width = 0;
-    // AppConfig.RenderViews[0].height = 0;
-    AppConfig.RenderViews[0].type = RenderView::KnownTypeSkybox;
-    AppConfig.RenderViews[0].VMS = RenderView::ViewMatrixSourceSceneCamera;
-    AppConfig.RenderViews[0].PassCount = 1;
-    AppConfig.RenderViews[0].passes = SkyboxPasses.MovePtr();
+    app.AppConfig.RenderViews[0].name = "skybox";
+    // app.AppConfig.RenderViews[0].CustomShaderName
+    // app.AppConfig.RenderViews[0].width = 0;
+    // app.AppConfig.RenderViews[0].height = 0;
+    app.AppConfig.RenderViews[0].type = RenderView::KnownTypeSkybox;
+    app.AppConfig.RenderViews[0].VMS = RenderView::ViewMatrixSourceSceneCamera;
+    app.AppConfig.RenderViews[0].PassCount = 1;
+    app.AppConfig.RenderViews[0].passes = SkyboxPasses.MovePtr();
 
     // World view
     DArray<RenderTargetAttachmentConfig> WorldTargetAttachment;
@@ -620,13 +635,13 @@ bool Game::ConfigureRenderViews()
     WorldPasses[0].target.AttachmentCount = 2;
     WorldPasses[0].target.attachments = WorldTargetAttachment.MovePtr();
 
-    AppConfig.RenderViews[1].name = "world";
-    // AppConfig.RenderViews[1].width = 0;
-    // AppConfig.RenderViews[1].height = 0;
-    AppConfig.RenderViews[1].type = RenderView::KnownTypeWorld;
-    AppConfig.RenderViews[1].VMS = RenderView::ViewMatrixSourceSceneCamera;
-    AppConfig.RenderViews[1].PassCount = 1;
-    AppConfig.RenderViews[1].passes = WorldPasses.MovePtr();
+    app.AppConfig.RenderViews[1].name = "world";
+    // app.AppConfig.RenderViews[1].width = 0;
+    // app.AppConfig.RenderViews[1].height = 0;
+    app.AppConfig.RenderViews[1].type = RenderView::KnownTypeWorld;
+    app.AppConfig.RenderViews[1].VMS = RenderView::ViewMatrixSourceSceneCamera;
+    app.AppConfig.RenderViews[1].PassCount = 1;
+    app.AppConfig.RenderViews[1].passes = WorldPasses.MovePtr();
 
     // UI view
     DArray<RenderTargetAttachmentConfig> UiTargetAttachment;
@@ -650,13 +665,13 @@ bool Game::ConfigureRenderViews()
     UIPasses[0].target.AttachmentCount = 1;
     UIPasses[0].target.attachments = UiTargetAttachment.MovePtr();
 
-    AppConfig.RenderViews[2].name = "ui";
-    // AppConfig.RenderViews[2].width = 0;
-    // AppConfig.RenderViews[2].height = 0;
-    AppConfig.RenderViews[2].type = RenderView::KnownTypeUI;
-    AppConfig.RenderViews[2].VMS = RenderView::ViewMatrixSourceUiCamera;
-    AppConfig.RenderViews[2].PassCount = 1;
-    AppConfig.RenderViews[2].passes = UIPasses.MovePtr();
+    app.AppConfig.RenderViews[2].name = "ui";
+    // app.AppConfig.RenderViews[2].width = 0;
+    // app.AppConfig.RenderViews[2].height = 0;
+    app.AppConfig.RenderViews[2].type = RenderView::KnownTypeUI;
+    app.AppConfig.RenderViews[2].VMS = RenderView::ViewMatrixSourceUiCamera;
+    app.AppConfig.RenderViews[2].PassCount = 1;
+    app.AppConfig.RenderViews[2].passes = UIPasses.MovePtr();
 
     // Pick view
     DArray<RenderTargetAttachmentConfig> WorldPickTargetAttachment;
@@ -706,13 +721,53 @@ bool Game::ConfigureRenderViews()
     PickPasses[1].target.AttachmentCount = 1;
     PickPasses[1].target.attachments = UiPickTargetAttachment.MovePtr();
 
-    AppConfig.RenderViews[3].name = "pick";
-    // AppConfig.RenderViews[3].width = 0;
-    // AppConfig.RenderViews[3].height = 0;
-    AppConfig.RenderViews[3].type = RenderView::KnownTypePick;
-    AppConfig.RenderViews[3].VMS = RenderView::ViewMatrixSourceSceneCamera;
-    AppConfig.RenderViews[3].PassCount = 2;
-    AppConfig.RenderViews[3].passes = PickPasses.MovePtr();
+    app.AppConfig.RenderViews[3].name = "pick";
+    // app.AppConfig.RenderViews[3].width = 0;
+    // app.AppConfig.RenderViews[3].height = 0;
+    app.AppConfig.RenderViews[3].type = RenderView::KnownTypePick;
+    app.AppConfig.RenderViews[3].VMS = RenderView::ViewMatrixSourceSceneCamera;
+    app.AppConfig.RenderViews[3].PassCount = 2;
+    app.AppConfig.RenderViews[3].passes = PickPasses.MovePtr();
 
     return true;
+}
+
+static void ToggleVsync() {
+    bool VsyncEnabled = RenderingSystem::FlagEnabled(RenderingConfigFlagBits::VsyncEnabledBit);
+    VsyncEnabled = !VsyncEnabled;
+    RenderingSystem::FlagSetEnabled(RenderingConfigFlagBits::VsyncEnabledBit, VsyncEnabled);
+}
+
+static bool GameOnMVarChanged(u16 code, void* sender, void* ListenerInst, EventContext data) {
+    if (code == EventSystem::MVarChanged && MString::Equali(data.data.c, "vsync")) {
+        ToggleVsync();
+    }
+    return false;
+}
+
+void ApplicationRegisterEvents(Application &app)
+{
+    //ЗАДАЧА: временно
+    EventSystem::Register(EventSystem::DEBUG0, &app, GameOnDebugEvent);
+    EventSystem::Register(EventSystem::DEBUG1, &app, GameOnDebugEvent);
+    EventSystem::Register(EventSystem::DEBUG2, &app, GameOnDebugEvent);
+    EventSystem::Register(EventSystem::OojectHoverIdChanged, &app, GameOnEvent);
+    //ЗАДАЧА: временно
+
+    EventSystem::Register(EventSystem::KeyPressed,  &app, GameOnKey);
+    EventSystem::Register(EventSystem::KeyReleased, &app, GameOnKey);
+    EventSystem::Register(EventSystem::MVarChanged, nullptr, GameOnMVarChanged);
+}
+
+void ApplicationUnregisterEvents(Application &app)
+{
+    EventSystem::Unregister(EventSystem::DEBUG0, &app, GameOnDebugEvent);
+    EventSystem::Unregister(EventSystem::DEBUG1, &app, GameOnDebugEvent);
+    EventSystem::Unregister(EventSystem::DEBUG2, &app, GameOnDebugEvent);
+    EventSystem::Unregister(EventSystem::OojectHoverIdChanged, &app, GameOnEvent);
+    // ЗАДАЧА: конец временного блока кода
+
+    EventSystem::Unregister(EventSystem::KeyPressed, &app, GameOnKey);
+    EventSystem::Unregister(EventSystem::KeyReleased, &app, GameOnKey);
+    EventSystem::Unregister(EventSystem::MVarChanged, nullptr, GameOnMVarChanged);
 }

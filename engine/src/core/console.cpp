@@ -57,7 +57,7 @@ void Console::Shutdown()
     pConsole = nullptr;
 }
 
-void Console::RegisterConsumer(void *inst, PFN_ConsoleConsumerWrite callback)
+void Console::RegisterConsumer(void *inst, PFN_ConsoleConsumerWrite callback, u8& OutConsumerID)
 {
     if (pConsole) {
         MASSERT_MSG(pConsole->ConsumerCount + 1 < MAX_CONSUMER_COUNT, "Достигнуто максимальное количество потребителей консолей.");
@@ -65,7 +65,19 @@ void Console::RegisterConsumer(void *inst, PFN_ConsoleConsumerWrite callback)
         auto& consumer = pConsole->consumers[pConsole->ConsumerCount];
         consumer.instance = inst;
         consumer.callback = callback;
+        OutConsumerID = pConsole->ConsumerCount;
         pConsole->ConsumerCount++;
+    }
+}
+
+void Console::UpdateConsumer(u8 ConsumerID, void *inst, PFN_ConsoleConsumerWrite callback)
+{
+    if (pConsole) {
+        MASSERT_MSG(ConsumerID < pConsole->ConsumerCount, "Идентификатор потребителя недействителен.");
+
+        auto& consumer = pConsole->consumers[ConsumerID];
+        consumer.instance = inst;
+        consumer.callback = callback;
     }
 }
 
@@ -75,7 +87,9 @@ void Console::WriteLine(Log::Level level, const char *message)
         // Сообщите каждому потребителю, что строка была добавлена.
         for (u8 i = 0; i < pConsole->ConsumerCount; ++i) {
             auto& consumer = pConsole->consumers[i];
-            consumer.callback(consumer.instance, level, message);
+            if (consumer.callback) {
+                consumer.callback(consumer.instance, level, message);
+            }
         }
     }
 }
@@ -100,6 +114,24 @@ bool Console::RegisterCommand(const char *command, u8 ArgCount, PFN_ConsoleComma
     pConsole->RegisteredCommands.PushBack(static_cast<Command&&>(NewCommand));
 
     return true;
+}
+
+bool Console::UnregisterCommand(const char *command)
+{
+    MASSERT_MSG(pConsole && command, "Console::UnregisterCommand требует состояния и допустимой команды");
+
+    // Убедитесь, что его еще нет.
+    auto& CommandCount = pConsole->RegisteredCommands.Length();
+    for (u32 i = 0; i < CommandCount; ++i) {
+        if (pConsole->RegisteredCommands[i].name.Comparei(command)) {
+            // Команда найдена, удалите ее.
+            Command PoppedCommand;
+            pConsole->RegisteredCommands.PopAt(i, &PoppedCommand);
+            return true;
+        }
+    }
+
+    return false;
 }
 
 bool Console::ExecuteCommand(const MString &command)

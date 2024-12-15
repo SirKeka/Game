@@ -693,12 +693,18 @@ bool LoadMsmFile(FileHandle &MsmFile, DArray<GeometryConfig> &OutGeometries)
         Filesystem::Read(MsmFile, sizeof(u32), &MNameLength, BytesRead);
         Filesystem::Read(MsmFile, sizeof(char) * MNameLength, g.MaterialName, BytesRead);
 
+        // Обеспечивает обратную совместимость
+        u64 ExtentSize = sizeof(FVec3);
+        if (version == 0x0001U) {
+            ExtentSize = sizeof(Vertex3D);
+        }
+
         // Центер
-        Filesystem::Read(MsmFile, sizeof(FVec3), &g.center, BytesRead);
+        Filesystem::Read(MsmFile, ExtentSize, &g.center, BytesRead);
 
         // Объёмы (мин/maкс)
-        Filesystem::Read(MsmFile, sizeof(FVec3), &g.MinExtents, BytesRead);
-        Filesystem::Read(MsmFile, sizeof(FVec3), &g.MaxExtents, BytesRead);
+        Filesystem::Read(MsmFile, ExtentSize, &g.MinExtents, BytesRead);
+        Filesystem::Read(MsmFile, ExtentSize, &g.MaxExtents, BytesRead);
 
         // Добавьте в выходной массив.
         OutGeometries.PushBack(std::move(g));
@@ -723,7 +729,7 @@ bool WriteMsmFile(const char *path, const char *name, u32 GeometryCount, DArray<
 
     // Версия
     u64 written = 0;
-    u16 version = 0x0001U;
+    u16 version = 0x0002U;
     Filesystem::Write(f, sizeof(u16), &version, written);
 
     // Длина имени

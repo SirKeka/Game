@@ -19,15 +19,31 @@ struct Win32HandleInfo {
     HWND hwnd;             // Дескриптор окна
 };
 
+struct Win32FileWatch {
+    u32 id;
+    MString FilePath;
+    FILETIME LastWriteTime;
+
+    Win32FileWatch& operator=(Win32FileWatch&& v) {
+        id = v.id;
+        FilePath = static_cast<MString&&>(v.FilePath);
+        LastWriteTime = v.LastWriteTime;
+
+        return *this;
+    }
+};
+
 struct PlatformState
 {
     Win32HandleInfo handle;
+    DArray<Win32FileWatch> watches;
 };
 
 static PlatformState* state = nullptr;
 
 // Прототип функции обратного вызова для обработки сообщений
 LRESULT CALLBACK Win32MessageProcessor(HWND, u32, WPARAM, LPARAM);
+void PlatformUpdateWatches();
 
 // Часы
 static f64 ClockFrequency;
@@ -141,7 +157,7 @@ bool WindowSystem::Messages()
         TranslateMessage(&message);
         DispatchMessageA(&message);
     }
-
+    PlatformUpdateWatches();
     return true;
 }
 
@@ -275,7 +291,11 @@ bool PlatformDynamicLibraryUnload(DynamicLibrary& library)
         library.functions.Clear();
     }
 
+<<<<<<< Updated upstream
     MemorySystem::ZeroMem(&library, sizeof(DynamicLibrary));
+=======
+    // MemorySystem::ZeroMem(&library, sizeof(DynamicLibrary));
+>>>>>>> Stashed changes
 
     return true;
 }
@@ -298,11 +318,156 @@ bool PlatformDynamicLibraryLoadFunction(const char* name, DynamicLibrary& librar
     DynamicLibraryFunction f = {0};
     f.pfn = reinterpret_cast<void*>(fAddr);
     f.name = name;
+<<<<<<< Updated upstream
     library.functions.PushBack(f);
+=======
+    library.functions.PushBack(static_cast<DynamicLibraryFunction&&>(f));
+>>>>>>> Stashed changes
 
     return true;
 }
 
+<<<<<<< Updated upstream
+=======
+const char *PlatformDynamicLibraryExtension() {
+    return ".dll";
+}
+
+const char* PlatformDynamicLibraryPrefix() {
+    return "";
+}
+
+PlatformError::Code PlatformCopyFile(const char *source, const char *dest, bool OverwriteIfExists)
+{
+    BOOL result = CopyFileA(source, dest, !OverwriteIfExists);
+    if (!result) {
+        DWORD err = GetLastError();
+        if (err == ERROR_FILE_NOT_FOUND) {
+            return PlatformError::FileNotFound;
+        } else if (err == ERROR_SHARING_VIOLATION) {
+            return PlatformError::FileLocked;
+        } else {
+            return PlatformError::Unknown;
+        }
+    }
+    return PlatformError::Success;
+}
+
+static bool RegisterWatch(const char *FilePath, u32 &OutWatchID) 
+{
+    if (!state || !FilePath) {
+        if (OutWatchID) {
+            OutWatchID = INVALID::ID;
+        }
+        return false;
+    }
+    OutWatchID = INVALID::ID;
+
+    // if (!state->watches) {
+    //     state->watches = darray_create(Win32File_watch);
+    // }
+
+    WIN32_FIND_DATAA data;
+    HANDLE FileHandle = FindFirstFileA(FilePath, &data);
+    if (FileHandle == INVALID_HANDLE_VALUE) {
+        return false;
+    }
+    BOOL result = FindClose(FileHandle);
+    if (result == 0) {
+        return false;
+    }
+
+    auto& count = state->watches.Length();
+    for (u32 i = 0; i < count; ++i) {
+        auto& w = state->watches[i];
+        if (w.id == INVALID::ID) {
+            // Найден свободный слот для использования.
+            w.id = i;
+            w.FilePath = FilePath;
+            w.LastWriteTime = data.ftLastWriteTime;
+            OutWatchID = i;
+            return true;
+        }
+    }
+
+    // Если свободного места нет, создайте и отправьте новую запись.
+    Win32FileWatch w = {0};
+    w.id = count;
+    w.FilePath = FilePath;
+    w.LastWriteTime = data.ftLastWriteTime;
+    OutWatchID = count;
+    state->watches.PushBack(static_cast<Win32FileWatch&&>(w));
+
+    return true;
+}
+
+static bool UnregisterWatch(u32 WatchID) 
+{
+    if (!state || !state->watches) {
+        return false;
+    }
+
+    auto& count = state->watches.Length();
+    if (count == 0 || WatchID > (count - 1)) {
+        return false;
+    }
+
+    auto& w = state->watches[WatchID];
+    w.id = INVALID::ID;
+    w.FilePath.Clear();
+    MemorySystem::ZeroMem(&w.LastWriteTime, sizeof(FILETIME));
+
+    return true;
+}
+
+bool PlatformWatchFile(const char *FilePath, u32 &OutWatchID) 
+{
+    return RegisterWatch(FilePath, OutWatchID);
+}
+
+bool PlatformUnwatchFile(u32 WatchID) 
+{
+    return UnregisterWatch(WatchID);
+}
+
+void PlatformUpdateWatches() {
+    if (!state || !state->watches) {
+        return;
+    }
+
+    auto& count = state->watches.Length();
+    for (u32 i = 0; i < count; ++i) {
+        auto& f = state->watches[i];
+        if (f.id != INVALID::ID) {
+            WIN32_FIND_DATAA data;
+            HANDLE FileHandle = FindFirstFileA(f.FilePath.c_str(), &data);
+            if (FileHandle == INVALID_HANDLE_VALUE) {
+                // Это означает, что файл был удален, снимите с наблюдения.
+                EventContext context = {0};
+                context.data.u32[0] = f.id;
+                EventSystem::Fire(EventSystem::Code::WatchedFileDeleted, nullptr, context);
+                MINFO("Файл с идентификатором наблюдения %d был удален.", f.id);
+                UnregisterWatch(f.id);
+                continue;
+            }
+            BOOL result = FindClose(FileHandle);
+            if (result == 0) {
+                continue;
+            }
+
+            // Проверьте время файла, чтобы увидеть, было ли оно изменено, и обновите/уведомите, если это так.
+            if (CompareFileTime(&data.ftLastWriteTime, &f.LastWriteTime) != 0) {
+                f.LastWriteTime = data.ftLastWriteTime;
+                // Уведомите слушателей.
+                EventContext context = {0};
+                context.data.u32[0] = f.id;
+                EventSystem::Fire(EventSystem::Code::WatchedFileWritten, nullptr, context);
+            }
+        }
+    }
+}
+
+>>>>>>> Stashed changes
 // const char* PlatformGetKeyboardLayout()
 // {
 //     // ЗАДАЧА: изменить.

@@ -56,19 +56,24 @@ class MAPI DArray
 {
 // Переменные
 private:
-    u64 size      {};   // Количество элементов в массиве
-    u64 capacity  {};   // Выделенная память под данное количество элементов
-    T* data{nullptr};   // Указатель на область памяти где хранятся элементы
+    /// @brief Количество элементов в массиве
+    u64 size       {};
+    /// @brief Выделенная память под данное количество элементов
+    u64 capacity   {};
+    /// @brief Размер одного элемента в байтах
+    u64 ElementSize{};
+    /// @brief Указатель на область памяти где хранятся элементы
+    T* data {nullptr};
 
 // Функции
 public:
-    constexpr DArray() : size(), capacity(), data(nullptr) {}
-    constexpr DArray(T&& value) { PushBack(value); }
-    constexpr DArray(u64 size) : size(), capacity(size), data(size ? MemorySystem::TAllocate<T>(Memory::DArray, capacity, true) : nullptr) {}
+    constexpr DArray() : size(), capacity(), ElementSize(sizeof(T)), data(nullptr) {}
+    constexpr DArray(T&& value) : size(), capacity(), ElementSize(sizeof(T)), data(nullptr) { PushBack(value); }
+    constexpr DArray(u64 size) : size(), capacity(size), ElementSize(sizeof(T)), data(size ? MemorySystem::TAllocate<T>(Memory::DArray, capacity, true) : nullptr){}
     
     /// @brief Конструктор копирования
     /// @param other динамический массив из которого нужно копировать данные
-    constexpr DArray(const DArray& other) : size(other.size), capacity(other.capacity), data() {
+    constexpr DArray(const DArray& other) : size(other.size), capacity(other.capacity), ElementSize(other.ElementSize), data() {
         if (!capacity) {
             return;
         }
@@ -80,17 +85,16 @@ public:
     }
     /// @brief Конструктор перемещения
     /// @param other динамический массив из которого нужно переместить данные
-    constexpr DArray(DArray&& other) : size(other.size), capacity(other.capacity), data(other.data) {
-        other.size = 0;
-        other.capacity = 0;
+    constexpr DArray(DArray&& other) : size(other.size), capacity(other.capacity), ElementSize(other.ElementSize), data(other.data) {
+        other.size = other.capacity = other.ElementSize = 0;
         other.data = nullptr;
     }
 
     ~DArray() {
         if(data) {
             Clear();
-            MemorySystem::Free(data, sizeof(T) * capacity, Memory::DArray);
-            size = capacity = 0;
+            MemorySystem::Free(data, ElementSize * capacity, Memory::DArray);
+            size = capacity = ElementSize = 0;
             data = nullptr;
         }
     }
@@ -124,6 +128,7 @@ public:
         data = darr.data;
         size = darr.size;
         capacity = darr.capacity;
+        ElementSize = darr.ElementSize;
         darr.data = nullptr;
         darr.size = 0;
         darr.capacity = 0;
@@ -182,26 +187,37 @@ public:
     /// которые вектор может содержать без необходимости перераспределения) до значения, 
     /// большего или равного NewCap. Если значение NewCap больше текущей capacity(емкости), 
     /// выделяется новое хранилище, в противном случае функция ничего не делает.
-    void Reserve(u64 NewCap) {
-        if (NewCap == 0) {
-            MWARN("DArray::Reserve - резерв не был выполнен, т.к. было указан 0.")
-            return;
-        }
-        
+    /// @param NewCap величина памяти которой нужно зарезервировать. 
+    /// ПРИМЕЧАНИЕ: если ничего не указано или указан 0, то резервируется 2 при capacity = 2 или х2 при capacity > 0
+    void Reserve(u64 NewCap = 0) {
+        void* NewData = nullptr;
         if (capacity == 0) {
-            data = MemorySystem::TAllocate<T>(Memory::DArray, NewCap, true);
-            capacity = NewCap;
-        }
-        else if (NewCap > capacity) {
-            T* ptrNew = MemorySystem::TAllocate<T>(Memory::DArray, NewCap, true);
-            for (u64 i = 0; i < size; i++) {
-                ptrNew[i] = static_cast<T&&>(data[i]);
+            capacity = NewCap ? NewCap : 2;
+
+            data = MemorySystem::TAllocate<T>(Memory::DArray, capacity, true);
+        } else {
+            if (!ElementSize) {
+                ElementSize = sizeof(T);
             }
-            MemorySystem::Free(data, sizeof(T) * capacity, Memory::DArray);
-            data = ptrNew;
-            capacity = NewCap;
+            
+            if (NewCap == 0) {
+                NewData = MemorySystem::Realloc(data, capacity * ElementSize, capacity * 2 * ElementSize, Memory::DArray);
+                
+                capacity = NewData ? capacity *= 2 : capacity;
+            } else {
+                NewData = MemorySystem::Realloc(data, capacity * ElementSize, NewCap * ElementSize, Memory::DArray);
+                capacity = NewCap;
+            }
+
+            if (!NewData) {
+                MERROR("DArray::Reserve: Не удалось выделить память");
+                return;
+            }
+            data = NewData ? reinterpret_cast<T*>(NewData) : data;
+            MemorySystem::ZeroMem(data + size, (capacity - size) * ElementSize);
         }
     }
+
     /// @return количество элементов контейнера
     constexpr const u64& Length() const noexcept {
         return size;
@@ -226,10 +242,8 @@ public:
     /// @brief Добавляет заданное значение элемента в конец контейнера.
     /// @param value элемент который нужно поместить в конец контейнера.
     void PushBack(const T& value) {
-        if(!capacity && !size) {
-            Reserve(2);
-        } else if(size == capacity) {
-            Reserve(capacity * 2);
+        if(size == capacity) {
+            Reserve();
         }
         data[size] = value;
         size++;
@@ -237,10 +251,8 @@ public:
 
     void PushBack(T&& value)
     {
-        if(!capacity && !size) {
-            Reserve(2);
-        } else if(size == capacity) {
-            Reserve(capacity * 2);
+        if(size == capacity) {
+            Reserve();
         }
         data[size] = static_cast<T&&>(value);
         size++;
@@ -248,10 +260,8 @@ public:
 
     template<typename... Args>
     T& EmplaceBack(Args&&... args) {
-        if(!capacity && !size) {
-            Reserve(2);
-        } else if(size == capacity) {
-            Reserve(capacity * 2);
+        if(size == capacity) {
+            Reserve();
         }
         data[size] = T(std::forward<Args>(args)...); 
         return data[size++];
@@ -282,13 +292,19 @@ public:
         size++;
     }
 
-    /// @brief Удаляет выбранный элемент.
-    void PopAt(u64 index) {
+    /// @brief Достает выбранный элемент.
+    /// @param index индекс элемента который нужно удалить.
+    /// @param value указатель для хранения извлеченного элемента. 
+    void PopAt(u64 index, T* value = nullptr) {
         if (index >= size) MERROR("Индекс за пределами этого массива! Длина: %i, индекс: %index", size, index);
 
+        if (value) {
+            *value = data[index];
+        }
+        
         // Если не последний элемент, вырезаем запись и копируем остальное внутрь. ЗАДАЧА: оптимизироваать
         if (index != size - 1) {
-            MemorySystem::CopyMem(data + index, data + index + 1, size - 1);
+            MemorySystem::CopyMem(data + index, data + index + 1, (size - 1) * ElementSize);
         }
         size--;
     }

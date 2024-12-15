@@ -197,8 +197,10 @@ bool FreeList::ReallocateBlock(u64 size, u64 NewSize, u64 &BlockOffset)
             }
         }
 
-        previous = node;
-        node = node->next;
+        if (node->next){ 
+            previous = node;
+            node = node->next;
+        }
     }
     
     return false;

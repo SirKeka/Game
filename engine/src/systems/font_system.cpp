@@ -20,7 +20,7 @@ struct BitmapFontInternalData {
 };
 
 struct SystemFontVariantData {
-    DArray<i32> codepoints;
+    DArray<i32> codepoints{};
     f32 scale;
 };
 

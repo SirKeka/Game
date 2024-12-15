@@ -36,6 +36,8 @@
         void Append(char c);
     
         void Draw();
+
+        explicit operator bool() const;
     private:
         void RegenerateGeometry();
     };

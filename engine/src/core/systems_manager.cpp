@@ -161,7 +161,7 @@ bool SystemsManager::RegisterKnownSystemsPreBoot(ApplicationConfig &AppConfig)
     // Система отрисовки
     RenderingSystemConfig RendererSysConfig = {0};
     RendererSysConfig.ApplicationName = AppConfig.name;
-    RendererSysConfig.plugin = AppConfig.RenderPlugin;
+    RendererSysConfig.plugin = AppConfig.plugin;
     if (!state->Register(MSystem::Renderer, RenderingSystem::Initialize, RenderingSystem::Shutdown, nullptr, &RendererSysConfig)) {
         MERROR("Не удалось зарегистрировать систему отрисовки.");
         return false;

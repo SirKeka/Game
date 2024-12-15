@@ -73,6 +73,14 @@ ifeq ($(DO_VERSION),yes)
 	endif
 	VER_COMMENT := // ПРИМЕЧАНИЕ: Этот файл автоматически создается в процессе сборки и не должен быть добавлен в реестр.
 endif
+
+# Создать только числовую версию для PDB.
+ifeq ($(BUILD_PLATFORM),windows)
+	MNUMERIC_VERSION := $(shell $(DIR)\$(BUILD_DIR)\versiongen.exe -n)
+else
+	MNUMERIC_VERSION := $(shell $(BUILD_DIR)/versiongen -n)
+endif
+
 # По умолчанию используется режим отладки, если не указана версия.
 ifeq ($(TARGET),release)
 # release
@@ -113,7 +121,7 @@ endif
 link: scaffold $(OBJ_FILES) # ссылка
 	@echo Linking "$(ASSEMBLY)"...
 ifeq ($(BUILD_PLATFORM),windows)
-	@clang++ $(OBJ_FILES) -o $(BUILD_DIR)\$(ASSEMBLY)$(EXTENSION) $(LINKER_FLAGS)
+	@clang++ $(OBJ_FILES) -o $(BUILD_DIR)\$(ASSEMBLY)$(EXTENSION) $(LINKER_FLAGS) -Xlinker /PDB:$(BUILD_DIR)\$(ASSEMBLY)_$(MNUMERIC_VERSION).pdb 
 else
 	@clang++ $(OBJ_FILES) -o $(BUILD_DIR)/lib$(ASSEMBLY)$(EXTENSION) $(LINKER_FLAGS)
 endif

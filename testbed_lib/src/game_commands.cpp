@@ -9,7 +9,13 @@ void GameCommandExit(ConsoleCommandContext context) {
     EventSystem::Fire(EventSystem::ApplicationQuit, nullptr, (EventContext){});
 }
 
-void Game::SetupCommands() {
+void GameSetupCommands() {
     Console::RegisterCommand("exit", 0, GameCommandExit);
     Console::RegisterCommand("quit", 0, GameCommandExit);
+}
+
+void GameRemoveCommands()
+{
+    Console::UnregisterCommand("exit");
+    Console::UnregisterCommand("quit");
 }

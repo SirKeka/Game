@@ -29,11 +29,22 @@ namespace Console
     bool Initialize(u64& MemoryRequirement, void* memory, void* config); // LinearAllocator& SystemAllocator
     void Shutdown();
 
-    MAPI void RegisterConsumer(void* inst, PFN_ConsoleConsumerWrite callback);
+    MAPI void RegisterConsumer(void* inst, PFN_ConsoleConsumerWrite callback, u8& OutConsumerID);
+
+    /// @brief Обновляет экземпляр и обратный вызов для потребителя с заданным идентификатором.
+    /// @param ConsumerID идентификатор потребителя для обновления.
+    /// @param inst экземпляр потребителя.
+    /// @param callback новая функция обратного вызова.
+    MAPI void UpdateConsumer(u8 ConsumerID, void* inst, PFN_ConsoleConsumerWrite callback);
 
     void WriteLine(Log::Level level, const char* message);
 
     MAPI bool RegisterCommand(const char* command, u8 ArgCount, PFN_ConsoleCommand func);
+    
+    /// @brief Отменяет регистрацию данной команды.
+    /// @param command имя команды, регистрация которой отменяется.
+    /// @return true в случае успеха; в противном случае false.
+    MAPI bool UnregisterCommand(const char* command);
 
     MAPI bool ExecuteCommand(const MString& command);
 };

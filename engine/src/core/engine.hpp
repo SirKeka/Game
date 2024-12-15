@@ -26,12 +26,18 @@ struct ApplicationConfig {
     /// @brief Конфигурация для системы шрифтов.
     FontSystemConfig FontConfig;
     /// @brief Массив конфигураций представления рендеринга.
-    DArray<RenderView::Config> RenderViews{};
+    DArray<RenderView::Config> RenderViews;
 
+<<<<<<< Updated upstream
     DynamicLibrary RendererLibrary;
     RendererPlugin* RenderPlugin;
     DynamicLibrary GameLibrary;
+=======
+    RendererPlugin* plugin;
+>>>>>>> Stashed changes
 };
+
+template class DArray<RenderView::Config>;
 
 class Engine
 {
@@ -40,7 +46,7 @@ class Engine
     bool IsRunning;
     bool IsSuspended;
 
-    class Application* GameInst;
+    struct Application* GameInst;
 
     SystemsManager SysManager;
     
@@ -57,7 +63,7 @@ public:
     Engine(const Engine&) = delete;
     Engine& operator= (const Engine&) = delete;
 
-    MAPI static bool Create(Application* GameInst);
+    MAPI static bool Create(Application& GameInst);
 
     MAPI bool Run();
 

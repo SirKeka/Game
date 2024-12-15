@@ -145,6 +145,19 @@ enum class Keys : u16 {
     SLASH       = 0xBF,    // . , / ?
     GRAVE       = 0xC0,    // Ё ` ~ 
 
+    /// @brief Клавиша левой (квадратной) скобки, например [{
+    LBRACKET = 0xDB,
+    /// @brief Клавиша вертикальной черты/обратной косой черты
+    PIPE = 0xDC,
+    /// @brief Псевдоним для клавиши вертикальной черты/обратной косой черты
+    BACKSLASH = PIPE,
+    /// @brief Клавиша правой (квадратной) скобки, например ]}
+    RBRACKET = 0xDD,
+    /// @brief Клавиша апострофа/одинарной кавычки
+    APOSTROPHE = 0xDE,
+    /// @brief Псевдоним для клавиши APOSTROPHE, апострофа/одинарной кавычки
+    QUOTE = APOSTROPHE,
+
     MaxKeys
 };
 
@@ -211,16 +224,13 @@ public:
 
     void BindingAdd(Keys key, EntryBindType type, Modifier modifiers, void* UserData, Callback callback);
     void BindingRemove(Keys key, EntryBindType type, Modifier modifiers, Callback callback);
+    void Clear();
 };
 
-// ЗАДАЧА: Keymaps will replace the existing
-// checks for key states in that they will instead
-// call callback functions instead.
-// Maps will be added onto a stack, where bindings are
-// replaced along the way. For example, if the base keymap
-// defines the "escape" key as an application quit, then
-// another keymap added on re-defines the key to nothing while
-// adding a new binding for "a", then "a"'s binding will work,
-// and "escape" will do nothing. If "escape" were left undefined
-// in the second keymap, the original mapping is left unchanged.
-// Maps are pushed/popped as expected on a stack.
+// ЗАДАЧА: Раскладки клавиш заменят существующие проверки состояний клавиш, 
+// поскольку вместо этого они будут вызывать функции обратного вызова. 
+// Раскладки будут добавлены в стек, где привязки будут заменены по ходу дела. 
+// Например, если базовая раскладка клавиш определяет клавишу "escape" как выход из приложения, 
+// то другая добавленная раскладка клавиш переопределяет клавишу на "ничего" при добавлении новой привязки для "a", 
+// тогда привязка "a" будет работать, а "escape" ничего не сделает. Если "escape" не определен во второй раскладке клавиш, 
+// исходная привязка останется неизменной. Раскладки вставляются/извлекаются, как и ожидалось, в стеке.

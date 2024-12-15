@@ -199,6 +199,11 @@ void Text::Draw()
     }
 }
 
+Text::operator bool() const
+{
+    return bool(text);
+}
+
 void Text::RegenerateGeometry()
 {
     // Получить длину строки UTF-8

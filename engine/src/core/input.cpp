@@ -302,16 +302,19 @@ void InputSystem::KeymapPush(const Keymap &map)
     }
 }
 
-void InputSystem::KeymapPop()
+bool InputSystem::KeymapPop()
 {
     if (pInput) {
         // Извлеките раскладку из стека, затем повторно примените стек.
         Keymap popped;
         if (!pInput->KeymapStack.Pop(popped)) {
             MERROR("Не удалось извлечь раскладку клавиатуры!");
-            return;
+            return false;
         }
+        return true;
     }
+
+    return false;
 }
 
 bool InputSystem::CheckModifiers(Keymap::Modifier modifiers)

@@ -133,6 +133,16 @@ namespace EventSystem
         /// @brief Событие, запускаемое системой MVar при обновлении MVar.
         MVarChanged = 0x17,
 
+        /// @brief Событие, срабатывающее при записи в отслеживаемый файл.
+        /// Контекст использования:
+        /// u32 watch_id = context.data.u32[0];
+        WatchedFileWritten = 0X18,
+
+        /// @brief Событие, срабатывающее при удалении отслеживаемого файла.
+        /// Контекст использования:
+        /// u32 watch_id = context.data.u32[0];
+        WatchedFileDeleted = 0x19,
+
         MaxEventCode = 0xFF       // Максимальный код события, который можно использовать внутри.
     };
 };

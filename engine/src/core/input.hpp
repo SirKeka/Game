@@ -33,7 +33,7 @@ namespace InputSystem
     MAPI void ProcessMouseWheel(i8 Zdelta);
 
     MAPI void KeymapPush(const Keymap& map);
-    MAPI void KeymapPop();
+    MAPI bool KeymapPop();
 
     bool CheckModifiers(Keymap::Modifier modifiers);
     constexpr u16 ToInt(Keys key);

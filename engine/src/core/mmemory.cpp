@@ -35,7 +35,8 @@ static const char* MemoryTagStrings[Memory::MaxTags] = {
     "OPENGL     ",
     "GPU_LOCAL  ",
     "BITMAP_FONT",
-    "SYSTEM_FONT"};
+    "SYSTEM_FONT",
+    "KEYMAP     "};
 
 MemorySystem* MemorySystem::state = nullptr;
 
@@ -181,8 +182,6 @@ void *MemorySystem::Realloc(void *ptr, u64 size, u64 NewSize, Memory::Tag tag)
             MFATAL("Ошибка получения блокировки мьютекса во время выделения.");
             return nullptr;
         }
-        state->TotalAllocated += DeltaSize;
-        state->TaggedAllocations[tag] += DeltaSize;
 
         if (ptr) {
             block = reinterpret_cast<u8*>(state->allocator.Realloc(ptr, size, NewSize));
@@ -198,6 +197,8 @@ void *MemorySystem::Realloc(void *ptr, u64 size, u64 NewSize, Memory::Tag tag)
     }
 
     if (block) {
+        state->TotalAllocated += DeltaSize;
+        state->TaggedAllocations[tag] += DeltaSize;
         return block;
     }
     

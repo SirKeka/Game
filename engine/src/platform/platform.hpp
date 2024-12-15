@@ -6,6 +6,21 @@
 struct DynamicLibraryFunction {
     MString name;
     void* pfn;
+<<<<<<< Updated upstream
+=======
+
+    DynamicLibraryFunction& operator=(const DynamicLibraryFunction& dlf) {
+        name = dlf.name;
+        pfn = dlf.pfn;
+        return *this;
+    }
+
+    DynamicLibraryFunction& operator=(DynamicLibraryFunction&& dlf) {
+        name = static_cast<MString&&>(dlf.name);
+        pfn = dlf.pfn;
+        return *this;
+    }
+>>>>>>> Stashed changes
 };
 
 struct DynamicLibrary {
@@ -13,11 +28,29 @@ struct DynamicLibrary {
     MString filename;
     u64 InternalDataSize;
     void* InternalData;
+<<<<<<< Updated upstream
+=======
+    u32 WatchID;
+>>>>>>> Stashed changes
 
     DArray<DynamicLibraryFunction> functions;
 };
 
 template class DArray<DynamicLibraryFunction>;
+<<<<<<< Updated upstream
+=======
+
+namespace PlatformError
+{
+    enum Code {
+        Success = 0,
+        Unknown = 1,
+        FileNotFound = 2,
+        FileLocked = 3,
+        FileExists = 4
+    };
+}
+>>>>>>> Stashed changes
 
 namespace WindowSystem
 {
@@ -54,7 +87,7 @@ void PlatformConsoleWriteError(const char* message, u8 colour);
 // Сон на потоке в течение предоставленной мс. Это блокирует основной поток.
 // Следует использовать только для возврата времени ОС для неиспользованной мощности обновления.
 // Поэтому его не экспортируем.
-void PlatformSleep(u64 ms);
+MAPI void PlatformSleep(u64 ms);
 
 /// @brief Получает количество логических ядер процессора.
 /// @return Количество логических ядер процессора.
@@ -83,4 +116,31 @@ MAPI bool PlatformDynamicLibraryUnload(DynamicLibrary& library);
 /// @return True в случае успеха; в противном случае false.
 MAPI bool PlatformDynamicLibraryLoadFunction(const char* name, DynamicLibrary& library);
 
+<<<<<<< Updated upstream
+=======
+/// @brief Возвращает расширение файла для текущей платформы.
+MAPI const char* PlatformDynamicLibraryExtension();
+
+/// @brief Возвращает префикс файла библиотек для текущей платформы.
+MAPI const char* PlatformDynamicLibraryPrefix();
+
+/// @brief Копирует файл из источника в место назначения, при необходимости перезаписывая.
+/// @param source путь к исходному файлу.
+/// @param dest путь к целевому файлу.
+/// @param OverwriteIfExists указывает, следует ли перезаписывать файл, если он существует.
+/// @return Код ошибки, указывающий на успех или неудачу.
+MAPI PlatformError::Code PlatformCopyFile(const char *source, const char *dest, bool OverwriteIfExists);
+
+/// @brief Наблюдать за файлом по указанному пути.
+/// @param FilePath Путь к файлу. Обязательно.
+/// @param OutWatchID Указатель для хранения идентификатора наблюдения.
+/// @return True в случае успеха; в противном случае false.
+MAPI bool PlatformWatchFile(const char* FilePath, u32& OutWatchID);
+
+/// @brief Останавливает наблюдение за файлом с указанным идентификатором наблюдения.
+/// @param WatchID Идентификатор наблюдения
+/// @return True в случае успеха; в противном случае false.
+MAPI bool PlatformUnwatchFile(u32 WatchID);
+
+>>>>>>> Stashed changes
 // MAPI const char* PlatformGetKeyboardLayout();
