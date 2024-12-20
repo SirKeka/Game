@@ -52,6 +52,6 @@ struct Mesh {
     };
 
     MAPI bool LoadFromResource(const char* ResourceName);
-    void Unload();
+    MAPI void Unload();
 };
 

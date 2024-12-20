@@ -1,8 +1,10 @@
 #include "material_system.hpp"
+
 #include "systems/texture_system.hpp"
 #include "renderer/rendering_system.hpp"
 #include "systems/resource_system.hpp"
 #include "systems/shader_system.hpp"
+#include "systems/light_system.hpp"
 
 #include "memory/linear_allocator.hpp"
 #include <new>
@@ -28,6 +30,9 @@ struct MaterialShaderUniformLocations {
     u16 NormalTexture   {INVALID::U16ID};
     u16 model           {INVALID::U16ID};
     u16 RenderMode      {INVALID::U16ID};
+    u16 DirLight        {INVALID::U16ID};
+    u16 PointLights     {INVALID::U16ID};
+    u16 NumPointLights  {INVALID::U16ID};
 };
 
 struct UI_ShaderUniformLocations {
@@ -214,6 +219,9 @@ Material *MaterialSystem::Acquire(const MaterialConfig &config)
                 state->MaterialLocations.specular        = ShaderSystem::UniformIndex(s,         "specular");
                 state->MaterialLocations.model           = ShaderSystem::UniformIndex(s,            "model");
                 state->MaterialLocations.RenderMode      = ShaderSystem::UniformIndex(s,             "mode");
+                state->MaterialLocations.DirLight        = ShaderSystem::UniformIndex(s,        "dir_light");
+                state->MaterialLocations.PointLights     = ShaderSystem::UniformIndex(s,         "p_lights");
+                state->MaterialLocations.NumPointLights  = ShaderSystem::UniformIndex(s,     "num_p_lights");
             } else if (state->UI_ShaderID == INVALID::ID && config.ShaderName == "Shader.Builtin.UI") {
                 state->UI_ShaderID = s->id;
                 state->UI_Locations.projection           = ShaderSystem::UniformIndex(s,      "projection");
@@ -329,7 +337,16 @@ bool MaterialSystem::ApplyInstance(Material *material, bool NeedsUpdate)
             MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->MaterialLocations.SpecularTexture, &material->SpecularMap));
             MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->MaterialLocations.NormalTexture, &material->NormalMap));
             MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->MaterialLocations.specular, &material->specular));
-            
+
+            auto DirLight = LightSystem::GetDirectionalLight();
+            i32 PointLightCount = LightSystem::PointLightCount();
+            // ЗАДАЧА: frame allocator?
+            auto PointLights = reinterpret_cast<PointLight*>(MemorySystem::Allocate(sizeof(PointLight) * PointLightCount, Memory::Array));
+            LightSystem::GetPointLights(PointLights);
+
+            MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->MaterialLocations.DirLight, DirLight));
+            MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->MaterialLocations.PointLights, PointLights));
+            MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->MaterialLocations.NumPointLights, &PointLightCount)); 
         } else if (material->ShaderID == state->UI_ShaderID) {
             // шейдер пользовательского интерфейса
             MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->UI_Locations.DiffuseColour, &material->DiffuseColour));

@@ -146,7 +146,7 @@ bool RenderViewWorld::BuildPacket(class LinearAllocator& FrameAllocator, void *d
         // ЗАДАЧА: Добавить что-то к материалу для проверки прозрачности.
         if ((gData.gid->material->DiffuseMap.texture->flags & Texture::Flag::HasTransparency) == 0) {
             OutPacket.geometries.PushBack(gData);
-            OutPacket.GeometryCount++;
+            // OutPacket.GeometryCount++;
         } else {
             // Для сеток _с_ прозрачностью добавьте их в отдельный список, чтобы позже отсортировать по расстоянию.
             // Получите центр, извлеките глобальную позицию из матрицы модели и добавьте ее в центр, 
@@ -168,7 +168,7 @@ bool RenderViewWorld::BuildPacket(class LinearAllocator& FrameAllocator, void *d
     // Добавьте их в геометрию пакета.
     for (u32 i = 0; i < GeometryCount; ++i) {
         OutPacket.geometries.PushBack(GeometryDistances[i].g);
-        OutPacket.GeometryCount++;
+        // OutPacket.GeometryCount++;
     }
 
     return true;
@@ -197,7 +197,7 @@ bool RenderViewWorld::Render(const Packet &packet, u64 FrameNumber, u64 RenderTa
         }
 
         // Нарисовать геометрию.
-        auto& count = packet.GeometryCount;
+        const auto& count = packet.geometries.Length();
         for (u32 i = 0; i < count; ++i) {
             Material* m = nullptr;
             if (packet.geometries[i].gid->material) {

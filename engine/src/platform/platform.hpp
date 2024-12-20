@@ -6,8 +6,6 @@
 struct DynamicLibraryFunction {
     MString name;
     void* pfn;
-<<<<<<< Updated upstream
-=======
 
     DynamicLibraryFunction& operator=(const DynamicLibraryFunction& dlf) {
         name = dlf.name;
@@ -20,7 +18,6 @@ struct DynamicLibraryFunction {
         pfn = dlf.pfn;
         return *this;
     }
->>>>>>> Stashed changes
 };
 
 struct DynamicLibrary {
@@ -28,17 +25,12 @@ struct DynamicLibrary {
     MString filename;
     u64 InternalDataSize;
     void* InternalData;
-<<<<<<< Updated upstream
-=======
     u32 WatchID;
->>>>>>> Stashed changes
 
     DArray<DynamicLibraryFunction> functions;
 };
 
 template class DArray<DynamicLibraryFunction>;
-<<<<<<< Updated upstream
-=======
 
 namespace PlatformError
 {
@@ -50,7 +42,6 @@ namespace PlatformError
         FileExists = 4
     };
 }
->>>>>>> Stashed changes
 
 namespace WindowSystem
 {
@@ -116,8 +107,6 @@ MAPI bool PlatformDynamicLibraryUnload(DynamicLibrary& library);
 /// @return True в случае успеха; в противном случае false.
 MAPI bool PlatformDynamicLibraryLoadFunction(const char* name, DynamicLibrary& library);
 
-<<<<<<< Updated upstream
-=======
 /// @brief Возвращает расширение файла для текущей платформы.
 MAPI const char* PlatformDynamicLibraryExtension();
 
@@ -142,5 +131,4 @@ MAPI bool PlatformWatchFile(const char* FilePath, u32& OutWatchID);
 /// @return True в случае успеха; в противном случае false.
 MAPI bool PlatformUnwatchFile(u32 WatchID);
 
->>>>>>> Stashed changes
 // MAPI const char* PlatformGetKeyboardLayout();

@@ -138,6 +138,10 @@ public:
 		return true;
 	}
 
+	void Set(f32 x, f32 y, f32 z) {
+		this->x = x; this->y = y; this->z = z;
+	}
+
 	Vector3D& Normalize() {
     	return *this /= VectorLenght<T>(*this);
 	}

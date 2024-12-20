@@ -85,7 +85,7 @@ bool GameOnDebugEvent(u16 code, void *sender, void *ListenerInst, EventContext c
             MDEBUG("Выгрузка моделей...");
             state->CarMesh->Unload();
             state->SponzaMesh->Unload();
-            state->ModelsLoaded = true;
+            state->ModelsLoaded = false;
         }
         return true;
     }
@@ -230,6 +230,39 @@ bool ApplicationInitialize(Application& app)
     state->SponzaMesh->UniqueID = Identifier::AquireNewID(&state->SponzaMesh);
     state->SponzaMesh->transform = Transform(FVec3(), Quaternion::Identity(), FVec3(0.05F, 0.05F, 0.05F));
     MeshCount++;
+
+    // ЗАДАЧА: HACK: перемещение кода освещения в ЦП
+    state->DirLight.colour.Set(0.4F, 0.4F, 0.2F, 1.F);
+    state->DirLight.direction.Set(-0.57735F, -0.57735F, -0.57735F, 0.F);
+
+    LightSystem::AddDirectional(&state->DirLight);
+
+    state->PointLights[0].colour.Set(1.F, 0.F, 0.F, 1.F);
+    state->PointLights[0].position.Set(-5.5F, 0.F, -5.5F, 0.F);
+    state->PointLights[0].ConstantF = 1.F;
+    state->PointLights[0].linear = 0.35F;
+    state->PointLights[0].quadratic = 0.44F;
+    state->PointLights[0].padding = 0;
+
+    LightSystem::AddPoint(&state->PointLights[0]);
+
+    state->PointLights[1].colour.Set(0.F, 1.F, 0.F, 1.F);
+    state->PointLights[1].position.Set(5.5F, 0.F, -5.5F, 0.F);
+    state->PointLights[1].ConstantF = 1.F;
+    state->PointLights[1].linear = 0.35F;
+    state->PointLights[1].quadratic = 0.44F;
+    state->PointLights[1].padding = 0;
+
+    LightSystem::AddPoint(&state->PointLights[1]);
+
+    state->PointLights[2].colour.Set(0.F, 0.F, 1.F, 1.F);
+    state->PointLights[2].position.Set(5.5F, 0.F, 5.5F, 0.F);
+    state->PointLights[2].ConstantF = 1.F;
+    state->PointLights[2].linear = 0.35F;
+    state->PointLights[2].quadratic = 0.44F;
+    state->PointLights[2].padding = 0;
+
+    LightSystem::AddPoint(&state->PointLights[2]);
 
     const f32 w = 128.F;
     const f32 h = 49.F;
@@ -456,9 +489,8 @@ bool ApplicationRender(Application& app, RenderPacket& packet, f32 DeltaTime)
     packet.views = reinterpret_cast<RenderView::Packet*>(app.FrameAllocator.Allocate(sizeof(RenderView::Packet) * packet.ViewCount));
 
     // Скайбокс
-    auto SkyboxData = reinterpret_cast<SkyboxPacketData*>(app.FrameAllocator.Allocate(sizeof(SkyboxPacketData)));
-    SkyboxData->sb = &state->sb;
-    if (!RenderViewSystem::BuildPacket(RenderViewSystem::Get("skybox"), app.FrameAllocator, SkyboxData, packet.views[0])) {
+    SkyboxPacketData SkyboxData = { &state->sb };
+    if (!RenderViewSystem::BuildPacket(RenderViewSystem::Get("skybox"), app.FrameAllocator, &SkyboxData, packet.views[0])) {
         MERROR("Не удалось построить пакет для представления «skybox».");
         return false;
     }

@@ -15,6 +15,7 @@
 #include "systems/camera_system.hpp"
 #include "systems/render_view_system.hpp"
 #include "systems/geometry_system.hpp"
+#include "systems/light_system.hpp"
 
 #include <new>
 
@@ -42,7 +43,7 @@ bool SystemsManager::PostBootInitialize(ApplicationConfig &AppConfig)
 
 bool SystemsManager::Update(u32 DeltaTime)
 {
-    for (u32 i = 0; i < K_SYSTEM_TYPE_MAX_COUNT; ++i) {
+    for (u32 i = 0; i < M_SYSTEM_TYPE_MAX_COUNT; ++i) {
         auto& s = systems[i];
         if (s.update) {
             if (!s.update(s.state, DeltaTime)) {
@@ -270,6 +271,12 @@ bool SystemsManager::RegisterKnownSystemsPostBoot(ApplicationConfig &AppConfig)
     GeometrySysConfig.MaxGeometryCount = 4096;
     if (!Register(MSystem::Geometry, GeometrySystem::Initialize, GeometrySystem::Shutdown, nullptr, &GeometrySysConfig)) {
         MERROR("Не удалось зарегистрировать систему геометрий.");
+        return false;
+    }
+
+    // Система освещения.
+    if (!Register(MSystem::Light, LightSystem::Initialize, LightSystem::Shutdown)) {
+        MERROR("Не удалось зарегистрировать систему освещения.");
         return false;
     }
 

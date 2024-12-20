@@ -16,7 +16,7 @@ public:
 
 	union {
         // Массив x, y, z, w
-        alignas(16) T elements[4];
+        /*alignas(16)*/ T elements[4];
         struct {
             // Первый элемент.
 			union {T x, r;};
@@ -45,6 +45,14 @@ public:
 #endif
 	}
 
+	Vector4D& Set(T x, T y, T z, T w) {
+		this->x = x;
+		this->y = y;
+		this->z = z;
+		this->w = w;
+		return *this;
+	}
+
 	/// @brief Нулевой вектор
     /// @return (0, 0, 0, 0)
     static MINLINE Vector4D Zero() {
@@ -58,14 +66,39 @@ public:
 
 	//T& operator [](int i);
 	//const T& operator [](int i) const;
-	Vector4D& operator +=(const Vector4D& v);
-	Vector4D& operator -=(const Vector4D& v);
-	Vector4D& operator *=(const Vector4D& v);
-	Vector4D& operator /=(const Vector4D& v);
+	Vector4D& operator +=(const Vector4D& v) {
+		for (u64 i = 0; i < 4; i++) {
+			elements[i] += v.elements[i];
+		}
+		return *this;
+	}
+
+	Vector4D& operator -=(const Vector4D& v) {
+		for (u64 i = 0; i < 4; i++) {
+			elements[i] -= v.elements[i];
+		}
+		return *this;
+	}
+
+	Vector4D& operator *=(const Vector4D& v) {
+		for (u64 i = 0; i < 4; i++) {
+			elements[i] *= v.elements[i];
+		}
+		return *this;
+	}
+
+	Vector4D& operator /=(const Vector4D& v) {
+		for (u64 i = 0; i < 4; i++) {
+			elements[i] /= v.elements[i];
+		}
+		return *this;
+	}
+
 	explicit operator bool() const noexcept {
 		if ((x != 0) && (y != 0) && (z != 0) && (w != 0)) return true;
 		return false;
 	}
+
 	const bool operator==(const Vector4D& v) const {
 		if (Math::abs(x - v.x) > M_FLOAT_EPSILON) {
 			return false;
@@ -81,56 +114,17 @@ public:
 		}
 		return true;
 	}
+
 	Vector4D& operator= (const Vector4D& v) {
 		x = v.x; y = v.y; z = v.z; w = v.w;
 		return *this;
 	}
 	
-	Vector4D& Normalize();
+	Vector4D& Normalize() {
+		this /= VectorLenght(this);
+    	return *this;
+	}
 };
-
-template <typename T>
-MINLINE Vector4D<T> &Vector4D<T>::operator+=(const Vector4D<T> &v)
-{
-    for (u64 i = 0; i < 4; i++) {
-		elements[i] += v.elements[i];
-	}
-	return *this;
-}
-
-template <typename T>
-MINLINE Vector4D<T> &Vector4D<T>::operator-=(const Vector4D<T> &v)
-{
-    for (u64 i = 0; i < 4; i++) {
-		elements[i] -= v.elements[i];
-	}
-	return *this;
-}
-
-template <typename T>
-MINLINE Vector4D<T> &Vector4D<T>::operator*=(const Vector4D<T> &v)
-{
-    for (u64 i = 0; i < 4; i++) {
-		elements[i] *= v.elements[i];
-	}
-	return *this;
-}
-
-template <typename T>
-MINLINE Vector4D<T> &Vector4D<T>::operator/=(const Vector4D<T> &v)
-{
-    for (u64 i = 0; i < 4; i++) {
-		elements[i] /= v.elements[i];
-	}
-	return *this;
-}
-
-template <typename T>
-MINLINE Vector4D<T> &Vector4D<T>::Normalize()
-{
-    this /= VectorLenght(this);
-    return *this;
-}
 
 template <typename T>
 MINLINE Vector4D<T> &operator +(const Vector4D<T> &a, const Vector4D<T> &b)

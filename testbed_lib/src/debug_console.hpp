@@ -1,23 +1,6 @@
 #pragma once
 
 #include "defines.hpp"
-<<<<<<< Updated upstream
-#include <core/event.hpp>
-#include <resources/ui_text.hpp>
-
-namespace DebugConsole 
-{
-    void Create();
-    bool Load();
-    void Unload();
-    void Update();
-
-    Text* GetText();
-    Text* GetEntryText();
-
-    bool Visible();
-    void VisibleSet(bool visible);
-=======
 #include <containers/darray.hpp>
 #include <core/event.hpp>
 #include <resources/ui_text.hpp>
@@ -59,7 +42,6 @@ public:
 
     bool Visible();
     void SetVisible(bool visible);
->>>>>>> Stashed changes
 
     void MoveUp();
     void MoveDown();
@@ -68,9 +50,6 @@ public:
 
     void HistoryBack();
     void HistoryForward();
-<<<<<<< Updated upstream
-}; // namespace DebugConsole
-=======
 
     void* operator new(u64 size) {
         return MemorySystem::Allocate(size, Memory::Game);
@@ -82,6 +61,5 @@ private:
     static bool DebugConsoleConsumerWrite(void* inst, Log::Level level, const char* message);
     static bool OnKey(u16 code, void* sender, void* ListenerInst, EventContext context);
 };
->>>>>>> Stashed changes
 
 

@@ -34,4 +34,3 @@ struct Vertex3D
         return false;
     }
 };
-

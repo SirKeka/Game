@@ -7,7 +7,7 @@ using PFN_SystemInitialize = bool(*)(u64&, void*, void*);
 using PFN_SystemShutdown   = void(*)(/* void* */); 
 using PFN_SystemUpdate     = bool(*)(void*, f32);
 
-constexpr u32 K_SYSTEM_TYPE_MAX_COUNT = 512;
+constexpr u32 M_SYSTEM_TYPE_MAX_COUNT = 512;
 
 struct MSystem {
     u64 StateSize;
@@ -35,12 +35,13 @@ struct MSystem {
         RendererView,
         Material,
         Geometry,
+        Light,
     
         // ПРИМЕЧАНИЕ: Все, что находится за пределами этого, находится в пользовательском пространстве.
         KnownMax = 255,
     
         // Максимум пользовательского пространства
-        UserMax = K_SYSTEM_TYPE_MAX_COUNT,
+        UserMax = M_SYSTEM_TYPE_MAX_COUNT,
         // Максимум, включая все типы пользовательского пространства.
         Max = UserMax
     };
@@ -52,7 +53,7 @@ class SystemsManager
 {
     friend class Engine;
     LinearAllocator SystemsAllocator;
-    MSystem systems[K_SYSTEM_TYPE_MAX_COUNT];
+    MSystem systems[M_SYSTEM_TYPE_MAX_COUNT];
 
     static SystemsManager* state;
 

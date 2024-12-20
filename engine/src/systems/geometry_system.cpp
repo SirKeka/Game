@@ -22,7 +22,6 @@ GeometrySystem::GeometrySystem(u32 MaxGeometryCount, GeometryReference* Register
     RegisteredGeometries(RegisteredGeometries)
 {   
     // Сделать недействительными все геометрии в массиве.
-    // new (reinterpret_cast<void*>(RegisteredGeometries)) GeometryReference[MaxGeometryCount]();
     for (u32 i = 0; i < MaxGeometryCount; ++i) {
         RegisteredGeometries[i].gid.id = INVALID::ID;
         RegisteredGeometries[i].gid.InternalID = INVALID::ID;
@@ -194,10 +193,10 @@ GeometryConfig GeometrySystem::GenerateCubeConfig(f32 width, f32 height, f32 dep
     GeometryConfig config;
     config.VertexSize = sizeof(Vertex3D);
     config.VertexCount = 4 * 6; // 4 вершины на сторону, 6 сторон
-    config.vertices = MemorySystem::Allocate(4 * 6 * config.VertexSize, Memory::Array, true);
+    config.vertices = MemorySystem::Allocate(config.VertexCount * config.VertexSize, Memory::Array, true);
     config.IndexSize = sizeof(u32);
     config.IndexCount = 6 * 6; // 6 индексов на каждой стороне, 6 сторон
-    config.indices = MemorySystem::Allocate(6 * 6 * config.IndexSize, Memory::Array, true);
+    config.indices = MemorySystem::Allocate(config.IndexCount * config.IndexSize, Memory::Array, true);
     config.CopyNames(name, MaterialName);
     // config.center = FVec3();
     config.MinExtents = FVec3(-HalfWidth, -HalfHeight, -HalfDepth);
@@ -208,85 +207,85 @@ GeometryConfig GeometrySystem::GenerateCubeConfig(f32 width, f32 height, f32 dep
     f32 MaxUVx = TileX;
     f32 MaxUVy = TileY;
 
-    auto vertex = reinterpret_cast<Vertex3D*>(config.vertices);
+    auto vertex  = reinterpret_cast<Vertex3D*>(config.vertices);
     // Передняя поверхность
-    vertex[0].position  = FVec3(-HalfWidth, -HalfHeight,  HalfDepth);
+    vertex[0].position.Set(-HalfWidth, -HalfHeight,  HalfDepth);
     vertex[0].texcoord  = FVec2(MinUVx, MinUVy);
-    vertex[0].normal    = FVec3(0.F,  0.F,  1.F);
-    vertex[1].position  = FVec3(HalfWidth,  HalfHeight,  HalfDepth);
+    vertex[0].normal.Set(0.F,  0.F,  1.F);
+    vertex[1].position.Set(HalfWidth,  HalfHeight,  HalfDepth);
     vertex[1].texcoord  = FVec2(MaxUVx, MaxUVy);
-    vertex[1].normal    = FVec3(0.F,  0.F,  1.F);
-    vertex[2].position  = FVec3(-HalfWidth,  HalfHeight,  HalfDepth);
+    vertex[1].normal.Set(0.F,  0.F,  1.F);
+    vertex[2].position.Set(-HalfWidth,  HalfHeight,  HalfDepth);
     vertex[2].texcoord  = FVec2(MinUVx, MaxUVy);
-    vertex[2].normal    = FVec3(0.F,  0.F,  1.F);
-    vertex[3].position  = FVec3(HalfWidth, -HalfHeight,  HalfDepth);
+    vertex[2].normal.Set(0.F,  0.F,  1.F);
+    vertex[3].position.Set(HalfWidth, -HalfHeight,  HalfDepth);
     vertex[3].texcoord  = FVec2(MaxUVx, MinUVy);
-    vertex[3].normal    = FVec3(0.F,  0.F,  1.F);
+    vertex[3].normal.Set(0.F,  0.F,  1.F);
     // Задняя поверхность
-    vertex[4].position  = FVec3(HalfWidth, -HalfHeight, -HalfDepth);
+    vertex[4].position.Set(HalfWidth, -HalfHeight, -HalfDepth);
     vertex[4].texcoord  = FVec2(MinUVx, MinUVy);
-    vertex[4].normal    = FVec3(0.F,  0.F, -1.F);
-    vertex[5].position  = FVec3(-HalfWidth,  HalfHeight, -HalfDepth);
+    vertex[4].normal.Set(0.F,  0.F, -1.F);
+    vertex[5].position.Set(-HalfWidth,  HalfHeight, -HalfDepth);
     vertex[5].texcoord  = FVec2(MaxUVx, MaxUVy);
-    vertex[5].normal    = FVec3(0.F,  0.F, -1.F);
-    vertex[6].position  = FVec3(HalfWidth,  HalfHeight, -HalfDepth);
+    vertex[5].normal.Set(0.F,  0.F, -1.F);
+    vertex[6].position.Set(HalfWidth,  HalfHeight, -HalfDepth);
     vertex[6].texcoord  = FVec2(MinUVx, MaxUVy);
-    vertex[6].normal    = FVec3(0.F,  0.F, -1.F);
-    vertex[7].position  = FVec3(-HalfWidth, -HalfHeight, -HalfDepth);
+    vertex[6].normal.Set(0.F,  0.F, -1.F);
+    vertex[7].position.Set(-HalfWidth, -HalfHeight, -HalfDepth);
     vertex[7].texcoord  = FVec2(MaxUVx, MinUVy);
-    vertex[7].normal    = FVec3(0.F,  0.F, -1.F);
+    vertex[7].normal.Set(0.F,  0.F, -1.F);
     // Левая поверхность
-    vertex[8].position  = FVec3(-HalfWidth, -HalfHeight, -HalfDepth);
+    vertex[8].position.Set(-HalfWidth, -HalfHeight, -HalfDepth);
     vertex[8].texcoord  = FVec2(MinUVx, MinUVy);
-    vertex[8].normal    = FVec3(-1.F,  0.F,  0.F);
-    vertex[9].position  = FVec3(-HalfWidth,  HalfHeight,  HalfDepth);
+    vertex[8].normal.Set(-1.F,  0.F,  0.F);
+    vertex[9].position.Set(-HalfWidth,  HalfHeight,  HalfDepth);
     vertex[9].texcoord  = FVec2(MaxUVx, MaxUVy);
-    vertex[9].normal    = FVec3(-1.F,  0.F,  0.F);
-    vertex[10].position = FVec3(-HalfWidth,  HalfHeight, -HalfDepth);
+    vertex[9].normal.Set(-1.F,  0.F,  0.F);
+    vertex[10].position.Set(-HalfWidth,  HalfHeight, -HalfDepth);
     vertex[10].texcoord = FVec2(MinUVx, MaxUVy);
-    vertex[10].normal   = FVec3(-1.F,  0.F,  0.F);
-    vertex[11].position = FVec3(-HalfWidth, -HalfHeight,  HalfDepth);
+    vertex[10].normal.Set(-1.F,  0.F,  0.F);
+    vertex[11].position.Set(-HalfWidth, -HalfHeight,  HalfDepth);
     vertex[11].texcoord = FVec2(MaxUVx, MinUVy);
-    vertex[11].normal   = FVec3(-1.F,  0.F,  0.F);
+    vertex[11].normal.Set(-1.F,  0.F,  0.F);
     // Правая поверхность
-    vertex[12].position = FVec3(HalfWidth, -HalfHeight,  HalfDepth);
+    vertex[12].position.Set(HalfWidth, -HalfHeight,  HalfDepth);
     vertex[12].texcoord = FVec2(MinUVx, MinUVy);
-    vertex[12].normal   = FVec3(1.F,  0.F,  0.F);
-    vertex[13].position = FVec3(HalfWidth,  HalfHeight, -HalfDepth);
+    vertex[12].normal.Set(1.F,  0.F,  0.F);
+    vertex[13].position.Set(HalfWidth,  HalfHeight, -HalfDepth);
     vertex[13].texcoord = FVec2(MaxUVx, MaxUVy);
-    vertex[13].normal   = FVec3(1.F,  0.F,  0.F);
-    vertex[14].position = FVec3(HalfWidth,  HalfHeight,  HalfDepth);
+    vertex[13].normal.Set(1.F,  0.F,  0.F);
+    vertex[14].position.Set(HalfWidth,  HalfHeight,  HalfDepth);
     vertex[14].texcoord = FVec2(MinUVx, MaxUVy);
-    vertex[14].normal   = FVec3(1.F,  0.F,  0.F);
-    vertex[15].position = FVec3(HalfWidth, -HalfHeight, -HalfDepth);
+    vertex[14].normal.Set(1.F,  0.F,  0.F);
+    vertex[15].position.Set(HalfWidth, -HalfHeight, -HalfDepth);
     vertex[15].texcoord = FVec2(MaxUVx, MinUVy);
-    vertex[15].normal   = FVec3(1.F,  0.F,  0.F);
+    vertex[15].normal.Set(1.F,  0.F,  0.F);
     // Нижняя поверхность
-    vertex[16].position = FVec3(HalfWidth, -HalfHeight,  HalfDepth);
+    vertex[16].position.Set(HalfWidth, -HalfHeight,  HalfDepth);
     vertex[16].texcoord = FVec2(MinUVx, MinUVy);
-    vertex[16].normal   = FVec3(0.F, -1.F,  0.F);
-    vertex[17].position = FVec3(-HalfWidth, -HalfHeight, -HalfDepth);
+    vertex[16].normal.Set(0.F, -1.F,  0.F);
+    vertex[17].position.Set(-HalfWidth, -HalfHeight, -HalfDepth);
     vertex[17].texcoord = FVec2(MaxUVx, MaxUVy);
-    vertex[17].normal   = FVec3(0.F, -1.F,  0.F);
-    vertex[18].position = FVec3(HalfWidth, -HalfHeight, -HalfDepth);
+    vertex[17].normal.Set(0.F, -1.F,  0.F);
+    vertex[18].position.Set(HalfWidth, -HalfHeight, -HalfDepth);
     vertex[18].texcoord = FVec2(MinUVx, MaxUVy);
-    vertex[18].normal   = FVec3(0.F, -1.F,  0.F);
-    vertex[19].position = FVec3(-HalfWidth, -HalfHeight,  HalfDepth);
+    vertex[18].normal.Set(0.F, -1.F,  0.F);
+    vertex[19].position.Set(-HalfWidth, -HalfHeight,  HalfDepth);
     vertex[19].texcoord = FVec2(MaxUVx, MinUVy);
-    vertex[19].normal   = FVec3(0.F, -1.F,  0.F);
+    vertex[19].normal.Set(0.F, -1.F,  0.F);
     // Верхняя поверхность
-    vertex[20].position = FVec3(-HalfWidth,  HalfHeight,  HalfDepth);
+    vertex[20].position.Set(-HalfWidth,  HalfHeight,  HalfDepth);
     vertex[20].texcoord = FVec2(MinUVx, MinUVy);
-    vertex[20].normal   = FVec3(0.F,  1.F,  0.F);
-    vertex[21].position = FVec3(HalfWidth,  HalfHeight, -HalfDepth);
+    vertex[20].normal.Set(0.F,  1.F,  0.F);
+    vertex[21].position.Set(HalfWidth,  HalfHeight, -HalfDepth);
     vertex[21].texcoord = FVec2(MaxUVx, MaxUVy);
-    vertex[21].normal   = FVec3(0.F,  1.F,  0.F);
-    vertex[22].position = FVec3(-HalfWidth,  HalfHeight, -HalfDepth);
+    vertex[21].normal.Set(0.F,  1.F,  0.F);
+    vertex[22].position.Set(-HalfWidth,  HalfHeight, -HalfDepth);
     vertex[22].texcoord = FVec2(MinUVx, MaxUVy);
-    vertex[22].normal   = FVec3(0.F,  1.F,  0.F);
-    vertex[23].position = FVec3(HalfWidth,  HalfHeight,  HalfDepth);
+    vertex[22].normal.Set(0.F,  1.F,  0.F);
+    vertex[23].position.Set(HalfWidth,  HalfHeight,  HalfDepth);
     vertex[23].texcoord = FVec2(MaxUVx, MinUVy);
-    vertex[23].normal   = FVec3(0.F,  1.F,  0.F);
+    vertex[23].normal.Set(0.F,  1.F,  0.F);
 
     u32* indices = reinterpret_cast<u32*>(config.indices);
     for (u32 i = 0; i < 6; ++i) {
@@ -305,7 +304,7 @@ GeometryConfig GeometrySystem::GenerateCubeConfig(f32 width, f32 height, f32 dep
     return config;
 }
 
-bool GeometrySystem::CreateGeometry(const GeometryConfig &config, GeometryID *gid)
+bool GeometrySystem::CreateGeometry(GeometryConfig &config, GeometryID *gid)
 {
     if (!config.VertexCount || !config.vertices) {
         MERROR("VulkanAPI::CreateGeometry требует данных вершин, но они не были предоставлены. VertexCount=%d, vertices=%p", config.VertexCount, config.vertices);
@@ -415,6 +414,7 @@ bool GeometrySystem::CreateDefaultGeometries()
     // Индексы (ПРИМЕЧАНИЕ: против часовой стрелки)
     u32 indices2d[6] = {2, 1, 0, 3, 0, 1};
 
+    state->Default2dGeometry.InternalID = 0;
     // Отправьте геометрию в рендерер для загрузки в графический процессор.
     if (!RenderingSystem::Load(&state->Default2dGeometry, sizeof(Vertex2D), 4, verts2d, sizeof(u32), 6, indices2d)) {
         MFATAL("Не удалось создать 2D-геометрию по умолчанию. Приложение не может быть продолжено.");
@@ -439,7 +439,7 @@ GeometryID *GeometrySystem::Acquire(u32 id)
     return nullptr;
 }
 
-GeometryID *GeometrySystem::Acquire(const GeometryConfig& config, bool AutoRelease)
+GeometryID *GeometrySystem::Acquire(GeometryConfig& config, bool AutoRelease)
 {
     GeometryID* g = nullptr;
     for (u32 i = 0; i < state->MaxGeometryCount; ++i) {

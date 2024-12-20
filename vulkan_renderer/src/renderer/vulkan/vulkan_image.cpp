@@ -67,6 +67,10 @@ void VulkanImage::Create(const Config &config)
     // Свяжите память
     VK_CHECK(vkBindImageMemory(config.VkAPI->Device.LogicalDevice, handle, memory, 0));  // ЗАДАЧА: настраиваемое смещение памяти.
 
+    // Report the memory as in-use.
+    bool IsDeviceMemory = (MemoryFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) == VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+    MemorySystem::AllocateReport(MemoryRequirements.size, IsDeviceMemory ? Memory::GPULocal : Memory::Vulkan);
+
     // Создать представление
     if (config.CreateView) {
         view = 0;

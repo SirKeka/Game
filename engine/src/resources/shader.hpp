@@ -95,9 +95,8 @@ public:
 
     /// @brief Конфигурация униформы.
     struct UniformConfig {
-        // u8 NameLength;   // Длина имени.
         MString name;       // Название униформы.
-        u8 size;            // Размер униформы.
+        u16 size;            // Размер униформы.
         u32 location;       // Расположение униформы.
         UniformType type;   // Тип униформы.
         Scope scope;        // Область применения униформы.

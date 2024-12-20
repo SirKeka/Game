@@ -12,10 +12,12 @@
 #include "containers/freelist.hpp"
 #include "core/mmemory.hpp"
 
+using VkBufferUsageFlag = u32;
+
 struct VulkanBuffer
 {
     VkBuffer handle;                            // Дескриптор внутреннего буфера.
-    VkBufferUsageFlagBits usage;                // Флаги использования.
+    VkBufferUsageFlag usage;                    // Флаги использования.
     bool IsLocked;                              // Указывает, заблокирована ли в данный момент память буфера.
     VkDeviceMemory memory;                      // Память, используемая буфером.
     VkMemoryRequirements MemoryRequirements;    // Требования к памяти для этого буфера.

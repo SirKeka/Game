@@ -291,11 +291,7 @@ bool PlatformDynamicLibraryUnload(DynamicLibrary& library)
         library.functions.Clear();
     }
 
-<<<<<<< Updated upstream
-    MemorySystem::ZeroMem(&library, sizeof(DynamicLibrary));
-=======
     // MemorySystem::ZeroMem(&library, sizeof(DynamicLibrary));
->>>>>>> Stashed changes
 
     return true;
 }
@@ -318,17 +314,11 @@ bool PlatformDynamicLibraryLoadFunction(const char* name, DynamicLibrary& librar
     DynamicLibraryFunction f = {0};
     f.pfn = reinterpret_cast<void*>(fAddr);
     f.name = name;
-<<<<<<< Updated upstream
-    library.functions.PushBack(f);
-=======
     library.functions.PushBack(static_cast<DynamicLibraryFunction&&>(f));
->>>>>>> Stashed changes
 
     return true;
 }
 
-<<<<<<< Updated upstream
-=======
 const char *PlatformDynamicLibraryExtension() {
     return ".dll";
 }
@@ -467,7 +457,6 @@ void PlatformUpdateWatches() {
     }
 }
 
->>>>>>> Stashed changes
 // const char* PlatformGetKeyboardLayout()
 // {
 //     // ЗАДАЧА: изменить.

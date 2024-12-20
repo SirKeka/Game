@@ -70,8 +70,6 @@ void RenderViewSkybox::Resize(u32 width, u32 height)
 
 bool RenderViewSkybox::BuildPacket(class LinearAllocator& FrameAllocator, void *data, Packet &OutPacket)
 {
-    auto SkyboxData = reinterpret_cast<SkyboxPacketData*>(data);
-
     OutPacket.view = this;
 
     // Матрицы множеств и т.д.
@@ -80,7 +78,9 @@ bool RenderViewSkybox::BuildPacket(class LinearAllocator& FrameAllocator, void *
     OutPacket.ViewPosition = WorldCamera->GetPosition();
 
     // Просто установите расширенные данные для данных скайбокса
-    OutPacket.ExtendedData = SkyboxData;
+    u64 size = sizeof(SkyboxPacketData);
+    OutPacket.ExtendedData = FrameAllocator.Allocate(size);
+    MemorySystem::CopyMem(OutPacket.ExtendedData, data, size);
     return true;
 }
 

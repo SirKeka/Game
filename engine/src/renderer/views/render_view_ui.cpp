@@ -99,7 +99,7 @@ bool RenderViewUI::BuildPacket(LinearAllocator& FrameAllocator, void *data, Pack
             RenderData.gid = m->geometries[j];
             RenderData.model = m->transform.GetWorld();
             OutPacket.geometries.PushBack(RenderData);
-            OutPacket.GeometryCount++;
+            // OutPacket.GeometryCount++;
         }
     }
     return true;
@@ -127,7 +127,7 @@ bool RenderViewUI::Render(const Packet &packet, u64 FrameNumber, u64 RenderTarge
         }
 
         // Нарисовать геометрию.
-        u32 count = packet.GeometryCount;
+        const u64& count = packet.geometries.Length();
         for (u32 i = 0; i < count; ++i) {
             Material* m = nullptr;
             if (packet.geometries[i].gid->material) {

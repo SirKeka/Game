@@ -24,14 +24,7 @@ IndexBufferOffset(g.IndexBufferOffset)
 
 Geometry::~Geometry()
 {
-    id = INVALID::ID;
-    generation = INVALID::ID;
-    VertexCount = 0;
-    VertexElementSize = 0;
-    VertexBufferOffset = 0;
-    IndexCount = 0;
-    IndexElementSize = 0;
-    IndexBufferOffset = 0;
+    Destroy();
 }
 
 Geometry &Geometry::operator=(const Geometry &g)
@@ -80,5 +73,9 @@ void Geometry::SetIndexData(u32 IndexCount, u64 IndexBufferOffset)
 
 void Geometry::Destroy()
 {
-    this->~Geometry();
+    id = INVALID::ID;
+    generation = VertexCount = VertexElementSize = 0;
+    VertexBufferOffset = 0;
+    IndexCount =  IndexElementSize = 0;
+    IndexBufferOffset = 0;
 }

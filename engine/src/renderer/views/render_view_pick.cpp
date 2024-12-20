@@ -160,7 +160,7 @@ bool RenderViewPick::BuildPacket(LinearAllocator& FrameAllocator, void *data, Pa
             RenderData.model = m->transform.GetWorld();
             RenderData.UniqueID = m->UniqueID;
             OutPacket.geometries.PushBack(RenderData);
-            OutPacket.GeometryCount++;
+            // OutPacket.GeometryCount++;
             PacketData->UiGeometryCount++;
         }
         // Подсчитать все геометрии как один идентификатор.
@@ -295,7 +295,7 @@ bool RenderViewPick::Render(const Packet &packet, u64 FrameNumber, u64 RenderTar
         ShaderSystem::ApplyGlobal();
 
         // Нарисовать геометрию. Начните с того места, где остановились мировые геометрии.
-        for (u32 i = WorldGeometryCount; i < packet.GeometryCount; ++i) {
+        for (u32 i = WorldGeometryCount; i < packet.geometries.Length(); ++i) {
             auto& geo = packet.geometries[i];
             CurrentInstanceID = geo.UniqueID;
 

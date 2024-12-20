@@ -110,8 +110,8 @@ public:
         Matrix4D ProjectionMatrix;                      // Текущая матрица проекции.
         FVec3 ViewPosition;                             // Текущая позиция представления, если применимо.
         FVec4 AmbientColour;                            // Текущий окружающий цвет сцены, если применимо.
-        u32 GeometryCount;                              // Количество геометрий для рисования.
-        DArray<GeometryRenderData> geometries;   // Геометрии для рисования.
+        // u32 GeometryCount;                           // Количество геометрий для рисования.
+        DArray<GeometryRenderData> geometries;          // Геометрии для рисования.
         const char* CustomShaderName;                   // Имя используемого пользовательского шейдера, если применимо. В противном случае 0.
         void* ExtendedData;                             // Содержит указатель на данные свободной формы, обычно понимаемые как объектом, так и потребляющим представлением.
     };

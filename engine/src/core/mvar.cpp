@@ -126,7 +126,7 @@ namespace MVar {
         const char* name = context.arguments[0].value;
         const char* ValString = context.arguments[1].value;
         i32 value = 0;
-        if (!MString::ToInt(ValString, value)) {
+        if (!(value = MString::ToInt(ValString))) {
             MERROR("Не удалось преобразовать аргумент 1 в i32: '%s'.", ValString);
             return;
         }
@@ -164,7 +164,7 @@ namespace MVar {
         const char* name = context.arguments[0].value;
         const char* ValString = context.arguments[1].value;
         i32 value = 0;
-        if (!MString::ToInt(ValString, value)) {
+        if (!(value = MString::ToInt(ValString))) {
             MERROR("Не удалось преобразовать аргумент 1 в i32: '%s'.", ValString);
             return;
         }

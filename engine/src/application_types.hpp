@@ -28,17 +28,10 @@ struct Application
     u64 StateMemoryRequirement;                 // Требуемый размер для игрового состояния.
     LinearAllocator FrameAllocator;             // Распределитель, используемый для распределений, которые необходимо делать в каждом кадре. Содержимое стирается в начале кадра.
     DArray<GeometryRenderData> WorldGeometries; // ApplicationFrameData FrameData;        // Данные, которые создаются, используются и удаляются в каждом кадре
-<<<<<<< Updated upstream
-    // RendererPlugin* RenderPlugin;               // ЗАДАЧА: Переместить это в лучшее место...
-
-    constexpr Application(const ApplicationConfig& AppConfig, u64 StateMemoryRequirement) : AppConfig(AppConfig), engine(nullptr), state(nullptr), StateMemoryRequirement(StateMemoryRequirement), FrameAllocator(), WorldGeometries() {}
-    virtual ~Application() = default;
-=======
     
     // ЗАДАЧА: Переместить это в лучшее место...
     DynamicLibrary RendererLibrary;
     DynamicLibrary GameLibrary;
->>>>>>> Stashed changes
 
     /// @brief Указатель функции на последовательность загрузки игры. Это должно заполнить конфигурацию приложения конкретными требованиями игры.
     /// @return True в случае успеха; в противном случае false.

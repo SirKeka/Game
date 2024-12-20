@@ -7,8 +7,4 @@ extern "C" MAPI RendererPlugin* PluginCreate();
 
 /// @brief 
 /// @return 
-<<<<<<< Updated upstream
-MAPI void PluginDestroy(RendererPlugin* plugin);
-=======
 extern "C" MAPI void PluginDestroy(RendererPlugin* plugin);
->>>>>>> Stashed changes

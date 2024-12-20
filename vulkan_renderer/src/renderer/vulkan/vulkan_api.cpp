@@ -221,7 +221,6 @@ RenderFlagChanged(false),
 geometries(),
 WorldRenderTargets(),
 MultithreadingEnabled(false)
-
 {
 
 }
@@ -1085,7 +1084,7 @@ bool VulkanAPI::Load(GeometryID *gid, u32 VertexSize, u32 VertexCount, const voi
 
     if (IsReupload) {
         // Освобождение данных вершин
-        ObjectIndexBuffer.Free(OldRange.VertexElementSize * OldRange.VertexCount, OldRange.VertexBufferOffset);
+        ObjectVertexBuffer.Free(OldRange.VertexElementSize * OldRange.VertexCount, OldRange.VertexBufferOffset);
 
         // Освобождение данных индексов, если применимо
         if (OldRange.IndexElementSize > 0) {
@@ -1103,13 +1102,13 @@ void VulkanAPI::Unload(GeometryID *gid)
         Geometry& vGeometry = this->geometries[gid->InternalID];
 
         // Освобождение данных вершин
-        if (!ObjectIndexBuffer.Free(vGeometry.VertexElementSize * vGeometry.VertexCount, vGeometry.VertexBufferOffset)) {
+        if (!ObjectVertexBuffer.Free(vGeometry.VertexElementSize * vGeometry.VertexCount, vGeometry.VertexBufferOffset)) {
             MERROR("VulkanAPI::UnloadGeometry не удалось освободить диапазон буфера вершин.");
         }
 
         // Освобождение данных индексов, если это применимо
         if (vGeometry.IndexElementSize > 0) {
-            if (ObjectIndexBuffer.Free(vGeometry.IndexElementSize * vGeometry.IndexCount, vGeometry.IndexBufferOffset)) {
+            if (!ObjectIndexBuffer.Free(vGeometry.IndexElementSize * vGeometry.IndexCount, vGeometry.IndexBufferOffset)) {
                 MERROR("VulkanAPI::UnloadGeometry не удалось освободить диапазон буфера индексов.");
             }
             
@@ -2214,17 +2213,17 @@ bool VulkanAPI::RenderBufferCreateInternal(RenderBuffer &buffer)
 
     switch (buffer.type) {
         case RenderBufferType::Vertex:
-            InternalBuffer.usage = static_cast<VkBufferUsageFlagBits>(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+            InternalBuffer.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
             InternalBuffer.MemoryPropertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
             break;
         case RenderBufferType::Index:
-            InternalBuffer.usage = static_cast<VkBufferUsageFlagBits>(VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+            InternalBuffer.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
             InternalBuffer.MemoryPropertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
             break;
         case RenderBufferType::Uniform: {
-            //u32 DeviceLocalBits = Device.SupportsDeviceLocalHostVisible ? VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT : 0;
-            InternalBuffer.usage = static_cast<VkBufferUsageFlagBits>(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
-            InternalBuffer.MemoryPropertyFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT; // | DeviceLocalBits;
+            u32 DeviceLocalBits = Device.SupportsDeviceLocalHostVisible ? VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT : 0;
+            InternalBuffer.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+            InternalBuffer.MemoryPropertyFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | DeviceLocalBits;
         } break;
         case RenderBufferType::Staging:
             InternalBuffer.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;

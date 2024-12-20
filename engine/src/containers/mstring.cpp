@@ -495,6 +495,15 @@ const bool MString::nComparei(const char *string1, const char *string2, u64 leng
 #elif (defined _MSC_VER)
     return _strnicmp(string1, string2, length) == 0;
 #endif
+
+/*if (length == 0) {
+        length = UINT64_MAX;
+    }
+     
+    for (u64 i = 0; i < length; i++) {
+        
+    }
+*/
 }
 
 char *MString::Duplicate(const char *s)
@@ -571,7 +580,7 @@ MString& MString::IntToString(i64 n)
     return *this;
 }
 
-i64 MString::StringToI64(const char *s)
+i64 MString::ToInt(const char *s)
 {
     i64 num = 0;
     bool sign = false;
@@ -579,11 +588,27 @@ i64 MString::StringToI64(const char *s)
         sign = true;
         s++;
     }
-    while (s) {
-        num += *s - '0';
-        num *= 10;
+    while (*s) {
+        if (*s >= '0' || *s <= '9') {
+            num += *s - '0';
+            num *= 10;
+        }
+        s++;
     }
     return sign ? num / 10 * -1 : num/10;
+}
+
+u64 MString::ToUInt(const char *s)
+{
+    u64 num = 0;
+    while (*s) {
+        if (*s >= '0' || *s <= '9') {
+            num += *s - '0';
+            num *= 10;
+        }
+        s++;
+    }
+    return num/10;
 }
 
 bool MString::StringToF32(const char* s, f32& fn1, f32* fn2, f32* fn3, f32* fn4)
@@ -922,94 +947,6 @@ bool MString::ToFloat(f64 &f)
     return result != -1;
 }
 
-bool MString::ToInt(char *str, i8 &i)
-{
-    if (!str) {
-        return false;
-    }
-
-    i = 0;
-    i32 result = sscanf(str, "%hhi", &i);
-    return result != -1;
-}
-
-bool MString::ToInt(char *str, i16 &i)
-{
-    if (!str) {
-        return false;
-    }
-
-    i = 0;
-    i32 result = sscanf(str, "%hi", &i);
-    return result != -1;
-}
-
-bool MString::ToInt(const char *str, i32 &i)
-{
-    if (!str) {
-        return false;
-    }
-
-    i = 0;
-    i32 result = sscanf(str, "%i", &i);
-    return result != -1;
-}
-
-bool MString::ToInt(const char *str, i64 &i)
-{
-    if (!str) {
-        return false;
-    }
-
-    i = 0;
-    i32 result = sscanf(str, "%lli", &i);
-    return result != -1;
-}
-
-bool MString::ToUInt(char *str, u8 &u)
-{
-    if (!str) {
-        return false;
-    }
-
-    u = 0;
-    i32 result = sscanf(str, "%hhu", &u);
-    return result != -1;
-}
-
-bool MString::ToUInt(char *str, u16 &u)
-{
-    if (!str) {
-        return false;
-    }
-
-    u = 0;
-    i32 result = sscanf(str, "%hu", &u);
-    return result != -1;
-}
-
-bool MString::ToUInt(char *str, u32 &u)
-{
-    if (!str) {
-        return false;
-    }
-
-    u = 0;
-    i32 result = sscanf(str, "%u", &u);
-    return result != -1;
-}
-
-bool MString::ToUInt(char *str, u64 &u)
-{
-    if (!str) {
-        return false;
-    }
-
-    u = 0;
-    i32 result = sscanf(str, "%llu", &u);
-    return result != -1;
-}
-
 bool MString::ToBool(bool &b)
 {
     if (!str) {
@@ -1176,6 +1113,7 @@ bool MString::Equali(const char *str0, const char *str1)
 #elif (defined _MSC_VER)
     return _strcmpi(str0, str1) == 0;
 #endif
+
 }
 
 MString operator+(const MString &ls, const MString &rs)

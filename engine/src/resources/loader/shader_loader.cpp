@@ -210,6 +210,25 @@ bool ResourceLoader::Load(const char *name, void* params, ShaderResource &OutRes
                 } else if (fields[0].Comparei("samp") || fields[0].Comparei("sampler")) {
                     uniform.type = Shader::UniformType::Sampler;
                     uniform.size = 0;  // У сэмплеров нет размера.
+                } else if (fields[0].nComparei("struct", 6)) {
+                    const u32& len = fields[0].Length();
+                    if (len <= 6) {
+                        MERROR("ShaderLoader::Load: Недопустимая структура uniform, размер отсутствует. Загрузка шейдера прервана.");
+                        return false;
+                    }
+                    // u32 diff = len - 6;
+                    char StructSizeStr[32] = {0};
+                    MString::Mid(StructSizeStr, fields[0], 6, -1);
+                    u32 StructSize = 0;
+                    if (!(StructSize = MString::ToUInt(StructSizeStr))) {
+                        MERROR("Невозможно проанализировать структуру однородного размера. Загрузка шейдера прервана.");
+                        return false;
+                    }
+                    uniform.type = Shader::UniformType::Custom;
+                    uniform.size = StructSize;
+                    // uniform=struct28,1,dir_light
+                    // uniform=struct40,1,p_light_0
+                    // uniform=struct40,1,p_light_1
                 } else {
                     MERROR("ShaderLoader::Load: Недопустимый макет файла. Унифицированный тип должен быть f32, vec2, vec3, vec4, i8, i16, i32, u8, u16, u32 или mat4.");
                     MWARN("По умолчанию f32.");

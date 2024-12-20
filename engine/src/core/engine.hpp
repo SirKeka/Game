@@ -28,13 +28,7 @@ struct ApplicationConfig {
     /// @brief Массив конфигураций представления рендеринга.
     DArray<RenderView::Config> RenderViews;
 
-<<<<<<< Updated upstream
-    DynamicLibrary RendererLibrary;
-    RendererPlugin* RenderPlugin;
-    DynamicLibrary GameLibrary;
-=======
     RendererPlugin* plugin;
->>>>>>> Stashed changes
 };
 
 template class DArray<RenderView::Config>;
