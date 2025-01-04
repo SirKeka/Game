@@ -72,7 +72,8 @@ bool ResourceLoader::Load(const char *name, void* params, MeshResource &OutResou
     constexpr i32 SUPPORTED_FILETYPE_COUNT = 2;
     SupportedMeshFiletype SupportedFiletypes[SUPPORTED_FILETYPE_COUNT] {
         SupportedMeshFiletype(".msm", MeshFileType::MSM, true), 
-        SupportedMeshFiletype(".obj", MeshFileType::OBJ, false)};
+        SupportedMeshFiletype(".obj", MeshFileType::OBJ, false)
+    };
     //SupportedFiletypes[0] = SupportedMeshFiletype(".ksm", MeshFileType::MSM, true);
     //SupportedFiletypes[1] = SupportedMeshFiletype(".obj", MeshFileType::OBJ, false);
 
@@ -101,7 +102,7 @@ bool ResourceLoader::Load(const char *name, void* params, MeshResource &OutResou
     bool result = false;
     switch (type) {
         case MeshFileType::OBJ: {
-            // Создайте имя файла ksm.
+            // Создайте имя файла msm.
             char MsmFileName[512];
             MString::Format(MsmFileName, "%s/%s/%s%s", ResourceSystem::BasePath(), TypePath.c_str(), name, ".msm");
             result = ImportObjFile(f, MsmFileName, OutResource.data);
@@ -359,7 +360,7 @@ bool ImportObjFile(FileHandle &ObjFile, const char *OutMsmFilename, DArray<Geome
 
         u32 NewVertCount = 0;
         Vertex3D* UniquVerts = nullptr;
-        Math::Geometry::DeduplicateVertices(g.VertexCount, reinterpret_cast<Vertex3D*>(g.vertices), g.IndexCount, reinterpret_cast<u32*>(g.indices), NewVertCount, &UniquVerts);
+        Math::Geometry::DeduplicateVertices(g, NewVertCount, &UniquVerts);
 
         // И замените дедуплицированным.
         g.vertices = UniquVerts;
@@ -456,10 +457,10 @@ void ProcessSubobject(DArray<FVec3>& positions, DArray<FVec3>& normals, DArray<F
     }
 
     OutData.VertexCount = vertices.Length();
-    OutData.VertexSize = sizeof(Vertex3D);
+    OutData.VertexSize = vertices.ElementSize();
     OutData.vertices = vertices.MovePtr();
     OutData.IndexCount = indices.Length();
-    OutData.IndexSize = sizeof(u32);
+    OutData.IndexSize = indices.ElementSize();
     OutData.indices = indices.MovePtr();
 }
 

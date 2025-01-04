@@ -61,40 +61,54 @@ private:
     /// @brief Выделенная память под данное количество элементов
     u32 capacity   {};
     /// @brief Размер одного элемента в байтах
+<<<<<<< Updated upstream
     u32 ElementSize{};
+=======
+    u32 elementSize{};
+>>>>>>> Stashed changes
     /// @brief Указатель на область памяти где хранятся элементы
     T* data {nullptr};
 
 // Функции
 public:
+<<<<<<< Updated upstream
     constexpr DArray() : size(), capacity(), ElementSize(sizeof(T)), data(nullptr) {}
     constexpr DArray(T&& value) : size(), capacity(), ElementSize(sizeof(T)), data(nullptr) { PushBack(value); }
     constexpr DArray(u32 size) : size(), capacity(size), ElementSize(sizeof(T)), data(size ? MemorySystem::TAllocate<T>(Memory::DArray, capacity, true) : nullptr){}
+=======
+    constexpr DArray() : size(), capacity(), elementSize(sizeof(T)), data(nullptr) {}
+    constexpr DArray(T&& value) : size(), capacity(), elementSize(sizeof(T)), data(nullptr) { PushBack(value); }
+    constexpr DArray(u32 size) : size(), capacity(size), elementSize(sizeof(T)), data(size ? MemorySystem::TAllocate<T>(Memory::DArray, capacity, true) : nullptr){}
+>>>>>>> Stashed changes
     
     /// @brief Конструктор копирования
     /// @param other динамический массив из которого нужно копировать данные
-    constexpr DArray(const DArray& other) : size(other.size), capacity(other.capacity), ElementSize(other.ElementSize), data() {
+    constexpr DArray(const DArray& other) : size(other.size), capacity(other.capacity), elementSize(other.elementSize), data() {
         if (!capacity) {
             return;
         }
         
+<<<<<<< Updated upstream
         data = reinterpret_cast<T*>(MemorySystem::Allocate(capacity * ElementSize, Memory::DArray));
+=======
+        data = reinterpret_cast<T*>(MemorySystem::Allocate(capacity * elementSize, Memory::DArray));
+>>>>>>> Stashed changes
         for (u32 i = 0; i < size; i++) {
             data[i] = other.data[i];
         }
     }
     /// @brief Конструктор перемещения
     /// @param other динамический массив из которого нужно переместить данные
-    constexpr DArray(DArray&& other) : size(other.size), capacity(other.capacity), ElementSize(other.ElementSize), data(other.data) {
-        other.size = other.capacity = other.ElementSize = 0;
+    constexpr DArray(DArray&& other) : size(other.size), capacity(other.capacity), elementSize(other.elementSize), data(other.data) {
+        other.size = other.capacity = other.elementSize = 0;
         other.data = nullptr;
     }
 
     ~DArray() {
         if(data) {
             Clear();
-            MemorySystem::Free(data, ElementSize * capacity, Memory::DArray);
-            size = capacity = ElementSize = 0;
+            MemorySystem::Free(data, elementSize * capacity, Memory::DArray);
+            size = capacity = elementSize = 0;
             data = nullptr;
         }
     }
@@ -128,7 +142,7 @@ public:
         data = darr.data;
         size = darr.size;
         capacity = darr.capacity;
-        ElementSize = darr.ElementSize;
+        elementSize = darr.elementSize;
         darr.data = nullptr;
         darr.size = 0;
         darr.capacity = 0;
@@ -167,7 +181,11 @@ public:
         
         this->data = data;
         this->size = capacity = size;
+<<<<<<< Updated upstream
         this->ElementSize = sizeof(T);
+=======
+        this->elementSize = sizeof(T);
+>>>>>>> Stashed changes
     }
 
     // ------------------------------------------------------------------------Доступ к элементу
@@ -193,21 +211,30 @@ public:
     void Reserve(u32 NewCap = 0) {
         void* NewData = nullptr;
 
+<<<<<<< Updated upstream
         if (!ElementSize) {
             ElementSize = sizeof(T);
+=======
+        if (!elementSize) {
+            elementSize = sizeof(T);
+>>>>>>> Stashed changes
         }
 
         if (capacity == 0) {
             capacity = NewCap ? NewCap : 1;
 
+<<<<<<< Updated upstream
             data = reinterpret_cast<T*>(MemorySystem::Allocate(capacity * ElementSize, Memory::DArray, true));
+=======
+            data = reinterpret_cast<T*>(MemorySystem::Allocate(capacity * elementSize, Memory::DArray, true));
+>>>>>>> Stashed changes
         } else {
             if (NewCap == 0) {
-                NewData = MemorySystem::Realloc(data, capacity * ElementSize, capacity * 2 * ElementSize, Memory::DArray);
+                NewData = MemorySystem::Realloc(data, capacity * elementSize, capacity * 2 * elementSize, Memory::DArray);
                 
                 capacity = NewData ? capacity *= 2 : capacity;
             } else {
-                NewData = MemorySystem::Realloc(data, capacity * ElementSize, NewCap * ElementSize, Memory::DArray);
+                NewData = MemorySystem::Realloc(data, capacity * elementSize, NewCap * elementSize, Memory::DArray);
                 capacity = NewCap;
             }
 
@@ -216,7 +243,15 @@ public:
                 return;
             }
             data = NewData ? reinterpret_cast<T*>(NewData) : data;
-            MemorySystem::ZeroMem(data + size, (capacity - size) * ElementSize);
+            MemorySystem::ZeroMem(data + size, (capacity - size) * elementSize);
+        }
+    }
+
+    /// @brief Уменьшает емкость(capacity) массива до размера(size)
+    void ShrinkToFit() {
+        if (capacity > size) {
+            MemorySystem::Free(data + size, (capacity - size) * elementSize, Memory::DArray);
+            capacity = size;
         }
     }
 
@@ -231,8 +266,15 @@ public:
         return size;
     }
     /// @return количество зарезервированных ячеек памяти типа Т
+<<<<<<< Updated upstream
     constexpr u32 Capacity() const noexcept {
+=======
+    constexpr const u32& Capacity() const noexcept {
+>>>>>>> Stashed changes
         return capacity;
+    }
+    constexpr const u32& ElementSize() const noexcept {
+        return elementSize;
     }
     //-----------------------------------------------------------------------------------Емкость
     // Модифицирующие методы--------------------------------------------------------------------
@@ -312,7 +354,11 @@ public:
         
         // Если не последний элемент, вырезаем запись и копируем остальное внутрь. ЗАДАЧА: оптимизироваать
         if (index != size - 1) {
+<<<<<<< Updated upstream
             MemorySystem::CopyMem(data + index, data + index + 1, (size - index) * ElementSize);
+=======
+            MemorySystem::CopyMem(data + index, data + index + 1, (size - index) * elementSize);
+>>>>>>> Stashed changes
         }
         size--;
     }
@@ -344,6 +390,7 @@ public:
     /// @return указатель на данные
     T* MovePtr() {
         T* ptr = data;
+        ShrinkToFit();
         data = nullptr;
         size = capacity = 0;
         return ptr;

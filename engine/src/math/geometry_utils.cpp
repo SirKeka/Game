@@ -1,5 +1,5 @@
 #include "geometry_utils.hpp"
-#include "containers/darray.hpp"
+#include "resources/geometry.hpp"
 
 namespace Math
 {
@@ -115,19 +115,22 @@ namespace Math
 
     }
 */
-    void Geometry::DeduplicateVertices(u32 VertexCount, Vertex3D *vertices, u32 IndexCount, u32 *indices, u32 &OutVertexCount, Vertex3D **OutVertices)
+    void Geometry::DeduplicateVertices(GeometryConfig& geometry, u32 &OutVertexCount, Vertex3D **OutVertices)
     {
         // Создайте новые массивы для размещения коллекции.
-        Vertex3D* UniqueVerts = new Vertex3D[VertexCount];
+        auto vertices = reinterpret_cast<Vertex3D*>(geometry.vertices);
+        auto indices = reinterpret_cast<u32*>(geometry.indices);
+        u64 VertexSize = geometry.VertexCount * geometry.VertexSize;
+        auto UniqueVerts = reinterpret_cast<Vertex3D*>(MemorySystem::Allocate(VertexSize, Memory::Array, true));
         OutVertexCount = 0;
 
         u32 FoundCount = 0;
-        for (u32 v = 0; v < VertexCount; ++v) {
+        for (u32 v = 0; v < geometry.VertexCount; ++v) {
             bool found = false;
             for (u32 u = 0; u < OutVertexCount; ++u) {
                 if (vertices[v] == UniqueVerts[u]) {
                     // Переназначить индексы, _не_ копировать
-                    ReassignIndex(IndexCount, indices, v - FoundCount, u);
+                    ReassignIndex(geometry.IndexCount, indices, v - FoundCount, u);
                     found = true;
                     FoundCount++;
                     break;
@@ -142,14 +145,14 @@ namespace Math
         }
 
         // Выделить новый массив вершин
-        *OutVertices = new Vertex3D[OutVertexCount];
+        *OutVertices = reinterpret_cast<Vertex3D*>(MemorySystem::Allocate(OutVertexCount * geometry.VertexSize, Memory::Array, true));
         // Копировать уникальные
         MemorySystem::CopyMem(*OutVertices, UniqueVerts, sizeof(Vertex3D) * (OutVertexCount));
         // Уничтожить временный массив
-        delete[] UniqueVerts;
+        MemorySystem::Free(UniqueVerts, VertexSize, Memory::Array);
 
-        u32 RemovedCount = VertexCount - OutVertexCount;
-        MDEBUG("Geometry::DeduplicateVertices: удалено %d вершин, изначально/сейчас %d/%d.", RemovedCount, VertexCount, OutVertexCount);
+        u32 RemovedCount = geometry.VertexCount - OutVertexCount;
+        MDEBUG("Geometry::DeduplicateVertices: удалено %d вершин, изначально/сейчас %d/%d.", RemovedCount, geometry.VertexCount, OutVertexCount);
     }
 } // namespace Math
 
