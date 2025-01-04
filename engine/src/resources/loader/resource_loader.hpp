@@ -4,6 +4,7 @@
 #include "resources/font_resource.hpp"
 #include "resources/geometry.hpp"
 #include "resources/shader.hpp"
+#include "resources/simple_scene_config.h"
 
 /// @brief Общая структура ресурса. Все загрузчики ресурсов загружают в них данные.
 /// @tparam T 
@@ -17,14 +18,15 @@ struct Resource {
     constexpr Resource() : LoaderID(), name(nullptr), FullPath(),/* DataSize(), */data() {}
 };
 
-using TextResource       = Resource<MString>;
-using BinaryResource     = Resource<DArray<u8>>;
-using ImageResource      = Resource<ImageResourceData>;
-using MaterialResource   = Resource<MaterialConfig>;
-using MeshResource       = Resource<DArray<GeometryConfig>>;
-using ShaderResource     = Resource<Shader::Config>;
-using BitmapFontResource = Resource<BitmapFontResourceData>;
-using SystemFontResource = Resource<SystemFontResourceData>;
+using TextResource        = Resource<MString>;
+using BinaryResource      = Resource<DArray<u8>>;
+using ImageResource       = Resource<ImageResourceData>;
+using MaterialResource    = Resource<MaterialConfig>;
+using MeshResource        = Resource<DArray<GeometryConfig>>;
+using ShaderResource      = Resource<Shader::Config>;
+using BitmapFontResource  = Resource<BitmapFontResourceData>;
+using SystemFontResource  = Resource<SystemFontResourceData>;
+using SimpleSceneResource = Resource<SimpleSceneConfig>;
 //using CustomResource = Resource<>;
 
 namespace eResource
@@ -38,6 +40,7 @@ namespace eResource
         Shader,      // Тип ресурса Shader (или, точнее, конфигурация шейдера).
         BitmapFont,  // Тип ресурса растрового шрифта.
         SystemFont,  // Тип ресурса системного шрифта.
+        SimpleScene, // Простой тип ресурса сцены.
         Custom,      // Тип пользовательского ресурса. Используется загрузчиками вне основного движка.
 
         Invalid = 255
@@ -68,10 +71,10 @@ struct ResourceLoader
         id = INVALID::ID;
     };
 
-    void Create(eResource::Type type, const MString& CustomType, MString&& TypePath) {
+    void Create(eResource::Type type, MString&& CustomType, MString&& TypePath) {
         this->id = INVALID::ID;
         this->type = type;
-        this->CustomType = CustomType;
+        this->CustomType = static_cast<MString&&>(CustomType);
         this->TypePath = static_cast<MString&&>(TypePath);
     }
 
@@ -85,6 +88,7 @@ struct ResourceLoader
     bool Load(const char* name, void* params,     ShaderResource& OutResource);
     bool Load(const char* name, void* params, BitmapFontResource& OutResource);
     bool Load(const char* name, void* params, SystemFontResource& OutResource);
+    bool Load(const char* name, void* params, SimpleSceneResource& OutResource);
     //bool Load(const char* name, void* params, CustomResource& OutResource);
     
     void Unload(TextResource&       resource);
@@ -95,6 +99,7 @@ struct ResourceLoader
     void Unload(ShaderResource&     resource);
     void Unload(BitmapFontResource& resource);
     void Unload(SystemFontResource& resource);
+    void Unload(SimpleSceneResource& resource);
 
     template<typename T>
     bool ResourceUnload(Resource<T> &resource, Memory::Tag tag)

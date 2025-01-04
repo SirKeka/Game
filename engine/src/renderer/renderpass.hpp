@@ -84,6 +84,8 @@ struct Renderpass
 {
     u16 id;                 // Идентификатор прохода рендеринга.
 
+    MString name;
+
     FVec4 RenderArea;       // Текущая область рендеринга прохода рендеринга.
     FVec4 ClearColour;      // Чистый цвет, используемый для этого прохода рендеринга.
 
@@ -93,10 +95,11 @@ struct Renderpass
 
     void* InternalData;     // Внутренние данные прохода рендеринга.
 
-    constexpr Renderpass() : id(INVALID::U16ID), RenderArea(), ClearColour(), ClearFlags(), RenderTargetCount(), targets(nullptr), InternalData(nullptr) {}
+    constexpr Renderpass() : id(INVALID::U16ID), name(), RenderArea(), ClearColour(), ClearFlags(), RenderTargetCount(), targets(nullptr), InternalData(nullptr) {}
     constexpr Renderpass(const RenderpassConfig& config)
     : 
     id(INVALID::U16ID), 
+    name(config.name),
     RenderArea(config.RenderArea), 
     ClearColour(config.ClearColour), 
     ClearFlags(config.ClearFlags), 

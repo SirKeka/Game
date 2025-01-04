@@ -23,7 +23,8 @@ void GameOnYaw(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers,
     } else if (key == Keys::RIGHT || key == Keys::D) {
         f = -1.F;
     }
-    state->WorldCamera->Yaw(f * state->DeltaTime);
+    auto DeltaTime = GameInst->engine->GetFrameData().DeltaTime;
+    state->WorldCamera->Yaw(f * DeltaTime);
 }
 
 void GameOnPitch(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) {
@@ -36,49 +37,56 @@ void GameOnPitch(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifier
     } else if (key == Keys::DOWN) {
         f = -1.F;
     }
-    state->WorldCamera->Pitch(f * state->DeltaTime);
+    auto DeltaTime = GameInst->engine->GetFrameData().DeltaTime;
+    state->WorldCamera->Pitch(f * DeltaTime);
 }
 
 void GameOnMoveForward(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) {
     auto GameInst = reinterpret_cast<Application*>(UserData);
     auto state = reinterpret_cast<Game*>(GameInst->state);
     static const f32 TempMoveSpeed = 50.F;
-    state->WorldCamera->MoveForward(TempMoveSpeed * state->DeltaTime);
+    auto DeltaTime = GameInst->engine->GetFrameData().DeltaTime;
+    state->WorldCamera->MoveForward(TempMoveSpeed * DeltaTime);
 }
 
 void GameOnMoveBackward(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) {
     auto GameInst = reinterpret_cast<Application*>(UserData);
     auto state = reinterpret_cast<Game*>(GameInst->state);
     static const f32 TempMoveSpeed = 50.F;
-    state->WorldCamera->MoveBackward(TempMoveSpeed * state->DeltaTime);
+    auto DeltaTime = GameInst->engine->GetFrameData().DeltaTime;
+    state->WorldCamera->MoveBackward(TempMoveSpeed * DeltaTime);
 }
 
 void GameOnMoveLeft(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) {
     auto GameInst = reinterpret_cast<Application*>(UserData);
     auto state = reinterpret_cast<Game*>(GameInst->state);
     static const f32 TempMoveSpeed = 50.F;
-    state->WorldCamera->MoveLeft(TempMoveSpeed * state->DeltaTime);
+    auto DeltaTime = GameInst->engine->GetFrameData().DeltaTime;
+    state->WorldCamera->MoveLeft(TempMoveSpeed * DeltaTime);
 }
 
 void GameOnMoveRight(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) {
     auto GameInst = reinterpret_cast<Application*>(UserData);
     auto state = reinterpret_cast<Game*>(GameInst->state);
-    static const f32 TempMoveSpeed = 50.0f;
-    state->WorldCamera->MoveRight(TempMoveSpeed * state->DeltaTime);
+    static const f32 TempMoveSpeed = 50.F;
+    auto DeltaTime = GameInst->engine->GetFrameData().DeltaTime;
+    state->WorldCamera->MoveRight(TempMoveSpeed * DeltaTime);
 }
 
 void GameOnMoveUp(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) {
     auto GameInst = reinterpret_cast<Application*>(UserData);
     auto state = reinterpret_cast<Game*>(GameInst->state);
-    static const f32 TempMoveSpeed = 50.0f;
-    state->WorldCamera->MoveUp(TempMoveSpeed * state->DeltaTime);
+    static const f32 TempMoveSpeed = 50.F;
+    auto DeltaTime = GameInst->engine->GetFrameData().DeltaTime;
+    state->WorldCamera->MoveUp(TempMoveSpeed * DeltaTime);
 }
 
 void GameOnMoveDown(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) {
     auto GameInst = reinterpret_cast<Application*>(UserData);
     auto state = reinterpret_cast<Game*>(GameInst->state);
-    static const f32 TempMoveSpeed = 50.0f;
-    state->WorldCamera->MoveDown(TempMoveSpeed * state->DeltaTime);
+    static const f32 TempMoveSpeed = 50.F;
+    auto DeltaTime = GameInst->engine->GetFrameData().DeltaTime;
+    state->WorldCamera->MoveDown(TempMoveSpeed * DeltaTime);
 }
 
 void GameOnConsoleChangeVisibility(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) {
@@ -131,10 +139,12 @@ void GameOnConsoleScroll(Keys key, Keymap::EntryBindType type, Keymap::Modifier 
 }
 
 void GameOnConsoleScrollHold(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) {
-    auto state = reinterpret_cast<Game*>(UserData);
+    auto GameInst = reinterpret_cast<Application*>(UserData);
+    auto state = reinterpret_cast<Game*>(GameInst->state);
+    auto DeltaTime = GameInst->engine->GetFrameData().DeltaTime;
 
     static f32 AccumulatedTime = 0.F;
-    AccumulatedTime += state->DeltaTime;
+    AccumulatedTime += DeltaTime;
     if (AccumulatedTime >= 0.1F) {
         if (key == Keys::PAGEUP) {
             state->console.MoveUp();
@@ -240,8 +250,8 @@ void GameSetupKeymaps(Application* app) {
 
     state->ConsoleKeymap.BindingAdd(Keys::PAGEUP,   Keymap::BindTypePress, Keymap::ModifierNoneBit, &state->console, GameOnConsoleScroll);
     state->ConsoleKeymap.BindingAdd(Keys::PAGEDOWN, Keymap::BindTypePress, Keymap::ModifierNoneBit, &state->console, GameOnConsoleScroll);
-    state->ConsoleKeymap.BindingAdd(Keys::PAGEUP,   Keymap::BindTypeHold,  Keymap::ModifierNoneBit, state, GameOnConsoleScrollHold);
-    state->ConsoleKeymap.BindingAdd(Keys::PAGEDOWN, Keymap::BindTypeHold,  Keymap::ModifierNoneBit, state, GameOnConsoleScrollHold);
+    state->ConsoleKeymap.BindingAdd(Keys::PAGEUP,   Keymap::BindTypeHold,  Keymap::ModifierNoneBit, app, GameOnConsoleScrollHold);
+    state->ConsoleKeymap.BindingAdd(Keys::PAGEDOWN, Keymap::BindTypeHold,  Keymap::ModifierNoneBit, app, GameOnConsoleScrollHold);
 
     state->ConsoleKeymap.BindingAdd(Keys::UP,       Keymap::BindTypePress, Keymap::ModifierNoneBit, &state->console, GameOnConsoleChangeHistory);
     state->ConsoleKeymap.BindingAdd(Keys::DOWN,     Keymap::BindTypePress, Keymap::ModifierNoneBit, &state->console, GameOnConsoleChangeHistory);

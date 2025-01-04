@@ -27,7 +27,9 @@ struct Vertex3D
     FVec4 colour;   // Цвет вершины
     FVec3 tangent;  // Касательная вершины.
 
-    const bool operator==(const Vertex3D& v3d) {
+    constexpr Vertex3D() : position(), normal(), texcoord(), colour(), tangent() {}
+
+    bool operator==(const Vertex3D& v3d) const {
         if (position == v3d.position && normal == v3d.normal && texcoord == v3d.texcoord && colour == v3d.colour && tangent == v3d.tangent) {
             return true;
         }

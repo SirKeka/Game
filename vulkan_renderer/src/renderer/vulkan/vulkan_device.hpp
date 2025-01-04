@@ -54,10 +54,10 @@ public:
 
 private:
     struct VulkanPhysicalDeviceQueueFamilyInfo {
-        u32 GraphicsFamilyIndex;
-        u32 PresentFamilyIndex;
-        u32 ComputeFamilyIndex;
-        u32 TransferFamilyIndex;
+        i32 GraphicsFamilyIndex;
+        i32 PresentFamilyIndex;
+        i32 ComputeFamilyIndex;
+        i32 TransferFamilyIndex;
     };
 
     bool SelectPhysicalDevice(VulkanAPI* VkAPI);

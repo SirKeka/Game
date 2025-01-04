@@ -12,11 +12,6 @@
 
 template class DArray<MString>;
 
-struct ApplicationFrameData {
-    // Динамический массив мировой геометрии, которая отрисовывается в этом кадре.
-    DArray<GeometryRenderData> WorldGeometries;
-};
-
 struct RenderPacket;
 
 // Представляет базовое состояние игры. Вызывается для создания приложением.
@@ -26,8 +21,6 @@ struct Application
     Engine* engine;                             // Указатель на блок памяти в котором хранится движок. Создается и управляется движком.
     void* state;                                // Указатель на блок памяти в котором хранится состояние игры. Создается и управляется игрой.
     u64 StateMemoryRequirement;                 // Требуемый размер для игрового состояния.
-    LinearAllocator FrameAllocator;             // Распределитель, используемый для распределений, которые необходимо делать в каждом кадре. Содержимое стирается в начале кадра.
-    DArray<GeometryRenderData> WorldGeometries; // ApplicationFrameData FrameData;        // Данные, которые создаются, используются и удаляются в каждом кадре
     
     // ЗАДАЧА: Переместить это в лучшее место...
     DynamicLibrary RendererLibrary;
@@ -44,13 +37,13 @@ struct Application
     /// @brief Функция обновления игры
     /// @param DeltaTime Время в секундах с момента последнего кадра.
     /// @return true в случае успеха; в противном случае false.
-    bool (*Update)(Application& app, f32 DeltaTime) = nullptr;
+    bool (*Update)(Application& app, const FrameData& rFrameData) = nullptr;
 
     /// @brief Функция рендеринга игры
     /// @param packet ссылка на пакет, который будет заполнен игрой.
     /// @param DeltaTime Время в секундах с момента последнего кадра.
     /// @return true в случае успеха; в противном случае false.
-    bool (*Render)(Application& app, RenderPacket& packet, f32 DeltaTime) = nullptr;
+    bool (*Render)(Application& app, RenderPacket& packet, FrameData& rFrameData) = nullptr;
 
     /// @brief Функция изменения размера окна игры
     /// @param Width ширина окна в пикселях.
@@ -90,8 +83,6 @@ struct Application
     engine(nullptr),
     state(nullptr),
     StateMemoryRequirement(),
-    FrameAllocator(),
-    WorldGeometries(),
     RendererLibrary(),
     GameLibrary(),
     Boot(nullptr),

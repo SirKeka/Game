@@ -13,6 +13,7 @@ typedef bool (*PFN_JobStart)(void*, void*);
 /// @brief Определение указателя функции для завершения задания.
 typedef void (*PFN_JobOnComplete)(void*);
 
+struct FrameData;
 
 namespace Job {
     /// @brief Описывает тип задания.
@@ -83,7 +84,7 @@ namespace JobSystem
     // JobSystem* Instance() { return state; }
 
     /// @brief Обновляет систему заданий. Должно происходить один раз в цикл обновления.
-    bool Update(void* state, f32 DeltaTime);
+    bool Update(void* state, const FrameData& rFrameData);
     /// @brief Отправляет предоставленное задание в очередь на выполнение.
     /// @param info Описание задания, которое должно быть выполнено.
     MAPI void Submit(Job::Info& info);

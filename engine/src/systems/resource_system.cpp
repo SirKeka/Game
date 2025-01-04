@@ -57,9 +57,10 @@ void ResourceSystem::Shutdown()
     }
 }
 
-bool ResourceSystem::RegisterLoader(eResource::Type type, const MString &CustomType, const char *TypePath)
+bool ResourceSystem::RegisterLoader(eResource::Type type, MString &&CustomType, const char *TypePath)
 {
     // Убедитесь, что загрузчики данного типа еще не существуют.
+    i32 index = -1;
     for (u32 i = 0; i < state->MaxLoaderCount; ++i) {
         auto& l = state->RegisteredLoaders[i];
         if (l.id != INVALID::ID) {
@@ -70,18 +71,36 @@ bool ResourceSystem::RegisterLoader(eResource::Type type, const MString &CustomT
                 MERROR("ResourceSystem::RegisterLoader — загрузчик пользовательского типа %s уже существует и не будет зарегистрирован.", CustomType.c_str());
                 return false;
             }
+        } else if (index == -1) {
+            index = i;
         }
+        
     }
-    for (u32 i = 0; i < state->MaxLoaderCount; ++i) {
-        if (state->RegisteredLoaders[i].id == INVALID::ID) {
-            state->RegisteredLoaders[i].Create(type, CustomType, TypePath);
-            state->RegisteredLoaders[i].id = i;
-            MTRACE("Загрузчик зарегистрирован.");
-            return true;
-        }
+
+    if (state->RegisteredLoaders[index].id == INVALID::ID) {
+        state->RegisteredLoaders[index].Create(type, static_cast<MString&&>(CustomType), TypePath);
+        state->RegisteredLoaders[index].id = index;
+        MTRACE("Загрузчик зарегистрирован.");
+        return true;
     }
 
     return false;
+}
+
+template <typename T>
+bool ResourceSystem::Load(const char *name, eResource::Type type, void *params, T &OutResource)
+{
+    auto& l = state->RegisteredLoaders[type];
+    if (type != eResource::Type::Custom) {
+        if (l.id != INVALID::ID && l.type == type) {
+            return l.Load(name, params, OutResource);
+        }
+    }
+
+    OutResource.LoaderID = INVALID::ID;
+    MERROR("ResourceSystem::Load — загрузчик для типа %d не найден.", type);
+    return false;
+
 }
 
 template<typename T>
@@ -89,8 +108,8 @@ bool ResourceSystem::Load(const char *name, const char *CustomType, void* params
 {
     if (CustomType && MString::Length(CustomType) > 0) {
         // Выбор загрузчика.
-        for (u32 i = 0; i < MaxLoaderCount; ++i) {
-            auto& l = RegisteredLoaders[i];
+        for (u32 i = 0; i < state->MaxLoaderCount; ++i) {
+            auto& l = state->RegisteredLoaders[i];
             if (l.id != INVALID::ID && l.type == eResource::Type::Custom && l.CustomType.Comparei(CustomType)) {
                 return l.Load(name, params, OutResource);
             }
@@ -100,6 +119,17 @@ bool ResourceSystem::Load(const char *name, const char *CustomType, void* params
     OutResource.LoaderID = INVALID::ID;
     MERROR("ResourceSystem::LoadCustom — загрузчик для типа %s не найден.", CustomType);
     return false;
+}
+
+template<typename T>
+void ResourceSystem::Unload(T &resource)
+{
+    if (resource.LoaderID != INVALID::ID) {
+        auto& l = state->RegisteredLoaders[resource.LoaderID];
+        if (l.id != INVALID::ID) {
+            l.Unload(resource);
+        }
+    }
 }
 
 const char *ResourceSystem::BasePath()
@@ -112,20 +142,37 @@ const char *ResourceSystem::BasePath()
     return "";
 }
 
-ResourceLoader &ResourceSystem::GetLoader(u32 index)
-{
-    return state->RegisteredLoaders[index];
-}
-
 void RegisterLoaders()
 {
+    // ЗАДАЧА: возможно все эти "загрузчики" не нужны в таком случае их нужно будет удалить
     // ПРИМЕЧАНИЕ: Здесь можно автоматически зарегистрировать известные типы загрузчиков.
-    ResourceSystem::RegisterLoader(eResource::Type::Text,       MString(),          "");
-    ResourceSystem::RegisterLoader(eResource::Type::Binary,     MString(),          "");
-    ResourceSystem::RegisterLoader(eResource::Type::Image,      MString(),  "textures");
-    ResourceSystem::RegisterLoader(eResource::Type::Material,   MString(), "materials");
-    ResourceSystem::RegisterLoader(eResource::Type::Mesh,       MString(),    "models");
-    ResourceSystem::RegisterLoader(eResource::Type::Shader,     MString(),   "shaders");
-    ResourceSystem::RegisterLoader(eResource::Type::BitmapFont, MString(),     "fonts");
-    ResourceSystem::RegisterLoader(eResource::Type::SystemFont, MString(),     "fonts");
+    ResourceSystem::RegisterLoader(eResource::Type::Text,        MString(),          "");
+    ResourceSystem::RegisterLoader(eResource::Type::Binary,      MString(),          "");
+    ResourceSystem::RegisterLoader(eResource::Type::Image,       MString(),  "textures");
+    ResourceSystem::RegisterLoader(eResource::Type::Material,    MString(), "materials");
+    ResourceSystem::RegisterLoader(eResource::Type::Mesh,        MString(),    "models");
+    ResourceSystem::RegisterLoader(eResource::Type::Shader,      MString(),   "shaders");
+    ResourceSystem::RegisterLoader(eResource::Type::BitmapFont,  MString(),     "fonts");
+    ResourceSystem::RegisterLoader(eResource::Type::SystemFont,  MString(),     "fonts");
+    ResourceSystem::RegisterLoader(eResource::Type::SimpleScene, MString(),    "scenes");
 }
+
+template bool ResourceSystem::Load<TextResource>       (const char *name, eResource::Type type, void *params, TextResource        &OutResource);
+template bool ResourceSystem::Load<BinaryResource>     (const char *name, eResource::Type type, void *params, BinaryResource      &OutResource);
+template bool ResourceSystem::Load<ImageResource>      (const char *name, eResource::Type type, void *params, ImageResource       &OutResource);
+template bool ResourceSystem::Load<MaterialResource>   (const char *name, eResource::Type type, void *params, MaterialResource    &OutResource);
+template bool ResourceSystem::Load<MeshResource>       (const char *name, eResource::Type type, void *params, MeshResource        &OutResource);
+template bool ResourceSystem::Load<ShaderResource>     (const char *name, eResource::Type type, void *params, ShaderResource      &OutResource);
+template bool ResourceSystem::Load<BitmapFontResource> (const char *name, eResource::Type type, void *params, BitmapFontResource  &OutResource);
+template bool ResourceSystem::Load<SystemFontResource> (const char *name, eResource::Type type, void *params, SystemFontResource  &OutResource);
+template bool ResourceSystem::Load<SimpleSceneResource>(const char *name, eResource::Type type, void *params, SimpleSceneResource &OutResource);
+
+template void ResourceSystem::Unload<TextResource>       (TextResource        &resource);
+template void ResourceSystem::Unload<BinaryResource>     (BinaryResource      &resource);
+template void ResourceSystem::Unload<ImageResource>      (ImageResource       &resource);
+template void ResourceSystem::Unload<MaterialResource>   (MaterialResource    &resource);
+template void ResourceSystem::Unload<MeshResource>       (MeshResource        &resource);
+template void ResourceSystem::Unload<ShaderResource>     (ShaderResource      &resource);
+template void ResourceSystem::Unload<BitmapFontResource> (BitmapFontResource  &resource);
+template void ResourceSystem::Unload<SystemFontResource> (SystemFontResource  &resource);
+template void ResourceSystem::Unload<SimpleSceneResource>(SimpleSceneResource &resource);

@@ -178,7 +178,7 @@ bool ImportFontConfigFile(FileHandle &f, const MString &TypePath, const char *Ou
         } else if (TrimmedVarName.Comparei("face")) {
             // Считайте шрифт и сохраните его для дальнейшего использования.
             SystemFontFace NewFace;
-            MString::Copy(NewFace.name, TrimmedValue, 255);
+            MString::Copy(NewFace.name, TrimmedValue.c_str(), 255);
             OutResource.fonts.PushBack(NewFace);
         }
 

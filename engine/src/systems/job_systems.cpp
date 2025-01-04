@@ -297,7 +297,7 @@ void ProcessQueue(RingQueue& queue, MMutex& QueueMutex) {
     }
 }
 
-bool JobSystem::Update(void* state, f32 DeltaTime)
+bool JobSystem::Update(void* state, const FrameData& rFrameData)
 {
     if (!state || !pJobSystem->running) {
         return false;

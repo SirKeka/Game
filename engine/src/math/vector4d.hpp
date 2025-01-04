@@ -45,6 +45,8 @@ public:
 #endif
 	}
 
+	constexpr Vector4D(const Vector4D& v) : x(v.x), y(v.y), z(v.z), w(v.w) {}
+
 	Vector4D& Set(T x, T y, T z, T w) {
 		this->x = x;
 		this->y = y;
@@ -99,7 +101,7 @@ public:
 		return false;
 	}
 
-	const bool operator==(const Vector4D& v) const {
+	bool operator==(const Vector4D& v) const {
 		if (Math::abs(x - v.x) > M_FLOAT_EPSILON) {
 			return false;
 		}
@@ -171,13 +173,4 @@ template<typename T>
 MINLINE T Dot(const Vector4D<T>& a, const Vector4D<T>& b)
 {
 	return a.x * b.x + a.y *b.y + a.z * b.z + a.w * b.w;
-}
-
-template<typename T>
-MINLINE Vector4D<T> operator *(const Vector4D<T>& v, const Matrix4D& m) 
-{
-	return Vector4D<T>(v.x * m.data[0]  + v.y * m.data[1]  + v.z * m.data[2]  + v.w * m.data[3],
-        		 	   v.x * m.data[4]  + v.y * m.data[5]  + v.z * m.data[6]  + v.w * m.data[7],
-        			   v.x * m.data[8]  + v.y * m.data[9]  + v.z * m.data[10] + v.w * m.data[11],
-				 	   v.x * m.data[12] + v.y * m.data[13] + v.z * m.data[14] + v.w * m.data[15]);
 }

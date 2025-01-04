@@ -3,9 +3,11 @@
 #include "defines.hpp"
 #include "memory/linear_allocator.hpp"
 
+struct FrameData;
+
 using PFN_SystemInitialize = bool(*)(u64&, void*, void*);
 using PFN_SystemShutdown   = void(*)(/* void* */); 
-using PFN_SystemUpdate     = bool(*)(void*, f32);
+using PFN_SystemUpdate     = bool(*)(void*, const FrameData&);
 
 constexpr u32 M_SYSTEM_TYPE_MAX_COUNT = 512;
 
@@ -66,7 +68,7 @@ public:
     static bool Initialize(SystemsManager* manager, ApplicationConfig& AppConfig);
     bool PostBootInitialize(ApplicationConfig& AppConfig);
 
-    bool Update(u32 DeltaTime);
+    bool Update(const FrameData& rFrameData);
 
     bool Register(u16 type, PFN_SystemInitialize initialize = nullptr, PFN_SystemShutdown shutdown = nullptr, PFN_SystemUpdate update = nullptr, void* config = nullptr);
 

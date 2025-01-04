@@ -79,7 +79,7 @@ private:
     void* AllocatorBlock{nullptr};
     MMutex AllocationMutex{};                   // Мьютекс для выделений/освобождений
     
-    static MemorySystem* state;
+    static inline MemorySystem* state;
 
     MemorySystem(u64 TotalAllocSize, u64 AllocatorMemoryRequirement, void* AllocatorBlock);
 public:
@@ -119,8 +119,9 @@ public:
     /// @param Size Старый размер блока для рассчета, т.к. мы не храним всю инфу о блоке
     /// @param NewSize новый размер блока памяти.
     /// @param tag указывает на использование выделенного блока.
+    /// @param copy указывает на то что нужно ли копировать блок памяти в новый указатель. ПРИМЕЧАНИЕ: поумолчанию true
     /// @return возвращает указатель на этот или новый блок памяти, если старый не удалось увеличить, или nullptr в результате неудачи.
-    static void* Realloc(void* ptr, u64 Size, u64 NewSize, Memory::Tag tag);
+    static void* Realloc(void* ptr, u64 Size, u64 NewSize, Memory::Tag tag, bool copy = true);
 
     /// @brief Сообщает о выделении, связанном с приложением, но выполненном извне. Это можно сделать для элементов, выделенных в библиотеках сторонних поставщиков, например, для отслеживания выделений, но не их выполнения.
     /// @param size размер выделения.
@@ -144,7 +145,7 @@ public:
     /// @param size размер блока, который необходимо освободить.
     /// @param alignment указывает на то является ли освобождаемый блок выровненным 
     /// @param tag Тег, указывающий использование блока.
-    static void FreeAligned(void* block, u64 size, bool alignment, Memory::Tag tag, bool def = false);
+    static void FreeAligned(void* block, u64 size, u16 alignment, Memory::Tag tag, bool def = false);
 
     /// @brief Сообщает об освобождении, связанном с приложением, но выполненном извне. Это можно сделать для элементов, выделенных в сторонних библиотеках, например, для отслеживания освобождений, но не их выполнения.
     /// @param size Размер в байтах.

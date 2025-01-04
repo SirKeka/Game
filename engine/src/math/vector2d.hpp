@@ -58,7 +58,7 @@ public:
     Vector2D& operator -=(const Vector2D& v);
     Vector2D& operator *=(const Vector2D& v);
     Vector2D& operator /=(const Vector2D& v);
-    const bool operator==(const Vector2D& v) const {
+    bool operator==(const Vector2D& v) const {
         if (Math::abs(x - v.x) > M_FLOAT_EPSILON) {
 			return false;
 		}
@@ -192,11 +192,11 @@ MINLINE Vector2D<T>& VectorNormalize(const Vector2D<T>& v)
 /// @return true, если в пределах допустимого; в противном случае false
 template <typename T>
 MINLINE bool Compare(const Vector2D<T> &a, const Vector2D<T> &b, T tolerance) {
-    if (M::Math::abs(a.x - b.x) > tolerance) {
+    if (Math::abs(a.x - b.x) > tolerance) {
         return false;
     }
 
-    if (M::Math::abs(a.y - b.y) > tolerance) {
+    if (Math::abs(a.y - b.y) > tolerance) {
         return false;
     }
 

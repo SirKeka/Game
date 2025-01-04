@@ -12,6 +12,7 @@
 #include <core/identifier.hpp>
 #include <systems/geometry_system.hpp>
 #include <systems/render_view_system.hpp>
+#include <systems/resource_system.hpp>
 #include <renderer/views/render_view_pick.hpp>
 #include "debug_console.hpp"
 // ЗАДАЧА: конец временного кода
@@ -19,6 +20,7 @@
 bool GameConfigureRenderViews(Application& app);
 void ApplicationRegisterEvents(Application& app);
 void ApplicationUnregisterEvents(Application& app);
+static bool LoadMainScene(Application* app);
 
 bool GameOnEvent(u16 code, void *sender, void *ListenerInst, EventContext context)
 {
@@ -69,23 +71,19 @@ bool GameOnDebugEvent(u16 code, void *sender, void *ListenerInst, EventContext c
         }
         return true;
     } else if (code == EventSystem::DEBUG1) {
-        if (!state->ModelsLoaded) {
-            MDEBUG("Загружаем модели...");
-            state->ModelsLoaded = true;
-            if (!state->CarMesh->LoadFromResource("falcon")) {
-                MERROR("Не удалось загрузить Falcon Mesh!");
-            }
-            if (!state->SponzaMesh->LoadFromResource("sponza")) {
-                MERROR("Не удалось загрузить Falcon Mesh!");
+        if (state->MainScene.state < SimpleScene::State::Loading) {
+            MDEBUG("Загрузка основной сцены...");
+            
+            if (!LoadMainScene(GameInst)) {
+                MERROR("Не удалось загрузить основную сцену!");
             }
         }
         return true;
     } else if (code == EventSystem::DEBUG2) {
-        if (state->ModelsLoaded) {
-            MDEBUG("Выгрузка моделей...");
-            state->CarMesh->Unload();
-            state->SponzaMesh->Unload();
-            state->ModelsLoaded = false;
+        if (state->MainScene.state == SimpleScene::State::Loaded) {
+            MDEBUG("Выгрузка сцены...");
+            state->MainScene.Unload(false);
+            MDEBUG("Выполнено.")
         }
         return true;
     }
@@ -124,8 +122,7 @@ bool ApplicationBoot(Application& app)
     app.state = MemorySystem::Allocate(sizeof(Game), Memory::Game);
     app.state = new(app.state) Game();
 
-    // Установка распределителя кадра
-    app.FrameAllocator.Initialize(MEBIBYTES(64));
+    app.AppConfig.AppFrameDataSize = sizeof(TestbedApplicationFrameData);
 
     app.AppConfig.FontConfig.AutoRelease = false;
     app.AppConfig.FontConfig.DefaultBitmapFontCount = 1;
@@ -161,8 +158,12 @@ bool ApplicationInitialize(Application& app)
     auto state = reinterpret_cast<Game*>(app.state);
     state->console.Load();
 
-    // ЗАДАЧА: временная загрузка/подготовка вещей
-    state->ModelsLoaded = false;
+    // Сетки мира
+    // Отменить все сетки.
+    for (u32 i = 0; i < 10; ++i) {
+        state->meshes[i].generation = INVALID::U8ID;
+        state->UiMeshes[i].generation = INVALID::U8ID;
+    }
 
     if (!state->TestText.Create(TextType::Bitmap, "Metrika 21px", 21, "Какой-то тестовый текст 123,\n\tyo!")) {
         MERROR("Не удалось загрузить базовый растровый текст пользовательского интерфейса.");
@@ -176,93 +177,6 @@ bool ApplicationInitialize(Application& app)
         return false;
     }
     state->TestSysText.SetPosition(FVec3(500.F, 550.F, 0.F));
-
-    state->sb.Create("skybox_cube");
-
-    // Мировые сетки
-    // Отменить все сетки.
-    for (u32 i = 0; i < 10; ++i) {
-        state->meshes[i].generation = INVALID::U8ID;
-        state->UiMeshes[i].generation = INVALID::U8ID;
-    }
-
-    u8 MeshCount = 0;
-    // Загрузите конфигурацию и загрузите из нее геометрию.
-    auto& CubeMesh = state->meshes[MeshCount];
-    CubeMesh = Mesh(1, new GeometryID*[1], Transform());
-    auto gConfig = GeometrySystem::GenerateCubeConfig(10.F, 10.F, 10.F, 1.F, 1.F, "test_cube", "test_material");
-    CubeMesh.geometries[0] = GeometrySystem::Acquire(gConfig, true);
-
-    MeshCount++;
-    CubeMesh.generation = 0;
-    CubeMesh.UniqueID = Identifier::AquireNewID(&CubeMesh);
-    // Очистите места для конфигурации геометрии.
-    gConfig.Dispose();
-
-    auto& CubeMesh2 = state->meshes[MeshCount];
-    CubeMesh2 = Mesh(1, new GeometryID*[1], Transform(FVec3(10.F, 0.F, 1.F)));
-    gConfig = GeometrySystem::GenerateCubeConfig(5.F, 5.F, 5.F, 1.F, 1.F, "test_cube2", "test_material");
-    CubeMesh2.geometries[0] = GeometrySystem::Acquire(gConfig, true);
-    CubeMesh2.transform.SetParent(&CubeMesh.transform);
-    MeshCount++;
-    CubeMesh2.generation = 0;
-    CubeMesh2.UniqueID = Identifier::AquireNewID(&CubeMesh2);
-    // Очистите места для конфигурации геометрии.
-    gConfig.Dispose();
-
-    auto& CubeMesh3 = state->meshes[MeshCount];
-    CubeMesh3 = Mesh(1, new GeometryID*[1], Transform(FVec3(5.f, 0.f, 1.f)));
-    gConfig = GeometrySystem::GenerateCubeConfig(2.f, 2.f, 2.f, 1.f, 1.f, "test_cube3", "test_material");
-    CubeMesh3.geometries[0] = GeometrySystem::Acquire(gConfig, true);
-    CubeMesh3.transform.SetParent(&CubeMesh2.transform);
-    MeshCount++;
-    CubeMesh3.generation = 0;
-    CubeMesh3.UniqueID = Identifier::AquireNewID(&CubeMesh3);
-    // Очистите места для конфигурации геометрии.
-    gConfig.Dispose();
-    // Тестовая модель загружается из файла
-    state->CarMesh = &state->meshes[MeshCount];
-    state->CarMesh->UniqueID = Identifier::AquireNewID(&state->CarMesh);
-    state->CarMesh->transform = Transform(FVec3(15.F, 0.F, 1.F));
-    MeshCount++;
-
-    state->SponzaMesh = &state->meshes[MeshCount];
-    state->SponzaMesh->UniqueID = Identifier::AquireNewID(&state->SponzaMesh);
-    state->SponzaMesh->transform = Transform(FVec3(), Quaternion::Identity(), FVec3(0.05F, 0.05F, 0.05F));
-    MeshCount++;
-
-    // ЗАДАЧА: HACK: перемещение кода освещения в ЦП
-    state->DirLight.colour.Set(0.4F, 0.4F, 0.2F, 1.F);
-    state->DirLight.direction.Set(-0.57735F, -0.57735F, -0.57735F, 0.F);
-
-    LightSystem::AddDirectional(&state->DirLight);
-
-    state->PointLights[0].colour.Set(1.F, 0.F, 0.F, 1.F);
-    state->PointLights[0].position.Set(-5.5F, 0.F, -5.5F, 0.F);
-    state->PointLights[0].ConstantF = 1.F;
-    state->PointLights[0].linear = 0.35F;
-    state->PointLights[0].quadratic = 0.44F;
-    state->PointLights[0].padding = 0;
-
-    LightSystem::AddPoint(&state->PointLights[0]);
-
-    state->PointLights[1].colour.Set(0.F, 1.F, 0.F, 1.F);
-    state->PointLights[1].position.Set(5.5F, 0.F, -5.5F, 0.F);
-    state->PointLights[1].ConstantF = 1.F;
-    state->PointLights[1].linear = 0.35F;
-    state->PointLights[1].quadratic = 0.44F;
-    state->PointLights[1].padding = 0;
-
-    LightSystem::AddPoint(&state->PointLights[1]);
-
-    state->PointLights[2].colour.Set(0.F, 0.F, 1.F, 1.F);
-    state->PointLights[2].position.Set(5.5F, 0.F, 5.5F, 0.F);
-    state->PointLights[2].ConstantF = 1.F;
-    state->PointLights[2].linear = 0.35F;
-    state->PointLights[2].quadratic = 0.44F;
-    state->PointLights[2].padding = 0;
-
-    LightSystem::AddPoint(&state->PointLights[2]);
 
     const f32 w = 128.F;
     const f32 h = 49.F;
@@ -317,40 +231,43 @@ bool ApplicationInitialize(Application& app)
     return true;
 }
 
-bool ApplicationUpdate(Application& app, f32 DeltaTime)
+bool ApplicationUpdate(Application& app, const FrameData& rFrameData)
 {
-    // Убедитесь, что это очищено, чтобы избежать утечки памяти.
-    // ЗАДАЧА: Нужна версия этого, которая использует распределитель кадров.
-    if (app.WorldGeometries) {
-        app.WorldGeometries.Clear();
-    }
-
-    app.FrameAllocator.FreeAll();
-
+    // auto AppFrameData = reinterpret_cast<TestbedApplicationFrameData*>(rFrameData.ApplicationFrameData);
     auto state = reinterpret_cast<Game*>(app.state);
 
     state->UpdateClock.Start();
-    state->DeltaTime = DeltaTime;
+
+    if (state->MainScene.state >= SimpleScene::State::Loaded) {
+        if (!state->MainScene.Update(rFrameData)) {
+            MWARN("Не удалось обновить основную сцену.");
+        }
+
+        // Выполните небольшой поворот на первой сетке.
+        Quaternion rotation( FVec3(0.F, 1.F, 0.F), 0.5F * rFrameData.DeltaTime, false );
+        // state->meshes[0].transform.Rotate(rotation);
+
+        // Выполняем аналогичное вращение для второй сетки, если она существует.
+        // «Родительский» второй куб по отношению к первому.
+        // state->meshes[1].transform.Rotate(rotation);
+
+        // Выполняем аналогичное вращение для третьей сетки, если она существует.
+        // «Родительский» второй куб по отношению к первому.
+        // state->meshes[2].transform.Rotate(rotation);
+        
+        if (state->PointLight1) {
+            state->PointLight1->data.colour.Set(
+                (Math::sin(rFrameData.TotalTime + 0.F) + 1.F) * 0.5F,
+                (Math::sin(rFrameData.TotalTime + 0.3F) + 1.F) * 0.5F,
+                (Math::sin(rFrameData.TotalTime + 0.6F) + 1.F) * 0.5F,
+                1.F); 
+            state->PointLight1->data.position.x = Math::sin(rFrameData.TotalTime);
+        }
+    }
 
     // Отслеживайте различия в распределении.
     state->PrevAllocCount = state->AllocCount;
     state->AllocCount = MemorySystem::GetMemoryAllocCount();
-
-    // Отслеживайте различия в распределении.
-    // state->PrevAllocCount = state->AllocCount;
-    // state->AllocCount = GetMemoryAllocCount();
-
-    // Выполните небольшой поворот на первой сетке.
-    Quaternion rotation( FVec3(0.F, 1.F, 0.F), 0.5F * DeltaTime, false );
-    state->meshes[0].transform.Rotate(rotation);
-
-    // Выполняем аналогичное вращение для второй сетки, если она существует.
-    // «Родительский» второй куб по отношению к первому.
-    state->meshes[1].transform.Rotate(rotation);
-
-    // Выполняем аналогичное вращение для второй сетки, если она существует.
-    // «Родительский» второй куб по отношению к первому.
-    state->meshes[2].transform.Rotate(rotation);
 
     // Обновляем растровый текст с позицией камеры. ПРИМЕЧАНИЕ: пока используем камеру по умолчанию.
     auto WorldCamera = CameraSystem::GetDefault();
@@ -369,79 +286,6 @@ bool ApplicationUpdate(Application& app, f32 DeltaTime)
 
     f64 fps, FrameTime;
     Metrics::Frame(fps, FrameTime);
-
-    // Обновите усеченную пирамиду
-    const auto& forward = state->WorldCamera->Forward();
-    const auto& right = state->WorldCamera->Right();
-    const auto& up = state->WorldCamera->Up();
-    // ЗАДАЧА: получите поле зрения камеры, аспект и т. д.
-    state->CameraFrustrum.Create(state->WorldCamera->GetPosition(), forward, right, up, (f32)state->width / state->height, Math::DegToRad(45.F), 0.1F, 1000.F);
-
-    // ПРИМЕЧАНИЕ: начните с разумного значения по умолчанию, чтобы избежать слишком большого количества перераспределений.
-    app.WorldGeometries.Reserve(512);
-    u32 DrawCount = 0;
-    for (u32 i = 0; i < 10; ++i) {
-        auto& m = state->meshes[i];
-        if (m.generation != INVALID::U8ID) {
-            auto model = m.transform.GetWorld();
-
-            for (u32 j = 0; j < m.GeometryCount; ++j) {
-                auto g = m.geometries[j];
-
-                // Расчет ограничивающей сферы.
-                // {
-                //     // Переместите/масштабируйте экстенты.
-                //     auto ExtentsMin = g->extents.MinSize * model;
-                //     auto ExtentsMax = g->extents.MaxSize * model;
-
-                //     f32 min = MMIN(MMIN(ExtentsMin.x, ExtentsMin.y), ExtentsMin.z);
-                //     f32 max = MMAX(MMAX(ExtentsMax.x, ExtentsMax.y), ExtentsMax.z);
-                //     f32 diff = Math::abs(max - min);
-                //     f32 radius = diff * 0.5f;
-
-                //     // Переместите/масштабируйте центр.
-                //     auto center = g->center * model;
-
-                //     if (state->CameraFrustrum.IntersectsSphere(center, radius)) {
-                //         // Добавьте его в список для рендеринга.
-                //         GeometryRenderData data = {};
-                //         data.model = model;
-                //         data.gid = g;
-                //         data.UniqueID = m.UniqueID;
-                //         WorldGeometries.PushBack(data);
-
-                //         DrawCount++;
-                //     }
-                // }
-
-                // Расчет AABB
-                {
-                    // Переместите/масштабируйте экстенты.
-                    // auto ExtentsMin = g->extents.MinSize * model;
-                    auto ExtentsMax = g->extents.MaxSize * model;
-                    
-                    // Переместить/масштабировать центр.
-                    auto center = g->center * model;
-                    FVec3 HalfExtents{
-                        Math::abs(ExtentsMax.x - center.x),
-                        Math::abs(ExtentsMax.y - center.y),
-                        Math::abs(ExtentsMax.z - center.z),
-                    };
-
-                    if (state->CameraFrustrum.IntersectsAABB(center, HalfExtents)) {
-                        // Добавьте его в список для рендеринга.
-                        GeometryRenderData data = {};
-                        data.model = model;
-                        data.gid = g;
-                        data.UniqueID = m.UniqueID;
-                        app.WorldGeometries.PushBack(data);
-
-                        DrawCount++;
-                    }
-                }
-            }
-        }
-    }
 
     const char* VsyncText = RenderingSystem::FlagEnabled(RenderingConfigFlagBits::VsyncEnabledBit) ? "Вкл" : "Выкл";
     char TextBuffer[2048]{};
@@ -463,7 +307,7 @@ bool ApplicationUpdate(Application& app, f32 DeltaTime)
         mouseXNdc,
         MouseYNdc,
         VsyncText,
-        DrawCount,
+        rFrameData.DrawnMeshCount,
         state->HoveredObjectID == INVALID::ID ? "none" : "",
         state->HoveredObjectID == INVALID::ID ? 0 : state->HoveredObjectID
     );
@@ -477,36 +321,40 @@ bool ApplicationUpdate(Application& app, f32 DeltaTime)
     return true;
 }
 
-bool ApplicationRender(Application& app, RenderPacket& packet, f32 DeltaTime) 
+bool ApplicationRender(Application& app, RenderPacket& packet, FrameData& rFrameData) 
 {
     auto state = reinterpret_cast<Game*>(app.state);
+    // auto AppFrameData = reinterpret_cast<TestbedApplicationFrameData*>(rFrameData.ApplicationFrameData);
 
     state->RenderClock.Start();
     // ЗАДАЧА: временный код
 
     // ЗАДАЧА: Чтение из конфигурации кадра
     packet.ViewCount = 4;
-    packet.views = reinterpret_cast<RenderView::Packet*>(app.FrameAllocator.Allocate(sizeof(RenderView::Packet) * packet.ViewCount));
+    packet.views = reinterpret_cast<RenderView::Packet*>(rFrameData.FrameAllocator->Allocate(sizeof(RenderView::Packet) * packet.ViewCount));
 
-    // Скайбокс
-    SkyboxPacketData SkyboxData = { &state->sb };
-    if (!RenderViewSystem::BuildPacket(RenderViewSystem::Get("skybox"), app.FrameAllocator, &SkyboxData, packet.views[0])) {
-        MERROR("Не удалось построить пакет для представления «skybox».");
-        return false;
-    }
+    // FIXME: Прочитать это из конфигурации
+    packet.views[0].view = RenderViewSystem::Get("skybox");
+    packet.views[1].view = RenderViewSystem::Get("world");
+    packet.views[2].view = RenderViewSystem::Get("ui");
+    packet.views[3].view = RenderViewSystem::Get("pick");
+
+    // Даем нашей сцене команду сгенерировать соответствующие пакетные данные.
     
     // Мир 
     // ЗАДАЧА: выполняет поиск в каждом кадре.
-    if (!RenderViewSystem::BuildPacket(RenderViewSystem::Get("world"), app.FrameAllocator, &app.WorldGeometries, packet.views[1])) {
-        MERROR("Не удалось построить пакет для представления «world_opaque».");
-        return false;
+    if (state->MainScene.state == SimpleScene::State::Loaded) {
+        if (!state->MainScene.PopulateRenderPacket(state->WorldCamera, (f32)state->width / state->height, rFrameData, packet)) {
+            MERROR("Не удалось выполнить общедоступный рендеринг пакета для основной сцены.");
+            return false;
+        }
     }
 
     // Пользовательский интерфейс
     UiPacketData UiPacket{};
     u32 UIMeshCount = 0;
     u32 MaxUiMeshes = 10;
-    auto UIMeshes = reinterpret_cast<Mesh**>(app.FrameAllocator.Allocate(sizeof(Mesh*) * MaxUiMeshes));
+    auto UIMeshes = reinterpret_cast<Mesh**>(rFrameData.FrameAllocator->Allocate(sizeof(Mesh*) * MaxUiMeshes));
     // ЗАДАЧА: массив гибкого размера
     for (u32 i = 0; i < 10; ++i) {
         if (state->UiMeshes[i].generation != INVALID::U8ID) {
@@ -522,7 +370,7 @@ bool ApplicationRender(Application& app, RenderPacket& packet, f32 DeltaTime)
     if (RenderDebugConsole) {
         UiPacket.TextCount += 2;
     }
-    auto texts = reinterpret_cast<Text**>(app.FrameAllocator.Allocate(sizeof(Text*) * UiPacket.TextCount));
+    auto texts = reinterpret_cast<Text**>(rFrameData.FrameAllocator->Allocate(sizeof(Text*) * UiPacket.TextCount));
     texts[0] = &state->TestText;
     texts[1] = &state->TestSysText;
     if (RenderDebugConsole) {
@@ -530,19 +378,19 @@ bool ApplicationRender(Application& app, RenderPacket& packet, f32 DeltaTime)
         texts[3] = &state->console.GetEntryText();
     }
     UiPacket.texts = texts;
-    if (!RenderViewSystem::BuildPacket(RenderViewSystem::Get("ui"), app.FrameAllocator, &UiPacket, packet.views[2])) {
+    if (!RenderViewSystem::BuildPacket(RenderViewSystem::Get("ui"), *rFrameData.FrameAllocator, &UiPacket, packet.views[2])) {
         MERROR("Не удалось построить пакет для представления «ui».");
         return false;
     }
 
     RenderViewPick::PacketData PickPacket;
     PickPacket.UiMeshData = UiPacket.MeshData;
-    PickPacket.WorldMeshData = app.WorldGeometries;
+    PickPacket.WorldMeshData = &packet.views[1].geometries;  // ЗАДАЧА: не жестко закодированный индекс?
     PickPacket.texts = UiPacket.texts;
     PickPacket.TextCount = UiPacket.TextCount;
     PickPacket.UiGeometryCount = 0;
 
-    if (!RenderViewSystem::BuildPacket(RenderViewSystem::Get("pick"), app.FrameAllocator, &PickPacket, packet.views[3])) {
+    if (!RenderViewSystem::BuildPacket(RenderViewSystem::Get("pick"), *rFrameData.FrameAllocator, &PickPacket, packet.views[3])) {
         MERROR("Не удалось построить пакет для представления «pick».");
         return false;
     }
@@ -575,14 +423,19 @@ void ApplicationShutdown(Application& app)
 {
     auto state = reinterpret_cast<Game*>(app.state);
 
+    if (state->MainScene.state == SimpleScene::State::Loaded) {
+        MDEBUG("Выгрузка сцены...");
+
+        state->MainScene.Unload(true);
+
+        MDEBUG("Выполнено.");
+    }
+
     // ЗАДАЧА: Временный блок кода
-    state->sb.Destroy();
 
     // Уничтожение текста пользовательского интерфейса
     // state->TestText.~Text();
     // state->TestSysText.~Text();
-
-    
 }
 
 void ApplicationLibOnLoad(Application& app)
@@ -802,4 +655,78 @@ void ApplicationUnregisterEvents(Application &app)
     EventSystem::Unregister(EventSystem::KeyPressed, &app, GameOnKey);
     EventSystem::Unregister(EventSystem::KeyReleased, &app, GameOnKey);
     EventSystem::Unregister(EventSystem::MVarChanged, nullptr, GameOnMVarChanged);
+}
+
+bool LoadMainScene(Application *app)
+{
+    auto state = reinterpret_cast<Game*>(app->state);
+
+    // Загрузить файл конфигурации
+    // ЗАДАЧА: очистить ресурс.
+    SimpleSceneResource simpleSceneResource;
+    if (!ResourceSystem::Load("test_scene", eResource::SimpleScene, nullptr, simpleSceneResource)) {
+        MERROR("Не удалось загрузить файл сцены, проверьте журналы выше.");
+        return false;
+    }
+
+    // ЗАДАЧА: временная загрузка/подготовка материала
+    if (!state->MainScene.Create(&simpleSceneResource.data)) {
+        MERROR("Не удалось создать основную сцену");
+        return false;
+    }
+
+    // Добавить объекты в сцену
+    // Загрузить конфигурацию куба и загрузить геометрию из него.
+    // Mesh::Config Cube0_Config = {0};
+    // Cube0_Config.GeometryCount = 1;
+    // Cube0_Config.GConfigs = new GeometryConfig();
+    // *Cube0_Config.GConfigs = GeometrySystem::GenerateCubeConfig(10.F, 10.F, 10.F, 1.F, 1.F, "test_cube", "test_material");
+
+    // if (!state->meshes[0].Create(Cube0_Config)) {
+    //     MERROR("Не удалось создать сетку для куба 0");
+    //     return false;
+    // }
+    // state->meshes[0].transform = Transform();
+    // state->MainScene.AddMesh(state->meshes[0]);
+
+    // Второй куб
+    // Mesh::Config Cube1_Config = {0};
+    // Cube1_Config.GeometryCount = 1;
+    // Cube1_Config.GConfigs = new GeometryConfig();
+    // *Cube1_Config.GConfigs = GeometrySystem::GenerateCubeConfig(5.F, 5.F, 5.F, 1.F, 1.F, "test_cube_2", "test_material");
+
+    // if (!state->meshes[1].Create(Cube1_Config)) {
+    //     MERROR("Не удалось создать сетку для куба 1");
+    //     return false;
+    // }
+    // state->meshes[1].transform = Transform(FVec3(10.F, 0.F, 1.F));
+    // state->meshes[1].transform.SetParent(&state->meshes[0].transform);
+
+    // state->MainScene.AddMesh(state->meshes[1]);
+
+    // Третий куб!
+    // Mesh::Config Сube2_Сonfig = {0};
+    // Сube2_Сonfig.GeometryCount = 1;
+    // Сube2_Сonfig.GConfigs = new GeometryConfig();
+    // Сube2_Сonfig.GConfigs[0] = GeometrySystem::GenerateCubeConfig(2.F, 2.F, 2.F, 1.F, 1.F, "test_cube_2", "test_material");
+
+    // if (!state->meshes[2].Create(Сube2_Сonfig)) {
+    //     MERROR("Не удалось создать сетку для куба 2");
+    //     return false;
+    // }
+    // state->meshes[2].transform = Transform(FVec3(5.F, 0.F, 1.F));
+    // state->meshes[2].transform.SetParent(&state->meshes[1].transform);
+
+    // state->MainScene.AddMesh(state->meshes[2]);
+
+    // Инициализация
+    if (!state->MainScene.Initialize()) {
+        MERROR("Не удалось инициализировать основную сцену, прерывание игры.");
+        return false;
+    }
+
+    state->PointLight1 = state->MainScene.GetPointLight("point_light_1");
+
+    // Фактически загрузить сцену.
+    return state->MainScene.Load();
 }

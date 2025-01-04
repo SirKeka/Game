@@ -31,10 +31,10 @@ constexpr Shader::Shader()
     ShaderData(nullptr) 
 {}
 
-Shader::Shader(u32 id, const Config &config) 
+Shader::Shader(u32 id, Config &config) 
     : 
     id(id), 
-    name(config.name), 
+    name(static_cast<MString&&>(config.name)), 
     flags(),
     RequiredUboAlignment(), 
     GlobalUboSize(), 
@@ -51,7 +51,7 @@ Shader::Shader(u32 id, const Config &config)
     BoundUboOffset(), 
     HashtableBlock(MemorySystem::Allocate(1024 * sizeof(u16), Memory::Renderer, true)), 
     UniformLookup(1024, false, reinterpret_cast<u16*>(HashtableBlock), true, INVALID::U16ID), 
-    uniforms(config.UniformCount), 
+    uniforms(config.uniforms.Length()), 
     attributes(), 
     state(State::NotCreated), 
     PushConstantRangeCount(), 
@@ -74,7 +74,7 @@ Shader::~Shader()
     state = State::NotCreated;
 }
 
-bool Shader::Create(u32 id, const Config &config)
+bool Shader::Create(u32 id, Config &config)
 {
     this->id = id;
     if (this->id == INVALID::ID) {
@@ -82,9 +82,9 @@ bool Shader::Create(u32 id, const Config &config)
         return false;
     }
     this->state = State::NotCreated;
-    this->name = config.name;
+    this->name = static_cast<MString&&>(config.name);
     this->PushConstantRangeCount = 0;
-    MemorySystem::ZeroMem(this->PushConstantRanges, sizeof(Range) * 32);
+    // MemorySystem::ZeroMem(this->PushConstantRanges, sizeof(Range) * 32);
     this->BoundInstanceID = INVALID::ID;
     this->AttributeStride = 0;
 
@@ -112,7 +112,7 @@ bool Shader::Create(u32 id, const Config &config)
     return true;
 }
 
-bool Shader::AddAttribute(const AttributeConfig &config)
+bool Shader::AddAttribute(AttributeConfig &config)
 {
     u32 size = 0;
     switch (config.type) {
@@ -261,12 +261,12 @@ void Shader::Config::Clear()
 {
     // name.Clear();
     CullMode = FaceCullMode::None;
-    AttributeCount = 0;
+    // AttributeCount = 0;
     attributes.Clear();
-    UniformCount = 0;                         
+    // UniformCount = 0;                         
     uniforms.Clear();    
     // RenderpassName.Clear();                  
-    StageCount = 0;                           
+    // StageCount = 0;                           
     stages.Clear();              
     StageNames.Clear();              
     StageFilenames.Clear();          

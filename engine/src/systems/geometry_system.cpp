@@ -4,6 +4,7 @@
 #include "math/geometry_utils.hpp"
 #include "memory/linear_allocator.hpp"
 #include <new>
+#include "resources/geometry.hpp"
 
 struct GeometryReference {
     u64 ReferenceCount;
@@ -167,11 +168,11 @@ GeometryConfig GeometrySystem::GenerateCubeConfig(f32 width, f32 height, f32 dep
 {
     if (width == 0) {
         MWARN("Ширина должна быть ненулевой. По умолчанию один.");
-        width = 1.0f;
+        width = 1.F;
     }
     if (height == 0) {
         MWARN("Высота должна быть ненулевой. По умолчанию один.");
-        height = 1.0f;
+        height = 1.F;
     }
     if (depth == 0) {
         MWARN("Глубина должна быть ненулевой. По умолчанию один.");
@@ -179,16 +180,16 @@ GeometryConfig GeometrySystem::GenerateCubeConfig(f32 width, f32 height, f32 dep
     }
     if (TileX == 0) {
         MWARN("TileX не должен быть нулевым. По умолчанию один.");
-        TileX = 1.0f;
+        TileX = 1.F;
     }
     if (TileY == 0) {
         MWARN("TileY не должно быть нулевым. По умолчанию один.");
-        TileY = 1.0f;
+        TileY = 1.F;
     }
 
-    f32 HalfWidth = width * 0.5f;
-    f32 HalfHeight = height * 0.5f;
-    f32 HalfDepth = depth * 0.5f;
+    f32 HalfWidth = width * 0.5F;
+    f32 HalfHeight = height * 0.5F;
+    f32 HalfDepth = depth * 0.5F;
 
     GeometryConfig config;
     config.VertexSize = sizeof(Vertex3D);
@@ -202,8 +203,8 @@ GeometryConfig GeometrySystem::GenerateCubeConfig(f32 width, f32 height, f32 dep
     config.MinExtents = FVec3(-HalfWidth, -HalfHeight, -HalfDepth);
     config.MaxExtents = FVec3(HalfWidth, HalfHeight, HalfDepth);
 
-    f32 MinUVx = 0.f;
-    f32 MinUVy = 0.f;
+    f32 MinUVx = 0.F;
+    f32 MinUVy = 0.F;
     f32 MaxUVx = TileX;
     f32 MaxUVy = TileY;
 
@@ -327,6 +328,7 @@ bool GeometrySystem::CreateGeometry(GeometryConfig &config, GeometryID *gid)
     gid->center = config.center;
     gid->extents.MinSize = config.MinExtents;
     gid->extents.MaxSize = config.MaxExtents;
+    gid->generation++;
 
     // Получить материал
     if (MString::Length(config.MaterialName) > 0) {
@@ -355,28 +357,28 @@ void GeometrySystem::DestroyGeometry(GeometryID *gid)
 
 bool GeometrySystem::CreateDefaultGeometries()
 {
-    Vertex3D verts[4] {};
-    const f32 f = 10.0f;
+    Vertex3D verts[4]{};
+    const f32 f = 10.F;
 
     verts[0].position.x = -0.5 * f;  // 0    3
     verts[0].position.y = -0.5 * f;  //
-    verts[0].texcoord.x = 0.0f;      //
-    verts[0].texcoord.y = 0.0f;      // 2    1
+    verts[0].texcoord.x =  0.F;      //
+    verts[0].texcoord.y =  0.F;      // 2    1
 
     verts[1].position.y = 0.5 * f;
     verts[1].position.x = 0.5 * f;
-    verts[1].texcoord.x = 1.0f;
-    verts[1].texcoord.y = 1.0f;
+    verts[1].texcoord.x = 1.F;
+    verts[1].texcoord.y = 1.F;
 
     verts[2].position.x = -0.5 * f;
-    verts[2].position.y = 0.5 * f;
-    verts[2].texcoord.x = 0.0f;
-    verts[2].texcoord.y = 1.0f;
+    verts[2].position.y =  0.5 * f;
+    verts[2].texcoord.x =  0.F;
+    verts[2].texcoord.y =  1.F;
 
-    verts[3].position.x = 0.5 * f;
+    verts[3].position.x =  0.5 * f;
     verts[3].position.y = -0.5 * f;
-    verts[3].texcoord.x = 1.0f;
-    verts[3].texcoord.y = 0.0f;
+    verts[3].texcoord.x =  1.F;
+    verts[3].texcoord.y =  0.F;
 
     u32 indices[6] = {0, 1, 2, 0, 3, 1};
 
@@ -393,23 +395,23 @@ bool GeometrySystem::CreateDefaultGeometries()
     Vertex2D verts2d[4]{};
     verts2d[0].position.x = -0.5 * f;  // 0    3
     verts2d[0].position.y = -0.5 * f;  //
-    verts2d[0].texcoord.x = 0.0f;      //
-    verts2d[0].texcoord.y = 0.0f;      // 2    1
+    verts2d[0].texcoord.x = 0.F;      //
+    verts2d[0].texcoord.y = 0.F;      // 2    1
 
     verts2d[1].position.y = 0.5 * f;
     verts2d[1].position.x = 0.5 * f;
-    verts2d[1].texcoord.x = 1.0f;
-    verts2d[1].texcoord.y = 1.0f;
+    verts2d[1].texcoord.x = 1.F;
+    verts2d[1].texcoord.y = 1.F;
 
     verts2d[2].position.x = -0.5 * f;
     verts2d[2].position.y = 0.5 * f;
-    verts2d[2].texcoord.x = 0.0f;
-    verts2d[2].texcoord.y = 1.0f;
+    verts2d[2].texcoord.x = 0.F;
+    verts2d[2].texcoord.y = 1.F;
 
     verts2d[3].position.x = 0.5 * f;
     verts2d[3].position.y = -0.5 * f;
-    verts2d[3].texcoord.x = 1.0f;
-    verts2d[3].texcoord.y = 0.0f;
+    verts2d[3].texcoord.x = 1.F;
+    verts2d[3].texcoord.y = 0.F;
 
     // Индексы (ПРИМЕЧАНИЕ: против часовой стрелки)
     u32 indices2d[6] = {2, 1, 0, 3, 0, 1};

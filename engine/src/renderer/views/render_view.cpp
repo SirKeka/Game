@@ -25,7 +25,7 @@ name(config.name),
 width(), height(), 
 type(config.type), 
 RenderpassCount(config.PassCount), 
-passes(MemorySystem::TAllocate<Renderpass>(Memory::Renderer, RenderpassCount)), 
+passes(MemorySystem::TAllocate<Renderpass>(Memory::Renderer, RenderpassCount, true)), 
 CustomShaderName(config.CustomShaderName) {
     for (u32 i = 0; i < RenderpassCount; ++i) {
         auto& PassConfig = config.passes[i];

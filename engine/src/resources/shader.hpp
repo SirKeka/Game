@@ -126,21 +126,21 @@ public:
     /// @brief Конфигурация шейдера. Обычно создается и уничтожается загрузчиком
     /// ресурсов шейдера и задается свойствами, найденными в файле ресурсов .shadercfg.
     struct Config {
-        MString name{};                       // Имя создаваемого шейдера.
-        FaceCullMode CullMode{};              // Режим отбраковки лица, который будет использоваться. По умолчанию BACK, если не указано иное.
-        u8 AttributeCount{};                  // Количество атрибутов.
-        DArray<AttributeConfig> attributes{}; // Коллекция атрибутов.
-        u8 UniformCount{};                    // Учёт униформы.
-        DArray<UniformConfig> uniforms{};     // Коллекция униформы.
-        u8 StageCount{};                      // Количество этапов, присутствующих в шейдере.
-        DArray<Stage> stages{};               // Сборник этапов.
-        DArray<MString> StageNames{};         // Коллекция сценических имен. Должно соответствовать массиву этапов.
-        DArray<MString> StageFilenames{};     // Коллекция имен файлов этапов, которые необходимо загрузить (по одному на этап). Должно соответствовать массиву этапов.
+        MString name;                       // Имя создаваемого шейдера.
+        FaceCullMode CullMode;              // Режим отбраковки лица, который будет использоваться. По умолчанию BACK, если не указано иное.
+        // u8 AttributeCount;                  // Количество атрибутов.
+        DArray<AttributeConfig> attributes; // Коллекция атрибутов.
+        // u8 UniformCount;                    // Учёт униформы.
+        DArray<UniformConfig> uniforms;     // Коллекция униформы.
+        // u8 StageCount;                      // Количество этапов, присутствующих в шейдере.
+        DArray<Stage> stages;               // Сборник этапов.
+        DArray<MString> StageNames;         // Коллекция сценических имен. Должно соответствовать массиву этапов.
+        DArray<MString> StageFilenames;     // Коллекция имен файлов этапов, которые необходимо загрузить (по одному на этап). Должно соответствовать массиву этапов.
         // ЗАДАЧА: Преобразуйте эти логические значения во флаги.
         bool DepthTest;                       // Указывает, следует ли проводить тестирование глубины.
         bool DepthWrite;                      // Указывает, следует ли записывать результаты тестирования глубины в буфер глубины. ПРИМЕЧАНИЕ: Это игнорируется, если DepthTest имеет значение false.
 
-        Config() : name(), CullMode(FaceCullMode::Back), AttributeCount(), attributes(), UniformCount(), uniforms(), StageCount(), stages(), StageNames(), StageFilenames() {}
+        Config() : name(), CullMode(FaceCullMode::Back), /*AttributeCount(),*/ attributes(), /*UniformCount(),*/ uniforms(), /*StageCount(),*/ stages(), StageNames(), StageFilenames() {}
         void Clear();
         void* operator new(u64 size) { return MemorySystem::Allocate(size, Memory::Resource); }
         void operator delete(void* ptr, u64 size) { MemorySystem::Free(ptr, size, Memory::Resource); }
@@ -169,9 +169,10 @@ public:
         MString name;                      // Имя атрибута.
         AttributeType type;                // Тип атрибута.
         u32 size;                          // Размер атрибута в байтах.
-        constexpr Attribute(const MString& name, AttributeType type, u32 size) : name(name), type(type), size(size) {}
-        constexpr Attribute(const Attribute& sa) : name(sa.name), type(sa.type), size(sa.size) {}
-    };  
+        constexpr Attribute(MString& name, AttributeType type, u32 size) : name(static_cast<MString&&>(name)), type(type), size(size) {}
+        // constexpr Attribute(const Attribute& sa) : name(sa.name), type(sa.type), size(sa.size) {}
+    };
+
     u32 id                                      {};   // Идентификатор шейдера
     MString name                                {};   // Имя шейдера
     FlagBits flags                              {};   // 
@@ -204,18 +205,18 @@ public:
     struct VulkanShader* ShaderData   {};        // Непрозрачный указатель для хранения конкретных данных API средства рендеринга. Рендерер несет ответственность за создание и уничтожение этого.
 public:
     constexpr Shader();
-    Shader(u32 id, const Config& config);
+    Shader(u32 id, Config& config);
     ~Shader();
 
     /// @brief Создает новый шейдер.
     /// @param id идентификатор шейдера.
     /// @param config конфигурация на основе которой будет создан шейдер.
     /// @return true в случае успеха, иначе false.
-    bool Create(u32 id, const Config& config);
+    bool Create(u32 id, Config& config);
     /// @brief Добавляет новый атрибут вершины. Должно быть сделано после инициализации шейдера.
     /// @param config конфигурация атрибута.
     /// @return True в случае успеха; в противном случае ложь.
-    bool AddAttribute(const AttributeConfig& config);
+    bool AddAttribute(AttributeConfig& config);
     /// @brief Добавляет в шейдер новую униформу.
     /// @param config конфигурация униформы.
     /// @return True в случае успеха; в противном случае ложь.

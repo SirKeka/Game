@@ -81,7 +81,7 @@ namespace TextureSystem
     template<typename T>
     MAPI bool SetInternal(Texture* texture, T* InternalData) {
         if (texture) {
-            texture->Data = InternalData;
+            texture->data = InternalData;
             texture->generation++;
             return true;
         }

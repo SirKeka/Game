@@ -242,8 +242,9 @@ void Text::RegenerateGeometry()
     f32 x = 0;
     f32 y = 0;
     // Временные массивы для хранения данных вершин/индексов.
-    Vertex2D* VertexBufferData = MemorySystem::TAllocate<Vertex2D>(Memory::Array, VertexBufferSize);
-    u32* IndexBufferData = MemorySystem::TAllocate<u32>(Memory::Array, IndexBufferSize);
+
+    auto VertexBufferData = reinterpret_cast<Vertex2D*>(MemorySystem::Allocate(VertexBufferSize, Memory::Array));
+    auto IndexBufferData = reinterpret_cast<u32*>(MemorySystem::Allocate(IndexBufferSize, Memory::Array));
 
     // Возьмите длину в символах и получите из нее правильный код.
     for (u32 c = 0, uc = 0; c < CharLength; ++c) {
@@ -367,8 +368,8 @@ void Text::RegenerateGeometry()
     bool IndexLoadResult = RenderingSystem::RenderBufferLoadRange(IndexBuffer, 0, IndexBufferSize, IndexBufferData);
 
     // Очистить.
-    MemorySystem::Free(VertexBufferData, VertexBufferSize * sizeof(Vertex2D), Memory::Array);
-    MemorySystem::Free(IndexBufferData, IndexBufferSize * sizeof(u32), Memory::Array);
+    MemorySystem::Free(VertexBufferData, VertexBufferSize, Memory::Array);
+    MemorySystem::Free(IndexBufferData, IndexBufferSize, Memory::Array);
 
     // Проверить результаты.
     if (!VertexLoadResult) {

@@ -418,7 +418,7 @@ bool LoadJobStart(void *params, void *ResultData)
         }
     }
     
-    MString::Copy(TempTexture.name, LoadParams->ResourceName, TEXTURE_NAME_MAX_LENGTH);
+    MString::Copy(TempTexture.name, LoadParams->ResourceName.c_str(), TEXTURE_NAME_MAX_LENGTH);
     TempTexture.flags |= HasTransparency ? Texture::Flag::HasTransparency : 0;
 
     // ПРИМЕЧАНИЕ: Параметры загрузки также используются здесь в качестве результирующих данных, теперь заполняется только поле image_resource.

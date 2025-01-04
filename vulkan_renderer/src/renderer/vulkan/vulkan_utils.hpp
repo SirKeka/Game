@@ -14,3 +14,24 @@ const char* VulkanResultString(VkResult result, bool GetExtended);
  * @returns True, если успех; в противном случае false. По умолчанию значение true для неизвестных типов результатов.
  */
 bool VulkanResultIsSuccess(VkResult result);
+
+#if defined(_DEBUG)
+bool VulkanSetDebugObjectName(VulkanAPI* VkAPI, VkObjectType ObjectType, void* ObjectHandle, const char* ObjectName);
+bool VulkanSetDebugObjectTag(VulkanAPI* VkAPI, VkObjectType ObjectType, void* ObjectHandle, u64 TagSize, const void* TagData);
+bool VulkanBeginLabel(VulkanAPI* VkAPI, VkCommandBuffer buffer, const char* LabelName, const FVec4& colour);
+bool VulkanEndLabel(VulkanAPI* VkAPI, VkCommandBuffer buffer);
+
+#define VK_SET_DEBUG_OBJECT_NAME(VkAPI, ObjectType, ObjectHandle, ObjectName) VulkanSetDebugObjectName(VkAPI, ObjectType, ObjectHandle, ObjectName)
+#define VK_SET_DEBUG_OBJECT_TAG(VkAPI, ObjectType, ObjectHandle, TagSize, TagData) VulkanSetDebugObjectTag(VkAPI, ObjectType, ObjectHandle, TagSize, TagData)
+#define VK_BEGIN_DEBUG_LABEL(VkAPI, CommandBuffer, LabelName, colour) VulkanBeginLabel(VkAPI, CommandBuffer, LabelName, colour)
+#define VK_END_DEBUG_LABEL(VkAPI, CommandBuffer) VulkanEndLabel(VkAPI, CommandBuffer)
+#else
+// Ничего не делает в неотладочных сборках.
+#define VK_SET_DEBUG_OBJECT_NAME(VkAPI, ObjectType, ObjectHandle, ObjectName)
+// Ничего не делает в неотладочных сборках.
+#define VK_SET_DEBUG_OBJECT_TAG(VkAPI, ObjectType, ObjectHandle, TagSize, TagData)
+// Ничего не делает в неотладочных сборках.
+#define VK_BEGIN_DEBUG_LABEL(VkAPI, CommandBuffer, LabelName, colour)
+// Ничего не делает в неотладочных сборках.
+#define VK_END_DEBUG_LABEL(VkAPI, CommandBuffer)
+#endif

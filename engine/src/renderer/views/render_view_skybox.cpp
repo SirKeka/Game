@@ -95,45 +95,46 @@ bool RenderViewSkybox::Render(const Packet &packet, u64 FrameNumber, u64 RenderT
             MERROR("RenderViewSkybox::Render индекс прохода %u ошибка запуска.", p);
             return false;
         }
+        if (SkyboxData && SkyboxData->sb) {
+            if (!ShaderSystem::Use(ShaderID)) {
+                MERROR("Не удалось использовать шейдер скайбокса. Не удалось отрисовать кадр.");
+                return false;
+            }
 
-        if (!ShaderSystem::Use(ShaderID)) {
-            MERROR("Не удалось использовать шейдер скайбокса. Не удалось отрисовать кадр.");
-            return false;
+            // Получить матрицу вида, но обнулить позицию, чтобы скайбокс остался на экране.
+            auto ViewMatrix = WorldCamera->GetView();
+            ViewMatrix(12) = ViewMatrix(13) = ViewMatrix(14) = 0.F;
+
+            // Применить глобальные переменные
+            // ЗАДАЧА: Это ужасно. Нужно привязать по идентификатору.
+            ShaderSystem::GetShader(ShaderID)->BindGlobals();
+            if (!ShaderSystem::UniformSet(ProjectionLocation, &packet.ProjectionMatrix)) {
+                MERROR("Не удалось применить единообразие проекции скайбокса.");
+                return false;
+            }
+            if (!ShaderSystem::UniformSet(ViewLocation, &ViewMatrix)) {
+                MERROR("Не удалось применить единообразие вида скайбокса.");
+                return false;
+            }
+            ShaderSystem::ApplyGlobal();
+
+            // Экземпляр
+            ShaderSystem::BindInstance(SkyboxData->sb->InstanceID);
+            if (!ShaderSystem::UniformSet(CubeMapLocation, &SkyboxData->sb->cubemap)) {
+                MERROR("Не удалось применить единообразие кубической карты скайбокса.");
+                return false;
+            }
+            bool NeedsUpdate = SkyboxData->sb->RenderFrameNumber != FrameNumber;
+            ShaderSystem::ApplyInstance(NeedsUpdate);
+
+            // Синхронизировать номер кадра.
+            SkyboxData->sb->RenderFrameNumber = FrameNumber;
+
+            // Нарисовать его.
+            GeometryRenderData RenderData = {};
+            RenderData.gid = SkyboxData->sb->g;
+            RenderingSystem::DrawGeometry(RenderData);
         }
-
-        // Получить матрицу вида, но обнулить позицию, чтобы скайбокс остался на экране.
-        auto ViewMatrix = WorldCamera->GetView();
-        ViewMatrix(12) = ViewMatrix(13) = ViewMatrix(14) = 0.f;
-
-        // Применить глобальные переменные
-        // ЗАДАЧА: Это ужасно. Нужно привязать по идентификатору.
-        ShaderSystem::GetShader(ShaderID)->BindGlobals();
-        if (!ShaderSystem::UniformSet(ProjectionLocation, &packet.ProjectionMatrix)) {
-            MERROR("Не удалось применить единообразие проекции скайбокса.");
-            return false;
-        }
-        if (!ShaderSystem::UniformSet(ViewLocation, &ViewMatrix)) {
-            MERROR("Не удалось применить единообразие вида скайбокса.");
-            return false;
-        }
-        ShaderSystem::ApplyGlobal();
-
-        // Экземпляр
-        ShaderSystem::BindInstance(SkyboxData->sb->InstanceID);
-        if (!ShaderSystem::UniformSet(CubeMapLocation, &SkyboxData->sb->cubemap)) {
-            MERROR("Не удалось применить единообразие кубической карты скайбокса.");
-            return false;
-        }
-        bool NeedsUpdate = SkyboxData->sb->RenderFrameNumber != FrameNumber;
-        ShaderSystem::ApplyInstance(NeedsUpdate);
-
-        // Синхронизировать номер кадра.
-        SkyboxData->sb->RenderFrameNumber = FrameNumber;
-
-        // Нарисовать его.
-        GeometryRenderData RenderData = {};
-        RenderData.gid = SkyboxData->sb->g;
-        RenderingSystem::DrawGeometry(RenderData);
 
         if (!RenderingSystem::RenderpassEnd(&pass)) {
             MERROR("RenderViewSkybox::Render проход под индексом %u не завершился.", p);

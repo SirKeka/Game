@@ -496,7 +496,7 @@ bool RebuildSystemFontVariantAtlas(SystemFontLookup &lookup, FontData &variant)
 
     // Конвертируйте из одноканального в RGBA или pack_image_size * 4.
     u8* RgbaPixels = MemorySystem::TAllocate<u8>(Memory::Array, PackImageSize * 4);
-    for (i32 j = 0; j < PackImageSize; ++j) {
+    for (u32 j = 0; j < PackImageSize; ++j) {
         RgbaPixels[(j * 4) + 0] = pixels[j];
         RgbaPixels[(j * 4) + 1] = pixels[j];
         RgbaPixels[(j * 4) + 2] = pixels[j];
@@ -539,7 +539,7 @@ bool RebuildSystemFontVariantAtlas(SystemFontLookup &lookup, FontData &variant)
         variant.kernings = MemorySystem::TAllocate<FontKerning>(Memory::Array, variant.KerningCount);
         // Получите таблицу кернинга для текущего шрифта.
         stbtt_kerningentry* KerningTable = MemorySystem::TAllocate<stbtt_kerningentry>(Memory::Array, variant.KerningCount);
-        i32 EntryCount = stbtt_GetKerningTable(&lookup.info, KerningTable, variant.KerningCount);
+        u32 EntryCount = stbtt_GetKerningTable(&lookup.info, KerningTable, variant.KerningCount);
         if (EntryCount != variant.KerningCount) {
             MERROR("Несоответствие количества записей кернинга: %i->%i", EntryCount, variant.KerningCount);
             return false;

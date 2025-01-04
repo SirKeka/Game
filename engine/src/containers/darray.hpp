@@ -57,11 +57,11 @@ class MAPI DArray
 // Переменные
 private:
     /// @brief Количество элементов в массиве
-    u64 size       {};
+    u32 size       {};
     /// @brief Выделенная память под данное количество элементов
-    u64 capacity   {};
+    u32 capacity   {};
     /// @brief Размер одного элемента в байтах
-    u64 ElementSize{};
+    u32 ElementSize{};
     /// @brief Указатель на область памяти где хранятся элементы
     T* data {nullptr};
 
@@ -69,7 +69,7 @@ private:
 public:
     constexpr DArray() : size(), capacity(), ElementSize(sizeof(T)), data(nullptr) {}
     constexpr DArray(T&& value) : size(), capacity(), ElementSize(sizeof(T)), data(nullptr) { PushBack(value); }
-    constexpr DArray(u64 size) : size(), capacity(size), ElementSize(sizeof(T)), data(size ? MemorySystem::TAllocate<T>(Memory::DArray, capacity, true) : nullptr){}
+    constexpr DArray(u32 size) : size(), capacity(size), ElementSize(sizeof(T)), data(size ? MemorySystem::TAllocate<T>(Memory::DArray, capacity, true) : nullptr){}
     
     /// @brief Конструктор копирования
     /// @param other динамический массив из которого нужно копировать данные
@@ -78,8 +78,8 @@ public:
             return;
         }
         
-        data = MemorySystem::TAllocate<T>(Memory::DArray, capacity);
-        for (u64 i = 0; i < size; i++) {
+        data = reinterpret_cast<T*>(MemorySystem::Allocate(capacity * ElementSize, Memory::DArray));
+        for (u32 i = 0; i < size; i++) {
             data[i] = other.data[i];
         }
     }
@@ -144,7 +144,7 @@ public:
 
     // Доступ к элементу------------------------------------------------------------------------
 
-    constexpr T& operator [] (u64 index) {
+    constexpr T& operator [] (u32 index) {
         if(index < 0 || index >= size) {
             MERROR("Индекс за пределами этого массива! Длина: %i, индекс: %i", size, index);
         }
@@ -152,14 +152,14 @@ public:
     }
 
     // Доступ к элементу
-    const T& operator [] (u64 index) const {
+    const T& operator [] (u32 index) const {
         if(index < 0 || index >= size) {
             MERROR("Индекс за пределами этого массива! Длина: %i, индекс: %i", size, index);
         }
         return data[index];
     }
 
-    void Create(T* data, u64 size) {
+    void Create(T* data, u32 size) {
         if (this->data) {
             MERROR("Динамический массив уже был создан!");
             return;
@@ -167,6 +167,7 @@ public:
         
         this->data = data;
         this->size = capacity = size;
+        this->ElementSize = sizeof(T);
     }
 
     // ------------------------------------------------------------------------Доступ к элементу
@@ -183,23 +184,24 @@ public:
     }
     // Емкость----------------------------------------------------------------------------------
 
-    /// @brief Увеличьте емкость вектора (общее количество элементов, 
+    /// @brief Увеличивает емкость массива (общее количество элементов, 
     /// которые вектор может содержать без необходимости перераспределения) до значения, 
     /// большего или равного NewCap. Если значение NewCap больше текущей capacity(емкости), 
     /// выделяется новое хранилище, в противном случае функция ничего не делает.
     /// @param NewCap величина памяти которой нужно зарезервировать. 
     /// ПРИМЕЧАНИЕ: если ничего не указано или указан 0, то резервируется 2 при capacity = 2 или х2 при capacity > 0
-    void Reserve(u64 NewCap = 0) {
+    void Reserve(u32 NewCap = 0) {
         void* NewData = nullptr;
-        if (capacity == 0) {
-            capacity = NewCap ? NewCap : 2;
 
-            data = MemorySystem::TAllocate<T>(Memory::DArray, capacity, true);
+        if (!ElementSize) {
+            ElementSize = sizeof(T);
+        }
+
+        if (capacity == 0) {
+            capacity = NewCap ? NewCap : 1;
+
+            data = reinterpret_cast<T*>(MemorySystem::Allocate(capacity * ElementSize, Memory::DArray, true));
         } else {
-            if (!ElementSize) {
-                ElementSize = sizeof(T);
-            }
-            
             if (NewCap == 0) {
                 NewData = MemorySystem::Realloc(data, capacity * ElementSize, capacity * 2 * ElementSize, Memory::DArray);
                 
@@ -218,12 +220,18 @@ public:
         }
     }
 
+    /// @brief Уменьшает емкость(capacity) массива до размера(size)
+    void ShrinkToFit() {
+        MemorySystem::Free(data + size, (capacity - size) * ElementSize, Memory::DArray);
+        capacity = size;
+    }
+
     /// @return количество элементов контейнера
-    constexpr const u64& Length() const noexcept {
+    constexpr const u32& Length() const noexcept {
         return size;
     }
     /// @return количество зарезервированных ячеек памяти типа Т
-    constexpr const u64 Capacity() const noexcept {
+    constexpr u32 Capacity() const noexcept {
         return capacity;
     }
     //-----------------------------------------------------------------------------------Емкость
@@ -232,7 +240,7 @@ public:
     /// @brief Очищает массив. Емкость остается прежней.
     void Clear() {
         if (data && size){
-            for (u64 i = 0; i < size; i++) {
+            for (u32 i = 0; i < size; i++) {
                 data[i].~T();
             }
             
@@ -278,7 +286,7 @@ public:
     /// @brief Вставляет value в позицию index.
     /// @param value элемент, который нужно ставить.
     /// @param index индекс элемента в контейнере.
-    void Insert(const T& value, u64 index) {
+    void Insert(const T& value, u32 index) {
         if (index >= size) {
             MERROR("Индекс за пределами этого массива! Длина: %i, индекс: %index", size, index);
         }
@@ -295,22 +303,22 @@ public:
     /// @brief Достает выбранный элемент.
     /// @param index индекс элемента который нужно удалить.
     /// @param value указатель для хранения извлеченного элемента. 
-    void PopAt(u64 index, T* value = nullptr) {
+    void PopAt(u64 index) {
         if (index >= size) MERROR("Индекс за пределами этого массива! Длина: %i, индекс: %index", size, index);
 
-        if (value) {
-            *value = data[index];
-        }
+        // if (value) {
+        //     *value = data[index];
+        // }
         
         // Если не последний элемент, вырезаем запись и копируем остальное внутрь. ЗАДАЧА: оптимизироваать
         if (index != size - 1) {
-            MemorySystem::CopyMem(data + index, data + index + 1, (size - 1) * ElementSize);
+            MemorySystem::CopyMem(data + index, data + index + 1, (size - index) * ElementSize);
         }
         size--;
     }
 
     /// @brief Изменяет размер контейнера, чтобы он содержал NewSize элементов инициализируемых по умолчанию.
-    void Resize(u64 NewSize) {
+    void Resize(u32 NewSize) {
         if(NewSize > capacity) {
             Reserve(NewSize);
         }
@@ -319,11 +327,11 @@ public:
 
     /// @brief Изменяет размер контейнера, чтобы он содержал NewSize value элементов.
     /// @param NewSize новый размер контейнера
-    void Resize(u64 NewSize, const T& value) {
+    void Resize(u32 NewSize, const T& value) {
         if(NewSize > capacity) {
             Reserve(NewSize);
             // ЗАДАЧА: изменить
-            for (u64 i = size; i < NewSize; i++) {
+            for (u32 i = size; i < NewSize; i++) {
                 data[i] = value;
             }
         

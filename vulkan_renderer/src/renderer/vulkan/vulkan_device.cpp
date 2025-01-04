@@ -1,4 +1,5 @@
 #include "vulkan_device.hpp"
+#include "vulkan_utils.hpp"
 #include "vulkan_api.hpp"
 #include "containers/mstring.hpp"
 
@@ -46,6 +47,7 @@ bool VulkanDevice::Create(VulkanAPI* VkAPI)
     }
 
     VkDeviceQueueCreateInfo QueueCreateInfos[32];
+    f32 QueuePriority = 1.F;
     for (u32 i = 0; i < IndexCount; ++i) {
         QueueCreateInfos[i].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
         QueueCreateInfos[i].queueFamilyIndex = indices[i];
@@ -56,7 +58,6 @@ bool VulkanDevice::Create(VulkanAPI* VkAPI)
         // }
         QueueCreateInfos[i].flags = 0;
         QueueCreateInfos[i].pNext = 0;
-        f32 QueuePriority = 1.0f;
         QueueCreateInfos[i].pQueuePriorities = &QueuePriority;
     }
 
@@ -111,7 +112,10 @@ bool VulkanDevice::Create(VulkanAPI* VkAPI)
         this->PhysicalDevice,
         &DeviceCreateInfo,
         VkAPI->allocator,
-        &this->LogicalDevice));
+        &this->LogicalDevice)
+    );
+
+    VK_SET_DEBUG_OBJECT_NAME(VkAPI, VK_OBJECT_TYPE_DEVICE, VkAPI->Device.LogicalDevice, "Vulkan Logical Device");
 
     MINFO("Логическое устройство создано.");
 

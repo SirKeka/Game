@@ -6,6 +6,7 @@
 #include "math/vector4d_fwd.hpp"
 
 template<typename> class DArray;
+class Transform;
 
 class MAPI MString
 {
@@ -33,7 +34,7 @@ public:
     ~MString();
 
     // char operator[] (u64 i);
-    const char operator[] (u16 i) const;
+    char operator[] (u16 i) const;
 
     MString& operator= (const MString& s);
     MString& operator= (MString&& s);
@@ -112,12 +113,12 @@ public:
     /// @brief Получает длину заданной строки.
     /// @param s строка в стиле си
     /// @return Длину(количество символов в строке)
-    static const u32 Length(const char* s);
+    static u32 Length(const char* s);
 
     /// @brief Получает длину строки в символах UTF-8 (потенциально многобайтовых).
     /// @param str строка для проверки.
     /// @return Длина строки в кодировке UTF-8.
-    static const u32 UTF8Length(const char* str);
+    static u32 UTF8Length(const char* str);
 
     /// @brief Получает байты, необходимые из массива байтов для формирования кодовой точки UTF-8, а также указывает, сколько байтов занимает текущий символ.
     /// @param bytes массив байтов для выбора.
@@ -167,38 +168,38 @@ public:
     /// @brief Срвавнивает строки между собой без учета регистра.
     /// @param string строка с которой нужно сравнить
     /// @return true, если строки равны и false, если нет 
-    const bool Comparei(const MString& string) const;
+    bool Comparei(const MString& string) const;
 
     /// @brief Срвавнивает строки между собой без учета регистра.
     /// @param string строка в стиле си с которой нужно сравнить
     /// @return true, если строки равны и false, если нет 
-    const bool Comparei(const char* string) const;
+    bool Comparei(const char* string) const;
 
     /// @brief Сравнение строк с учетом регистра для нескольких символов.
     /// @param string строка с которой нужно сравнить данную строку
     /// @param length максимальное количество символов для сравнения.
     /// @return true, если то же самое, в противном случае false.
-    const bool nCompare(const MString& string, u64 length) const;
+    bool nCompare(const MString& string, u64 length) const;
 
     /// @brief Сравнение строк с учетом регистра для нескольких символов.
     /// @param string строка в стиле си с которой нужно сравнить данную строку
     /// @param length максимальное количество символов для сравнения.
     /// @return true, если то же самое, в противном случае false.
-    const bool nCompare(const char* string, u64 length) const;
+    bool nCompare(const char* string, u64 length) const;
 
     /// @brief Сравнение строк без учета регистра для нескольких символов.
     /// @param string строка с которой нужно сравнить данную строку
     /// @param length максимальное количество символов для сравнения.
     /// @return true, если то же самое, в противном случае false.
-    const bool nComparei(const MString& string, u64 length) const;
+    bool nComparei(const MString& string, u64 length) const;
 
     /// @brief Сравнение строк без учета регистра для нескольких символов.
     /// @param string строка в стиле си с которой нужно сравнить данную строку
     /// @param length максимальное количество символов для сравнения.
     /// @return true, если то же самое, в противном случае false.
-    const bool nComparei(const char* string, u64 length) const;
+    bool nComparei(const char* string, u64 length) const;
 
-    static const bool nComparei(const char* string1, const char* string2, u64 length);
+    static bool nComparei(const char* string1, const char* string2, u64 length);
 
     /// @brief Копирует строку
     /// @param s строка которую нужно скопировать
@@ -227,11 +228,13 @@ public:
     /// @return целочисленное 64 битное число без знака считанное из строки.
     static u64 ToUInt(const char* s);
 
+    bool ToU32(u32& value);
+
     static bool StringToF32(const char* s, f32& fn1, f32* fn2 = nullptr, f32* fn3 = nullptr, f32* fn4 = nullptr);
 
     static char* Copy(char* dest, const char* source, u64 Length = 0, bool DelCon = false);
-    static char* Copy(char* dest, const MString& source, u64 length = 0, bool DelCon = false);
-    void nCopy(const MString& source, u64 length);
+    // static char* Copy(char* dest, const MString& source, u64 length = 0, bool DelCon = false);
+    void Copy(const MString& source, u64 length);
 
     /// @brief Зануляет статический массив символов
     /// @tparam N число символов в статическом массиве
@@ -254,10 +257,7 @@ public:
         }
     }
     // static char* Concat();
-private:
-    constexpr char* Copy(const char* source, u64 length, bool DelCon = false);
-    constexpr char* Copy(const MString& source);
-    constexpr char* Concat(const char *str1, const char *str2, u64 length);
+
 public:
     void Trim();
     static char* Trim(char* s);
@@ -273,7 +273,7 @@ public:
     /// @param source указатель на исходную строку с текстом в стиле си
     /// @param start индекс символа с которого нужно обрезать строку
     /// @param length длина обрезки строки
-    static void Mid(char* dest, const MString& source, i32 start, i32 length);
+    static void Mid(char* dest, const MString& source, u32 start, i32 length);
 
     /// @brief Возвращает индекс первого вхождения c в строку; в противном случае -1.
     /// @param str Строка для сканирования.
@@ -293,7 +293,7 @@ public:
     /// @return True, если синтаксический анализ прошел успешно; в противном случае false. 
     static bool ToVector(char* str, FVec4& OutVector);
 
-    bool ToVector(FVec4& OutVector);
+    bool ToFVector(FVec4& OutVector);
 
     /// @brief Пытается проанализировать вектор из предоставленной строки.
     /// @param str Строка для анализа. Должна быть разделена пробелами (т. е. «1,0 2,0 3,0»)
@@ -301,7 +301,7 @@ public:
     /// @return True, если синтаксический анализ прошел успешно; в противном случае false.
     static bool ToVector(char* str, FVec3& OutVector);
 
-    bool ToVector(FVec3& OutVector);
+    bool ToFVector(FVec3& OutVector);
 
     /// @brief Пытается проанализировать вектор из предоставленной строки.
     /// @param str Строка для анализа. Должна быть разделена пробелами (т. е. "1.0 2.0")
@@ -327,6 +327,17 @@ public:
     ///@param b Указатель на логическое значение для записи.
     ///@return True, если синтаксический анализ прошел успешно; в противном случае false.
     bool ToBool(/*char* str, */bool& b);
+
+    /// @brief Пытается проанализировать преобразование из предоставленной строки. 
+    /// Если строка содержит 10 элементов, вращение анализируется как кватернион. 
+    /// Если она содержит 9 элементов, вращение анализируется как углы Эйлера
+    /// и преобразуется в кватернион. Все остальное недопустимо.
+    /// @param str строка для анализа.
+    /// @param transform ссылка на преобразование для записи.
+    /// @return True, если анализ прошел успешно, в противном случае false.
+    static bool ToTransform(const char* str, Transform& transform);
+
+    bool ToTransform(Transform& transform);
 
     /// @brief Сравнение строк с учетом регистра. True, если совпадает, в противном случае false.
     /// @param strL строка которую будем сравнивать
@@ -370,6 +381,9 @@ public:
     // void* operator new[](u64 size);
     // void operator delete[](void* ptr, u64 size);
 private:
+    constexpr char* Copy(const char* source, u64 length, bool DelCon = false);
+    constexpr char* Copy(const MString& source);
+    constexpr char* Concat(const char *str1, const char *str2, u64 length);
 
     /// @brief Проверяет размер символа.
     /// @param c константная ссылка на символ.

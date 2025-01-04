@@ -16,7 +16,7 @@ public:
 
     union {
         // Массив x, y, z, w
-        alignas(16) f32 elements[4];
+        /*alignas(16)*/ f32 elements[4];
         struct {
             // Первый элемент.
 			union {f32 x, r;};

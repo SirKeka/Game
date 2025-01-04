@@ -70,21 +70,21 @@ bool ResourceLoader::Load(const char *name, void* params, ShaderResource &OutRes
             // Разбор этапов
             u32 count = TrimmedValue.Split(',', data.StageNames, true, true);
             // Убедитесь, что имя этапа и количество имен файлов этапа одинаковы, поскольку они должны совпадать.
-            if (data.StageCount == 0) {
-                data.StageCount = count;
-            } else if (data.StageCount != count) {
+            if (data.stages.Length() == 0) {
+                data.stages.Resize(count);
+            } else if (data.stages.Length() != count) {
                 MERROR("ShaderLoader::Load: Недопустимый макет файла. Подсчитайте несоответствие между именами этапов и именами файлов этапов.");
             }
             // Разберите каждый этап и добавьте в массив нужный тип.
-            for (u8 i = 0; i < data.StageCount; ++i) {
+            for (u8 i = 0; i < count; ++i) {
                 if (data.StageNames[i].Comparei("frag") || data.StageNames[i].Comparei("fragment")) {
-                    data.stages.PushBack(Shader::Stage::Fragment);
+                    data.stages[i] = Shader::Stage::Fragment;
                 } else if (data.StageNames[i].Comparei("vert") || data.StageNames[i].Comparei("vertex")) {
-                    data.stages.PushBack(Shader::Stage::Vertex);
+                    data.stages[i] = Shader::Stage::Vertex;
                 } else if (data.StageNames[i].Comparei("geom") || data.StageNames[i].Comparei("geometry")) {
-                    data.stages.PushBack(Shader::Stage::Geometry);
+                    data.stages[i] = Shader::Stage::Geometry;
                 } else if (data.StageNames[i].Comparei("comp") || data.StageNames[i].Comparei("compute")) {
-                    data.stages.PushBack(Shader::Stage::Compute);
+                    data.stages[i] = Shader::Stage::Compute;
                 } else {
                     MERROR("ShaderLoader::Load: Неверный макет файла. Неопознанная стадия '%s'", data.StageNames[i].c_str());
                 }
@@ -93,10 +93,10 @@ bool ResourceLoader::Load(const char *name, void* params, ShaderResource &OutRes
             // Разобрать имена файлов сцены
             u32 count = TrimmedValue.Split(',', data.StageFilenames, true, true);
             // Убедитесь, что имя этапа и количество имен файлов этапа одинаковы, поскольку они должны совпадать.
-            if (data.StageCount == 0) {
-                data.StageCount = count;
-            } else if (data.StageCount != count) {
-                MERROR("ShaderLoader::Load: Неверный макет файла. Подсчитайте несоответствие между именами этапов и именами файлов этапов.");
+            if (data.stages.Length() == 0) {
+                data.stages.Resize(count);
+            } else if (data.stages.Length() != count) {
+                MERROR("ShaderLoader::Load: Недопустимый макет файла. Подсчитайте несоответствие между именами этапов и именами файлов этапов.");
             }
         } else if (TrimmedVarName.Comparei("cull_mode")) {
             if (TrimmedValue.Comparei("front")) {
@@ -162,7 +162,7 @@ bool ResourceLoader::Load(const char *name, void* params, ShaderResource &OutRes
                 
                 // Добавьте атрибут.
                 data.attributes.PushBack(std::move(attribute)); // 
-                data.AttributeCount++;
+                // data.AttributeCount++;
             }
 
         } else if (TrimmedVarName.Comparei("uniform")) {
@@ -255,7 +255,7 @@ bool ResourceLoader::Load(const char *name, void* params, ShaderResource &OutRes
 
                 // Добавьте атрибут.
                 data.uniforms.PushBack(std::move(uniform));
-                data.UniformCount++;
+                // data.UniformCount++;
             }
         }
 

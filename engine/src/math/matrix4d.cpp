@@ -54,6 +54,13 @@ Matrix4D::Matrix4D(const Quaternion &q, const FVec3 &center)
 	n[3][0] = 0.0f; n[3][1] = 0.0f; n[3][2] = 0.0f; n[3][3] = 1.0f;
 }
 
+constexpr Matrix4D::Matrix4D(const Matrix4D& m) : data()
+{
+	for (u64 i = 0; i < 16; i++) {
+		data[i] = m.data[i];
+	}
+}
+
 f32 &Matrix4D::operator()(u8 i, u8 j)
 {
 	if ((i < 1 || i > 4)) MERROR("Неверный индекс i! Должен быть от 1 до 4");
@@ -99,65 +106,6 @@ Matrix4D &Matrix4D::operator=(const Matrix4D &m)
     return *this;
 }
 
-Matrix4D &Matrix4D::operator*=(const Matrix4D &m)
-{
-	Matrix4D t;
-    for (int i = 0; i < 4; i++) {
-		for (int j = 0; j < 4; j++) {
-			t.n[i][j] = n[i][0] * m.n[0][j] + 
-					  	n[i][1] * m.n[1][j] + 
-					  	n[i][2] * m.n[2][j] + 
-					  	n[i][3] * m.n[3][j];
-		}
-	}
-	return (*this = t);
-}
-
-/*MINLINE Matrix4D Matrix4D::MakeIdentity()
-{
-    return Matrix4D(1.0f, 0.0f, 0.0f, 0.0f,
-					0.0f, 1.0f, 0.0f, 0.0f,
-					0.0f, 0.0f, 1.0f, 0.0f,
-					0.0f, 0.0f, 0.0f, 1.0f);
-}*/
-
-/*MINLINE Matrix4D Matrix4D::MakeFrustumProjection(f32 fovy, f32 s, f32 n, f32 f)
-{
-    
-}*/
-
-/*MINLINE Matrix4D Matrix4D::MakeRevFrustumProjection(f32 fovy, f32 s, f32 n, f32 f)
-{
-    f32 g = 1.0F / Math::tan(fovy * 0.5F);
-	f32 k = n / (n - f);
-
-	return (Matrix4D(g / s, 0.0F, 0.0F, 0.0F,
-	                  0.0F,  g,   0.0F, 0.0F,
-	                  0.0F, 0.0F,  k,  -f * k,
-	                  0.0F, 0.0F, 1.0F, 0.0F));
-}*/
-
-/*MINLINE Matrix4D Matrix4D::MakeInfiniteProjection(f32 fovy, f32 s, f32 n, f32 e)
-{
-    f32 g = 1.0f / Math::tan(fovy * 0.5f);
-	e = 1.0F - e;
-
-	return (Matrix4D(g / s, 0.0f, 0.0f, 0.0f,
-	                  0.0f,  g,   0.0f, 0.0f,
-	                  0.0f, 0.0f,  e,  -n * e,
-	                  0.0f, 0.0f, 1.0f, 0.0f));
-}*/
-
-/*MINLINE Matrix4D Matrix4D::MakeRevInfiniteProjection(f32 fovy, f32 s, f32 n, f32 e)
-{
-    f32 g = 1.0F / Math::tan(fovy * 0.5F);
-
-	return (Matrix4D(g / s, 0.0F, 0.0F,    0.0F,
-	                  0.0F,  g,   0.0F,    0.0F,
-	                  0.0F, 0.0F,  e,   n * (1.0F - e),
-	                  0.0F, 0.0F, 1.0F,    0.0F));
-}*/
-
 MINLINE Matrix4D Matrix4D::MakeLookAt(const FVec3 &position, const FVec3 &target, const FVec3 &up)
 {
     FVec3 Z_Axis { target - position };
@@ -170,14 +118,6 @@ MINLINE Matrix4D Matrix4D::MakeLookAt(const FVec3 &position, const FVec3 &target
 							X_Axis.y, 				Y_Axis.y, 			  -Z_Axis.y, 		0, 
 							X_Axis.z, 				Y_Axis.z, 			  -Z_Axis.z, 		0, 
 					-Dot(X_Axis, position), -Dot(Y_Axis, position), Dot(Z_Axis, position), 1.0f);
-}
-
-MINLINE Matrix4D Matrix4D::MakeTransposed(const Matrix4D &m)
-{
-    return Matrix4D(m(0, 0), m(1, 0), m(2, 0), m(3, 0),
-					m(0, 1), m(1, 1), m(2, 1), m(3, 1),
-					m(0, 2), m(1, 2), m(2, 2), m(3, 2),
-					m(0, 3), m(1, 3), m(2, 3), m(3, 3));
 }
 
 /*MINLINE Matrix4D Matrix4D::MakeTranslation(const FVec3 &position)

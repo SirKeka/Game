@@ -33,6 +33,14 @@ public:
 
 #if defined(_DEBUG)
     VkDebugUtilsMessengerEXT DebugMessenger;            // Мессенджер отладки, если он активен.
+    /// @brief Указатель функции для установки имен объектов отладки.
+    PFN_vkSetDebugUtilsObjectNameEXT pfnSetDebugUtilsObjectNameEXT;
+
+    /// @brief Указатель функции для установки данных тега объекта отладки в свободной форме.
+    PFN_vkSetDebugUtilsObjectTagEXT pfnSetDebugUtilsObjectTagEXT;
+
+    PFN_vkCmdBeginDebugUtilsLabelEXT pfnCmdBeginDebugUtilsLabelEXT;
+    PFN_vkCmdEndDebugUtilsLabelEXT pfnCmdEndDebugUtilsLabelEXT;
 #endif
 
     VulkanDevice Device;                                // Устройство Vulkan.
@@ -64,8 +72,8 @@ public:
     bool Initialize(const RenderingConfig& config, u8& OutWindowRenderTargetCount)        override;
     void ShutDown()                                                                       override;
     void Resized(u16 width, u16 height)                                                   override;
-    bool BeginFrame(f32 Deltatime)                                                        override;
-    bool EndFrame(f32 DeltaTime)                                                          override;
+    bool BeginFrame(const FrameData& rFrameData)                                          override;
+    bool EndFrame(const FrameData& rFrameData)                                            override;
     void ViewportSet(const FVec4& rect)                                                   override;
     void ViewportReset()                                                                  override;
     void ScissorSet(const FVec4& rect)                                                    override;
@@ -88,7 +96,7 @@ public:
 
     // Методы относящиеся к шейдерам---------------------------------------------------------------------------------------------------------------------------------------------
 
-    bool Load                          (Shader* shader, const Shader::Config& config, Renderpass* renderpass, u8 StageCount, const DArray<MString>& StageFilenames, const Shader::Stage* stages) override;
+    bool Load                          (Shader *shader, const Shader::Config& config, Renderpass* renderpass, const DArray<Shader::Stage>& stages, const DArray<MString>& StageFilenames) override;
     void Unload                        (Shader* shader)                                                   override;
     bool ShaderInitialize              (Shader* shader)                                                   override;
     bool ShaderUse                     (Shader* shader)                                                   override;
@@ -103,7 +111,7 @@ public:
     void TextureMapReleaseResources(TextureMap* map) override;
     void RenderTargetCreate(u8 AttachmentCount, RenderTargetAttachment* attachments, Renderpass* pass, u32 width, u32 height, RenderTarget& OutTarget) override;
     void RenderTargetDestroy(RenderTarget& target, bool FreeInternalMemory = false) override;
-    bool RenderpassCreate(const RenderpassConfig& config, Renderpass& OutRenderpass) override;
+    bool RenderpassCreate(RenderpassConfig& config, Renderpass& OutRenderpass) override;
     void RenderpassDestroy(Renderpass* renderpass) override;
 
     Texture* WindowAttachmentGet(u8 index)  override;

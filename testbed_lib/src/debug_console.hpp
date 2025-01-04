@@ -15,12 +15,12 @@ using CommandHistoryEntry = MString;
 class DebugConsole 
 {
     u8 ConsoleConsumerID;
-    i32 LineDisplayCount;   // Количество строк, отображаемых одновременно.
-    i32 LineOffset;         // Количество строк, смещенных от низа списка.
+    u32 LineDisplayCount;   // Количество строк, отображаемых одновременно.
+    u32 LineOffset;         // Количество строк, смещенных от низа списка.
     DArray<MString> lines;
 
     DArray<CommandHistoryEntry> history;
-    i32 HistoryOffset;
+    u32 HistoryOffset;
 
     bool dirty;
     bool visible;

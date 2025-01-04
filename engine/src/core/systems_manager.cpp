@@ -7,6 +7,7 @@
 #include "event.hpp"
 #include "input.hpp"
 #include "platform/platform.hpp"
+
 #include "systems/resource_system.hpp"
 #include "systems/shader_system.hpp"
 #include "renderer/rendering_system.hpp"
@@ -41,12 +42,12 @@ bool SystemsManager::PostBootInitialize(ApplicationConfig &AppConfig)
     return RegisterKnownSystemsPostBoot(AppConfig);
 }
 
-bool SystemsManager::Update(u32 DeltaTime)
+bool SystemsManager::Update(const FrameData& rFrameData)
 {
     for (u32 i = 0; i < M_SYSTEM_TYPE_MAX_COUNT; ++i) {
         auto& s = systems[i];
         if (s.update) {
-            if (!s.update(s.state, DeltaTime)) {
+            if (!s.update(s.state, rFrameData)) {
                 MERROR("Ошибка обновления системы для типа: %i", i);
             }
         }

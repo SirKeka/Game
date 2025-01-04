@@ -31,7 +31,7 @@
 
 Engine* Engine::pEngine = nullptr;
 
-constexpr Engine::Engine() 
+constexpr Engine::Engine(const ApplicationConfig& config) 
 : 
 SystemAllocator(),
 IsRunning(),
@@ -41,7 +41,9 @@ SysManager(),
 width(),
 height(),
 clock(),
-LastTime() {}
+LastTime(),
+FrameAllocator(config.FrameAllocatorSize),
+pFrameData() {}
 
 bool Engine::Create(Application& GameInst)
 {
@@ -56,7 +58,7 @@ bool Engine::Create(Application& GameInst)
 
     Metrics::Initialize();
 
-    GameInst.engine = new Engine();
+    GameInst.engine = new Engine(GameInst.AppConfig);
     pEngine = GameInst.engine;
     pEngine->GameInst = &GameInst;
 
@@ -71,6 +73,14 @@ bool Engine::Create(Application& GameInst)
         MFATAL("Game::Boot - Сбой последовательности загрузки игры; прерывание работы приложения.");
         return false;
     } GameInst.stage = Application::Stage::BootComplete;
+
+    // Настройте распределитель кадров.
+    pEngine->pFrameData.FrameAllocator = &pEngine->FrameAllocator;
+    if (GameInst.AppConfig.AppFrameDataSize > 0) {
+        pEngine->pFrameData.ApplicationFrameData = MemorySystem::Allocate(GameInst.AppConfig.AppFrameDataSize, Memory::Game, true);
+    } else {
+        pEngine->pFrameData.ApplicationFrameData = nullptr;
+    }
 
     if (!pEngine->SysManager.PostBootInitialize(GameInst.AppConfig)) {
         MFATAL("Инициализация системного менеджера после загрузки не удалась!")
@@ -119,29 +129,37 @@ bool Engine::Run() {
             f64 delta = (CurrentTime - LastTime);
             f64 FrameStartTime = WindowSystem::PlatformGetAbsoluteTime();
 
+            pFrameData.TotalTime = CurrentTime;
+            pFrameData.DeltaTime = (f32)delta;
+
+            // Сброс распределителя кадров
+            FrameAllocator.FreeAll();
+
             // Обновлление системы работы(потоков)
-            SysManager.Update(delta);
+            SysManager.Update(pFrameData);
 
             //Обновление метрик(статистики)
             Metrics::Update(FrameElapsedTime);
 
-            if (!GameInst->Update(*GameInst, delta)) {
+            if (!GameInst->Update(*GameInst, pFrameData)) {
                 MFATAL("Ошибка обновления игры, выключение.");
                 IsRunning = false;
                 break;
             }
 
             RenderPacket packet = {};
-            packet.DeltaTime = delta;
 
             // Вызовите процедуру рендеринга игры.
-            if (!GameInst->Render(*GameInst, packet, delta)) {
+            if (!GameInst->Render(*GameInst, packet, pFrameData)) {
                 MFATAL("Ошибка рендеринга игры, выключение.");
                 IsRunning = false;
                 break;
             }
 
-            RenderingSystem::DrawFrame(packet);
+            RenderingSystem::DrawFrame(packet, pFrameData);
+
+            
+            packet.Destroy();
 
             // Выясните, сколько времени занял кадр и, если ниже
             f64 FrameEndTime = WindowSystem::PlatformGetAbsoluteTime();
@@ -247,4 +265,9 @@ void Engine::OnEventSystemInitialized()
     EventSystem::Register(EventSystem::ApplicationQuit, nullptr, OnEvent);
     EventSystem::Register(EventSystem::Resized, nullptr, OnResized);
     // EventSystem::Register(EVENT_CODE_OBJECT_HOVER_ID_CHANGED, nullptr, OnEvent);
+}
+
+const FrameData &Engine::GetFrameData() const
+{
+    return pFrameData;
 }

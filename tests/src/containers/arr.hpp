@@ -20,7 +20,7 @@ public:
         if(lenght > 0) {
             this->size = lenght;
             this->capacity = lenght;
-            data = MMemory::TAllocate<T>(capacity, Memory::DArray);
+            data = MemorySystem::TAllocate<T>(capacity, Memory::DArray);
             for (u64 i = 0; i < lenght; i++) {
                 data[i] = value;
             }
@@ -119,7 +119,7 @@ public:
         if(index > size) Resize(size + 1, value);
         // Если не последний элемент, скопируйте остальное наружу.
         if (index != size - 1) {
-            MMemory::CopyMem(
+            MemorySystem::CopyMem(
                 reinterpret_cast<void*>(data + (index* sizeof(T))),
                 reinterpret_cast<void*>(data + (index + 1 * sizeof(T))),
                 size - 1);
@@ -131,9 +131,9 @@ public:
     void PopAt(u64 index) {
         if (index >= size) MERROR("Индекс за пределами этого массива! Длина: %i, индекс: %index", size, index);
 
-        // Если не последний элемент, вырезаем запись и копируем остальное внутрь. TODO: оптимизироваать
+        // Если не последний элемент, вырезаем запись и копируем остальное внутрь. ЗАДАЧА: оптимизироваать
         if (index != size - 1) {
-            MMemory::CopyMem(
+            MemorySystem::CopyMem(
                 reinterpret_cast<void*>(data + (index * sizeof(T))),
                 reinterpret_cast<void*>(data + (index + 1 * sizeof(T))),
                 size - 1);

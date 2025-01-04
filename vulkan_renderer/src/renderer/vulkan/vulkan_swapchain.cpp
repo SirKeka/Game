@@ -272,6 +272,8 @@ void VulkanSwapchain::Create(VulkanAPI *VkAPI, u32 width, u32 height, RendererCo
 
     for (u32 i = 0; i < VkAPI->swapchain.ImageCount; ++i) {
         // Создайте изображение глубины и его вид.
+        char FormattedName[TEXTURE_NAME_MAX_LENGTH]{};
+        MString::Format(FormattedName, "swapchain_image_%u", i);
         VulkanImage::Config config = { VkAPI };
         config.type            = TextureType::_2D;
         config.width           = SwapchainExtent.width;
@@ -282,6 +284,7 @@ void VulkanSwapchain::Create(VulkanAPI *VkAPI, u32 width, u32 height, RendererCo
         config.MemoryFlags     = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
         config.CreateView      = true;
         config.ViewAspectFlags = VK_IMAGE_ASPECT_DEPTH_BIT;
+        config.name            = FormattedName;
 
         auto image = new VulkanImage(config);
 

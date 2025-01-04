@@ -1,6 +1,16 @@
 #include "geometry.hpp"
 #include "core/logger.hpp"
 
+void* GeometryConfig::operator new(u64 size)
+{
+    return MemorySystem::Allocate(size, Memory::Unknown);
+}
+
+void GeometryConfig::operator delete(void *ptr, u64 size)
+{
+    MemorySystem::Free(ptr, size, Memory::Unknown);
+}
+
 constexpr Geometry::Geometry(Geometry &&g)
 : 
 id(g.id), 

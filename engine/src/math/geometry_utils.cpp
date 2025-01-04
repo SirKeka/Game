@@ -63,7 +63,7 @@ namespace Math
             f32 sx = deltaU1, sy = deltaU2;
             f32 tx = deltaV1, ty = deltaV2;
             f32 handedness = ((tx * sy - ty * sx) < 0.f) ? -1.f : 1.f;
-            FVec4 t4 { tangent, handedness };
+            FVec3 t4 = tangent * handedness;
             vertices[i0].tangent = t4;
             vertices[i1].tangent = t4;
             vertices[i2].tangent = t4;

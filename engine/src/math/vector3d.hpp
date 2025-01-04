@@ -25,10 +25,10 @@ public:
         };
     };
 
-	constexpr Vector3D() : x(), y(), z() {}
+	constexpr explicit Vector3D() noexcept : x(), y(), z() {}
 	constexpr explicit Vector3D(T x, T y, T z = 0) noexcept : x(x), y(y), z(z) {}
-	constexpr Vector3D(const Vector2D<T>& v) : x(v.x), y(v.y), z() {}
-	constexpr Vector3D(const Vector4D<T>& v) : x(v.x), y(v.y), z(v.z) {}
+	constexpr explicit Vector3D(const Vector2D<T>& v) noexcept : x(v.x), y(v.y), z() {}
+	constexpr explicit Vector3D(const Vector4D<T>& v) noexcept : x(v.x), y(v.y), z(v.z) {}
 
 	/// @brief нулевой вектор
     /// @return (0, 0, 0)
@@ -37,95 +37,95 @@ public:
 	}*/
     /// @brief единичный вектор
     /// @return (1, 1, 1)
-    static constexpr Vector3D One() noexcept {
+    MINLINE static constexpr Vector3D One() noexcept {
 		return Vector3D(1, 1, 1);
 	}
     /// @brief Вектор указывающий вверх
     /// @return (0, 1, 0)
-    static constexpr Vector3D Up() noexcept {
+    MINLINE static constexpr Vector3D Up() noexcept {
 		return Vector3D(0, 1, 0);
 	}
     /// @brief Вектор указывающий вниз
     /// @return (0, -1, 0)
-    static constexpr Vector3D Down() noexcept {
+    MINLINE static constexpr Vector3D Down() noexcept {
     	return Vector3D(0, -1, 0);
 	}
     /// @brief Вектор указывающий налево
     /// @return (-1, 0, 0)
-    static constexpr Vector3D Left() noexcept {
+    MINLINE static constexpr Vector3D Left() noexcept {
     	return Vector3D(-1, 0, 0);
 	}
     /// @brief Вектор указывающий направо
     /// @return (1, 0, 0)
-    static constexpr Vector3D Right() noexcept {
+    MINLINE static constexpr Vector3D Right() noexcept {
     	return Vector3D(1, 0, 0);
 	}
 	/// @brief Вектор указывающий вперед
 	/// @return (0, 0, -1)
-	static constexpr Vector3D Forward() noexcept {
+	MINLINE static constexpr Vector3D Forward() noexcept {
     	return Vector3D(0, 0, -1);
 	}
 	/// @brief Вектор указывающий назад
 	/// @return (0, 0, 1)
-	static constexpr Vector3D Backward() noexcept {
+	MINLINE static constexpr Vector3D Backward() noexcept {
     	return Vector3D(0, 0, 1);
 	}
 
 	T& operator [] (int i);
 	const T& operator [](int i) const;
-	Vector3D& operator +=(const Vector3D& v) {
+	MINLINE Vector3D& operator +=(const Vector3D& v) {
 		x += v.x; y += v.y; z += v.z; return *this;
 	}
-	Vector3D& operator +=(const T s) {
+	MINLINE Vector3D& operator +=(const T s) {
 		x += s;
 		y += s;
 		z += s;
 		return *this;
 	}
-	Vector3D& operator -=(const Vector3D& v) {
+	MINLINE Vector3D& operator -=(const Vector3D& v) {
 		x -= v.x;
 		y -= v.y;
 		z -= z.y;
 		return *this;
 	}
-	Vector3D& operator -=(const T s) {
+	MINLINE Vector3D& operator -=(const T s) {
 		x -= s;
 		y -= s;
 		z -= s;
 		return *this;
 	}
-	Vector3D& operator *=(const Vector3D& v) {
+	MINLINE Vector3D& operator *=(const Vector3D& v) {
 		x *= v.x;
 		y *= v.y;
 		z *= v.y;
 		return *this;
 	}
-	Vector3D& operator *=(const T s) {
+	MINLINE Vector3D& operator *=(const T s) {
 		x *= s;
 		y *= s;
 		z *= s;
 		return *this;
 	}
-	Vector3D& operator /=(const Vector3D& v) {
+	MINLINE Vector3D& operator /=(const Vector3D& v) {
 		x /= v.x;
 		y /= v.y;
 		z /= z.y;
 		return *this;
 	}
-	Vector3D& operator /=(const T s) {
+	MINLINE Vector3D& operator /=(const T s) {
 		x /= s;
 		y /= s;
 		z /= s;
 		return *this;
 	}
-	Vector3D& operator-() {
+	MINLINE Vector3D& operator-() {
 		x = -x;
 		y = -y;
 		z = -z;
 		return *this;
 	}
 	//explicit operator bool() const;
-	const bool operator==(const Vector3D& v) const {
+	bool operator==(const Vector3D& v) const {
 		if (Math::abs(x - v.x) > M_FLOAT_EPSILON) {
 			return false;
 		}
@@ -155,18 +155,6 @@ public:
     	z = x * m.data[0 + 2] + y * m.data[4 + 2] + z * m.data[8 + 2] + 1.F * m.data[12 + 2];
 		return *this;
 	}*/
-
-	/// @brief Преобразовать v по m. ПРИМЕЧАНИЕ: эта функция предполагает, что вектор v является точкой, а не направлением, и вычисляется так, как если бы там был компонент w со значением 1.0f.
-	/// @param v Вектор для преобразования.
-	/// @param m Матрица для преобразования.
-	/// @return Преобразованная копия v.
-	static MINLINE Vector3D Transform(const Vector3D& v, const Matrix4D& m) {
-		Vector3D out;
-		out.x = v.x * m.data[0 + 0] + v.y * m.data[4 + 0] + v.z * m.data[8 + 0] + 1.0f * m.data[12 + 0];
-    	out.y = v.x * m.data[0 + 1] + v.y * m.data[4 + 1] + v.z * m.data[8 + 1] + 1.0f * m.data[12 + 1];
-    	out.z = v.x * m.data[0 + 2] + v.y * m.data[4 + 2] + v.z * m.data[8 + 2] + 1.0f * m.data[12 + 2];
-		return out;
-	}
 
 	/// @brief Преобразует vec3 значений rgb [0.0-1.0] в целые значения rgb [0-255].
 	/// @param v Вектор значений rgb [0.0-1.0], который нужно преобразовать.
@@ -209,14 +197,14 @@ MINLINE Vector3D<T> operator *(const Vector3D<T>& v, T s)
 	return Vector3D<T>(v.x * s, v.y * s, v.z * s);
 }
 
-template<typename T>
-MINLINE Vector3D<T> operator *(const Vector3D<T>& v, const Matrix4D& m)
-{
-	return Vector3D<T>(
-        v.x * m.data[0] + v.y * m.data[4] + v.z * m.data[8]  + m.data[12],
-        v.x * m.data[1] + v.y * m.data[5] + v.z * m.data[9]  + m.data[13],
-        v.x * m.data[2] + v.y * m.data[6] + v.z * m.data[10] + m.data[14]);
-}
+// template<typename T>
+// MINLINE Vector3D<T> operator *(const Vector3D<T>& v, const Matrix4D& m)
+// {
+// 	return Vector3D<T>(
+//         v.x * m.data[0] + v.y * m.data[4] + v.z * m.data[8]  + m.data[12],
+//         v.x * m.data[1] + v.y * m.data[5] + v.z * m.data[9]  + m.data[13],
+//         v.x * m.data[2] + v.y * m.data[6] + v.z * m.data[10] + m.data[14]);
+// }
 
 template<typename T>
 MINLINE Vector3D<T> operator /(const Vector3D<T>& a, const Vector3D<T>& b)

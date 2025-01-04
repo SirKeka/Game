@@ -114,6 +114,7 @@ bool VulkanPipeline::Create(VulkanAPI* VkAPI, const Config& config)
     VkPipelineLayoutCreateInfo PipelineLayoutCreateInfo = {VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
 
     // Push-константы
+    VkPushConstantRange ranges[32]{};
     if (config.PushConstantRangeCount > 0) {
         if (config.PushConstantRangeCount > 32) {
             MERROR("VulkanPipeline::Create — не может иметь более 32 диапазонов push-констант. Пройдено количество: %i", config.PushConstantRangeCount);
@@ -121,8 +122,6 @@ bool VulkanPipeline::Create(VulkanAPI* VkAPI, const Config& config)
         }
 
         // ПРИМЕЧАНИЕ: 32 — это максимальное количество диапазонов, которое мы можем когда-либо иметь, поскольку спецификация гарантирует только 128 байтов с 4-байтовым выравниванием.
-        VkPushConstantRange ranges[32]{};
-        // MMemory::ZeroMem(ranges, sizeof(VkPushConstantRange) * 32);
         for (u32 i = 0; i < config.PushConstantRangeCount; ++i) {
             ranges[i].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
             ranges[i].offset = config.PushConstantRanges[i].offset;

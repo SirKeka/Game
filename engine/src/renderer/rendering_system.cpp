@@ -74,7 +74,7 @@ void RenderingSystem::OnResized(u16 width, u16 height)
     }
 }
 
-bool RenderingSystem::DrawFrame(const RenderPacket &packet)
+bool RenderingSystem::DrawFrame(const RenderPacket &packet, const FrameData& rFrameData)
 {
     auto pRenderingSystem = reinterpret_cast<sRenderingSystem*>(SystemsManager::GetState(MSystem::Type::Renderer));
     auto& renderer = pRenderingSystem->ptrRenderer;
@@ -103,7 +103,7 @@ bool RenderingSystem::DrawFrame(const RenderPacket &packet)
     }
 
     // Если начальный кадр возвращается успешно, операции в середине кадра могут продолжаться.
-    if (renderer->BeginFrame(packet.DeltaTime)) {
+    if (renderer->BeginFrame(rFrameData)) {
         
         const u8& AttachmentIndex = renderer->WindowAttachmentIndexGet();
         
@@ -115,7 +115,7 @@ bool RenderingSystem::DrawFrame(const RenderPacket &packet)
         }
         
         // Завершите кадр. Если это не удастся, скорее всего, это будет невозможно восстановить.
-        bool result = renderer->EndFrame(packet.DeltaTime);
+        bool result = renderer->EndFrame(rFrameData);
 
         if (!result) {
             MERROR("Ошибка EndFrame. Приложение закрывается...");
@@ -228,10 +228,10 @@ bool RenderingSystem::RenderpassEnd(Renderpass *pass)
     return pRenderingSystem->ptrRenderer->RenderpassEnd(pass);
 }
 
-bool RenderingSystem::Load(Shader *shader, const Shader::Config& config, Renderpass* renderpass, u8 StageCount, const DArray<MString>& StageFilenames, const Shader::Stage *stages)
+bool RenderingSystem::Load(Shader *shader, const Shader::Config& config, Renderpass* renderpass, const DArray<Shader::Stage>& stages, const DArray<MString>& StageFilenames)
 {
     auto pRenderingSystem = reinterpret_cast<sRenderingSystem*>(SystemsManager::GetState(MSystem::Type::Renderer));
-    return pRenderingSystem->ptrRenderer->Load(shader, config, renderpass, StageCount, StageFilenames, stages);
+    return pRenderingSystem->ptrRenderer->Load(shader, config, renderpass, stages, StageFilenames);
 }
 
 void RenderingSystem::Unload(Shader *shader)
@@ -312,7 +312,7 @@ void RenderingSystem::RenderTargetDestroy(RenderTarget &target, bool FreeInterna
     pRenderingSystem->ptrRenderer->RenderTargetDestroy(target, FreeInternalMemory);
 }
 
-bool RenderingSystem::RenderpassCreate(const RenderpassConfig &config, Renderpass &OutRenderpass)
+bool RenderingSystem::RenderpassCreate(RenderpassConfig &config, Renderpass &OutRenderpass)
 {
     auto pRenderingSystem = reinterpret_cast<sRenderingSystem*>(SystemsManager::GetState(MSystem::Type::Renderer));
     return pRenderingSystem->ptrRenderer->RenderpassCreate(config, OutRenderpass);

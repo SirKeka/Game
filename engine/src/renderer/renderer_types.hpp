@@ -13,6 +13,7 @@
 struct StaticMeshData;
 struct Texture;
 class RendererSystem;
+struct FrameData;
 
 /*размер данной струтуры для карт Nvidia должен быть равен 256 байт*/
 struct VulkanMaterialShaderGlobalUniformObject
@@ -51,9 +52,13 @@ struct VulkanUI_ShaderInstanceUniformObject {
 /// Состоит из любых требуемых данных, таких как дельта-время и коллекция представлений для рендеринга.
 struct RenderPacket
 {
-    f64 DeltaTime;
     u16 ViewCount;              // Количество представлений, которые нужно отобразить. 
     RenderView::Packet* views;  // Массив представлений, которые нужно отобразить.
+    void Destroy() {
+        for (u16 i = 0; i < ViewCount; i++) {
+            views[i].geometries.~DArray();
+        }
+    }
 };
 
 struct UiPacketData {
@@ -76,8 +81,20 @@ public:
     virtual bool Initialize(const RenderingConfig& config, u8& OutWindowRenderTargetCount) = 0;
     virtual void ShutDown() = 0;
     virtual void Resized(u16 width, u16 height) = 0;
-    virtual bool BeginFrame(f32 Deltatime) = 0;
-    virtual bool EndFrame(f32 DeltaTime) = 0;
+
+    /// @brief Выполняет процедуры настройки, требуемые в начале кадра. 
+    /// @note Ложный результат не обязательно означает сбой. 
+    /// Он также может указывать на то, что бэкэнд просто не находится в состоянии, 
+    /// способном отрисовать кадр в данный момент, и что его следует попытаться повторить в следующем цикле. 
+    /// Конечный кадр не нужно (и не следует) вызывать, если это так.
+    /// @param rFrameData константная ссылка на данные текущего кадра.
+    /// @return true в случае успеха; в противном случае false.
+    virtual bool BeginFrame(const FrameData& rFrameData) = 0;
+
+    /// @brief Выполняет процедуры, необходимые для рисования кадра. Следует вызывать только после успешного возврата BeginFrame.
+    /// @param rFrameData константная ссылка на данные текущего кадра.
+    /// @return True в случае успеха; в противном случае false.
+    virtual bool EndFrame(const FrameData& rFrameData) = 0;
 
     /// @brief Устанавливает область просмотра рендерера на заданный прямоугольник. Должно быть сделано в проходе рендеринга.
     /// @param rect Прямоугольник области просмотра, который необходимо установить.
@@ -176,7 +193,7 @@ public:
     /// @param StageFilenames массив имен файлов этапов шейдера, которые будут загружены. Должно соответствовать массиву этапов.
     /// @param stages массив этапов шейдера(ShaderStage), указывающий, какие этапы рендеринга (вершина, фрагмент и т. д.) используются в этом шейдере.
     /// @return true в случае успеха, иначе false.
-    virtual bool Load(Shader* shader, const Shader::Config& config, Renderpass* renderpass, u8 StageCount, const DArray<MString>& StageFilenames, const Shader::Stage* stages) = 0;
+    virtual bool Load(Shader *shader, const Shader::Config& config, Renderpass* renderpass, const DArray<Shader::Stage>& stages, const DArray<MString>& StageFilenames) = 0;
 
     /// @brief Уничтожает данный шейдер и освобождает все имеющиеся в нем ресурсы.--------------------------------------------------------------------
     /// @param shader указатель на шейдер, который нужно уничтожить.
@@ -345,7 +362,7 @@ public:
     /// @brief Создает новый проход рендеринга.
     /// @param config Константная ссылка на конфигурацию, которая будет использоваться при создании прохода рендеринга.
     /// @param OutRenderpass указатель на общий проход рендеринга.
-    virtual bool RenderpassCreate(const RenderpassConfig& config, Renderpass& OutRenderpass) = 0;
+    virtual bool RenderpassCreate(RenderpassConfig& config, Renderpass& OutRenderpass) = 0;
     
     /// @brief Уничтожает указанный renderpass.
     /// @param OutRenderpass указатель на renderpass, который необходимо уничтожить.

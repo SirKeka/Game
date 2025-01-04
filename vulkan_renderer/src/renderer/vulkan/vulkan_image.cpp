@@ -1,9 +1,10 @@
 #include "vulkan_image.hpp"
 #include "vulkan_api.hpp"
+#include "vulkan_utils.hpp"
 #include "vulkan_command_buffer.hpp"
 #include "core/asserts.hpp"
 
-VulkanImage::VulkanImage(const Config &config)
+VulkanImage::VulkanImage(Config &config)
 {
     Create(config);
 }
@@ -17,12 +18,13 @@ VulkanImage::~VulkanImage()
     height = 0;*/
 }
 
-void VulkanImage::Create(const Config &config)
+void VulkanImage::Create(Config &config)
 {
     // Копировать параметры
     this->MemoryFlags = config.MemoryFlags;
     this->width = config.width;
     this->height = config.height;
+    this->name = static_cast<MString&&>(config.name);
 
     // Информация о создании.
     VkImageCreateInfo ImageCreateInfo = {VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
@@ -49,6 +51,7 @@ void VulkanImage::Create(const Config &config)
     }
 
     VK_CHECK(vkCreateImage(config.VkAPI->Device.LogicalDevice, &ImageCreateInfo, config.VkAPI->allocator, &handle));
+    VK_SET_DEBUG_OBJECT_NAME(config.VkAPI, VK_OBJECT_TYPE_IMAGE, handle, name.c_str());
 
     // Запросить требования к памяти.
     vkGetImageMemoryRequirements(config.VkAPI->Device.LogicalDevice, handle, &MemoryRequirements);
@@ -67,22 +70,22 @@ void VulkanImage::Create(const Config &config)
     // Свяжите память
     VK_CHECK(vkBindImageMemory(config.VkAPI->Device.LogicalDevice, handle, memory, 0));  // ЗАДАЧА: настраиваемое смещение памяти.
 
-    // Report the memory as in-use.
+    // Сообщить о том, что память используется.
     bool IsDeviceMemory = (MemoryFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) == VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
     MemorySystem::AllocateReport(MemoryRequirements.size, IsDeviceMemory ? Memory::GPULocal : Memory::Vulkan);
 
     // Создать представление
     if (config.CreateView) {
-        view = 0;
-        ViewCreate(config.VkAPI, config.type, config.format, config.ViewAspectFlags);
+        view = nullptr;
+        ViewCreate(config);
     }
 }
 
-void VulkanImage::ViewCreate(VulkanAPI *VkAPI, TextureType type, VkFormat format, VkImageAspectFlags AspectFlags)
+void VulkanImage::ViewCreate(Config &config)
 {
     VkImageViewCreateInfo ViewCreateInfo = {VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
     ViewCreateInfo.image = handle;
-    switch (type) {
+    switch (config.type) {
         case TextureType::Cube:
             ViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_CUBE;
             break;
@@ -91,16 +94,19 @@ void VulkanImage::ViewCreate(VulkanAPI *VkAPI, TextureType type, VkFormat format
             ViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
             break;
     }
-    ViewCreateInfo.format = format;
-    ViewCreateInfo.subresourceRange.aspectMask = AspectFlags;
+    ViewCreateInfo.format = config.format;
+    ViewCreateInfo.subresourceRange.aspectMask = config.ViewAspectFlags;
 
     // ЗАДАЧА: Сделать настраиваемым
     ViewCreateInfo.subresourceRange.baseMipLevel = 0;
     ViewCreateInfo.subresourceRange.levelCount = 1;
     ViewCreateInfo.subresourceRange.baseArrayLayer = 0;
-    ViewCreateInfo.subresourceRange.layerCount = type == TextureType::Cube ? 6 : 1;
+    ViewCreateInfo.subresourceRange.layerCount = config.type == TextureType::Cube ? 6 : 1;
 
-    VK_CHECK(vkCreateImageView(VkAPI->Device.LogicalDevice, &ViewCreateInfo, VkAPI->allocator, &this->view));
+    VK_CHECK(vkCreateImageView(config.VkAPI->Device.LogicalDevice, &ViewCreateInfo, config.VkAPI->allocator, &this->view));
+    char FormattedName[TEXTURE_NAME_MAX_LENGTH] = {0};
+    MString::Format(FormattedName, "%s_view", name.c_str());
+    VK_SET_DEBUG_OBJECT_NAME(config.VkAPI, VK_OBJECT_TYPE_IMAGE_VIEW, view, FormattedName);
 }
 
 void VulkanImage::TransitionLayout(

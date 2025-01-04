@@ -11,7 +11,7 @@ template <typename T>
 class HashTable
 {
 public:
-    //u64 ElementSize;
+    u64 ElementSize;
     u32 ElementCount;
     bool IsPointerType;
     T* memory;
@@ -24,7 +24,7 @@ public:
     /// @param ElementCount максимальное количество элементов. Размер не может быть изменен.
     /// @param IsPointerType блок памяти, который будет использоваться. Должен быть равен по размеру ElementSize * ElementCount;
     /// @param memory указывает, будет ли эта хэш-таблица содержать типы указателей.
-    HashTable(/*u64 ElementSize, */u32 ElementCount, bool IsPointerType, T* memory) {
+    HashTable(u32 ElementCount, bool IsPointerType, T* memory) {
         if (!memory) {
         MERROR("Создать не получилось! Требуется указатель на память");
         return;
@@ -35,10 +35,11 @@ public:
     }
 
     // ЗАДАЧА: Возможно, вам понадобится распределитель и вместо этого выделите эту память.
+    this->ElementSize = sizeof(T);
     this->memory = memory;
     this->ElementCount = ElementCount;
     this->IsPointerType = IsPointerType;
-    MemorySystem::ZeroMem(this->memory, sizeof(T) * ElementCount);
+    MemorySystem::ZeroMem(this->memory, ElementSize * ElementCount);
     }
 
     /// @brief Уничтожает предоставленную хэш-таблицу. Не освобождает память для типов указателей.
@@ -62,7 +63,7 @@ public:
         }
 
         u64 hash = Name(name, ElementCount);
-        MemorySystem::CopyMem(memory + (sizeof(T) * hash), value, sizeof(T));
+        MemorySystem::CopyMem(memory + (ElementSize * hash), value, ElementSize);
         return true;
     }
 
@@ -105,7 +106,7 @@ public:
             *OutValue = this->memory[hash];
             return *((void**)(OutValue)) != 0;
             }
-        else MemorySystem::CopyMem(OutValue, this->memory + (sizeof(T) * hash), sizeof(T));
+        else MemorySystem::CopyMem(OutValue, this->memory + (ElementSize * hash), ElementSize);
         return true;
     }
 
@@ -125,7 +126,7 @@ public:
         }
 
         for (u32 i = 0; i < this->ElementCount; ++i) {
-            MMemory::CopyMem(this->memory + (sizeof(T) *i), value, sizeof(T));
+            MemorySystem::CopyMem(this->memory + (ElementSize *i), value, ElementSize);
         }
 
         return true;

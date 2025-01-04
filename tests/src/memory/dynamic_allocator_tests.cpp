@@ -288,7 +288,8 @@ u8 DynamicAllocatorSingleAllocAligned() {
     ExpectShouldBe(TotalAllocatorSize, FreeSpace);
 
     // Выделите все это.
-    void* block = alloc.AllocateAligned(1024, alignment);
+    u64 size = 1024;
+    void* block = alloc.AllocateAligned(size, alignment);
     ExpectShouldNotBe(0, block);
 
     // Проверьте размер и выравнивание

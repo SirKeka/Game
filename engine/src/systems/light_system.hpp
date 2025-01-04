@@ -1,25 +1,5 @@
 #pragma once
-
-#include "defines.hpp"
-
-#include "math/vector4d_fwd.hpp"
-
-struct DirectionalLight {
-    FVec4 colour;
-    FVec4 direction;  // ignore w
-};
-
-struct PointLight {
-    FVec4 colour;
-    FVec4 position;  // ignore w
-    // Обычно 1, убедитесь, что знаменатель никогда не становится меньше 1
-    f32 ConstantF;
-    // Линейно уменьшает интенсивность света
-    f32 linear;
-    // Заставляет свет падать медленнее на больших расстояниях.
-    f32 quadratic;
-    f32 padding;
-};
+#include "resources/lighting_structures.h"
 
 namespace LightSystem
 {
@@ -34,7 +14,7 @@ namespace LightSystem
 
     MAPI DirectionalLight* GetDirectionalLight();
 
-    MAPI i32 PointLightCount();
+    MAPI u32 PointLightCount();
     MAPI bool GetPointLights(PointLight* PointLights);
 } // namespace name
 

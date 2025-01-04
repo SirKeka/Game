@@ -36,9 +36,8 @@ static const char* MemoryTagStrings[Memory::MaxTags] = {
     "GPU_LOCAL  ",
     "BITMAP_FONT",
     "SYSTEM_FONT",
-    "KEYMAP     "};
-
-MemorySystem* MemorySystem::state = nullptr;
+    "KEYMAP     "
+};
 
 MemorySystem::MemorySystem(u64 TotalAllocSize, u64 AllocatorMemoryRequirement, void* AllocatorBlock) 
 : 
@@ -135,9 +134,6 @@ void *MemorySystem::AllocateAligned(u64 bytes, u16 alignment, Memory::Tag tag, b
             MFATAL("Ошибка получения блокировки мьютекса во время выделения.");
             return nullptr;
         }
-        state->TotalAllocated += bytes;
-        state->TaggedAllocations[tag] += bytes;
-        state->AllocCount++;
 
         if (alignment > 1) {
             block = reinterpret_cast<u8*>(state->allocator.AllocateAligned(bytes, alignment));
@@ -152,12 +148,15 @@ void *MemorySystem::AllocateAligned(u64 bytes, u16 alignment, Memory::Tag tag, b
             MWARN("Memory::AllocateAligned вызывается перед инициализацией системы памяти.");
         }
         // ЗАДАЧА: Memory alignment
-        block = new u8[bytes]; //platform_allocate(size, false);
+        block = new u8[bytes];
     }
 
     if (block) {
+        state->TotalAllocated += bytes;
+        state->TaggedAllocations[tag] += bytes;
+        state->AllocCount++;
         if (nullify) {
-            MemorySystem::ZeroMem(block, bytes);
+            MemorySystem::ZeroMem(block, alignment > 2 ? bytes - alignment - 5 : bytes);
         }
         return block;
     }
@@ -166,7 +165,7 @@ void *MemorySystem::AllocateAligned(u64 bytes, u16 alignment, Memory::Tag tag, b
     return nullptr;
 }
 
-void *MemorySystem::Realloc(void *ptr, u64 size, u64 NewSize, Memory::Tag tag)
+void *MemorySystem::Realloc(void *ptr, u64 size, u64 NewSize, Memory::Tag tag, bool copy)
 {
     if (tag == Memory::Unknown) {
         MWARN("MMemory::AllocateAligned вызывается с использованием MemoryTag::Unknown. Переклассифицировать это распределение.");
@@ -174,7 +173,13 @@ void *MemorySystem::Realloc(void *ptr, u64 size, u64 NewSize, Memory::Tag tag)
 
     // Либо выделяйте из системного распределителя, либо из ОС. Последнее никогда не должно произойти.
     u8* block = nullptr;
-    u64 DeltaSize = NewSize - size;
+    u64 DeltaSize = 0;
+    if (NewSize > size) {
+        DeltaSize = NewSize - size;
+    } else {
+        Free((u8*)ptr + size, size - NewSize, tag);
+        return ptr;
+    }
 
     if (state) {
         // Убедитесь, что многопоточные запросы не мешают друг другу.
@@ -186,7 +191,7 @@ void *MemorySystem::Realloc(void *ptr, u64 size, u64 NewSize, Memory::Tag tag)
         if (ptr) {
             block = reinterpret_cast<u8*>(state->allocator.Realloc(ptr, size, NewSize));
 
-            if (ptr != block) {
+            if (ptr != block && copy) {
                 CopyMem(block, ptr, size);
             }
         } else {
@@ -224,7 +229,7 @@ void MemorySystem::Free(void *block, u64 bytes, Memory::Tag tag, bool def)
     FreeAligned(block, bytes, false, tag, def);
 }
 
-void MemorySystem::FreeAligned(void *block, u64 size, bool alignment, Memory::Tag tag, bool def)
+void MemorySystem::FreeAligned(void *block, u64 size, u16 alignment, Memory::Tag tag, bool def)
 {
     if (block) {
         if (tag == Memory::Unknown) {
@@ -245,12 +250,12 @@ void MemorySystem::FreeAligned(void *block, u64 size, bool alignment, Memory::Ta
             /*if (!result) {
                 // ЗАДАЧА: Выравнивание памяти
                 u8* ptrRawMem = reinterpret_cast<u8*>(block);
-                delete[] ptrRawMem;                             //platform_free(block, false);
+                delete[] ptrRawMem;
             }*/
             state->AllocationMutex.Unlock();
         } else {
             u8* ptrRawMem = reinterpret_cast<u8*>(block);
-            delete[] ptrRawMem;                             //platform_free(block, false);
+            delete[] ptrRawMem;
         }
     }
 }
@@ -296,7 +301,7 @@ u64 MemorySystem::GetMemoryAllocCount()
 template <class U, class... Args>
 inline void MemorySystem::Construct(U *ptr, Args &&...args)
 {
-    new(start) U(std::forward<Args>(args)...);
+    //new(start) U(std::forward<Args>(args)...);
 }
 
 MString MemorySystem::GetMemoryUsageStr()

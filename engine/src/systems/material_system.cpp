@@ -130,6 +130,35 @@ bool MaterialSystem::Initialize(u64& MemoryRequirement, void* memory, void* conf
         MFATAL("Не удалось создать материал по умолчанию. Приложение не может быть продолжено.");
         return false;
     } 
+
+    // Получите единые индексы.
+    // Сохраните местоположения известных типов для быстрого поиска.
+    auto s = ShaderSystem::GetShader("Shader.Builtin.Material"); 
+    state->MaterialShaderID                  = s->id;
+    state->MaterialLocations.projection      = ShaderSystem::UniformIndex(s,       "projection");
+    state->MaterialLocations.view            = ShaderSystem::UniformIndex(s,             "view");
+    state->MaterialLocations.AmbientColour   = ShaderSystem::UniformIndex(s,   "ambient_colour");
+    state->MaterialLocations.ViewPosition    = ShaderSystem::UniformIndex(s,    "view_position");
+    state->MaterialLocations.DiffuseColour   = ShaderSystem::UniformIndex(s,   "diffuse_colour");
+    state->MaterialLocations.DiffuseTexture  = ShaderSystem::UniformIndex(s,  "diffuse_texture");
+    state->MaterialLocations.SpecularTexture = ShaderSystem::UniformIndex(s, "specular_texture");
+    state->MaterialLocations.NormalTexture   = ShaderSystem::UniformIndex(s,   "normal_texture");
+    state->MaterialLocations.specular        = ShaderSystem::UniformIndex(s,         "specular");
+    state->MaterialLocations.model           = ShaderSystem::UniformIndex(s,            "model");
+    state->MaterialLocations.RenderMode      = ShaderSystem::UniformIndex(s,             "mode");
+    state->MaterialLocations.DirLight        = ShaderSystem::UniformIndex(s,        "dir_light");
+    state->MaterialLocations.PointLights     = ShaderSystem::UniformIndex(s,         "p_lights");
+    state->MaterialLocations.NumPointLights  = ShaderSystem::UniformIndex(s,     "num_p_lights");
+
+    s = ShaderSystem::GetShader("Shader.Builtin.UI");
+    state->UI_ShaderID = s->id;
+    state->UI_Locations.projection           = ShaderSystem::UniformIndex(s,      "projection");
+    state->UI_Locations.view                 = ShaderSystem::UniformIndex(s,            "view");
+    state->UI_Locations.DiffuseColour        = ShaderSystem::UniformIndex(s,  "diffuse_colour");
+    state->UI_Locations.DiffuseTexture       = ShaderSystem::UniformIndex(s, "diffuse_texture");
+    state->UI_Locations.model                = ShaderSystem::UniformIndex(s,           "model");
+    
+
     return true;
 }
 
@@ -203,34 +232,6 @@ Material *MaterialSystem::Acquire(const MaterialConfig &config)
                 return nullptr;
             }
 
-            // Получите единые индексы.
-            Shader* s = ShaderSystem::GetShader(m->ShaderID);
-            // Сохраните местоположения известных типов для быстрого поиска.
-            if (state->MaterialShaderID == INVALID::ID && config.ShaderName == "Shader.Builtin.Material") {
-                state->MaterialShaderID                  = s->id;
-                state->MaterialLocations.projection      = ShaderSystem::UniformIndex(s,       "projection");
-                state->MaterialLocations.view            = ShaderSystem::UniformIndex(s,             "view");
-                state->MaterialLocations.AmbientColour   = ShaderSystem::UniformIndex(s,   "ambient_colour");
-                state->MaterialLocations.ViewPosition    = ShaderSystem::UniformIndex(s,    "view_position");
-                state->MaterialLocations.DiffuseColour   = ShaderSystem::UniformIndex(s,   "diffuse_colour");
-                state->MaterialLocations.DiffuseTexture  = ShaderSystem::UniformIndex(s,  "diffuse_texture");
-                state->MaterialLocations.SpecularTexture = ShaderSystem::UniformIndex(s, "specular_texture");
-                state->MaterialLocations.NormalTexture   = ShaderSystem::UniformIndex(s,   "normal_texture");
-                state->MaterialLocations.specular        = ShaderSystem::UniformIndex(s,         "specular");
-                state->MaterialLocations.model           = ShaderSystem::UniformIndex(s,            "model");
-                state->MaterialLocations.RenderMode      = ShaderSystem::UniformIndex(s,             "mode");
-                state->MaterialLocations.DirLight        = ShaderSystem::UniformIndex(s,        "dir_light");
-                state->MaterialLocations.PointLights     = ShaderSystem::UniformIndex(s,         "p_lights");
-                state->MaterialLocations.NumPointLights  = ShaderSystem::UniformIndex(s,     "num_p_lights");
-            } else if (state->UI_ShaderID == INVALID::ID && config.ShaderName == "Shader.Builtin.UI") {
-                state->UI_ShaderID = s->id;
-                state->UI_Locations.projection           = ShaderSystem::UniformIndex(s,      "projection");
-                state->UI_Locations.view                 = ShaderSystem::UniformIndex(s,            "view");
-                state->UI_Locations.DiffuseColour        = ShaderSystem::UniformIndex(s,  "diffuse_colour");
-                state->UI_Locations.DiffuseTexture       = ShaderSystem::UniformIndex(s, "diffuse_texture");
-                state->UI_Locations.model                = ShaderSystem::UniformIndex(s,           "model");
-            }
-
             if (m->generation == INVALID::ID) {
                 m->generation = 0;
             } else {
@@ -266,9 +267,15 @@ void MaterialSystem::Release(const char *name)
             MWARN("Пытался выпустить несуществующий материал: '%s'", name);
             return;
         }
+
+        // Сделать копию имени, так как при уничтожении оно будет стерто 
+        // (поскольку переданное имя обычно является указателем на фактическое имя материала).
+        char NameCopy[MATERIAL_NAME_MAX_LENGTH];
+        MString::Copy(NameCopy, name, MATERIAL_NAME_MAX_LENGTH);
+
         ref.ReferenceCount--;
         if (ref.ReferenceCount == 0 && ref.AutoRelease) {
-            Material* m = &state->RegisteredMaterials[ref.handle];
+            auto m = &state->RegisteredMaterials[ref.handle];
 
             // Уничтожить/сбросить материал.
             DestroyMaterial(m);
@@ -276,13 +283,13 @@ void MaterialSystem::Release(const char *name)
             // Сбросьте ссылку.
             ref.handle = INVALID::ID;
             ref.AutoRelease = false;
-            // MTRACE("Выпущенный материал '%s'., Материал выгружен, поскольку количество ссылок = 0 и AutoRelease = true.", name);
+            // MTRACE("Выпущенный материал '%s'., Материал выгружен, поскольку количество ссылок = 0 и AutoRelease = true.", NameCopy);
         } else {
-            // MTRACE("Выпущенный материал '%s', теперь имеет счетчик ссылок '%i' (AutoRelease=%s).", name, ref.ReferenceCount, ref.AutoRelease ? "true" : "false");
+            // MTRACE("Выпущенный материал '%s', теперь имеет счетчик ссылок '%i' (AutoRelease=%s).", NameCopy, ref.ReferenceCount, ref.AutoRelease ? "true" : "false");
         }
 
         // Обновите запись.
-        state->RegisteredMaterialTable.Set(name, ref);
+        state->RegisteredMaterialTable.Set(NameCopy, ref);
     } else {
         MERROR("MaterialSystem::Release не удалось выпустить материал '%s'.", name);
     }
@@ -338,14 +345,35 @@ bool MaterialSystem::ApplyInstance(Material *material, bool NeedsUpdate)
             MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->MaterialLocations.NormalTexture, &material->NormalMap));
             MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->MaterialLocations.specular, &material->specular));
 
+            // Направленный свет
             auto DirLight = LightSystem::GetDirectionalLight();
-            i32 PointLightCount = LightSystem::PointLightCount();
-            // ЗАДАЧА: frame allocator?
-            auto PointLights = reinterpret_cast<PointLight*>(MemorySystem::Allocate(sizeof(PointLight) * PointLightCount, Memory::Array));
-            LightSystem::GetPointLights(PointLights);
+            if (DirLight) {
+                MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->MaterialLocations.DirLight, &DirLight->data));
+            } else {
+                DirectionalLight::Data data{};
+                MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->MaterialLocations.DirLight, &data));
+            }
+            
+            // Точечный свет
+            u32 PointLightCount = LightSystem::PointLightCount();
+            if (PointLightCount) {
+                // ЗАДАЧА: frame allocator?
+                u64 PointLightsSize = sizeof(PointLight) * PointLightCount;
+                auto PointLights = reinterpret_cast<PointLight*>(MemorySystem::Allocate(PointLightsSize, Memory::Array, true));
+                LightSystem::GetPointLights(PointLights);
 
-            MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->MaterialLocations.DirLight, DirLight));
-            MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->MaterialLocations.PointLights, PointLights));
+                u64 PointLightDatasSize = sizeof(PointLight::Data) * PointLightCount;
+                auto PointLightDatas = reinterpret_cast<PointLight::Data*>(MemorySystem::Allocate(PointLightDatasSize, Memory::Array, true));
+                for (u32 i = 0; i < PointLightCount; ++i) {
+                    PointLightDatas[i] = PointLights[i].data;
+                }
+
+                MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->MaterialLocations.PointLights, PointLightDatas));
+
+                MemorySystem::Free(PointLightDatas, PointLightDatasSize, Memory::Array);
+                MemorySystem::Free(PointLights, PointLightsSize, Memory::Array);
+            }
+
             MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->MaterialLocations.NumPointLights, &PointLightCount)); 
         } else if (material->ShaderID == state->UI_ShaderID) {
             // шейдер пользовательского интерфейса
@@ -383,6 +411,20 @@ bool MaterialSystem::ApplyLocal(Material *material, const Matrix4D &model)
     return false;
 }
 
+void MaterialSystem::Dump()
+{
+    auto refs = state->RegisteredMaterialTable.memory;
+    for (u32 i = 0; i < state->RegisteredMaterialTable.ElementCount; ++i) {
+        auto& r = refs[i];
+        if (r.ReferenceCount > 0 || r.handle != INVALID::ID) {
+            MDEBUG("Найденный материал ref (handle/refCount): (%u/%u)", r.handle, r.ReferenceCount);
+            if (r.handle != INVALID::ID) {
+                MTRACE("Название материала: %s", state->RegisteredMaterials[r.handle].name);
+            }
+        }
+    }
+}
+
 bool CreateDefaultMaterial()
 { 
     TextureMap* maps[3] = {&state->DefaultMaterial.DiffuseMap, &state->DefaultMaterial.SpecularMap, &state->DefaultMaterial.NormalMap};
@@ -414,10 +456,6 @@ bool LoadMaterial(const MaterialConfig &config, Material *m)
     // ЗАДАЧА: настроить
     m->DiffuseMap.FilterMinify = m->DiffuseMap.FilterMagnify = TextureFilter::ModeLinear;
     m->DiffuseMap.RepeatU = m->DiffuseMap.RepeatV = m->DiffuseMap.RepeatW = TextureRepeat::Repeat;
-    if (!RenderingSystem::TextureMapAcquireResources(&m->DiffuseMap)) {
-        MERROR("Невозможно получить ресурсы для карты диффузных текстур.");
-        return false;
-    }
 
     if (MString::Length(config.DiffuseMapName) > 0) {
         m->DiffuseMap.use = TextureUse::MapDiffuse;
@@ -432,13 +470,15 @@ bool LoadMaterial(const MaterialConfig &config, Material *m)
         m->DiffuseMap.texture = TextureSystem::GetDefaultTexture(Texture::Diffuse);
     }
 
+    if (!RenderingSystem::TextureMapAcquireResources(&m->DiffuseMap)) {
+        MERROR("Невозможно получить ресурсы для карты диффузных текстур.");
+        return false;
+    }
+
     // Карта блеска
     m->SpecularMap.FilterMinify = m->SpecularMap.FilterMagnify = TextureFilter::ModeLinear;
     m->SpecularMap.RepeatU = m->SpecularMap.RepeatV = m->SpecularMap.RepeatW = TextureRepeat::Repeat;
-    if (!RenderingSystem::TextureMapAcquireResources(&m->SpecularMap)) {
-        MERROR("Невозможно получить ресурсы для карты зеркальных текстур.");
-        return false;
-    }
+    
     if (MString::Length(config.SpecularMapName) > 0) {
         m->SpecularMap.use = TextureUse::MapSpecular;
         m->SpecularMap.texture = TextureSystem::Acquire(config.SpecularMapName, true);
@@ -452,13 +492,15 @@ bool LoadMaterial(const MaterialConfig &config, Material *m)
         m->SpecularMap.texture = TextureSystem::GetDefaultTexture(Texture::Specular);
     }
 
+    if (!RenderingSystem::TextureMapAcquireResources(&m->SpecularMap)) {
+        MERROR("Невозможно получить ресурсы для карты зеркальных текстур.");
+        return false;
+    }
+
     // Карта нормалей
     m->NormalMap.FilterMinify = m->NormalMap.FilterMagnify = TextureFilter::ModeLinear;
     m->NormalMap.RepeatU = m->NormalMap.RepeatV = m->NormalMap.RepeatW = TextureRepeat::Repeat;
-    if (!RenderingSystem::TextureMapAcquireResources(&m->NormalMap)) {
-        MERROR("Невозможно получить ресурсы для карты нормалей текстур.");
-        return false;
-    }
+    
     if (MString::Length(config.NormalMapName) > 0) {
         m->NormalMap.use = TextureUse::MapNormal;
         m->NormalMap.texture = TextureSystem::Acquire(config.NormalMapName, true);
@@ -470,6 +512,11 @@ bool LoadMaterial(const MaterialConfig &config, Material *m)
         // Использование по умолчанию.
         m->NormalMap.use = TextureUse::MapNormal;
         m->NormalMap.texture = TextureSystem::GetDefaultTexture(Texture::Normal);
+    }
+
+    if (!RenderingSystem::TextureMapAcquireResources(&m->NormalMap)) {
+        MERROR("Невозможно получить ресурсы для карты нормалей текстур.");
+        return false;
     }
     
     // ЗАДАЧА: другие карты

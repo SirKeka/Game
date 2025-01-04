@@ -33,31 +33,38 @@ public:
         VkMemoryPropertyFlags MemoryFlags;
         b32 CreateView;
         VkImageAspectFlags ViewAspectFlags;
+        MString name;
     };
     
-    VkImage handle;                             // Дескриптор внутреннего объекта изображения.
-    VkDeviceMemory memory;                      // Память, используемая изображением.
-    VkImageView view;                           // Вид для изображения, который используется для доступа к изображению.
-    VkMemoryRequirements MemoryRequirements;    // Требования к памяти графического процессора для этого изображения.
-    VkMemoryPropertyFlags MemoryFlags;          // Флаги свойств памяти
-    u32 width = 0;                              // Ширина изображения.
-    u32 height = 0;                             // Высота изображения.
+    /// @brief Дескриптор внутреннего объекта изображения.
+    VkImage handle;
+    /// @brief Память, используемая изображением.
+    VkDeviceMemory memory;
+    /// @brief Вид для изображения, который используется для доступа к изображению.
+    VkImageView view;
+    /// @brief Требования к памяти графического процессора для этого изображения.
+    VkMemoryRequirements MemoryRequirements;
+    /// @brief Флаги свойств памяти
+    VkMemoryPropertyFlags MemoryFlags;
+    /// @brief Ширина изображения.
+    u32 width = 0;
+    /// @brief Высота изображения.
+    u32 height = 0;
+    /// @brief Название изображения.
+    MString name;
 public:
-    constexpr VulkanImage() : handle(), memory(), view(), MemoryRequirements(), MemoryFlags(), width(), height() {}
-    constexpr VulkanImage(const VulkanImage& vi) : handle(vi.handle), memory(vi.memory), view(vi.view), MemoryRequirements(vi.MemoryRequirements), MemoryFlags(vi.MemoryFlags), width(vi.width), height(vi.height) {}
+    constexpr VulkanImage() : handle(), memory(), view(), MemoryRequirements(), MemoryFlags(), width(), height(), name() {}
+    constexpr VulkanImage(const VulkanImage& vi) : handle(vi.handle), memory(vi.memory), view(vi.view), MemoryRequirements(vi.MemoryRequirements), MemoryFlags(vi.MemoryFlags), width(vi.width), height(vi.height), name(vi.name) {}
     /// @brief Создает новое изображение Vulkan.
     /// @param config конфигурация изображения Vulkan
-    VulkanImage(const Config& config);
+    VulkanImage(Config& config);
     ~VulkanImage();
 
-    void Create(const Config& config);
+    void Create(Config& config);
     
     /// @brief Создает представление для заданного изображения.
-    /// @param VkAPI указатель на контекст Vulkan.
-    /// @param type тип текстуры. Предоставляет подсказки для создания.
-    /// @param format указатель на изображение, с которым нужно связать представление.
-    /// @param AspectFlags флаги аспектов, которые следует использовать при создании представления, если применимо.
-    void ViewCreate(VulkanAPI* VkAPI, TextureType type, VkFormat format, VkImageAspectFlags AspectFlags);
+    /// @param config конфигурация изображения Vulkan
+    void ViewCreate(Config &config);
 
     /// @brief Преобразует предоставленное изображение из OldLayout в NewLayout. 
     /// @param VkAPI указатель на контекст Vulkan.

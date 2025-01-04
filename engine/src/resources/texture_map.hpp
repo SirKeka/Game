@@ -10,21 +10,12 @@ struct TextureMap {
     TextureRepeat RepeatU;                  // Режим повтора по оси U (или X, или S)
     TextureRepeat RepeatV;                  // Режим повтора по оси V (или Y, или T)
     TextureRepeat RepeatW;                  // Режим повтора по оси W (или Z, или U)
-    //ЗАДАЧА: пока нет directx используем VkSampler
+
     void* sampler;                          // Указатель на внутренние данные, специфичные для API. Обычно внутренний сэмплер.
+
+    constexpr TextureMap() : texture(), use(), FilterMinify(), FilterMagnify(), RepeatU(), RepeatV(), RepeatW(), sampler(nullptr) {}
+    constexpr TextureMap(Texture* texture, TextureUse use) : texture(texture), use(use), FilterMinify(), FilterMagnify(), RepeatU(), RepeatV(), RepeatW(), sampler(nullptr) {}
     
-    constexpr TextureMap() 
-    : 
-    texture(nullptr), 
-    use(TextureUse::Unknown), 
-    FilterMinify(TextureFilter::ModeLinear), 
-    FilterMagnify(TextureFilter::ModeLinear), 
-    RepeatU(TextureRepeat::Repeat), 
-    RepeatV(TextureRepeat::Repeat), 
-    RepeatW(TextureRepeat::Repeat), 
-    sampler() {}
-    constexpr TextureMap(Texture* texture, TextureUse use) 
-    : texture(texture), use(use), FilterMinify(), FilterMagnify(), RepeatU(), RepeatV(), RepeatW(), sampler() {}
     constexpr TextureMap(const TextureMap& tm) 
     : 
     texture(), 

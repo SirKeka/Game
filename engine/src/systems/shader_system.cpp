@@ -104,7 +104,7 @@ void ShaderSystem::Shutdown()
     }
 }
 
-bool ShaderSystem::Create(Renderpass& pass, const Shader::Config &config)
+bool ShaderSystem::Create(Renderpass& pass, Shader::Config &config)
 {
     u32 id = NewShaderID();
     auto NewShader = &pShaderSystem->shaders[id];
@@ -118,7 +118,7 @@ bool ShaderSystem::Create(Renderpass& pass, const Shader::Config &config)
         NewShader->flags |= Shader::DepthWriteFlag;
     }
     
-    if (!RenderingSystem::Load(NewShader, config, &pass, config.StageCount, config.StageFilenames, config.stages.Data())) {
+    if (!RenderingSystem::Load(NewShader, config, &pass, config.stages, config.StageFilenames)) {
         MERROR("Ошибка создания шейдера.");
         return false;
     }
@@ -127,12 +127,12 @@ bool ShaderSystem::Create(Renderpass& pass, const Shader::Config &config)
     NewShader->state = Shader::State::Uninitialized;
 
     // Атрибуты процесса
-    for (u32 i = 0; i < config.AttributeCount; ++i) {
+    for (u32 i = 0; i < config.attributes.Length(); ++i) {
         NewShader->AddAttribute(config.attributes[i]);
     }
 
     // Технологическая униформа i = 1
-    for (u32 i = 0; i < config.UniformCount; ++i) {
+    for (u32 i = 0; i < config.uniforms.Length(); ++i) {
         if (config.uniforms[i].type == Shader::UniformType::Sampler) {
             AddSampler(NewShader, config.uniforms[i]);
         } else {
@@ -146,13 +146,13 @@ bool ShaderSystem::Create(Renderpass& pass, const Shader::Config &config)
 
     // Инициализируйте шейдер.
     if (!RenderingSystem::ShaderInitialize(NewShader)) {
-        MERROR("ShaderSystem::Create: не удалось инициализировать шейдер '%s'.", config.name.c_str());
+        MERROR("ShaderSystem::Create: не удалось инициализировать шейдер '%s'.", NewShader->name.c_str());
         // ПРИМЕЧАНИЕ: Initialize автоматически уничтожает шейдер в случае сбоя.
         return false;
     }
 
     // На этом этапе создание прошло успешно, поэтому сохраните идентификатор шейдера в хеш-таблице, чтобы позже можно было найти его по имени.
-    if (!pShaderSystem->lookup.Set(config.name.c_str(), NewShader->id)) {
+    if (!pShaderSystem->lookup.Set(NewShader->name.c_str(), NewShader->id)) {
         // Черт возьми, мы зашли так далеко... Что ж, удалите шейдер и перезапустите.
         RenderingSystem::Unload(NewShader);
         return false;
@@ -297,12 +297,11 @@ bool AddSampler(Shader *shader, const Shader::UniformConfig &config)
         // Выделите указатель, назначьте текстуру и вставьте ее в глобальные карты текстур.
         // ПРИМЕЧАНИЕ: Это распределение выполняется только для глобальных карт текстур.
         auto DefaultMap = new TextureMap();
+        DefaultMap->texture = TextureSystem::GetDefaultTexture(Texture::Default);
         if (!RenderingSystem::TextureMapAcquireResources(DefaultMap)) {
             MERROR("Не удалось получить ресурсы для глобальной карты текстур во время создания шейдера.");
             return false;
         }
-
-        DefaultMap->texture = TextureSystem::GetDefaultTexture(Texture::Default);
         shader->GlobalTextureMaps.PushBack(DefaultMap);
     } else {
         // В противном случае это происходит на уровне экземпляра, поэтому подсчитывайте, сколько ресурсов необходимо добавить во время получения ресурса.

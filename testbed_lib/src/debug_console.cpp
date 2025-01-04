@@ -251,6 +251,10 @@ void DebugConsole::MoveUp()
 
 void DebugConsole::MoveDown()
 {
+    if (LineOffset == 0) {
+        return;
+    }
+    
     dirty = true;
     const u32& LineCount = lines.Length();
     // Не беспокойтесь о попытках сдвига, просто выполните сброс и загрузитесь.

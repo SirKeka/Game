@@ -5,12 +5,6 @@
 #include "vector4d_fwd.hpp"
 #include "quaternion.hpp"
 
-/// @brief Умножение матриц 4x4
-/// @param a матрица 4x4
-/// @param b матрица 4x4
-/// @return результат умножения матрицы а на матрицу b
-MAPI Matrix4D operator*(Matrix4D a, const Matrix4D& b);
-
 class MAPI Matrix4D
 {
 public:
@@ -32,6 +26,7 @@ public:
 	/// @param q кватернион
 	/// @param v вектор
 	Matrix4D (const Quaternion &q, const FVec3 &center);
+	constexpr Matrix4D(const Matrix4D& m);
 
 	f32& operator ()(u8 i, u8 j);
 	const f32& operator ()(u8 i, u8 j) const;
@@ -40,7 +35,18 @@ public:
 	FVec4& operator [](u8 j);
 	const FVec4& operator [](u8 j) const;
 	Matrix4D& operator=(const Matrix4D& m);
-	Matrix4D& operator*=(const Matrix4D& m);
+	MINLINE Matrix4D& operator*=(const Matrix4D& m) {
+		Matrix4D t;
+    	for (int i = 0; i < 4; i++) {
+			for (int j = 0; j < 4; j++) {
+				t.n[i][j] = n[i][0] * m.n[0][j] + 
+						  	n[i][1] * m.n[1][j] + 
+						  	n[i][2] * m.n[2][j] + 
+						  	n[i][3] * m.n[3][j];
+			}
+		}
+		return (*this = t);
+	}
 
 	/// @brief Инвертирует текущую матрицу
 	/// @return инвертированную матрицу
@@ -56,7 +62,7 @@ public:
 	/// @param NearClip расстояние до ближней плоскости отсечения.
 	/// @param FarClip дальнее расстояние от плоскости отсечения.
 	/// @return новая матрица ортогональной проекции.
-	void OrthographicProjection(f32 left, f32 right, f32 bottom, f32 top, f32 NearClip, f32 FarClip) {
+	MINLINE void OrthographicProjection(f32 left, f32 right, f32 bottom, f32 top, f32 NearClip, f32 FarClip) {
 		Matrix4D m;
 
     	f32 lr = 1.f / (left - right);
@@ -75,7 +81,7 @@ public:
 
 	/// @brief Создает и возвращает единичную матрицу:
 	/// @return новая единичная матрица
-	static constexpr Matrix4D MakeIdentity() {
+	MINLINE static constexpr Matrix4D MakeIdentity() {
 		return Matrix4D(1.f, 0.f, 0.f, 0.f,
 						0.f, 1.f, 0.f, 0.f,
 						0.f, 0.f, 1.f, 0.f,
@@ -89,7 +95,7 @@ public:
 	/// @param NearClip расстояние до ближней плоскости отсечения.
 	/// @param FarClip дальнее расстояние от плоскости отсечения.
 	/// @return новая матрица ортогональной проекции.
-	static constexpr Matrix4D MakeOrthographicProjection(f32 left, f32 right, f32 bottom, f32 top, f32 NearClip, f32 FarClip) {
+	MINLINE static constexpr Matrix4D MakeOrthographicProjection(f32 left, f32 right, f32 bottom, f32 top, f32 NearClip, f32 FarClip) {
 		Matrix4D m;
 
     	f32 lr = 1.0f / (left - right);
@@ -113,7 +119,7 @@ public:
 	/// @param n расстояние до ближней плоскости отсечения.
 	/// @param f расстояние до дальней плоскости отсечения.
 	/// @return класс Matrix4D
-	static MINLINE Matrix4D MakeFrustumProjection(f32 fovy, f32 s, f32 n, f32 f) {
+	MINLINE static Matrix4D MakeFrustumProjection(f32 fovy, f32 s, f32 n, f32 f) {
 		f32 g = 1.0F / Math::tan(fovy * 0.5F);
 		f32 k = f / (f - n);
 
@@ -129,7 +135,7 @@ public:
 	/// @param n расстояние до ближней плоскости отсечения.
 	/// @param f расстояние до дальней плоскости отсечения.
 	/// @return структура данных Matrix4D
-	static MINLINE Matrix4D MakeRevFrustumProjection(f32 fovy, f32 s, f32 n, f32 f) {
+	MINLINE static Matrix4D MakeRevFrustumProjection(f32 fovy, f32 s, f32 n, f32 f) {
 		f32 g = 1.0F / Math::tan(fovy * 0.5F);
 		f32 k = n / (n - f);
 
@@ -153,7 +159,7 @@ public:
 	/// @param n расстояние до ближней плоскости
 	/// @param e 
 	/// @return структура данных Matrix4D
-	static MINLINE Matrix4D MakeInfiniteProjection(f32 fovy, f32 s, f32 n, f32 e) {
+	MINLINE static Matrix4D MakeInfiniteProjection(f32 fovy, f32 s, f32 n, f32 e) {
 		f32 g = 1.0f / Math::tan(fovy * 0.5f);
 		e = 1.0F - e;
 
@@ -174,13 +180,13 @@ public:
 	/// @param n 
 	/// @param f 
 	/// @return 
-	static MINLINE Matrix4D MakeRevInfiniteProjection(f32 fovy, f32 s, f32 n, f32 e) {
-		f32 g = 1.0F / Math::tan(fovy * 0.5F);
+	MINLINE static Matrix4D MakeRevInfiniteProjection(f32 fovy, f32 s, f32 n, f32 e) {
+		f32 g = 1.F / Math::tan(fovy * 0.5F);
 
-		return (Matrix4D(g / s, 0.0F, 0.0F,    0.0F,
-		                  0.0F,  g,   0.0F,    0.0F,
-		                  0.0F, 0.0F,  e,   n * (1.0F - e),
-		                  0.0F, 0.0F, 1.0F,    0.0F));
+		return (Matrix4D(g / s,   0.F,    0.F,       0.F,
+		                  0.F,     g,     0.F,       0.F,
+		                  0.F,    0.F,     e,   n * (1.F - e),
+		                  0.F,    0.F,    1.F,       0.F));
 	}
 
 	/// @brief Создает и возвращает матрицу просмотра или матрицу, рассматривающую цель с точки зрения позиции.
@@ -188,12 +194,12 @@ public:
 	/// @param target позиция, на которую нужно "смотреть".
 	/// @param up восходящий вектор.
 	/// @return Матрица, рассматривающая цель с точки зрения позиции.
-	static MINLINE Matrix4D MakeLookAt(const FVec3& position, const FVec3& target, const FVec3& up);
+	MINLINE static Matrix4D MakeLookAt(const FVec3& position, const FVec3& target, const FVec3& up);
 
 	/// @brief Создает и возвращает значение, обратное предоставленной матрице.
 	/// @param m матрица, подлежащая инвертированию
 	/// @return перевернутая копия предоставленной матрицы.
-	static MINLINE Matrix4D MakeInverse(const Matrix4D& m) {
+	MINLINE static Matrix4D MakeInverse(const Matrix4D& m) {
 		const FVec3& a = reinterpret_cast<const FVec3&>(m[0]);
 		const FVec3& b = reinterpret_cast<const FVec3&>(m[1]);
 		const FVec3& c = reinterpret_cast<const FVec3&>(m[2]);
@@ -229,11 +235,17 @@ public:
 	/// @brief Заменяет строки матрицы на столбцы.
 	/// @param m матрица, подлежащая транспонированию
 	/// @return копию транспонированной матрицы
-	static MINLINE Matrix4D MakeTransposed(const Matrix4D& m);
+	MINLINE static Matrix4D MakeTransposed(const Matrix4D& m) {
+		return Matrix4D(m(0, 0), m(1, 0), m(2, 0), m(3, 0),
+						m(0, 1), m(1, 1), m(2, 1), m(3, 1),
+						m(0, 2), m(1, 2), m(2, 2), m(3, 2),
+						m(0, 3), m(1, 3), m(2, 3), m(3, 3));
+	}
+
 	/// @brief 
 	/// @param position 
 	/// @return 
-	static constexpr Matrix4D MakeTranslation(const FVec3& position) {
+	MINLINE static constexpr Matrix4D MakeTranslation(const FVec3& position) {
 		return Matrix4D(	1.0f, 		0.0f, 	   0.0f,    0.0f,
 							0.0f, 		1.0f, 	   0.0f,    0.0f,
 							0.0f, 		0.0f, 	   1.0f,    0.0f,
@@ -243,14 +255,14 @@ public:
 	/// @brief Возвращает матрицу масштаба, используя предоставленный масштаб.
 	/// @param scale 
 	/// @return 
-	static constexpr Matrix4D MakeScale(const FVec3& scale) {
+	MINLINE static constexpr Matrix4D MakeScale(const FVec3& scale) {
 		return Matrix4D (scale.x,  0.f,     0.f,   0.f,
 						   0.f,  scale.y,   0.f,   0.f,
 						   0.f,    0.f,   scale.z, 0.f,
 						   0.f,    0.f,     0.f,   1.f);
 	}
 
-	static MINLINE Matrix4D MakeEulerX(f32 AngleRadians) {
+	MINLINE static Matrix4D MakeEulerX(f32 AngleRadians) {
 		Matrix4D m = Matrix4D::MakeIdentity();
 		f32 c = Math::cos(AngleRadians);
     	f32 s = Math::sin(AngleRadians);
@@ -263,7 +275,7 @@ public:
     	return m;
 	}
 
-	static MINLINE Matrix4D MakeEulerY(f32 AngleRadians) {
+	MINLINE static Matrix4D MakeEulerY(f32 AngleRadians) {
 		Matrix4D m = Matrix4D::MakeIdentity();
 		f32 c = Math::cos(AngleRadians);
     	f32 s = Math::sin(AngleRadians);
@@ -276,7 +288,7 @@ public:
     	return m;
 	}
 
-	static MINLINE Matrix4D MakeEulerZ(f32 AngleRadians) {
+	MINLINE static Matrix4D MakeEulerZ(f32 AngleRadians) {
 		Matrix4D m = Matrix4D::MakeIdentity();
 		f32 c = Math::cos(AngleRadians);
     	f32 s = Math::sin(AngleRadians);
@@ -294,62 +306,62 @@ public:
 	/// @param Y_Radians 
 	/// @param Z_Radians 
 	/// @return 
-	static MINLINE Matrix4D MakeEulerXYZ(f32 X_Radians, f32 Y_Radians, f32 Z_Radians) {
+	MINLINE static Matrix4D MakeEulerXYZ(f32 X_Radians, f32 Y_Radians, f32 Z_Radians) {
 		Matrix4D rx = MakeEulerX(X_Radians);
 		Matrix4D ry = MakeEulerY(Y_Radians);
 		Matrix4D rz = MakeEulerZ(Z_Radians);
-		Matrix4D m = rx * ry;
-		m = m * rz;
+		rx *= ry;
+		rx *= rz;
 
-    	return m;
+    	return rx;
 	}
 
 	/// @brief Создает матрицу вращения на основе предоставленных значений вращения по осям x, y и z.
 	/// @param v трехмерный вектор на основе которого нужно создать матрицу вращения.
 	/// @return копию матрицы вращения.
-	static MINLINE Matrix4D MakeEulerXYZ(FVec3 v) {
+	MINLINE static Matrix4D MakeEulerXYZ(FVec3 v) {
 		return MakeEulerXYZ(v.x, v.y, v.z);
 	}
 
 	/// @brief Возвращает вектор направленный вперед относительно предоставленной матрицы.
 	/// @param m матрица 4х4, на основе которой строится вектор.
 	/// @return трехкомпонентный вектор направления.
-	static MINLINE FVec3 Forward(const Matrix4D& m) {
+	MINLINE static FVec3 Forward(const Matrix4D& m) {
 		return -Normalize(FVec3(m(2), m(6), m(10)));
 	}
 
 	/// @brief Возвращает вектор направленный назад относительно предоставленной матрицы.
 	/// @param m матрица 4х4, на основе которой строится вектор.
 	/// @return трехкомпонентный вектор направления.
-	static MINLINE FVec3 Backward(const Matrix4D& m) {
+	MINLINE static FVec3 Backward(const Matrix4D& m) {
 		return Normalize(FVec3(m(2), m(6), m(10)));
 	}
 
 	/// @brief Возвращает вектор направленный вверх относительно предоставленной матрицы.
 	/// @param m матрица 4х4, на основе которой строится вектор.
 	/// @return трехкомпонентный вектор направления.
-	static MINLINE FVec3 Up(const Matrix4D& m) {
+	MINLINE static FVec3 Up(const Matrix4D& m) {
 		return Normalize(FVec3(m(1), m(5), m(9)));
 	}
 
 	/// @brief Возвращает вектор направленный вниз относительно предоставленной матрицы.
 	/// @param m матрица 4х4, на основе которой строится вектор.
 	/// @return трехкомпонентный вектор направления.
-	static MINLINE FVec3 Down(const Matrix4D& m) {
+	MINLINE static FVec3 Down(const Matrix4D& m) {
 		return -Normalize(FVec3(m(1), m(5), m(9)));
 	}
 
 	/// @brief Возвращает вектор направленный влево относительно предоставленной матрицы.
 	/// @param m матрица 4х4, на основе которой строится вектор.
 	/// @return трехкомпонентный вектор направления.
-	static MINLINE FVec3 Left(const Matrix4D& m) {
+	MINLINE static FVec3 Left(const Matrix4D& m) {
 		return -Normalize(FVec3(m(0), m(4), m(8)));
 	}
 
 	/// @brief Возвращает вектор направленный вправо относительно предоставленной матрицы.
 	/// @param m матрица 4х4, на основе которой строится вектор.
 	/// @return трехкомпонентный вектор направления.
-	static MINLINE FVec3 Right(const Matrix4D& m) {
+	MINLINE static FVec3 Right(const Matrix4D& m) {
 		return Normalize(FVec3(m(0), m(4), m(8)));
 	}
 };
@@ -361,6 +373,13 @@ MINLINE FVec3 operator *(const Matrix4D& m, const FVec3& v)
         		 v.x * m.data[8] + v.y * m.data[9] + v.z * m.data[10] + m.data[11]);
 }
 
+MINLINE FVec3 operator *(const FVec3& v, const Matrix4D& m)
+{
+	return FVec3(v.x * m.data[0] + v.y * m.data[4] + v.z * m.data[8]  + m.data[12],
+        		 v.x * m.data[1] + v.y * m.data[5] + v.z * m.data[9]  + m.data[13],
+        		 v.x * m.data[2] + v.y * m.data[6] + v.z * m.data[10] + m.data[14]);
+}
+
 MINLINE FVec4 operator *(const Matrix4D& m, const FVec4& v) 
 {
 	return FVec4(v.x * m.data[0]  + v.y * m.data[1]  + v.z * m.data[2]  + v.w * m.data[3],
@@ -368,3 +387,18 @@ MINLINE FVec4 operator *(const Matrix4D& m, const FVec4& v)
         		 v.x * m.data[8]  + v.y * m.data[9]  + v.z * m.data[10] + v.w * m.data[11],
 				 v.x * m.data[12] + v.y * m.data[13] + v.z * m.data[14] + v.w * m.data[15]);
 }
+
+// template<typename T>
+MINLINE FVec4 operator *(const FVec4& v, const Matrix4D& m) 
+{
+	return FVec4(v.x * m.data[0] + v.y * m.data[4] + v.z * m.data[8]  + v.w * m.data[12],
+        		 v.x * m.data[1] + v.y * m.data[5] + v.z * m.data[9]  + v.w * m.data[13],
+        		 v.x * m.data[2] + v.y * m.data[6] + v.z * m.data[10] + v.w * m.data[14],
+				 v.x * m.data[3] + v.y * m.data[7] + v.z * m.data[11] + v.w * m.data[15]);
+}
+
+/// @brief Умножение матриц 4x4
+/// @param a матрица 4x4
+/// @param b матрица 4x4
+/// @return результат умножения матрицы а на матрицу b
+MAPI Matrix4D operator*(Matrix4D a, const Matrix4D& b);

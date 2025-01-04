@@ -2,6 +2,8 @@
 #include "darray.hpp"
 #include "core/mmemory.hpp"
 
+#include "math/transform.hpp"
+
 #include <string>
 #include <stdarg.h>
 // #include <locale.h>
@@ -47,7 +49,7 @@ char MString::operator[](u64 i)
     }
 }
 */
-const char MString::operator[](u16 i) const
+char MString::operator[](u16 i) const
 {
     if (!str || i >= size) {
         return '\0';
@@ -59,17 +61,16 @@ const char MString::operator[](u16 i) const
 MString &MString::operator=(const MString &s)
 {
     if (s.str) {
-        if (str && length != s.length) {
-            Clear();
+        if (size == 0) {
+            str = reinterpret_cast<char*>(MemorySystem::Allocate(s.size, Memory::String));
+        } else if (size != 0 && size != s.size) {
+            str = reinterpret_cast<char*>(MemorySystem::Realloc(str, size, s.size, Memory::String, false));
         }
 
-        if (length != s.length) {
-            length = s.length;
-            size = s.size;
-            str = MemorySystem::TAllocate<char>(Memory::String, size);
-        } 
-
-        nCopy(s, length + 1);
+        length = s.length;
+        size = s.size;
+             
+        Copy(str, s.str, size);
     }
     return *this;
 }
@@ -77,18 +78,15 @@ MString &MString::operator=(const MString &s)
 MString &MString::operator=(MString &&s)
 {
     if (s.str) {
-        if (str && length != s.length) {
+        if (str) {
             Clear();
         }
 
-        if (length != s.length) {
-            length = s.length;
-            size = s.size;
-        } 
+        length = s.length;
+        size = s.size;
 
         str = s.str;
-        s.length = s.size = 0;
-        s.str = nullptr;
+        s.length = s.size = 0; s.str = nullptr;
     }
 
     return *this;
@@ -309,7 +307,7 @@ u32 MString::nChar()
     return size ? size : size - 1;
 }
 
-const u32 MString::Length(const char *s)
+u32 MString::Length(const char *s)
 {
     if (!s) {
         return 0;
@@ -324,7 +322,7 @@ const u32 MString::Length(const char *s)
     return len;
 }
 
-const u32 MString::UTF8Length(const char *str)
+u32 MString::UTF8Length(const char *str)
 {
     u32 length = 0;
 
@@ -426,17 +424,17 @@ const char *MString::c_str() const noexcept
     return s;
 }
 
-const bool MString::Comparei(const MString &string) const
+bool MString::Comparei(const MString &string) const
 {
     return MString::Equali(str, string.str);
 }
 
-const bool MString::Comparei(const char *string) const
+bool MString::Comparei(const char *string) const
 {
     return MString::Equali(str, string);
 }
 
-const bool MString::nCompare(const MString &string, u64 lenght) const
+bool MString::nCompare(const MString &string, u64 lenght) const
 {
     if (!str && !string) {
         return true;
@@ -457,7 +455,7 @@ const bool MString::nCompare(const MString &string, u64 lenght) const
     return true;
 }
 
-const bool MString::nCompare(const char *string, u64 lenght) const
+bool MString::nCompare(const char *string, u64 lenght) const
 {
     if (!str && !string) {
         return true;
@@ -478,17 +476,17 @@ const bool MString::nCompare(const char *string, u64 lenght) const
     return true;
 }
 
-const bool MString::nComparei(const MString &string, u64 length) const
+bool MString::nComparei(const MString &string, u64 length) const
 {
     return nComparei(str, string.str, length);
 }
 
-const bool MString::nComparei(const char *string, u64 length) const
+bool MString::nComparei(const char *string, u64 length) const
 {
     return nComparei(str, string, length);
 }
 
-const bool MString::nComparei(const char *string1, const char *string2, u64 length)
+bool MString::nComparei(const char *string1, const char *string2, u64 length)
 {
 #if defined(__GNUC__)
     return strncasecmp(str0, str1, length) == 0;
@@ -611,6 +609,12 @@ u64 MString::ToUInt(const char *s)
     return num/10;
 }
 
+bool MString::ToU32(u32& value)
+{
+    value = ToUInt(str);
+    return value;
+}
+
 bool MString::StringToF32(const char* s, f32& fn1, f32* fn2, f32* fn3, f32* fn4)
 {
     // ЗАДАЧА: Убрать лишние проверки
@@ -675,12 +679,12 @@ bool MString::StringToF32(const char* s, f32& fn1, f32* fn2, f32* fn3, f32* fn4)
         case ' ': case '\0': {
             if (buffer) {
                 end();
-                count++;
-                buffer   = 0;
-                factor   = 10;
-                sign     = false;
-                mantissa = false;
             }
+            count++;
+            buffer   = 0;
+            factor   = 10;
+            sign     = false;
+            mantissa = false;
             s++;
         } break;
         /*case '\0': {
@@ -727,55 +731,18 @@ char* MString::Copy(char *dest, const char *source, u64 length, bool DelCon)
     return nullptr;
 }
 
-char* MString::Copy(char *dest, const MString &source, u64 length, bool DelCon)
-{
-    return Copy(dest, source.str, length, DelCon);
-}
+// char* MString::Copy(char *dest, const MString &source, u64 length, bool DelCon)
+// {
+//     return Copy(dest, source.str, length, DelCon);
+// }
 
-void MString::nCopy(const MString& source, u64 length)
+void MString::Copy(const MString& source, u64 length)
 {
-        if(str) {
-            for (u64 i = 0; i < length; i++) {
-            str[i] = source.str[i];
-            }
-        }
-}
-
-constexpr char* MString::Copy(const char *source, u64 length, bool DelCon)
-{
-    if(source && length) {
-        str = reinterpret_cast<char*>(MemorySystem::Allocate(length, Memory::String)); 
-        return Copy(str, source, length, DelCon);
-    }
-    return nullptr;
-}
-
-constexpr char *MString::Copy(const MString &source)
-{   
-    if (!source) {
-        return nullptr;
-    }
-    str = reinterpret_cast<char*>(MemorySystem::Allocate(length + 1, Memory::String)); 
-    nCopy(source, length + 1);
-    return str;
-}
-
-constexpr char* MString::Concat(const char *str1, const char *str2, u64 length)
-{
-    if(!str) {
-        str = reinterpret_cast<char*>(MemorySystem::Allocate(length, Memory::String));
-    }
-    u64 j = 0;
-    for (u64 i = 0; i < length; i++) {
-        if (!str1[i]) {
-            str[i] = str1[i];
-        }
-        else {
-            str[i] = str2[j];
-            j++;
+    if(str) {
+        for (u64 i = 0; i < length; i++) {
+        str[i] = source.str[i];
         }
     }
-    return str;
 }
 
 void MString::Trim()
@@ -814,18 +781,18 @@ char *MString::Trim(char *s)
     }
 }*/
 
-void MString::Mid(char *dest, const MString &source, i32 start, i32 length)
+void MString::Mid(char *dest, const MString &source, u32 start, i32 length)
 {
     if (length == 0) {
         return;
     }
-    const u64& srcLength = source.Length();
+    const u32& srcLength = source.Length();
     if (start >= srcLength) {
         dest[0] = '\0';
         return;
     }
     if (length > 0) {
-        for (u64 i = start, j = 0; j < length && source[i]; ++i, ++j) {
+        for (i64 i = start, j = 0; j < length && source[i]; ++i, ++j) {
             dest[j] = source[i];
         }
         dest[start + length] = '\0';
@@ -871,7 +838,7 @@ bool MString::ToVector(char *s, FVec4 &OutVector)
     return result != -1;
 }
 
-bool MString::ToVector(FVec4 &OutVector)
+bool MString::ToFVector(FVec4 &OutVector)
 {
     if (!str) {
         return false;
@@ -897,7 +864,7 @@ bool MString::ToVector(char *str, FVec3 &OutVector)
     return true;
 }
 
-bool MString::ToVector(FVec3 &OutVector)
+bool MString::ToFVector(FVec3 &OutVector)
 {
     if (!str) {
         return false;
@@ -1054,6 +1021,43 @@ void MString::DeleteLastChar()
     }    
 }
 
+constexpr char *MString::Copy(const char *source, u64 length, bool DelCon)
+{
+    if(source && length) {
+        str = reinterpret_cast<char*>(MemorySystem::Allocate(length, Memory::String)); 
+        return Copy(str, source, length, DelCon);
+    }
+    return nullptr;
+}
+
+constexpr char *MString::Copy(const MString &source)
+{   
+    if (!source) {
+        return nullptr;
+    }
+    str = reinterpret_cast<char*>(MemorySystem::Allocate(length + 1, Memory::String)); 
+    Copy(source, length + 1);
+    return str;
+}
+
+constexpr char* MString::Concat(const char *str1, const char *str2, u64 length)
+{
+    if(!str) {
+        str = reinterpret_cast<char*>(MemorySystem::Allocate(length, Memory::String));
+    }
+    u64 j = 0;
+    for (u64 i = 0; i < length; i++) {
+        if (!str1[i]) {
+            str[i] = str1[i];
+        }
+        else {
+            str[i] = str2[j];
+            j++;
+        }
+    }
+    return str;
+}
+
 u32 MString::CheckSymbol(const char &c)
 {
     i32 ch = static_cast<i32>(c);
@@ -1097,6 +1101,53 @@ void MString::operator delete[](void *ptr, u64 size)
     MMemory::Free(ptr, size, Memory::String);
 }
 */
+bool MString::ToTransform(const char *str, Transform &transform)
+{
+    if (!str) {
+        return false;
+    }
+
+    // MemorySystem::ZeroMem(&transform, sizeof(Transform));
+    f32 values[7]{};
+
+    i32 count = sscanf(
+        str,
+        "%f %f %f %f %f %f %f %f %f %f",
+        &transform.position.x, &transform.position.y, &transform.position.z,
+        &values[0], &values[1], &values[2], &values[3], &values[4], &values[5], &values[6]);
+
+    if (count == 10) {
+        // Обрабатывать как кватернион, загружать напрямую.
+        transform.rotation.x = values[0];
+        transform.rotation.y = values[1];
+        transform.rotation.z = values[2];
+        transform.rotation.w = values[3];
+
+        // Установить масштаб
+        transform.scale.x = values[4];
+        transform.scale.y = values[5];
+        transform.scale.z = values[6];
+    } else if (count == 9) {
+        Quaternion xRot{FVec3(1.F, 0, 0), Math::DegToRad(values[0]), true};
+        Quaternion yRot{FVec3(0, 1.F, 0), Math::DegToRad(values[1]), true};
+        Quaternion zRot{FVec3(0, 0, 1.F), Math::DegToRad(values[2]), true};
+        transform.rotation = xRot * (yRot * zRot);
+    } else {
+        MWARN("Ошибка формата: предоставлено недопустимое преобразование. Будет использовано преобразование идентичности.");
+        transform = Transform();
+        return false;
+    }
+
+    transform.IsDirty = true;
+
+    return true;
+}
+
+bool MString::ToTransform(Transform &transform)
+{
+    return ToTransform(str, transform);
+}
+
 bool MString::Equal(const char *strL, const char *strR)
 {
     return strcmp(strL, strR) == 0;

@@ -42,8 +42,8 @@ bool LoadGameLib(Application& app)
     // назначить указатели функций
     app.Boot = (bool(*)(Application&))app.GameLibrary.functions[0].pfn;
     app.Initialize = (bool(*)(Application&))app.GameLibrary.functions[1].pfn;
-    app.Update = (bool(*)(Application&, f32))app.GameLibrary.functions[2].pfn;
-    app.Render = (bool(*)(Application&, RenderPacket&, f32))app.GameLibrary.functions[3].pfn;
+    app.Update = (bool(*)(Application&, const FrameData&))app.GameLibrary.functions[2].pfn;
+    app.Render = (bool(*)(Application&, RenderPacket&, FrameData&))app.GameLibrary.functions[3].pfn;
     app.OnResize = (void(*)(Application&, u32, u32))app.GameLibrary.functions[4].pfn;
     app.Shutdown = (void(*)(Application&))app.GameLibrary.functions[5].pfn;
     app.LibOnLoad = (void(*)(Application&))app.GameLibrary.functions[6].pfn;
@@ -111,6 +111,7 @@ bool CreateApplication(Application& OutApplication)
     OutApplication.AppConfig.name = "Moon Engine";
     // OutApplication.AppConfig.FontConfig = 
     // OutApplication.AppConfig.RenderViews = 
+    OutApplication.AppConfig.FrameAllocatorSize = MEBIBYTES(64);
 
     PlatformError::Code ErrCode = PlatformError::FileLocked;
     while (ErrCode == PlatformError::FileLocked) {

@@ -152,7 +152,7 @@ bool RenderViewWorld::BuildPacket(class LinearAllocator& FrameAllocator, void *d
             // Получите центр, извлеките глобальную позицию из матрицы модели и добавьте ее в центр, 
             // затем вычислите расстояние между ней и камерой и, наконец, сохраните ее в списке для сортировки.
             // ПРИМЕЧАНИЕ: это не идеально для полупрозрачных сеток, которые пересекаются, но для наших целей сейчас достаточно.
-            auto center = FVec3::Transform(gData.gid->center, gData.model);
+            auto center = gData.gid->center * gData.model; // transform
             auto distance = Distance(center, WorldCamera->GetPosition());
             GeometryDistance GeoDist;
             GeoDist.g = gData;

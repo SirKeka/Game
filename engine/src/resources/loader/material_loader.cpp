@@ -22,7 +22,7 @@ bool ResourceLoader::Load(const char *name, void* params, MaterialResource &OutR
     OutResource.FullPath = FullFilePath;
 
     // ЗАДАЧА: Здесь следует использовать распределитель.
-    auto& MatConf = OutResource.data; // = new MaterialConfig(name, "Builtin.Material", true, Vector4D<f32>::Zero());
+    auto& MatConf = OutResource.data;
     // Установите некоторые значения по умолчанию.
     MString::Copy(MatConf.name, name);
     MatConf.ShaderName = "Builtin.Material";
@@ -70,22 +70,22 @@ bool ResourceLoader::Load(const char *name, void* params, MaterialResource &OutR
         if (TrimmedVarName.Comparei("version")) {
             // ЗАДАЧА: version
         } else if (TrimmedVarName.Comparei("name")) {
-            MString::Copy(MatConf.name, TrimmedValue, MATERIAL_NAME_MAX_LENGTH);
+            MString::Copy(MatConf.name, TrimmedValue.c_str(), MATERIAL_NAME_MAX_LENGTH);
         } else if (TrimmedVarName.Comparei("diffuse_map_name")) {
-            MString::Copy(MatConf.DiffuseMapName, TrimmedValue, TEXTURE_NAME_MAX_LENGTH);
+            MString::Copy(MatConf.DiffuseMapName, TrimmedValue.c_str(), TEXTURE_NAME_MAX_LENGTH);
         } else if (TrimmedVarName.Comparei("specular_map_name")) {
-            MString::Copy(MatConf.SpecularMapName, TrimmedValue, TEXTURE_NAME_MAX_LENGTH);
+            MString::Copy(MatConf.SpecularMapName, TrimmedValue.c_str(), TEXTURE_NAME_MAX_LENGTH);
         } else if (TrimmedVarName.Comparei("normal_map_name")) {
-            MString::Copy(MatConf.NormalMapName, TrimmedValue, TEXTURE_NAME_MAX_LENGTH);
+            MString::Copy(MatConf.NormalMapName, TrimmedValue.c_str(), TEXTURE_NAME_MAX_LENGTH);
         } else if (TrimmedVarName.Comparei("diffuse_colour")) {
             // Разобрать цвет
-            if (!TrimmedValue.ToVector(MatConf.DiffuseColour)) {
+            if (!TrimmedValue.ToFVector(MatConf.DiffuseColour)) {
                 MWARN("Ошибка анализа диффузного цвета (diffuse_color) в файле «%s». Вместо этого используется белый цвет по умолчанию.", FullFilePath);
                 // ПРИМЕЧАНИЕ. Уже назначено выше, его здесь нет необходимости.
             } 
         } else if (TrimmedVarName.Comparei("Shader")) {
             // Возьмите копию названия материала.
-            MatConf.ShaderName = TrimmedValue;
+            MatConf.ShaderName = static_cast<MString&&>(TrimmedValue);
         } else if (TrimmedVarName.Comparei("specular")) {
             if(!TrimmedValue.ToFloat(MatConf.specular)) {
                 MWARN("Ошибка анализа зеркального отражения в файле «%s». Вместо этого используется значение по умолчанию 32.0.", FullFilePath);

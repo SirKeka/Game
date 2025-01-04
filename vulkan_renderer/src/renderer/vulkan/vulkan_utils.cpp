@@ -133,3 +133,64 @@ bool VulkanResultIsSuccess(VkResult result)
             return false;
     }
 }
+
+#if defined(_DEBUG)
+bool VulkanSetDebugObjectName(VulkanAPI *VkAPI, VkObjectType ObjectType, void *ObjectHandle, const char *ObjectName)
+{
+    const VkDebugUtilsObjectNameInfoEXT NameInfo = {
+        VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+        0,
+        ObjectType,
+        (uint64_t)ObjectHandle,
+        ObjectName,
+    };
+
+    if (VkAPI->pfnSetDebugUtilsObjectNameEXT) {
+        VK_CHECK(VkAPI->pfnSetDebugUtilsObjectNameEXT(VkAPI->Device.LogicalDevice, &NameInfo));
+        return true;
+    }
+    return false;
+}
+
+bool VulkanSetDebugObjectTag(VulkanAPI *VkAPI, VkObjectType ObjectType, void *ObjectHandle, u64 TagSize, const void *TagData)
+{
+    const VkDebugUtilsObjectTagInfoEXT TagInfo = {
+        VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+        0,
+        ObjectType,
+        (uint64_t)ObjectHandle,
+        0,
+        TagSize,
+        TagData};
+
+    if (VkAPI->pfnSetDebugUtilsObjectTagEXT) {
+        VK_CHECK(VkAPI->pfnSetDebugUtilsObjectTagEXT(VkAPI->Device.LogicalDevice, &TagInfo));
+        return true;
+    }
+    return false;
+}
+
+bool VulkanBeginLabel(VulkanAPI *VkAPI, VkCommandBuffer buffer, const char *LabelName, const FVec4& colour)
+{
+    VkDebugUtilsLabelEXT LabelInfo = {
+        VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT,
+        0,
+        LabelName};
+    MemorySystem::CopyMem(LabelInfo.color, &colour, sizeof(f32) * 4);
+
+    if (VkAPI->pfnCmdBeginDebugUtilsLabelEXT) {
+        VkAPI->pfnCmdBeginDebugUtilsLabelEXT(buffer, &LabelInfo);
+        return true;
+    }
+    return false;
+}
+
+bool VulkanEndLabel(VulkanAPI *VkAPI, VkCommandBuffer buffer)
+{
+    if (VkAPI->pfnCmdEndDebugUtilsLabelEXT) {
+        VkAPI->pfnCmdEndDebugUtilsLabelEXT(buffer);
+        return true;
+    }
+    return false;
+}
+#endif

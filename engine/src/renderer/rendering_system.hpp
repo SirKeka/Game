@@ -20,6 +20,7 @@ struct StaticMeshData;
 struct PlatformState;
 class VulkanAPI;
 class Shader;
+struct FrameData;
 
 struct RenderingSystemConfig
 {
@@ -44,9 +45,10 @@ namespace RenderingSystem
     void OnResized(u16 width, u16 height);
 
     /// @brief Рисует следующий кадр, используя данные, предоставленные в пакете рендеринга.
-    /// @param packet Указатель на пакет рендеринга, который содержит данные о том, что должно быть визуализировано.
+    /// @param packet константная ссылка на пакет рендеринга, который содержит данные о том, что должно быть визуализировано.
+    /// @param rFrameData константная ссылка на данные текущего кадра
     /// @return true в случае успеха; в противном случае false.
-    bool DrawFrame(const RenderPacket& packet);
+    bool DrawFrame(const RenderPacket& packet, const FrameData& rFrameData);
 
     /// @brief Функция/метод предоставляющая доступ к самому отрисовщику.
     /// @return указатель на отрисовщик вулкан.
@@ -150,7 +152,7 @@ namespace RenderingSystem
     /// @param StageFilenames массив имен файлов этапов шейдера, которые будут загружены. Должно соответствовать массиву этапов.
     /// @param stages массив этапов шейдера(ShaderStage), указывающий, какие этапы рендеринга (вершина, фрагмент и т. д.) используются в этом шейдере.
     /// @return true в случае успеха, иначе false.
-    bool Load(Shader* shader, const Shader::Config& config, Renderpass* renderpass, u8 StageCount, const DArray<MString>& StageFilenames, const Shader::Stage* stages);
+    bool Load(Shader *shader, const Shader::Config& config, Renderpass* renderpass, const DArray<Shader::Stage>& stages, const DArray<MString>& StageFilenames);
     /// @brief Уничтожает данный шейдер и освобождает все имеющиеся в нем ресурсы.--------------------------------------------------------------------
     /// @param shader указатель на шейдер, который нужно уничтожить.
     void Unload(Shader* shader);
@@ -229,7 +231,7 @@ namespace RenderingSystem
     /// @brief Создает новый проход рендеринга.
     /// @param config Константная ссылка на конфигурацию, которая будет использоваться при создании прохода рендеринга.
     /// @param OutRenderpass указатель на общий проход рендеринга.
-    bool RenderpassCreate(const RenderpassConfig& config, Renderpass& OutRenderpass);
+    bool RenderpassCreate(RenderpassConfig& config, Renderpass& OutRenderpass);
     
     /// @brief Уничтожает указанный renderpass.
     /// @param OutRenderpass указатель на renderpass, который необходимо уничтожить.

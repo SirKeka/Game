@@ -5,29 +5,34 @@
 
 struct GeometryID;
 
-struct Mesh {
+struct MAPI Mesh {
+    struct Config {
+        MString name;
+        MString ParentName;
+        MString ResourceName;
+        u16 GeometryCount;
+        struct GeometryConfig* GConfigs;
+    } config;
+
     u32 UniqueID;
     u8 generation;
     u16 GeometryCount;
     GeometryID** geometries;
     Transform transform;
 
-    constexpr Mesh() : UniqueID(), generation(), GeometryCount(), geometries(nullptr), transform() {}
-    constexpr Mesh(u16 GeometryCount, GeometryID** geometries, const Transform& transform)
+    constexpr Mesh() : config(), UniqueID(), generation(), GeometryCount(), geometries(nullptr), transform() {}
+    constexpr Mesh(Config& config) : config(static_cast<Config&&>(config)), UniqueID(INVALID::U8ID), generation(), GeometryCount(), geometries(nullptr), transform() {}
+    Mesh(u16 GeometryCount, GeometryID** geometries, const Transform& transform)
     : UniqueID(), generation(), GeometryCount(GeometryCount), geometries(geometries), transform(transform) {}
     Mesh(const Mesh& mesh)
-    : GeometryCount(mesh.GeometryCount), geometries(new GeometryID*[GeometryCount]), transform(mesh.transform) {
+    : config(mesh.config), UniqueID(mesh.UniqueID), generation(mesh.generation), GeometryCount(mesh.GeometryCount), geometries(new GeometryID*[GeometryCount]), transform(mesh.transform) {
         for (u64 i = 0; i < GeometryCount; i++) {
             geometries[i] = mesh.geometries[i];
         }
     }
-    constexpr Mesh(Mesh&& mesh) : UniqueID(mesh.UniqueID), generation(mesh.generation), GeometryCount(mesh.GeometryCount), geometries(mesh.geometries), transform(mesh.transform)
+    Mesh(Mesh&& mesh) : config(static_cast<Config&&>(mesh.config)), UniqueID(mesh.UniqueID), generation(mesh.generation), GeometryCount(mesh.GeometryCount), geometries(mesh.geometries), transform(mesh.transform)
     {
-        mesh.UniqueID = INVALID::ID;
-        mesh.generation = 0;
-        mesh.GeometryCount = 0;
-        mesh.geometries = nullptr;
-        mesh.transform = Transform();
+        MemorySystem::ZeroMem(&mesh, sizeof(Mesh));
     }
     ~Mesh() {}
     Mesh& operator=(const Mesh& mesh) {
@@ -45,13 +50,27 @@ struct Mesh {
         transform = mesh.transform;
         return *this;
     }
+    Mesh& operator=(Mesh&& mesh) {
+        config = static_cast<Config&&>(mesh.config);
+        UniqueID = mesh.UniqueID;
+        generation = mesh.generation;
+        GeometryCount = mesh.GeometryCount;
+        geometries = mesh.geometries;
+        transform = mesh.transform;
+        MemorySystem::ZeroMem(&mesh, sizeof(Mesh));
+        return *this;
+    }
 
     struct PacketData {
         u32 MeshCount;
         Mesh** meshes;
     };
 
-    MAPI bool LoadFromResource(const char* ResourceName);
-    MAPI void Unload();
+    // bool Load(const char* ResourceName);
+    bool Create(Config& config);
+    bool Initialize();
+    bool Load();
+    bool Unload();
+    bool Destroy();
 };
 

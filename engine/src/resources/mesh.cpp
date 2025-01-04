@@ -2,6 +2,7 @@
 #include "systems/resource_system.hpp"
 #include "systems/geometry_system.hpp"
 #include "systems/job_systems.hpp"
+#include "core/identifier.hpp"
 
 // Также используется как ResultData из задания.
 struct MeshLoadParams {
@@ -53,12 +54,12 @@ bool MeshLoadJobStart(void* params, void* ResultData) {
     return result;
 }
 
-bool Mesh::LoadFromResource(const char *ResourceName)
+static bool Load(const char *ResourceName, Mesh* OutMesh)
 {
-    generation = INVALID::U8ID;
+    OutMesh->generation = INVALID::U8ID;
     MeshLoadParams params;
     params.ResourceName = ResourceName;
-    params.OutMesh = this;
+    params.OutMesh = OutMesh;
 
     Job::Info job { MeshLoadJobStart, MeshLoadJobSuccess, MeshLoadJobFail, &params, sizeof(MeshLoadParams), sizeof(MeshLoadParams) };
     JobSystem::Submit(job);
@@ -66,7 +67,55 @@ bool Mesh::LoadFromResource(const char *ResourceName)
     return true;
 }
 
-void Mesh::Unload()
+bool Mesh::Create(Config& config)
+{
+    this->config = static_cast<Config&&>(config);
+    this->generation = INVALID::U8ID;
+
+    return true;
+}
+
+bool Mesh::Initialize()
+{
+    if (config.ResourceName) {
+        return true;
+    } else {
+        // Просто проверяю конфигурацию.
+        if (!config.GConfigs) {
+            return false;
+        }
+
+        GeometryCount = config.GeometryCount;
+        geometries = reinterpret_cast<GeometryID**>(MemorySystem::Allocate(sizeof(GeometryID*), Memory::Array));
+    }
+    return true;
+}
+
+bool Mesh::Load()
+{
+    UniqueID = Identifier::AquireNewID(this);
+
+    if (config.ResourceName) {
+        return ::Load(config.ResourceName.c_str(), this);
+    } else {
+        if (!config.GConfigs) {
+            return false;
+        }
+
+        for (u32 i = 0; i < config.GeometryCount; ++i) {
+            geometries[i] = GeometrySystem::Acquire(config.GConfigs[i], true);
+            generation = 0;
+
+            // Очистите выделения для конфигурации геометрии.
+            // ЗАДАЧА: Сделайте это во время выгрузки/уничтожения
+            config.GConfigs[i].Dispose();
+        }
+    }
+
+    return true;
+}
+
+bool Mesh::Unload()
 {
     for (u32 i = 0; i < GeometryCount; ++i) {
         GeometrySystem::Instance()->Release(geometries[i]);
@@ -77,4 +126,31 @@ void Mesh::Unload()
     generation = INVALID::U8ID; // Для верности сделайте геометрию недействительной, чтобы она не пыталась визуализироваться.
     GeometryCount = 0;
     transform = Transform();
+    return true;
+}
+
+bool Mesh::Destroy()
+{
+    if (geometries) {
+        if (!this->Unload()) {
+            MERROR("Mesh::Destroy() - не удалось выгрузить сетку.");
+            return false;
+        }
+    }
+
+    // if (name) {
+    //     name.Clear();
+    // }
+
+    if (config.name) {
+        config.name.Clear();
+    }
+    if (config.ResourceName) {
+        config.ResourceName.Clear();
+    }
+    if (config.ParentName) {
+        config.ParentName.Clear();
+    }
+
+    return true;
 }

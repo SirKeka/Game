@@ -25,27 +25,30 @@ struct GeometryID {
 };
 
 /// @brief Представляет конфигурацию геометрии.
+/// @param u32_VertexSize размер каждой вершины.
+/// @param u32_VertexCount количество вершин.
+/// @param void*_vertices массив вершин.
+/// @param u32_IndexSize размер каждого индекса.
+/// @param u32_IndexCount количество индексов.
+/// @param void*_indices массив индексов.
+/// @param char_name[] имя геометрии.
+/// @param char_MaterialName[] имя материала, используемого геометрией.
+/// @param FVec3_center 
+/// @param FVec3_MinExtents 
+/// @param FVec3_MaxExtents 
 struct MAPI GeometryConfig {
-    /// @brief Размер каждой вершины.
     u32 VertexSize;
-    /// @brief Количество вершин.
     u32 VertexCount;
-    /// @brief Массив вершин.
     void* vertices;
-    /// @brief Размер каждого индекса.
     u32 IndexSize;
-    /// @brief Количество индексов.
     u32 IndexCount;
-    /// @brief Массив индексов.
     void* indices;
-    /// @brief Имя геометрии.
     char name[GEOMETRY_NAME_MAX_LENGTH];
-    /// @brief Имя материала, используемого геометрией.
     char MaterialName[MATERIAL_NAME_MAX_LENGTH];
 
-    FVec3 center;
-    FVec3 MinExtents;
-    FVec3 MaxExtents;
+    FVec3 center{};
+    FVec3 MinExtents{};
+    FVec3 MaxExtents{};
 
     /// @brief Освобождает ресурсы, имеющиеся в указанной конфигурации.
     /// @param config ссылка на конфигурацию, которую нужно удалить.
@@ -55,6 +58,9 @@ struct MAPI GeometryConfig {
     /// @param name имя геометрии.
     /// @param MaterialName имя материала, который используется геометрией.
     void CopyNames(const char *name, const char *MaterialName);
+
+    void* operator new(u64 size);
+    void operator delete(void* ptr, u64 size);
 };
 
 /// @brief Представляет фактическую геометрию в мире.

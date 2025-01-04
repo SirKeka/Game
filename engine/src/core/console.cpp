@@ -125,8 +125,7 @@ bool Console::UnregisterCommand(const char *command)
     for (u32 i = 0; i < CommandCount; ++i) {
         if (pConsole->RegisteredCommands[i].name.Comparei(command)) {
             // Команда найдена, удалите ее.
-            Command PoppedCommand;
-            pConsole->RegisteredCommands.PopAt(i, &PoppedCommand);
+            pConsole->RegisteredCommands.PopAt(i);
             return true;
         }
     }

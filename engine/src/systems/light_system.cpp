@@ -1,8 +1,9 @@
 #include "light_system.hpp"
 
 #include "core/systems_manager.hpp"
+#include "core/mmemory.hpp"
 
-#define MAX_POINT_LIGHTS 10
+#define MAX_POINT_LIGHTS 10U
 
 struct LightSystemState {
     DirectionalLight* DirLight;
@@ -89,10 +90,10 @@ DirectionalLight *LightSystem::GetDirectionalLight()
     return state->DirLight;
 }
 
-i32 LightSystem::PointLightCount()
+u32 LightSystem::PointLightCount()
 {
     auto state = reinterpret_cast<LightSystemState*>(SystemsManager::GetState(MSystem::Light));
-    i32 count = 0;
+    u32 count = 0;
     for (u32 i = 0; i < MAX_POINT_LIGHTS; ++i) {
         if (state->PointLights[i]) {
             count++;
@@ -116,4 +117,14 @@ bool LightSystem::GetPointLights(PointLight *PointLights)
     }
 
     return true;
+}
+
+void *DirectionalLight::operator new(u64 size)
+{
+    return MemorySystem::Allocate(size, Memory::Scene);
+}
+
+void DirectionalLight::operator delete(void *ptr, u64 size)
+{
+    MemorySystem::Free(ptr, size, Memory::Scene);
 }

@@ -7,7 +7,7 @@ class RenderViewPick : public RenderView
 {
 public:
     struct PacketData {
-    DArray<GeometryRenderData> WorldMeshData; // Копия данных кадра
+    DArray<GeometryRenderData>* WorldMeshData; // Указатель на динамический массив
     Mesh::PacketData UiMeshData;
     u32 UiGeometryCount;
     // ЗАДАЧА: временно
@@ -33,7 +33,7 @@ private:
     ShaderInfo WorldShaderInfo;
     Texture ColoureTargetAttachmentTexture; // Используется как цветовая привязка для обоих проходов рендеринга.
     Texture DepthTargetAttachmentTexture;   // Привязка глубины
-    i32 InstanceCount;
+    u32 InstanceCount;
     DArray<bool> InstanceUpdate;
     u16 MouseX, MouseY;
     // u32 RenderMode;

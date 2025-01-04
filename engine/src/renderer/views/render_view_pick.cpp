@@ -139,15 +139,16 @@ bool RenderViewPick::BuildPacket(LinearAllocator& FrameAllocator, void *data, Pa
     PacketData->UiGeometryCount = 0;
     OutPacket.ExtendedData = FrameAllocator.Allocate(sizeof(RenderViewPick::PacketData));
 
-    const u64& WorldGeometryCount = PacketData->WorldMeshData.Length();
+    auto& WorldMeshData = *PacketData->WorldMeshData;
+    const u64& WorldGeometryCount = WorldMeshData.Length();
 
-    i32 HighestInstanceID = 0;
+    u32 HighestInstanceID = 0;
     // Итерировать все сетки в мировых данных.
     for (u32 i = 0; i < WorldGeometryCount; ++i) {
         // Подсчитать все геометрии как один идентификатор.
-        OutPacket.geometries.PushBack(PacketData->WorldMeshData[i]);
-        if (PacketData->WorldMeshData[i].UniqueID > HighestInstanceID) {
-            HighestInstanceID =PacketData->WorldMeshData[i].UniqueID;
+        OutPacket.geometries.PushBack(WorldMeshData[i]);
+        if (WorldMeshData[i].UniqueID > HighestInstanceID) {
+            HighestInstanceID = WorldMeshData[i].UniqueID;
         }
     }
 
@@ -235,7 +236,7 @@ bool RenderViewPick::Render(const Packet &packet, u64 FrameNumber, u64 RenderTar
         }
         ShaderSystem::ApplyGlobal();
 
-        const u64& WorldGeometryCount = PacketData->WorldMeshData.Length();
+        const u64& WorldGeometryCount = PacketData->WorldMeshData->Length();
         // Нарисовать геометрию. Начните с 0, так как геометрия мира добавляется первой, и остановитесь на количестве геометрий мира.
         for (u32 i = 0; i < WorldGeometryCount; ++i) {
             const auto& geo = packet.geometries[i];
@@ -499,4 +500,5 @@ void RenderViewPick::ReleaseShaderInstances()
             MWARN("Не удалось освободить ресурсы шейдера.");
         }
     }
+    InstanceUpdate.Clear();
 }

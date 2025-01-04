@@ -36,7 +36,7 @@ public:
     /// @param size Объем в байтах, который будет выделен.
     /// @param alignment Выравнивание в байтах. 0 = 256 байтам
     /// @return Выровненный, выделенный блок памяти, если эта операция не завершается неудачей, то 0.
-    void* AllocateAligned(u64 size, u16 alignment);
+    void* AllocateAligned(u64& size, u16 alignment);
 
     void* Realloc(void* block, u64 size, u64 NewSize);
 

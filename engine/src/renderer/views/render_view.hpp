@@ -61,6 +61,7 @@ struct Packet;
 // ЗАДАЧА: изменить архитектуру
 protected:
     friend class RenderViewSystem;
+    friend struct SimpleScene;
     u16 id;                         // Уникальный идентификатор этого представления.
     MString name;                   // Имя представления.
     u16 width;                      // Текущая ширина этого представления.
@@ -104,16 +105,25 @@ public:
     virtual bool RegenerateAttachmentTarget(u32 PassIndex = 0, struct RenderTargetAttachment* attachment = nullptr);
  
     /// @brief Пакет для представления рендеринга, созданный им и содержащий данные о том, что должно быть визуализировано.
+    /// @param RenderView*_view Указатель на представление, с которым связан этот пакет.
+    /// @param Matrix4D_ViewMatrix Текущая матрица представления.
+    /// @param Matrix4D_ProjectionMatrix Текущая матрица проекции.
+    /// @param FVec3_ViewPosition Текущая позиция представления, если применимо.
+    /// @param FVec4_AmbientColour Текущий окружающий цвет сцены, если применимо.
+    /// @param u32_GeometryCount Количество геометрий для рисования.
+    /// @param GeometryRenderData*_geometries Геометрии для рисования.
+    /// @param const_char*_CustomShaderName Имя используемого пользовательского шейдера, если применимо. В противном случае 0.
+    /// @param void*_ExtendedData Содержит указатель на данные свободной формы, обычно понимаемые как объектом, так и потребляющим представлением.
     struct Packet {
-        RenderView* view;                               // Указатель на представление, с которым связан этот пакет.
-        Matrix4D ViewMatrix;                            // Текущая матрица представления.
-        Matrix4D ProjectionMatrix;                      // Текущая матрица проекции.
-        FVec3 ViewPosition;                             // Текущая позиция представления, если применимо.
-        FVec4 AmbientColour;                            // Текущий окружающий цвет сцены, если применимо.
-        // u32 GeometryCount;                           // Количество геометрий для рисования.
-        DArray<GeometryRenderData> geometries;          // Геометрии для рисования.
-        const char* CustomShaderName;                   // Имя используемого пользовательского шейдера, если применимо. В противном случае 0.
-        void* ExtendedData;                             // Содержит указатель на данные свободной формы, обычно понимаемые как объектом, так и потребляющим представлением.
+        RenderView* view;
+        Matrix4D ViewMatrix;
+        Matrix4D ProjectionMatrix;
+        FVec3 ViewPosition;
+        FVec4 AmbientColour;
+        // u32 GeometryCount;
+        DArray<GeometryRenderData> geometries;
+        const char* CustomShaderName;
+        void* ExtendedData;
     };
 };
 

@@ -9,11 +9,11 @@
 #include "renderer/renderbuffer.hpp"
 
 #include <systems/material_system.hpp>
-#include "systems/texture_system.hpp"
-#include "systems/resource_system.hpp"
-//#include "resources/geometry.hpp"
+#include <systems/texture_system.hpp>
+#include <systems/resource_system.hpp>
+#include <core/frame_data.h>
 
-#include "math/vertex.hpp"
+#include <math/vertex.hpp>
 
 #include "vulkan_utils.hpp"
 
@@ -79,7 +79,7 @@ void VulkanAllocFree(void* UserData, void* memory) {
 #ifdef MVULKAN_ALLOCATOR_TRACE
         MTRACE("Найден блок %p с размером/выравниванием: %llu/%u. Освобождение выровненного блока...", memory, size, alignment);
 #endif
-        MemorySystem::FreeAligned(memory, size, true, Memory::Vulkan);
+        MemorySystem::FreeAligned(memory, size, alignment, Memory::Vulkan);
     } else {
         MERROR("VulkanAllocFree не удалось получить поиск выравнивания для блока %p.", memory);
     }
@@ -108,7 +108,7 @@ void* VulkanAllocReallocation(void* UserData, void* original, size_t size, size_
     u16 AllocAlignment;
     bool IsAligned = MemorySystem::GetSizeAlignment(original, AllocSize, AllocAlignment);
     if (!IsAligned) {
-        MERROR("vulkan_alloc_reallocation невыровненного блока %p", original);
+        MERROR("VulkanAllocReallocation невыровненного блока %p", original);
         return nullptr;
     }
 
@@ -324,6 +324,26 @@ bool VulkanAPI::Initialize(const RenderingConfig &config, u8 &OutWindowRenderTar
     for (u32 i = 0; i < RequiredExtensionCount; ++i) {
         MDEBUG(RequiredExtensions[i]);
     }
+
+    // Load up debug function pointers.
+    pfnSetDebugUtilsObjectNameEXT = (PFN_vkSetDebugUtilsObjectNameEXT)vkGetInstanceProcAddr(instance, "vkSetDebugUtilsObjectNameEXT");
+    if (!pfnSetDebugUtilsObjectNameEXT) {
+        MWARN("Невозможно загрузить указатель функции для vkSetDebugUtilsObjectNameEXT. Отладочные функции, связанные с этим, не будут работать.");
+    }
+    pfnSetDebugUtilsObjectTagEXT = (PFN_vkSetDebugUtilsObjectTagEXT)vkGetInstanceProcAddr(instance, "vkSetDebugUtilsObjectTagEXT");
+    if (!pfnSetDebugUtilsObjectTagEXT) {
+        MWARN("Невозможно загрузить указатель функции для vkSetDebugUtilsObjectTagEXT. Отладочные функции, связанные с этим, не будут работать.");
+    }
+
+    pfnCmdBeginDebugUtilsLabelEXT = (PFN_vkCmdBeginDebugUtilsLabelEXT)vkGetInstanceProcAddr(instance, "vkCmdBeginDebugUtilsLabelEXT");
+    if (!pfnCmdBeginDebugUtilsLabelEXT) {
+        MWARN("Невозможно загрузить указатель функции для vkCmdBeginDebugUtilsLabelEXT. Отладочные функции, связанные с этим, не будут работать.");
+    }
+
+    pfnCmdEndDebugUtilsLabelEXT = (PFN_vkCmdEndDebugUtilsLabelEXT)vkGetInstanceProcAddr(instance, "vkCmdEndDebugUtilsLabelEXT");
+    if (!pfnCmdEndDebugUtilsLabelEXT) {
+        MWARN("Невозможно загрузить указатель функции для vkCmdEndDebugUtilsLabelEXT. Отладочные функции, связанные с этим, не будут работать.");
+    }
 #endif
 
     CreateInfo.enabledExtensionCount = RequiredExtensions.Length();
@@ -510,9 +530,9 @@ void VulkanAPI::Resized(u16 width, u16 height)
     MINFO("API рендеринга Vulkan-> изменен размер: w/h/gen: %i/%i/%llu", width, height, FramebufferSizeGeneration);
 }
 
-bool VulkanAPI::BeginFrame(f32 Deltatime)
+bool VulkanAPI::BeginFrame(const FrameData& rFrameData)
 {
-    FrameDeltaTime = Deltatime;
+    FrameDeltaTime = rFrameData.DeltaTime;
 
     // Проверьте, не воссоздается ли цепочка подкачки заново, и загрузитесь.
     if (RecreatingSwapchain) {
@@ -579,7 +599,7 @@ bool VulkanAPI::BeginFrame(f32 Deltatime)
     return true;
 }
 
-bool VulkanAPI::EndFrame(f32 DeltaTime)
+bool VulkanAPI::EndFrame(const FrameData& rFrameData)
 {
     VulkanCommandBufferEnd(&GraphicsCommandBuffers[ImageIndex]);
 
@@ -733,6 +753,12 @@ bool VulkanAPI::RenderpassBegin(Renderpass* pass, RenderTarget& target)
     vkCmdBeginRenderPass(CommandBuffer.handle, &BeginInfo, VK_SUBPASS_CONTENTS_INLINE);
     CommandBuffer.state = COMMAND_BUFFER_STATE_IN_RENDER_PASS;
 
+    f32 r = Math::RandomInRange(0.F, 1.F);
+    f32 g = Math::RandomInRange(0.F, 1.F);
+    f32 b = Math::RandomInRange(0.F, 1.F);
+    FVec4 colour{r, g, b, 1.F};
+    VK_BEGIN_DEBUG_LABEL(this, CommandBuffer.handle, pass->name.c_str(), colour);
+
     return true;
 }
 
@@ -742,6 +768,7 @@ bool VulkanAPI::RenderpassEnd(Renderpass* pass)
 
     // Завершение рендеринга.
     vkCmdEndRenderPass(CommandBuffer.handle);
+    VK_END_DEBUG_LABEL(this, CommandBuffer.handle);
     CommandBuffer.state = COMMAND_BUFFER_STATE_RECORDING;
     return true;
 }
@@ -765,6 +792,7 @@ void VulkanAPI::Load(const u8* pixels, Texture *texture)
     config.MemoryFlags     = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
     config.CreateView      = true;
     config.ViewAspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
+    config.name            = texture->name; 
 
     texture->data = new VulkanImage(config);
 
@@ -812,6 +840,7 @@ void VulkanAPI::LoadTextureWriteable(Texture *texture)
     config.MemoryFlags         = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
     config.CreateView          = true;
     config.ViewAspectFlags     = aspect;
+    config.name                = texture->name;
 
     texture->data = new VulkanImage(config);
     texture->generation++;
@@ -839,6 +868,7 @@ void VulkanAPI::TextureResize(Texture *texture, u32 NewWidth, u32 NewHeight)
         config.MemoryFlags         = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
         config.CreateView          = true;
         config.ViewAspectFlags     = VK_IMAGE_ASPECT_COLOR_BIT;
+        config.name                = texture->name;
 
         image->Create(config);
 
@@ -1148,11 +1178,11 @@ void VulkanAPI::DrawGeometry(const GeometryRenderData& data)
 const u32 DESC_SET_INDEX_GLOBAL   = 0;  // Индекс набора глобальных дескрипторов.
 const u32 DESC_SET_INDEX_INSTANCE = 1;  // Индекс набора дескрипторов экземпляра.
 
-bool VulkanAPI::Load(Shader *shader, const Shader::Config& config, Renderpass* renderpass, u8 StageCount, const DArray<MString>& StageFilenames, const Shader::Stage *stages)
+bool VulkanAPI::Load(Shader *shader, const Shader::Config& config, Renderpass* renderpass, const DArray<Shader::Stage>& stages, const DArray<MString>& StageFilenames)
 {
     // Этапы перевода
     VkShaderStageFlags VkStages[VulkanShaderConstants::MaxStages];
-    for (u8 i = 0; i < StageCount; ++i) {
+    for (u8 i = 0; i < stages.Length(); ++i) {
         switch (stages[i]) {
             case Shader::Stage::Fragment:
                 VkStages[i] = VK_SHADER_STAGE_FRAGMENT_BIT;
@@ -1191,7 +1221,7 @@ bool VulkanAPI::Load(Shader *shader, const Shader::Config& config, Renderpass* r
     // MMemory::ZeroMem(OutShader->config.stages, sizeof(VulkanShaderStageConfig) * VulkanShaderConstants::MaxStages);
     VulkShader->config.StageCount = 0;
     // Перебрать предоставленные этапы.
-    for (u32 i = 0; i < StageCount; i++) {
+    for (u32 i = 0; i < stages.Length(); i++) {
         // Убедитесь, что достаточно места для добавления сцены.
         if (VulkShader->config.StageCount + 1 > VulkanShaderConstants::MaxStages) {
             MERROR("Шейдеры могут иметь максимум %d стадий.", VulkanShaderConstants::MaxStages);
@@ -1215,7 +1245,7 @@ bool VulkanAPI::Load(Shader *shader, const Shader::Config& config, Renderpass* r
 
         // Подготовьте сцену и ударьте по счетчику.
         VulkShader->config.stages[VulkShader->config.StageCount].stage = StageFlag;
-        MString::Copy(VulkShader->config.stages[VulkShader->config.StageCount].FileName, StageFilenames[i], 255);
+        MString::Copy(VulkShader->config.stages[VulkShader->config.StageCount].FileName, StageFilenames[i].c_str(), 255);
         VulkShader->config.StageCount++;
     }
 
@@ -1823,7 +1853,12 @@ bool VulkanAPI::ShaderReleaseInstanceResources(Shader *shader, u32 InstanceID)
         InstanceState.InstanceTextureMaps = nullptr;
     }
 
-    VkShader->UniformBuffer.Free(shader->UboStride, InstanceState.offset);
+    if (shader->UboStride != 0) {
+        if (!VkShader->UniformBuffer.Free(shader->UboStride, InstanceState.offset)) {
+            MERROR("VulkanAPI::ShaderReleaseInstanceResources не удалось освободить диапазон из буфера рендеринга.");
+        }
+    }
+
     InstanceState.offset = INVALID::ID;
     InstanceState.id = INVALID::ID;
 
@@ -2051,6 +2086,10 @@ bool VulkanAPI::TextureMapAcquireResources(TextureMap *map)
         return false;
     }
 
+    char FormattedName[TEXTURE_NAME_MAX_LENGTH] = {0};
+    MString::Format(FormattedName, "%s_texmap_sampler", map->texture->name);
+    VK_SET_DEBUG_OBJECT_NAME(this, VK_OBJECT_TYPE_SAMPLER, (VkSampler)map->sampler, FormattedName);
+
     return true;
 }
 
@@ -2098,13 +2137,14 @@ void VulkanAPI::RenderTargetDestroy(RenderTarget &target, bool FreeInternalMemor
     }
 }
 
-bool VulkanAPI::RenderpassCreate(const RenderpassConfig& config, Renderpass& OutRenderpass)
+bool VulkanAPI::RenderpassCreate(RenderpassConfig& config, Renderpass& OutRenderpass)
 {
     OutRenderpass.RenderArea = config.RenderArea;
     OutRenderpass.ClearColour = config.ClearColour;
     OutRenderpass.ClearFlags = config.ClearFlags;
     OutRenderpass.RenderTargetCount = config.RenderTargetCount;
     OutRenderpass.targets = MemorySystem::TAllocate<RenderTarget>(Memory::Array, OutRenderpass.RenderTargetCount, true);
+    OutRenderpass.name = config.name;
 
     // Скопируйте конфигурацию для каждой цели.
     for (u32 t = 0; t < OutRenderpass.RenderTargetCount; ++t) {
@@ -2221,9 +2261,9 @@ bool VulkanAPI::RenderBufferCreateInternal(RenderBuffer &buffer)
             InternalBuffer.MemoryPropertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
             break;
         case RenderBufferType::Uniform: {
-            u32 DeviceLocalBits = Device.SupportsDeviceLocalHostVisible ? VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT : 0;
+            // u32 DeviceLocalBits = Device.SupportsDeviceLocalHostVisible ? VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT : 0;
             InternalBuffer.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-            InternalBuffer.MemoryPropertyFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | DeviceLocalBits;
+            InternalBuffer.MemoryPropertyFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT; // | DeviceLocalBits;
         } break;
         case RenderBufferType::Staging:
             InternalBuffer.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
