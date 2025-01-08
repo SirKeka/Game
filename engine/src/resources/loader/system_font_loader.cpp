@@ -12,7 +12,7 @@ struct SupportedSystemFontFiletype {
     SystemFontFileType type{};
     bool IsBinary     {false};
     constexpr SupportedSystemFontFiletype(MString&& extension, SystemFontFileType type, bool IsBinary)
-    : extension(extension), type(type), IsBinary(IsBinary) {}
+    : extension(static_cast<MString&&>(extension)), type(type), IsBinary(IsBinary) {}
 };
 
 bool ImportFontConfigFile(FileHandle& f, const MString& TypePath, const char* OutMsfFilename, SystemFontResourceData& OutResource);
@@ -113,17 +113,14 @@ bool ImportFontConfigFile(FileHandle &f, const MString &TypePath, const char *Ou
     u64 LineLength = 0;
     u32 LineNumber = 1;
     while (Filesystem::ReadLine(f, 511, &p, LineLength)) {
-        // Обрезать строку.
-        MString trimmed {LineBuf, true};
-
-        // Получить обрезанную длину.
-        LineLength = trimmed.Length();
-
         // Пропустить пустые строки и комментарии.
-        if (LineLength < 1 || trimmed[0] == '#') {
+        if (LineBuf[0] == 0 || LineBuf[0] == '#') {
             LineNumber++;
             continue;
         }
+
+        // Обрезать строку.
+        MString trimmed {LineBuf, true};
 
         // Разделить на var/value
         i32 EqualIndex = trimmed.IndexOf('=');

@@ -19,7 +19,7 @@ bool ResourceLoader::Load(const char *name, void* params, ImageResource &OutReso
     const char* FormatStr = "%s/%s/%s%s";
     const i32 RequiredChannelCount = 4;
     stbi_set_flip_vertically_on_load_thread(TypeParams->FlipY);
-    char FullFilePath[512];
+    char FullFilePath[512]{};
 
     // попробуйте разные расширения
     constexpr i32 IMAGE_EXTENSION_COUNT = 4;

@@ -26,6 +26,7 @@
         bool Create(TextType type, const char* FontName, u16 FontSize, const char* TextContent);
     
         void SetPosition(const FVec3& position);
+        void SetText(const char* text);
         void SetText(const MString& text);
         void SetText(MString&& text);
         void DeleteLastSymbol();

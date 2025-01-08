@@ -121,7 +121,7 @@ public:
     /// @param tag указывает на использование выделенного блока.
     /// @param copy указывает на то что нужно ли копировать блок памяти в новый указатель. ПРИМЕЧАНИЕ: поумолчанию true
     /// @return возвращает указатель на этот или новый блок памяти, если старый не удалось увеличить, или nullptr в результате неудачи.
-    static void* Realloc(void* ptr, u64 Size, u64 NewSize, Memory::Tag tag, bool copy = true);
+    static void* Realloc(void* ptr, u64 size, u64 NewSize, Memory::Tag tag, bool copy = true);
 
     /// @brief Сообщает о выделении, связанном с приложением, но выполненном извне. Это можно сделать для элементов, выделенных в библиотеках сторонних поставщиков, например, для отслеживания выделений, но не их выполнения.
     /// @param size размер выделения.
@@ -170,7 +170,7 @@ public:
     /// @param source указатель из которого копируется массив байтов
     /// @param bytes количество байт памяти которое копируется
     /// @return указатель
-    static void CopyMem(void* dest, const void* source, u64 bytes);
+    static void* CopyMem(void* dest, const void* source, u64 bytes);
 
     /// @brief 
     /// @param ptr значение указателя которое присваевается новому указателю

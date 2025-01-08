@@ -297,7 +297,7 @@ bool ImportObjFile(FileHandle &ObjFile, const char *OutMsmFilename, DArray<Geome
 
                     ProcessSubobject(positions, normals, TexCoords, groups[i].faces, NewData);
 
-                    OutGeometries.PushBack(std::move(NewData));
+                    OutGeometries.PushBack(NewData);
 
                     // Увеличьте количество объектов.
                     //darray_destroy(groups[i].faces);
@@ -330,7 +330,7 @@ bool ImportObjFile(FileHandle &ObjFile, const char *OutMsmFilename, DArray<Geome
 
         ProcessSubobject(positions, normals, TexCoords, groups[i].faces, NewData);
 
-        OutGeometries.PushBack(std::move(NewData));
+        OutGeometries.PushBack(NewData);
 
         // Увеличьте количество объектов.
         // groups[i].faces.~DArray;
@@ -355,16 +355,10 @@ bool ImportObjFile(FileHandle &ObjFile, const char *OutMsmFilename, DArray<Geome
 
     // Удаление дибликатов вершин
     for (u64 i = 0; i < OutGeometries.Length(); i++) {
-        GeometryConfig& g = OutGeometries[i];
+        auto& g = OutGeometries[i];
         MDEBUG("Процесс дедупликации геометрии начинается с геометрического объекта с именем «%s»...", g.name);
 
-        u32 NewVertCount = 0;
-        Vertex3D* UniquVerts = nullptr;
-        Math::Geometry::DeduplicateVertices(g, NewVertCount, &UniquVerts);
-
-        // И замените дедуплицированным.
-        g.vertices = UniquVerts;
-        g.VertexCount = NewVertCount;
+        Math::Geometry::DeduplicateVertices(g);
 
         // Вычислить касательные.
         Math::Geometry::CalculateTangents(g.VertexCount, reinterpret_cast<Vertex3D*>(g.vertices), g.IndexCount, reinterpret_cast<u32*>(g.indices));
@@ -453,7 +447,7 @@ void ProcessSubobject(DArray<FVec3>& positions, DArray<FVec3>& normals, DArray<F
 
     // Вычислите центр на основе экстентов.
     for (u8 i = 0; i < 3; ++i) {
-        OutData.center.elements[i] = (OutData.MinExtents.elements[i] + OutData.MaxExtents.elements[i]) / 2.0f;
+        OutData.center.elements[i] = (OutData.MinExtents.elements[i] + OutData.MaxExtents.elements[i]) / 2.F;
     }
 
     OutData.VertexCount = vertices.Length();

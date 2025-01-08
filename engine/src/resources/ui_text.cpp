@@ -107,6 +107,25 @@ void Text::SetPosition(const FVec3& position)
     transform.SetPosition(position);
 }
 
+void Text::SetText(const char *text)
+{
+    if (text) {
+        // Если строки уже равны, ничего не делайте.
+        if (this->text == text) {
+            return;
+        }
+
+        this->text = text;
+
+        // Проверьте, есть ли в атласе необходимые глифы.
+        if (!FontSystem::VerifyAtlas(data, text)) {
+            MERROR("Проверка атласа шрифтов не удалась.");
+        }
+
+        RegenerateGeometry();
+    }
+}
+
 void Text::SetText(const MString &text)
 {
     if (text) {

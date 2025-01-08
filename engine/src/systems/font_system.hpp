@@ -17,7 +17,7 @@ struct BitmapFontConfig {
     MString name        {};
     u16 size            {};
     MString ResourceName{};
-    constexpr BitmapFontConfig(MString&& name, u16 size, MString&& ResourceName) : name(name), size(size), ResourceName(ResourceName) {}
+    constexpr BitmapFontConfig(MString&& name, u16 size, MString&& ResourceName) : name(static_cast<MString&&>(name)), size(size), ResourceName(static_cast<MString&&>(ResourceName)) {}
 
     void* operator new(u64 size)              { return MemorySystem::Allocate(size, Memory::BitmapFont); }
     void operator delete(void* ptr, u64 size) { MemorySystem::Free(ptr, size, Memory::BitmapFont); }

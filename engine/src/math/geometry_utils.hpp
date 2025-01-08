@@ -1,8 +1,8 @@
 #pragma once
-
-#include "vertex.hpp"
+#include "defines.hpp"
 
 struct GeometryConfig;
+struct Vertex3D;
 
 namespace Math
 {
@@ -24,10 +24,8 @@ namespace Math
         /// @brief Удаляет дубликаты вершин, оставляя только уникальные. 
         /// Оставляет исходный массив вершин нетронутым. Выделяет новый массив в OutVertices. 
         /// Изменяет индексы на месте. Исходный массив вершин должен быть освобожден вызывающей стороной.
-        /// @param geometry конфигурация геометрии содержащая информацию о вершинах и индексах
-        /// @param OutVertexCount указатель для хранения окончательного количества вершин.
-        /// @param OutVertices указатель для хранения массива дедуплицированных вершин.
-        void DeduplicateVertices(GeometryConfig& geometry, u32& OutVertexCount, Vertex3D** OutVertices);
+        /// @param geometry конфигурация геометрии из которой нужно удаляить дубликаты вершин
+        void DeduplicateVertices(GeometryConfig& geometry);
     } // namespace Geometry
 } // namespace Math
 

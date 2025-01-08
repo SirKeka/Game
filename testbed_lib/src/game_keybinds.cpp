@@ -197,6 +197,7 @@ void GamePrintMemoryMetrics(Keys key, Keymap::EntryBindType type, Keymap::Modifi
 
     auto usage = MemorySystem::GetMemoryUsageStr();
     MINFO(usage.c_str());
+
     MDEBUG("Распределения: %llu (%llu в этом кадре)", state->AllocCount, state->AllocCount - state->PrevAllocCount);
 }
 

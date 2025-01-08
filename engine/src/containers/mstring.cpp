@@ -98,10 +98,10 @@ MString &MString::operator=(const char *s)
         u32 ssize = 0;
         u16 slength = Len(s, ssize);
 
-        if (ssize > size) {
+        if (!str) {
+            str = reinterpret_cast<char*>(MemorySystem::Allocate(ssize, Memory::String));
+        } else if (size != ssize) {
             str = reinterpret_cast<char*>(MemorySystem::Realloc(str, size, ssize, Memory::String));
-        } else {
-            MemorySystem::Free(str + ssize + 1, size - ssize, Memory::String);
         }
 
         length = slength;
@@ -617,6 +617,10 @@ bool MString::ToU32(u32& value)
 
 bool MString::StringToF32(const char* s, f32& fn1, f32* fn2, f32* fn3, f32* fn4)
 {
+    while (*s != '-' && (*s < '0' || *s > '9' )) {
+        s++;
+    }
+    
     // ЗАДАЧА: Убрать лишние проверки
     u8 count = 1;
     if (fn2) {

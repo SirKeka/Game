@@ -21,7 +21,6 @@ struct MaterialSystemConfig
     u32 MaxMaterialCount;
 };
 
-
 namespace MaterialSystem
 {
     MAPI Material* GetDefaultMaterial();

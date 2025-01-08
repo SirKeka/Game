@@ -438,7 +438,7 @@ bool LoadTexture(const char *TextureName, Texture &t)
 
     Job::Info job { LoadJobStart, LoadJobSuccess, LoadJobFail, &params, sizeof(TextureLoadParams), sizeof(TextureLoadParams) };
     JobSystem::Submit(job);
-    params.ResourceName.SetNullString();
+    params.ResourceName.SetNullString(); // ЗАДАЧА: переделать
     return true;
 }
 

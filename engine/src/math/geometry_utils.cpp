@@ -1,5 +1,7 @@
 #include "geometry_utils.hpp"
 #include "resources/geometry.hpp"
+#include "vertex.hpp"
+#include "containers/darray.hpp"
 
 namespace Math
 {
@@ -115,22 +117,26 @@ namespace Math
 
     }
 */
-    void Geometry::DeduplicateVertices(GeometryConfig& geometry, u32 &OutVertexCount, Vertex3D **OutVertices)
+    void Geometry::DeduplicateVertices(GeometryConfig& geometry)
     {
         // Создайте новые массивы для размещения коллекции.
-        auto vertices = reinterpret_cast<Vertex3D*>(geometry.vertices);
+        // auto vertices = reinterpret_cast<Vertex3D*>(geometry.vertices);
         auto indices = reinterpret_cast<u32*>(geometry.indices);
-        u64 VertexSize = geometry.VertexCount * geometry.VertexSize;
-        auto UniqueVerts = reinterpret_cast<Vertex3D*>(MemorySystem::Allocate(VertexSize, Memory::Array, true));
-        OutVertexCount = 0;
+        // u64 VertexSize = geometry.VertexCount * geometry.VertexSize;
+        DArray<Vertex3D> vertices { geometry.VertexCount, 0, reinterpret_cast<Vertex3D*>(geometry.vertices) };
+        DArray<Vertex3D> UniqueVerts { geometry.VertexCount }; // auto UniqueVerts = reinterpret_cast<Vertex3D*>(MemorySystem::Allocate(VertexSize, Memory::Array, true));
+        u64 UniqueVertexCount = 0;
+
+        // MTRACE("Индекс %u = %u", geometry.IndexCount, indices[geometry.IndexCount - 1]);
 
         u32 FoundCount = 0;
         for (u32 v = 0; v < geometry.VertexCount; ++v) {
             bool found = false;
-            for (u32 u = 0; u < OutVertexCount; ++u) {
+            for (u32 u = 0; u < UniqueVertexCount; ++u) {
                 if (vertices[v] == UniqueVerts[u]) {
                     // Переназначить индексы, _не_ копировать
                     ReassignIndex(geometry.IndexCount, indices, v - FoundCount, u);
+                    // MTRACE("Индекс №%u стырое/новое значения %u/%u", v, v, u);
                     found = true;
                     FoundCount++;
                     break;
@@ -139,20 +145,37 @@ namespace Math
 
             if (!found) {
                 // Скопируйте в уникальный.
-                UniqueVerts[OutVertexCount] = vertices[v];
-                OutVertexCount++;
+                UniqueVerts.PushBack(vertices[v]);
+                UniqueVertexCount++;
             }
         }
 
-        // Выделить новый массив вершин
-        *OutVertices = reinterpret_cast<Vertex3D*>(MemorySystem::Allocate(OutVertexCount * geometry.VertexSize, Memory::Array, true));
-        // Копировать уникальные
-        MemorySystem::CopyMem(*OutVertices, UniqueVerts, sizeof(Vertex3D) * (OutVertexCount));
-        // Уничтожить временный массив
-        MemorySystem::Free(UniqueVerts, VertexSize, Memory::Array);
+        // u64 max = 0;
+        // for (u64 i = 0; i < geometry.IndexCount; i++) {
+        //     if (indices[i] > max) {
+        //         max = indices[i];
+        //     }
+        // }
+        // max++;
+        // MDEBUG("Всего вершин %u", UniqueVerts.Length());
+        // MDEBUG("Всего индексов %u", max);
+        
 
-        u32 RemovedCount = geometry.VertexCount - OutVertexCount;
-        MDEBUG("Geometry::DeduplicateVertices: удалено %d вершин, изначально/сейчас %d/%d.", RemovedCount, geometry.VertexCount, OutVertexCount);
+        // Выделить новый массив вершин
+        // OutVertices = reinterpret_cast<Vertex3D*>(MemorySystem::Allocate(OutVertexCount * geometry.VertexSize, Memory::Array, true));
+        // Копировать уникальные
+        //MemorySystem::CopyMem(*OutVertices, UniqueVerts, sizeof(Vertex3D) * (OutVertexCount));
+        // Уничтожить временный массив
+        //MemorySystem::Free(UniqueVerts, VertexSize, Memory::Array);
+
+
+        u32 RemovedCount = geometry.VertexCount - UniqueVertexCount;
+        MDEBUG("Geometry::DeduplicateVertices: удалено %d вершин, изначально/сейчас %d/%d.", RemovedCount, geometry.VertexCount, UniqueVertexCount);
+
+        // vertices.~DArray(); // MemorySystem::Free(geometry.vertices, geometry.VertexCount * geometry.VertexSize, Memory::DArray);
+        // И замените дедуплицированным.
+        geometry.vertices = UniqueVerts.MovePtr();
+        geometry.VertexCount = UniqueVertexCount;
     }
 } // namespace Math
 

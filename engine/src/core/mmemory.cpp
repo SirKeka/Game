@@ -177,7 +177,7 @@ void *MemorySystem::Realloc(void *ptr, u64 size, u64 NewSize, Memory::Tag tag, b
     if (NewSize > size) {
         DeltaSize = NewSize - size;
     } else {
-        Free((u8*)ptr + size, size - NewSize, tag);
+        Free((u8*)ptr + NewSize, size - NewSize, tag);
         return ptr;
     }
 
@@ -283,9 +283,9 @@ void *MemorySystem::ZeroMem(void *block, u64 bytes)
     return memset(block, 0, bytes);
 }
 
-void MemorySystem::CopyMem(void *dest, const void *source, u64 bytes)
+void* MemorySystem::CopyMem(void *dest, const void *source, u64 bytes)
 {
-    std::memmove(dest, source, bytes);
+    return std::memmove(dest, source, bytes);
 }
 
 void *MemorySystem::SetMemory(void *dest, i32 value, u64 bytes)
@@ -339,13 +339,13 @@ MString MemorySystem::GetMemoryUsageStr()
 const char* MemorySystem::GetUnitForSize(u64 SizeBytes, f32 &OutAmount)
 {
     if (SizeBytes >= GIBIBYTES(1)) {
-        OutAmount = SizeBytes / GIBIBYTES(1);
+        OutAmount = (f64)SizeBytes / GIBIBYTES(1);
         return "GiB";
     } else if (SizeBytes >= MEBIBYTES(1)) {
-        OutAmount = SizeBytes / MEBIBYTES(1);
+        OutAmount = (f64)SizeBytes / MEBIBYTES(1);
         return "MiB";
     } else if (SizeBytes >= KIBIBYTES(1)) {
-        OutAmount = SizeBytes / KIBIBYTES(1);
+        OutAmount = (f64)SizeBytes / KIBIBYTES(1);
         return "KiB";
     } else {
         OutAmount = (f32)SizeBytes;
