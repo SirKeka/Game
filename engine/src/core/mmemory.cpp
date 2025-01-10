@@ -116,7 +116,10 @@ MINLINE void MemorySystem::Shutdown()
 
 void *MemorySystem::Allocate(u64 bytes, Memory::Tag tag, bool nullify, bool def)
 {
-    return AllocateAligned(bytes, 1, tag, nullify, def);
+    if (bytes) {
+        return AllocateAligned(bytes, 1, tag, nullify, def);
+    }
+    return nullptr;
 }
 
 void *MemorySystem::AllocateAligned(u64 bytes, u16 alignment, Memory::Tag tag, bool nullify, bool def)

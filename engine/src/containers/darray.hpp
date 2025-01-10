@@ -69,7 +69,7 @@ private:
 public:
     constexpr DArray() : size(), capacity(), elementSize(sizeof(T)), data(nullptr) {}
     constexpr DArray(T&& value) : size(), capacity(), elementSize(sizeof(T)), data(nullptr) { PushBack(value); }
-    constexpr DArray(u32 size) : size(), capacity(size), elementSize(sizeof(T)), data(size ? MemorySystem::TAllocate<T>(Memory::DArray, capacity, true) : nullptr){}
+    constexpr DArray(u32 capacity) : size(), capacity(capacity), elementSize(sizeof(T)), data(reinterpret_cast<T*>(MemorySystem::Allocate(capacity * elementSize, Memory::DArray, true))){}
     constexpr DArray(u32 size, u32 capacity, T* array) : size(size), capacity(capacity ? capacity : size), elementSize(sizeof(T)), data(array) {}
 
     /// @brief Конструктор копирования
@@ -125,6 +125,7 @@ public:
     DArray& operator=(DArray&& darr) {
         if (data) {
             Clear();
+            MemorySystem::Free(data, capacity * elementSize, Memory::DArray);
         }
         data = darr.data;
         size = darr.size;
