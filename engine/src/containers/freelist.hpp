@@ -44,7 +44,7 @@ public:
     /// @param size размер для выделения.
     /// @param OutOffset указатель для хранения смещения выделенной памяти.
     /// @return истинно(true), если блок памяти был найден и выделен; в противном случае ложь(false).
-    bool AllocateBlock(u64 size, u64& OutOffset);
+    bool AllocateBlock(u64 size, u64 &OutOffset);
 
     /// @brief Пытается перераспределить блок памяти.
     /// @param NewSize новый размер блока.
@@ -83,4 +83,6 @@ private:
     void ReturnNode(struct FreelistNode* node);
     /// @brief Присоединяет новый узел к существующием
     void AttachNode(FreelistNode* node, FreelistNode* previous, FreelistNode* NewNode);
+    bool Allocate(FreelistNode *&node, u64 size, u64 &OutOffset, FreelistNode *&previous);
+    bool Free(FreelistNode *&node, u64 offset, u64 size, FreelistNode *&previous);
 };

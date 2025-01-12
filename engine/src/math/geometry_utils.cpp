@@ -127,7 +127,7 @@ namespace Math
         DArray<Vertex3D> UniqueVerts { geometry.VertexCount }; // auto UniqueVerts = reinterpret_cast<Vertex3D*>(MemorySystem::Allocate(VertexSize, Memory::Array, true));
         u64 UniqueVertexCount = 0;
 
-        // MTRACE("Индекс %u = %u", geometry.IndexCount, indices[geometry.IndexCount - 1]);
+        MTRACE("Индекс %u = %u", geometry.IndexCount, indices[geometry.IndexCount - 1]);
 
         u32 FoundCount = 0;
         for (u32 v = 0; v < geometry.VertexCount; ++v) {

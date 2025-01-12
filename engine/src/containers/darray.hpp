@@ -193,7 +193,7 @@ public:
     /// @param NewCap величина памяти которой нужно зарезервировать. 
     /// ПРИМЕЧАНИЕ: если ничего не указано или указан 0, то резервируется 2 при capacity = 2 или х2 при capacity > 0
     void Reserve(u32 NewCap = 0) {
-        void* NewData = nullptr;
+        T* NewData = nullptr;
 
         if (!elementSize) {
             elementSize = sizeof(T);
@@ -209,10 +209,10 @@ public:
             if (NewCap == 0) {
                 capacity *= 2;
                 NewSize = capacity * elementSize;
-                NewData = MemorySystem::Realloc(data, CurrentSize, NewSize, Memory::DArray);
+                NewData = reinterpret_cast<T*>(MemorySystem::Realloc(data, CurrentSize, NewSize, Memory::DArray));
             } else {
                 NewSize = NewCap * elementSize;
-                NewData = MemorySystem::Realloc(data, CurrentSize, NewSize, Memory::DArray);
+                NewData = reinterpret_cast<T*>(MemorySystem::Realloc(data, CurrentSize, NewSize, Memory::DArray));
                 capacity = NewCap;
             }
 
@@ -222,7 +222,7 @@ public:
                 return;
             }
             data = NewData ? reinterpret_cast<T*>(NewData) : data;
-            MemorySystem::ZeroMem(data + size, (capacity - size) * elementSize);
+            MemorySystem::ZeroMem(data + size, NewSize - CurrentSize);
         }
     }
 
@@ -358,7 +358,7 @@ public:
     /// @return указатель на данные
     T* MovePtr() {
         T* ptr = data;
-        // ShrinkToFit();
+        ShrinkToFit();
         data = nullptr;
         size = capacity = 0;
         return ptr;

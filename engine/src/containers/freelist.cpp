@@ -81,16 +81,28 @@ bool FreeList::AllocateBlock(u64 size, u64 &OutOffset)
 {
     auto node = state->head;
     FreelistNode* previous = nullptr;
+
+    bool retVal = Allocate(node, size, OutOffset, previous);
+    if (retVal)
+        return retVal;
+
+    u64 freeSpace = FreeSpace();
+    MWARN("Freelist::FindBlock, не найден блок с достаточным количеством свободного места (запрошено: %uбайт, доступно: %lluбайт).", size, freeSpace);
+    return false;
+}
+
+bool FreeList::Allocate(FreelistNode *&node, u64 size, u64 &OutOffset, FreelistNode *&previous)
+{
     while (node) {
         if (node->size == size) {
             // Точное совпадение. Просто верните узел.
             OutOffset = node->offset;
-            FreelistNode* NodeToReturn = nullptr;
+            FreelistNode *NodeToReturn = nullptr;
             if (previous) {
                 previous->next = node->next;
                 NodeToReturn = node;
             } else {
-                // Этот узел является заголовком списка. Переназначьте 
+                // Этот узел является заголовком списка. Переназначьте
                 // заголовок и верните предыдущий заголовочный узел.
                 NodeToReturn = state->head;
                 state->head = node->next;
@@ -109,9 +121,6 @@ bool FreeList::AllocateBlock(u64 size, u64 &OutOffset)
         previous = node;
         node = node->next;
     }
-
-    u64 freeSpace = FreeSpace();
-    MWARN("Freelist::FindBlock, не найден блок с достаточным количеством свободного места (запрошено: %uбайт, доступно: %lluбайт).", size, freeSpace);
     return false;
 }
 
@@ -142,7 +151,7 @@ bool FreeList::ReallocateBlock(u64 size, u64 NewSize, u64 &BlockOffset)
 
     while (node) {
         // Запоминаем какой блок памяти может подойти в случае, если нам придется выделять новый.
-        if (!buff && node->size >= NewSize) {
+        if (!free && (!buff && node->size >= NewSize)) {
             buff = node;
             PreviousBuff = previous;
         }
@@ -158,21 +167,10 @@ bool FreeList::ReallocateBlock(u64 size, u64 NewSize, u64 &BlockOffset)
             // ЗАДАЧА: проверен на правильную работоспособность-----------------------------------------------------
             // Если в данном блоке не достаточно памяти, то освобождаем его и ищем новый блок
             } else {
-                node->size += size;
-                node->offset = BlockOffset;
-
-                // Проверьте, соединяет ли это диапазон между этим и следующим узлом, 
-                // и если да, объедините их и верните второй узел.
-                if (node->next && node->next->offset == node->offset + node->size) {
-                    node->size += node->next->size;
-                    auto next = node->next;
-                    node->next = node->next->next;
-                    ReturnNode(next);
-                }
-                // Помечаем что мы освободили данный блок памяти, 
+                // Освобождаем и помечаем что мы освободили данный блок памяти, 
                 // т.к. не смогли его увеличить
                 // и теперь нам требуется выделить новый
-                free = true;
+                free = Free(node, BlockOffset, size, previous);
             }
         } else if (node->offset > BlockOffset + size && !free) {
             auto NewNode = GetNode();
@@ -185,16 +183,8 @@ bool FreeList::ReallocateBlock(u64 size, u64 NewSize, u64 &BlockOffset)
                 previous = PreviousBuff;
                 node = buff;
             }
-            if (node->size == NewSize) {
-                BlockOffset = node->offset;
-                ExactMatch();
-                return true;
-            } else if (node->size > NewSize) {
-                BlockOffset = node->offset;
-                node->size -= NewSize;
-                node->offset += NewSize;
-                return true;
-            }
+            
+            return Allocate(node, NewSize, BlockOffset, previous);
         }
 
         if (node->next){ 
@@ -225,56 +215,63 @@ bool FreeList::FreeBlock(u64 size, u64 offset)
         state->head = NewNode;
         return true;
     } else {
-        while (node) {
-            if (node->offset + node->size == offset || node->offset == offset + size) { 
-                // Можно просто добавить к этому узлу.
-                node->size += size;
-                if (node->offset == offset + size) {
-                    node->offset = offset;
-                }
+        return Free(node, offset, size, previous);
+    }
+}
 
-                // Проверьте, соединяет ли это диапазон между этим и следующим узлом, 
-                // и если да, объедините их и верните второй узел.
-                if (node->next && node->next->offset == node->offset + node->size) {
-                    node->size += node->next->size;
-                    auto next = node->next;
-                    node->next = node->next->next;
-                    ReturnNode(next);
-                }
-                return true;
-            } else if(node->offset == offset) {
-                // Если есть точное совпадение, это означает, что точный блок памяти
-                // который уже свободен, освобождается снова.
-                MFATAL("Попытка освободить уже освобожденный блок памяти со смещением %llu", node->offset);
-                return false;
-            } else if (node->offset > offset) {
-                // Выходит за пределы освобождаемого пространства. Нужен новый узел.
-                auto NewNode = GetNode();
-                NewNode->offset = offset;
-                NewNode->size = size;
-                AttachNode(node, previous, NewNode);
-
-                return true;
+bool FreeList::Free(FreelistNode *&node, u64 offset, u64 size, FreelistNode *&previous)
+{
+    while (node) {
+        if (node->offset + node->size == offset || node->offset == offset + size) {
+            // Можно просто добавить к этому узлу.
+            node->size += size;
+            if (node->offset == offset + size) {
+                node->offset = offset;
             }
 
-            // Если на последнем узле смещение + размер < свободное смещение, требуется новый узел.
-            if (!node->next && node->offset + node->size < offset) {
-                auto NewNode = GetNode();
-                NewNode->offset = offset;
-                NewNode->size = size;
-                NewNode->next = nullptr;
-                node->next = NewNode;
-
-                return true;
+            // Проверьте, соединяет ли это диапазон между этим и следующим узлом,
+            // и если да, объедините их и верните второй узел.
+            if (node->next && node->next->offset == node->offset + node->size) {
+                node->size += node->next->size;
+                auto next = node->next;
+                node->next = node->next->next;
+                ReturnNode(next);
             }
-
-            previous = node;
-            node = node->next;
+            return true;
+        } else if (node->offset == offset) {
+            // Если есть точное совпадение, это означает, что точный блок памяти
+            // который уже свободен, освобождается снова.
+            MFATAL("Попытка освободить уже освобожденный блок памяти со смещением %llu", node->offset);
+            return false;
         }
+        else if (node->offset > offset) {
+            // Выходит за пределы освобождаемого пространства. Нужен новый узел.
+            auto NewNode = GetNode();
+            NewNode->offset = offset;
+            NewNode->size = size;
+            AttachNode(node, previous, NewNode);
+
+            return true;
+        }
+
+        // Если на последнем узле смещение + размер < свободное смещение, требуется новый узел.
+        if (!node->next && node->offset + node->size < offset) {
+            auto NewNode = GetNode();
+            NewNode->offset = offset;
+            NewNode->size = size;
+            NewNode->next = nullptr;
+            node->next = NewNode;
+
+            return true;
+        }
+
+        previous = node;
+        node = node->next;
     }
 
     MWARN("Не удалось найти блок, который нужно освободить. Возможна коррупция?");
     return false;
+
 }
 
 bool FreeList::Resize(void *NewMemory, u64 NewSize, void **OutOldMemory)

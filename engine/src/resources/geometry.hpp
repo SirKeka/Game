@@ -42,7 +42,7 @@ struct MAPI GeometryConfig {
     void* vertices;
     u32 IndexSize;
     u32 IndexCount;
-    void* indices;
+    u32* indices;
     char name[GEOMETRY_NAME_MAX_LENGTH];
     char MaterialName[MATERIAL_NAME_MAX_LENGTH];
 

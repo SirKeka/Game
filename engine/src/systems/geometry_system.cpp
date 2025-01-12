@@ -102,7 +102,7 @@ GeometryConfig GeometrySystem::GeneratePlaneConfig(f32 width, f32 height, u32 xS
     config.vertices = MemorySystem::Allocate(VertexCount * config.VertexSize, Memory::Array, true);
     config.IndexSize = sizeof(u32);
     config.IndexCount = IndexCount;
-    config.indices = MemorySystem::Allocate(IndexCount * config.IndexSize, Memory::Array, true);
+    config.indices = reinterpret_cast<u32*>(MemorySystem::Allocate(IndexCount * config.IndexSize, Memory::Array, true));
     config.CopyNames(
         name, // ? name : DEFAULT_GEOMETRY_NAME,
         MaterialName // ? MaterialName : DEFAULT_MATERIAL_NAME
@@ -197,7 +197,7 @@ GeometryConfig GeometrySystem::GenerateCubeConfig(f32 width, f32 height, f32 dep
     config.vertices = MemorySystem::Allocate(config.VertexCount * config.VertexSize, Memory::Array, true);
     config.IndexSize = sizeof(u32);
     config.IndexCount = 6 * 6; // 6 индексов на каждой стороне, 6 сторон
-    config.indices = MemorySystem::Allocate(config.IndexCount * config.IndexSize, Memory::Array, true);
+    config.indices = reinterpret_cast<u32*>(MemorySystem::Allocate(config.IndexCount * config.IndexSize, Memory::Array, true));
     config.CopyNames(name, MaterialName);
     // config.center = FVec3();
     config.MinExtents = FVec3(-HalfWidth, -HalfHeight, -HalfDepth);

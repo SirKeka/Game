@@ -50,7 +50,7 @@ struct MeshGroupData {
 };
 
 bool ImportObjFile(FileHandle& ObjFile, const char* OutMsmFilename, DArray<GeometryConfig>& OutGeometries);
-void ProcessSubobject(DArray<FVec3>& positions, DArray<FVec3>& normals, DArray<FVec2>& TexCoords, DArray<Face>& faces, GeometryConfig& OutData);
+void ProcessSubobject(DArray<FVec3>& positions, DArray<FVec3>& normals, DArray<FVec2>& TexCoords, DArray<Face>& faces, GeometryConfig& OutData, u32*(&ptri)[500]);
 bool ImportObjMaterialLibraryFile(const char* MtlFilePath);
 
 bool LoadMsmFile(FileHandle& MsmFile, DArray<GeometryConfig>& OutGeometries);
@@ -163,6 +163,7 @@ bool ImportObjFile(FileHandle &ObjFile, const char *OutMsmFilename, DArray<Geome
     DArray<FVec2> TexCoords { 16384 };
     //DArray<Vertex3D> vertices { 16384 , Vertex3D() };
     DArray<MeshGroupData> groups { 4 };
+    u32* ind[500]{};
     char MaterialFileName[512] = "";
 
     char name[512]{};
@@ -257,7 +258,7 @@ bool ImportObjFile(FileHandle &ObjFile, const char *OutMsmFilename, DArray<Geome
                         &face.vertices[2].TexcoordIndex,
                         &face.vertices[2].NormalIndex);
                 }
-                const u64& GroupIndex = groups.Length() - 1;
+                const u64 GroupIndex = groups.Length() - 1;
                 groups[GroupIndex].faces.PushBack(face);
             }break;
             case 'm': {
@@ -295,12 +296,23 @@ bool ImportObjFile(FileHandle &ObjFile, const char *OutMsmFilename, DArray<Geome
                     }
                     MString::Copy(NewData.MaterialName, MaterialNames[i], 255);
 
-                    ProcessSubobject(positions, normals, TexCoords, groups[i].faces, NewData);
+                    ProcessSubobject(positions, normals, TexCoords, groups[i].faces, NewData, ind);
 
                     OutGeometries.PushBack(NewData);
+                    u64 j = OutGeometries.Length() - 1;
+                    ind[j] = OutGeometries[j].indices;
+                    if ((ind[j])[0] > 0) {
+                        MERROR("Ошибка");
+                    }
+                    for (u64 i = 0; i != 0; i++) {
+                        if ((ind[j])[0] > 0) {
+                            MERROR("Ошибка");
+                            break;
+                        }
+                    }
 
                     // Увеличьте количество объектов.
-                    //darray_destroy(groups[i].faces);
+                    groups[i].faces.Clear();
                     MemorySystem::ZeroMem(MaterialNames[i], 64);
                 }
                 CurrentMatNameCount = 0;
@@ -328,10 +340,10 @@ bool ImportObjFile(FileHandle &ObjFile, const char *OutMsmFilename, DArray<Geome
         }
         MString::Copy(NewData.MaterialName, MaterialNames[i], 255);
 
-        ProcessSubobject(positions, normals, TexCoords, groups[i].faces, NewData);
+        ProcessSubobject(positions, normals, TexCoords, groups[i].faces, NewData, ind);
 
         OutGeometries.PushBack(NewData);
-
+        
         // Увеличьте количество объектов.
         // groups[i].faces.~DArray;
     }
@@ -353,6 +365,16 @@ bool ImportObjFile(FileHandle &ObjFile, const char *OutMsmFilename, DArray<Geome
         }
     }
 
+    for (u64 i = 0; i < OutGeometries.Length(); i++) {
+        auto& g = OutGeometries[i];
+        u32 ind = *g.indices;
+        if (ind > 0) {
+            MERROR("В геометрии[%u] с именем «%s» невеерное индексирование", i, g.name);
+        }
+
+    }
+    
+
     // Удаление дибликатов вершин
     for (u64 i = 0; i < OutGeometries.Length(); i++) {
         auto& g = OutGeometries[i];
@@ -368,15 +390,15 @@ bool ImportObjFile(FileHandle &ObjFile, const char *OutMsmFilename, DArray<Geome
     return WriteMsmFile(OutMsmFilename, name, OutGeometries.Length(), OutGeometries);
 }
 
-void ProcessSubobject(DArray<FVec3>& positions, DArray<FVec3>& normals, DArray<FVec2>& TexCoords, DArray<Face>& faces, GeometryConfig& OutData)
+void ProcessSubobject(DArray<FVec3>& positions, DArray<FVec3>& normals, DArray<FVec2>& TexCoords, DArray<Face>& faces, GeometryConfig& OutData, u32*(&ptri)[500])
 {
-    DArray<u32> indices;
-    DArray<Vertex3D> vertices;
-    bool ExtentSet = false;
-
     const u64& FaceCount = faces.Length();
     const u64& NormalCount = normals.Length();
     const u64& TexCoordCount = TexCoords.Length();
+
+    DArray<u32> indices{FaceCount * 3};
+    DArray<Vertex3D> vertices{FaceCount * 3};
+    bool ExtentSet = false;
 
     bool SkipNormals = false;
     bool SkipTexCoords = false;
@@ -396,6 +418,10 @@ void ProcessSubobject(DArray<FVec3>& positions, DArray<FVec3>& normals, DArray<F
         for (u64 i = 0; i < 3; ++i) {
             const MeshVertexIndexData& IndexData = face.vertices[i];
             indices.PushBack(i + (f * 3));
+
+            if (indices[0] > 0) {
+                MERROR("Error");
+            }
 
             Vertex3D vert;
 
@@ -443,11 +469,16 @@ void ProcessSubobject(DArray<FVec3>& positions, DArray<FVec3>& normals, DArray<F
 
             vertices.PushBack(vert);
         }
+        
     }
 
     // Вычислите центр на основе экстентов.
     for (u8 i = 0; i < 3; ++i) {
         OutData.center.elements[i] = (OutData.MinExtents.elements[i] + OutData.MaxExtents.elements[i]) / 2.F;
+    }
+
+    if (indices[0] > 0) {
+        MERROR("Ошибка");
     }
 
     OutData.VertexCount = vertices.Length();
@@ -675,7 +706,7 @@ bool LoadMsmFile(FileHandle &MsmFile, DArray<GeometryConfig> &OutGeometries)
         // Индексы (размер/количество/массив)
         Filesystem::Read(MsmFile, sizeof(u32), &g.IndexSize, BytesRead);
         Filesystem::Read(MsmFile, sizeof(u32), &g.IndexCount, BytesRead);
-        g.indices = MemorySystem::Allocate(g.IndexSize * g.IndexCount, Memory::Array);
+        g.indices = reinterpret_cast<u32*>(MemorySystem::Allocate(g.IndexSize * g.IndexCount, Memory::Array));
         Filesystem::Read(MsmFile, g.IndexSize * g.IndexCount, g.indices, BytesRead);
 
         // Имя
