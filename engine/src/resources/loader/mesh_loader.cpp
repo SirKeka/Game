@@ -301,15 +301,13 @@ bool ImportObjFile(FileHandle &ObjFile, const char *OutMsmFilename, DArray<Geome
                     OutGeometries.PushBack(NewData);
                     u64 j = OutGeometries.Length() - 1;
                     ind[j] = OutGeometries[j].indices;
-                    if ((ind[j])[0] > 0) {
-                        MERROR("Ошибка");
-                    }
-                    for (u64 i = 0; i != 0; i++) {
-                        if ((ind[j])[0] > 0) {
-                            MERROR("Ошибка");
-                            break;
-                        }
-                    }
+
+                    // for (u64 i = j; i > 0; i--) {
+                    //     if ((ind[i])[0] > 0 && ind[i]) {
+                    //         MERROR("Ошибка");
+                    //         break;
+                    //     }
+                    // }
 
                     // Увеличьте количество объектов.
                     groups[i].faces.Clear();
@@ -392,9 +390,9 @@ bool ImportObjFile(FileHandle &ObjFile, const char *OutMsmFilename, DArray<Geome
 
 void ProcessSubobject(DArray<FVec3>& positions, DArray<FVec3>& normals, DArray<FVec2>& TexCoords, DArray<Face>& faces, GeometryConfig& OutData, u32*(&ptri)[500])
 {
-    const u64& FaceCount = faces.Length();
-    const u64& NormalCount = normals.Length();
-    const u64& TexCoordCount = TexCoords.Length();
+    const u32& FaceCount = faces.Length();
+    const u32& NormalCount = normals.Length();
+    const u32& TexCoordCount = TexCoords.Length();
 
     DArray<u32> indices{FaceCount * 3};
     DArray<Vertex3D> vertices{FaceCount * 3};
@@ -419,8 +417,10 @@ void ProcessSubobject(DArray<FVec3>& positions, DArray<FVec3>& normals, DArray<F
             const MeshVertexIndexData& IndexData = face.vertices[i];
             indices.PushBack(i + (f * 3));
 
-            if (indices[0] > 0) {
-                MERROR("Error");
+            for (u32 k = 0; k < 500; k++) {
+                if (ptri[k] && ptri[k][0] > 0) {
+                    MERROR("Error");
+                }
             }
 
             Vertex3D vert;
@@ -510,7 +510,6 @@ bool ImportObjMaterialLibraryFile(const char *MtlFilePath)
 
     bool HitName = false;
 
-    MString line;
     char LineBuffer[512];
     char* p = &LineBuffer[0];
     u64 LineLength = 0;
@@ -519,7 +518,7 @@ bool ImportObjMaterialLibraryFile(const char *MtlFilePath)
             break;
         }
         // Сначала обрежьте линию.
-        line = LineBuffer;
+        MString line { LineBuffer, true };
         LineLength = line.Length();
 
         // Пропускать пустые строки.
@@ -635,8 +634,8 @@ bool ImportObjMaterialLibraryFile(const char *MtlFilePath)
                     // импортированные таким образом, будут обрабатываться одинаково.
                     CurrentConfig.ShaderName = "Shader.Builtin.Material";
                     // ПРИМЕЧАНИЕ: Значение блеска 0 вызовет проблемы в шейдере. В этом случае используйте значение по умолчанию.
-                    if (CurrentConfig.specular == 0.0f) {
-                        CurrentConfig.specular = 8.0f;
+                    if (CurrentConfig.specular == 0.F) {
+                        CurrentConfig.specular = 8.F;
                     }
                     if (HitName) {
                         //  Запишите файл kmt и идите дальше.

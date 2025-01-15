@@ -314,7 +314,8 @@ bool VulkanAPI::Initialize(const RenderingConfig &config, u8 &OutWindowRenderTar
 
     // Получите список необходимых расширений
     
-    DArray<const char*>RequiredExtensions{VK_KHR_SURFACE_EXTENSION_NAME};   // Общее расширение поверхности
+    DArray<const char*>RequiredExtensions;                                  // Общее расширение поверхности
+    RequiredExtensions.PushBack(VK_KHR_SURFACE_EXTENSION_NAME);
     PlatformGetRequiredExtensionNames(RequiredExtensions);                  // Расширения для конкретной платформы
 #if defined(_DEBUG)
     RequiredExtensions.PushBack(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);         // утилиты отладки

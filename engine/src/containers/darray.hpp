@@ -68,7 +68,7 @@ private:
 // Функции
 public:
     constexpr DArray() : size(), capacity(), elementSize(sizeof(T)), data(nullptr) {}
-    constexpr DArray(T&& value) : size(), capacity(), elementSize(sizeof(T)), data(nullptr) { PushBack(value); }
+    // constexpr DArray(T&& value) : size(), capacity(), elementSize(sizeof(T)), data(nullptr) { PushBack(value); }
     constexpr DArray(u32 capacity) : size(), capacity(capacity), elementSize(sizeof(T)), data(reinterpret_cast<T*>(MemorySystem::Allocate(capacity * elementSize, Memory::DArray, true))){}
     constexpr DArray(u32 size, u32 capacity, T* array) : size(size), capacity(capacity ? capacity : size), elementSize(sizeof(T)), data(array) {}
 
@@ -221,7 +221,7 @@ public:
                 MERROR("DArray::Reserve: Не удалось выделить память");
                 return;
             }
-            data = NewData ? reinterpret_cast<T*>(NewData) : data;
+            data = NewData;
             MemorySystem::ZeroMem(data + size, NewSize - CurrentSize);
         }
     }
