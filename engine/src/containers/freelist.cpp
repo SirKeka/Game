@@ -132,22 +132,6 @@ bool FreeList::ReallocateBlock(u64 size, u64 NewSize, u64 &BlockOffset)
     FreelistNode* PreviousBuff = nullptr;
     u64 DeltaSize = NewSize - size;
     bool free = false;
-    // ЗАДАЧА: переделать в приватные функции?----------------------------------
-    auto ExactMatch = [&]() {
-        FreelistNode* NodeToReturn = nullptr;
-        if (previous) {
-            previous->next = node->next;
-            NodeToReturn = node;
-        } else {
-            // Этот узел является заголовком списка. Переназначьте 
-            // заголовок и верните предыдущий заголовочный узел.
-            NodeToReturn = state->head;
-            state->head = node->next;
-        }
-        
-        ReturnNode(NodeToReturn);
-    };
-    //--------------------------------------------------------------------------
 
     while (node) {
         // Запоминаем какой блок памяти может подойти в случае, если нам придется выделять новый.
@@ -158,8 +142,7 @@ bool FreeList::ReallocateBlock(u64 size, u64 NewSize, u64 &BlockOffset)
         // ЗАДАЧА: проверен на правильную работоспособность-----------------------------------------------------
         if (node->offset == BlockOffset + size && !free) {
             if (node->size == DeltaSize) {
-                ExactMatch();
-                return true;
+                return Allocate(node, DeltaSize, BlockOffset, previous);
             } else if (node->size > DeltaSize) {
                 node->size -= DeltaSize;
                 node->offset += DeltaSize;
@@ -177,6 +160,7 @@ bool FreeList::ReallocateBlock(u64 size, u64 NewSize, u64 &BlockOffset)
             NewNode->offset = BlockOffset;
             NewNode->size = size;
             AttachNode(node, previous, NewNode);
+            Verification(NewNode);
             free = true;
         } else if (free) {
             if (buff) {
@@ -213,6 +197,7 @@ bool FreeList::FreeBlock(u64 size, u64 offset)
         NewNode->size = size;
         NewNode->next = nullptr;
         state->head = NewNode;
+        Verification(NewNode);
         return true;
     } else {
         return Free(node, offset, size, previous);
@@ -250,7 +235,7 @@ bool FreeList::Free(FreelistNode *&node, u64 offset, u64 size, FreelistNode *&pr
             NewNode->offset = offset;
             NewNode->size = size;
             AttachNode(node, previous, NewNode);
-
+            Verification(NewNode);
             return true;
         }
 
@@ -261,7 +246,7 @@ bool FreeList::Free(FreelistNode *&node, u64 offset, u64 size, FreelistNode *&pr
             NewNode->size = size;
             NewNode->next = nullptr;
             node->next = NewNode;
-
+            Verification(NewNode);
             return true;
         }
 
@@ -272,6 +257,31 @@ bool FreeList::Free(FreelistNode *&node, u64 offset, u64 size, FreelistNode *&pr
     MWARN("Не удалось найти блок, который нужно освободить. Возможна коррупция?");
     return false;
 
+}
+
+// bool operator==(const FreelistNode& n1, const FreelistNode& n2)
+// {
+//     if (n1.offset == n2.offset && n1.size == n2.size) {
+//         return true;
+//     }
+//     return false;
+// }
+
+void FreeList::Verification(FreelistNode* CheckNode)
+{
+    auto node = state->head;
+    while (node) {
+        u64 CheckValue = CheckNode->offset + CheckNode->size;
+        if (CheckNode == node) {
+            node = node->next;
+            continue;
+        } else if (node->size == 0) {
+            break;
+        } else if ((CheckValue >= node->offset && CheckValue <= (node->offset + node->size)) || (CheckNode->offset >= node->offset && CheckNode->offset <= (node->offset + node->size))) {
+            MERROR("Error");
+        }
+        node = node->next;
+    }
 }
 
 bool FreeList::Resize(void *NewMemory, u64 NewSize, void **OutOldMemory)

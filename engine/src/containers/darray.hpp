@@ -209,12 +209,12 @@ public:
             if (NewCap == 0) {
                 capacity *= 2;
                 NewSize = capacity * elementSize;
-                NewData = reinterpret_cast<T*>(MemorySystem::Realloc(data, CurrentSize, NewSize, Memory::DArray));
             } else {
                 NewSize = NewCap * elementSize;
-                NewData = reinterpret_cast<T*>(MemorySystem::Realloc(data, CurrentSize, NewSize, Memory::DArray));
                 capacity = NewCap;
             }
+
+            NewData = reinterpret_cast<T*>(MemorySystem::Realloc(data, CurrentSize, NewSize, Memory::DArray));
 
             if (!NewData) {
                 size = capacity = 0;

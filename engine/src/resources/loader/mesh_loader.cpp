@@ -477,10 +477,6 @@ void ProcessSubobject(DArray<FVec3>& positions, DArray<FVec3>& normals, DArray<F
         OutData.center.elements[i] = (OutData.MinExtents.elements[i] + OutData.MaxExtents.elements[i]) / 2.F;
     }
 
-    if (indices[0] > 0) {
-        MERROR("Ошибка");
-    }
-
     OutData.VertexCount = vertices.Length();
     OutData.VertexSize = vertices.ElementSize();
     OutData.vertices = vertices.MovePtr();
