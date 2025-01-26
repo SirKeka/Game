@@ -217,7 +217,7 @@ public:
             NewData = reinterpret_cast<T*>(MemorySystem::Realloc(data, CurrentSize, NewSize, Memory::DArray));
 
             if (!NewData) {
-                size = capacity = 0;
+                // size = capacity = 0;
                 MERROR("DArray::Reserve: Не удалось выделить память");
                 return;
             }

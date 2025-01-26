@@ -91,7 +91,7 @@ bool FreeList::AllocateBlock(u64 size, u64 &OutOffset)
     return false;
 }
 
-bool FreeList::Allocate(FreelistNode *&node, u64 size, u64 &OutOffset, FreelistNode *&previous)
+bool FreeList::Allocate(FreelistNode *node, u64 size, u64 &OutOffset, FreelistNode *previous)
 {
     while (node) {
         if (node->size == size) {
@@ -128,50 +128,26 @@ bool FreeList::ReallocateBlock(u64 size, u64 NewSize, u64 &BlockOffset)
 {
     auto node = state->head;
     FreelistNode* previous = nullptr;
-    FreelistNode* buff = nullptr; 
-    FreelistNode* PreviousBuff = nullptr;
     u64 DeltaSize = NewSize - size;
-    bool free = false;
 
     while (node) {
-        // Запоминаем какой блок памяти может подойти в случае, если нам придется выделять новый.
-        if (!free && (!buff && node->size >= NewSize)) {
-            buff = node;
-            PreviousBuff = previous;
-        }
-        // ЗАДАЧА: проверен на правильную работоспособность-----------------------------------------------------
-        if (node->offset == BlockOffset + size && !free) {
-            if (node->size == DeltaSize) {
-                return Allocate(node, DeltaSize, BlockOffset, previous);
-            } else if (node->size > DeltaSize) {
-                node->size -= DeltaSize;
-                node->offset += DeltaSize;
-                return true;
-            // ЗАДАЧА: проверен на правильную работоспособность-----------------------------------------------------
-            // Если в данном блоке не достаточно памяти, то освобождаем его и ищем новый блок
-            } else {
-                // Освобождаем и помечаем что мы освободили данный блок памяти, 
-                // т.к. не смогли его увеличить
-                // и теперь нам требуется выделить новый
-                free = Free(node, BlockOffset, size, previous);
-            }
-        } else if (node->offset > BlockOffset + size && !free) {
-            auto NewNode = GetNode();
-            NewNode->offset = BlockOffset;
-            NewNode->size = size;
-            AttachNode(node, previous, NewNode);
-            Verification(NewNode);
-            free = true;
-        } else if (free) {
-            if (buff) {
-                previous = PreviousBuff;
-                node = buff;
-            }
-            
+        u64 temp = node->offset + node->size;
+        // Проверяем есть ли свободный блок нужного размера спереди
+        if (temp == BlockOffset && node->size > DeltaSize) {
+            node->size -= DeltaSize;
+            BlockOffset -= DeltaSize;
+            return true;
+        // Проверяем есть ли свободный блок за занятым и хватает ли в нем места
+        } else if ((temp == BlockOffset && node->size == DeltaSize) || (node->offset == BlockOffset + size && node->size >= DeltaSize)) {
+            u64 ofs;
+            return Allocate(node, DeltaSize, ofs, previous);
+        // Если места не достаточно или встретился блок с нужным количеством памяти раньше, чем мы нашли смежные блоки, то просто освобождаем старый и занимаем новый
+        } else if (node->size >= NewSize) {
+            Free(node, BlockOffset, size, previous);
             return Allocate(node, NewSize, BlockOffset, previous);
         }
 
-        if (node->next){ 
+        if (node->next) { 
             previous = node;
             node = node->next;
         }
@@ -197,14 +173,14 @@ bool FreeList::FreeBlock(u64 size, u64 offset)
         NewNode->size = size;
         NewNode->next = nullptr;
         state->head = NewNode;
-        Verification(NewNode);
+        // Verification(NewNode);
         return true;
     } else {
         return Free(node, offset, size, previous);
     }
 }
 
-bool FreeList::Free(FreelistNode *&node, u64 offset, u64 size, FreelistNode *&previous)
+bool FreeList::Free(FreelistNode *node, u64 offset, u64 size, FreelistNode *previous)
 {
     while (node) {
         if (node->offset + node->size == offset || node->offset == offset + size) {
@@ -235,7 +211,7 @@ bool FreeList::Free(FreelistNode *&node, u64 offset, u64 size, FreelistNode *&pr
             NewNode->offset = offset;
             NewNode->size = size;
             AttachNode(node, previous, NewNode);
-            Verification(NewNode);
+            // Verification(NewNode);
             return true;
         }
 
@@ -246,7 +222,7 @@ bool FreeList::Free(FreelistNode *&node, u64 offset, u64 size, FreelistNode *&pr
             NewNode->size = size;
             NewNode->next = nullptr;
             node->next = NewNode;
-            Verification(NewNode);
+            // Verification(NewNode);
             return true;
         }
 

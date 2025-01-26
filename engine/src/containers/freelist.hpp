@@ -83,8 +83,8 @@ private:
     void ReturnNode(struct FreelistNode* node);
     /// @brief Присоединяет новый узел к существующием
     void AttachNode(FreelistNode* node, FreelistNode* previous, FreelistNode* NewNode);
-    bool Allocate(FreelistNode *&node, u64 size, u64 &OutOffset, FreelistNode *&previous);
-    bool Free(FreelistNode *&node, u64 offset, u64 size, FreelistNode *&previous);
+    bool Allocate(FreelistNode *node, u64 size, u64 &OutOffset, FreelistNode *previous);
+    bool Free(FreelistNode *node, u64 offset, u64 size, FreelistNode *previous);
 
     // ЗАДАЧА: временно для отладки
     void Verification(FreelistNode* CheckNode);
