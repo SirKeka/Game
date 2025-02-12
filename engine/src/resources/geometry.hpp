@@ -80,6 +80,7 @@ private:
 
     //friend class GeometrySystem;
     friend class VulkanAPI;
+    friend struct Terrain;
 public:
     constexpr Geometry() : id(INVALID::ID), generation(), VertexCount(), VertexElementSize(), VertexBufferOffset(), IndexCount(), IndexElementSize(), IndexBufferOffset() {}
     constexpr Geometry(u32 VertexCount, u32 VertexElementSize, u32 IndexCount): id(), generation(), VertexCount(VertexCount), VertexElementSize(VertexElementSize), VertexBufferOffset(), IndexCount(IndexCount), IndexElementSize(sizeof(u32)), IndexBufferOffset() {}

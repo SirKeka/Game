@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/frame_data.hpp"
+#include "core/frame_data.h"
 #include "defines.hpp"
 #include "math/vector2d_fwd.hpp"
 #include "math/vector3d_fwd.hpp"
@@ -15,6 +15,8 @@
  * Загрузить конфигурацию ландшафта из файла
  * Load heightmaps calculate normals/tangents (copy-pasta of existing, but using terrain_vertex structure) New material type? (terrain/multi material)
 */
+
+constexpr int TERRAIN_MAX_MATERIAL_COUNT = 4;
 
 struct TerrainVertex {
     /** @brief Положение вершины */
@@ -36,24 +38,24 @@ struct TerrainVertexData {
     f32 height;
 };
 
-struct TerrainConfig {
-    MString name;
-    u32 TileCountX;
-    u32 TileCountZ;
-    f32 TileScaleX; // Насколько велика каждая плитка по оси x.
-    f32 TileScaleZ; // Насколько велика каждая плитка по оси z.
-    f32 ScaleY;     // Максимальная высота сгенерированной местности.
-
-    Transform xform;
-
-    u32 VertexDataLength;
-    TerrainVertexData *VertexDatas;
-
-    u32 MaterialCount;
-    char **MaterialNames;
-};
-
 struct Terrain {
+    struct Config {
+        MString name;
+        u32 TileCountX;
+        u32 TileCountZ;
+        f32 TileScaleX; // Насколько велика каждая плитка по оси x.
+        f32 TileScaleZ; // Насколько велика каждая плитка по оси z.
+        f32 ScaleY;     // Максимальная высота сгенерированной местности.
+
+        Transform xform;
+
+        u32 VertexDataLength;
+        TerrainVertexData *VertexDatas;
+
+        u32 MaterialCount;
+        char** MaterialNames;
+    };
+
     MString name;
     Transform xform;
     u32 TileCountX;
@@ -74,12 +76,12 @@ struct Terrain {
     u32 IndexCount;
     u32* indices;
 
-    Geometry geo;
+    GeometryID geo;
 
     u32 MaterialCount;
-    char **MaterialNames;
+    char** MaterialNames;
 
-    bool Create(const TextureConfig& config);
+    bool Create(const Config& config);
     void Destroy();
 
     bool Initialize();

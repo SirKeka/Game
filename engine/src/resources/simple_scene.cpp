@@ -280,7 +280,7 @@ bool SimpleScene::PopulateRenderPacket(Camera *CurrentCamera, f32 aspect, FrameD
                         {
                             // Переместите/масштабируйте экстенты.
                             // auto ExtentsMin = g->extents.MinSize * model;
-                            auto ExtentsMax = g->extents.MaxSize * model;
+                            auto ExtentsMax = g->extents.max * model;
 
                             // Переместить/масштабировать центр.
                             auto center = g->center * model;

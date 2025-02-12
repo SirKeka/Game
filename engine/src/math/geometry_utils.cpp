@@ -1,5 +1,6 @@
 #include "geometry_utils.hpp"
 #include "resources/geometry.hpp"
+#include "resources/terrain.h"
 #include "vertex.hpp"
 #include "containers/darray.hpp"
 
@@ -177,6 +178,59 @@ namespace Math
         geometry.vertices = UniqueVerts.MovePtr();
         geometry.VertexCount = UniqueVertexCount;
     }
+
+    void Geometry::GenerateTerrainNormals(u32 VertexCount, TerrainVertex *vertices, u32 IndexCount, u32 *indices)
+    {
+        for (u32 i = 0; i < IndexCount; i += 3) {
+            u32 i0 = indices[i + 0];
+            u32 i1 = indices[i + 1];
+            u32 i2 = indices[i + 2];
+    
+            FVec3 edge1 = vertices[i1].position - vertices[i0].position;
+            FVec3 edge2 = vertices[i2].position - vertices[i0].position;
+    
+            FVec3 normal = Normalize(Cross(edge1, edge2));
+    
+            // ПРИМЕЧАНИЕ: Это просто генерирует нормаль фейса. Сглаживание следует выполнять в отдельном проходе, если это необходимо.
+            vertices[i0].normal = normal;
+            vertices[i1].normal = normal;
+            vertices[i2].normal = normal;
+        }
+    }
+
+    void Geometry::GenerateTerrainTangents(u32 VertexCount, TerrainVertex *vertices, u32 IndexCount, u32 *indices)
+    {
+        for (u32 i = 0; i < IndexCount; i += 3) {
+            u32 i0 = indices[i + 0];
+            u32 i1 = indices[i + 1];
+            u32 i2 = indices[i + 2];
+    
+            FVec3 edge1 = vertices[i1].position - vertices[i0].position;
+            FVec3 edge2 = vertices[i2].position - vertices[i0].position;
+    
+            f32 deltaU1 = vertices[i1].texcoord.x - vertices[i0].texcoord.x;
+            f32 deltaV1 = vertices[i1].texcoord.y - vertices[i0].texcoord.y;
+    
+            f32 deltaU2 = vertices[i2].texcoord.x - vertices[i0].texcoord.x;
+            f32 deltaV2 = vertices[i2].texcoord.y - vertices[i0].texcoord.y;
+    
+            f32 dividend = (deltaU1 * deltaV2 - deltaU2 * deltaV1);
+            f32 fc = 1.0f / dividend;
+    
+            FVec3 tangent = FVec3((fc * (deltaV2 * edge1.x - deltaV1 * edge2.x)),
+                                  (fc * (deltaV2 * edge1.y - deltaV1 * edge2.y)),
+                                  (fc * (deltaV2 * edge1.z - deltaV1 * edge2.z)));
+    
+            tangent = Normalize(tangent);
+    
+            f32 sx = deltaU1, sy = deltaU2;
+            f32 tx = deltaV1, ty = deltaV2;
+            f32 handedness = ((tx * sy - ty * sx) < 0.F) ? -1.F : 1.F;
+    
+            FVec4 t4 = FVec4(tangent * handedness, 0.F);
+            vertices[i0].tangent = t4;
+            vertices[i1].tangent = t4;
+            vertices[i2].tangent = t4;
+        }
+    }
 } // namespace Math
-
-

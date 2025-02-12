@@ -73,6 +73,16 @@ namespace Math
     MAPI f32 fRandom();
     MAPI f32 RandomInRange(f32 min, f32 max);
 
+    /// @brief Выполнить интерполяцию Эрмита между двумя значениями.
+    /// @param edge_0 Нижний край функции Эрмита.
+    /// @param edge_1 Верхний край функции Эрмита.
+    /// @param x Значение для интерполяции.
+    /// @return Интерполированное значение.
+    MINLINE f32 Smoothstep(f32 Edge0, f32 Edge1, f32 x) {
+        f32 t = MCLAMP((x - Edge0) / (Edge1 - Edge0), 0.F, 1.F);
+        return t * t * (3.F - 2.F * t);
+    }
+
     /// @brief Преобразует указанные градусы в радианы.
     /// @param degrees градусы, подлежащие преобразованию.
     /// @return величина в радианах.

@@ -326,8 +326,8 @@ bool GeometrySystem::CreateGeometry(GeometryConfig &config, GeometryID *gid)
 
     // Копирование экстентов, центра и т.д.
     gid->center = config.center;
-    gid->extents.MinSize = config.MinExtents;
-    gid->extents.MaxSize = config.MaxExtents;
+    gid->extents.min = config.MinExtents;
+    gid->extents.max = config.MaxExtents;
     gid->generation++;
 
     // Получить материал
