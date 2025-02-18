@@ -2,7 +2,7 @@
 #include "core/identifier.hpp"
 #include "renderer/rendering_system.hpp"
 #include "systems/font_system.hpp"
-#include "systems/shader_system.hpp"
+#include "systems/shader_system.h"
 #include "math/vertex.hpp"
 #include "resources/texture_map.hpp"
 #include "resources/font_resource.hpp"

@@ -1,9 +1,9 @@
-#include "material_system.hpp"
+#include "material_system.h"
 
 #include "systems/texture_system.hpp"
 #include "renderer/rendering_system.hpp"
 #include "systems/resource_system.hpp"
-#include "systems/shader_system.hpp"
+#include "systems/shader_system.h"
 #include "systems/light_system.hpp"
 
 #include "memory/linear_allocator.hpp"
@@ -23,8 +23,7 @@ struct MaterialShaderUniformLocations {
     u16 view            {INVALID::U16ID};
     u16 AmbientColour   {INVALID::U16ID};
     u16 ViewPosition    {INVALID::U16ID};
-    u16 specular        {INVALID::U16ID};
-    u16 DiffuseColour   {INVALID::U16ID};
+    u16 properties      {INVALID::U16ID};
     u16 DiffuseTexture  {INVALID::U16ID};
     u16 SpecularTexture {INVALID::U16ID};
     u16 NormalTexture   {INVALID::U16ID};
@@ -38,9 +37,25 @@ struct MaterialShaderUniformLocations {
 struct UI_ShaderUniformLocations {
     u16 projection      {INVALID::U16ID};
     u16 view            {INVALID::U16ID};
-    u16 DiffuseColour   {INVALID::U16ID};
+    u16 properties      {INVALID::U16ID};
     u16 DiffuseTexture  {INVALID::U16ID};
     u16 model           {INVALID::U16ID};
+};
+
+struct TerrainShaderLocations {
+    bool loaded;
+    u16 projection;
+    u16 view;
+    u16 AmbientColour;
+    u16 ViewPosition;
+    u16 model;
+    u16 RenderMode;
+    u16 DirLight;
+    u16 PointLights;
+    u16 NumPointLights;
+
+    u16 properties;
+    u16 samplers[TERRAIN_MAX_MATERIAL_COUNT * 3];  // diffuse, spec, normal.
 };
 
 struct sMaterialSystem
@@ -49,6 +64,8 @@ struct sMaterialSystem
     u32 MaxMaterialCount;                                   // Максимальное количество загружаемых материалов.
     //--------------------------------------------------------------------------------------------------------
     Material DefaultMaterial;                               // Стандартный материал.
+    Material DefaultUiMaterial;                             // Стандартный материал пользовательского интерфейса.
+    Material DefaultTerrainMaterial;                        // Стандартный материал ландшафта.
     Material* RegisteredMaterials;                          // Массив зарегистрированных материалов.
 
     HashTable<MaterialReference> RegisteredMaterialTable;   // Хэш-таблица для поиска материалов.
@@ -194,7 +211,7 @@ Material *MaterialSystem::Acquire(const char *name)
     return m;
 }
 
-Material *MaterialSystem::Acquire(const MaterialConfig &config)
+Material *MaterialSystem::Acquire(const Material::Config &config)
 {
     // Вернуть материал по умолчанию.
     if (MString::Equali(config.name, DEFAULT_MATERIAL_NAME)) {
@@ -253,6 +270,128 @@ Material *MaterialSystem::Acquire(const MaterialConfig &config)
     // ПРИМЕЧАНИЕ: Это произойдет только в том случае, если что-то пойдет не так с состоянием.
     MERROR("MaterialSystem::Acquire не удалось получить материал '%s'. Нулевой указатель будет возвращен.", config.name);
     return nullptr;
+}
+
+Material* Acquire(const char* MaterialName, u32 MaterialCount, const char** MaterialNames, bool AutoRelease)
+{
+    // Верните материал ландшафта по умолчанию.
+    if (MString::Equali(MaterialName, DEFAULT_TERRAIN_MATERIAL_NAME)) {
+        return &state->DefaultTerrainMaterial;
+    }
+
+    bool NeedsCreation = false;
+    auto material = acquire_reference(MaterialName, AutoRelease, &NeedsCreation);
+    if (!material) {
+        MERROR("Не удалось получить материал ландшафта '%s'", MaterialName);
+        return nullptr;
+    }
+
+    if (NeedsCreation) {
+        // Получите все материалы по имени;
+        auto materials = reinterpret_cast<Material**>(MemorySystem::Allocate(sizeof(Material*) * MaterialCount, Memory::Array));
+        for (u32 i = 0; i < MaterialCount; ++i) {
+            materials[i] = Acquire(MaterialNames[i]);
+        }
+
+        // Создайте новый материал.
+        // ПРИМЕЧАНИЕ: load_material, зависящий от ландшафта
+        MemorySystem::ZeroMem(material, sizeof(Material));
+        string_ncopy(material->name, MaterialName, MATERIAL_NAME_MAX_LENGTH);
+
+        auto shader = ShaderSystem::GetShader("Shader.Builtin.Terrain");
+        material->shader_id = shader->id;
+        material->type = MATERIAL_TYPE_TERRAIN;
+
+        // Выделите память для карт и свойств.
+        material->property_struct_size = sizeof(MaterialTerrainProperties);
+        material->properties = kallocate(material->property_struct_size, MEMORY_TAG_MATERIAL_INSTANCE);
+        auto properties = material->properties;
+        properties->num_materials = material_count;
+        properties->padding = vec3_zero();
+        properties->padding2 = vec4_zero();
+
+        // 3 карты на материал. Выделите достаточно слотов для всех материалов.
+        // u32 map_count = material_count * 3;
+        u32 max_map_count = TERRAIN_MAX_MATERIAL_COUNT * 3;
+        m->maps = darray_reserve(texture_map, max_map_count);
+        darray_length_set(m->maps, max_map_count);
+
+        // Имена карт и резервные текстуры по умолчанию.
+        const char* map_names[3] = {"diffuse", "specular", "normal"};
+        texture* default_textures[3] = {
+            texture_system_get_default_diffuse_texture(),
+            texture_system_get_default_specular_texture(),
+            texture_system_get_default_normal_texture()};
+        // Используйте материал по умолчанию для неназначенных слотов.
+        material* default_material = material_system_get_default();
+
+        // Свойства и карты Фонга для каждого материала.
+        for (u32 material_idx = 0; material_idx < TERRAIN_MAX_MATERIAL_COUNT; ++material_idx) {
+            // Свойства.
+            material_phong_properties* mat_props = &properties->materials[material_idx];
+            // Используйте материал по умолчанию, если он не находится в пределах количества материалов.
+            material* ref_mat = default_material;
+            if (material_idx < material_count) {
+                ref_mat = materials[material_idx];
+            }
+
+            material_phong_properties* props = ref_mat->properties;
+            mat_props->diffuse_colour = props->diffuse_colour;
+            mat_props->shininess = props->shininess;
+            mat_props->padding = vec3_zero();
+
+            // Maps, 3 for phong. Diffuse, spec, normal.
+            for (u32 map_idx = 0; map_idx < 3; ++map_idx) {
+                material_map map_config = {0};
+                char buf[MATERIAL_NAME_MAX_LENGTH] = {0};
+                map_config.name = buf;
+                string_copy(map_config.name, map_names[map_idx]);
+                map_config.repeat_u = ref_mat->maps[map_idx].repeat_u;
+                map_config.repeat_v = ref_mat->maps[map_idx].repeat_v;
+                map_config.repeat_w = ref_mat->maps[map_idx].repeat_w;
+                map_config.filter_min = ref_mat->maps[map_idx].filter_minify;
+                map_config.filter_mag = ref_mat->maps[map_idx].filter_magnify;
+                map_config.texture_name = ref_mat->maps[map_idx].texture->name;
+                if (!assign_map(&m->maps[(material_idx * 3) + map_idx], &map_config, m->name, default_textures[map_idx])) {
+                    KERROR("Failed to assign '%s' texture map for terrain material index %u", map_names[map_idx], material_idx);
+                    return false;
+                }
+            }
+        }
+
+        // Release reference materials.
+        for (u32 i = 0; i < material_count; ++i) {
+            material_system_release(material_names[i]);
+        }
+
+        kfree(materials, sizeof(material*) * material_count, MEMORY_TAG_ARRAY);
+
+        // Acquire instance resources for all maps.
+
+        texture_map** maps = kallocate(sizeof(texture_map*) * max_map_count, MEMORY_TAG_ARRAY);
+        // Assign material maps.
+        for (u32 i = 0; i < max_map_count; ++i) {
+            maps[i] = &m->maps[i];
+        }
+
+        b8 result = renderer_shader_instance_resources_acquire(s, max_map_count, maps, &m->internal_id);
+        if (!result) {
+            KERROR("Failed to acquire renderer resources for material '%s'.", m->name);
+        }
+
+        if (maps) {
+            kfree(maps, sizeof(texture_map*) * max_map_count, MEMORY_TAG_ARRAY);
+        }
+        // NOTE: end terrain-specific load_material
+
+        if (m->generation == INVALID_ID) {
+            m->generation = 0;
+        } else {
+            m->generation++;
+        }
+    }
+
+    return m;
 }
 
 void MaterialSystem::Release(const char *name)

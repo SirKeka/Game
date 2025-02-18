@@ -9,7 +9,7 @@
 #include "platform/platform.hpp"
 
 #include "systems/resource_system.hpp"
-#include "systems/shader_system.hpp"
+#include "systems/shader_system.h"
 #include "renderer/rendering_system.hpp"
 #include "systems/job_systems.hpp"
 #include "systems/texture_system.hpp"

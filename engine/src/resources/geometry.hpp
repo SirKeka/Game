@@ -1,7 +1,7 @@
 #pragma once
 #include "containers/mstring.hpp"
 #include "math/vertex.hpp"
-#include "systems/material_system.hpp"
+#include "systems/material_system.h"
 #include "math/extents.hpp"
 
 constexpr int GEOMETRY_NAME_MAX_LENGTH = 256;
@@ -17,7 +17,7 @@ struct GeometryID {
     FVec3 center;
     Extents3D extents;
     char name[GEOMETRY_NAME_MAX_LENGTH];
-    class Material* material;
+    struct Material* material;
     GeometryID(u32 id, u16 generation) : id(id), InternalID(INVALID::ID), generation(generation), name(), material(nullptr) {}
     GeometryID(const char* name) : id(INVALID::ID), InternalID(INVALID::ID), generation(INVALID::U16ID), material(nullptr) {MemorySystem::CopyMem(this->name, name, GEOMETRY_NAME_MAX_LENGTH);}
     void* operator new[](u64 size) { return MemorySystem::Allocate(size, Memory::Array); }

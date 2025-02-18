@@ -1,6 +1,6 @@
 #pragma once
 #include "render_view.hpp"
-#include "systems/shader_system.hpp"
+#include "systems/shader_system.h"
 #include "systems/camera_system.hpp"
 
 class RenderViewSkybox : public RenderView

@@ -1,4 +1,4 @@
-#include "shader_system.hpp"
+#include "shader_system.h"
 #include "memory/linear_allocator.hpp"
 #include "systems/texture_system.hpp"
 #include "renderer/rendering_system.hpp"

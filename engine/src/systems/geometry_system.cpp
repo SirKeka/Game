@@ -1,5 +1,5 @@
 #include "geometry_system.hpp"
-#include "material_system.hpp"
+#include "material_system.h"
 #include "renderer/rendering_system.hpp"
 #include "math/geometry_utils.hpp"
 #include "memory/linear_allocator.hpp"

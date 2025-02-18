@@ -1,6 +1,6 @@
 #include "terrain.h"
 #include "renderer/rendering_system.hpp"
-#include "systems/material_system.hpp"
+#include "systems/material_system.h"
 #include "math/geometry_utils.hpp"
 
 bool Terrain::Create(const Config &config)
@@ -172,7 +172,7 @@ bool Terrain::Load()
     geo.material = MaterialSystem::Acquire(TerrainMaterialName, MaterialCount, (const char **)MaterialNames, true);
     if (!geo.material) {
         MWARN("Не удалось получить материал ландшафта. Вместо этого используется материал по умолчанию.");
-        geo.material = MaterialSystem::GetDefaultTerrain();
+        geo.material = MaterialSystem::GetDefaultTerrainMaterial();
     }
 
     return true;

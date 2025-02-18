@@ -2,9 +2,9 @@
 
 #include "defines.hpp"
 #include "resources/geometry.hpp"
-#include "resources/material/material.hpp"
+#include "resources/material.h"
 
-constexpr const char* DEFAULT_GEOMETRY_NAME = "default";
+#define DEFAULT_GEOMETRY_NAME "default"
 
 /// @brief Конфигурация геометрической системы.
 struct GeometrySystemConfig {

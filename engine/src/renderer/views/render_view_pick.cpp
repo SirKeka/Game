@@ -5,7 +5,7 @@
 #include "resources/ui_text.hpp"
 #include "systems/camera_system.hpp"
 #include "systems/resource_system.hpp"
-#include "systems/shader_system.hpp"
+#include "systems/shader_system.h"
 
 RenderViewPick::RenderViewPick(u16 id, const Config &config)
 : RenderView(id, config),

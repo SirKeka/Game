@@ -12,10 +12,10 @@
 
 // Системы
 #include "systems/texture_system.hpp"
-#include "systems/material_system.hpp"
+#include "systems/material_system.h"
 #include "systems/geometry_system.hpp"
 #include "systems/resource_system.hpp"
-#include "systems/shader_system.hpp"
+#include "systems/shader_system.h"
 #include "systems/camera_system.hpp"
 #include "systems/render_view_system.hpp"
 #include "systems/job_systems.hpp"

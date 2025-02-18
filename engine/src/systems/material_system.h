@@ -6,13 +6,19 @@
 /// 
 /// @copyright
 #pragma once
-#include "resources/material/material.hpp"
+#include "resources/material.h"
 #include "containers/hashtable.hpp"
 
 class Matrix4D;
 
 /// @brief Имя материала по умолчанию.
-constexpr const char* DEFAULT_MATERIAL_NAME = "default";    // Имя материала по умолчанию.
+#define DEFAULT_MATERIAL_NAME "default"    // Имя материала по умолчанию.
+
+/// @brief Имя материала пользовательского интерфейса по умолчанию.
+#define DEFAULT_UI_MATERIAL_NAME "default_ui"
+
+/// @brief Имя материала ландшафта по умолчанию.
+#define DEFAULT_TERRAIN_MATERIAL_NAME "default_terrain"
 
 /// @brief Конфигурация для системы материалов.
 struct MaterialSystemConfig
@@ -24,6 +30,12 @@ struct MaterialSystemConfig
 namespace MaterialSystem
 {
     MAPI Material* GetDefaultMaterial();
+
+    /// @brief Получает указатель на материал пользовательского интерфейса по умолчанию. Не ссылается на счетчик.
+    MAPI Material* GetDefaultUiMAterial();
+
+    /// @brief Получает указатель на материал ландшафта по умолчанию. Не ссылается на счетчик.
+    MAPI Material* GetDefaultTerrainMaterial();
 
     /// @brief Функция создает объект класса и инициализирует его
     /// @param MaxMaterialCount максимальное количество загружаемых материалов.
@@ -42,7 +54,18 @@ namespace MaterialSystem
     /// Если материал не найден, возвращается указатель на материал по умолчанию. Если материал _найден и загружен, его счетчик ссылок увеличивается.
     /// @param config конфигурация загружаемого материала
     /// @return Указатель на загруженный материал. Может быть указателем на материал по умолчанию, если он не найден.
-    MAPI Material* Acquire(const MaterialConfig& config);
+    MAPI Material* Acquire(const Material::Config& config);
+
+    /// @brief Пытается получить материал ландшафта с указанным именем. 
+    /// Если он еще не загружен, это запускает его загрузку с использованием предоставленных стандартных имен материалов. 
+    /// Если материал не может быть загружен, возвращается указатель на материал ландшафта по умолчанию. 
+    /// Если материал _найден_ и загружен, его счетчик ссылок увеличивается.
+    /// @param MaterialName имя материала ландшафта, который нужно найти.
+    /// @param MaterialCount количество стандартных имен исходных материалов.
+    /// @param MaterialNames имена исходных материалов, которые нужно использовать.
+    /// @param AutoRelease
+    /// @return указатель на загруженный материал ландшафта. Может быть указателем на материал ландшафта по умолчанию, если он не найден.
+    MAPI Material* Acquire(const char* MaterialName, u32 MaterialCount, const char** MaterialNames, bool AutoRelease);
 
     MAPI void Release(const char* name);
 

@@ -2,6 +2,11 @@
 #include "render_view.hpp"
 #include "core/event.hpp"
 
+struct RenderViewWorldData {
+    DArray<GeometryRenderData> WorldGeometries;
+    DArray<GeometryRenderData> TerrainGeometries;
+};
+
 class RenderViewWorld : public RenderView
 {
 private:

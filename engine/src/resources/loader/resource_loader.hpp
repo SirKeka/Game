@@ -1,6 +1,6 @@
 #pragma once
 #include "resources/texture.hpp"
-#include "resources/material/material_config.hpp"
+#include "resources/material.h"
 #include "resources/font_resource.hpp"
 #include "resources/geometry.hpp"
 #include "resources/shader.hpp"
@@ -21,7 +21,7 @@ struct Resource {
 using TextResource        = Resource<MString>;
 using BinaryResource      = Resource<DArray<u8>>;
 using ImageResource       = Resource<ImageResourceData>;
-using MaterialResource    = Resource<MaterialConfig>;
+using MaterialResource    = Resource<Material::Config>;
 using MeshResource        = Resource<DArray<GeometryConfig>>;
 using ShaderResource      = Resource<Shader::Config>;
 using BitmapFontResource  = Resource<BitmapFontResourceData>;

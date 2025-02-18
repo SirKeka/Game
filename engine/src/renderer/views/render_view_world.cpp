@@ -1,9 +1,9 @@
 #include "render_view_world.hpp"
 // #include "memory/linear_allocator.hpp"
 #include "renderer/rendering_system.hpp"
-#include "systems/shader_system.hpp"
+#include "systems/shader_system.h"
 #include "systems/camera_system.hpp"
-#include "systems/material_system.hpp"
+#include "systems/material_system.h"
 #include "systems/render_view_system.hpp"
 #include "systems/resource_system.hpp"
 #include "renderer/renderpass.hpp"
@@ -14,6 +14,12 @@
 struct GeometryDistance {
     GeometryRenderData g;   // Данные рендеринга геометрии.
     f32 distance;           // Расстояние от камеры.
+};
+
+struct MaterialInfo {
+    FVec4 DiffuseColour;
+    f32 specular;
+    FVec3 padding;
 };
 
 bool RenderViewWorld::OnEvent(u16 code, void* sender, void* ListenerInst, EventContext context) {
@@ -59,8 +65,8 @@ RenderView(id, config),
 shader(),
 fov(Math::DegToRad(45.F)),
 NearClip(0.1F),
-FarClip(1000.F),
-ProjectionMatrix(Matrix4D::MakeFrustumProjection(fov, 1280 / 720.f, NearClip, FarClip)), // Поумолчанию
+FarClip(4000.F),
+ProjectionMatrix(Matrix4D::MakeFrustumProjection(fov, 1280 / 720.F, NearClip, FarClip)), // Поумолчанию
 WorldCamera(CameraSystem::Instance()->GetDefault()),
 AmbientColour(0.25F, 0.25F, 0.25F, 1.F),
 RenderMode()
@@ -68,13 +74,13 @@ RenderMode()
     const char* ShaderName = "Shader.Builtin.Material";
     ShaderResource ConfigResource;
     if (!ResourceSystem::Load(ShaderName, eResource::Shader, nullptr, ConfigResource)) {
-        MERROR("Не удалось загрузить встроенный шейдер пользовательского интерфейса.");
+        MERROR("Не удалось загрузить ресурс встроенного шейдера материала.");
         return;
     }
 
     // ПРИМЕЧАНИЕ: Предположим, что это первый проход, так как это все, что есть в этом представлении.
     if (!ShaderSystem::Create(passes[0], ConfigResource.data)) {
-        MERROR("Не удалось загрузить встроенный шейдер пользовательского интерфейса.");
+        MERROR("Не удалось загрузить встроенный шейдер материала.");
         return;
     }
     // ResourceSystem::Unload(ConfigResource);
@@ -144,9 +150,12 @@ bool RenderViewWorld::BuildPacket(class LinearAllocator& FrameAllocator, void *d
         }
 
         // ЗАДАЧА: Добавить что-то к материалу для проверки прозрачности.
-        if ((gData.gid->material->DiffuseMap.texture->flags & Texture::Flag::HasTransparency) == 0) {
+        bool HasTransparancy = false;
+        if ((gData.gid->material->type == Material::Type::Phong) == 0) {
+            HasTransparancy = (gData.gid->material->maps[0].texture->flags & Texture::Flag::HasTransparency) == 0;
+        }
+        if (HasTransparancy) {
             OutPacket.geometries.PushBack(gData);
-            // OutPacket.GeometryCount++;
         } else {
             // Для сеток _с_ прозрачностью добавьте их в отдельный список, чтобы позже отсортировать по расстоянию.
             // Получите центр, извлеките глобальную позицию из матрицы модели и добавьте ее в центр, 

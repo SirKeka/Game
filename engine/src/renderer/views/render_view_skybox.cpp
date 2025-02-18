@@ -5,7 +5,7 @@
 #include "renderer/rendering_system.hpp"
 #include "systems/render_view_system.hpp"
 #include "systems/resource_system.hpp"
-#include "systems/shader_system.hpp"
+#include "systems/shader_system.h"
 #include "resources/skybox.hpp"
 
 RenderViewSkybox::RenderViewSkybox(u16 id, const Config &config)

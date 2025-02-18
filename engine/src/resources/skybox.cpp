@@ -1,7 +1,7 @@
 #include "skybox.hpp"
 #include "renderer/rendering_system.hpp"
 #include "systems/geometry_system.hpp"
-#include "systems/shader_system.hpp"
+#include "systems/shader_system.h"
 #include "systems/texture_system.hpp"
 
 bool Skybox::Create(Config& config)
