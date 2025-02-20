@@ -200,14 +200,14 @@ bool ImportObjFile(FileHandle &ObjFile, const char *OutMsmFilename, DArray<Geome
                 case ' ': {
                     // Позиция вершины
                     FVec3 pos;
-                    MString::ToVector(LineBuf, pos);
+                    MString::ToFVector(LineBuf, pos);
                     //iv++;
                     positions.PushBack(pos);
                 } break;
                 case 'n': {
                     // Нормали вершины
                     FVec3 norm;
-                    MString::ToVector(LineBuf, norm);
+                    MString::ToFVector(LineBuf, norm);
                     //in++;
                     normals.PushBack(norm);
                 } break;
@@ -215,7 +215,7 @@ bool ImportObjFile(FileHandle &ObjFile, const char *OutMsmFilename, DArray<Geome
                         // Текстурные координаты вершины.
                         FVec2 TexCoord;
                         // ПРИМЕЧАНИЕ: Игнорирование Z координаты, если она присутствует.
-                        MString::ToVector(LineBuf, TexCoord);
+                        MString::ToFVector(LineBuf, TexCoord);
                         //it++;
                         TexCoords.PushBack(TexCoord);
                 } break; 

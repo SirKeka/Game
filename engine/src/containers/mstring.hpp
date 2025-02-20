@@ -228,8 +228,6 @@ public:
     /// @return целочисленное 64 битное число без знака считанное из строки.
     static u64 ToUInt(const char* s);
 
-    bool ToU32(u32& value);
-
     static bool StringToF32(const char* s, f32& fn1, f32* fn2 = nullptr, f32* fn3 = nullptr, f32* fn4 = nullptr);
 
     static char* Copy(char* dest, const char* source, u64 Length = 0, bool DelCon = false);
@@ -258,7 +256,6 @@ public:
     }
     // static char* Concat();
 
-public:
     void Trim();
     static char* Trim(char* s);
 
@@ -277,54 +274,83 @@ public:
 
     /// @brief Возвращает индекс первого вхождения c в строку; в противном случае -1.
     /// @param str Строка для сканирования.
-    /// @param c Персонаж, которого нужно искать.
+    /// @param c символ, которого нужно искать.
     /// @return Индекс первого вхождения c; в противном случае -1, если не найден. 
     static i32 IndexOf(char* str, char c);
 
     /// @brief Возвращает индекс первого вхождения c в строку; в противном случае -1.
-    /// @param str Строка для сканирования.
-    /// @param c Персонаж, которого нужно искать.
+    /// @param str строка для сканирования.
+    /// @param c символ, который нужно искать.
     /// @return Индекс первого вхождения c; в противном случае -1, если не найден.
     i32 IndexOf(char c);
 
     /// @brief Пытается проанализировать вектор из предоставленной строки.
-    /// @param str Строка для анализа. Должна быть разделена пробелами (т. е. "1.0 2.0 3.0 4.0")
-    /// @param OutVector A pointer to the vector to write to.
+    /// @param str строка для анализа. Должна быть разделена пробелами (т. е. "1.0 2.0 3.0 4.0")
+    /// @param OutVector ссылка на вектор для записи.
     /// @return True, если синтаксический анализ прошел успешно; в противном случае false. 
     static bool ToVector(char* str, FVec4& OutVector);
 
     bool ToFVector(FVec4& OutVector);
 
     /// @brief Пытается проанализировать вектор из предоставленной строки.
-    /// @param str Строка для анализа. Должна быть разделена пробелами (т. е. «1,0 2,0 3,0»)
-    /// @param OutVector Ссылка на вектор для записи.
+    /// @param str строка для анализа. Должна быть разделена пробелами (т. е. «1,0 2,0 3,0»)
+    /// @param OutVector ссылка на вектор для записи.
     /// @return True, если синтаксический анализ прошел успешно; в противном случае false.
-    static bool ToVector(char* str, FVec3& OutVector);
+    static bool ToFVector(char* str, FVec3& OutVector);
 
     bool ToFVector(FVec3& OutVector);
 
     /// @brief Пытается проанализировать вектор из предоставленной строки.
-    /// @param str Строка для анализа. Должна быть разделена пробелами (т. е. "1.0 2.0")
-    /// @param OutVector A pointer to the vector to write to.
+    /// @param str строка для анализа. Должна быть разделена пробелами (т. е. "1.0 2.0")
+    /// @param OutVector ссылка на вектор для записи.
     /// @return True, если синтаксический анализ прошел успешно; в противном случае false.
-    static bool ToVector(char* str, FVec2& OutVector);
+    static bool ToFVector(char* str, FVec2& OutVector);
+
+    bool ToFVector(FVec2& OutVector);
 
     /// @brief Пытается проанализировать 32-битное число с плавающей запятой из предоставленной строки.
     /// @param str Строка для анализа. *Не* должно иметь постфикс «f».
-    /// @param f A pointer to the float to write to.
+    /// @param f ссылка на переменную типа f32(float) для записи.
     /// @return True, если синтаксический анализ прошел успешно; в противном случае false.
     bool ToFloat(f32& f);
 
     /// @brief Пытается проанализировать 64-битное число с плавающей запятой из предоставленной строки.
-    /// @param str Строка для анализа.
-    /// @param f A pointer to the float to write to.
+    /// @param str строка для анализа.
+    /// @param f ссылка на переменную типа f64(double) для записи.
     /// @return True, если синтаксический анализ прошел успешно; в противном случае false.
     bool ToFloat(f64& f);
 
+    /// @brief Пытается проанализировать 8-битное целое число со знаком из предоставленной строки.
+    /// @param value 
+    /// @return True, если синтаксический анализ прошел успешно; в противном случае false.
+    bool ToInt(i8& value);
+
+    /// @brief Пытается проанализировать 8-битное целое число без знака из предоставленной строки.
+    /// @param value 
+    /// @return True, если синтаксический анализ прошел успешно; в противном случае false.
+    bool ToInt(u8& value);
+
+    /// @brief Пытается проанализировать 16-битное целое число со знаком из предоставленной строки.
+    /// @param value 
+    /// @return True, если синтаксический анализ прошел успешно; в противном случае false.
+    bool ToInt(i16& value);
+
+    /// @brief Пытается проанализировать 16-битное целое число без знака из предоставленной строки.
+    /// @param value 
+    /// @return True, если синтаксический анализ прошел успешно; в противном случае false.
+    bool ToInt(u16& value);
+
+    /// @brief Пытается проанализировать 32-битное целое число со знаком из предоставленной строки.
+    /// @param value 
+    /// @return True, если синтаксический анализ прошел успешно; в противном случае false.
+    bool ToInt(i32& value);
+
+    bool ToInt(u32& value);
+
     ///@brief Пытается проанализировать логическое значение из предоставленной строки.
     ///«true» или «1» считаются true; все остальное false.
-    ///@param str Строка для анализа. «true» или «1» считаются true; все остальное false.
-    ///@param b Указатель на логическое значение для записи.
+    ///@param str строка для анализа. «true» или «1» считаются true; все остальное false.
+    ///@param b ссылка на логическое значение для записи.
     ///@return True, если синтаксический анализ прошел успешно; в противном случае false.
     bool ToBool(/*char* str, */bool& b);
 

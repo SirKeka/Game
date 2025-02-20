@@ -609,12 +609,6 @@ u64 MString::ToUInt(const char *s)
     return num/10;
 }
 
-bool MString::ToU32(u32& value)
-{
-    value = ToUInt(str);
-    return value;
-}
-
 bool MString::StringToF32(const char* s, f32& fn1, f32* fn2, f32* fn3, f32* fn4)
 {
     while (*s != '-' && (*s < '0' || *s > '9' )) {
@@ -855,7 +849,7 @@ bool MString::ToFVector(FVec4 &OutVector)
     return true;
 }
 
-bool MString::ToVector(char *str, FVec3 &OutVector)
+bool MString::ToFVector(char *str, FVec3 &OutVector)
 {
     if (!str) {
         return false;
@@ -881,7 +875,20 @@ bool MString::ToFVector(FVec3 &OutVector)
     return true;
 }
 
-bool MString::ToVector(char *str, FVec2 &OutVector)
+bool MString::ToFVector(char *str, FVec2 &OutVector)
+{
+    if (!str) {
+        return false;
+    }
+
+    if (!StringToF32(str, OutVector.x, &OutVector.y)) {
+        return false;
+    }
+
+    return true;
+}
+
+bool MString::ToFVector(FVec2 &OutVector)
 {
     if (!str) {
         return false;
@@ -916,6 +923,102 @@ bool MString::ToFloat(f64 &f)
     f = 0;
     i32 result = sscanf(str, "%lf", &f);
     return result != -1;
+}
+
+bool MString::ToInt(i8 &value)
+{
+    if (str) {
+        i64 v = ToInt(str);
+        if (v <= INT8_MAX || v >= INT8_MIN) {
+            value = v;
+            return true;
+        } else {
+            return false;
+        }
+        
+    } else {
+        return false;
+    }
+}
+
+bool MString::ToInt(u8 &value)
+{
+    if (str) {
+        u64 v = ToUInt(str);
+        if (v <= UINT8_MAX) {
+            value = v;
+            return true;
+        } else {
+            return false;
+        }
+        
+    } else {
+        return false;
+    }
+}
+
+bool MString::ToInt(i16 &value)
+{
+    if (str) {
+        i64 v = ToInt(str);
+        if (v <= INT16_MAX || v >= INT16_MIN) {
+            value = v;
+            return true;
+        } else {
+            return false;
+        }
+        
+    } else {
+        return false;
+    }
+}
+
+bool MString::ToInt(u16 &value)
+{
+    if (str) {
+        u64 v = ToUInt(str);
+        if (v <= UINT16_MAX) {
+            value = v;
+            return true;
+        } else {
+            return false;
+        }
+        
+    } else {
+        return false;
+    }
+}
+
+bool MString::ToInt(i32 &value)
+{
+    if (str) {
+        i64 v = ToInt(str);
+        if (v <= INT32_MAX || v >= INT32_MIN) {
+            value = v;
+            return true;
+        } else {
+            return false;
+        }
+        
+    } else {
+        return false;
+    }
+}
+
+bool MString::ToInt(u32 &value)
+{
+    if (str) {
+        u64 v = ToUInt(str);
+        if (v <= UINT32_MAX) {
+            value = v;
+            return true;
+        } else {
+            return false;
+        }
+        
+    } else {
+        return false;
+    }
 }
 
 bool MString::ToBool(bool &b)

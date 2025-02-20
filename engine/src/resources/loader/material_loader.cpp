@@ -77,7 +77,7 @@ static void MaterialPropAssignValue(Material::ConfigProp &prop, MString &value) 
             prop.size = sizeof(i8);
             break;
         case Shader::UniformType::UInt8:
-            value.ToUInt(prop.ValueU8);
+            value.ToInt(prop.ValueU8);
             prop.size = sizeof(u8);
             break;
         case Shader::UniformType::Int16:
@@ -85,7 +85,7 @@ static void MaterialPropAssignValue(Material::ConfigProp &prop, MString &value) 
             prop.size = sizeof(i16);
             break;
         case Shader::UniformType::UInt16:
-            value.ToUInt(prop.ValueU16);
+            value.ToInt(prop.ValueU16);
             prop.size = sizeof(u16);
             break;
         case Shader::UniformType::Int32:
@@ -93,7 +93,7 @@ static void MaterialPropAssignValue(Material::ConfigProp &prop, MString &value) 
             prop.size = sizeof(i32);
             break;
         case Shader::UniformType::UInt32:
-            value.ToUInt(prop.ValueU32);
+            value.ToInt(prop.ValueU32);
             prop.size = sizeof(u32);
             break;
         case Shader::UniformType::Matrix4:
@@ -255,7 +255,7 @@ bool ResourceLoader::Load(const char *name, void* params, MaterialResource &OutR
 
         // Обработайте переменную.
         if (TrimmedVarName.Comparei("version")) {
-            if (!TrimmedValue.ToU32(materialConfig.version)) {
+            if (!TrimmedValue.ToInt(materialConfig.version)) {
                 MERROR("Ошибка формата: не удалось проанализировать версию. Отмена.");
                 return false;  // TODO: cleanup memory.
             }

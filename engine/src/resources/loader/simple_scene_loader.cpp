@@ -148,7 +148,7 @@ bool ResourceLoader::Load(const char *name, void *params, SimpleSceneResource &O
                     MERROR("Попытка установить версию в некорневом режиме.");
                     return false;
                 }
-                if (!LineValue.ToU32(version)) {
+                if (!LineValue.ToInt(version)) {
                     MERROR("Недопустимое значение для версии: %s", LineValue.c_str());
                     // ЗАДАЧА: Конфигурация очистки
                     return false;
