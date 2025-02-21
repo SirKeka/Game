@@ -14,32 +14,32 @@ enum class MaterialParseMode {
         return false;                                                                                                                     \
     }
 
-static bool MaterialParseFilter(const char *TrimmedValue, const char *TrimmedVarName, MaterialParseMode ParseMode, TextureFilter *filter) {
-    MATERIAL_PARSE_VERIFY_MODE(MaterialParseMode::Map, ParseMode, TrimmedVarName, "map");
-    if (MString::Equali(TrimmedValue, "linear")) {
-        *filter = TextureFilter::ModeLinear;
-    } else if (MString::Equali(TrimmedValue, "nearest")) {
-        *filter = TextureFilter::ModeNearest;
+static bool MaterialParseFilter(MString& TrimmedValue, MString& TrimmedVarName, MaterialParseMode ParseMode, TextureFilter &filter) {
+    MATERIAL_PARSE_VERIFY_MODE(MaterialParseMode::Map, ParseMode, TrimmedVarName.c_str(), "map");
+    if (TrimmedValue.Comparei("linear")) {
+        filter = TextureFilter::ModeLinear;
+    } else if (TrimmedValue.Comparei("nearest")) {
+        filter = TextureFilter::ModeNearest;
     } else {
-        MERROR("Ошибка формата, неизвестный режим фильтра %s, по умолчанию используется линейный режим.", TrimmedValue);
-        *filter = TextureFilter::ModeLinear;
+        MERROR("Ошибка формата, неизвестный режим фильтра %s, по умолчанию используется линейный режим.", TrimmedValue.c_str());
+        filter = TextureFilter::ModeLinear;
     }
     return true;
 }
 
-static bool MaterialParseRepeat(const char *TrimmedValue, const char *TrimmedVarName, MaterialParseMode ParseMode, TextureRepeat *repeat) {
-    MATERIAL_PARSE_VERIFY_MODE(MaterialParseMode::Map, ParseMode, TrimmedVarName, "map");
-    if (MString::Equali(TrimmedValue, "repeat")) {
-        *repeat = TextureRepeat::Repeat;
-    } else if (MString::Equali(TrimmedValue, "clamp_to_edge")) {
-        *repeat = TextureRepeat::ClampToEdge;
-    } else if (MString::Equali(TrimmedValue, "clamp_to_border")) {
-        *repeat = TextureRepeat::ClampToBorder;
-    } else if (MString::Equali(TrimmedValue, "mirrored_repeat")) {
-        *repeat = TextureRepeat::MirroredRepeat;
+static bool MaterialParseRepeat(MString& TrimmedValue, MString& TrimmedVarName, MaterialParseMode ParseMode, TextureRepeat &repeat) {
+    MATERIAL_PARSE_VERIFY_MODE(MaterialParseMode::Map, ParseMode, TrimmedVarName.c_str(), "map");
+    if (TrimmedValue.Comparei("repeat")) {
+        repeat = TextureRepeat::Repeat;
+    } else if (TrimmedValue.Comparei("clamp_to_edge")) {
+        repeat = TextureRepeat::ClampToEdge;
+    } else if (TrimmedValue.Comparei("clamp_to_border")) {
+        repeat = TextureRepeat::ClampToBorder;
+    } else if (TrimmedValue.Comparei("mirrored_repeat")) {
+        repeat = TextureRepeat::MirroredRepeat;
     } else {
-        MERROR("Ошибка формата, неизвестный режим повтора %s, по умолчанию REPEAT.", TrimmedValue);
-        *repeat = TextureRepeat::Repeat;
+        MERROR("Ошибка формата, неизвестный режим повтора %s, по умолчанию REPEAT.", TrimmedValue.c_str());
+        repeat = TextureRepeat::Repeat;
     }
     return true;
 }
@@ -110,38 +110,38 @@ static void MaterialPropAssignValue(Material::ConfigProp &prop, MString &value) 
 }
 
 static Material::ConfigProp MaterialConfigPropCreate(const char *name, Shader::UniformType type, MString &value) {
-    Material::ConfigProp prop = {};
+    Material::ConfigProp prop{};
     prop.name = name;
     prop.type = type;
     MaterialPropAssignValue(prop, value);
     return prop;
 }
 
-static Shader::UniformType MaterialParsePropType(const char *strval) {
-    if (MString::Equali(strval, "f32") || MString::Equali(strval, "vec1")) {
+static Shader::UniformType MaterialParsePropType(MString& strval) {
+    if (strval.Comparei("f32") || strval.Comparei("vec1")) {
         return Shader::UniformType::Float32;
-    } else if (MString::Equali(strval, "vec2")) {
+    } else if (strval.Comparei("vec2")) {
         return Shader::UniformType::Float32_2;
-    } else if (MString::Equali(strval, "vec3")) {
+    } else if (strval.Comparei("vec3")) {
         return Shader::UniformType::Float32_3;
-    } else if (MString::Equali(strval, "vec4")) {
+    } else if (strval.Comparei("vec4")) {
         return Shader::UniformType::Float32_4;
-    } else if (MString::Equali(strval, "i8")) {
+    } else if (strval.Comparei("i8")) {
         return Shader::UniformType::Int8;
-    } else if (MString::Equali(strval, "i16")) {
+    } else if (strval.Comparei("i16")) {
         return Shader::UniformType::Int16;
-    } else if (MString::Equali(strval, "i32")) {
+    } else if (strval.Comparei("i32")) {
         return Shader::UniformType::Int32;
-    } else if (MString::Equali(strval, "u8")) {
+    } else if (strval.Comparei("u8")) {
         return Shader::UniformType::UInt8;
-    } else if (MString::Equali(strval, "u16")) {
+    } else if (strval.Comparei("u16")) {
         return Shader::UniformType::UInt16;
-    } else if (MString::Equali(strval, "u32")) {
+    } else if (strval.Comparei("u32")) {
         return Shader::UniformType::UInt32;
-    } else if (MString::Equali(strval, "mat4")) {
+    } else if (strval.Comparei("mat4")) {
         return Shader::UniformType::Matrix4;
     } else {
-        MERROR("Неожиданный тип: '%s'. По умолчанию i32", strval);
+        MERROR("Неожиданный тип: '%s'. По умолчанию i32", strval.c_str());
         return Shader::UniformType::Int32;
     }
 }
@@ -182,7 +182,7 @@ bool ResourceLoader::Load(const char *name, void* params, MaterialResource &OutR
     // Начните в режиме глобального анализа.
     MaterialParseMode ParseMode = MaterialParseMode::Global;
     Material::Map CurrentMap = {0};
-    Material::ConfigProp CurrentProp = {0};
+    Material::ConfigProp CurrentProp{};
     while (Filesystem::ReadLine(f, 511, &p, LineLength)) {
         // Обрезаем строку.
         MString trimmed { LineBuf, true };
@@ -229,7 +229,7 @@ bool ResourceLoader::Load(const char *name, void* params, MaterialResource &OutR
                     }
                     continue;
                 } else {
-                    MERROR("Ошибка формата: Неожиданный открывающий тег %s в строке %d.", trimmed, LineNumber);
+                    MERROR("Ошибка формата: Неожиданный открывающий тег %s в строке %d.", trimmed.c_str(), LineNumber);
                     return false;
                 }
             }
@@ -300,9 +300,7 @@ bool ResourceLoader::Load(const char *name, void* params, MaterialResource &OutR
                     "Ошибка формата: непредвиденная переменная «diffuse_map_name», она должна существовать только для материалов версии 1. Игнорируется.");
             }
         } else if (TrimmedVarName.Comparei("diffuse_colour")) {
-            // Разобрать цвет
-            if (!TrimmedValue.ToFVector(materialConfig.DiffuseColour)) {
-                if (materialConfig.version == 1) {
+            if (materialConfig.version == 1) {
                 Material::ConfigProp NewProp = MaterialConfigPropCreate(
                     "diffuse_colour", Shader::UniformType::Float32_4, TrimmedValue);
 
@@ -311,15 +309,70 @@ bool ResourceLoader::Load(const char *name, void* params, MaterialResource &OutR
                 MERROR(
                     "Ошибка формата: непредвиденная переменная «diffuse_colour», она должна существовать только для материалов версии 1. Игнорируется.");
             }
-            } 
         } else if (TrimmedVarName.Comparei("Shader")) {
             // Возьмите копию названия материала.
             materialConfig.ShaderName = static_cast<MString&&>(TrimmedValue);
         } else if (TrimmedVarName.Comparei("specular")) {
-            if(!TrimmedValue.ToFloat(materialConfig.specular)) {
-                MWARN("Ошибка анализа зеркального отражения в файле «%s». Вместо этого используется значение по умолчанию 32.0.", FullFilePath);
-                materialConfig.specular = 32.0f;
+            if (materialConfig.version == 1) {
+                Material::ConfigProp NewProp = MaterialConfigPropCreate(
+                    "specular", Shader::UniformType::Float32, TrimmedValue);
+                materialConfig.properties.PushBack(NewProp);
+            } else {
+                MERROR(
+                    "Ошибка формата: непредвиденная переменная «specular», она должна существовать только для материалов версии 1. Игнорируется.");
             }
+        } else if (TrimmedVarName.Comparei("type")) {
+            if (materialConfig.version >= 2) {
+                if (ParseMode == MaterialParseMode::Global) {
+                    if (TrimmedValue.Comparei("phong")) {
+                        materialConfig.type = Material::Type::Phong;
+                    } else if (TrimmedValue.Comparei("pbr")) {
+                        materialConfig.type = Material::Type::PBR;
+                    } else if (TrimmedValue.Comparei("ui")) {
+                        materialConfig.type = Material::Type::UI;
+                    } else if (TrimmedValue.Comparei("terrain")){
+                        materialConfig.type = Material::Type::Terrain;
+                    } else if (TrimmedValue.Comparei("custom")) {
+                        materialConfig.type = Material::Type::Custom;
+                    } else {
+                        MERROR("Ошибка формата: Неожиданный тип материала '%s' (Материал='%s')", TrimmedValue.c_str(), materialConfig.name.c_str());
+                    }
+                } else if (ParseMode == MaterialParseMode::Property) {
+                    CurrentProp.type = MaterialParsePropType(TrimmedValue);
+                } else {
+                    MERROR("Ошибка формата: Неожиданная переменная «тип» в режиме.");
+                }
+
+            } else {
+                MERROR(
+                    "Ошибка формата: Неожиданная переменная «тип», она должна существовать только для материалов версии 2+.");
+            }
+        } else if (TrimmedVarName.Comparei("filter_min")) {
+            if (!MaterialParseFilter(TrimmedValue, TrimmedVarName, ParseMode, CurrentMap.FilterMin)) {
+                // NOTE: Handled gracefully with a default.
+            }
+        } else if (TrimmedVarName.Comparei("filter_mag")) {
+            if (!MaterialParseFilter(TrimmedValue, TrimmedVarName, ParseMode, CurrentMap.FilterMag)) {
+                // NOTE: Handled gracefully with a default.
+            }
+        } else if (TrimmedVarName.Comparei("repeat_u")) {
+            if (!MaterialParseRepeat(TrimmedValue, TrimmedVarName, ParseMode, CurrentMap.RepeatU)) {
+                // NOTE: Handled gracefully with a default.
+            }
+        } else if (TrimmedVarName.Comparei("repeat_v")) {
+            if (!MaterialParseRepeat(TrimmedValue, TrimmedVarName, ParseMode, CurrentMap.RepeatV)) {
+                // NOTE: Handled gracefully with a default.
+            }
+        } else if (TrimmedVarName.Comparei("repeat_w")) {
+            if (!MaterialParseRepeat(TrimmedValue, TrimmedVarName, ParseMode, CurrentMap.RepeatW)) {
+                // NOTE: Handled gracefully with a default.
+            }
+        } else if (TrimmedVarName.Comparei("texture_name")) {
+            MATERIAL_PARSE_VERIFY_MODE(MaterialParseMode::Map, ParseMode, TrimmedVarName.c_str(), "map");
+            CurrentMap.TextureName = static_cast<MString&&>(TrimmedValue);
+        } else if (TrimmedVarName.Comparei("value")) {
+            MATERIAL_PARSE_VERIFY_MODE(MaterialParseMode::Property, ParseMode, TrimmedVarName.c_str(), "prop");
+            MaterialPropAssignValue(CurrentProp, TrimmedValue);
         }
 
         // ЗАДАЧА: больше полей.

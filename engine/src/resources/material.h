@@ -34,6 +34,8 @@ struct Material {
         i16 ValueI16;
         i8 ValueI8;
         Matrix4D ValueMatrix4D;
+
+        ConfigProp() : name(), type(), size(), ValueV4(), ValueV3(), ValueV2(), ValueF32(), ValueU32(), ValueU16(), ValueU8(), ValueI32(), ValueI16(), ValueI8(), ValueMatrix4D() {}
     };
 
     struct Map {
