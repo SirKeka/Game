@@ -1,4 +1,4 @@
-#include "resource_loader.hpp"
+#include "resource_loader.h"
 #include "containers/darray.hpp"
 #include "systems/geometry_system.hpp"
 #include "systems/resource_system.hpp"
@@ -55,7 +55,7 @@ bool ImportObjMaterialLibraryFile(const char* MtlFilePath);
 
 bool LoadMsmFile(FileHandle& MsmFile, DArray<GeometryConfig>& OutGeometries);
 bool WriteMsmFile(const char* path, const char* name, u32 GeometryCount, DArray<GeometryConfig>& geometries);
-bool WriteMmtFile(const char* MtlFilePath, MaterialConfig& config);
+bool WriteMmtFile(const char* MtlFilePath, Material::Config& config);
 
 bool ResourceLoader::Load(const char *name, void* params, MeshResource &OutResource)
 {
@@ -502,7 +502,7 @@ bool ImportObjMaterialLibraryFile(const char *MtlFilePath)
         return false;
     }
 
-    MaterialConfig CurrentConfig;
+    Material::Config CurrentConfig;
 
     bool HitName = false;
 

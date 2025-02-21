@@ -1021,6 +1021,12 @@ bool MString::ToInt(u32 &value)
     }
 }
 
+bool MString::ToMatrix(Matrix4D &value)
+{
+    // ЗАДАЧА: Вставить код
+    return false;
+}
+
 bool MString::ToBool(bool &b)
 {
     if (!str) {

@@ -1,4 +1,4 @@
-#include "resource_loader.hpp"
+#include "resource_loader.h"
 #include "systems/resource_system.hpp"
 
 enum class SimpleSceneParseMode {
