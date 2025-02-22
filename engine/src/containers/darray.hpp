@@ -93,10 +93,7 @@ public:
 
     ~DArray() {
         if(data) {
-            Clear();
-            MemorySystem::Free(data, elementSize * capacity, Memory::DArray);
-            size = capacity = elementSize = 0;
-            data = nullptr;
+            Destroy();
         }
     }
 
@@ -250,6 +247,13 @@ public:
     }
     //-----------------------------------------------------------------------------------Емкость
     // Модифицирующие методы--------------------------------------------------------------------
+
+    void Destroy() {
+        Clear();
+        MemorySystem::Free(data, elementSize * capacity, Memory::DArray);
+        size = capacity = elementSize = 0;
+        data = nullptr;
+    }
 
     /// @brief Очищает массив. Емкость остается прежней.
     void Clear() {
