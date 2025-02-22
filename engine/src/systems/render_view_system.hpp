@@ -7,7 +7,7 @@
 /// @copyright
 #pragma once
 #include "containers/hashtable.hpp"
-#include "renderer/views/render_view.hpp"
+#include "renderer/views/render_view.h"
 
 /// @brief Конфигурация для системы рендеринга представлений.
 struct RenderViewSystemConfig

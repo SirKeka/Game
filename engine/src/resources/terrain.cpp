@@ -3,7 +3,7 @@
 #include "systems/material_system.h"
 #include "math/geometry_utils.hpp"
 
-bool Terrain::Create(const Config &config)
+bool Terrain::Create(Config &config)
 {
     name = config.name;
 
@@ -34,8 +34,9 @@ bool Terrain::Create(const Config &config)
     vertices = reinterpret_cast<TerrainVertex*>(MemorySystem::Allocate(sizeof(TerrainVertex) * VertexCount, Memory::Array));
 
     VertexDataLength = VertexCount;
-    VertexDatas = reinterpret_cast<TerrainVertexData*>(MemorySystem::Allocate(sizeof(TerrainVertexData) * VertexDataLength, Memory::Array));
-    MemorySystem::CopyMem(VertexDatas, config.VertexDatas, config.VertexDataLength * sizeof(TerrainVertexData));
+    // VertexDatas = reinterpret_cast<TerrainVertexData*>(MemorySystem::Allocate(sizeof(TerrainVertexData) * VertexDataLength, Memory::Array));
+    // MemorySystem::CopyMem(VertexDatas, config.VertexDatas, config.VertexDataLength * sizeof(TerrainVertexData));
+    VertexDatas = config.VertexDatas.MovePtr();
 
     IndexCount = VertexCount * 6;
     indices = reinterpret_cast<u32*>(MemorySystem::Allocate(sizeof(u32) * IndexCount, Memory::Array));

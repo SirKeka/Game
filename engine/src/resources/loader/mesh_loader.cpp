@@ -803,7 +803,7 @@ bool WriteMsmFile(const char *path, const char *name, u32 GeometryCount, DArray<
 /// @param directory путь к файлу библиотеки материалов, который изначально содержал определение материала.
 /// @param config ссылка на конфигурацию, которую нужно преобразовать в mmt.
 /// @return true в случае успеха иначе false.
-bool WriteMmtFile(const char *MtlFilePath, MaterialConfig &config)
+bool WriteMmtFile(const char *MtlFilePath, Material::Config &config)
 {
     // ПРИМЕЧАНИЕ: Файл .obj, из которого он получен (и полученный файл .mtl), находится в каталоге моделей. 
     // Это переместит вас на уровень выше и вернется в папку материалов.

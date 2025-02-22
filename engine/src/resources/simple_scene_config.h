@@ -34,6 +34,12 @@ struct MeshSimpleSceneConfig
     MString ParentName;       // опционально
 };
 
+struct TerrainSimpleSceneConfig {
+    MString name;
+    MString ResourceName;
+    Transform xform;
+};
+
 struct SimpleSceneConfig {
     MString name;
     MString description;
@@ -41,8 +47,8 @@ struct SimpleSceneConfig {
     DirectionalLightSimpleSceneConfig DirectionalLightConfig;
 
     DArray<PointLightSimpleSceneConfig> PointLights;
-
     DArray<MeshSimpleSceneConfig> meshes;
+    DArray<TerrainSimpleSceneConfig> terrains;
 
     void* operator new(u64 size) {
         return MemorySystem::Allocate(size, Memory::Scene);

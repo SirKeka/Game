@@ -1,9 +1,10 @@
-#include "simple_scene.hpp"
+#include "simple_scene.h"
 #include "skybox.hpp"
 #include "renderer/renderer_types.hpp"
 #include "systems/render_view_system.hpp"
 #include "systems/camera_system.hpp"
 #include "systems/light_system.hpp"
+#include "systems/resource_system.hpp"
 #include "core/frame_data.h"
 #include "math/frustrum.hpp"
 
@@ -22,6 +23,9 @@ bool SimpleScene::Create(SimpleSceneConfig *config)
         this->config = new SimpleSceneConfig(static_cast<SimpleSceneConfig&&>(*config)); // MemorySystem::Allocate(sizeof(SimpleSceneConfig), Memory::Scene);
         //MemorySystem::CopyMem(this->config, config, sizeof(SimpleSceneConfig));
     }
+
+    // ПРИМЕЧАНИЕ: Начните с достаточно большого числа, чтобы избежать перераспределения памяти в начале.
+    WorldData.WorldGeometries.Reserve(512);
 
     return true;
 }
@@ -104,6 +108,44 @@ bool SimpleScene::Initialize()
 
             meshes.PushBack(static_cast<Mesh&&>(NewMesh));
         }
+
+        // Ландшафты
+        u32 TerrainConfigCount = config->terrains.Length();
+        for (u32 i = 0; i < TerrainConfigCount; ++i) {
+            if (!config->terrains[i].name ||
+                !config->terrains[i].ResourceName) {
+                MWARN("Неверная конфигурация ландшафта, требуется имя и имя ресурса.");
+                continue;
+            }
+            /*Terrain::Config NewTerrainConfig = {0};
+            NewTerrainConfig.name = config->terrains[i].name;
+            // ЗАДАЧА: Скопировать имя ресурса, загрузить из ресурса.
+            NewTerrainConfig.TileCountX = 100;
+            NewTerrainConfig.TileCountЯ = 100;
+            NewTerrainConfig.TileScaleX = 1.F;
+            NewTerrainConfig.TileScaleЯ = 1.F;
+            NewTerrainConfig.MaterialCount = 0;
+            NewTerrainConfig.MaterialNames = 0;*/
+            TerrainResource terrainResource;
+            if (!ResourceSystem::Load(config->terrains[i].ResourceName.c_str(), eResource::Type::Terrain, nullptr, terrainResource)) {
+                MWARN("Не удалось загрузить ресурс ландшафта.");
+                continue;
+            }
+
+            Terrain::Config& ParsedConfig = terrainResource.data;
+            ParsedConfig.xform = config->terrains[i].xform;
+
+            Terrain NewTerrain{};
+            // ЗАДАЧА: Мы действительно хотим это копировать?
+            if (!NewTerrain.Create(ParsedConfig)) {
+                MWARN("Не удалось загрузить ландшафт.");
+                continue;
+            }
+
+            // ResourceSystem::Unload(terrainResource);
+
+            terrains.PushBack(NewTerrain);
+        }
     }
 
     // Теперь обрабатывайте иерархию.
@@ -125,14 +167,22 @@ bool SimpleScene::Initialize()
         if (!sb->Initialize()) {
             MERROR("Skybox не удалось инициализировать.");
             sb = nullptr;
-            return false;
+            // return false;
         }
     }
 
     for (u32 i = 0; i < MeshCount; ++i) {
         if (!meshes[i].Initialize()) {
             MERROR("Сетка не удалось инициализировать.");
-            return false;
+            // return false;
+        }
+    }
+
+    const u32& TerrainCount = terrains.Length();
+    for (u32 i = 0; i < TerrainCount; ++i) {
+        if (!terrains[i].Initialize()) {
+            MERROR("Не удалось инициализировать ландшафт.");
+            // return false;
         }
     }
 
@@ -162,6 +212,14 @@ bool SimpleScene::Load()
         if (!meshes[i].Load()) {
             MERROR("Не удалось загрузить Mesh.");
             return false;
+        }
+    }
+
+    const u32& TerrainCount = terrains.Length();
+    for (u32 i = 0; i < TerrainCount; ++i) {
+        if (!terrains[i].Load()) {
+            MERROR("Не удалось загрузить ландшафт.");
+            // return false; // Возвращать false в случае неудачи?
         }
     }
 
@@ -229,17 +287,18 @@ bool SimpleScene::PopulateRenderPacket(Camera *CurrentCamera, f32 aspect, FrameD
         auto& ViewPacket = packet.views[i];
         const auto view = ViewPacket.view;
         if (view->type == RenderView::KnownTypeWorld) {
+            // Обязательно очистите массив геометрии мира.
+            WorldData.WorldGeometries.Clear();
+            WorldData.TerrainGeometries.Clear();
+
             auto forward = CurrentCamera->Forward();
             auto right = CurrentCamera->Right();
             auto up = CurrentCamera->Up();
 
             // ЗАДАЧА: получите поле зрения камеры, аспект и т. д.
-            Frustrum f;
+            Frustum f;
             f.Create(CurrentCamera->GetPosition(), forward, right, up, aspect, Math::DegToRad(45.F), 0.1F, 1000.F);
 
-            // ПРИМЕЧАНИЕ: начните с разумного значения по умолчанию, чтобы избежать слишком большого количества перераспределений.
-            DArray<GeometryRenderData> WorldGeometries;
-            WorldGeometries.Reserve(512);
             rFrameData.DrawnMeshCount = 0;
             const u64& MeshCount = meshes.Length();
             for (u32 i = 0; i < MeshCount; ++i) {
@@ -296,7 +355,7 @@ bool SimpleScene::PopulateRenderPacket(Camera *CurrentCamera, f32 aspect, FrameD
                                 data.model = model;
                                 data.gid = g;
                                 data.UniqueID = m.UniqueID;
-                                WorldGeometries.PushBack(data);
+                                WorldData.WorldGeometries.PushBack(data);
 
                                 rFrameData.DrawnMeshCount++;
                             }
@@ -305,8 +364,25 @@ bool SimpleScene::PopulateRenderPacket(Camera *CurrentCamera, f32 aspect, FrameD
                 }
             }
 
+            // ЗАДАЧА: добавить ландшафт(ы)
+            const u32& TerrainCount = terrains.Length();
+            for (u32 i = 0; i < TerrainCount; ++i) {
+                // ЗАДАЧА: Проверить генерацию ландшафта
+                // ЗАДАЧА: Отбраковка усеченных пирамид
+                //
+                GeometryRenderData data = {};
+                data.model = terrains[i].xform.GetWorld();
+                data.gid = &terrains[i].geo;
+                data.UniqueID = 0;  // ЗАДАЧА: Уникальный идентификатор ландшафта для выбора объекта.
+
+                WorldData.TerrainGeometries.PushBack(data);
+
+                // ЗАДАЧА: Счетчик для геометрии ландшафта.
+                rFrameData.DrawnMeshCount++;
+            }
+
             // World
-            if (!RenderViewSystem::BuildPacket(RenderViewSystem::Get("world"), *rFrameData.FrameAllocator, &WorldGeometries, packet.views[1])) {
+            if (!RenderViewSystem::BuildPacket(RenderViewSystem::Get("world"), *rFrameData.FrameAllocator, &WorldData.WorldGeometries, packet.views[1])) {
                 MERROR("Не удалось создать пакет для представления «мира».");
                 return false;
             }
@@ -391,6 +467,28 @@ bool SimpleScene::AddSkybox(const char* name, Skybox &sb)
     return true;
 }
 
+bool SimpleScene::AddTerrain(const char *name, Terrain &terrain)
+{
+
+    if (state > SimpleScene::State::Initialized) {
+        if (!terrain.Initialize()) {
+            MERROR("Не удалось инициализировать ландшафт.");
+            return false;
+        }
+    }
+
+    if (state >= SimpleScene::State::Loaded) {
+        if (!terrain.Load()) {
+            MERROR("Не удалось загрузить ландшафт.");
+            return false;
+        }
+    }
+
+    terrains.PushBack(terrain);
+
+    return true;
+}
+
 DirectionalLight *SimpleScene::GetDirectionalLight(const char *name)
 {
     return DirLight;
@@ -423,6 +521,22 @@ Mesh *SimpleScene::GetMesh(const MString &name)
 Skybox *SimpleScene::GetSkybox(const char *name)
 {
     return sb;
+}
+
+Terrain *SimpleScene::GetTerrain(const char *name)
+{
+    if (!name)
+        return nullptr;
+
+    const u32& length = terrains.Length();
+    for (u32 i = 0; i < length; ++i) {
+        if (name == terrains[i].name) {
+            return &terrains[i];
+        }
+    }
+
+    MWARN("Простая сцена не содержит ландшафт под названием «%s».", name);
+    return nullptr;
 }
 
 bool SimpleScene::RemoveDirectionalLight()
@@ -511,6 +625,30 @@ bool SimpleScene::RemoveSkybox(const char* name)
     return true;
 }
 
+bool SimpleScene::RemoveTerrain(const char *name)
+{
+    if (!name)
+        return false;
+
+    const u32& TerrainCount = terrains.Length();
+    for (u32 i = 0; i < TerrainCount; ++i) {
+        if (terrains[i].name == name) {
+            if (!terrains[i].Unload()) {
+                MERROR("Не удалось выгрузить ландшафт");
+                return false;
+            }
+
+            Terrain rubbish;
+            terrains.PopAt(i);
+
+            return true;
+        }
+    }
+
+    MERROR("Невозможно удалить ландшафт из сцены, частью которой он не является.");
+    return false;
+}
+
 void SimpleScene::ActualUnload()
 {
     if (sb) {
@@ -527,7 +665,16 @@ void SimpleScene::ActualUnload()
             if (!meshes[i].Unload()) {
                 MERROR("Не удалось выгрузить сетку.");
             }
+            meshes[i].Destroy();
         }
+    }
+
+    const u32& TerrainCount = terrains.Length();
+    for (u32 i = 0; i < TerrainCount; ++i) {
+        if (!terrains[i].Unload()) {
+            MERROR("Не удалось выгрузить местность.");
+        }
+        terrains[i].Destroy();
     }
 
     if (DirLight) {
@@ -558,6 +705,18 @@ void SimpleScene::ActualUnload()
 
     if (MeshCount > 0) {
         meshes.Clear();
+    }
+
+    if (terrains) {
+        terrains.Clear();
+    }
+
+    if (WorldData.WorldGeometries) {
+        WorldData.WorldGeometries.Clear();
+    }
+
+    if (WorldData.TerrainGeometries) {
+        WorldData.TerrainGeometries.Clear();
     }
 
     // MemorySystem::ZeroMem(this, sizeof(SimpleScene));

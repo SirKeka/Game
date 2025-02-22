@@ -1,4 +1,4 @@
-#include "render_view_skybox.hpp"
+#include "render_view_skybox.h"
 #include "memory/linear_allocator.hpp"
 #include "renderer/renderpass.hpp"
 #include "renderer/camera.hpp"

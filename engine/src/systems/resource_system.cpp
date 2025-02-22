@@ -155,6 +155,7 @@ void RegisterLoaders()
     ResourceSystem::RegisterLoader(eResource::Type::BitmapFont,  MString(),     "fonts");
     ResourceSystem::RegisterLoader(eResource::Type::SystemFont,  MString(),     "fonts");
     ResourceSystem::RegisterLoader(eResource::Type::SimpleScene, MString(),    "scenes");
+    ResourceSystem::RegisterLoader(eResource::Type::Terrain,     MString(),  "terrains");
 }
 
 template bool ResourceSystem::Load<TextResource>       (const char *name, eResource::Type type, void *params, TextResource        &OutResource);
@@ -166,6 +167,7 @@ template bool ResourceSystem::Load<ShaderResource>     (const char *name, eResou
 template bool ResourceSystem::Load<BitmapFontResource> (const char *name, eResource::Type type, void *params, BitmapFontResource  &OutResource);
 template bool ResourceSystem::Load<SystemFontResource> (const char *name, eResource::Type type, void *params, SystemFontResource  &OutResource);
 template bool ResourceSystem::Load<SimpleSceneResource>(const char *name, eResource::Type type, void *params, SimpleSceneResource &OutResource);
+template bool ResourceSystem::Load<TerrainResource>    (const char *name, eResource::Type type, void *params, TerrainResource     &OutResource);
 
 template void ResourceSystem::Unload<TextResource>       (TextResource        &resource);
 template void ResourceSystem::Unload<BinaryResource>     (BinaryResource      &resource);
@@ -176,3 +178,4 @@ template void ResourceSystem::Unload<ShaderResource>     (ShaderResource      &r
 template void ResourceSystem::Unload<BitmapFontResource> (BitmapFontResource  &resource);
 template void ResourceSystem::Unload<SystemFontResource> (SystemFontResource  &resource);
 template void ResourceSystem::Unload<SimpleSceneResource>(SimpleSceneResource &resource);
+template void ResourceSystem::Unload<TerrainResource>    (TerrainResource     &resource);

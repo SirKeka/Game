@@ -27,8 +27,8 @@ public:
    constexpr MString(const MString &str1, const MString &str2);
    /// @brief Создает строку на основе си строки
    /// @param s си строка
-   /// @param DelCon указывает на то нужно ли копировать управляющие символы. По умолчанию false
-   constexpr MString(const char *s, bool DelCon = false);
+   /// @param trim указывает на то нужно ли копировать управляющие символы. По умолчанию false
+   constexpr MString(const char *s, bool trim = false);
    constexpr MString(const MString &s);
    constexpr MString(MString&& s);
     ~MString();
@@ -173,7 +173,7 @@ public:
     /// @brief Срвавнивает строки между собой без учета регистра.
     /// @param string строка в стиле си с которой нужно сравнить
     /// @return true, если строки равны и false, если нет 
-    bool Comparei(const char* string) const;
+    bool Comparei(const char* string, u64 Length = 0) const;
 
     /// @brief Сравнение строк с учетом регистра для нескольких символов.
     /// @param string строка с которой нужно сравнить данную строку

@@ -19,11 +19,11 @@ constexpr MString::MString(const char *str1, const char *str2)
 constexpr MString::MString(const MString &str1, const MString &str2) 
 : length(str1.length + str2.length), size(str1.size + str2.size - 1), str(Concat(str1.str, str2.str, size)) {}
 
-constexpr MString::MString(const char *s, bool DelCon)
+constexpr MString::MString(const char *s, bool trim)
 {
     if (s && *s != 0) {
-        length = Len(s, size, DelCon);
-        str = Copy(s, size, DelCon);
+        length = Len(s, size, trim);
+        str = Copy(s, size, trim);
     }
 }
 
@@ -429,9 +429,12 @@ bool MString::Comparei(const MString &string) const
     return MString::Equali(str, string.str);
 }
 
-bool MString::Comparei(const char *string) const
+bool MString::Comparei(const char *string, u64 Length) const
 {
-    return MString::Equali(str, string);
+    if (!length)
+        return MString::Equali(str, string);
+    else
+        return nComparei(str, string, length);
 }
 
 bool MString::nCompare(const MString &string, u64 lenght) const
@@ -600,11 +603,15 @@ u64 MString::ToUInt(const char *s)
 {
     u64 num = 0;
     while (*s) {
-        if (*s >= '0' || *s <= '9') {
+        switch (*s) {
+        case '0' ... '9':
             num += *s - '0';
             num *= 10;
+        
+        default:
+            s++;
+            break;
         }
-        s++;
     }
     return num/10;
 }

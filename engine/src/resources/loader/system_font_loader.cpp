@@ -246,6 +246,6 @@ bool ReadMsfFile(FileHandle &file, SystemFontResourceData &data)
 
 bool WriteMsfFile(const char *OutMsfFilename, SystemFontResourceData &resource)
 {
-    // TODO: Реализовать двоичный системный шрифт.
+    // ЗАДАЧА: Реализовать двоичный системный шрифт.
     return true;
 }

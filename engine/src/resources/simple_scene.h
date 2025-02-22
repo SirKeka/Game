@@ -5,6 +5,8 @@
 #include "math/transform.hpp"
 #include "mesh.hpp"
 #include "lighting_structures.h"
+#include "terrain.h"
+#include "renderer/views/render_view_world.h"
 
 struct FrameData;
 class Camera;
@@ -48,17 +50,17 @@ struct MAPI SimpleScene {
     struct DirectionalLight* DirLight;
 
     DArray<PointLight> PointLights;
-
     DArray<Mesh> meshes;
-
+    DArray<Terrain> terrains;
     DArray<PendingMesh> PendingMeshes;
 
     struct Skybox* sb;
 
     // Указатель на конфигурацию сцены, если она указана.
     SimpleSceneConfig* config;
+    RenderViewWorldData WorldData;
 
-    SimpleScene() : id(GlobalSceneID++), state(State::Uninitialized), enabled(false), name(), description(), SceneTransform(), DirLight(nullptr), PointLights(), meshes(), PendingMeshes(), sb(nullptr), config(nullptr) {}
+    SimpleScene() : id(GlobalSceneID++), state(State::Uninitialized), enabled(false), name(), description(), SceneTransform(), DirLight(nullptr), PointLights(), meshes(), terrains(), PendingMeshes(), sb(nullptr), config(nullptr), WorldData() {}
 
     /// @brief Создает новую сцену с заданной конфигурацией со значениями по умолчанию. Ресурсы не выделены. Конфигурация еще не обработана.
     /// @param config Указатель на конфигурацию. Необязательно.
@@ -98,24 +100,34 @@ struct MAPI SimpleScene {
     bool PopulateRenderPacket(Camera* CurrentCamera, f32 aspect, FrameData& rFrameData, RenderPacket& packet);
 
     /// @brief Добавляет направленый источник освещения на сцену
+    /// @param name название направленного источника света
     /// @param light направленный источник освещения
-    /// @return 
+    /// @return True в случае успеха; в противном случае false.
     bool AddDirectionalLight(const char* name, DirectionalLight& light);
 
     /// @brief Добавляет точечный источник освещения на сцену
+    /// @param name название точечного источника света
     /// @param light точечный источник освещения
-    /// @return 
+    /// @return True в случае успеха; в противном случае false.
     bool AddPointLight(const char* name, PointLight& light);
 
     /// @brief Добавляет сетку на сцену
+    /// @param name название сетки
     /// @param m сетка
-    /// @return 
+    /// @return True в случае успеха; в противном случае false.
     bool AddMesh(const char* name, Mesh& m);
 
     /// @brief Добавляет скайбокс на сцену
+    /// @param name название скайбокса
     /// @param sb скайбокс
-    /// @return 
+    /// @return True в случае успеха; в противном случае false.
     bool AddSkybox(const char* name, Skybox& sb);
+
+    /// @brief Добавляет ландшафт на сцену
+    /// @param name назване ландшафта
+    /// @param terrain ландшафт, который нужно добавить на сцену.
+    /// @return True в случае успеха; в противном случае false.
+    bool AddTerrain(const char* name, Terrain& terrain);
 
     /// @brief 
     /// @return Структуру направленного света
@@ -132,6 +144,11 @@ struct MAPI SimpleScene {
     /// @brief 
     /// @return Скайбокс
     Skybox* GetSkybox(const char* name);
+
+    /// @brief 
+    /// @param name название ландшафта, который нужно получить из сцены
+    /// @return Ландшафт
+    Terrain* GetTerrain(const char* name);
 
     /// @brief Удаляет направленный источник освещения из сцены
     /// @param light направленный источник освещения
@@ -152,6 +169,11 @@ struct MAPI SimpleScene {
     /// @param sb скайбокс
     /// @return true если удаление прошло успешно, иначе false
     bool RemoveSkybox(const char* name);
+
+    /// @brief Удаляет ландшафт из сцены
+    /// @param name название ландшафта, который нужно удалить
+    /// @return true если удаление прошло успешно, иначе false
+    bool RemoveTerrain(const char* name);
 
 private:
     static inline u32 GlobalSceneID;

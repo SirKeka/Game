@@ -2,7 +2,7 @@
 
 #include "plane.hpp"
 
-struct MAPI Frustrum
+struct MAPI Frustum
 {
 	enum Side {
 		// Верх, низ, правая плоскость, левая плоскость, дальняя плоскость, ближняя плоскость

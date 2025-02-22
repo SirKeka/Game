@@ -49,8 +49,8 @@ struct Terrain {
 
         Transform xform;
 
-        u32 VertexDataLength;
-        TerrainVertexData *VertexDatas;
+        // u32 VertexDataLength;
+        DArray<TerrainVertexData> VertexDatas;
 
         u32 MaterialCount;
         char** MaterialNames;
@@ -81,7 +81,9 @@ struct Terrain {
     u32 MaterialCount;
     char** MaterialNames;
 
-    bool Create(const Config& config);
+    Terrain() : name(), xform(), TileCountX(), TileCountZ(), TileScaleX(), TileScaleZ(), ScaleY(), VertexDatas(), extents(), origin(), VertexCount(), vertices(nullptr), IndexCount(), indices(nullptr), geo(), MaterialCount(), MaterialNames(nullptr) {}
+
+    bool Create(Config& config);
     void Destroy();
 
     bool Initialize();

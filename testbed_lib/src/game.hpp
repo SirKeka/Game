@@ -14,7 +14,7 @@ struct Game
 
     u16 width, height;
 
-    Frustrum CameraFrustrum;
+    Frustum CameraFrustrum;
 
     Clock UpdateClock;
     Clock RenderClock;

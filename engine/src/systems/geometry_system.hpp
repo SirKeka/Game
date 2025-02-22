@@ -21,8 +21,8 @@ private:
     // потому что их может и будет больше одного на сетку.
     // Принимаем во внимание и другие системы
     u32 MaxGeometryCount{};
-    GeometryID DefaultGeometry{0, 0};
-    GeometryID Default2dGeometry{0, 0};
+    GeometryID DefaultGeometry{};
+    GeometryID Default2dGeometry{};
 
     // Массив зарегистрированных сеток.
     struct GeometryReference* RegisteredGeometries{nullptr};

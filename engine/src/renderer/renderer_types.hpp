@@ -4,7 +4,7 @@
 #include "math/matrix4d.hpp"
 #include "math/vertex.hpp"
 #include "resources/shader.hpp"
-#include "renderer/views/render_view.hpp"
+#include "renderer/views/render_view.h"
 #include "renderbuffer.hpp"
 #include "resources/mesh.hpp"
 #include "resources/ui_text.hpp"

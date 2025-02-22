@@ -1,6 +1,6 @@
 #include "frustrum.hpp"
 
-void Frustrum::Create(const FVec3 &position, const FVec3 &forward, const FVec3 &right, const FVec3 &up, f32 aspect, f32 fov, f32 near, f32 far)
+void Frustum::Create(const FVec3 &position, const FVec3 &forward, const FVec3 &right, const FVec3 &up, f32 aspect, f32 fov, f32 near, f32 far)
 {
     f32 HalfV = far * Math::tan(fov * 0.5F);
     f32 HalfH = HalfV * aspect;
@@ -14,7 +14,7 @@ void Frustrum::Create(const FVec3 &position, const FVec3 &forward, const FVec3 &
     sides[Front].Create(position, Cross(ForwardFar + up * HalfV, right)); 
 }
 
-bool Frustrum::IntersectsSphere(const FVec3 &center, f32 radius)
+bool Frustum::IntersectsSphere(const FVec3 &center, f32 radius)
 {
     for (u8 i = 0; i < 6; ++i) {
         if (!sides[i].IntersectsSphere(center, radius)) {
@@ -24,7 +24,7 @@ bool Frustrum::IntersectsSphere(const FVec3 &center, f32 radius)
     return true;
 }
 
-bool Frustrum::IntersectsAABB(const FVec3 &center, const FVec3 &extents)
+bool Frustum::IntersectsAABB(const FVec3 &center, const FVec3 &extents)
 {
     for (u8 i = 0; i < 6; ++i) {
         if (!sides[i].IntersectsAABB(center, extents)) {

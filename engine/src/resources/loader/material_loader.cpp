@@ -257,7 +257,7 @@ bool ResourceLoader::Load(const char *name, void* params, MaterialResource &OutR
         if (TrimmedVarName.Comparei("version")) {
             if (!TrimmedValue.ToInt(materialConfig.version)) {
                 MERROR("Ошибка формата: не удалось проанализировать версию. Отмена.");
-                return false;  // TODO: cleanup memory.
+                return false;  // ЗАДАЧА: очистка памяти.
             }
         } else if (TrimmedVarName.Comparei("name")) {
             switch (ParseMode) {

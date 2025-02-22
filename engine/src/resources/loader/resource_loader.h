@@ -5,6 +5,7 @@
 #include "resources/geometry.hpp"
 #include "resources/shader.hpp"
 #include "resources/simple_scene_config.h"
+#include "resources/terrain.h"
 
 /// @brief Общая структура ресурса. Все загрузчики ресурсов загружают в них данные.
 /// @tparam T 
@@ -27,6 +28,7 @@ using ShaderResource      = Resource<Shader::Config>;
 using BitmapFontResource  = Resource<BitmapFontResourceData>;
 using SystemFontResource  = Resource<SystemFontResourceData>;
 using SimpleSceneResource = Resource<SimpleSceneConfig>;
+using TerrainResource     = Resource<Terrain::Config>;
 //using CustomResource = Resource<>;
 
 namespace eResource
@@ -40,7 +42,8 @@ namespace eResource
         Shader,      // Тип ресурса Shader (или, точнее, конфигурация шейдера).
         BitmapFont,  // Тип ресурса растрового шрифта.
         SystemFont,  // Тип ресурса системного шрифта.
-        SimpleScene, // Простой тип ресурса сцены.
+        SimpleScene, // Тип ресурса простой сцены.
+        Terrain,     // Тип ресурса ландшафта
         Custom,      // Тип пользовательского ресурса. Используется загрузчиками вне основного движка.
 
         Invalid = 255
@@ -80,26 +83,28 @@ struct ResourceLoader
 
     MINLINE void Destroy() { this->~ResourceLoader(); }
 
-    bool Load(const char* name, void* params,       TextResource& OutResource);
-    MAPI bool Load(const char* name, void* params,     BinaryResource& OutResource);
-    bool Load(const char* name, void* params,      ImageResource& OutResource);
-    bool Load(const char* name, void* params,   MaterialResource& OutResource);
-    bool Load(const char* name, void* params,       MeshResource& OutResource);
-    bool Load(const char* name, void* params,     ShaderResource& OutResource);
-    bool Load(const char* name, void* params, BitmapFontResource& OutResource);
-    bool Load(const char* name, void* params, SystemFontResource& OutResource);
-    bool Load(const char* name, void* params, SimpleSceneResource& OutResource);
+         bool Load(const char* name, void* params,        TextResource& OutResource);
+    MAPI bool Load(const char* name, void* params,      BinaryResource& OutResource);
+         bool Load(const char* name, void* params,       ImageResource& OutResource);
+         bool Load(const char* name, void* params,    MaterialResource& OutResource);
+         bool Load(const char* name, void* params,        MeshResource& OutResource);
+         bool Load(const char* name, void* params,      ShaderResource& OutResource);
+         bool Load(const char* name, void* params,  BitmapFontResource& OutResource);
+         bool Load(const char* name, void* params,  SystemFontResource& OutResource);
+         bool Load(const char* name, void* params, SimpleSceneResource& OutResource);
+         bool Load(const char* name, void* params,     TerrainResource& OutResource);
     //bool Load(const char* name, void* params, CustomResource& OutResource);
     
-    void Unload(TextResource&       resource);
-    MAPI void Unload(BinaryResource&     resource);
-    void Unload(ImageResource&      resource);
-    void Unload(MaterialResource&   resource);
-    void Unload(MeshResource&       resource);
-    void Unload(ShaderResource&     resource);
-    void Unload(BitmapFontResource& resource);
-    void Unload(SystemFontResource& resource);
-    void Unload(SimpleSceneResource& resource);
+         void Unload(TextResource&        resource);
+    MAPI void Unload(BinaryResource&      resource);
+         void Unload(ImageResource&       resource);
+         void Unload(MaterialResource&    resource);
+         void Unload(MeshResource&        resource);
+         void Unload(ShaderResource&      resource);
+         void Unload(BitmapFontResource&  resource);
+         void Unload(SystemFontResource&  resource);
+         void Unload(SimpleSceneResource& resource);
+         void Unload(TerrainResource&     resource);
 
     template<typename T>
     bool ResourceUnload(Resource<T> &resource, Memory::Tag tag)
