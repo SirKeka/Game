@@ -502,7 +502,7 @@ bool ImportObjMaterialLibraryFile(const char *MtlFilePath)
         return false;
     }
 
-    Material::Config CurrentConfig;
+    Material::Config CurrentConfig{};
 
     bool HitName = false;
 
@@ -535,18 +535,15 @@ bool ImportObjMaterialLibraryFile(const char *MtlFilePath)
                     case 'd': {
                         // Цвет Ambient/Diffuse на этом уровне обрабатывается одинаково. Окружающий цвет определяется уровнем.
                         char t[2];
-                        sscanf(
-                            line.c_str(),
-                            "%s %f %f %f",
-                            t,
-                            &CurrentConfig.DiffuseColour.r,
-                            &CurrentConfig.DiffuseColour.g,
-                            &CurrentConfig.DiffuseColour.b);
+                        Material::ConfigProp prop{};
+                        prop.name = "diffuse_colour";
+                        prop.type = Shader::UniformType::Float32_4;
+                        sscanf(line.c_str(), "%s %f %f %f", t, &prop.ValueV4.r, &prop.ValueV4.g, &prop.ValueV4.b);
 
                         // ПРИМЕЧАНИЕ: Это используется только цветовым шейдером и по умолчанию установлено на max_norm.
                         // Прозрачность можно будет добавить как отдельное свойство материала позже.
-                        CurrentConfig.DiffuseColour.a = 1.0f;
-
+                        prop.ValueV4.a = 1.F;
+                        CurrentConfig.properties.PushBack(prop);
                     } break;
                     case 's': {
                         // Зеркальный цвет
@@ -554,13 +551,7 @@ bool ImportObjMaterialLibraryFile(const char *MtlFilePath)
 
                         // ПРИМЕЧАНИЕ: Пока не использую это.
                         f32 SpecRubbish = 0.0f;
-                        sscanf(
-                            line.c_str(),
-                            "%s %f %f %f",
-                            t,
-                            &SpecRubbish,
-                            &SpecRubbish,
-                            &SpecRubbish);
+                        sscanf(line.c_str(), "%s %f %f %f", t, &SpecRubbish, &SpecRubbish, &SpecRubbish);
                     } break;
                 }
             } break;
@@ -570,8 +561,14 @@ bool ImportObjMaterialLibraryFile(const char *MtlFilePath)
                     case 's': {
                         // Зеркальный показатель
                         char t[2];
-
-                        sscanf(line.c_str(), "%s %f", t, &CurrentConfig.specular);
+                        Material::ConfigProp prop{};
+                        prop.name = "specular";
+                        prop.type = Shader::UniformType::Float32;
+                        sscanf(line.c_str(), "%s %f", t, &prop.ValueF32);
+                        // ПРИМЕЧАНИЕ: Необходимо убедиться, что это значение не равно нулю, так как это приведет к появлению артефактов при рендеринге объектов.
+                        if (prop.ValueF32 == 0)
+                            prop.ValueF32 = 8.F;
+                        CurrentConfig.properties.PushBack(prop);
                     } break;
                 }
             } break;
@@ -580,59 +577,63 @@ bool ImportObjMaterialLibraryFile(const char *MtlFilePath)
                 char substr[10];
                 char TextureFileName[512];
 
-                sscanf(
-                    line.c_str(),
-                    "%s %s",
-                    substr,
-                    TextureFileName);
+                sscanf(line.c_str(), "%s %s", substr, TextureFileName);
+                // ПРИМЕЧАНИЕ: делаем некоторые предположения о режимах фильтрации и повторения.
+                Material::Map map{};
+                map.FilterMin = map.FilterMag = TextureFilter::ModeLinear;
+                map.RepeatU = map.RepeatV = map.RepeatW = TextureRepeat::Repeat;
 
-                //
+                // Название текстуры
+                char TexNameBuf[512]{};
+                MString::FilenameNoExtensionFromPath(TexNameBuf, TextureFileName);
+                map.TextureName = TexNameBuf;
+
+                // map название/тип
                 if (MString::nComparei(substr, "map_Kd", 6)) {
                     // Это диффузная текстурная карта.
-                    MString::FilenameNoExtensionFromPath(CurrentConfig.DiffuseMapName, TextureFileName);
+                    map.name = "diffuse";
                 } else if (MString::nComparei(substr, "map_Ks", 6)) {
                     // Это зеркальная текстурная карта.
-                    MString::FilenameNoExtensionFromPath(CurrentConfig.SpecularMapName, TextureFileName);
+                    map.name = "specular";
                 } else if (MString::nComparei(substr, "map_bump", 8)) {
                     // Это карта текстуры рельефа.
-                    MString::FilenameNoExtensionFromPath(CurrentConfig.NormalMapName, TextureFileName);
+                    map.name = "narmal";
                 }
+                CurrentConfig.maps.PushBack((Material::Map&&)map);
             } break;
             case 'b': {
                 // Некоторые реализации используют «bump» вместо «map_bump».
                 char substr[10];
                 char TextureFileName[512];
 
-                sscanf(
-                    line.c_str(),
-                    "%s %s",
-                    substr,
-                    TextureFileName);
+                sscanf(line.c_str(), "%s %s", substr, TextureFileName);
+                // ПРИМЕЧАНИЕ: делаем некоторые предположения о режимах фильтрации и повторения.
+                Material::Map map{};
+                map.FilterMin = map.FilterMag = TextureFilter::ModeLinear;
+                map.RepeatU = map.RepeatV = map.RepeatW = TextureRepeat::Repeat;
+                // Название текстуры
+                char TexNameBuf[512]{};
+                MString::FilenameNoExtensionFromPath(TexNameBuf, TextureFileName);
+                map.TextureName = TexNameBuf;
+
                 if (MString::nComparei(substr, "bump", 4)) {
                     // Это рельефная (нормальная) текстурная карта.
-                    MString::FilenameNoExtensionFromPath(CurrentConfig.NormalMapName, TextureFileName);
+                    map.name = "bump";
                 }
+                CurrentConfig.maps.PushBack((Material::Map&&)map);
             }
             case 'n': {
                 // Некоторые реализации используют «bump» вместо «map_bump».
                 char substr[10];
                 char MaterialName[512];
 
-                sscanf(
-                    line.c_str(),
-                    "%s %s",
-                    substr,
-                    MaterialName);
+                sscanf(line.c_str(), "%s %s", substr, MaterialName);
                 if (MString::nComparei(substr, "newmtl", 6)) {
                     // Это материальное имя.
 
                     // ПРИМЕЧАНИЕ: Имя шейдера материала по умолчанию жестко закодировано, поскольку все объекты, 
                     // импортированные таким образом, будут обрабатываться одинаково.
                     CurrentConfig.ShaderName = "Shader.Builtin.Material";
-                    // ПРИМЕЧАНИЕ: Значение блеска 0 вызовет проблемы в шейдере. В этом случае используйте значение по умолчанию.
-                    if (CurrentConfig.specular == 0.F) {
-                        CurrentConfig.specular = 8.F;
-                    }
                     if (HitName) {
                         //  Запишите файл kmt и идите дальше.
                         if (!WriteMmtFile(MtlFilePath, CurrentConfig)) {
@@ -641,12 +642,12 @@ bool ImportObjMaterialLibraryFile(const char *MtlFilePath)
                         }
 
                         // Сброс материала для следующего раунда.
-                        CurrentConfig.Reset();
+                        MemorySystem::ZeroMem(&CurrentConfig, sizeof(CurrentConfig));
                     }
 
                     HitName = true;
 
-                    MString::Copy(CurrentConfig.name, MaterialName, 256);
+                    CurrentConfig.name = MaterialName;
                 }
             }
         }
@@ -655,10 +656,6 @@ bool ImportObjMaterialLibraryFile(const char *MtlFilePath)
     // Запишите оставшийся файл mmt.
     // ПРИМЕЧАНИЕ: Имя шейдера материала по умолчанию жестко запрограммировано, поскольку все объекты, импортированные таким образом, будут обрабатываться одинаково.
     CurrentConfig.ShaderName = "Shader.Builtin.Material";
-    // ПРИМЕЧАНИЕ: Значение блеска 0 вызовет проблемы в шейдере. В этом случае используйте значение по умолчанию.
-    if (CurrentConfig.specular == 0.0f) {
-        CurrentConfig.specular = 8.0f;
-    }
     if (!WriteMmtFile(MtlFilePath, CurrentConfig)) {
         MERROR("Невозможно записать файл mmt.");
         return false;

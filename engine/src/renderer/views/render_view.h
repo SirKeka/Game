@@ -5,6 +5,8 @@
 
 struct Renderpass;
 struct GeometryID;
+struct Terrain;
+struct FrameData;
 
 struct GeometryRenderData 
 {
@@ -95,7 +97,7 @@ public:
     /// @param FrameNumber текущий номер кадра визуализатора, обычно используемый для синхронизации данных.
     /// @param RenderTargetIndex текущий индекс цели визуализации для визуализаторов, которые используют несколько целей визуализации одновременно (например, Vulkan).
     /// @return true в случае успеха; в противном случае false.
-    virtual bool Render(const Packet& packet, u64 FrameNumber, u64 RenderTargetIndex) { return false; }
+    virtual bool Render(const Packet& packet, u64 FrameNumber, u64 RenderTargetIndex, const FrameData& rFrameData) { return false; }
 
     /// @brief Регенерирует ресурсы для указанного вложения по указанному индексу прохода.
     /// @param self Указатель на представление для использования.
@@ -115,14 +117,27 @@ public:
     /// @param const_char*_CustomShaderName Имя используемого пользовательского шейдера, если применимо. В противном случае 0.
     /// @param void*_ExtendedData Содержит указатель на данные свободной формы, обычно понимаемые как объектом, так и потребляющим представлением.
     struct Packet {
+        /// @brief Указатель на представление, с которым связан этот пакет.
         RenderView* view;
+        /// @brief Текущая матрица вида.
         Matrix4D ViewMatrix;
+        /// @brief Текущая проекционная матрица.
         Matrix4D ProjectionMatrix;
+        /// @brief Текущая позиция просмотра, если применимо.
         FVec3 ViewPosition;
+        /// @brief Текущий окружающий цвет сцены, если применимо.
         FVec4 AmbientColour;
+        /// @brief Количество геометрических фигур, которые необходимо нарисовать.
         // u32 GeometryCount;
+        /// @brief Геометрии, которые необходимо нарисовать.
         DArray<GeometryRenderData> geometries;
+        /// @brief Геометрия местности, которую необходимо нарисовать.
+        DArray<GeometryRenderData> TerrainGeometries;
+        /// @brief 
+        Terrain** terrains;
+        /// @brief Имя пользовательского шейдера для использования, если применимо. В противном случае nullptr.
         const char* CustomShaderName;
+        /// @brief Содержит указатель на данные произвольной формы, обычно понятные как объекту, так и потребляющему представлению.
         void* ExtendedData;
     };
 };

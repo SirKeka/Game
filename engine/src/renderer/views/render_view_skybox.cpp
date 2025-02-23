@@ -84,7 +84,7 @@ bool RenderViewSkybox::BuildPacket(class LinearAllocator& FrameAllocator, void *
     return true;
 }
 
-bool RenderViewSkybox::Render(const Packet &packet, u64 FrameNumber, u64 RenderTargetIndex)
+bool RenderViewSkybox::Render(const Packet &packet, u64 FrameNumber, u64 RenderTargetIndex, const FrameData& rFrameData)
 {
     auto SkyboxData = reinterpret_cast<SkyboxPacketData*>(packet.ExtendedData);
     const auto& ShaderID = shader->id;

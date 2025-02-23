@@ -700,23 +700,23 @@ void SimpleScene::ActualUnload()
     sb = nullptr;
 
     if (pLightCount > 0) {
-        PointLights.Clear();
+        PointLights.Destroy();
     }
 
     if (MeshCount > 0) {
-        meshes.Clear();
+        meshes.Destroy();
     }
 
     if (terrains) {
-        terrains.Clear();
+        terrains.Destroy();
     }
 
     if (WorldData.WorldGeometries) {
-        WorldData.WorldGeometries.Clear();
+        WorldData.WorldGeometries.Destroy();
     }
 
     if (WorldData.TerrainGeometries) {
-        WorldData.TerrainGeometries.Clear();
+        WorldData.TerrainGeometries.Destroy();
     }
 
     // MemorySystem::ZeroMem(this, sizeof(SimpleScene));

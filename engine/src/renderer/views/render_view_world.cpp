@@ -85,6 +85,21 @@ RenderMode()
     }
     // ResourceSystem::Unload(ConfigResource);
 
+    // Загрузка шейдера ландшафта.
+    const char* TerrainShaderName = "Shader.Builtin.Terrain";
+    ShaderResource TerrainShaderConfigResource;
+    if (!ResourceSystem::Load(TerrainShaderName, eResource::Type::Shader, nullptr, TerrainShaderConfigResource)) {
+        MERROR("Не удалось загрузить встроенный ресурс шейдера ландшафта.");
+        return false;
+    }
+    auto& TerrainShaderConfig = TerrainShaderConfigResource.data;
+    // ПРИМЕЧАНИЕ: Предположим, что это первый проход, поскольку это все, что есть в этом представлении.
+    if (!ShaderSystem::Create(passes[0], TerrainShaderConfig)) {
+        MERROR("Не удалось загрузить встроенный шейдер ландшафта.");
+        return false;
+    }
+    // ResourceSystem::Unload(TerrainShaderConfigResource);
+
     // Получите либо переопределение пользовательского шейдера, либо заданное значение по умолчанию.
     shader = ShaderSystem::GetShader(CustomShaderName ? CustomShaderName : ShaderName);
 
@@ -129,7 +144,7 @@ bool RenderViewWorld::BuildPacket(class LinearAllocator& FrameAllocator, void *d
         return false;
     }
 
-    auto& GeometryData = *reinterpret_cast<DArray<GeometryRenderData>*>(data);
+    auto& WorldData = *reinterpret_cast<RenderViewWorldData*>(data);
     
     OutPacket.view = this;
 
@@ -143,8 +158,8 @@ bool RenderViewWorld::BuildPacket(class LinearAllocator& FrameAllocator, void *d
     // Получить все геометрии из текущей сцены.
     DArray<GeometryDistance> GeometryDistances;
     
-    for (u32 i = 0; i < GeometryData.Length(); ++i) {
-        auto& gData = GeometryData[i];
+    for (u32 i = 0; i < WorldData.WorldGeometries.Length(); ++i) {
+        auto& gData = WorldData.WorldGeometries[i];
         if (!gData.gid) {
             continue;
         }
@@ -180,10 +195,18 @@ bool RenderViewWorld::BuildPacket(class LinearAllocator& FrameAllocator, void *d
         // OutPacket.GeometryCount++;
     }
 
+    const u32& TerrainCount = WorldData.TerrainGeometries.Length();
+    for (u32 i = 0; i < TerrainCount; ++i) {
+        OutPacket.TerrainGeometries.PushBack(WorldData.TerrainGeometries[i]);
+        // OutPacket.TerrainGeometryCount++;
+    }
+
+    GeometryDistances.Destroy();
+
     return true;
 }
 
-bool RenderViewWorld::Render(const Packet &packet, u64 FrameNumber, u64 RenderTargetIndex)
+bool RenderViewWorld::Render(const Packet &packet, u64 FrameNumber, u64 RenderTargetIndex, const FrameData& rFrameData)
 {
     const auto& ShaderID = shader->id;
     for (u32 p = 0; p < RenderpassCount; ++p) {
@@ -193,46 +216,97 @@ bool RenderViewWorld::Render(const Packet &packet, u64 FrameNumber, u64 RenderTa
             return false;
         }
 
-        if (!ShaderSystem::Use(ShaderID)) {
-            MERROR("Не удалось использовать шейдер материала. Не удалось отрисовать кадр.");
-            return false;
-        }
+        // Используйте соответствующий шейдер и примените глобальные униформы.
+        const u32& TerrainCount = packet.TerrainGeometries.Length();
+        if (TerrainCount > 0) {
+            // ЗАДАЧА: Если используется пользовательский шейдер, это приведет к ошибке. Необходимо также обработать их.
+            auto shader = ShaderSystem::GetShader("Shader.Builtin.Terrain");
+            if (!shader) {
+                MERROR("Невозможно получить шейдер ландшафта.");
+                return false;
+            }
+            ShaderSystem::Use(shader->id);
 
-        // Применить глобальные переменные
-        // ЗАДАЧА: Найти общий способ запроса данных, таких как окружающий цвет (который должен быть из сцены) и режим (из рендерера)
-        if (!MaterialSystem::ApplyGlobal(ShaderID, FrameNumber, packet.ProjectionMatrix, packet.ViewMatrix, packet.AmbientColour, packet.ViewPosition, RenderMode)) {
-            MERROR("Не удалось использовать применить глобальные переменные для шейдера материала. Не удалось отрисовать кадр.");
-            return false;
-        }
-
-        // Нарисовать геометрию.
-        const auto& count = packet.geometries.Length();
-        for (u32 i = 0; i < count; ++i) {
-            Material* m = nullptr;
-            if (packet.geometries[i].gid->material) {
-                m = packet.geometries[i].gid->material;
-            } else {
-                m = MaterialSystem::GetDefaultMaterial();
+            // Применить глобальные переменные
+            // ЗАДАЧА: Найдите общий способ запроса данных, таких как цвет окружения (который должен быть из сцены) и режим (из рендерера)
+            if (!MaterialSystem::ApplyGlobal(shader->id, FrameNumber, &packet.ProjectionMatrix, &packet.ViewMatrix, &packet.AmbientColour, &packet.ViewPosition, RenderMode)) {
+                MERROR("Не удалось применить глобальные переменные для шейдера ландшафта. Кадр рендеринга не удалось.");
+                return false;
             }
 
-            // Обновите материал, если он еще не был в этом кадре. 
-            // Это предотвращает многократное обновление одного и того же материала. 
-            // Его все равно нужно привязать в любом случае, поэтому этот результат проверки передается на бэкэнд, 
-            // который либо обновляет внутренние привязки шейдера и привязывает их, либо только привязывает их.
-            bool NeedsUpdate = m->RenderFrameNumber != FrameNumber;
-            if (!MaterialSystem::ApplyInstance(m, NeedsUpdate)) {
-                MWARN("Не удалось применить материал '%s'. Пропуск отрисовки.", m->name);
-                continue;
-            } else {
-                // Синхронизируйте номер кадра.
-                m->RenderFrameNumber = FrameNumber;
+            for (u32 i = 0; i < TerrainCount; ++i) {
+                Material* material = nullptr;
+                if (packet.TerrainGeometries[i].gid->material) {
+                    material = packet.TerrainGeometries[i].gid->material;
+                } else {
+                    material = MaterialSystem::GetDefaultTerrainMaterial();
+                }
+
+                // Обновите материал, если он еще не был в этом кадре. 
+                // Это предотвращает многократное обновление одного и того же материала. 
+                // Его все равно нужно привязать в любом случае, поэтому этот результат проверки передается на бэкэнд, 
+                // который либо обновляет внутренние привязки шейдера и привязывает их, либо только привязывает их.
+                bool NeedsUpdate = material->RenderFrameNumber != FrameNumber;
+                if (!MaterialSystem::ApplyInstance(material, NeedsUpdate)) {
+                    MWARN("Не удалось применить материал ландшафта '%s'. Пропуск отрисовки.", material->name);
+                    continue;
+                } else {
+                    // Синхронизируйте номер кадра.
+                    material->RenderFrameNumber = FrameNumber;
+                }
+
+                // Примените локальные
+                MaterialSystem::ApplyLocal(material, &packet.TerrainGeometries[i].model);
+
+                // Нарисуйте его.
+                RenderingSystem::DrawGeometry(&packet.TerrainGeometries[i]);
+            }
+        }
+
+        // Статичные геометрии.
+        const u32& GeometryCount = packet.geometries.Length();
+        if (GeometryCount > 0) {
+            if (!ShaderSystem::Use(ShaderID)) {
+                MERROR("Не удалось использовать шейдер материала. Не удалось отрисовать кадр.");
+                return false;
             }
 
-            // Примените локальные переменные
-            MaterialSystem::ApplyLocal(m, packet.geometries[i].model);
+            // Применить глобальные переменные
+            // ЗАДАЧА: Найти общий способ запроса данных, таких как окружающий цвет (который должен быть из сцены) и режим (из рендерера)
+            if (!MaterialSystem::ApplyGlobal(ShaderID, FrameNumber, packet.ProjectionMatrix, packet.ViewMatrix, packet.AmbientColour, packet.ViewPosition, RenderMode)) {
+                MERROR("Не удалось использовать применить глобальные переменные для шейдера материала. Не удалось отрисовать кадр.");
+                return false;
+            }
 
-            // Нарисуйте его.
-            RenderingSystem::DrawGeometry(packet.geometries[i]);
+            // Нарисовать геометрию.
+            const auto& count = packet.geometries.Length();
+            for (u32 i = 0; i < count; ++i) {
+                Material* m = nullptr;
+                if (packet.geometries[i].gid->material) {
+                    m = packet.geometries[i].gid->material;
+                } else {
+                    m = MaterialSystem::GetDefaultMaterial();
+                }
+
+                // Обновите материал, если он еще не был в этом кадре. 
+                // Это предотвращает многократное обновление одного и того же материала. 
+                // Его все равно нужно привязать в любом случае, поэтому этот результат проверки передается на бэкэнд, 
+                // который либо обновляет внутренние привязки шейдера и привязывает их, либо только привязывает их.
+                bool NeedsUpdate = m->RenderFrameNumber != FrameNumber;
+                if (!MaterialSystem::ApplyInstance(m, NeedsUpdate)) {
+                    MWARN("Не удалось применить материал '%s'. Пропуск отрисовки.", m->name);
+                    continue;
+                } else {
+                    // Синхронизируйте номер кадра.
+                    m->RenderFrameNumber = FrameNumber;
+                }
+
+                // Примените локальные переменные
+                MaterialSystem::ApplyLocal(m, packet.geometries[i].model);
+
+                // Нарисуйте его.
+                RenderingSystem::DrawGeometry(packet.geometries[i]);
+            }
         }
 
         if (!RenderingSystem::RenderpassEnd(pass)) {

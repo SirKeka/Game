@@ -105,7 +105,7 @@ bool RenderViewUI::BuildPacket(LinearAllocator& FrameAllocator, void *data, Pack
     return true;
 }
 
-bool RenderViewUI::Render(const Packet &packet, u64 FrameNumber, u64 RenderTargetIndex)
+bool RenderViewUI::Render(const Packet &packet, u64 FrameNumber, u64 RenderTargetIndex, const FrameData& rFrameData)
 {
     const auto& ShaderID = shader->id;
     for (u32 p = 0; p < RenderpassCount; ++p) {

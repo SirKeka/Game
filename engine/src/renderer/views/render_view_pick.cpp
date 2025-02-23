@@ -68,7 +68,7 @@ MouseX(), MouseY()
 
     // Свойства мира по умолчанию
     WorldShaderInfo.NearClip = 0.1F;
-    WorldShaderInfo.FarClip = 1000.F;
+    WorldShaderInfo.FarClip = 4000.F;
     WorldShaderInfo.fov = Math::DegToRad(45.0f);
     WorldShaderInfo.projection = Matrix4D::MakeFrustumProjection(WorldShaderInfo.fov, 1280 / 720.F, WorldShaderInfo.NearClip, WorldShaderInfo.FarClip);
     WorldShaderInfo.view = Matrix4D::MakeIdentity();
@@ -200,7 +200,7 @@ void RenderViewPick::DestroyPacket(Packet &packet)
     MemorySystem::ZeroMem(&packet, sizeof(Packet));
 }
 
-bool RenderViewPick::Render(const Packet &packet, u64 FrameNumber, u64 RenderTargetIndex)
+bool RenderViewPick::Render(const Packet &packet, u64 FrameNumber, u64 RenderTargetIndex, const FrameData& rFrameData)
 {
     u32 p = 0;
     auto* pass = &passes[p];  // Первый проход отрисовщика

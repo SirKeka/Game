@@ -161,10 +161,10 @@ bool RenderViewSystem::BuildPacket(RenderView *view, class LinearAllocator& Fram
     return false;
 }
 
-bool RenderViewSystem::OnRender(RenderView *view, const RenderView::Packet &packet, u64 FrameNumber, u64 RenderTargetIndex)
+bool RenderViewSystem::OnRender(RenderView *view, const RenderView::Packet &packet, u64 FrameNumber, u64 RenderTargetIndex, const FrameData& rFramedata)
 {
     if (view) {
-        return view->Render(packet, FrameNumber, RenderTargetIndex);
+        return view->Render(packet, FrameNumber, RenderTargetIndex, rFramedata);
     }
 
     MERROR("RenderViewSystem::Render требует действительный указатель на данные.");
