@@ -5,11 +5,11 @@
 #include "math.hpp"
 #include "vector2d.hpp"
 
-template<typename T> class Vector4D;
+template<typename T> struct Vector4D;
 class Matrix4D;
 
 template<typename T>
-class Vector3D
+struct Vector3D
 {
 public:
 	union {

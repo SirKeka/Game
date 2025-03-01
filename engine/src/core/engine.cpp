@@ -22,7 +22,7 @@
 #include "systems/font_system.hpp"
 #include "platform/platform.hpp"
 
-#include "renderer/views/render_view_pick.hpp"
+#include "renderer/views/render_view_pick.h"
 
 // Компоненты ядра движка
 #include "uuid.hpp"

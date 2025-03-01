@@ -88,12 +88,12 @@ struct Material {
     /// @brief Генерация материала. Увеличивается каждый раз при изменении материала.
     u32 generation;
     /// @brief Внутренний идентификатор материала. Используется бэкэндом рендерера для сопоставления с внутренними ресурсами.
-    u32 internal_id;
+    u32 InternalId;
     /// @brief Имя материала.
     char name[MATERIAL_NAME_MAX_LENGTH];
 
     /// @brief Массив текстурных карт.
-    TextureMap *maps;
+    DArray<TextureMap> maps;
 
     /// @brief Размер структуры свойств.
     u32 PropertyStructSize;
@@ -107,7 +107,7 @@ struct Material {
     /// @brief Блеск материала определяет, насколько концентрировано зеркальное освещение.
     // f32 specular;
 
-    u32 shader_id;
+    u32 ShaderID;
 
     /// @brief Синхронизируется с текущим номером кадра рендерера, когда материал был применен к этому кадру.
     u32 RenderFrameNumber;

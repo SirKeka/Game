@@ -6,10 +6,10 @@
 #include <new>
 
 // ЗАДАЧА: временно - создайте фабрику и зарегистрируйтесь.
-#include "renderer/views/render_view_world.hpp"
-#include "renderer/views/render_view_ui.hpp"
-#include "renderer/views/render_view_skybox.hpp"
-#include "renderer/views/render_view_pick.hpp"
+#include "renderer/views/render_view_world.h"
+#include "renderer/views/render_view_ui.h"
+#include "renderer/views/render_view_skybox.h"
+#include "renderer/views/render_view_pick.h"
 
 RenderViewSystem* RenderViewSystem::state = nullptr;
 

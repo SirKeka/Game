@@ -7,7 +7,7 @@
 #include "systems/shader_system.h"
 #include "systems/camera_system.hpp"
 #include "systems/render_view_system.hpp"
-#include "views/render_view.hpp"
+#include "views/render_view.h"
 #include "core/mvar.hpp"
 #include "core/systems_manager.hpp"
 
@@ -109,7 +109,7 @@ bool RenderingSystem::DrawFrame(const RenderPacket &packet, const FrameData& rFr
         
         // Отобразить каждое представление.
         for (u32 i = 0; i < packet.ViewCount; i++) {
-            if (!RenderViewSystem::OnRender(packet.views[i].view, packet.views[i], renderer->FrameNumber, AttachmentIndex)) {
+            if (!RenderViewSystem::OnRender(packet.views[i].view, packet.views[i], renderer->FrameNumber, AttachmentIndex, rFrameData)) {
                 MERROR("Ошибка рендеринга индекса представления %i.", i);
             }
         }
