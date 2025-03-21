@@ -1,4 +1,4 @@
-#include "debug_console.hpp"
+#include "debug_console.h"
 #include <core/console.hpp>
 #include <core/input.hpp>
 #include <platform/platform.hpp>
@@ -6,7 +6,7 @@
 // ЗАДАЧА: на данный момент статически определенное состояние.
 // static sDebugConsole* pDebugConsole = nullptr;
 
-DebugConsole::DebugConsole() : LineDisplayCount(10), LineOffset(), lines(), history(), HistoryOffset(), dirty(), visible(false), TextControl(), EntryControl() 
+DebugConsole::DebugConsole() : loaded(), LineDisplayCount(10), LineOffset(), lines(), history(), HistoryOffset(), dirty(), visible(false), TextControl(), EntryControl() 
 {
     // ПРИМЕЧАНИЕ: обновите текст на основе количества отображаемых строк и количества строк, 
     // смещенных от нижней границы. На данный момент для отображения используется объект UI Text. 
@@ -24,6 +24,17 @@ DebugConsole::DebugConsole() : LineDisplayCount(10), LineOffset(), lines(), hist
 bool DebugConsole::DebugConsoleConsumerWrite(void* inst, Log::Level level, const char* message) 
 {
     auto pDebugConsole = reinterpret_cast<DebugConsole*>(inst);
+    // Не обязательно сбой, но продолжайте, если не загружено.
+    if (!pDebugConsole->loaded) {
+        return true;
+    }
+    // Для высокоприоритетных сообщений об ошибках/фатальных ошибках не беспокойтесь о разделении, 
+    // просто выведите их, потому что что-то действительно ужасное может помешать этому разделению произойти.
+    if (level <= Log::Level::Error) {
+        pDebugConsole->lines.PushBack(message);
+        pDebugConsole->dirty = true;
+        return true;
+    }
     // Создайте новую копию строки и попробуйте разбить ее по новым строкам, 
     // чтобы каждая из них считалась новой строкой.
     // ПРИМЕЧАНИЕ: отсутствие очистки строк здесь намеренное, поскольку строки должны жить, 
@@ -44,9 +55,15 @@ bool DebugConsole::DebugConsoleConsumerWrite(void* inst, Log::Level level, const
 bool DebugConsole::OnKey(u16 code, void* sender, void* ListenerInst, EventContext context)
 {
     auto pDebugConsole = reinterpret_cast<DebugConsole*>(ListenerInst);
+    // Не обязательно это провал, но если нет нагрузки, продолжайте движение.
+    if (!pDebugConsole->loaded) {
+        return false;
+    }
+
     if (!pDebugConsole->visible) {
         return false;
     }
+
     if (code == EventSystem::KeyPressed) {
         const u16& KeyCode = context.data.u16[0];
         bool ShiftHeld = InputSystem::IsKeyDown(Keys::LSHIFT) || InputSystem::IsKeyDown(Keys::RSHIFT) || InputSystem::IsKeyDown(Keys::SHIFT);
@@ -136,7 +153,7 @@ bool DebugConsole::Load()
     // }
 
     // Создать текстовый элемент управления пользовательского интерфейса для рендеринга.
-    if (!TextControl.Create(TextType::System, "Noto Sans CJK JP", 31, "")) {
+    if (!TextControl.Create("debug_console_log_text", TextType::System, "Noto Sans CJK JP", 31, "")) {
         MFATAL("Невозможно создать текстовый элемент управления для консоли отладки.");
         return false;
     }
@@ -144,7 +161,7 @@ bool DebugConsole::Load()
     TextControl.SetPosition(FVec3(3.F, 30.F, 0.F));
 
     // Создать еще один текстовый элемент управления пользовательского интерфейса для рендеринга введенного текста.
-    if (!EntryControl.Create(TextType::System, "Noto Sans CJK JP", 31, "")) {
+    if (!EntryControl.Create("debug_console_entry_text", TextType::System, "Noto Sans CJK JP", 31, "")) {
         MFATAL("Невозможно создать текстовый элемент управления ввода для консоли отладки.");
         return false;
     }

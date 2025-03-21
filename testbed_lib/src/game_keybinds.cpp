@@ -1,12 +1,12 @@
-#include "game.hpp"
+#include "game.h"
 
 #include <core/event.hpp>
 #include <core/logger.hpp>
 #include <core/input.hpp>
 #include <core/console.hpp>
 #include <renderer/camera.hpp>
-#include <renderer/rendering_system.hpp>
-#include "debug_console.hpp"
+#include <renderer/rendering_system.h>
+#include "debug_console.h"
 
 void GameOnEscapeCallback(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) {
     MDEBUG("GameOnEscapeCallback");

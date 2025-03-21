@@ -1,4 +1,4 @@
-#include "resource_system.hpp"
+#include "resource_system.h"
 #include "core/logger.hpp"
 #include "memory/linear_allocator.hpp"
 

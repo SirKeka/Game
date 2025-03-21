@@ -1,11 +1,10 @@
 #include "render_view_world.h"
-// #include "memory/linear_allocator.hpp"
-#include "renderer/rendering_system.hpp"
+#include "renderer/rendering_system.h"
 #include "systems/shader_system.h"
 #include "systems/camera_system.hpp"
 #include "systems/material_system.h"
-#include "systems/render_view_system.hpp"
-#include "systems/resource_system.hpp"
+#include "systems/render_view_system.h"
+#include "systems/resource_system.h"
 #include "renderer/renderpass.hpp"
 #include "resources/mesh.hpp"
 #include "resources/geometry.hpp"
@@ -90,13 +89,13 @@ RenderMode()
     ShaderResource TerrainShaderConfigResource;
     if (!ResourceSystem::Load(TerrainShaderName, eResource::Type::Shader, nullptr, TerrainShaderConfigResource)) {
         MERROR("Не удалось загрузить встроенный ресурс шейдера ландшафта.");
-        return false;
+        return;
     }
     auto& TerrainShaderConfig = TerrainShaderConfigResource.data;
     // ПРИМЕЧАНИЕ: Предположим, что это первый проход, поскольку это все, что есть в этом представлении.
     if (!ShaderSystem::Create(passes[0], TerrainShaderConfig)) {
         MERROR("Не удалось загрузить встроенный шейдер ландшафта.");
-        return false;
+        return;
     }
     // ResourceSystem::Unload(TerrainShaderConfigResource);
 
@@ -229,7 +228,7 @@ bool RenderViewWorld::Render(const Packet &packet, u64 FrameNumber, u64 RenderTa
 
             // Применить глобальные переменные
             // ЗАДАЧА: Найдите общий способ запроса данных, таких как цвет окружения (который должен быть из сцены) и режим (из рендерера)
-            if (!MaterialSystem::ApplyGlobal(shader->id, FrameNumber, &packet.ProjectionMatrix, &packet.ViewMatrix, &packet.AmbientColour, &packet.ViewPosition, RenderMode)) {
+            if (!MaterialSystem::ApplyGlobal(shader->id, FrameNumber, packet.ProjectionMatrix, packet.ViewMatrix, packet.AmbientColour, packet.ViewPosition, RenderMode)) {
                 MERROR("Не удалось применить глобальные переменные для шейдера ландшафта. Кадр рендеринга не удалось.");
                 return false;
             }
@@ -256,10 +255,10 @@ bool RenderViewWorld::Render(const Packet &packet, u64 FrameNumber, u64 RenderTa
                 }
 
                 // Примените локальные
-                MaterialSystem::ApplyLocal(material, &packet.TerrainGeometries[i].model);
+                MaterialSystem::ApplyLocal(material, packet.TerrainGeometries[i].model);
 
                 // Нарисуйте его.
-                RenderingSystem::DrawGeometry(&packet.TerrainGeometries[i]);
+                RenderingSystem::DrawGeometry(packet.TerrainGeometries[i]);
             }
         }
 

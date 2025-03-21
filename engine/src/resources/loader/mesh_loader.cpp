@@ -1,7 +1,7 @@
 #include "resource_loader.h"
 #include "containers/darray.hpp"
-#include "systems/geometry_system.hpp"
-#include "systems/resource_system.hpp"
+#include "systems/geometry_system.h"
+#include "systems/resource_system.h"
 #include "math/geometry_utils.hpp"
 
 #include <stdio.h>
@@ -139,7 +139,7 @@ void ResourceLoader::Unload(MeshResource &resource)
     /*const u64& count = resource.DataSize;
     for (u64 i = 0; i < count; i++) {
         GeometryConfig* config = &(reinterpret_cast<GeometryConfig*>(resource.data))[i];
-        config->Dispose();
+        config.Dispose();
     }*/
     resource.data.Clear();
     if(resource.FullPath) {
@@ -796,6 +796,50 @@ bool WriteMsmFile(const char *path, const char *name, u32 GeometryCount, DArray<
     return true;
 }
 
+static const char *StringFromRepeat(TextureRepeat repeat) {
+    switch (repeat) {
+        default:
+        case TextureRepeat::Repeat:
+            return "repeat";
+        case TextureRepeat::ClampToEdge:
+            return "clamp_to_edge";
+        case TextureRepeat::ClampToBorder:
+            return "clamp_to_border";
+        case TextureRepeat::MirroredRepeat:
+            return "mirrored";
+    }
+}
+
+static const char *StringFromType(Shader::UniformType type) {
+    switch (type) {
+        case Shader::UniformType::Float32:
+            return "f32";
+        case Shader::UniformType::Float32_2:
+            return "vec2";
+        case Shader::UniformType::Float32_3:
+            return "vec3";
+        case Shader::UniformType::Float32_4:
+            return "vec4";
+        case Shader::UniformType::Int8:
+            return "i8";
+        case Shader::UniformType::Int16:
+            return "i16";
+        case Shader::UniformType::Int32:
+            return "i32";
+        case Shader::UniformType::UInt8:
+            return "u8";
+        case Shader::UniformType::UInt16:
+            return "u16";
+        case Shader::UniformType::UInt32:
+            return "u32";
+        case Shader::UniformType::Matrix4:
+            return "mat4";
+        default:
+            MERROR("Нераспознанный унифицированный тип %d, по умолчанию i32.", type);
+            return "i32";
+    }
+}
+
 /// @brief Запишите файл материала Moon из config. Это загружается по имени позже, когда сетка запрашивается для загрузки.
 /// @param directory путь к файлу библиотеки материалов, который изначально содержал определение материала.
 /// @param config ссылка на конфигурацию, которую нужно преобразовать в mmt.
@@ -811,7 +855,7 @@ bool WriteMmtFile(const char *MtlFilePath, Material::Config &config)
     MString::DirectoryFromPath(directory, MtlFilePath);
     char FullFilePath[512];
 
-    MString::Format(FullFilePath, FormatStr, directory, config.name, ".mmt");
+    MString::Format(FullFilePath, FormatStr, directory, config.name.c_str(), ".mmt");
     if (!Filesystem::Open(FullFilePath, FileModes::Write, false, f)) {
         MERROR("Ошибка открытия файла материала для записи: '%s'", FullFilePath);
         return false;
@@ -819,29 +863,112 @@ bool WriteMmtFile(const char *MtlFilePath, Material::Config &config)
     MDEBUG("Запись файла .mmt '%s'...", FullFilePath);
 
     char LineBuffer[512];
+    // Заголовок файла
     Filesystem::WriteLine(f, "#material file");
     Filesystem::WriteLine(f, "");
-    Filesystem::WriteLine(f, "version=0.1");
-    MString::Format(LineBuffer, "name=%s", config.name);
+    Filesystem::WriteLine(f, "version=2");
+    Filesystem::WriteLine(f, "# Типы могут быть phong,pbr,custom");
+    Filesystem::WriteLine(f, "type=phong");  // ЗАДАЧА: Другие типы материалов
+    MString::Format(LineBuffer, "name=%s", config.name.c_str());
     Filesystem::WriteLine(f, LineBuffer);
-    MString::Format(LineBuffer, "diffuse_colour=%.6f %.6f %.6f %.6f", config.DiffuseColour.r, config.DiffuseColour.g, config.DiffuseColour.b, config.DiffuseColour.a);
-    Filesystem::WriteLine(f, LineBuffer);
-    MString::Format(LineBuffer, "specular=%.6f", config.specular);
-    Filesystem::WriteLine(f, LineBuffer);
-    if (config.DiffuseMapName[0]) {
-        MString::Format(LineBuffer, "diffuse_map_name=%s", config.DiffuseMapName);
-        Filesystem::WriteLine(f, LineBuffer);
-    }
-    if (config.SpecularMapName[0]) {
-        MString::Format(LineBuffer, "specular_map_name=%s", config.SpecularMapName);
-        Filesystem::WriteLine(f, LineBuffer);
-    }
-    if (config.NormalMapName[0]) {
-        MString::Format(LineBuffer, "normal_map_name=%s", config.NormalMapName);
-        Filesystem::WriteLine(f, LineBuffer);
-    }
+    Filesystem::WriteLine(f, "# Если пользовательский, требуется шейдер.");
     MString::Format(LineBuffer, "shader=%s", config.ShaderName.c_str());
     Filesystem::WriteLine(f, LineBuffer);
+
+    // Запись карт
+    const u32& MapCount = config.maps.Length();
+    for (u32 i = 0; i < MapCount; ++i) {
+        Filesystem::WriteLine(f, "[map]");
+        MString::Format(LineBuffer, "name=%s", config.maps[i].name.c_str());
+        Filesystem::WriteLine(f, LineBuffer);
+
+        MString::Format(LineBuffer, "filter_min=%s", config.maps[i].FilterMin == TextureFilter::ModeLinear ? "linear" : "nearest");
+        Filesystem::WriteLine(f, LineBuffer);
+        MString::Format(LineBuffer, "filter_mag=%s", config.maps[i].FilterMag == TextureFilter::ModeLinear ? "linear" : "nearest");
+        Filesystem::WriteLine(f, LineBuffer);
+
+        MString::Format(LineBuffer, "repeat_u=%s", StringFromRepeat(config.maps[i].RepeatU));
+        Filesystem::WriteLine(f, LineBuffer);
+        MString::Format(LineBuffer, "repeat_v=%s", StringFromRepeat(config.maps[i].RepeatV));
+        Filesystem::WriteLine(f, LineBuffer);
+        MString::Format(LineBuffer, "repeat_w=%s", StringFromRepeat(config.maps[i].RepeatW));
+        Filesystem::WriteLine(f, LineBuffer);
+
+        MString::Format(LineBuffer, "texture_name=%s", config.maps[i].TextureName.c_str());
+        Filesystem::WriteLine(f, LineBuffer);
+        Filesystem::WriteLine(f, "[/map]");
+    }
+
+    // Запись свойств.
+    const u32& PropCount = config.properties.Length();
+    for (u32 i = 0; i < PropCount; ++i) {
+        Filesystem::WriteLine(f, "[prop]");
+        MString::Format(LineBuffer, "name=%s", config.properties[i].name.c_str());
+        Filesystem::WriteLine(f, LineBuffer);
+
+        //тип
+        MString::Format(LineBuffer, "type=%s", StringFromType(config.properties[i].type));
+        Filesystem::WriteLine(f, LineBuffer);
+        // значение
+        switch (config.properties[i].type) {
+            case Shader::UniformType::Float32:
+                MString::Format(LineBuffer, "value=%f", config.properties[i].ValueF32);
+                break;
+            case Shader::UniformType::Float32_2:
+                MString::Format(LineBuffer, "value=%f %f", config.properties[i].ValueV2);
+                break;
+            case Shader::UniformType::Float32_3:
+                MString::Format(LineBuffer, "value=%f %f %f", config.properties[i].ValueV3);
+                break;
+            case Shader::UniformType::Float32_4:
+                MString::Format(LineBuffer, "value=%f %f %f %f", config.properties[i].ValueV4.elements);
+                break;
+            case Shader::UniformType::Int8:
+                MString::Format(LineBuffer, "value=%d", config.properties[i].ValueI8);
+                break;
+            case Shader::UniformType::Int16:
+                MString::Format(LineBuffer, "value=%d", config.properties[i].ValueI16);
+                break;
+            case Shader::UniformType::Int32:
+                MString::Format(LineBuffer, "value=%d", config.properties[i].ValueI32);
+                break;
+            case Shader::UniformType::UInt8:
+                MString::Format(LineBuffer, "value=%u", config.properties[i].ValueU8);
+                break;
+            case Shader::UniformType::UInt16:
+                MString::Format(LineBuffer, "value=%u", config.properties[i].ValueU16);
+                break;
+            case Shader::UniformType::UInt32:
+                MString::Format(LineBuffer, "value=%u", config.properties[i].ValueU32);
+                break;
+            case Shader::UniformType::Matrix4:
+                MString::Format(LineBuffer, "value=%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f ",
+                              config.properties[i].ValueMatrix4D.data[0],
+                              config.properties[i].ValueMatrix4D.data[1],
+                              config.properties[i].ValueMatrix4D.data[2],
+                              config.properties[i].ValueMatrix4D.data[3],
+                              config.properties[i].ValueMatrix4D.data[4],
+                              config.properties[i].ValueMatrix4D.data[5],
+                              config.properties[i].ValueMatrix4D.data[6],
+                              config.properties[i].ValueMatrix4D.data[7],
+                              config.properties[i].ValueMatrix4D.data[8],
+                              config.properties[i].ValueMatrix4D.data[9],
+                              config.properties[i].ValueMatrix4D.data[10],
+                              config.properties[i].ValueMatrix4D.data[11],
+                              config.properties[i].ValueMatrix4D.data[12],
+                              config.properties[i].ValueMatrix4D.data[13],
+                              config.properties[i].ValueMatrix4D.data[14],
+                              config.properties[i].ValueMatrix4D.data[15]);
+                break;
+            case Shader::UniformType::Sampler:
+            case Shader::UniformType::Custom:
+            default:
+                MERROR("Неподдерживаемый тип свойства материала.");
+                break;
+        }
+        Filesystem::WriteLine(f, LineBuffer);
+        Filesystem::WriteLine(f, "[/prop]");
+    }
 
     Filesystem::Close(f);
 

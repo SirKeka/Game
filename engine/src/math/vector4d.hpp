@@ -6,9 +6,8 @@
 #include "vector3d.hpp"
 
 template<typename T>
-class Vector4D
+struct Vector4D
 {
-public:
 #if defined(MUSE_SIMD)
     // Используется для операций SIMD.
     alignas(16) __m128 data; // или __m256
@@ -16,7 +15,7 @@ public:
 
 	union {
         // Массив x, y, z, w
-        /*alignas(16)*/ T elements[4];
+        T elements[4];
         struct {
             // Первый элемент.
 			union {T x, r;};
@@ -29,15 +28,15 @@ public:
         };
     };
 
-	constexpr Vector4D() : x(), y(), z(), w() {};
-	constexpr Vector4D(T x, T y, T z, T w) : x(x), y(y), z(z), w(w) {
+	constexpr Vector4D() noexcept : x(), y(), z(), w() {};
+	constexpr explicit Vector4D(T x, T y, T z, T w) noexcept : x(x), y(y), z(z), w(w) {
 #if defined(MUSE_SIMD)
     	data = _mm_setr_ps(x, y, z, w);
 #endif
 	}
 
-	constexpr Vector4D(const Vector2D<T>& v, f32 z = 0, f32 w = 0): x(v.x), y(v.y), z(z), w(w) {}
-	constexpr Vector4D(const Vector3D<T>& v, f32 w = 0) : x(v.x), y(v.y), z(v.z), w(w) {
+	constexpr explicit Vector4D(const Vector2D<T>& v, f32 z = 0, f32 w = 0) noexcept : x(v.x), y(v.y), z(z), w(w) {}
+	constexpr explicit Vector4D(const Vector3D<T>& v, f32 w = 0) noexcept : x(v.x), y(v.y), z(v.z), w(w) {
 #if defined(MUSE_SIMD)
     	Vector4D<T> OutVector;
     	OutVector.data = _mm_setr_ps(x, y, z, w);
@@ -45,7 +44,7 @@ public:
 #endif
 	}
 
-	constexpr Vector4D(const Vector4D& v) : x(v.x), y(v.y), z(v.z), w(v.w) {}
+	constexpr explicit Vector4D(const Vector4D& v) noexcept : x(v.x), y(v.y), z(v.z), w(v.w) {}
 
 	Vector4D& Set(T x, T y, T z, T w) {
 		this->x = x;

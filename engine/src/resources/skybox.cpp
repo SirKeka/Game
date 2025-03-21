@@ -1,8 +1,8 @@
-#include "skybox.hpp"
-#include "renderer/rendering_system.hpp"
-#include "systems/geometry_system.hpp"
+#include "skybox.h"
+#include "renderer/rendering_system.h"
+#include "systems/geometry_system.h"
 #include "systems/shader_system.h"
-#include "systems/texture_system.hpp"
+#include "systems/texture_system.h"
 
 bool Skybox::Create(Config& config)
 {
@@ -29,7 +29,6 @@ bool Skybox::Initialize()
     TextureMap* CubeMap = &cubemap;
     CubeMap->FilterMagnify = CubeMap->FilterMinify = TextureFilter::ModeLinear;
     CubeMap->RepeatU = CubeMap->RepeatV = CubeMap->RepeatW = TextureRepeat::ClampToEdge;
-    CubeMap->use = TextureUse::Cubemap;
 
     InstanceID = INVALID::ID;
 
@@ -54,7 +53,7 @@ bool Skybox::Load()
 
     auto SkyboxShader = ShaderSystem::GetShader("Shader.Builtin.Skybox");  // ЗАДАЧА: разрешить настраиваемый шейдер.
     TextureMap* maps[1] = {&cubemap};
-    if (!RenderingSystem::ShaderAcquireInstanceResources(SkyboxShader, maps, InstanceID)) {
+    if (!RenderingSystem::ShaderAcquireInstanceResources(SkyboxShader, 1, maps, InstanceID)) {
         MFATAL("Невозможно получить ресурсы шейдера для текстуры скайбокса.");
         return false;
     }

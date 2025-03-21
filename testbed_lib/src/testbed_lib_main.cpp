@@ -1,5 +1,5 @@
 #include "testbed_lib_main.hpp"
-#include "game.hpp"
+#include "game.h"
 
 bool CreateGame(const ApplicationConfig& config)
 {

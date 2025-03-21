@@ -1,7 +1,7 @@
 #include "shader_system.h"
 #include "memory/linear_allocator.hpp"
-#include "systems/texture_system.hpp"
-#include "renderer/rendering_system.hpp"
+#include "systems/texture_system.h"
+#include "renderer/rendering_system.h"
 #include "resources/texture_map.hpp"
 #include <new>
 
@@ -196,18 +196,20 @@ bool ShaderSystem::Use(const char *ShaderName)
 bool ShaderSystem::Use(u32 ShaderID)
 {
     // Выполняйте использование только в том случае, если идентификатор шейдера отличается.
-    if (pShaderSystem->CurrentShaderID != ShaderID) {
+    // if (pShaderSystem->CurrentShaderID != ShaderID) {
         auto NextShader = GetShader(ShaderID);
         pShaderSystem->CurrentShaderID = ShaderID;
+
         if (!RenderingSystem::ShaderUse(NextShader)) {
             MERROR("Не удалось использовать шейдер '%s'.", NextShader->name.c_str());
             return false;
         }
+        
         if (!NextShader->BindGlobals()) {
             MERROR("Не удалось привязать глобальные переменные для шейдера. '%s'.", NextShader->name.c_str());
             return false;
         }
-    }
+    // }
     return true;
 }
 
@@ -332,6 +334,7 @@ u32 GetShaderID(const MString &ShaderName)
         MERROR("Не зарегистрирован ни один шейдер с именем '%s'.", ShaderName.c_str());
         return INVALID::ID;
     }
+    // MTRACE("Получен идентификатор %u для шейдера с именем '%s'.", ShaderID, ShaderName.c_str());
     return ShaderID;
 }
 

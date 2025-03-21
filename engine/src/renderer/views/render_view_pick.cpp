@@ -1,10 +1,10 @@
 #include "render_view_pick.h"
 #include "memory/linear_allocator.hpp"
 #include "core/uuid.hpp"
-#include "renderer/rendering_system.hpp"
-#include "resources/ui_text.hpp"
+#include "renderer/rendering_system.h"
+#include "resources/ui_text.h"
 #include "systems/camera_system.hpp"
-#include "systems/resource_system.hpp"
+#include "systems/resource_system.h"
 #include "systems/shader_system.h"
 
 RenderViewPick::RenderViewPick(u16 id, const Config &config)
@@ -474,12 +474,12 @@ void RenderViewPick::AcquireShaderInstances()
     // Не сохраняем идентификатор экземпляра, так как это не имеет значения.
     u32 instance;
     // Шейдер пользовательского интерфейса
-    if (!RenderingSystem::ShaderAcquireInstanceResources(UiShaderInfo.s, nullptr, instance)) {
+    if (!RenderingSystem::ShaderAcquireInstanceResources(UiShaderInfo.s, 0, nullptr, instance)) {
         MFATAL("RenderViewPick не удалось получить ресурсы шейдера.");
         return;
     }
     // Шейдер мира
-    if (!RenderingSystem::ShaderAcquireInstanceResources(WorldShaderInfo.s, nullptr, instance)) {
+    if (!RenderingSystem::ShaderAcquireInstanceResources(WorldShaderInfo.s, 0, nullptr, instance)) {
         MFATAL("RenderViewPick не удалось получить ресурсы шейдера.");
         return;
     }

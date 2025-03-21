@@ -2,7 +2,7 @@
 
 #include "vulkan_api.hpp"
 #include "vulkan_image.hpp"
-#include <systems/texture_system.hpp>
+#include <systems/texture_system.h>
 
 bool VulkanSwapchain::AcquireNextImageIndex(
     VulkanAPI *VkAPI,  

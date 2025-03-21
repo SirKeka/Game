@@ -8,9 +8,9 @@
 
 #include "renderer/renderbuffer.hpp"
 
-#include <systems/material_system.hpp>
-#include <systems/texture_system.hpp>
-#include <systems/resource_system.hpp>
+#include <systems/material_system.h>
+#include <systems/texture_system.h>
+#include <systems/resource_system.h>
 #include <core/frame_data.h>
 
 #include <math/vertex.hpp>
@@ -928,7 +928,8 @@ void VulkanAPI::TextureReadData(Texture *texture, u32 offset, u32 size, void **O
 
     // Создайте промежуточный буфер и загрузите в него данные.
     RenderBuffer staging;
-    if (!RenderBufferCreate(RenderBufferType::Read, size, false, staging)) {
+    char bufname[] = "renderbuffer_texture_read_staging";
+    if (!RenderBufferCreate(bufname, RenderBufferType::Read, size, false, staging)) {
         MERROR("Не удалось создать промежуточный буфер для чтения текстуры.");
         return;
     }
@@ -981,7 +982,8 @@ void VulkanAPI::TextureReadPixel(Texture *texture, u32 x, u32 y, u8 **OutRgba)
 
     // Создайте промежуточный буфер и загрузите в него данные.
     RenderBuffer staging;
-    if (!RenderBufferCreate(RenderBufferType::Read, sizeof(u8) * 4, false, staging)) {
+    char bufname[] = "renderbuffer_texture_read_staging";
+    if (!RenderBufferCreate(bufname, RenderBufferType::Read, sizeof(u8) * 4, false, staging)) {
         MERROR("Не удалось создать промежуточный буфер для чтения пикселей текстуры.");
         return;
     }
@@ -1527,8 +1529,9 @@ bool VulkanAPI::ShaderInitialize(Shader *shader)
 
     // Однородный буфер.
     // ЗАДАЧА: Максимальное количество должно быть настраиваемым или, возможно, иметь долгосрочную поддержку изменения размера буфера.
-    u64 TotalBufferSize = shader->GlobalUboStride + (shader->UboStride * VULKAN_MAX_MATERIAL_COUNT);  // global + (locals)
-    if (!RenderBufferCreate(RenderBufferType::Uniform, TotalBufferSize, true, VkShader->UniformBuffer)) {
+    const u64 TotalBufferSize = shader->GlobalUboStride + (shader->UboStride * VULKAN_MAX_MATERIAL_COUNT);  // global + (locals)
+    char bufname[] = "renderbuffer_global_uniform";
+    if (!RenderBufferCreate(bufname, RenderBufferType::Uniform, TotalBufferSize, true, VkShader->UniformBuffer)) {
         MERROR("VulkanAPI::ShaderInitialize — не удалось создать буфер Vulkan для шейдера объекта.");
         return false;
     }
@@ -1751,7 +1754,7 @@ VkFilter ConvertFilterType(const char* op, TextureFilter filter) {
     }
 }
 
-bool VulkanAPI::ShaderAcquireInstanceResources(Shader *shader, TextureMap** maps, u32 &OutInstanceID)
+bool VulkanAPI::ShaderAcquireInstanceResources(Shader *shader, u32 TextureMapCount, TextureMap** maps, u32 &OutInstanceID)
 {
     auto VkShader = shader->ShaderData;
     // ЗАДАЧА: динамическим
@@ -1769,16 +1772,16 @@ bool VulkanAPI::ShaderAcquireInstanceResources(Shader *shader, TextureMap** maps
     }
 
     auto& InstanceState = VkShader->InstanceStates[OutInstanceID];
-    const u8& SamplerBindingIndex = VkShader->config.DescriptorSets[DESC_SET_INDEX_INSTANCE].SamplerBindingIndex;
-    const u32& InstanceTextureCount = VkShader->config.DescriptorSets[DESC_SET_INDEX_INSTANCE].bindings[SamplerBindingIndex].descriptorCount;
+    // const u8& SamplerBindingIndex = VkShader->config.DescriptorSets[DESC_SET_INDEX_INSTANCE].SamplerBindingIndex;
+    // const u32& InstanceTextureCount = VkShader->config.DescriptorSets[DESC_SET_INDEX_INSTANCE].bindings[SamplerBindingIndex].descriptorCount;
     // Настраивайте только в том случае, если шейдер действительно этого требует.
     if (shader->InstanceTextureCount > 0) {
         // Очистите память всего массива, даже если она не вся использована.
         InstanceState.InstanceTextureMaps = MemorySystem::TAllocate<TextureMap*>(Memory::Array, shader->InstanceTextureCount, true);
-        Texture* DefaultTexture = TextureSystem::GetDefaultTexture(Texture::Default);
-        MemorySystem::CopyMem(InstanceState.InstanceTextureMaps, maps, sizeof(TextureMap*) * shader->InstanceTextureCount);
+        auto DefaultTexture = TextureSystem::GetDefaultTexture(Texture::Default);
+        MemorySystem::CopyMem(InstanceState.InstanceTextureMaps, maps, sizeof(TextureMap*) * TextureMapCount);
         // Установите для всех указателей текстур значения по умолчанию, пока они не будут назначены.
-        for (u32 i = 0; i < InstanceTextureCount; ++i) {
+        for (u32 i = 0; i < TextureMapCount; ++i) {
             if (!maps[i]->texture) {
                 InstanceState.InstanceTextureMaps[i]->texture = DefaultTexture;
             }
@@ -2231,10 +2234,17 @@ bool VulkanBufferIsHostCoherent(VulkanBuffer* buffer)
     return (buffer->MemoryPropertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) == VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 }
 
-bool VulkanAPI::RenderBufferCreate(RenderBufferType type, u64 TotalSize, bool UseFreelist, RenderBuffer &buffer)
+bool VulkanAPI::RenderBufferCreate(const char* name, RenderBufferType type, u64 TotalSize, bool UseFreelist, RenderBuffer &buffer)
 {
     buffer.type = type;
     buffer.TotalSize = TotalSize;
+    if (name) {
+        buffer.name = name;
+    } else {
+        char TempName[256]{};
+        MString::Format(TempName, "renderbuffer_%s", "unnamed");
+        buffer.name = TempName;
+    }
     if (UseFreelist) {
         buffer.FreelistMemoryRequirement = FreeList::GetMemoryRequirement(TotalSize);
         buffer.FreelistBlock = MemorySystem::Allocate(buffer.FreelistMemoryRequirement, Memory::Renderer);
@@ -2427,7 +2437,8 @@ bool VulkanAPI::RenderBufferRead(RenderBuffer &buffer, u64 offset, u64 size, voi
 
         // Создайте видимый хосту промежуточный буфер для копирования. Отметьте его как место назначения передачи.
         RenderBuffer read;
-        if (!RenderBufferCreate(RenderBufferType::Read, size, false, read)) {
+        char bufname[] = "renderbuffer_read";
+        if (!RenderBufferCreate(bufname, RenderBufferType::Read, size, false, read)) {
             MERROR("VulkanAPI::RenderBufferRead() - Не удалось создать буфер чтения.");
             return false;
         }
@@ -2540,7 +2551,8 @@ bool VulkanAPI::RenderBufferLoadRange(RenderBuffer &buffer, u64 offset, u64 size
 
         // Создайте видимый хосту промежуточный буфер для загрузки. Отметьте его как источник передачи.
         RenderBuffer staging;
-        if (!RenderBufferCreate(RenderBufferType::Staging, size, false, staging)) {
+        char bufname[] = "renderbuffer_loadrange_staging";
+        if (!RenderBufferCreate(bufname, RenderBufferType::Staging, size, false, staging)) {
             MERROR("VulkanAPI::RenderBufferLoadRange() - Не удалось создать промежуточный буфер.");
             return false;
         }

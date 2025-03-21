@@ -1,7 +1,7 @@
-#include "ui_text.hpp"
+#include "ui_text.h"
 #include "core/identifier.hpp"
-#include "renderer/rendering_system.hpp"
-#include "systems/font_system.hpp"
+#include "renderer/rendering_system.h"
+#include "systems/font_system.h"
 #include "systems/shader_system.h"
 #include "math/vertex.hpp"
 #include "resources/texture_map.hpp"
@@ -9,28 +9,13 @@
 
 Text::~Text()
 {
-    /*if (text->text) {
-        u32 TextLength = string_length(text->text);
-        kfree(text->text, sizeof(char) * TextLength, MEMORY_TAG_STRING);
-        text->text = 0;
-    }*/
-   
-    // Освободите уникальный идентификатор.
-    Identifier::ReleaseID(UniqueID);
-
-    // Уничтожить буферы.
-    RenderingSystem::RenderBufferDestroy(VertexBuffer);
-    RenderingSystem::RenderBufferDestroy(IndexBuffer);
-
-    // Освободить ресурсы для карты текстуры шрифта.
-    auto UiShader = ShaderSystem::GetShader("Shader.Builtin.UI");  // ЗАДАЧА: Текстовый шейдер.
-    if (!RenderingSystem::ShaderReleaseInstanceResources(UiShader, InstanceID)) {
-        MFATAL("Невозможно освободить ресурсы шейдера для текстурной карты шрифта.");
+    if (name || text) {
+        Destroy();
     }
-    MemorySystem::ZeroMem(this, sizeof(Text));
+    
 }
 
-bool Text::Create(TextType type, const char *FontName, u16 FontSize, const char *TextContent)
+bool Text::Create(const char* name, TextType type, const char *FontName, u16 FontSize, const char *TextContent)
 {
     if (!FontName || !TextContent) {
         MERROR("Text::Text требует допустимый указатель на FontName, TextContent.");
@@ -48,6 +33,7 @@ bool Text::Create(TextType type, const char *FontName, u16 FontSize, const char 
         return false;
     }
 
+    this->name = name;
     text = TextContent;
 
     static const u64 QuadSize = (sizeof(Vertex2D) * 4);
@@ -61,29 +47,33 @@ bool Text::Create(TextType type, const char *FontName, u16 FontSize, const char 
     // Получите ресурсы для карты текстуры шрифта.
     auto UiShader = ShaderSystem::GetShader("Shader.Builtin.UI");  // ЗАДАЧА: Текстовый шейдер.
     TextureMap* FontMaps[1] = { &data->atlas };
-    if (!RenderingSystem::ShaderAcquireInstanceResources(UiShader, FontMaps, InstanceID)) {
+    if (!RenderingSystem::ShaderAcquireInstanceResources(UiShader, 1, FontMaps, InstanceID)) {
         MFATAL("Не удалось получить ресурсы шейдера для карты текстуры шрифта.");
         return false;
     }
 
     // Сгенерируйте буфер вершин.
-    if (!RenderingSystem::RenderBufferCreate(RenderBufferType::Vertex, TextLength * QuadSize, false, VertexBuffer)) {
-        MERROR("text_create не удалось создать буфер рендеринга вершин.");
+    char BufName[256]{};
+    MString::Format(BufName, "renderbuffer_vertexbuffer_uitext_%s", name);
+    if (!RenderingSystem::RenderBufferCreate(BufName, RenderBufferType::Vertex, TextLength * QuadSize, false, VertexBuffer)) {
+        MERROR("Text::Create не удалось создать буфер рендеринга вершин.");
         return false;
     }
     if (!RenderingSystem::RenderBufferBind(VertexBuffer, 0)) {
-        MERROR("text_create не удалось привязать буфер рендеринга вершин.");
+        MERROR("Text::Create не удалось привязать буфер рендеринга вершин.");
         return false;
     }
 
     // Сгенерируйте буфер индексов.
+    MString::Zero(BufName);
+    MString::Format(BufName, "renderbuffer_indexbuffer_uitext_%s", name);
     static const u8 QuadIndexSize = sizeof(u32) * 6;
-    if (!RenderingSystem::RenderBufferCreate(RenderBufferType::Index, TextLength * QuadIndexSize, false, IndexBuffer)) {
-        MERROR("text_create не удалось создать буфер рендеринга индекса.");
+    if (!RenderingSystem::RenderBufferCreate(BufName, RenderBufferType::Index, TextLength * QuadIndexSize, false, IndexBuffer)) {
+        MERROR("Text::Create не удалось создать буфер рендеринга индекса.");
         return false;
     }
     if (!RenderingSystem::RenderBufferBind(IndexBuffer, 0)) {
-        MERROR("text_create не удалось привязать буфер рендеринга индекса.");
+        MERROR("Text::Create не удалось привязать буфер рендеринга индекса.");
         return false;
     }
 
@@ -100,6 +90,31 @@ bool Text::Create(TextType type, const char *FontName, u16 FontSize, const char 
     UniqueID = Identifier::AquireNewID(this);
 
     return true;
+}
+
+void Text::Destroy()
+{
+    if (name) {
+        name.Clear();
+    }
+    
+    if (text) {
+        text.Clear();
+    }
+   
+    // Освободите уникальный идентификатор.
+    Identifier::ReleaseID(UniqueID);
+
+    // Уничтожить буферы.
+    RenderingSystem::RenderBufferDestroy(VertexBuffer);
+    RenderingSystem::RenderBufferDestroy(IndexBuffer);
+
+    // Освободить ресурсы для карты текстуры шрифта.
+    auto UiShader = ShaderSystem::GetShader("Shader.Builtin.UI");  // ЗАДАЧА: Текстовый шейдер.
+    if (!RenderingSystem::ShaderReleaseInstanceResources(UiShader, InstanceID)) {
+        MFATAL("Невозможно освободить ресурсы шейдера для текстурной карты шрифта.");
+    }
+    MemorySystem::ZeroMem(this, sizeof(Text));
 }
 
 void Text::SetPosition(const FVec3& position)

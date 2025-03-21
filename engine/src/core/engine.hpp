@@ -6,7 +6,7 @@
 #include "clock.hpp"
 #include "systems_manager.hpp"
 
-#include "systems/font_system.hpp"
+#include "systems/font_system.h"
 
 #include "platform/platform.hpp"
 #include "renderer/renderer_types.hpp"

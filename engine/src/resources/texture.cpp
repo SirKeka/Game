@@ -1,5 +1,5 @@
 #include "texture.hpp"
-#include "renderer/rendering_system.hpp"
+#include "renderer/rendering_system.h"
 
 Texture::~Texture()
 {

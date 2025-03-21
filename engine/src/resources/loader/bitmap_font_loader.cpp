@@ -1,6 +1,6 @@
 #include "resource_loader.h"
 #include "resources/font_resource.hpp"
-#include "systems/resource_system.hpp"
+#include "systems/resource_system.h"
 #include "core/mmemory.hpp"
 
 #include <stdio.h>  //sscanf

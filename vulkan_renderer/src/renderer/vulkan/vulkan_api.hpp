@@ -97,15 +97,15 @@ public:
     // Методы относящиеся к шейдерам---------------------------------------------------------------------------------------------------------------------------------------------
 
     bool Load                          (Shader *shader, const Shader::Config& config, Renderpass* renderpass, const DArray<Shader::Stage>& stages, const DArray<MString>& StageFilenames) override;
-    void Unload                        (Shader* shader)                                                   override;
-    bool ShaderInitialize              (Shader* shader)                                                   override;
-    bool ShaderUse                     (Shader* shader)                                                   override;
-    bool ShaderApplyGlobals            (Shader* shader)                                                   override;
-    bool ShaderApplyInstance           (Shader* shader, bool NeedsUpdate)                                 override;
-    bool ShaderBindInstance            (Shader* shader, u32 InstanceID)                                   override;
-    bool ShaderAcquireInstanceResources(Shader* shader, TextureMap** maps, u32& OutInstanceID)            override;
-    bool ShaderReleaseInstanceResources(Shader* shader, u32 InstanceID)                                   override;
-    bool SetUniform                    (Shader* shader, struct Shader::Uniform* uniform, const void* value) override;
+    void Unload                        (Shader* shader)                                                                                                                                   override;
+    bool ShaderInitialize              (Shader* shader)                                                                                                                                   override;
+    bool ShaderUse                     (Shader* shader)                                                                                                                                   override;
+    bool ShaderApplyGlobals            (Shader* shader)                                                                                                                                   override;
+    bool ShaderApplyInstance           (Shader* shader, bool NeedsUpdate)                                                                                                                 override;
+    bool ShaderBindInstance            (Shader* shader, u32 InstanceID)                                                                                                                   override;
+    bool ShaderAcquireInstanceResources(Shader* shader, u32 TextureMapCount, TextureMap** maps, u32& OutInstanceID)                                                                       override;
+    bool ShaderReleaseInstanceResources(Shader* shader, u32 InstanceID)                                                                                                                   override;
+    bool SetUniform                    (Shader* shader, struct Shader::Uniform* uniform, const void* value)                                                                               override;
 
     bool TextureMapAcquireResources(TextureMap* map) override;
     void TextureMapReleaseResources(TextureMap* map) override;
@@ -123,19 +123,19 @@ public:
                 //                           RenderBuffer                           //
     //////////////////////////////////////////////////////////////////////////////////////////////
 
-    bool  RenderBufferCreate         (RenderBufferType type, u64 TotalSize, bool UseFreelist, RenderBuffer& buffer)         override;
-    bool  RenderBufferCreateInternal (RenderBuffer& buffer)                                                                 override;
-    void  RenderBufferDestroyInternal(RenderBuffer& buffer)                                                                 override;
-    bool  RenderBufferBind           (RenderBuffer& buffer, u64 offset)                                                     override;
-    bool  RenderBufferUnbind         (RenderBuffer& buffer)                                                                 override;
-    void* RenderBufferMapMemory      (RenderBuffer& buffer, u64 offset, u64 size)                                           override;
-    void  RenderBufferUnmapMemory    (RenderBuffer& buffer, u64 offset, u64 size)                                           override;
-    bool  RenderBufferFlush          (RenderBuffer& buffer, u64 offset, u64 size)                                           override;
-    bool  RenderBufferRead           (RenderBuffer& buffer, u64 offset, u64 size, void** OutMemory)                         override;
-    bool  RenderBufferResize         (RenderBuffer& buffer, u64 NewTotalSize)                                               override;
-    bool  RenderBufferLoadRange      (RenderBuffer& buffer, u64 offset, u64 size, const void* data)                         override;
-    bool  RenderBufferCopyRange      (RenderBuffer& source, u64 SourceOffset, RenderBuffer& dest, u64 DestOffset, u64 size) override;
-    bool  RenderBufferDraw           (RenderBuffer& buffer, u64 offset, u32 ElementCount, bool BindOnly)                    override;
+    bool  RenderBufferCreate         (const char* name, RenderBufferType type, u64 TotalSize, bool UseFreelist, RenderBuffer& buffer) override;
+    bool  RenderBufferCreateInternal (RenderBuffer& buffer)                                                                           override;
+    void  RenderBufferDestroyInternal(RenderBuffer& buffer)                                                                           override;
+    bool  RenderBufferBind           (RenderBuffer& buffer, u64 offset)                                                               override;
+    bool  RenderBufferUnbind         (RenderBuffer& buffer)                                                                           override;
+    void* RenderBufferMapMemory      (RenderBuffer& buffer, u64 offset, u64 size)                                                     override;
+    void  RenderBufferUnmapMemory    (RenderBuffer& buffer, u64 offset, u64 size)                                                     override;
+    bool  RenderBufferFlush          (RenderBuffer& buffer, u64 offset, u64 size)                                                     override;
+    bool  RenderBufferRead           (RenderBuffer& buffer, u64 offset, u64 size, void** OutMemory)                                   override;
+    bool  RenderBufferResize         (RenderBuffer& buffer, u64 NewTotalSize)                                                         override;
+    bool  RenderBufferLoadRange      (RenderBuffer& buffer, u64 offset, u64 size, const void* data)                                   override;
+    bool  RenderBufferCopyRange      (RenderBuffer& source, u64 SourceOffset, RenderBuffer& dest, u64 DestOffset, u64 size)           override;
+    bool  RenderBufferDraw           (RenderBuffer& buffer, u64 offset, u32 ElementCount, bool BindOnly)                              override;
 
     /// @brief Функция поиска индекса памяти заданного типа и с заданными свойствами.
     /// @param TypeFilter типы памяти для поиска.
@@ -144,7 +144,7 @@ public:
     i32 FindMemoryIndex(u32 TypeFilter, VkMemoryPropertyFlags PropertyFlags);
     /// @brief Указывает, поддерживает ли рендерер многопоточность.
     const bool& IsMultithreaded() override;
-    bool FlagEnabled(RendererConfigFlags flag) override;
+    bool FlagEnabled   (RendererConfigFlags flag)               override;
     void FlagSetEnabled(RendererConfigFlags flag, bool enabled) override;
 
 private:

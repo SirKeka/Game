@@ -1,6 +1,6 @@
-#include "geometry_system.hpp"
+#include "geometry_system.h"
 #include "material_system.h"
-#include "renderer/rendering_system.hpp"
+#include "renderer/rendering_system.h"
 #include "math/geometry_utils.hpp"
 #include "memory/linear_allocator.hpp"
 #include <new>
@@ -424,7 +424,7 @@ bool GeometrySystem::CreateDefaultGeometries()
     }
 
     // Получите материал по умолчанию.
-    state->Default2dGeometry.material = MaterialSystem::GetDefaultMaterial();
+    state->Default2dGeometry.material = MaterialSystem::GetDefaultUiMaterial();
 
     return true;
 }

@@ -1,15 +1,15 @@
-#include "render_view_system.hpp"
+#include "render_view_system.h"
 #include "memory/linear_allocator.hpp"
 #include "containers/hashtable.hpp"
-#include "renderer/rendering_system.hpp"
+#include "renderer/rendering_system.h"
 
 #include <new>
 
 // ЗАДАЧА: временно - создайте фабрику и зарегистрируйтесь.
-#include "renderer/views/render_view_world.hpp"
-#include "renderer/views/render_view_ui.hpp"
-#include "renderer/views/render_view_skybox.hpp"
-#include "renderer/views/render_view_pick.hpp"
+#include "renderer/views/render_view_world.h"
+#include "renderer/views/render_view_ui.h"
+#include "renderer/views/render_view_skybox.h"
+#include "renderer/views/render_view_pick.h"
 
 RenderViewSystem* RenderViewSystem::state = nullptr;
 

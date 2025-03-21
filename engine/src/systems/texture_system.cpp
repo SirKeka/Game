@@ -1,7 +1,7 @@
-#include "texture_system.hpp"
+#include "texture_system.h"
 #include "containers/mstring.hpp"
-#include "renderer/rendering_system.hpp"
-#include "systems/resource_system.hpp"
+#include "renderer/rendering_system.h"
+#include "systems/resource_system.h"
 #include "systems/job_systems.hpp"
 
 #include "memory/linear_allocator.hpp"
@@ -110,6 +110,21 @@ Texture *TextureSystem::Acquire(const char* name, bool AutoRelease)
     if (MString::Equali(name, DEFAULT_TEXTURE_NAME)) {
         MWARN("TextureSystem::Acquire: вызывает текстуру по умолчанию. Используйте TextureSystem::GetDefaultTexture для текстуры «по умолчанию».");
         return GetDefaultTexture(Texture::Default);
+    }
+
+    if (MString::Equali(name, DEFAULT_DIFFUSE_TEXTURE_NAME)) {
+        MWARN("TextureSystem::Acquire вызывается для диффузной текстуры по умолчанию. Используйте TextureSystem::GetDefaultTexture для текстуры 'default_diffuse'.");
+        return GetDefaultTexture(Texture::Diffuse);
+    }
+
+    if (MString::Equali(name, DEFAULT_SPECULAR_TEXTURE_NAME)) {
+        MWARN("TextureSystem::Acquire вызывается для текстуры по умолчанию. Используйте TextureSystem::GetDefaultTexture для текстуры 'default_specular'.");
+        return GetDefaultTexture(Texture::Specular);
+    }
+
+    if (MString::Equali(name, DEFAULT_NORMAL_TEXTURE_NAME)) {
+        MWARN("TextureSystem::Acquire вызывается для текстуры по умолчанию. Используйте TextureSystem::GetDefaultTexture для текстуры 'default_normal'.");
+        return GetDefaultTexture(Texture::Normal);
     }
 
     u32 id = INVALID::ID;
@@ -539,6 +554,8 @@ bool ProcessTextureReference(const char *name, TextureType type, i8 ReferenceDif
                             }
                             texture.id = ref.handle;
                         }
+                        // Обязательно сохраните название текстуры.
+                        MString::Copy(texture.name, name, TEXTURE_NAME_MAX_LENGTH);
                         // MTRACE("Текстура «%s» еще не существует. Создано, и ref_count теперь равен %i.", name, ref.ReferenceCount);
                     }
                 } else {

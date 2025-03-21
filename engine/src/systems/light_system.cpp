@@ -1,4 +1,4 @@
-#include "light_system.hpp"
+#include "light_system.h"
 
 #include "core/systems_manager.hpp"
 #include "core/mmemory.hpp"

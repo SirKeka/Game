@@ -4,10 +4,10 @@
 #include "renderer/renderpass.hpp"
 #include "resources/font_resource.hpp"
 #include "resources/mesh.hpp"
-#include "renderer/rendering_system.hpp"
+#include "renderer/rendering_system.h"
 #include "renderer/renderpass.hpp"
 #include "systems/material_system.h"
-#include "systems/resource_system.hpp"
+#include "systems/resource_system.h"
 #include "resources/geometry.hpp"
 
 RenderViewUI::RenderViewUI(u16 id, const Config &config)

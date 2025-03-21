@@ -1,6 +1,6 @@
 #include "mesh.hpp"
-#include "systems/resource_system.hpp"
-#include "systems/geometry_system.hpp"
+#include "systems/resource_system.h"
+#include "systems/geometry_system.h"
 #include "systems/job_systems.hpp"
 #include "core/identifier.hpp"
 

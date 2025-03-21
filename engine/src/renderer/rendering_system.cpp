@@ -1,13 +1,13 @@
-#include "rendering_system.hpp"
+#include "rendering_system.h"
 #include "memory/linear_allocator.hpp"
 #include "platform/platform.hpp"
-#include "systems/resource_system.hpp"
-#include "systems/texture_system.hpp"
+#include "systems/resource_system.h"
+#include "systems/texture_system.h"
 #include "systems/material_system.h"
 #include "systems/shader_system.h"
 #include "systems/camera_system.hpp"
-#include "systems/render_view_system.hpp"
-#include "views/render_view.hpp"
+#include "systems/render_view_system.h"
+#include "views/render_view.h"
 #include "core/mvar.hpp"
 #include "core/systems_manager.hpp"
 
@@ -109,7 +109,7 @@ bool RenderingSystem::DrawFrame(const RenderPacket &packet, const FrameData& rFr
         
         // Отобразить каждое представление.
         for (u32 i = 0; i < packet.ViewCount; i++) {
-            if (!RenderViewSystem::OnRender(packet.views[i].view, packet.views[i], renderer->FrameNumber, AttachmentIndex)) {
+            if (!RenderViewSystem::OnRender(packet.views[i].view, packet.views[i], renderer->FrameNumber, AttachmentIndex, rFrameData)) {
                 MERROR("Ошибка рендеринга индекса представления %i.", i);
             }
         }
@@ -264,10 +264,10 @@ bool RenderingSystem::ShaderApplyInstance(Shader *shader, bool NeedsUpdate)
     return pRenderingSystem->ptrRenderer->ShaderApplyInstance(shader, NeedsUpdate);
 }
 
-bool RenderingSystem::ShaderAcquireInstanceResources(Shader *shader, TextureMap **maps, u32 &OutInstanceID)
+bool RenderingSystem::ShaderAcquireInstanceResources(Shader *shader, u32 TextureMapCount, TextureMap **maps, u32 &OutInstanceID)
 {
     auto pRenderingSystem = reinterpret_cast<sRenderingSystem*>(SystemsManager::GetState(MSystem::Type::Renderer));
-    return pRenderingSystem->ptrRenderer->ShaderAcquireInstanceResources(shader, maps, OutInstanceID);
+    return pRenderingSystem->ptrRenderer->ShaderAcquireInstanceResources(shader, TextureMapCount, maps, OutInstanceID);
 }
 
 bool RenderingSystem::ShaderBindInstance(Shader *shader, u32 InstanceID)
@@ -377,10 +377,10 @@ bool RenderingSystem::RenderBufferCreate(RenderBuffer &buffer)
     return true;
 }
 
-bool RenderingSystem::RenderBufferCreate(RenderBufferType type, u64 TotalSize, bool UseFreelist, RenderBuffer &buffer)
+bool RenderingSystem::RenderBufferCreate(const char* name, RenderBufferType type, u64 TotalSize, bool UseFreelist, RenderBuffer &buffer)
 {
     auto pRenderingSystem = reinterpret_cast<sRenderingSystem*>(SystemsManager::GetState(MSystem::Type::Renderer));
-    return pRenderingSystem->ptrRenderer->RenderBufferCreate(type, TotalSize, UseFreelist, buffer);
+    return pRenderingSystem->ptrRenderer->RenderBufferCreate(name, type, TotalSize, UseFreelist, buffer);
 }
 
 void RenderingSystem::RenderBufferDestroy(RenderBuffer &buffer)

@@ -1,5 +1,5 @@
 #include "resource_loader.h"
-#include "systems/resource_system.hpp"
+#include "systems/resource_system.h"
 
 enum class SimpleSceneParseMode {
     Root,
@@ -7,7 +7,8 @@ enum class SimpleSceneParseMode {
     Skybox,
     DieectionalLight,
     PointLight,
-    Mesh
+    Mesh,
+    Terrain
 };
 
 static bool TryChangeMode(const MString& value, SimpleSceneParseMode& current, SimpleSceneParseMode ExpectedCurrent, SimpleSceneParseMode target);
@@ -39,6 +40,7 @@ bool ResourceLoader::Load(const char *name, void *params, SimpleSceneResource &O
     // Буферные объекты, которые заполняются при нахождении в соответствующем режиме и помещаются в список при выходе из этого режима.
     PointLightSimpleSceneConfig CurrentPointLightConfig{};
     MeshSimpleSceneConfig CurrentMeshConfig{};
+    TerrainSimpleSceneConfig CurrentTerrainConfig{};
 
     // Прочитайте каждую строку файла.
     char LineBuf[512] = "";
@@ -119,6 +121,24 @@ bool ResourceLoader::Load(const char *name, void *params, SimpleSceneResource &O
                 // Вставить в массив, затем очистить.
                 data.meshes.PushBack(static_cast<MeshSimpleSceneConfig&&>(CurrentMeshConfig));
                 MemorySystem::ZeroMem(&CurrentMeshConfig, sizeof(MeshSimpleSceneConfig));
+            } else if (line.Comparei("[Terrain]")) {
+                if (!TryChangeMode(line, mode, SimpleSceneParseMode::Root, SimpleSceneParseMode::Terrain)) {
+                    return false;
+                }
+                // MemorySystem::ZeroMem(&CurrentTerrainConfig, sizeof(TerrainSimpleSceneConfig));
+                // Также настройте преобразование по умолчанию.
+                // CurrentTerrainConfig.xform = Transform();
+            } else if (line.Comparei("[/Terrain]")) {
+                if (!TryChangeMode(line, mode, SimpleSceneParseMode::Terrain, SimpleSceneParseMode::Root)) {
+                    return false;
+                }
+                if (!CurrentTerrainConfig.name || !CurrentTerrainConfig.ResourceName) {
+                    MWARN("Ошибка формата: для ландшафтов требуются как имя, так и имя ресурса. Ландшафт не добавлен.");
+                    continue;
+                }
+                // Вставьте в массив, затем очистите.
+                data.terrains.PushBack(static_cast<TerrainSimpleSceneConfig&&>(CurrentTerrainConfig));
+                MemorySystem::ZeroMem(&CurrentTerrainConfig, sizeof(TerrainSimpleSceneConfig));
             } else {
                 MERROR("Ошибка загрузки файла простой сцены: ошибка формата. Неожиданный тип объекта '%s'", line.c_str());
                 return false;
@@ -174,6 +194,9 @@ bool ResourceLoader::Load(const char *name, void *params, SimpleSceneResource &O
                     case SimpleSceneParseMode::Mesh:
                         CurrentMeshConfig.name = static_cast<MString&&>(LineValue);
                         break;
+                    case SimpleSceneParseMode::Terrain:
+                        CurrentTerrainConfig.name = static_cast<MString&&>(LineValue);
+                        break;
                 }
             } else if (LineVarName.Comparei("colour")) {
                 switch (mode) {
@@ -208,6 +231,8 @@ bool ResourceLoader::Load(const char *name, void *params, SimpleSceneResource &O
             } else if (LineVarName.Comparei("resource_name")) {
                 if (mode == SimpleSceneParseMode::Mesh) {
                     CurrentMeshConfig.ResourceName = static_cast<MString&&>(LineValue);
+                } else if (mode == SimpleSceneParseMode::Terrain) {
+                    CurrentTerrainConfig.ResourceName = static_cast<MString&&>(LineValue);
                 } else {
                     MWARN("Предупреждение формата: Невозможно обработать resource_name в текущем узле.");
                 }
@@ -239,6 +264,10 @@ bool ResourceLoader::Load(const char *name, void *params, SimpleSceneResource &O
                 if (mode == SimpleSceneParseMode::Mesh) {
                     if (!LineValue.ToTransform(CurrentMeshConfig.transform)) {
                         MWARN("Ошибка анализа преобразования сетки. Используется значение по умолчанию.");
+                    }
+                } else if (mode == SimpleSceneParseMode::Terrain) {
+                    if (!LineValue.ToTransform(CurrentMeshConfig.transform)) {
+                        MWARN("Ошибка анализа преобразования рельефа. Используется значение по умолчанию.");
                     }
                 } else {
                     MWARN("Предупреждение формата: Невозможно обработать преобразование в текущем узле.");

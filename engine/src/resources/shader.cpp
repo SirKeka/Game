@@ -1,5 +1,5 @@
 #include "shader.hpp"
-#include "renderer/rendering_system.hpp"
+#include "renderer/rendering_system.h"
 //#include "renderer/vulkan/vulkan_shader.hpp"
 
 constexpr Shader::Shader()

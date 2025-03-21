@@ -22,6 +22,7 @@ enum class RenderBufferType {
 
 struct MAPI RenderBuffer
 {
+    MString name;                 // Имя буфера, используемого для отладки.
     RenderBufferType type;         // Тип буфера, который обычно определяет его использование.
     u64 TotalSize;                 // Общий размер буфера в байтах.
     u64 FreelistMemoryRequirement; // Объем памяти, необходимый для хранения списка свободной памяти. 0, если не используется.

@@ -1,10 +1,10 @@
-#include "font_system.hpp"
-#include "systems/resource_system.hpp"
-#include "systems/texture_system.hpp"
+#include "font_system.h"
+#include "systems/resource_system.h"
+#include "systems/texture_system.h"
 #include "resources/font_resource.hpp"
-#include "resources/ui_text.hpp"
+#include "resources/ui_text.h"
 #include "memory/linear_allocator.hpp"
-#include "renderer/rendering_system.hpp"
+#include "renderer/rendering_system.h"
 
 #include <new>
 
@@ -45,11 +45,11 @@ struct SystemFontLookup {
     /*constexpr*/ SystemFontLookup() : id(INVALID::U16ID), ReferenceCount(), SizeVariants(), BinarySize(), face(), FontBinary(nullptr), offset(), index(), info() {}
 };
 
-bool SetupFontData(FontData& font);
-void CleanupFontData(FontData& font);
-bool CreateSystemFontVariant(SystemFontLookup& lookup, u16 size, const char* FontName, FontData& OutVariant);
-bool RebuildSystemFontVariantAtlas(SystemFontLookup& lookup, FontData& variant);
-bool VerifySystemFontSizeVariant(SystemFontLookup& lookup, FontData* variant, const char* text);
+static bool SetupFontData(FontData& font);
+static void CleanupFontData(FontData& font);
+static bool CreateSystemFontVariant(SystemFontLookup& lookup, u16 size, const char* FontName, FontData& OutVariant);
+static bool RebuildSystemFontVariantAtlas(SystemFontLookup& lookup, FontData& variant);
+static bool VerifySystemFontSizeVariant(SystemFontLookup& lookup, FontData* variant, const char* text);
 
 FontSystem* FontSystem::state;
 
@@ -377,12 +377,11 @@ bool FontSystem::VerifyAtlas(FontData *font, const char *text)
     return false;
 }
 
-bool SetupFontData(FontData &font)
+static bool SetupFontData(FontData &font)
 {
     // Создать ресурсы карты
     font.atlas.FilterMagnify = font.atlas.FilterMinify = TextureFilter::ModeLinear;
     font.atlas.RepeatU = font.atlas.RepeatV = font.atlas.RepeatW = TextureRepeat::ClampToEdge;
-    font.atlas.use = TextureUse::MapDiffuse;
     if (!RenderingSystem::TextureMapAcquireResources(&font.atlas)) {
         MERROR("Невозможно получить ресурсы для карты текстур атласа шрифтов.");
         return false;
@@ -416,7 +415,7 @@ bool SetupFontData(FontData &font)
     return true;
 }
 
-void CleanupFontData(FontData &font)
+static void CleanupFontData(FontData &font)
 {
     // Освободите ресурсы карты текстуры.
     RenderingSystem::TextureMapReleaseResources(&font.atlas);
@@ -428,7 +427,7 @@ void CleanupFontData(FontData &font)
     font.atlas.texture = nullptr;
 }
 
-bool CreateSystemFontVariant(SystemFontLookup &lookup, u16 size, const char *FontName, FontData &OutVariant)
+static bool CreateSystemFontVariant(SystemFontLookup &lookup, u16 size, const char *FontName, FontData &OutVariant)
 {
     OutVariant.AtlasSizeX = 1024;  // ЗАДАЧА: настраевыемый размер
     OutVariant.AtlasSizeY = 1024;
@@ -462,7 +461,7 @@ bool CreateSystemFontVariant(SystemFontLookup &lookup, u16 size, const char *Fon
     return RebuildSystemFontVariantAtlas(lookup, OutVariant);
 }
 
-bool RebuildSystemFontVariantAtlas(SystemFontLookup &lookup, FontData &variant)
+static bool RebuildSystemFontVariantAtlas(SystemFontLookup &lookup, FontData &variant)
 {
     auto InternalData = reinterpret_cast<SystemFontVariantData*>(variant.InternalData);
 
@@ -558,7 +557,7 @@ bool RebuildSystemFontVariantAtlas(SystemFontLookup &lookup, FontData &variant)
     return true;
 }
 
-bool VerifySystemFontSizeVariant(SystemFontLookup &lookup, FontData *variant, const char *text)
+static bool VerifySystemFontSizeVariant(SystemFontLookup &lookup, FontData *variant, const char *text)
 {
     auto InternalData = reinterpret_cast<SystemFontVariantData*>(variant->InternalData);
 

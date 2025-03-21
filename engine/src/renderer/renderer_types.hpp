@@ -7,7 +7,7 @@
 #include "renderer/views/render_view.h"
 #include "renderbuffer.hpp"
 #include "resources/mesh.hpp"
-#include "resources/ui_text.hpp"
+#include "resources/ui_text.h"
 #include "renderer_structs.hpp"
 
 struct StaticMeshData;
@@ -228,9 +228,11 @@ public:
 
     /// @brief Получает внутренние ресурсы уровня экземпляра и предоставляет идентификатор экземпляра.------------------------------------------------
     /// @param shader указатель на шейдер, к которому нужно применить данные экземпляра.
+    /// @param TextureMapCount количество используемых текстурных карт. 
+    /// @param maps массив указателей текстурных карт. Должен быть один на текстуру в экземпляре.
     /// @param OutInstanceID ссылка для хранения нового идентификатора экземпляра.
     /// @return true в случае успеха, иначе false.
-    virtual bool ShaderAcquireInstanceResources(Shader* shader, struct TextureMap** maps, u32& OutInstanceID) = 0;
+    virtual bool ShaderAcquireInstanceResources(Shader* shader, u32 TextureMapCount, struct TextureMap** maps, u32& OutInstanceID) = 0;
 
     /// @brief Освобождает внутренние ресурсы уровня экземпляра для данного идентификатора экземпляра.------------------------------------------------
     /// @param shader указатель на шейдер, из которого необходимо освободить ресурсы.
@@ -262,20 +264,26 @@ public:
     /// @param buffer Указатель для создания внутреннего буфера.
     /// @returns True в случае успеха; в противном случае false.
     virtual bool RenderBufferCreateInternal(RenderBuffer& buffer) = 0;
-    virtual bool RenderBufferCreate(RenderBufferType type, u64 TotalSize, bool UseFreelist, RenderBuffer &buffer) = 0;
+
+    /// @brief Создает новый буфер рендеринга для хранения данных для заданной цели/использования. Подкрепленный ресурсом буфера, специфичным для бэкэнда рендеринга.
+    /// @param name имя буфера рендеринга, используемого для целей отладки.
+    /// @param type тип буфера, указывающий его использование (т. е. данные вершин/индексов, униформы и т. д.)
+    /// @param TotalSize общий размер буфера в байтах.
+    /// @param UseFreelist указывает, должен ли буфер использовать список свободных страниц для отслеживания выделений.
+    /// @param buffer указатель для хранения вновь созданного буфера.
+    /// @return true в случае успеха, иначе false.
+    virtual bool RenderBufferCreate(const char* name, RenderBufferType type, u64 TotalSize, bool UseFreelist, RenderBuffer &buffer) = 0;
 
     /// @brief Уничтожает указанный буфер.
     /// @param buffer Указатель на буфер, который необходимо уничтожить.
     virtual void RenderBufferDestroyInternal(RenderBuffer& buffer) = 0;
 
     /// @brief Связывает заданный буфер с указанным смещением.
-    ///
     /// @param buffer Указатель на буфер для привязки.
     /// @param offset Смещение в байтах от начала буфера.
     /// @returns True в случае успеха; в противном случае false.
     virtual bool RenderBufferBind(RenderBuffer& buffer, u64 offset) = 0;
     /// @brief Отменяет привязку указанного буфера.
-    ///
     /// @param buffer Указатель на буфер, который необходимо отменить.
     /// @returns True в случае успеха; в противном случае false.
     virtual bool RenderBufferUnbind(RenderBuffer& buffer) = 0;
@@ -287,6 +295,7 @@ public:
     /// @param size Объем памяти в буфере для отображения.
     /// @returns Отображенный блок памяти. Освобожден и недействителен после отмены отображения.
     virtual void* RenderBufferMapMemory(RenderBuffer& buffer, u64 offset, u64 size) = 0;
+    
     /// @brief Отменяет отображение памяти из указанного буфера в предоставленном диапазоне в блок памяти. 
     /// Эта память должна считаться недействительной после отмены отображения.
     /// @param buffer Указатель на буфер для отмены отображения.

@@ -2,11 +2,11 @@
 #include "memory/linear_allocator.hpp"
 #include "renderer/renderpass.hpp"
 #include "renderer/camera.hpp"
-#include "renderer/rendering_system.hpp"
-#include "systems/render_view_system.hpp"
-#include "systems/resource_system.hpp"
+#include "renderer/rendering_system.h"
+#include "systems/render_view_system.h"
+#include "systems/resource_system.h"
 #include "systems/shader_system.h"
-#include "resources/skybox.hpp"
+#include "resources/skybox.h"
 
 RenderViewSkybox::RenderViewSkybox(u16 id, const Config &config)
 : RenderView(id, config),

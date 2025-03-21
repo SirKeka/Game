@@ -1,9 +1,8 @@
 #include "engine.hpp"
 #include "version.hpp"
 
-//#include "memory/linear_allocator.hpp"
 #include "application_types.hpp"
-#include "renderer/rendering_system.hpp"
+#include "renderer/rendering_system.h"
 
 #include "console.hpp"
 #include "mvar.hpp"
@@ -11,18 +10,18 @@
 #include "metrics.hpp"
 
 // Системы
-#include "systems/texture_system.hpp"
+#include "systems/texture_system.h"
 #include "systems/material_system.h"
-#include "systems/geometry_system.hpp"
-#include "systems/resource_system.hpp"
+#include "systems/geometry_system.h"
+#include "systems/resource_system.h"
 #include "systems/shader_system.h"
 #include "systems/camera_system.hpp"
-#include "systems/render_view_system.hpp"
+#include "systems/render_view_system.h"
 #include "systems/job_systems.hpp"
-#include "systems/font_system.hpp"
+#include "systems/font_system.h"
 #include "platform/platform.hpp"
 
-#include "renderer/views/render_view_pick.hpp"
+#include "renderer/views/render_view_pick.h"
 
 // Компоненты ядра движка
 #include "uuid.hpp"

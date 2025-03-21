@@ -1,5 +1,5 @@
 #include "renderbuffer.hpp"
-#include "renderer/rendering_system.hpp"
+#include "renderer/rendering_system.h"
 
 RenderBuffer::~RenderBuffer()
 {

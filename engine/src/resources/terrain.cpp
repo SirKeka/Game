@@ -1,5 +1,5 @@
 #include "terrain.h"
-#include "renderer/rendering_system.hpp"
+#include "renderer/rendering_system.h"
 #include "systems/material_system.h"
 #include "math/geometry_utils.hpp"
 
@@ -114,16 +114,6 @@ bool Terrain::Initialize()
             v.MaterialWeights[1] = Math::Smoothstep(0.25F, 0.50F, VertexDatas[i].height);
             v.MaterialWeights[2] = Math::Smoothstep(0.50F, 0.75F, VertexDatas[i].height);
             v.MaterialWeights[3] = Math::Smoothstep(0.75F, 1.00F, VertexDatas[i].height);
-
-            // if (VertexDatas[i].height < 0.25) {
-            //     // v.MaterialWeights[0] = 1.F;
-            // } else if (VertexDatas[i].height >= 0.25 && VertexDatas[i].height < 0.5) {
-            //     // v.MaterialWeights[1] = 1.F;
-            // } else if (VertexDatas[i].height >= 0.5 && VertexDatas[i].height < 0.75) {
-            //     // v.MaterialWeights[2] = 1.F;
-            // } else {
-            //     // v.MaterialWeights[3] = 1.F;
-            // }
         }
     }
 

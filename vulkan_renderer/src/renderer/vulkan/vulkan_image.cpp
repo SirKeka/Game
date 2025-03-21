@@ -66,6 +66,10 @@ void VulkanImage::Create(Config &config)
     MemoryAllocateInfo.allocationSize = MemoryRequirements.size;
     MemoryAllocateInfo.memoryTypeIndex = MemoryType;
     VK_CHECK(vkAllocateMemory(config.VkAPI->Device.LogicalDevice, &MemoryAllocateInfo, config.VkAPI->allocator, &memory));
+    
+    if (name && !VulkanSetDebugObjectName(config.VkAPI, VK_OBJECT_TYPE_DEVICE_MEMORY, memory, name.c_str())) {
+        //
+    }
 
     // Свяжите память
     VK_CHECK(vkBindImageMemory(config.VkAPI->Device.LogicalDevice, handle, memory, 0));  // ЗАДАЧА: настраиваемое смещение памяти.

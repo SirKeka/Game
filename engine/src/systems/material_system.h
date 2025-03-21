@@ -12,7 +12,7 @@
 class Matrix4D;
 
 /// @brief Имя материала по умолчанию.
-#define DEFAULT_MATERIAL_NAME "default"    // Имя материала по умолчанию.
+#define DEFAULT_MATERIAL_NAME "default"
 
 /// @brief Имя материала пользовательского интерфейса по умолчанию.
 #define DEFAULT_UI_MATERIAL_NAME "default_ui"
@@ -29,10 +29,11 @@ struct MaterialSystemConfig
 
 namespace MaterialSystem
 {
+    /// @return указатель на материал по умолчанию.
     MAPI Material* GetDefaultMaterial();
 
     /// @brief Получает указатель на материал пользовательского интерфейса по умолчанию. Не ссылается на счетчик.
-    MAPI Material* GetDefaultUiMAterial();
+    MAPI Material* GetDefaultUiMaterial();
 
     /// @brief Получает указатель на материал ландшафта по умолчанию. Не ссылается на счетчик.
     MAPI Material* GetDefaultTerrainMaterial();
@@ -77,7 +78,7 @@ namespace MaterialSystem
     /// @param AmbientColour окружающий цвет сцены.
     /// @param ViewPosition позиция камеры.
     /// @return true в случае успеха иначе false.
-    MAPI bool ApplyGlobal(u32 ShaderID, u64 RenderFrameNumber, const Matrix4D& projection, const Matrix4D& view, const FVec4& AmbientColour = FVec4(), const FVec4& ViewPosition = FVec4(), u32 RenderMode = 0);
+    MAPI bool ApplyGlobal(u32 ShaderID, u64 RenderFrameNumber, const Matrix4D& projection, const Matrix4D& view, const FVec4& AmbientColour = FVec4(), const FVec3& ViewPosition = FVec3(), u32 RenderMode = 0);
     
     /// @brief Применяет данные материала на уровне экземпляра для данного материала.
     /// @param material указатель на материал, который будет применен.

@@ -2,7 +2,7 @@
 
 #include "vulkan_api.hpp"
 
-#include "systems/resource_system.hpp"
+#include "systems/resource_system.h"
 
 namespace VulkanShadersUtil
 {

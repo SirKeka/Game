@@ -8,15 +8,15 @@
 #include "input.hpp"
 #include "platform/platform.hpp"
 
-#include "systems/resource_system.hpp"
+#include "systems/resource_system.h"
 #include "systems/shader_system.h"
-#include "renderer/rendering_system.hpp"
+#include "renderer/rendering_system.h"
 #include "systems/job_systems.hpp"
-#include "systems/texture_system.hpp"
+#include "systems/texture_system.h"
 #include "systems/camera_system.hpp"
-#include "systems/render_view_system.hpp"
-#include "systems/geometry_system.hpp"
-#include "systems/light_system.hpp"
+#include "systems/render_view_system.h"
+#include "systems/geometry_system.h"
+#include "systems/light_system.h"
 
 #include <new>
 

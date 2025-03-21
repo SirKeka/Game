@@ -2,7 +2,7 @@
 
 #include "defines.hpp"
 
-template<typename T> class Vector3D;
+template<typename T> struct Vector3D;
 
 class Matrix3D
 {

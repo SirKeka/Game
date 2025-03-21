@@ -1,6 +1,6 @@
 #include "platform/filesystem.hpp"
 #include "resources/material.h"
-#include "systems/resource_system.hpp"
+#include "systems/resource_system.h"
 
 enum class MaterialParseMode {
     Global,

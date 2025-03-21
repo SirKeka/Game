@@ -1,20 +1,20 @@
-#include "game.hpp"
+#include "game.h"
 
 #include <core/logger.hpp>
 #include <core/input.hpp>
 #include <core/metrics.hpp>
 
 #include <systems/camera_system.hpp>
-#include <renderer/rendering_system.hpp>
+#include <renderer/rendering_system.h>
 #include <new>
 
 // ЗАДАЧА: временный код
 #include <core/identifier.hpp>
-#include <systems/geometry_system.hpp>
-#include <systems/render_view_system.hpp>
-#include <systems/resource_system.hpp>
-#include <renderer/views/render_view_pick.hpp>
-#include "debug_console.hpp"
+#include <systems/geometry_system.h>
+#include <systems/render_view_system.h>
+#include <systems/resource_system.h>
+#include <renderer/views/render_view_pick.h>
+#include "debug_console.h"
 // ЗАДАЧА: конец временного кода
 
 bool GameConfigureRenderViews(Application& app);
@@ -158,6 +158,9 @@ bool ApplicationInitialize(Application& app)
     auto state = reinterpret_cast<Game*>(app.state);
     state->console.Load();
 
+    state->ForwardMoveSpeed  = 5.F;
+    state->BackwardMoveSpeed = 2.5F;
+
     // Сетки мира
     // Отменить все сетки.
     for (u32 i = 0; i < 10; ++i) {
@@ -165,14 +168,14 @@ bool ApplicationInitialize(Application& app)
         state->UiMeshes[i].generation = INVALID::U8ID;
     }
 
-    if (!state->TestText.Create(TextType::Bitmap, "Metrika 21px", 21, "Какой-то тестовый текст 123,\n\tyo!")) {
+    if (!state->TestText.Create("testbed_metrika_test_text", TextType::Bitmap, "Metrika 21px", 21, "Какой-то тестовый текст 123,\n\tyo!")) {
         MERROR("Не удалось загрузить базовый растровый текст пользовательского интерфейса.");
         return false;
     }
     // Переместить отладочный текст в новую нижнюю часть экрана.
     state->TestText.SetPosition(FVec3(20.F, state->height - 75.F, 0.F)); 
 
-    if(!state->TestSysText.Create(TextType::System, "Noto Sans CJK JP", 31, "Какой-то тестовый текст 123, \n\tyo!\n\n\tこんにちは 한")) {
+    if(!state->TestSysText.Create("testbed_UTF_test_text", TextType::System, "Noto Sans CJK JP", 31, "Какой-то тестовый текст 123, \n\tyo!\n\n\tこんにちは 한")) {
         MERROR("Не удалось загрузить базовый системный текст пользовательского интерфейса.");
         return false;
     }
@@ -223,18 +226,23 @@ bool ApplicationInitialize(Application& app)
     state->UiMeshes[0].transform.Translate(FVec3(650, 5, 0));
     
     state->WorldCamera = CameraSystem::GetDefault();
-    state->WorldCamera->SetPosition(FVec3(10.5F, 5.F, 9.5F));
+    state->WorldCamera->SetPosition(FVec3(54.45F, 8.34F, 67.15F));
+    state->WorldCamera->SetRotationEuler(FVec3(-11.083F, 262.600F, 0.F));
 
     state->UpdateClock.Zero();
     state->RenderClock.Zero();
     
-    return true;
+    return state->running = true;
 }
 
 bool ApplicationUpdate(Application& app, const FrameData& rFrameData)
 {
     // auto AppFrameData = reinterpret_cast<TestbedApplicationFrameData*>(rFrameData.ApplicationFrameData);
     auto state = reinterpret_cast<Game*>(app.state);
+
+    if (!state->running) {
+        return true;
+    }
 
     state->UpdateClock.Start();
 
@@ -257,11 +265,11 @@ bool ApplicationUpdate(Application& app, const FrameData& rFrameData)
         
         if (state->PointLight1) {
             state->PointLight1->data.colour.Set(
-                (Math::sin(rFrameData.TotalTime + 0.F) + 1.F) * 0.5F,
-                (Math::sin(rFrameData.TotalTime + 0.3F) + 1.F) * 0.5F,
-                (Math::sin(rFrameData.TotalTime + 0.6F) + 1.F) * 0.5F,
+                MCLAMP((Math::sin(rFrameData.TotalTime + 0.F)  + 1.F) * 0.5F, 0.F, 1.F),
+                MCLAMP((Math::sin(rFrameData.TotalTime + 0.3F) + 1.F) * 0.5F, 0.F, 1.F),
+                MCLAMP((Math::sin(rFrameData.TotalTime + 0.6F) + 1.F) * 0.5F, 0.F, 1.F),
                 1.F); 
-            state->PointLight1->data.position.x = Math::sin(rFrameData.TotalTime);
+            state->PointLight1->data.position.x = 70.F + Math::sin(rFrameData.TotalTime);
         }
     }
 
@@ -311,8 +319,11 @@ bool ApplicationUpdate(Application& app, const FrameData& rFrameData)
         state->HoveredObjectID == INVALID::ID ? "none" : "",
         state->HoveredObjectID == INVALID::ID ? 0 : state->HoveredObjectID
     );
-    state->TestText.SetText(TextBuffer);
 
+    if (state->running) {
+        state->TestText.SetText(TextBuffer);
+    }
+    
     state->console.Update();
 
     state->UpdateClock.Update();
@@ -324,6 +335,10 @@ bool ApplicationUpdate(Application& app, const FrameData& rFrameData)
 bool ApplicationRender(Application& app, RenderPacket& packet, FrameData& rFrameData) 
 {
     auto state = reinterpret_cast<Game*>(app.state);
+
+    if (!state->running) {
+        return true;
+    }
     // auto AppFrameData = reinterpret_cast<TestbedApplicationFrameData*>(rFrameData.ApplicationFrameData);
 
     state->RenderClock.Start();
@@ -422,6 +437,7 @@ void ApplicationOnResize(Application& app, u32 width, u32 height)
 void ApplicationShutdown(Application& app)
 {
     auto state = reinterpret_cast<Game*>(app.state);
+    state->running = false;
 
     if (state->MainScene.state == SimpleScene::State::Loaded) {
         MDEBUG("Выгрузка сцены...");
