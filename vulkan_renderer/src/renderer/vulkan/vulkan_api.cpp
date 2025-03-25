@@ -1508,7 +1508,7 @@ bool VulkanAPI::ShaderInitialize(Shader *shader)
         scissor,
         VkShader->config.CullMode,
         false,
-        true,
+        shader->flags,
         shader->PushConstantRangeCount,
         shader->PushConstantRanges
     };

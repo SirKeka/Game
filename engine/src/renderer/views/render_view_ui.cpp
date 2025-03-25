@@ -19,7 +19,7 @@ FarClip(100.F),
 ProjectionMatrix(Matrix4D::MakeOrthographicProjection(0.F, 1280.F, 720.F, 0.F, NearClip, FarClip)), 
 ViewMatrix(Matrix4D::MakeIdentity()),
 DiffuseMapLocation(),
-DiffuseColourLocation(),
+PropertiesLocation(),
 ModelLocation()
 /*RenderMode(),*/ 
 {
@@ -40,9 +40,9 @@ ModelLocation()
     // Получите либо переопределение пользовательского шейдера, либо заданное значение по умолчанию.
     shader = ShaderSystem::GetShader(CustomShaderName ? CustomShaderName : ShaderName);
 
-    DiffuseMapLocation    = ShaderSystem::UniformIndex(shader, "diffuse_texture");
-    DiffuseColourLocation = ShaderSystem::UniformIndex(shader, "diffuse_colour");
-    ModelLocation         = ShaderSystem::UniformIndex(shader, "model");
+    DiffuseMapLocation  = ShaderSystem::UniformIndex(shader, "diffuse_texture");
+    PropertiesLocation  = ShaderSystem::UniformIndex(shader, "properties");
+    ModelLocation       = ShaderSystem::UniformIndex(shader, "model");
 
     if(!EventSystem::Register(EventSystem::DefaultRendertargetRefreshRequired, this, RenderViewOnEvent)) {
         MERROR("Не удалось прослушать событие, требующее обновления, создание не удалось.");
@@ -133,7 +133,7 @@ bool RenderViewUI::Render(const Packet &packet, u64 FrameNumber, u64 RenderTarge
             if (packet.geometries[i].gid->material) {
                 m = packet.geometries[i].gid->material;
             } else {
-                m = MaterialSystem::GetDefaultMaterial();
+                m = MaterialSystem::GetDefaultUiMaterial();
             }
 
             // Обновить материал, если он еще не был в этом кадре. 
@@ -170,7 +170,7 @@ bool RenderViewUI::Render(const Packet &packet, u64 FrameNumber, u64 RenderTarge
 
             // ЗАДАЧА: цвет текста.
             static FVec4 WhiteColour {1.F, 1.F, 1.F, 1.F};  // белый
-            if (!ShaderSystem::UniformSet(DiffuseColourLocation, &WhiteColour)) {
+            if (!ShaderSystem::UniformSet(PropertiesLocation, &WhiteColour)) {
                 MERROR("Не удалось применить диффузную цветовую форму растрового шрифта.");
                 return false;
             }

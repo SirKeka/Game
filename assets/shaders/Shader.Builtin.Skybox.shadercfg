@@ -1,4 +1,4 @@
-# Moon shader config file
+# Файл конфигурации шейдера Moon
 version=1.0
 cull_mode=front
 name=Shader.Builtin.Skybox
@@ -8,7 +8,7 @@ stagefiles=shaders/Builtin.SkyboxShader.vert.spv,shaders/Builtin.SkyboxShader.fr
 depth_test=0
 depth_write=0
 
-# Attributes: type,name
+# Атрибуты: type,name
 attribute=vec3,in_position
 attribute=vec3,in_normal
 attribute=vec2,in_texcoord

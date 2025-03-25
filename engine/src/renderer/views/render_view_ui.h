@@ -10,7 +10,7 @@ private:
     Matrix4D ProjectionMatrix{};
     Matrix4D ViewMatrix      {};
     u16 DiffuseMapLocation   {};
-    u16 DiffuseColourLocation{};
+    u16 PropertiesLocation   {};
     u16 ModelLocation        {};
     // u32 RenderMode;
 public:

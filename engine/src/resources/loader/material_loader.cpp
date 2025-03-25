@@ -168,7 +168,7 @@ bool ResourceLoader::Load(const char *name, void* params, MaterialResource &OutR
     // Установите некоторые значения по умолчанию.
     materialConfig.version = 1;
     materialConfig.name = name;
-    materialConfig.type = Material::Type::Unknown;
+    // materialConfig.type = Material::Type::Unknown;
     materialConfig.ShaderName = "Builtin.Material";
     // materialConfig.properties;
     // materialConfig.maps;

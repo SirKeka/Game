@@ -7,7 +7,7 @@ stagefiles=shaders/Builtin.WorldPickShader.vert.spv,shaders/Builtin.WorldPickSha
 depth_test=1
 depth_write=1
 
-# Attributes: type,name
+# Атрибуты: type,name
 attribute=vec3,in_position
 attribute=vec3,in_normal
 attribute=vec2,in_texcoord
@@ -15,7 +15,7 @@ attribute=vec4,in_colour
 attribute=vec3,in_tangent
 
 # Uniforms: type,scope,name
-# NOTE: For scope: 0=global, 1=instance, 2=local
+# ПРИМЕЧАНИЕ: For scope: 0=global, 1=instance, 2=local
 uniform=mat4,0,projection
 uniform=mat4,0,view
 uniform=vec3,1,id_colour
