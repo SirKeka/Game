@@ -4,7 +4,6 @@
 /// @brief Структура, которая отображает текстуру, использование и другие свойства.
 struct TextureMap {
     Texture* texture;                       // Указатель на текстуру.
-    TextureUse use;                         // Использование текстуры.
     TextureFilter FilterMinify;             // Режим фильтрации текстур для минимизации.
     TextureFilter FilterMagnify;            // Режим фильтрации текстур для увеличения.
     TextureRepeat RepeatU;                  // Режим повтора по оси U (или X, или S)
@@ -13,13 +12,12 @@ struct TextureMap {
 
     void* sampler;                          // Указатель на внутренние данные, специфичные для API. Обычно внутренний сэмплер.
 
-    constexpr TextureMap() : texture(), use(), FilterMinify(), FilterMagnify(), RepeatU(), RepeatV(), RepeatW(), sampler(nullptr) {}
-    constexpr TextureMap(Texture* texture, TextureUse use) : texture(texture), use(use), FilterMinify(), FilterMagnify(), RepeatU(), RepeatV(), RepeatW(), sampler(nullptr) {}
+    constexpr TextureMap() : texture(), FilterMinify(), FilterMagnify(), RepeatU(), RepeatV(), RepeatW(), sampler(nullptr) {}
+    constexpr TextureMap(Texture* texture) : texture(texture), FilterMinify(), FilterMagnify(), RepeatU(), RepeatV(), RepeatW(), sampler(nullptr) {}
     
     constexpr TextureMap(const TextureMap& tm) 
     : 
-    texture(), 
-    use(tm.use), 
+    texture(),  
     FilterMinify(tm.FilterMinify), 
     FilterMagnify(tm.FilterMagnify), 
     RepeatU(tm.RepeatU), 
@@ -31,7 +29,6 @@ struct TextureMap {
     constexpr TextureMap(TextureMap&& tm) 
     :
     texture(tm.texture), 
-    use(tm.use), 
     FilterMinify(tm.FilterMinify), 
     FilterMagnify(tm.FilterMagnify), 
     RepeatU(tm.RepeatU), 
@@ -39,13 +36,11 @@ struct TextureMap {
     RepeatW(tm.RepeatW), 
     sampler(tm.sampler) {
         tm.texture = nullptr;
-        tm.use = TextureUse::Unknown;
         tm.sampler = nullptr;
     }
 
     TextureMap& operator= (TextureMap&& tm) {
         texture = tm.texture;
-        use = tm.use;
         FilterMinify = tm.FilterMinify;
         FilterMagnify = tm.FilterMagnify;
         RepeatU = tm.RepeatU;

@@ -169,7 +169,7 @@ bool ResourceLoader::Load(const char *name, void* params, MaterialResource &OutR
     materialConfig.version = 1;
     materialConfig.name = name;
     // materialConfig.type = Material::Type::Unknown;
-    materialConfig.ShaderName = "Builtin.Material";
+    materialConfig.ShaderName = "Shader.Builtin.Material";
     // materialConfig.properties;
     // materialConfig.maps;
     materialConfig.AutoRelease = true;
@@ -209,12 +209,12 @@ bool ResourceLoader::Load(const char *name, void* params, MaterialResource &OutR
                         MERROR("Неожиданный токен '/' в строке %d, Ошибка формата: обнаружен закрывающий тег в глобальной области видимости.", LineNumber);
                         return false;
                     case MaterialParseMode::Map:
-                        materialConfig.maps.PushBack(CurrentMap);
+                        materialConfig.maps.PushBack((Material::Map&&)CurrentMap);
                         MemorySystem::ZeroMem(&CurrentMap, sizeof(Material::Map));
                         ParseMode = MaterialParseMode::Global;
                         continue;
                     case MaterialParseMode::Property:
-                    materialConfig.properties.PushBack(CurrentProp);
+                    materialConfig.properties.PushBack((Material::ConfigProp&&)CurrentProp);
                         MemorySystem::ZeroMem(&CurrentProp, sizeof(Material::ConfigProp));
                         ParseMode = MaterialParseMode::Global;
                         continue;
@@ -381,6 +381,11 @@ bool ResourceLoader::Load(const char *name, void* params, MaterialResource &OutR
         MString::Zero(LineBuf);
         LineNumber++;
     }
+
+        // Если версия 1 и тип материала неизвестен, по умолчанию используется "phong"
+        if (materialConfig.version == 1 && materialConfig.type == Material::Type::Unknown) {
+            materialConfig.type = Material::Type::Phong;
+        }
 
     Filesystem::Close(f);
 

@@ -372,7 +372,7 @@ bool MString::BytesToCodepoint(const char *bytes, u32 offset, i32 &OutCodepoint,
         // ПРИМЕЧАНИЕ: Не поддерживаются 5- и 6-байтовые символы; возвращается как недопустимый UTF-8.
         OutAdvance = 0;
         OutCodepoint = 0;
-        MERROR("kstring bytes_to_codepoint() - Not supporting 5 and 6-byte characters; Invalid UTF-8.");
+        MERROR("MString::BytesToCodepoint() — не поддерживает 5- и 6-байтовые символы; недопустимый UTF-8.");
         return false;
     }
 }
@@ -431,7 +431,7 @@ bool MString::Comparei(const MString &string) const
 
 bool MString::Comparei(const char *string, u64 Length) const
 {
-    if (!length)
+    if (!Length)
         return MString::Equali(str, string);
     else
         return nComparei(str, string, length);
@@ -1273,17 +1273,31 @@ bool MString::Equal(const char *strL, const char *strR)
     return strcmp(strL, strR) == 0;
 }
 
-bool MString::Equali(const char *str0, const char *str1)
+bool MString::Equali(const char *string0, const char *string1)
 {
-    if (!str0 || !str1) {
+    if (!string0 || !string1) {
         return false;
     }
     
-#if defined(__GNUC__)
-    return strcasecmp(str0, str1) == 0;
-#elif (defined _MSC_VER)
-    return _strcmpi(str0, str1) == 0;
-#endif
+// #if defined(__GNUC__)
+//     return strcasecmp(str0, str1) == 0;
+// #elif (defined _MSC_VER)
+//     return _strcmpi(str0, str1) == 0;
+// #endif
+
+    i8 a = 'a' - 'A';
+
+    while (*string0 && *string1) {
+        if (*string0 == *string1) {
+            string0++; string1++;
+        } else if (*string0 >= 'A' && *string0 <= 'Z' && *string1 == (a + *string0)) {
+            string0++; string1++;
+        } else if (*string0 >= 'a' && *string0 <= 'z' && *string1 == (*string0 - a)) {
+            string0++; string1++;
+        } else return false;
+    }
+
+    return *string0 == *string1;
 
 }
 

@@ -95,14 +95,14 @@ bool ResourceLoader::Load(const char *name, void *params, SimpleSceneResource &O
                 if (!TryChangeMode(line, mode, SimpleSceneParseMode::Root, SimpleSceneParseMode::PointLight)) {
                     return false;
                 }
-                // MemorySystem::ZeroMem(&CurrentPointLightConfig, sizeof(PointLightSimpleSceneConfig));
+                MemorySystem::ZeroMem(&CurrentPointLightConfig, sizeof(PointLightSimpleSceneConfig));
             } else if (line.Comparei("[/PointLight]")) {
                 if (!TryChangeMode(line, mode, SimpleSceneParseMode::PointLight, SimpleSceneParseMode::Root)) {
                     return false;
                 }
                 // Вставьте в массив, затем очистите.
                 data.PointLights.PushBack(static_cast<PointLightSimpleSceneConfig&&>(CurrentPointLightConfig));
-                MemorySystem::ZeroMem(&CurrentPointLightConfig, sizeof(PointLightSimpleSceneConfig));
+                // MemorySystem::ZeroMem(&CurrentPointLightConfig, sizeof(PointLightSimpleSceneConfig));
             } else if (line.Comparei("[Mesh]")) {
                 if (!TryChangeMode(line, mode, SimpleSceneParseMode::Root, SimpleSceneParseMode::Mesh)) {
                     return false;
@@ -120,7 +120,7 @@ bool ResourceLoader::Load(const char *name, void *params, SimpleSceneResource &O
                 }
                 // Вставить в массив, затем очистить.
                 data.meshes.PushBack(static_cast<MeshSimpleSceneConfig&&>(CurrentMeshConfig));
-                MemorySystem::ZeroMem(&CurrentMeshConfig, sizeof(MeshSimpleSceneConfig));
+                CurrentMeshConfig.transform = Transform(); // MemorySystem::ZeroMem(&CurrentMeshConfig, sizeof(MeshSimpleSceneConfig));
             } else if (line.Comparei("[Terrain]")) {
                 if (!TryChangeMode(line, mode, SimpleSceneParseMode::Root, SimpleSceneParseMode::Terrain)) {
                     return false;

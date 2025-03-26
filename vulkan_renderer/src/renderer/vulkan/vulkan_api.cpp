@@ -1663,29 +1663,15 @@ bool VulkanAPI::ShaderApplyInstance(Shader *shader, bool NeedsUpdate)
             for (u32 i = 0; i < TotalSamplerCount; ++i) {
                 // ЗАДАЧА: обновляйте список только в том случае, если оно действительно необходимо.
                 auto map = VkShader->InstanceStates[shader->BoundInstanceID].InstanceTextureMaps[i];
-                auto t = map->texture;
+                auto texture = map->texture;
 
                 // Убедитесь, что текстура верна.
-                if (t->generation == INVALID::ID) {
-                    switch (map->use) {
-                        case TextureUse::MapDiffuse:
-                            t = TextureSystem::GetDefaultTexture(Texture::Default);
-                            break;
-                        case TextureUse::MapSpecular:
-                            t = TextureSystem::GetDefaultTexture(Texture::Specular);
-                            break;
-                        case TextureUse::MapNormal:
-                            t = TextureSystem::GetDefaultTexture(Texture::Normal);
-                            break;
-                        default:
-                            MWARN("Использование неопределенной текстуры %d", map->use);
-                            t = TextureSystem::GetDefaultTexture(Texture::Default);
-                            break;
-                    }
+                if (texture->generation == INVALID::ID) {
+                    texture = TextureSystem::GetDefaultTexture(Texture::Default);
                 }
 
                 ImageInfos[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-                ImageInfos[i].imageView = reinterpret_cast<VulkanImage*>(t->data)->view;
+                ImageInfos[i].imageView = reinterpret_cast<VulkanImage*>(texture->data)->view;
                 ImageInfos[i].sampler = reinterpret_cast<VkSampler>(map->sampler);
     
                 // ЗАДАЧА: измените состояние дескриптора, чтобы справиться с этим должным образом.
