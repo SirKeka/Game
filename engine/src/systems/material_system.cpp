@@ -848,9 +848,6 @@ static bool LoadMaterial(const Material::Config &config, Material *material)
         // Карты. Фонг ожидает диффузный, зеркальный и нормальный.
         material->maps.Resize(3);
         const u32& MapCount = config.maps.Length();
-        if (MString::Equali("Material__47", material->name)) {
-            MTRACE("Material__47 загружен");  // ЗАДАЧА: убрать проверку.
-        }
         bool DiffuseAssigned = false;
         bool SpecAssigned = false;
         bool NormAssigned = false;

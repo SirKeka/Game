@@ -22,7 +22,7 @@ enum class RenderBufferType {
 
 struct MAPI RenderBuffer
 {
-    MString name;                 // Имя буфера, используемого для отладки.
+    MString name;                  // Имя буфера, используемого для отладки.
     RenderBufferType type;         // Тип буфера, который обычно определяет его использование.
     u64 TotalSize;                 // Общий размер буфера в байтах.
     u64 FreelistMemoryRequirement; // Объем памяти, необходимый для хранения списка свободной памяти. 0, если не используется.
@@ -30,12 +30,13 @@ struct MAPI RenderBuffer
     void* FreelistBlock;           // Блок памяти списка свободной памяти, если требуется.
     void* data;                    // Содержит внутренние данные для буфера, специфичного для API рендерера.
 
-    constexpr RenderBuffer() : type(), TotalSize(), FreelistMemoryRequirement(), BufferFreelist(), FreelistBlock(), data() {}
+    constexpr RenderBuffer() : name(), type(), TotalSize(), FreelistMemoryRequirement(), BufferFreelist(), FreelistBlock(), data() {}
     /// @brief Создает новый буфер рендеринга для хранения данных для заданной цели/использования. Подкрепленный ресурсом буфера, специфичным для рендеринга.
     /// @param type Тип буфера, указывающий его использование (т. е. данные вершин/индексов, униформы и т. д.)
     /// @param TotalSize Общий размер буфера в байтах.
     /// @param UseFreelist Указывает, должен ли буфер использовать список свободных байтов для отслеживания выделений.
-    constexpr RenderBuffer(RenderBufferType type, u64 TotalSize, bool UseFreelist) : 
+    constexpr RenderBuffer(const char* name, RenderBufferType type, u64 TotalSize, bool UseFreelist) : 
+    name                 (name),
     type                 (type), 
     TotalSize       (TotalSize), 
     FreelistMemoryRequirement(), 

@@ -206,8 +206,8 @@ DebugMessenger(),
 #endif
 
 Device(), swapchain(),
-ObjectVertexBuffer(RenderBufferType::Vertex, sizeof(Vertex3D) * 1024 * 1024, true),
-ObjectIndexBuffer(RenderBufferType::Index, sizeof(u32) * 1024 * 1024, true),
+ObjectVertexBuffer("renderbuffer_vertexbuffer_globalgeometry", RenderBufferType::Vertex, sizeof(Vertex3D) * 1024 * 1024, true),
+ObjectIndexBuffer("renderbuffer_indexbuffer_globalgeometry", RenderBufferType::Index, sizeof(u32) * 1024 * 1024, true),
 GraphicsCommandBuffers(),
 ImageAvailableSemaphores(),
 QueueCompleteSemaphores(),
@@ -882,7 +882,7 @@ void VulkanAPI::TextureWriteData(Texture *texture, u32 offset, u32 size, const u
     VkFormat ImageFormat = ChannelCountToFormat(texture->ChannelCount, VK_FORMAT_R8G8B8A8_UNORM);
 
     // Создайте промежуточный буфер и загрузите в него данные.
-    RenderBuffer staging { RenderBufferType::Staging, size, false };
+    RenderBuffer staging { "renderbuffer_texture_write_staging", RenderBufferType::Staging, size, false };
     if (!RenderBufferCreateInternal(staging)) {
         MERROR("Не удалось создать промежуточный буфер для записи текстуры.");
         return;
