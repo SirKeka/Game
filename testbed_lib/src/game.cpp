@@ -401,6 +401,7 @@ bool ApplicationRender(Application& app, RenderPacket& packet, FrameData& rFrame
     RenderViewPick::PacketData PickPacket;
     PickPacket.UiMeshData = UiPacket.MeshData;
     PickPacket.WorldMeshData = &packet.views[1].geometries;  // ЗАДАЧА: не жестко закодированный индекс?
+    PickPacket.TerrainMeshData = &packet.views[1].TerrainGeometries;
     PickPacket.texts = UiPacket.texts;
     PickPacket.TextCount = UiPacket.TextCount;
     PickPacket.UiGeometryCount = 0;

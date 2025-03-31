@@ -1,4 +1,5 @@
 #include "terrain.h"
+#include "core/identifier.hpp"
 #include "renderer/rendering_system.h"
 #include "systems/material_system.h"
 #include "math/geometry_utils.hpp"
@@ -143,6 +144,8 @@ bool Terrain::Initialize()
 
 bool Terrain::Load()
 {
+    UniqueID = Identifier::AquireNewID(this);
+
     // Отправьте геометрию в рендерер для загрузки в графический процессор.
     if (!RenderingSystem::Load(&geo, sizeof(TerrainVertex), VertexCount,
                                   vertices, sizeof(u32), IndexCount,
@@ -173,6 +176,8 @@ bool Terrain::Unload()
 {
     MaterialSystem::Release(geo.material->name);
     RenderingSystem::Unload(&geo);
+
+    UniqueID = 0;
 
     return true;
 }

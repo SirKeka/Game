@@ -1,4 +1,4 @@
-/// @file identifier.hpp
+/// @file identifier.h
 /// @author 
 /// @brief Содержит систему создания числовых идентификаторов.
 /// @version 1.0

@@ -143,7 +143,14 @@ bool VulkanPipeline::Create(VulkanAPI* VkAPI, const Config& config)
         VkAPI->Device.LogicalDevice,
         &PipelineLayoutCreateInfo,
         VkAPI->allocator,
-        &PipelineLayout));
+        &PipelineLayout)
+    );
+
+    char PipelineLayoutNameBuf[512] = "pipeline_layout_shader_";
+    MString::Format(PipelineLayoutNameBuf, config.name.c_str());
+    if (!VulkanSetDebugObjectName(VkAPI, VK_OBJECT_TYPE_PIPELINE_LAYOUT, PipelineLayout, PipelineLayoutNameBuf)) {
+        MWARN("Невозможно настроить имя объекта отладки для %s.", PipelineLayoutNameBuf);
+    }
 
     // Создание конвейера
     VkGraphicsPipelineCreateInfo PipelineCreateInfo = {VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO};
@@ -173,7 +180,14 @@ bool VulkanPipeline::Create(VulkanAPI* VkAPI, const Config& config)
         1,
         &PipelineCreateInfo,
         VkAPI->allocator,
-        &handle);
+        &handle
+    );
+
+    char PipelineNameBuf[512] = "pipeline_shader_";
+    MString::Format(PipelineNameBuf, config.name.c_str());
+    if (!VulkanSetDebugObjectName(VkAPI, VK_OBJECT_TYPE_PIPELINE, handle, PipelineNameBuf)) {
+        MWARN("Невозможно настроить имя объекта отладки для %s.", PipelineNameBuf);
+    }
 
     if (VulkanResultIsSuccess(result)) {
         MDEBUG("Графический конвейер создан!");

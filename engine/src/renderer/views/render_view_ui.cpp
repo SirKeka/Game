@@ -129,11 +129,11 @@ bool RenderViewUI::Render(const Packet &packet, u64 FrameNumber, u64 RenderTarge
         // Нарисовать геометрию.
         const u64& count = packet.geometries.Length();
         for (u32 i = 0; i < count; ++i) {
-            Material* m = nullptr;
+            Material* material = nullptr;
             if (packet.geometries[i].gid->material) {
-                m = packet.geometries[i].gid->material;
+                material = packet.geometries[i].gid->material;
             } else {
-                m = MaterialSystem::GetDefaultUiMaterial();
+                material = MaterialSystem::GetDefaultUiMaterial();
             }
 
             // Обновить материал, если он еще не был в этом кадре. 
@@ -141,17 +141,17 @@ bool RenderViewUI::Render(const Packet &packet, u64 FrameNumber, u64 RenderTarge
             // Его все равно нужно привязать в любом случае, 
             // поэтому результат этой проверки передается на бэкэнд, 
             // который либо обновляет внутренние привязки шейдера и привязывает их, либо только привязывает их.
-            bool NeedsUpdate = m->RenderFrameNumber != FrameNumber;
-            if (!MaterialSystem::ApplyInstance(m, NeedsUpdate)) {
-                MWARN("Не удалось применить материал '%s'. Пропуск рисования.", m->name);
+            bool NeedsUpdate = material->RenderFrameNumber != FrameNumber;
+            if (!MaterialSystem::ApplyInstance(material, NeedsUpdate)) {
+                MWARN("Не удалось применить материал '%s'. Пропуск рисования.", material->name);
                 continue;
             } else {
                 // Синхронизируйте номер кадра.
-                m->RenderFrameNumber = FrameNumber;
+                material->RenderFrameNumber = FrameNumber;
             }
 
             // Примените локальные
-            MaterialSystem::ApplyLocal(m, packet.geometries[i].model);
+            MaterialSystem::ApplyLocal(material, packet.geometries[i].model);
 
             // Нарисуйте его.
             RenderingSystem::DrawGeometry(packet.geometries[i]);

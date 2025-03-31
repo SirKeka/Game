@@ -373,7 +373,7 @@ bool SimpleScene::PopulateRenderPacket(Camera *CurrentCamera, f32 aspect, FrameD
                 GeometryRenderData data = {};
                 data.model = terrains[i].xform.GetWorld();
                 data.gid = &terrains[i].geo;
-                data.UniqueID = 0;  // ЗАДАЧА: Уникальный идентификатор ландшафта для выбора объекта.
+                data.UniqueID = terrains[i].UniqueID;
 
                 WorldData.TerrainGeometries.PushBack(data);
 

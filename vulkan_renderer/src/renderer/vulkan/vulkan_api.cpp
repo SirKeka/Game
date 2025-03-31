@@ -1496,6 +1496,7 @@ bool VulkanAPI::ShaderInitialize(Shader *shader)
     }
 
     VulkanPipeline::Config PipelineConfig {
+        shader->name,
         VkShader->renderpass,
         shader->AttributeStride,
         (u32)shader->attributes.Length(),

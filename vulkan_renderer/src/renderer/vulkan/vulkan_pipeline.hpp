@@ -13,6 +13,7 @@ public:
     /// @brief Структура конфигурации конвеера Vulkan.
     
     struct Config {
+        MString name;                                  // Имя конвейера. Используется в основном для отладки.
         VulkanRenderpass* renderpass;                  // Указатель на проход рендеринга для связывания с конвейером.
         u32 stride;                                    // Шаг данных вершин, которые будут использоваться (например: sizeof(Vertex3D))
         u32 AttributeCount;                            // Количество атрибутов.
@@ -29,8 +30,9 @@ public:
         u32 PushConstantRangeCount;                    // Количество диапазонов данных констант push.
         Range* PushConstantRanges;                     // Массив диапазонов данных констант push.
 
-        constexpr Config(VulkanRenderpass* renderpass, u32 stride, u32 AttributeCount, VkVertexInputAttributeDescription* attributes, u32 DescriptorSetLayoutCount, VkDescriptorSetLayout* DescriptorSetLayouts, u32 StageCount, VkPipelineShaderStageCreateInfo* stages, VkViewport viewport, VkRect2D scissor, FaceCullMode CullMode, bool IsWireframe, u32 ShaderFlags, u32 PushConstantRangeCount, Range* PushConstantRanges) 
+        constexpr Config(const MString& name, VulkanRenderpass* renderpass, u32 stride, u32 AttributeCount, VkVertexInputAttributeDescription* attributes, u32 DescriptorSetLayoutCount, VkDescriptorSetLayout* DescriptorSetLayouts, u32 StageCount, VkPipelineShaderStageCreateInfo* stages, VkViewport viewport, VkRect2D scissor, FaceCullMode CullMode, bool IsWireframe, u32 ShaderFlags, u32 PushConstantRangeCount, Range* PushConstantRanges) 
         : 
+        name(name),
         renderpass(renderpass), 
         stride(stride), 
         AttributeCount(AttributeCount), 

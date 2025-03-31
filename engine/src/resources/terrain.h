@@ -56,6 +56,7 @@ struct Terrain {
         char** MaterialNames;
     };
 
+    u32 UniqueID;
     MString name;
     Transform xform;
     u32 TileCountX;

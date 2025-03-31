@@ -21,19 +21,19 @@ direction=-0.57735 -0.57735 -0.57735 0.0
 [Mesh]
 name=sponza
 resource_name=sponza
-transform=15.0 0.0 1.0 0.0 0.0 0.0 1.0 0.05 0.05 0.05
+transform=50.0 2.5 50.0 0.0 0.0 0.0 1.0 0.01 0.01 0.01
 [/Mesh]
 
 [Mesh]
 name=falcon
 resource_name=falcon
-transform=25.0 0.0 1.0 0.0 0.0 0.0 1.0 1.0 1.0 1.0
+transform=60.0 5.8 70.0 0.0 0.0 0.0 1.0 0.35 0.35 0.35
 [/Mesh]
 
 [PointLight]
 name=point_light_0
 colour=1.0 0.0 0.0 1.0
-position=-5.5 0.0 -5.5 0.0
+position=57.0 6.5 68.0 0.0
 constant_f=1.0
 linear=0.35
 quadratic=0.44
@@ -42,7 +42,7 @@ quadratic=0.44
 [PointLight]
 name=point_light_1
 colour=0.0 1.0 0.0 1.0
-position=5.5 0.0 -5.5 0.0
+position=57.0 6.5 70.0 0.0
 constant_f=1.0
 linear=0.35
 quadratic=0.44
@@ -51,8 +51,13 @@ quadratic=0.44
 [PointLight]
 name=point_light_2
 colour=0.0 0.0 1.0 1.0
-position=-5.5 0.0 5.5 0.0
+position=57.0 6.25 72.0 0.0
 constant_f=1.0
 linear=0.35
 quadratic=0.44
 [/PointLight]
+
+[Terrain]
+name=test_terrain
+resource_name=test_terrain
+[/Terrain]
