@@ -146,8 +146,8 @@ bool VulkanPipeline::Create(VulkanAPI* VkAPI, const Config& config)
         &PipelineLayout)
     );
 
-    char PipelineLayoutNameBuf[512] = "pipeline_layout_shader_";
-    MString::Format(PipelineLayoutNameBuf, config.name.c_str());
+    char PipelineLayoutNameBuf[512]{};
+    MString::Format(PipelineLayoutNameBuf, "pipeline_shader_%s", config.name.c_str());
     if (!VulkanSetDebugObjectName(VkAPI, VK_OBJECT_TYPE_PIPELINE_LAYOUT, PipelineLayout, PipelineLayoutNameBuf)) {
         MWARN("Невозможно настроить имя объекта отладки для %s.", PipelineLayoutNameBuf);
     }

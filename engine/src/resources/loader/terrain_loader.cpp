@@ -128,7 +128,7 @@ bool ResourceLoader::Load(const char *name, void *params, TerrainResource &OutRe
         auto& ImageData = HeightmapImageResource.data;
         u32 PixelCount = ImageData.width * ImageData.height;
         // ResourceData.VertexDataLength = PixelCount;
-        ResourceData.VertexDatas.Reserve(PixelCount);
+        ResourceData.VertexDatas.Resize(PixelCount);
 
         ResourceData.TileCountX = ImageData.width;
         ResourceData.TileCountZ = ImageData.height;

@@ -1099,7 +1099,7 @@ bool VulkanAPI::Load(GeometryID *gid, u32 VertexSize, u32 VertexCount, const voi
     if (IndexCount && indices) {
         TotalSize = IndexCount * IndexSize;
         if (!ObjectIndexBuffer.Allocate(TotalSize, geometry->IndexBufferOffset)) {
-            MERROR("VulkanAPI::LoadDeometry не удалось выделить память из буфера индексов!");
+            MERROR("VulkanAPI::LoadGeometry не удалось выделить память из буфера индексов!");
             return false;
         }
     

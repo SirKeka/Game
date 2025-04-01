@@ -313,7 +313,7 @@ bool RenderViewPick::Render(const Packet &packet, u64 FrameNumber, u64 RenderTar
         // Геометрии конечного мира
 
         //Геометрии ландшафта
-        if (ShaderSystem::Use(TerrainShaderInfo.s->id)) {
+        if (!ShaderSystem::Use(TerrainShaderInfo.s->id)) {
             MERROR("Не удалось использовать шейдер выбора ландшафта. Не удалось отрисовать кадр.");
             return false;
         }

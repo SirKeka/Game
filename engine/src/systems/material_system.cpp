@@ -607,7 +607,7 @@ bool MaterialSystem::ApplyInstance(Material *material, bool NeedsUpdate)
             u32 PointLightCount = LightSystem::PointLightCount();
             if (PointLightCount) {
                 // ЗАДАЧА: Распределитель кадров?
-                auto PointLights = reinterpret_cast<PointLight*>(MemorySystem::Allocate(sizeof(PointLight) * PointLightCount, Memory::Array));
+                auto PointLights = reinterpret_cast<PointLight*>(MemorySystem::Allocate(sizeof(PointLight) * PointLightCount, Memory::Array, true));
                 LightSystem::GetPointLights(PointLights);
 
                 auto PointLightDatas = reinterpret_cast<PointLight::Data*>(MemorySystem::Allocate(sizeof(PointLight::Data) * PointLightCount, Memory::Array));
