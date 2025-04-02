@@ -325,26 +325,6 @@ bool VulkanAPI::Initialize(const RenderingConfig &config, u8 &OutWindowRenderTar
     for (u32 i = 0; i < RequiredExtensionCount; ++i) {
         MDEBUG(RequiredExtensions[i]);
     }
-
-    // Load up debug function pointers.
-    pfnSetDebugUtilsObjectNameEXT = (PFN_vkSetDebugUtilsObjectNameEXT)vkGetInstanceProcAddr(instance, "vkSetDebugUtilsObjectNameEXT");
-    if (!pfnSetDebugUtilsObjectNameEXT) {
-        MWARN("Невозможно загрузить указатель функции для vkSetDebugUtilsObjectNameEXT. Отладочные функции, связанные с этим, не будут работать.");
-    }
-    pfnSetDebugUtilsObjectTagEXT = (PFN_vkSetDebugUtilsObjectTagEXT)vkGetInstanceProcAddr(instance, "vkSetDebugUtilsObjectTagEXT");
-    if (!pfnSetDebugUtilsObjectTagEXT) {
-        MWARN("Невозможно загрузить указатель функции для vkSetDebugUtilsObjectTagEXT. Отладочные функции, связанные с этим, не будут работать.");
-    }
-
-    pfnCmdBeginDebugUtilsLabelEXT = (PFN_vkCmdBeginDebugUtilsLabelEXT)vkGetInstanceProcAddr(instance, "vkCmdBeginDebugUtilsLabelEXT");
-    if (!pfnCmdBeginDebugUtilsLabelEXT) {
-        MWARN("Невозможно загрузить указатель функции для vkCmdBeginDebugUtilsLabelEXT. Отладочные функции, связанные с этим, не будут работать.");
-    }
-
-    pfnCmdEndDebugUtilsLabelEXT = (PFN_vkCmdEndDebugUtilsLabelEXT)vkGetInstanceProcAddr(instance, "vkCmdEndDebugUtilsLabelEXT");
-    if (!pfnCmdEndDebugUtilsLabelEXT) {
-        MWARN("Невозможно загрузить указатель функции для vkCmdEndDebugUtilsLabelEXT. Отладочные функции, связанные с этим, не будут работать.");
-    }
 #endif
 
     CreateInfo.enabledExtensionCount = RequiredExtensions.Length();
@@ -442,6 +422,26 @@ bool VulkanAPI::Initialize(const RenderingConfig &config, u8 &OutWindowRenderTar
     MASSERT_MSG(func, "Не удалось создать debug messenger!");
     VK_CHECK(func(instance, &DebugCreateInfo, allocator, &DebugMessenger));
     MDEBUG("Создан отладчик Vulkan.");
+
+    // Загрузите указатели отладочных функций.
+    pfnSetDebugUtilsObjectNameEXT = (PFN_vkSetDebugUtilsObjectNameEXT)vkGetInstanceProcAddr(instance, "vkSetDebugUtilsObjectNameEXT");
+    if (!pfnSetDebugUtilsObjectNameEXT) {
+        MWARN("Невозможно загрузить указатель функции для vkSetDebugUtilsObjectNameEXT. Отладочные функции, связанные с этим, не будут работать.");
+    }
+    pfnSetDebugUtilsObjectTagEXT = (PFN_vkSetDebugUtilsObjectTagEXT)vkGetInstanceProcAddr(instance, "vkSetDebugUtilsObjectTagEXT");
+    if (!pfnSetDebugUtilsObjectTagEXT) {
+        MWARN("Невозможно загрузить указатель функции для vkSetDebugUtilsObjectTagEXT. Отладочные функции, связанные с этим, не будут работать.");
+    }
+    
+    pfnCmdBeginDebugUtilsLabelEXT = (PFN_vkCmdBeginDebugUtilsLabelEXT)vkGetInstanceProcAddr(instance, "vkCmdBeginDebugUtilsLabelEXT");
+    if (!pfnCmdBeginDebugUtilsLabelEXT) {
+        MWARN("Невозможно загрузить указатель функции для vkCmdBeginDebugUtilsLabelEXT. Отладочные функции, связанные с этим, не будут работать.");
+    }
+    
+    pfnCmdEndDebugUtilsLabelEXT = (PFN_vkCmdEndDebugUtilsLabelEXT)vkGetInstanceProcAddr(instance, "vkCmdEndDebugUtilsLabelEXT");
+    if (!pfnCmdEndDebugUtilsLabelEXT) {
+        MWARN("Невозможно загрузить указатель функции для vkCmdEndDebugUtilsLabelEXT. Отладочные функции, связанные с этим, не будут работать.");
+    }
 #endif
 
     // Поверхность

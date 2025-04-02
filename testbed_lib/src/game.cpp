@@ -200,7 +200,7 @@ bool ApplicationInitialize(Application& app)
     uiverts[2].texcoord.y = 1.F;
 
     uiverts[3].position.x = w;
-    uiverts[3].position.y = 0.0;
+    uiverts[3].position.y = 0.F;
     uiverts[3].texcoord.x = 1.F;
     uiverts[3].texcoord.y = 0.F;
 
