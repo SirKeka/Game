@@ -1764,7 +1764,7 @@ bool VulkanAPI::ShaderAcquireInstanceResources(Shader *shader, u32 TextureMapCou
     // Настраивайте только в том случае, если шейдер действительно этого требует.
     if (shader->InstanceTextureCount > 0) {
         // Очистите память всего массива, даже если она не вся использована.
-        InstanceState.InstanceTextureMaps = MemorySystem::TAllocate<TextureMap*>(Memory::Array, shader->InstanceTextureCount, true);
+        InstanceState.InstanceTextureMaps = reinterpret_cast<TextureMap**>(MemorySystem::Allocate(shader->InstanceTextureCount * sizeof(TextureMap*), Memory::Array, true));
         auto DefaultTexture = TextureSystem::GetDefaultTexture(Texture::Default);
         MemorySystem::CopyMem(InstanceState.InstanceTextureMaps, maps, sizeof(TextureMap*) * TextureMapCount);
         // Установите для всех указателей текстур значения по умолчанию, пока они не будут назначены.

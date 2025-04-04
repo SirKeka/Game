@@ -1,10 +1,10 @@
 #include "material_system.h"
 
 #include "systems/texture_system.h"
-#include "renderer/rendering_system.h"
 #include "systems/resource_system.h"
 #include "systems/shader_system.h"
 #include "systems/light_system.h"
+#include "renderer/rendering_system.h"
 
 #include "memory/linear_allocator.hpp"
 #include <new>
@@ -824,194 +824,205 @@ static bool LoadMaterial(const Material::Config &config, Material *material)
     material->type = config.type;
 
     // Свойства и карты Фонга.
-    if (config.type == Material::Type::Phong) {
-        // Специфические свойства Фонга.
-        const u32& PropCount = config.properties.Length();
+    switch (config.type) {
+        case Material::Type::Phong: {
+            // Специфические свойства Фонга.
+            const u32& PropCount = config.properties.Length();
 
-        // Значения по умолчанию
-        material->PropertyStructSize = sizeof(Material::PhongProperties);
-        material->properties = MemorySystem::Allocate(sizeof(Material::PhongProperties), Memory::MaterialInstance);
-        auto properties = (Material::PhongProperties*)material->properties;
-        properties->DiffuseColour = FVec4::One();
-        properties->specular = 32.F;
-        properties->padding = FVec3();
-        for (u32 i = 0; i < PropCount; ++i) {
-            if (config.properties[i].name.Comparei("diffuse_colour")) {
-                // Рассеянный цвет
-                properties->DiffuseColour = config.properties[i].ValueV4;
-            } else if (config.properties[i].name.Comparei("specular")) {
-                // Блеск
-                properties->specular = config.properties[i].ValueF32;
+            // Значения по умолчанию
+            material->PropertyStructSize = sizeof(Material::PhongProperties);
+            material->properties = MemorySystem::Allocate(sizeof(Material::PhongProperties), Memory::MaterialInstance);
+            auto properties = (Material::PhongProperties*)material->properties;
+            properties->DiffuseColour = FVec4::One();
+            properties->specular = 32.F;
+            properties->padding = FVec3();
+            for (u32 i = 0; i < PropCount; ++i) {
+                if (config.properties[i].name.Comparei("diffuse_colour")) {
+                    // Рассеянный цвет
+                    properties->DiffuseColour = config.properties[i].ValueV4;
+                } else if (config.properties[i].name.Comparei("specular")) {
+                    // Блеск
+                    properties->specular = config.properties[i].ValueF32;
+                }
             }
-        }
 
-        // Карты. Фонг ожидает диффузный, зеркальный и нормальный.
-        material->maps.Resize(3);
-        const u32& MapCount = config.maps.Length();
-        bool DiffuseAssigned = false;
-        bool SpecAssigned = false;
-        bool NormAssigned = false;
-        for (u32 i = 0; i < MapCount; ++i) {
-            if (config.maps[i].name.Comparei("diffuse")) {
-                if (!AssignMap(material->maps[0], config.maps[i], material->name, TextureSystem::GetDefaultTexture(Texture::Diffuse))) {
+            // Карты. Фонг ожидает диффузный, зеркальный и нормальный.
+            material->maps.Resize(3);
+            const u32& MapCount = config.maps.Length();
+            bool DiffuseAssigned = false;
+            bool SpecAssigned = false;
+            bool NormAssigned = false;
+            for (u32 i = 0; i < MapCount; ++i) {
+                if (config.maps[i].name.Comparei("diffuse")) {
+                    if (!AssignMap(material->maps[0], config.maps[i], material->name, TextureSystem::GetDefaultTexture(Texture::Diffuse))) {
+                        return false;
+                    }
+                    DiffuseAssigned = true;
+                } else if (config.maps[i].name.Comparei("specular")) {
+                    if (!AssignMap(material->maps[1], config.maps[i], material->name, TextureSystem::GetDefaultTexture(Texture::Specular))) {
+                        return false;
+                    }
+                    SpecAssigned = true;
+                } else if (config.maps[i].name.Comparei("normal")) {
+                    if (!AssignMap(material->maps[2], config.maps[i], material->name, TextureSystem::GetDefaultTexture(Texture::Normal))) {
+                        return false;
+                    }
+                    NormAssigned = true;
+                }
+                // ЗАДАЧА: другие карты
+                // ПРИМЕЧАНИЕ: игнорируйте неожиданные карты.
+            }
+            if (!DiffuseAssigned) {
+                // Убедитесь, что диффузная карта всегда назначена.
+                Material::Map MapConfig{};
+                MapConfig.FilterMag = MapConfig.FilterMin = TextureFilter::ModeLinear;
+                MapConfig.RepeatU = MapConfig.RepeatV = MapConfig.RepeatW = TextureRepeat::Repeat;
+                MapConfig.name = "diffuse";
+                //MapConfig.TextureName = "";
+                if (!AssignMap(material->maps[0], MapConfig, material->name, TextureSystem::GetDefaultTexture(Texture::Diffuse))) {
                     return false;
                 }
-                DiffuseAssigned = true;
-            } else if (config.maps[i].name.Comparei("specular")) {
-                if (!AssignMap(material->maps[1], config.maps[i], material->name, TextureSystem::GetDefaultTexture(Texture::Specular))) {
+            }
+            if (!SpecAssigned) {
+                // Убедитесь, что зеркальная карта всегда назначена.
+                Material::Map MapConfig{};
+                MapConfig.FilterMag = MapConfig.FilterMin = TextureFilter::ModeLinear;
+                MapConfig.RepeatU = MapConfig.RepeatV = MapConfig.RepeatW = TextureRepeat::Repeat;
+                MapConfig.name = "specular";
+                // MapConfig.TextureName = "";
+                if (!AssignMap(material->maps[1], MapConfig, material->name, TextureSystem::GetDefaultTexture(Texture::Specular))) {
                     return false;
                 }
-                SpecAssigned = true;
-            } else if (config.maps[i].name.Comparei("normal")) {
-                if (!AssignMap(material->maps[2], config.maps[i], material->name, TextureSystem::GetDefaultTexture(Texture::Normal))) {
+            }
+            if (!NormAssigned) {
+                // Убедитесь, что нормальная карта всегда назначена.
+                Material::Map MapConfig{};
+                MapConfig.FilterMag = MapConfig.FilterMin = TextureFilter::ModeLinear;
+                MapConfig.RepeatU = MapConfig.RepeatV = MapConfig.RepeatW = TextureRepeat::Repeat;
+                MapConfig.name = "normal";
+                // MapConfig.TextureName = "";
+                if (!AssignMap(material->maps[2], MapConfig, material->name, TextureSystem::GetDefaultTexture(Texture::Normal))) {
                     return false;
                 }
-                NormAssigned = true;
             }
-            // ЗАДАЧА: другие карты
-            // ПРИМЕЧАНИЕ: игнорируйте неожиданные карты.
         }
-        if (!DiffuseAssigned) {
-            // Убедитесь, что диффузная карта всегда назначена.
-            Material::Map MapConfig{};
-            MapConfig.FilterMag = MapConfig.FilterMin = TextureFilter::ModeLinear;
-            MapConfig.RepeatU = MapConfig.RepeatV = MapConfig.RepeatW = TextureRepeat::Repeat;
-            MapConfig.name = "diffuse";
-            //MapConfig.TextureName = "";
-            if (!AssignMap(material->maps[0], MapConfig, material->name, TextureSystem::GetDefaultTexture(Texture::Diffuse))) {
+            break;
+        case Material::Type::UI: {
+            // ПРИМЕЧАНИЕ: только одна карта и свойство, поэтому просто используйте первое.
+            // ЗАДАЧА: Если это изменится, обновите это, чтобы оно работало так, как указано выше.
+            material->maps.Resize(1);
+            material->PropertyStructSize = sizeof(Material::UiProperties);
+            material->properties = MemorySystem::Allocate(material->PropertyStructSize, Memory::MaterialInstance);
+            auto properties = reinterpret_cast<Material::UiProperties*>(material->properties);
+            properties->DiffuseColour = config.properties[0].ValueV4;
+            if (!AssignMap(material->maps[0], config.maps[0], material->name, TextureSystem::GetDefaultTexture(Texture::Diffuse))) {
                 return false;
             }
         }
-        if (!SpecAssigned) {
-            // Убедитесь, что зеркальная карта всегда назначена.
-            Material::Map MapConfig{};
-            MapConfig.FilterMag = MapConfig.FilterMin = TextureFilter::ModeLinear;
-            MapConfig.RepeatU = MapConfig.RepeatV = MapConfig.RepeatW = TextureRepeat::Repeat;
-            MapConfig.name = "specular";
-            // MapConfig.TextureName = "";
-            if (!AssignMap(material->maps[1], MapConfig, material->name, TextureSystem::GetDefaultTexture(Texture::Specular))) {
-                return false;
-            }
-        }
-        if (!NormAssigned) {
-            // Убедитесь, что нормальная карта всегда назначена.
-            Material::Map MapConfig{};
-            MapConfig.FilterMag = MapConfig.FilterMin = TextureFilter::ModeLinear;
-            MapConfig.RepeatU = MapConfig.RepeatV = MapConfig.RepeatW = TextureRepeat::Repeat;
-            MapConfig.name = "normal";
-            // MapConfig.TextureName = "";
-            if (!AssignMap(material->maps[2], MapConfig, material->name, TextureSystem::GetDefaultTexture(Texture::Normal))) {
-                return false;
-            }
-        }
-    } else if (config.type == Material::Type::UI) {
-        // ПРИМЕЧАНИЕ: только одна карта и свойство, поэтому просто используйте первое.
-        // ЗАДАЧА: Если это изменится, обновите это, чтобы оно работало так, как указано выше.
-        material->maps.Resize(1);
-        material->PropertyStructSize = sizeof(Material::UiProperties);
-        material->properties = MemorySystem::Allocate(sizeof(Material::UiProperties), Memory::MaterialInstance);
-        auto properties = reinterpret_cast<Material::UiProperties*>(material->properties);
-        properties->DiffuseColour = config.properties[0].ValueV4;
-        if (!AssignMap(material->maps[0], config.maps[0], material->name, TextureSystem::GetDefaultTexture(Texture::Diffuse))) {
-            return false;
-        }
-    } else if (config.type == Material::Type::Custom) {
-        // Свойства.
-        const u32& prop_count = config.properties.Length();
-        // Начните с получения общего размера всех свойств.
-        material->PropertyStructSize = 0;
-        for (u32 i = 0; i < prop_count; ++i) {
-            if (config.properties[i].size > 0) {
-                material->PropertyStructSize += config.properties[i].size;
-            }
-        }
-        // Выделите достаточно места для структуры.
-        material->properties = MemorySystem::Allocate(material->PropertyStructSize, Memory::MaterialInstance);
-
-        // Повторите цикл и скопируйте значения в структуру. ПРИМЕЧАНИЕ: для пользовательских униформ материалов нет значений по умолчанию.
-        u32 offset = 0;
-        for (u32 i = 0; i < prop_count; ++i) {
-            if (config.properties[i].size > 0) {
-                void* data = nullptr;
-                switch (config.properties[i].type) {
-                    case Shader::UniformType::Int8:
-                        data = (void*)&config.properties[i].ValueI8;
-                        break;
-                    case Shader::UniformType::UInt8:
-                        data = (void*)&config.properties[i].ValueU8;
-                        break;
-                    case Shader::UniformType::Int16:
-                        data = (void*)&config.properties[i].ValueI16;
-                        break;
-                    case Shader::UniformType::UInt16:
-                        data = (void*)&config.properties[i].ValueU16;
-                        break;
-                    case Shader::UniformType::Int32:
-                        data = (void*)&config.properties[i].ValueI32;
-                        break;
-                    case Shader::UniformType::UInt32:
-                        data = (void*)&config.properties[i].ValueU32;
-                        break;
-                    case Shader::UniformType::Float32:
-                        data = (void*)&config.properties[i].ValueF32;
-                        break;
-                    case Shader::UniformType::Float32_2:
-                        data = (void*)&config.properties[i].ValueV2;
-                        break;
-                    case Shader::UniformType::Float32_3:
-                        data = (void*)&config.properties[i].ValueV3;
-                        break;
-                    case Shader::UniformType::Float32_4:
-                        data = (void*)&config.properties[i].ValueV4;
-                        break;
-                    case Shader::UniformType::Matrix4:
-                        data = (void*)&config.properties[i].ValueMatrix4D;
-                        break;
-                    default:
-                        // ЗАДАЧА: пользовательский размер?
-                        MWARN("Невозможно обработать тип однородной шейдерной модели %d (индекс %u) для материала '%s'. Пропуск.", config.properties[i].type, i, material->name);
-                        continue;
+            break;
+        case  Material::Type::Custom: {
+            // Свойства.
+            const u32& prop_count = config.properties.Length();
+            // Начните с получения общего размера всех свойств.
+            material->PropertyStructSize = 0;
+            for (u32 i = 0; i < prop_count; ++i) {
+                if (config.properties[i].size > 0) {
+                    material->PropertyStructSize += config.properties[i].size;
                 }
+            }
+            // Выделите достаточно места для структуры.
+            material->properties = MemorySystem::Allocate(material->PropertyStructSize, Memory::MaterialInstance);
 
-                // Копируем блок и перемещаемся вверх.
-                MemorySystem::CopyMem((u8*)material->properties + offset, data, config.properties[i].size);
-                offset += config.properties[i].size;
+            // Повторите цикл и скопируйте значения в структуру. ПРИМЕЧАНИЕ: для пользовательских униформ материалов нет значений по умолчанию.
+            u32 offset = 0;
+            for (u32 i = 0; i < prop_count; ++i) {
+                if (config.properties[i].size > 0) {
+                    void* data = nullptr;
+                    switch (config.properties[i].type) {
+                        case Shader::UniformType::Int8:
+                            data = (void*)&config.properties[i].ValueI8;
+                            break;
+                        case Shader::UniformType::UInt8:
+                            data = (void*)&config.properties[i].ValueU8;
+                            break;
+                        case Shader::UniformType::Int16:
+                            data = (void*)&config.properties[i].ValueI16;
+                            break;
+                        case Shader::UniformType::UInt16:
+                            data = (void*)&config.properties[i].ValueU16;
+                            break;
+                        case Shader::UniformType::Int32:
+                            data = (void*)&config.properties[i].ValueI32;
+                            break;
+                        case Shader::UniformType::UInt32:
+                            data = (void*)&config.properties[i].ValueU32;
+                            break;
+                        case Shader::UniformType::Float32:
+                            data = (void*)&config.properties[i].ValueF32;
+                            break;
+                        case Shader::UniformType::Float32_2:
+                            data = (void*)&config.properties[i].ValueV2;
+                            break;
+                        case Shader::UniformType::Float32_3:
+                            data = (void*)&config.properties[i].ValueV3;
+                            break;
+                        case Shader::UniformType::Float32_4:
+                            data = (void*)&config.properties[i].ValueV4;
+                            break;
+                        case Shader::UniformType::Matrix4:
+                            data = (void*)&config.properties[i].ValueMatrix4D;
+                            break;
+                        default:
+                            // ЗАДАЧА: пользовательский размер?
+                            MWARN("Невозможно обработать тип однородной шейдерной модели %d (индекс %u) для материала '%s'. Пропуск.", config.properties[i].type, i, material->name);
+                            continue;
+                    }
+
+                    // Копируем блок и перемещаемся вверх.
+                    MemorySystem::CopyMem((u8*)material->properties + offset, data, config.properties[i].size);
+                    offset += config.properties[i].size;
+                }
+            }
+
+            // Карты. Пользовательские материалы могут иметь любое количество карт.
+            const u32& MapCount = config.maps.Length();
+            material->maps.Resize(MapCount);
+            for (u32 i = 0; i < MapCount; ++i) {
+                // Нет известного сопоставления, поэтому просто сопоставляйте их по порядку.
+                // Недействительные текстуры будут использовать текстуру по умолчанию, поскольку тип карты неизвестен.
+                if (!AssignMap(material->maps[i], config.maps[i], material->name, TextureSystem::GetDefaultTexture(Texture::Default))) {
+                    return false;
+                }
             }
         }
-
-        // Карты. Пользовательские материалы могут иметь любое количество карт.
-        const u32& MapCount = config.maps.Length();
-        material->maps.Resize(MapCount);
-        for (u32 i = 0; i < MapCount; ++i) {
-            // Нет известного сопоставления, поэтому просто сопоставляйте их по порядку.
-            // Недействительные текстуры будут использовать текстуру по умолчанию, поскольку тип карты неизвестен.
-            if (!AssignMap(material->maps[i], config.maps[i], material->name, TextureSystem::GetDefaultTexture(Texture::Default))) {
-                return false;
-            }
-        }
+            break;
+        case Material::Type::PBR: case Material::Type::Terrain: case Material::Type::Unknown: break;
     }
 
     // Отправьте его в рендерер для получения ресурсов.
     Shader* shader = nullptr;
-    if (config.type == Material::Type::Phong) {
-        shader = ShaderSystem::GetShader(config.ShaderName ? config.ShaderName : "Shader.Builtin.Material");
-    } else if (config.type == Material::Type::UI) {
-        shader = ShaderSystem::GetShader(config.ShaderName ? config.ShaderName : "Shader.Builtin.UI");
-    } else if (config.type == Material::Type::Terrain) {
-        shader = ShaderSystem::GetShader(config.ShaderName ? config.ShaderName : "Shader.Builtin.Terrain");
-    } else if (config.type == Material::Type::PBR) {
-        MFATAL("PBR пока не поддерживается.");
-        return false;
-    } else if (config.type == Material::Type::Custom) {
-        if (!config.ShaderName) {
-            MERROR("Имя шейдера требуется для пользовательских типов материалов. Материал '%s' не удалось загрузить", material->name);
+    switch (config.type) {
+        case Material::Type::Phong: shader = ShaderSystem::GetShader(config.ShaderName ? config.ShaderName : "Shader.Builtin.Material");
+            break;
+        case Material::Type::UI: shader = ShaderSystem::GetShader(config.ShaderName ? config.ShaderName : "Shader.Builtin.UI");
+            break;
+        case Material::Type::Terrain: shader = ShaderSystem::GetShader(config.ShaderName ? config.ShaderName : "Shader.Builtin.Terrain");
+            break;
+        case Material::Type::PBR: 
+            MFATAL("PBR пока не поддерживается.");
             return false;
-        }
-        shader = ShaderSystem::GetShader(config.ShaderName);
-    } else {
-        MERROR("Неизвестный тип материала: %d. Материал '%s' не может быть загружен.", config.type, material->name);
-        return false;
+        case Material::Type::Custom: 
+            if (!config.ShaderName) {
+                MERROR("Имя шейдера требуется для пользовательских типов материалов. Материал '%s' не удалось загрузить", material->name);
+                return false;
+            }
+            shader = ShaderSystem::GetShader(config.ShaderName);
+
+        default: MERROR("Неизвестный тип материала: %d. Материал '%s' не может быть загружен.", config.type, material->name);
+            return false;
+            // break;
     }
+    
     if (!shader) {
         MERROR("Не удалось загрузить материал, так как его шейдер не найден: '%s'. Вероятно, это проблема с материальным активом.", config.ShaderName.c_str());
         return false;
@@ -1019,18 +1030,19 @@ static bool LoadMaterial(const Material::Config &config, Material *material)
 
     // Соберите список указателей на текстурные карты;
     u32 MapCount = 0;
-    if (config.type == Material::Type::Phong) {
-        // Количество карт для этого типа известно.
-        MapCount = 3;
-    } else if (config.type == Material::Type::UI) {
-        // Количество карт для этого типа известно.
-        MapCount = 1;
-    } else if (config.type == Material::Type::PBR) {
-        MFATAL("PBR пока не поддерживается.");
-        return false;
-    } else if (config.type == Material::Type::Custom) {
-        // Количество карт предоставлено конфигурацией.
-        MapCount = config.maps.Length();
+    switch (config.type) {
+        case Material::Type::Phong: /* Количество карт для этого типа известно. */
+            MapCount = 3;
+            break;
+        case  Material::Type::UI: /* Количество карт для этого типа известно. */
+            MapCount = 1;
+            break;
+        case Material::Type::PBR: MFATAL("PBR пока не поддерживается.");
+            return false;
+        case Material::Type::Custom: /* Количество карт предоставлено конфигурацией. */
+            MapCount = config.maps.Length();
+            break;
+        case Material::Type::Terrain: case Material::Type::Unknown: break;
     }
 
     auto maps = reinterpret_cast<TextureMap**>(MemorySystem::Allocate(sizeof(TextureMap*) * MapCount, Memory::Array));
