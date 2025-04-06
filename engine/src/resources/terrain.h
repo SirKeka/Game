@@ -80,7 +80,7 @@ struct Terrain {
     GeometryID geo;
 
     u32 MaterialCount;
-    char** MaterialNames;
+    char** MaterialNames; // DArray<MString>?
 
     Terrain() : name(), xform(), TileCountX(), TileCountZ(), TileScaleX(), TileScaleZ(), ScaleY(), VertexDatas(), extents(), origin(), VertexCount(), vertices(nullptr), IndexCount(), indices(nullptr), geo(), MaterialCount(), MaterialNames(nullptr) {}
 

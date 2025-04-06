@@ -86,8 +86,7 @@ namespace Math
     /// @brief Преобразует указанные градусы в радианы.
     /// @param degrees градусы, подлежащие преобразованию.
     /// @return величина в радианах.
-    MINLINE f32 DegToRad(f32 degrees) 
-    {
+    MINLINE f32 DegToRad(f32 degrees = 1.F) {
         return degrees * M_DEG2RAD_MULTIPLIER;
     }
 

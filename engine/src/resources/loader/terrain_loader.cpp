@@ -77,7 +77,7 @@ bool ResourceLoader::Load(const char *name, void *params, TerrainResource &OutRe
             }
             // ЗАДАЧА: версия
         } else if (TrimmedVarName.Comparei("name")) {
-            ResourceData.name = TrimmedValue;
+            ResourceData.name = (MString&&)TrimmedValue;
         } else if (TrimmedVarName.Comparei("scale_x")) {
             if (!TrimmedValue.ToFloat(ResourceData.TileScaleX)) {
                 MWARN("Ошибка формата: не удалось проанализировать ScaleX");
@@ -91,14 +91,14 @@ bool ResourceLoader::Load(const char *name, void *params, TerrainResource &OutRe
                 MWARN("Ошибка формата: не удалось проанализировать ScaleZ");
             }
         } else if (TrimmedVarName.Comparei("heightmap_file")) {
-            HeightmapFile = static_cast<MString&&>(TrimmedValue);
+            HeightmapFile = (MString&&)TrimmedValue;
         } else if (TrimmedVarName.Comparei("material", 8)) {
             u32 MaterialIndex = 0;
             if (!TrimmedVarName.ToInt(MaterialIndex)) { // TrimmedVarName + 8
                 MWARN("Ошибка формата: невозможно проанализировать индекс материала.");
             }
 
-            ResourceData.MaterialNames[MaterialIndex] = MString::Duplicate(TrimmedValue.c_str());
+            ResourceData.MaterialNames[MaterialIndex] = TrimmedValue.Move(); // MString::Duplicate(TrimmedValue.c_str());
             ResourceData.MaterialCount++;
         } else {
             // ЗАДАЧА: захватить что-нибудь еще

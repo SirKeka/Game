@@ -403,7 +403,7 @@ Material* MaterialSystem::Acquire(const char* MaterialName, u32 MaterialCount, c
             auto props = (Material::PhongProperties*)RefMat->properties;
             MatProps.DiffuseColour = props->DiffuseColour;
             MatProps.specular = props->specular;
-            MatProps.padding = FVec3();
+            // MatProps.padding = FVec3();
 
             // Карты, 3 для Фонга. Диффузный, спек, нормальный.
             for (u32 MapIdx = 0; MapIdx < 3; ++MapIdx) {
@@ -582,7 +582,7 @@ bool MaterialSystem::ApplyInstance(Material *material, bool NeedsUpdate)
             MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->MaterialLocations.NumPointLights, &PointLightCount)); 
         } else if (material->ShaderID == state->UiShaderID) {
             // шейдер пользовательского интерфейса
-            MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->UiLocations.properties, &material->properties));
+            MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->UiLocations.properties, material->properties));
             MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->UiLocations.DiffuseTexture, &material->maps[0]));
         } else if (material->ShaderID == state->TerrainShaderID) {
             // Применить карты

@@ -206,8 +206,8 @@ DebugMessenger(),
 #endif
 
 Device(), swapchain(),
-ObjectVertexBuffer("renderbuffer_vertexbuffer_globalgeometry", RenderBufferType::Vertex, sizeof(Vertex3D) * 1024 * 1024, true),
-ObjectIndexBuffer("renderbuffer_indexbuffer_globalgeometry", RenderBufferType::Index, sizeof(u32) * 1024 * 1024, true),
+ObjectVertexBuffer("renderbuffer_vertexbuffer_globalgeometry", RenderBufferType::Vertex, sizeof(Vertex3D) * 1024 * 1024 * 10, true),
+ObjectIndexBuffer("renderbuffer_indexbuffer_globalgeometry", RenderBufferType::Index, sizeof(u32) * 1024 * 1024 * 100, true),
 GraphicsCommandBuffers(),
 ImageAvailableSemaphores(),
 QueueCompleteSemaphores(),

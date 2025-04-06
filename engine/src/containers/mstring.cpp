@@ -429,9 +429,9 @@ bool MString::Comparei(const MString &string) const
     return MString::Equali(str, string.str);
 }
 
-bool MString::Comparei(const char *string, u64 Length) const
+bool MString::Comparei(const char *string, u64 length) const
 {
-    if (!Length)
+    if (!length)
         return MString::Equali(str, string);
     else
         return nComparei(str, string, length);
@@ -809,6 +809,14 @@ void MString::Mid(char *dest, const MString &source, u32 start, i32 length)
         }
         dest[start + j] = '\0';
     }
+}
+
+char *MString::Move()
+{
+    length = size = 0;
+    char* NewStr = str;
+    str = nullptr;
+    return NewStr;
 }
 
 i32 MString::IndexOf(char *str, char c)

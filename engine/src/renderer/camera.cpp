@@ -26,6 +26,7 @@ const FVec3& Camera::GetRotationEuler()
 void Camera::SetRotationEuler(const FVec3& rotation)
 {
     this->EulerRotation = rotation;
+    this->EulerRotation *= Math::DegToRad();
     IsDirty = true;
 }
 
