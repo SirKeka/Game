@@ -1,6 +1,6 @@
-#include "matrix4d.hpp"
+#include "matrix4d.h"
 
-#include "math.hpp"
+#include "math.h"
 #include "core/logger.hpp"
 
 constexpr Matrix4D::Matrix4D(f32 n11, f32 n12, f32 n13, f32 n14, f32 n21, f32 n22, f32 n23, f32 n24, f32 n31, f32 n32, f32 n33, f32 n34, f32 n41, f32 n42, f32 n43, f32 n44)

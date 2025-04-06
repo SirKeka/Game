@@ -2,11 +2,12 @@
 
 #include "defines.hpp"
 #include "simple_scene_config.h"
-#include "mesh.hpp"
+#include "mesh.h"
 #include "lighting_structures.h"
 #include "terrain.h"
+#include "debug/debug_grid.h"
 
-#include "math/transform.hpp"
+#include "math/transform.h"
 #include "renderer/views/render_view_world.h"
 
 struct FrameData;
@@ -57,11 +58,14 @@ struct MAPI SimpleScene {
 
     struct Skybox* sb;
 
+    // Сетка для сцены.
+    DebugGrid grid;
+
     // Указатель на конфигурацию сцены, если она указана.
     SimpleSceneConfig* config;
     RenderViewWorldData WorldData;
 
-    SimpleScene() : id(GlobalSceneID++), state(State::Uninitialized), enabled(false), name(), description(), SceneTransform(), DirLight(nullptr), PointLights(), meshes(), terrains(), PendingMeshes(), sb(nullptr), config(nullptr), WorldData() {}
+    SimpleScene() : id(GlobalSceneID++), state(State::Uninitialized), enabled(false), name(), description(), SceneTransform(), DirLight(nullptr), PointLights(), meshes(), terrains(), PendingMeshes(), sb(nullptr), grid(), config(nullptr), WorldData() {}
 
     /// @brief Создает новую сцену с заданной конфигурацией со значениями по умолчанию. Ресурсы не выделены. Конфигурация еще не обработана.
     /// @param config Указатель на конфигурацию. Необязательно.

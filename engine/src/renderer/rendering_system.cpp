@@ -180,6 +180,10 @@ bool RenderingSystem::Load(GeometryID *gid, u32 VertexSize, u32 VertexCount, con
     return pRenderingSystem->ptrRenderer->Load(gid, VertexSize, VertexCount, vertices, IndexSize, IndexCount, indices);
 }
 
+void RenderingSystem::GeometryVertexUpdate(GeometryID *g, u32 offset, u32 VertexCount, void *vertices)
+{
+}
+
 void RenderingSystem::Unload(GeometryID *gid)
 {
     auto pRenderingSystem = reinterpret_cast<sRenderingSystem*>(SystemsManager::GetState(MSystem::Type::Renderer));

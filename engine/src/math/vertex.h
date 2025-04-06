@@ -1,7 +1,7 @@
 #pragma once
-#include "vector2d_fwd.hpp"
-#include "vector3d_fwd.hpp"
-#include "vector4d_fwd.hpp"
+#include "vector2d_fwd.h"
+#include "vector3d_fwd.h"
+#include "vector4d_fwd.h"
 #include "core/mmemory.hpp"
 
 struct Vertex2D
@@ -35,4 +35,13 @@ struct Vertex3D
         }
         return false;
     }
+};
+
+/// @brief Представляет одну вершину в трехмерном пространстве только с данными о положении и цвете.
+struct ColourVertex3D
+{
+    /// @brief Положение вершины. w игнорируется.
+    FVec4 position;
+    /// @brief Цвет вершины.
+    FVec4 colour;
 };

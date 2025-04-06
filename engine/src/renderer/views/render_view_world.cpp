@@ -6,7 +6,7 @@
 #include "systems/render_view_system.h"
 #include "systems/resource_system.h"
 #include "renderer/renderpass.hpp"
-#include "resources/mesh.hpp"
+#include "resources/mesh.h"
 #include "resources/geometry.hpp"
 
 /// @brief Частная структура, используемая для сортировки геометрии по расстоянию от камеры.
@@ -98,6 +98,34 @@ RenderMode()
         return;
     }
     // ResourceSystem::Unload(TerrainShaderConfigResource);
+
+    // Загрузить отладочный шейдер colour3d.
+    // ЗАДАЧА: переместить встроенные шейдеры в саму систему шейдеров.
+    const char* Colour3dShaderName = "Shader.Builtin.ColourShader3D";
+    // resource colour3d_shader_config_resource;
+    if (!ResourceSystem::Load(Colour3dShaderName, eResource::Type::Shader, nullptr, ConfigResource)) {
+        MERROR("Не удалось загрузить встроенный ресурс шейдера colour3d.");
+        return;
+    }
+    auto Colour3dShaderConfig = ConfigResource.data;
+    // ПРИМЕЧАНИЕ: предполагается первый проход, так как это все, что есть в этом представлении.
+    if (!ShaderSystem::Create(passes[0], Colour3dShaderConfig)) {
+        MERROR("Не удалось загрузить встроенный шейдер colour3d.");
+        return;
+    }
+    ResourceSystem::Unload(ConfigResource);
+
+    // Получить однородные расположения шейдера colour3d.
+    {
+        auto shader = ShaderSystem::GetShader(Colour3dShaderName);
+        if (!shader) {
+            MERROR("Не удалось получить шейдер colour3d!");
+            return;
+        }
+        DebugLocations.projection = ShaderSystem::UniformIndex(shader, "projection");
+        DebugLocations.view = ShaderSystem::UniformIndex(shader, "view");
+        DebugLocations.model = ShaderSystem::UniformIndex(shader, "model");
+    }
 
     // Получите либо переопределение пользовательского шейдера, либо заданное значение по умолчанию.
     shader = ShaderSystem::GetShader(CustomShaderName ? CustomShaderName : ShaderName);
@@ -199,6 +227,9 @@ bool RenderViewWorld::BuildPacket(class LinearAllocator& FrameAllocator, void *d
         OutPacket.TerrainGeometries.PushBack(WorldData.TerrainGeometries[i]);
         // OutPacket.TerrainGeometryCount++;
     }
+
+    // Отлладочная геометрия.
+    OutPacket.DebugGeometries = WorldData.DebugGeometries;
 
     GeometryDistances.Destroy();
 
@@ -305,6 +336,35 @@ bool RenderViewWorld::Render(const Packet &packet, u64 FrameNumber, u64 RenderTa
 
                 // Нарисуйте его.
                 RenderingSystem::DrawGeometry(packet.geometries[i]);
+            }
+        }
+
+        // ЗАДАЧА: Отладка геометрии (т. е. сеток, линий, блоков, гизмо и т. д.)
+        // Это должно проходить через ту же геометрическую систему, что и все остальное.
+        const u32& DebugGeometryCount = packet.DebugGeometries.Length();
+        if (DebugGeometryCount > 0) {
+            auto shader = ShaderSystem::GetShader("Shader.Builtin.ColourShader3D");
+            if (!shader) {
+                MERROR("Невозможно получить шейдер colour3d.");
+                return false;
+            }
+            ShaderSystem::Use(shader->id);
+
+            // Глобальные
+            ShaderSystem::UniformSet(DebugLocations.projection, &packet.ProjectionMatrix);
+            ShaderSystem::UniformSet(DebugLocations.view, &packet.ViewMatrix);
+
+            ShaderSystem::ApplyGlobal();
+
+            // Каждая геометрия.
+            for (u32 i = 0; i < DebugGeometryCount; ++i) {
+                // ПРИМЕЧАНИЕ: не нужно устанавливать униформы на уровне экземпляра.
+
+                // Локальные
+                ShaderSystem::UniformSet(DebugLocations.model, &packet.DebugGeometries[i].model);
+
+                // Нарисуйте ее.
+                RenderingSystem::DrawGeometry(packet.DebugGeometries[i]);
             }
         }
 

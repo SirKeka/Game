@@ -1,12 +1,19 @@
 #include "simple_scene.h"
 #include "skybox.h"
-#include "renderer/renderer_types.hpp"
+#include "debug/debug_box3d.h"
+#include "debug/debug_line3d.h"
+#include "renderer/renderer_types.h"
 #include "systems/render_view_system.h"
 #include "systems/camera_system.hpp"
 #include "systems/light_system.h"
 #include "systems/resource_system.h"
 #include "core/frame_data.h"
-#include "math/frustrum.hpp"
+#include "math/frustrum.h"
+
+struct SimpleSceneDebugData {
+    DebugBox3D box;
+    DebugLine3D line;
+};
 
 bool SimpleScene::Create(SimpleSceneConfig *config)
 {
@@ -20,12 +27,22 @@ bool SimpleScene::Create(SimpleSceneConfig *config)
     sb = nullptr;
 
     if (config) {
-        this->config = new SimpleSceneConfig(static_cast<SimpleSceneConfig&&>(*config)); // MemorySystem::Allocate(sizeof(SimpleSceneConfig), Memory::Scene);
+        this->config = new SimpleSceneConfig((SimpleSceneConfig&&)*config); // MemorySystem::Allocate(sizeof(SimpleSceneConfig), Memory::Scene);
         //MemorySystem::CopyMem(this->config, config, sizeof(SimpleSceneConfig));
     }
 
     // ПРИМЕЧАНИЕ: Начните с достаточно большого числа, чтобы избежать перераспределения памяти в начале.
     WorldData.WorldGeometries.Reserve(512);
+
+    DebugGrid::Config GridConfig{};
+    GridConfig.orientation = DebugGrid::Orientation::XZ;
+    GridConfig.TileCountDim0 = 100;
+    GridConfig.TileCountDim1 = 100;
+    GridConfig.TileScale = 1.F;
+    GridConfig.name = "debug_grid";
+    GridConfig.UseThirdAxis = true;
+
+    grid = DebugGrid(GridConfig);
 
     return true;
 }
@@ -40,16 +57,16 @@ bool SimpleScene::Initialize()
     // Конфигурация процесса и иерархия настройки.
     if (config) {
         if (config->name) {
-            name = static_cast<MString&&>(config->name);
+            name = (MString&&)config->name;
         }
         if (config->description) {
-            description = static_cast<MString&&>(config->description);
+            description = (MString&&)config->description;
         }
 
         // Скайбокс можно настроить только если указаны имя и имя кубической карты. В противном случае его нет.
         if (config->SkyboxConfig.name && config->SkyboxConfig.CubemapName) {
             Skybox::Config SbConfig = {0};
-            SbConfig.CubemapName = static_cast<MString&&>(config->SkyboxConfig.CubemapName);
+            SbConfig.CubemapName = (MString&&)config->SkyboxConfig.CubemapName;
             sb = new Skybox();
             if (!sb->Create(SbConfig)) {
                 MWARN("Не удалось создать скайбокс.");
@@ -61,9 +78,23 @@ bool SimpleScene::Initialize()
         // Если имя не назначено, предполагается отсутствие направленного света.
         if (config->DirectionalLightConfig.name) {
             DirLight = new DirectionalLight();
-            DirLight->name = static_cast<MString&&>(config->DirectionalLightConfig.name);
+            DirLight->name = (MString&&)config->DirectionalLightConfig.name;
             DirLight->data.colour = config->DirectionalLightConfig.colour;
             DirLight->data.direction = config->DirectionalLightConfig.direction;
+
+            // Добавьте отладочные данные и инициализируйте их.
+            DirLight->DebugData = MemorySystem::Allocate(sizeof(SimpleSceneDebugData), Memory::Resource);
+            auto debug = reinterpret_cast<SimpleSceneDebugData*>(DirLight->DebugData);
+
+            // Создайте точки линии на основе направления света.
+            // Первая точка всегда будет в начале координат сцены.
+            FVec3 Point0{};
+            FVec3 Point1 = FVec3(DirLight->data.direction).Normalize() * -1.F;
+
+            // if (!) {
+            //     MERROR("Не удалось создать отладочную линию для направленного света.");
+            // }
+            debug->line = DebugLine3D(Point0, Point1, nullptr);
         }
 
         // Точечные источники света.
@@ -71,12 +102,23 @@ bool SimpleScene::Initialize()
         PointLights.Resize(PointLightCount);
         for (u32 i = 0; i < PointLightCount; ++i) {
             // PointLight NewLight = {0};
-            PointLights[i].name = static_cast<MString&&>(config->PointLights[i].name);
+            PointLights[i].name = (MString&&)config->PointLights[i].name;
             PointLights[i].data.colour = config->PointLights[i].colour;
             PointLights[i].data.ConstantF = config->PointLights[i].ConstantF;
             PointLights[i].data.linear = config->PointLights[i].linear;
             PointLights[i].data.position = config->PointLights[i].position;
             PointLights[i].data.quadratic = config->PointLights[i].quadratic;
+
+            // Добавьте отладочные данные и инициализируйте их.
+            PointLights[i].DebugData = MemorySystem::Allocate(sizeof(SimpleSceneDebugData), Memory::Resource);
+            auto debug = reinterpret_cast<SimpleSceneDebugData*>(PointLights[i].DebugData);
+            
+            debug->box = DebugBox3D(0.2F, nullptr);
+            // if (!debug_box3d_create((vec3){0.2f, 0.2f, 0.2f}, 0, &)) {
+            //     MERROR("Не удалось создать отладочное поле для направленного света.");
+            // } else {
+            //     transform_position_set(&debug->box.xform, vec3_from_vec4(new_light.data.position));
+            // }
 
             // PointLights.PushBack(NewLight);
         }
@@ -89,10 +131,10 @@ bool SimpleScene::Initialize()
                 continue;
             }
             Mesh::Config NewMeshConfig = {0};
-            NewMeshConfig.name = static_cast<MString&&>(config->meshes[i].name);
-            NewMeshConfig.ResourceName = static_cast<MString&&>(config->meshes[i].ResourceName);
+            NewMeshConfig.name = (MString&&)config->meshes[i].name;
+            NewMeshConfig.ResourceName = (MString&&)config->meshes[i].ResourceName;
             if (config->meshes[i].ParentName) {
-                NewMeshConfig.ParentName = static_cast<MString&&>(config->meshes[i].ParentName);
+                NewMeshConfig.ParentName = (MString&&)config->meshes[i].ParentName;
             }
             Mesh NewMesh;
             if (!NewMesh.Create(NewMeshConfig)) {
@@ -106,7 +148,7 @@ bool SimpleScene::Initialize()
             }
             NewMesh.transform = config->meshes[i].transform;
 
-            meshes.PushBack(static_cast<Mesh&&>(NewMesh));
+            meshes.PushBack((Mesh&&)NewMesh);
         }
 
         // Ландшафты
@@ -145,6 +187,35 @@ bool SimpleScene::Initialize()
             // ResourceSystem::Unload(terrainResource);
 
             terrains.PushBack(NewTerrain);
+        }
+    }
+
+    if (!grid.Initialize()) {
+        return false;
+    }
+
+    // Обработать линии отладки направленного света
+    if (DirLight && DirLight->DebugData) {
+        auto debug = reinterpret_cast<SimpleSceneDebugData*>(DirLight->DebugData);
+        if (!debug->line.Initialize()) {
+            MERROR("не удалось инициализировать отладочный блок.");
+            MemorySystem::Free(DirLight->DebugData, sizeof(SimpleSceneDebugData), Memory::Resource);
+            DirLight->DebugData = nullptr;
+            return false;
+        }
+    }
+
+    // Обработать отладочные блоки точечного света
+    const u32& PointLightCount = PointLights.Length();
+    for (u32 i = 0; i < PointLightCount; ++i) {
+        if (PointLights[i].DebugData) {
+            auto debug = reinterpret_cast<SimpleSceneDebugData*>(PointLights[i].DebugData);
+            if (!debug->box.Initialize()) {
+                MERROR("не удалось инициализировать отладочный блок.");
+                MemorySystem::Free(PointLights[i].DebugData, sizeof(SimpleSceneDebugData), Memory::Resource);
+                PointLights[i].DebugData = nullptr;
+                return false;
+            }
         }
     }
 
@@ -223,9 +294,23 @@ bool SimpleScene::Load()
         }
     }
 
+    // Отладочная сетка.
+    if (!grid.Load()) {
+        return false;
+    }
+
     if (DirLight) {
         if (!LightSystem::AddDirectional(DirLight)) {
             MWARN("Не удалось добавить направленный свет в систему освещения.");
+        } else {
+            if (DirLight->DebugData) {
+                auto debug = reinterpret_cast<SimpleSceneDebugData*>(DirLight->DebugData);
+                if (!debug->line.Load()) {
+                    MERROR("Не удалозь загрузить отладочные линии.");
+                    MemorySystem::Free(DirLight->DebugData, sizeof(SimpleSceneDebugData), Memory::Resource);
+                    DirLight->DebugData = nullptr;
+                }
+            }
         }
     }
 
@@ -233,6 +318,14 @@ bool SimpleScene::Load()
     for (u32 i = 0; i < PointLightCount; ++i) {
         if (!LightSystem::AddPoint(&PointLights[i])) {
             MWARN("Не удалось добавить точечный источник света в систему освещения.");
+        } else {
+            // Загрузите отладочные данные, если они были настроены.
+            auto debug = reinterpret_cast<SimpleSceneDebugData*>(PointLights[i].DebugData);
+            if (!debug->box.Load()) {
+                MERROR("Не удалось загрузить отладочное поле.");
+                MemorySystem::Free(PointLights[i].DebugData, sizeof(SimpleSceneDebugData), Memory::Resource);
+                PointLights[i].DebugData = 0;
+            }
         }
     }
 

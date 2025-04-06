@@ -1,6 +1,7 @@
 #pragma once
 #include "defines.hpp"
-#include "math/transform.hpp"
+#include "math/transform.h"
+#include "math/extents.h"
 #include "core/mmemory.hpp"
 
 struct GeometryID;
@@ -19,6 +20,8 @@ struct MAPI Mesh {
     u16 GeometryCount;
     GeometryID** geometries;
     Transform transform;
+    Extents3D extents;
+    void* DebugData;
 
     constexpr Mesh() : config(), UniqueID(), generation(), GeometryCount(), geometries(nullptr), transform() {}
     constexpr Mesh(Config& config) : config(static_cast<Config&&>(config)), UniqueID(INVALID::U8ID), generation(), GeometryCount(), geometries(nullptr), transform() {}

@@ -1,7 +1,7 @@
 #pragma once
-#include "vector3d_fwd.hpp"
-#include "quaternion.hpp"
-#include "matrix4d.hpp"
+#include "vector3d_fwd.h"
+#include "quaternion.h"
+#include "matrix4d.h"
 
 /// @brief Представляет преобразование объекта в мире.
 /// Преобразования могут иметь родителя, собственное преобразование которого затем учитывается. 

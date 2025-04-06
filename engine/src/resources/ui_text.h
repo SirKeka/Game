@@ -1,7 +1,7 @@
 #pragma once
 #include "renderer/renderbuffer.hpp"
-#include "math/transform.hpp"
-#include "mesh.hpp"
+#include "math/transform.h"
+#include "mesh.h"
 
     enum class TextType {
         Bitmap,

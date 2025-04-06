@@ -1,12 +1,12 @@
 #pragma once
 
 #include "renderpass.hpp"
-#include "math/matrix4d.hpp"
-#include "math/vertex.hpp"
-#include "resources/shader.hpp"
+#include "math/matrix4d.h"
+#include "math/vertex.h"
+#include "resources/shader.h"
 #include "renderer/views/render_view.h"
 #include "renderbuffer.hpp"
-#include "resources/mesh.hpp"
+#include "resources/mesh.h"
 #include "resources/ui_text.h"
 #include "renderer_structs.hpp"
 
@@ -123,10 +123,6 @@ public:
     /// @return тrue в случае успеха иначе false.
     virtual bool RenderpassEnd(Renderpass* pass) = 0;
 
-    /// @brief Рисует заданную геометрию. Должен вызываться только внутри прохода рендеринга, внутри кадра.
-    /// @param data данные рендеринга геометрии, которая должна быть нарисована.
-    virtual void DrawGeometry(const GeometryRenderData& data) = 0;
-
     //////////////////////////////////////////////////////////////////////
     //                             Texture                              //
     //////////////////////////////////////////////////////////////////////
@@ -174,12 +170,27 @@ public:
 
     virtual void* TextureCopyData(const Texture* texture) = 0;
 
+    //////////////////////////////////////////////////////////////////////
+    //                            Geometry                              //
+    //////////////////////////////////////////////////////////////////////
+
     /// @brief Выгружает данные текстуры из графического процессора.
     /// @param texture указатель на текстуру которую нужно выгрузить.
     virtual void Unload(Texture* texture) = 0;
 
     virtual bool Load(struct GeometryID* gid, u32 VertexSize, u32 VertexCount, const void* vertices, u32 IndexSize, u32 IndexCount, const void* indices) = 0;
     virtual void Unload(struct GeometryID* gid) = 0;
+
+    /// @brief Рисует заданную геометрию. Должен вызываться только внутри прохода рендеринга, внутри кадра.
+    /// @param data данные рендеринга геометрии, которая должна быть нарисована.
+    virtual void DrawGeometry(const GeometryRenderData& data) = 0;
+
+    /// @brief Обновляет данные вершин в заданной геометрии предоставленными данными в заданном диапазоне.
+    /// @param g Указатель на геометрию, которую нужно создать.
+    /// @param offset Смещение в байтах для обновления. 0, если обновление с начала.
+    /// @param VertexCount Количество вершин, которые будут обновлены.
+    /// @param vertices Данные вершин.
+    virtual void GeometryVertexUpdate(GeometryID* geometry, u32 offset, u32 VertexCount, void* vertices) = 0;
 
     //////////////////////////////////////////////////////////////////////
     //                              Shader                              //

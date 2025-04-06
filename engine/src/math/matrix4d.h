@@ -1,9 +1,9 @@
 #pragma once
 
 #include "defines.hpp"
-#include "vector3d_fwd.hpp"
-#include "vector4d_fwd.hpp"
-#include "quaternion.hpp"
+#include "vector3d_fwd.h"
+#include "vector4d_fwd.h"
+#include "quaternion.h"
 
 class MAPI Matrix4D
 {

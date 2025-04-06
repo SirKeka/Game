@@ -1,7 +1,7 @@
 #pragma once 
 #include "containers/darray.hpp"
 #include "core/event.hpp"
-#include "math/matrix4d.hpp"
+#include "math/matrix4d.h"
 
 struct Renderpass;
 struct GeometryID;
@@ -133,6 +133,8 @@ public:
         DArray<GeometryRenderData> geometries;
         /// @brief Геометрия местности, которую необходимо нарисовать.
         DArray<GeometryRenderData> TerrainGeometries;
+        /// @brief Отладочные геометрии, которые необходимо нарисовать.
+        DArray<GeometryRenderData> DebugGeometries;
         /// @brief 
         Terrain** terrains;
         /// @brief Имя пользовательского шейдера для использования, если применимо. В противном случае nullptr.

@@ -3,7 +3,7 @@
 #include "resources/material.h"
 #include "resources/font_resource.hpp"
 #include "resources/geometry.hpp"
-#include "resources/shader.hpp"
+#include "resources/shader.h"
 #include "resources/simple_scene_config.h"
 #include "resources/terrain.h"
 

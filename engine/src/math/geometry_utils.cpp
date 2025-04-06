@@ -1,7 +1,7 @@
-#include "geometry_utils.hpp"
+#include "geometry_utils.h"
 #include "resources/geometry.hpp"
 #include "resources/terrain.h"
-#include "vertex.hpp"
+#include "vertex.h"
 #include "containers/darray.hpp"
 
 namespace Math

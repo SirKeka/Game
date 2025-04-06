@@ -1,4 +1,4 @@
-#include "identifier.hpp"
+#include "identifier.h"
 #include "containers/darray.hpp"
 
 static DArray<void*> owners;
@@ -27,7 +27,7 @@ u32 Identifier::AquireNewID(void *owner)
     return length - 1;
 }
 
-void Identifier::ReleaseID(u32 id)
+void Identifier::ReleaseID(u32& id)
 {
     if (!owners) {
         MERROR("Identifier::ReleaseID вызван перед инициализацией. Identifier::AquireNewID должен был быть вызван первым. Ничего не было сделано.");
@@ -42,4 +42,5 @@ void Identifier::ReleaseID(u32 id)
 
     // Просто обнулить запись, сделав ее доступной для использования.
     owners[id] = nullptr;
+    id = INVALID::ID;
 }

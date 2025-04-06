@@ -2,8 +2,8 @@
 
 #include "defines.hpp"
 
-#include "math.hpp"
-#include "vector3d.hpp"
+#include "math.h"
+#include "vector3d.h"
 
 template<typename T>
 struct Vector4D

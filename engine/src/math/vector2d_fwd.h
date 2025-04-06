@@ -1,6 +1,6 @@
 #pragma once
 
-#include "vector2d.hpp"
+#include "vector2d.h"
 
 using FVec2     = Vector2D<f32>;
 //using DVec2   = Vector2D<f64>;

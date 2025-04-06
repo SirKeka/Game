@@ -2,7 +2,7 @@
 #include "containers/darray.hpp"
 #include "systems/geometry_system.h"
 #include "systems/resource_system.h"
-#include "math/geometry_utils.hpp"
+#include "math/geometry_utils.h"
 
 #include <stdio.h>
 

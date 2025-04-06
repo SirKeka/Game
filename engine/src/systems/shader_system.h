@@ -10,7 +10,7 @@
 
 #include "defines.hpp"
 #include "containers/hashtable.hpp"
-#include "resources/shader.hpp"
+#include "resources/shader.h"
 #include "resources/texture.hpp"
 
 struct Renderpass;

@@ -106,6 +106,32 @@ bool ResourceLoader::Load(const char *name, void* params, ShaderResource &OutRes
             } else if (TrimmedValue.Comparei("none")) {
                 data.CullMode = FaceCullMode::None;
             }
+        } else if (TrimmedVarName.Comparei("topology")) {
+            DArray<MString> topologies;
+            u32 count = TrimmedValue.Split(',', topologies, true, true);
+            // Если записей нет, по умолчанию используется список треугольников, так как это наиболее распространенный вариант.
+            if (count > 0) {
+                // Если есть хотя бы одна запись, сотрите значение по умолчанию и используйте только то, что настроено.
+                data.TopologyTypes = e::PrimitiveTopologyType::None;
+                for (u32 i = 0; i < count; ++i) {
+                    if (topologies[i].Comparei("triangle_list")) {
+                        // ПРИМЕЧАНИЕ: это значение по умолчанию, поэтому мы можем пропустить это на данный момент.
+                        data.TopologyTypes |= e::PrimitiveTopologyType::TriangleList;
+                    } else if (topologies[i].Comparei("triangle_strip")) {
+                        data.TopologyTypes |= e::PrimitiveTopologyType::TriangleStrip;
+                    } else if (topologies[i].Comparei("triangle_fan")) {
+                        data.TopologyTypes |= e::PrimitiveTopologyType::TriangleFan;
+                    } else if (topologies[i].Comparei("line_list")) {
+                        data.TopologyTypes |= e::PrimitiveTopologyType::LineList;
+                    } else if (topologies[i].Comparei("line_strip")) {
+                        data.TopologyTypes |= e::PrimitiveTopologyType::LineStrip;
+                    } else if (topologies[i].Comparei("point_list")) {
+                        data.TopologyTypes |= e::PrimitiveTopologyType::PointList;
+                    } else {
+                        MERROR("Нераспознанный тип топологии '%s'. Пропуск.", topologies[i].c_str());
+                    }
+                }
+            }
         } else if (TrimmedVarName.Comparei("depth_test")) {
             TrimmedValue.ToBool(data.DepthTest);
         } else if (TrimmedVarName.Comparei("depth_write")) {

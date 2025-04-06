@@ -4,7 +4,7 @@
 class RenderViewUI : public RenderView
 {
 private:
-    class Shader* shader     {};
+    struct Shader* shader     {};
     f32 NearClip             {};
     f32 FarClip              {};
     Matrix4D ProjectionMatrix{};

@@ -5,12 +5,13 @@
 struct RenderViewWorldData {
     DArray<GeometryRenderData> WorldGeometries;
     DArray<GeometryRenderData> TerrainGeometries;
+    DArray<GeometryRenderData> DebugGeometries;
 };
 
 class RenderViewWorld : public RenderView
 {
 private:
-    class Shader* shader;
+    struct Shader* shader;
     f32 fov;
     f32 NearClip;
     f32 FarClip;
@@ -18,6 +19,12 @@ private:
     class Camera* WorldCamera;
     FVec4 AmbientColour;
     u32 RenderMode;
+    struct DebugColourShaderLocations {
+        u16 projection;
+        u16 view;
+        u16 model;
+    } DebugLocations;
+
 public:
     // RenderViewWorld();
     /*constexpr */RenderViewWorld(u16 id, const Config &config);

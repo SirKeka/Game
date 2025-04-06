@@ -1,8 +1,8 @@
 #include "terrain.h"
-#include "core/identifier.hpp"
+#include "core/identifier.h"
 #include "renderer/rendering_system.h"
 #include "systems/material_system.h"
-#include "math/geometry_utils.hpp"
+#include "math/geometry_utils.h"
 
 bool Terrain::Create(Config &config)
 {

@@ -1,5 +1,5 @@
-#include "matrix3d.hpp"
-#include "vector3d_fwd.hpp"
+#include "matrix3d.h"
+#include "vector3d_fwd.h"
 
     f32& Matrix3D::operator()(u8 i, u8 j)
 	{

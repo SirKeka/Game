@@ -1,4 +1,4 @@
-#include "plane.hpp"
+#include "plane.h"
 
 void Plane::Create(const FVec3 &p1, const FVec3 &norm)
 {

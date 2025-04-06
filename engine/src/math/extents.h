@@ -1,6 +1,6 @@
 #pragma once
-#include "vector2d_fwd.hpp"
-#include "vector3d_fwd.hpp"
+#include "vector2d_fwd.h"
+#include "vector3d_fwd.h"
 
 ///@brief Представляет размеры 2D-объекта.
 struct Extents2D {

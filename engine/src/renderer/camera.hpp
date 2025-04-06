@@ -7,8 +7,8 @@
 /// @copyright 
 #pragma once
 
-#include "math/vector3d_fwd.hpp"
-#include "math/matrix4d.hpp"
+#include "math/vector3d_fwd.h"
+#include "math/matrix4d.h"
 
 /// @brief Представляет собой камеру, которую можно использовать для различных целей, 
 /// особенно для рендеринга. В идеале они создаются и управляются системой камер.

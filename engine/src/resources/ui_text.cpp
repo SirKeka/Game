@@ -1,9 +1,9 @@
 #include "ui_text.h"
-#include "core/identifier.hpp"
+#include "core/identifier.h"
 #include "renderer/rendering_system.h"
 #include "systems/font_system.h"
 #include "systems/shader_system.h"
-#include "math/vertex.hpp"
+#include "math/vertex.h"
 #include "resources/texture_map.hpp"
 #include "resources/font_resource.hpp"
 

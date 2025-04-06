@@ -10,8 +10,8 @@
 
 #include "defines.hpp"
 
-#include "renderer_types.hpp"
-#include "math/vertex.hpp"
+#include "renderer_types.h"
+#include "math/vertex.h"
 #include "core/event.hpp"
 
 class MWindow;
@@ -19,7 +19,7 @@ class LinearAllocator;
 struct StaticMeshData;
 struct PlatformState;
 class VulkanAPI;
-class Shader;
+struct Shader;
 struct FrameData;
 
 struct RenderingSystemConfig
@@ -111,6 +111,14 @@ namespace RenderingSystem
     /// @param indices индексный массив.
     /// @return true в случае успеха; в противном случае false.
     bool Load(GeometryID* gid, u32 VertexSize, u32 VertexCount, const void* vertices, u32 IndexSize, u32 IndexCount, const void* indices);
+    
+    /// @brief Обновляет данные вершин в заданной геометрии предоставленными данными в заданном диапазоне.
+    /// @param g Указатель на геометрию, которую нужно создать.
+    /// @param offset Смещение в байтах для обновления. 0, если обновление с начала.
+    /// @param VertexCount Количество вершин, которые будут обновлены.
+    /// @param vertices Данные вершин.
+    void GeometryVertexUpdate(GeometryID* g, u32 offset, u32 VertexCount, void* vertices);
+
     /// @brief Уничтожает заданную геометрию, освобождая ресурсы графического процессора.-------------------------------------------------------------
     /// @param gid указатель на геометрию, которую нужно уничтожить.
     void Unload(GeometryID* gid);

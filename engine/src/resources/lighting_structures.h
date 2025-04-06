@@ -2,7 +2,7 @@
 
 #include "defines.hpp"
 #include "containers/mstring.hpp"
-#include "math/vector4d_fwd.hpp"
+#include "math/vector4d_fwd.h"
 
 /// @brief Направленный свет, обычно используемый для имитации солнечного/лунного света.
 struct DirectionalLight {
@@ -15,6 +15,8 @@ struct DirectionalLight {
         /// @brief Направление света. Компонент w игнорируется.
         FVec4 direction;
     } data;
+    /// @brief Отладочные данные, назначенные источнику света.
+    void* DebugData;
     void* operator new(u64 size);
     void operator delete(void* ptr, u64 size);
 };
@@ -38,4 +40,6 @@ struct PointLight {
         /// @brief Дополнительное заполнение используется для выравнивания памяти. Игнорируется.
         f32 padding;
     } data;
+    /// @brief Отладочные данные, назначенные источнику света.
+    void* DebugData;
 };

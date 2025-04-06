@@ -99,6 +99,7 @@ public:
     /// @brief Функция выделяет память
     /// @param bytes размер выделяемой памяти в байтах
     /// @param tag название(тег) для каких нужд используется память
+    /// @param nullify инициализировать выделенную память нулями. Поумолчанию false
     /// @param def использовать стандартный new при выделении памяти. Поумолчанию false
     /// @return указатель на выделенный блок памяти
     static void* Allocate(u64 bytes, Memory::Tag tag, bool nullify = false, bool def = false);

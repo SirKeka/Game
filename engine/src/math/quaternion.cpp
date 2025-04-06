@@ -1,4 +1,4 @@
-#include "quaternion.hpp"
+#include "quaternion.h"
 
 Quaternion &Quaternion::operator-()
 {

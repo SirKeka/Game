@@ -9,7 +9,7 @@
 #include "systems/font_system.h"
 
 #include "platform/platform.hpp"
-#include "renderer/renderer_types.hpp"
+#include "renderer/renderer_types.h"
 
 #include "frame_data.h"
 

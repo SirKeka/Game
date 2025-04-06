@@ -9,7 +9,7 @@
 #include <new>
 
 // ЗАДАЧА: временный код
-#include <core/identifier.hpp>
+#include <core/identifier.h>
 #include <systems/geometry_system.h>
 #include <systems/render_view_system.h>
 #include <systems/resource_system.h>

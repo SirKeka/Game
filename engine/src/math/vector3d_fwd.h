@@ -1,6 +1,6 @@
 #pragma once
 
-#include "vector3d.hpp"
+#include "vector3d.h"
 
 using FVec3   = Vector3D<f32>;
 //using DVec3   = Vector3D<f64>;

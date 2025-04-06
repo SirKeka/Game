@@ -1,6 +1,6 @@
 #pragma once
 #include "defines.hpp"
-#include "math/transform.hpp"
+#include "math/transform.h"
 #include "containers/darray.hpp"
 
 struct SkyboxSimpleSceneConfig

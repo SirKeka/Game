@@ -2,14 +2,14 @@
 
 #include <core/asserts.hpp>
 
-#include "renderer/renderer_types.hpp"
+#include "renderer/renderer_types.h"
 
 #include "vulkan_device.hpp"
 #include "vulkan_swapchain.hpp"
 #include "vulkan_command_buffer.hpp"
 #include "vulkan_shader.hpp"
 #include "resources/geometry.hpp"
-#include "math/vertex.hpp"
+#include "math/vertex.h"
 
 // Проверяет возвращаемое значение данного выражения на соответствие VK_SUCCESS.
 #define VK_CHECK(expr)           \
@@ -92,6 +92,7 @@ public:
     
     bool Load        (GeometryID* gid, u32 VertexSize, u32 VertexCount, const void* vertices, u32 IndexSize, u32 IndexCount, const void* indices) override;
     void Unload      (GeometryID* gid)                                                                                                            override;
+    void GeometryVertexUpdate(GeometryID* geometry, u32 offset, u32 VertexCount, void* vertices)                                                  override;
     void DrawGeometry(const GeometryRenderData& data)                                                                                             override;
 
     // Методы относящиеся к шейдерам---------------------------------------------------------------------------------------------------------------------------------------------

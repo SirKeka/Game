@@ -1,7 +1,7 @@
 #pragma once
 
 #include <application_types.hpp>
-#include <math/frustrum.hpp>
+#include <math/frustrum.h>
 #include <core/keymap.hpp>
 #include <resources/simple_scene.h>
 #include <resources/skybox.h>

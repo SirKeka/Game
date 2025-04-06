@@ -1,4 +1,4 @@
-/// @file shader.hpp
+/// @file shader.h
 /// @author 
 /// @brief Класс шейдера. Отвечает за правильную отрисовку геометрии.
 /// @version 1.0
@@ -10,10 +10,25 @@
 #include "containers/hashtable.hpp"
 #include "resources/texture.hpp"
 
-/// @brief Представляет шейдер во внешнем интерфейсе.
-class Shader {
-public:
+namespace e
+{
+    enum PrimitiveTopologyType {
+        // Тип топологии не определен. Недопустимо для создания шейдера.
+        None = 0x00,
+        // Список треугольников. По умолчанию, если ничего не определено.
+        TriangleList = 0x01,
+        TriangleStrip = 0x02,
+        TriangleFan = 0x04,
+        LineList = 0x08,
+        LineStrip = 0x10,
+        PointList = 0x20,
+        MAX = PointList << 1
+    };
+} // namespace e
+    
 
+/// @brief Представляет шейдер во внешнем интерфейсе.
+struct Shader {
     enum Flags {
         NoneFlag = 0x0,
         DepthTestFlag = 0x1,
@@ -128,6 +143,7 @@ public:
     struct Config {
         MString name;                       // Имя создаваемого шейдера.
         FaceCullMode CullMode;              // Режим отбраковки лица, который будет использоваться. По умолчанию BACK, если не указано иное.
+        u32 TopologyTypes;                  // Типы топологии для конвейера шейдера. См. PrimitiveTopologyType. По умолчанию "triangle list", если не указано иное.
         // u8 AttributeCount;                  // Количество атрибутов.
         DArray<AttributeConfig> attributes; // Коллекция атрибутов.
         // u8 UniformCount;                    // Учёт униформы.
@@ -140,7 +156,7 @@ public:
         bool DepthTest;                       // Указывает, следует ли проводить тестирование глубины.
         bool DepthWrite;                      // Указывает, следует ли записывать результаты тестирования глубины в буфер глубины. ПРИМЕЧАНИЕ: Это игнорируется, если DepthTest имеет значение false.
 
-        Config() : name(), CullMode(FaceCullMode::Back), /*AttributeCount(),*/ attributes(), /*UniformCount(),*/ uniforms(), /*StageCount(),*/ stages(), StageNames(), StageFilenames() {}
+        Config() : name(), CullMode(FaceCullMode::Back), TopologyTypes(e::PrimitiveTopologyType::TriangleList), /*AttributeCount(),*/ attributes(), /*UniformCount(),*/ uniforms(), /*StageCount(),*/ stages(), StageNames(), StageFilenames() {}
         void Clear();
         void* operator new(u64 size) { return MemorySystem::Allocate(size, Memory::Resource); }
         void operator delete(void* ptr, u64 size) { MemorySystem::Free(ptr, size, Memory::Resource); }
@@ -170,36 +186,36 @@ public:
         AttributeType type;                // Тип атрибута.
         u32 size;                          // Размер атрибута в байтах.
         constexpr Attribute(MString& name, AttributeType type, u32 size) : name(static_cast<MString&&>(name)), type(type), size(size) {}
-        // constexpr Attribute(const Attribute& sa) : name(sa.name), type(sa.type), size(sa.size) {}
     };
 
-    u32 id                                      {};   // Идентификатор шейдера
-    MString name                                {};   // Имя шейдера
-    FlagBits flags                              {};   // 
-    bool UseInstances                           {};   // Указывает, использует ли шейдер экземпляры. В противном случае предполагается, что используются только глобальные униформы и сэмплеры.
-    bool UseLocals                              {};   // Указывает, используются ли локальные значения (обычно для матриц моделей и т. д.).
-    u64 RequiredUboAlignment                    {};   // Количество байтов, необходимое для выравнивания UBO. Это используется вместе с размером UBO для определения конечного шага, то есть того, насколько UBO располагаются в буфере. Например, требуемое выравнивание 256 означает, что шаг должен быть кратен 256 (верно для некоторых карт nVidia).
-    u64 GlobalUboSize                           {};   // Фактический размер объекта глобального универсального буфера.
-    u64 GlobalUboStride                         {};   // Шаг объекта глобального универсального буфера.
-    u64 GlobalUboOffset                         {};   // Смещение в байтах для глобального UBO от начала универсального буфера.
-    u64 UboSize                                 {};   // Фактический размер объекта универсального буфера экземпляра.
-    u64 UboStride                               {};   // Шаг объекта универсального буфера экземпляра.
-    u64 PushConstantSize                        {};   // Общий размер всех диапазонов констант push вместе взятых.
-    u64 PushConstantStride                      {};   // Шаг константы нажатия, выровненный по 4 байтам, как того требует Vulkan.
-    DArray<struct TextureMap*> GlobalTextureMaps{};   // Массив глобальных указателей текстурных карт.
-    u8 InstanceTextureCount                     {};   // Количество экземпляров текстур.
-    Scope BoundScope                            {};         
-    u32 BoundInstanceID                         {};   // Идентификатор привязанного в данный момент экземпляра.
-    u32 BoundUboOffset                          {};   // Смещение ubo текущего привязанного экземпляра.
-    void* HashtableBlock                        {};   // Блок памяти, используемый единой хеш-таблицей.
-    HashTable<u16> UniformLookup                {};   // Хэш-таблица для хранения единого индекса/местоположений по имени.
-    DArray<Uniform> uniforms                    {};   // Массив униформы в этом шейдере.
-    DArray<Attribute> attributes                {};   // Массив атрибутов.
-    State state                                 {};   // Внутреннее состояние шейдера.
-    u8 PushConstantRangeCount                   {};   // Число диапазонов push-констант.
-    Range PushConstantRanges[32]                {};   // Массив диапазонов push-констант.
-    u16 AttributeStride                         {};   // Размер всех атрибутов вместе взятых, то есть размер вершины.
-    u64 RenderFrameNumber                       {};   // Используется для обеспечения того, чтобы глобальные переменные шейдера обновлялись только один раз за кадр.
+    u32 id                                      {}; // Идентификатор шейдера
+    MString name                                {}; // Имя шейдера
+    FlagBits flags                              {}; // 
+    u32 TopologyTypes                           {}; // Типы топологий, используемые шейдером и его конвейером. См. PrimitiveTopologyType.
+    bool UseInstances                           {}; // Указывает, использует ли шейдер экземпляры. В противном случае предполагается, что используются только глобальные униформы и сэмплеры.
+    bool UseLocals                              {}; // Указывает, используются ли локальные значения (обычно для матриц моделей и т. д.).
+    u64 RequiredUboAlignment                    {}; // Количество байтов, необходимое для выравнивания UBO. Это используется вместе с размером UBO для определения конечного шага, то есть того, насколько UBO располагаются в буфере. Например, требуемое выравнивание 256 означает, что шаг должен быть кратен 256 (верно для некоторых карт nVidia).
+    u64 GlobalUboSize                           {}; // Фактический размер объекта глобального универсального буфера.
+    u64 GlobalUboStride                         {}; // Шаг объекта глобального универсального буфера.
+    u64 GlobalUboOffset                         {}; // Смещение в байтах для глобального UBO от начала универсального буфера.
+    u64 UboSize                                 {}; // Фактический размер объекта универсального буфера экземпляра.
+    u64 UboStride                               {}; // Шаг объекта универсального буфера экземпляра.
+    u64 PushConstantSize                        {}; // Общий размер всех диапазонов констант push вместе взятых.
+    u64 PushConstantStride                      {}; // Шаг константы нажатия, выровненный по 4 байтам, как того требует Vulkan.
+    DArray<struct TextureMap*> GlobalTextureMaps{}; // Массив глобальных указателей текстурных карт.
+    u8 InstanceTextureCount                     {}; // Количество экземпляров текстур.
+    Scope BoundScope                            {};       
+    u32 BoundInstanceID                         {}; // Идентификатор привязанного в данный момент экземпляра.
+    u32 BoundUboOffset                          {}; // Смещение ubo текущего привязанного экземпляра.
+    void* HashtableBlock                        {}; // Блок памяти, используемый единой хеш-таблицей.
+    HashTable<u16> UniformLookup                {}; // Хэш-таблица для хранения единого индекса/местоположений по имени.
+    DArray<Uniform> uniforms                    {}; // Массив униформы в этом шейдере.
+    DArray<Attribute> attributes                {}; // Массив атрибутов.
+    State state                                 {}; // Внутреннее состояние шейдера.
+    u8 PushConstantRangeCount                   {}; // Число диапазонов push-констант.
+    Range PushConstantRanges[32]                {}; // Массив диапазонов push-констант.
+    u16 AttributeStride                         {}; // Размер всех атрибутов вместе взятых, то есть размер вершины.
+    u64 RenderFrameNumber                       {}; // Используется для обеспечения того, чтобы глобальные переменные шейдера обновлялись только один раз за кадр.
 
     // ЗАДАЧА: Пока нет реализации DirectX храним указатель шейдера Vulkan.
     struct VulkanShader* ShaderData   {};        // Непрозрачный указатель для хранения конкретных данных API средства рендеринга. Рендерер несет ответственность за создание и уничтожение этого.

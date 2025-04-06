@@ -1,7 +1,7 @@
 #pragma once
 #include "render_view.h"
 #include "resources/texture.hpp"
-#include "resources/mesh.hpp"
+#include "resources/mesh.h"
 
 class RenderViewPick : public RenderView
 {
@@ -17,7 +17,7 @@ public:
 };
 private:
     struct ShaderInfo {
-        class Shader* s;
+        struct Shader* s;
         Renderpass* pass;
         u16 IdColourLocation;
         u16 ModelLocation;

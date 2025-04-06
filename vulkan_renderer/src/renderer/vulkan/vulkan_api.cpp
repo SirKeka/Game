@@ -13,7 +13,7 @@
 #include <systems/resource_system.h>
 #include <core/frame_data.h>
 
-#include <math/vertex.hpp>
+#include <math/vertex.h>
 
 #include "vulkan_utils.hpp"
 
@@ -1150,6 +1150,11 @@ void VulkanAPI::Unload(GeometryID *gid)
         // Очистка данных.
         vGeometry.Destroy();
     }
+}
+
+void VulkanAPI::GeometryVertexUpdate(GeometryID *geometry, u32 offset, u32 VertexCount, void *vertices)
+{
+    return void();
 }
 
 void VulkanAPI::DrawGeometry(const GeometryRenderData& data)

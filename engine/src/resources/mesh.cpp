@@ -1,8 +1,8 @@
-#include "mesh.hpp"
+#include "mesh.h"
 #include "systems/resource_system.h"
 #include "systems/geometry_system.h"
 #include "systems/job_systems.hpp"
-#include "core/identifier.hpp"
+#include "core/identifier.h"
 
 // Также используется как ResultData из задания.
 struct MeshLoadParams {
@@ -19,9 +19,61 @@ void MeshLoadJobSuccess(void* params) {
     // Это также обрабатывает загрузку GPU. Не может быть джобифицировано, пока рендерер не станет многопоточным.
     auto configs = MeshParams->MeshRes.data.Data();
     MeshParams->OutMesh->GeometryCount = MeshParams->MeshRes.data.Length();
-    MeshParams->OutMesh->geometries = MemorySystem::TAllocate<GeometryID*>(Memory::Array, MeshParams->OutMesh->GeometryCount, true);
+    MeshParams->OutMesh->geometries = reinterpret_cast<GeometryID**>(MemorySystem::Allocate(sizeof(GeometryID*) * MeshParams->OutMesh->GeometryCount, Memory::Array, true));
     for (u32 i = 0; i < MeshParams->OutMesh->GeometryCount; ++i) {
         MeshParams->OutMesh->geometries[i] = GeometrySystem::Instance()->Acquire(configs[i], true);
+
+        // Рассчитайте геометрические размеры.
+        auto& LocalExtents = MeshParams->OutMesh->geometries[i]->extents;
+        auto verts = reinterpret_cast<Vertex3D*>(configs[i].vertices);
+        for (u32 v = 0; v < configs[i].VertexCount; ++v) {
+            // Мин
+            if (verts[v].position.x < LocalExtents.min.x) {
+                LocalExtents.min.x = verts[v].position.x;
+            }
+            if (verts[v].position.y < LocalExtents.min.y) {
+                LocalExtents.min.y = verts[v].position.y;
+            }
+            if (verts[v].position.z < LocalExtents.min.z) {
+                LocalExtents.min.z = verts[v].position.z;
+            }
+
+            // Maкс
+            if (verts[v].position.x > LocalExtents.max.x) {
+                LocalExtents.max.x = verts[v].position.x;
+            }
+            if (verts[v].position.y > LocalExtents.max.y) {
+                LocalExtents.max.y = verts[v].position.y;
+            }
+            if (verts[v].position.z > LocalExtents.max.z) {
+                LocalExtents.max.z = verts[v].position.z;
+            }
+        }
+
+        // Рассчитайте общие размеры для сетки, получив размеры для каждой подсетки.
+        auto& GlobalExtents = MeshParams->OutMesh->extents;
+
+        // Мин.
+        if (LocalExtents.min.x < GlobalExtents.min.x) {
+            GlobalExtents.min.x = LocalExtents.min.x;
+        }
+        if (LocalExtents.min.y < GlobalExtents.min.y) {
+            GlobalExtents.min.y = LocalExtents.min.y;
+        }
+        if (LocalExtents.min.z < GlobalExtents.min.z) {
+            GlobalExtents.min.z = LocalExtents.min.z;
+        }
+
+        // Макс.
+        if (LocalExtents.max.x > GlobalExtents.max.x) {
+            GlobalExtents.max.x = LocalExtents.max.x;
+        }
+        if (LocalExtents.max.y > GlobalExtents.max.y) {
+            GlobalExtents.max.y = LocalExtents.max.y;
+        }
+        if (LocalExtents.max.z > GlobalExtents.max.z) {
+            GlobalExtents.max.z = LocalExtents.max.z;
+        }
     }
     MeshParams->OutMesh->generation++;
 

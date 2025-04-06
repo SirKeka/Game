@@ -2,10 +2,10 @@
 
 #include "core/frame_data.h"
 #include "defines.hpp"
-#include "math/vector2d_fwd.hpp"
-#include "math/vector3d_fwd.hpp"
-#include "math/vector4d_fwd.hpp"
-#include "math/transform.hpp"
+#include "math/vector2d_fwd.h"
+#include "math/vector3d_fwd.h"
+#include "math/vector4d_fwd.h"
+#include "math/transform.h"
 #include "geometry.hpp"
 
 /*

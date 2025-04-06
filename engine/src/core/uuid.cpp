@@ -1,5 +1,5 @@
 #include "uuid.hpp"
-#include "math/math.hpp"
+#include "math/math.h"
 
 #ifndef UUID_QUICK_AND_DIRTY
 #define UUID_QUICK_AND_DIRTY

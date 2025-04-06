@@ -1,10 +1,10 @@
 #pragma once
 
 #include "defines.hpp"
-#include "matrix3d.hpp"
-#include "vector3d_fwd.hpp"
+#include "matrix3d.h"
+#include "vector3d_fwd.h"
 
-#include "math.hpp"
+#include "math.h"
 
 class MAPI Quaternion
 {

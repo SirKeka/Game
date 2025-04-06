@@ -1,6 +1,6 @@
 #pragma once
 
-#include "plane.hpp"
+#include "plane.h"
 
 struct MAPI Frustum
 {

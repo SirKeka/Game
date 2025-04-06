@@ -17,5 +17,5 @@ namespace Identifier
 
     /// @brief Освобождает данный идентификатор, который затем может быть использован снова.
     /// @param id Идентификатор, который будет освобожден.
-    MAPI void ReleaseID(u32 id);
+    MAPI void ReleaseID(u32& id);
 } // namespace Identifier

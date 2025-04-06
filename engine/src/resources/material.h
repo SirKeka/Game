@@ -1,7 +1,7 @@
 #pragma once
-#include "shader.hpp"
+#include "shader.h"
 #include "texture_map.hpp"
-#include "math/matrix4d.hpp"
+#include "math/matrix4d.h"
 
 #define MATERIAL_NAME_MAX_LENGTH 256    // Максимальная длина имени материала.
 

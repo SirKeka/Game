@@ -1,4 +1,4 @@
-#include "frustrum.hpp"
+#include "frustrum.h"
 
 void Frustum::Create(const FVec3 &position, const FVec3 &forward, const FVec3 &right, const FVec3 &up, f32 aspect, f32 fov, f32 near, f32 far)
 {

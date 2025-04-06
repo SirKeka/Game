@@ -1,7 +1,7 @@
 #include "geometry_system.h"
 #include "material_system.h"
 #include "renderer/rendering_system.h"
-#include "math/geometry_utils.hpp"
+#include "math/geometry_utils.h"
 #include "memory/linear_allocator.hpp"
 #include <new>
 #include "resources/geometry.hpp"

@@ -1,5 +1,5 @@
 #pragma once
-#include <renderer/renderer_types.hpp>
+#include <renderer/renderer_types.h>
 
 /// @brief Создает новый плагин рендеринга указанного типа.
 /// @return указатель на плагин рендринга указанного типа.
