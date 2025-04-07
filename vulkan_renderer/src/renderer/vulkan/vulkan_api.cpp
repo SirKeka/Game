@@ -303,7 +303,7 @@ bool VulkanAPI::Initialize(const RenderingConfig &config, u8 &OutWindowRenderTar
 
     // Общая структура информации о приложении.
     VkApplicationInfo AppInfo = {VK_STRUCTURE_TYPE_APPLICATION_INFO};
-    AppInfo.apiVersion = VK_API_VERSION_1_2;
+    AppInfo.apiVersion = VK_API_VERSION_1_3;
     AppInfo.pApplicationName = config.ApplicationName;
     AppInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0); // VK_MAKE_API_VERSION(0, 1, 0, 0);
     AppInfo.pEngineName = "Moon Engine";
@@ -1154,17 +1154,29 @@ void VulkanAPI::Unload(GeometryID *gid)
 
 void VulkanAPI::GeometryVertexUpdate(GeometryID *geometry, u32 offset, u32 VertexCount, void *vertices)
 {
-    return void();
+    auto& GeometryData = geometries[geometry->InternalID];
+    if (VertexCount > GeometryData.VertexCount) {
+        // ЗАДАЧА: требуется перераспределение.
+        MFATAL("VulkanAPI::GeometryVertexUpdate realloc не поддерживается.");
+        return;
+    }
+
+    u32 TotalSize = VertexCount * GeometryData.VertexElementSize;
+
+    // Загрузить данные.
+    if (!RenderBufferLoadRange(ObjectVertexBuffer, GeometryData.VertexBufferOffset + offset, TotalSize, vertices)) {
+        MERROR("VulkanAPI::GeometryVertexUpdate не удалось загрузить в буфер вершин!");
+    }
 }
 
 void VulkanAPI::DrawGeometry(const GeometryRenderData& data)
 {
     // Игнорировать незагруженные геометрии.
-    if (data.gid && data.gid->InternalID == INVALID::ID) {
+    if (data.geometry && data.geometry->InternalID == INVALID::ID) {
         return;
     }
 
-    auto& BufferData = geometries[data.gid->InternalID];
+    auto& BufferData = geometries[data.geometry->InternalID];
     bool IncludesIndexData = BufferData.IndexCount > 0;
     if (!RenderBufferDraw(ObjectVertexBuffer, BufferData.VertexBufferOffset, BufferData.VertexCount, IncludesIndexData)) {
         MERROR("VulkanAPI::DrawGeometry не удалось отрисовать буфер вершин.");
@@ -1355,6 +1367,9 @@ bool VulkanAPI::Load(Shader *shader, const Shader::Config& config, Renderpass* r
    // Сохраните копию режима отбраковки.
     VulkShader->config.CullMode = config.CullMode;
 
+    // Сохраните копию типов топологии.
+    shader->TopologyTypes = config.TopologyTypes;
+
     return true;
 }
 
@@ -1388,8 +1403,12 @@ void VulkanAPI::Unload(Shader *shader)
         VkShader->MappedUniformBufferBlock = 0;
         RenderBufferDestroyInternal(VkShader->UniformBuffer);
 
-        // Конвеер
-        VkShader->pipeline.Destroy(this);
+        // Конвееры
+        for (u32 i = 0; i < VulkanTopology::Class::MAX; ++i) {
+            if (VkShader->pipelines[i]) {
+                VkShader->pipelines[i]->Destroy(this);
+            }
+        }
 
         // Шейдерные модули
         for (u32 i = 0; i < VkShader->config.StageCount; ++i) {
@@ -1500,29 +1519,117 @@ bool VulkanAPI::ShaderInitialize(Shader *shader)
         StageCreateIfos[i] = VkShader->stages[i].ShaderStageCreateInfo;
     }
 
-    VulkanPipeline::Config PipelineConfig {
-        shader->name,
-        VkShader->renderpass,
-        shader->AttributeStride,
-        (u32)shader->attributes.Length(),
-        VkShader->config.attributes,  // shader->attributes,
-        VkShader->config.DescriptorSetCount,
-        VkShader->DescriptorSetLayouts,
-        VkShader->config.StageCount,
-        StageCreateIfos,
-        viewport,
-        scissor,
-        VkShader->config.CullMode,
-        false,
-        shader->flags,
-        shader->PushConstantRangeCount,
-        shader->PushConstantRanges
-    };
+    // Создайте массив указателей на конвейеры, по одному на класс топологии. Нуль означает, что не поддерживается для этого шейдера.
+    VkShader->pipelines = reinterpret_cast<VulkanPipeline**>(MemorySystem::Allocate(sizeof(VulkanPipeline*) * VulkanTopology::Class::MAX, Memory::Array));
 
-    bool PipelineResult = VkShader->pipeline.Create(this, PipelineConfig);
+    // Создайте один конвейер на класс топологии.
+    // Точечный класс.
+    if (shader->TopologyTypes & PrimitiveTopology::Type::PointList) {
+        VkShader->pipelines[VulkanTopology::Class::Point] = reinterpret_cast<VulkanPipeline*>(MemorySystem::Allocate(sizeof(VulkanPipeline), Memory::Vulkan));
+        // Установите поддерживаемые типы для этого класса.
+        VkShader->pipelines[VulkanTopology::Class::Point]->SupportedTopologyTypes |= PrimitiveTopology::Type::PointList;
+    }
 
-    if (!PipelineResult) {
-        MERROR("Не удалось загрузить графический конвейер для объектного шейдера.");
+    // Линейный класс.
+    if (shader->TopologyTypes & PrimitiveTopology::Type::LineList || shader->TopologyTypes & PrimitiveTopology::Type::LineStrip) {
+        VkShader->pipelines[VulkanTopology::Class::Line] = reinterpret_cast<VulkanPipeline*>(MemorySystem::Allocate(sizeof(VulkanPipeline), Memory::Vulkan));
+        // Установите поддерживаемые типы для этого класса.
+        VkShader->pipelines[VulkanTopology::Class::Line]->SupportedTopologyTypes |= PrimitiveTopology::Type::LineList;
+        VkShader->pipelines[VulkanTopology::Class::Line]->SupportedTopologyTypes |= PrimitiveTopology::Type::LineStrip;
+    }
+
+    // Треугольный класс.
+    if (shader->TopologyTypes & PrimitiveTopology::Type::TriangleList ||
+        shader->TopologyTypes & PrimitiveTopology::Type::TriangleStrip ||
+        shader->TopologyTypes & PrimitiveTopology::Type::TriangleFan) {
+        VkShader->pipelines[VulkanTopology::Class::Triangle] = reinterpret_cast<VulkanPipeline*>(MemorySystem::Allocate(sizeof(VulkanPipeline), Memory::Vulkan));
+        // Установите поддерживаемые типы для этого класса.
+        VkShader->pipelines[VulkanTopology::Class::Triangle]->SupportedTopologyTypes |= PrimitiveTopology::Type::TriangleList;
+        VkShader->pipelines[VulkanTopology::Class::Triangle]->SupportedTopologyTypes |= PrimitiveTopology::Type::TriangleStrip;
+        VkShader->pipelines[VulkanTopology::Class::Triangle]->SupportedTopologyTypes |= PrimitiveTopology::Type::TriangleFan;
+    }
+
+    // Пройти по циклу и настроить/создать один конвейер на класс. Нулевые записи пропускаются.
+    for (u32 i = 0; i < VulkanTopology::Class::MAX; ++i) {
+        if (!VkShader->pipelines[i]) {
+            continue;
+        }
+
+        VulkanPipeline::Config PipelineConfig {
+            shader->name,
+            VkShader->renderpass,
+            shader->AttributeStride,
+            (u32)shader->attributes.Length(),
+            VkShader->config.attributes,  // shader->attributes,
+            VkShader->config.DescriptorSetCount,
+            VkShader->DescriptorSetLayouts,
+            VkShader->config.StageCount,
+            StageCreateIfos,
+            viewport,
+            scissor,
+            VkShader->config.CullMode,
+            false,
+            shader->flags,
+            shader->PushConstantRangeCount,
+            shader->PushConstantRanges,
+            shader->TopologyTypes
+        };
+
+        bool PipelineResult = VkShader->pipelines[i]->Create(this, PipelineConfig);
+
+        if (!PipelineResult) {
+            MERROR("Не удалось загрузить графический конвейер для шейдера: '%s'.", shader->name.c_str());
+            return false;
+        }
+    }
+
+    // ЗАДАЧА: Выяснить, что должно быть по умолчанию здесь.
+    VkShader->BoundPipelineIndex = 0;
+    bool PipelineFound = false;
+    for (u32 i = 0; i < VulkanTopology::Class::MAX; ++i) {
+        if (VkShader->pipelines[i]) {
+            VkShader->BoundPipelineIndex = i;
+
+            // Извлеките первый тип из конвейера
+            for (u32 j = 1; j < PrimitiveTopology::Type::MAX; j = j << 1) {
+                if (VkShader->pipelines[i]->SupportedTopologyTypes & j) {
+                    switch (j) {
+                        case PrimitiveTopology::Type::PointList:
+                            VkShader->CurrentTopology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+                            break;
+                        case PrimitiveTopology::Type::LineList:
+                            VkShader->CurrentTopology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+                            break;
+                        case PrimitiveTopology::Type::LineStrip:
+                            VkShader->CurrentTopology = VK_PRIMITIVE_TOPOLOGY_LINE_STRIP;
+                            break;
+                        case PrimitiveTopology::Type::TriangleList:
+                            VkShader->CurrentTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+                            break;
+                        case PrimitiveTopology::Type::TriangleStrip:
+                            VkShader->CurrentTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+                            break;
+                        case PrimitiveTopology::Type::TriangleFan:
+                            VkShader->CurrentTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN;
+                            break;
+                        default:
+                            MWARN("Примитивная топология '%u' не поддерживается. Пропуск.", j);
+                            break;
+                    }
+
+                    // Выделите здесь и просто предположите первый на данный момент. Это может быть переопределено тем, что использует шейдер, если это необходимо.
+                    break;
+                }
+            }
+            PipelineFound = true;
+            break;
+        }
+    }
+
+    if (!PipelineFound) {
+        // Попадание сюда означает, что все конвейеры являются нулевыми, чего они определенно не должны быть.
+        // Это дополнительная защита от сбоев, чтобы гарантировать, что конфигурация по крайней мере в какой-то степени разумна.
+        MERROR("Доступные классы топологии недоступны, поэтому конвейер не может быть связан. Проверьте конфигурацию шейдера.");
         return false;
     }
 
@@ -1569,7 +1676,11 @@ bool VulkanAPI::ShaderInitialize(Shader *shader)
 
 bool VulkanAPI::ShaderUse(Shader *shader)
 {
-    shader->ShaderData->pipeline.Bind(GraphicsCommandBuffers[ImageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS);
+    auto VkShader = reinterpret_cast<VulkanShader*>(shader->ShaderData);
+    VkShader->pipelines[VkShader->BoundPipelineIndex]->Bind(GraphicsCommandBuffers[ImageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS);
+
+    // Обязательно используйте текущий тип привязки.
+    vkCmdSetPrimitiveTopology(GraphicsCommandBuffers[ImageIndex].handle, VkShader->CurrentTopology);
     return true;
 }
 
@@ -1610,7 +1721,7 @@ bool VulkanAPI::ShaderApplyGlobals(Shader *shader)
     vkUpdateDescriptorSets(Device.LogicalDevice, GlobalSetBindingCount, DescriptorWrites, 0, 0);
 
     // Привяжите набор глобальных дескрипторов для обновления.
-    vkCmdBindDescriptorSets(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, VkShader->pipeline.PipelineLayout, 0, 1, &GlobalDescriptor, 0, 0);
+    vkCmdBindDescriptorSets(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, VkShader->pipelines[VkShader->BoundPipelineIndex]->PipelineLayout, 0, 1, &GlobalDescriptor, 0, 0);
     return true;
 }
 
@@ -1707,7 +1818,7 @@ bool VulkanAPI::ShaderApplyInstance(Shader *shader, bool NeedsUpdate)
     }
 
     // Привяжите набор дескрипторов для обновления или на случай изменения шейдера.
-    vkCmdBindDescriptorSets(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, VkShader->pipeline.PipelineLayout, 1, 1, &ObjectDescriptorSet, 0, 0/*nullptr*/);
+    vkCmdBindDescriptorSets(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, VkShader->pipelines[VkShader->BoundPipelineIndex]->PipelineLayout, 1, 1, &ObjectDescriptorSet, 0, 0/*nullptr*/);
     return true;
 }
 
@@ -2039,7 +2150,7 @@ bool VulkanAPI::SetUniform(Shader *shader, Shader::Uniform *uniform, const void 
         if (uniform->scope == Shader::Scope::Local) {
             // Является локальным, использует push-константы. Сделайте это немедленно.
             VkCommandBuffer CommandBuffer = GraphicsCommandBuffers[ImageIndex].handle;
-            vkCmdPushConstants(CommandBuffer, VkShader->pipeline.PipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, uniform->offset, uniform->size, value);
+            vkCmdPushConstants(CommandBuffer, VkShader->pipelines[VkShader->BoundPipelineIndex]->PipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, uniform->offset, uniform->size, value);
         } else {
             // Сопоставьте подходящую ячейку памяти и скопируйте данные.
             u64 addr = (u64)VkShader->MappedUniformBufferBlock;
@@ -2494,6 +2605,7 @@ bool VulkanAPI::RenderBufferResize(RenderBuffer &buffer, u64 NewTotalSize)
         MERROR("Невозможно изменить размер буфера vulkan, так как требуемое выделение памяти не удалось. Ошибка: %i", result);
         return false;
     }
+    VK_SET_DEBUG_OBJECT_NAME(this, VK_OBJECT_TYPE_DEVICE_MEMORY, NewMemory, buffer.name.c_str());
 
     // Связать память нового буфера
     VK_CHECK(vkBindBufferMemory(Device.LogicalDevice, NewBuffer, NewMemory, 0));

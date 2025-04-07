@@ -89,6 +89,10 @@ public:
     void TextureReadPixel      (Texture* texture, u32 x, u32 y, u8** OutRgba)             override;
     void* TextureCopyData(const Texture* texture)                                         override;
     void Unload                (Texture* texture)                                         override;
+
+        //////////////////////////////////////////////////////////////////////////////////////////////
+                //                           Geometry                           //
+    //////////////////////////////////////////////////////////////////////////////////////////////    
     
     bool Load        (GeometryID* gid, u32 VertexSize, u32 VertexCount, const void* vertices, u32 IndexSize, u32 IndexCount, const void* indices) override;
     void Unload      (GeometryID* gid)                                                                                                            override;

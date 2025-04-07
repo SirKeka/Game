@@ -20,7 +20,12 @@ geometry()
     // geo.internal_id = INVALID_ID;
 }
 
-DebugLine3D::~DebugLine3D()
+// DebugLine3D::~DebugLine3D()
+// {
+//     Destroy();
+// }
+
+void DebugLine3D::Destroy()
 {
     Identifier::ReleaseID(UniqueID);
 }

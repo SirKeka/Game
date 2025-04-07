@@ -10,9 +10,9 @@
 #include "containers/hashtable.hpp"
 #include "resources/texture.hpp"
 
-namespace e
+namespace PrimitiveTopology
 {
-    enum PrimitiveTopologyType {
+    enum Type {
         // Тип топологии не определен. Недопустимо для создания шейдера.
         None = 0x00,
         // Список треугольников. По умолчанию, если ничего не определено.
@@ -156,7 +156,7 @@ struct Shader {
         bool DepthTest;                       // Указывает, следует ли проводить тестирование глубины.
         bool DepthWrite;                      // Указывает, следует ли записывать результаты тестирования глубины в буфер глубины. ПРИМЕЧАНИЕ: Это игнорируется, если DepthTest имеет значение false.
 
-        Config() : name(), CullMode(FaceCullMode::Back), TopologyTypes(e::PrimitiveTopologyType::TriangleList), /*AttributeCount(),*/ attributes(), /*UniformCount(),*/ uniforms(), /*StageCount(),*/ stages(), StageNames(), StageFilenames() {}
+        Config() : name(), CullMode(FaceCullMode::Back), TopologyTypes(PrimitiveTopology::Type::TriangleList), /*AttributeCount(),*/ attributes(), /*UniformCount(),*/ uniforms(), /*StageCount(),*/ stages(), StageNames(), StageFilenames() {}
         void Clear();
         void* operator new(u64 size) { return MemorySystem::Allocate(size, Memory::Resource); }
         void operator delete(void* ptr, u64 size) { MemorySystem::Free(ptr, size, Memory::Resource); }

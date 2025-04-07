@@ -7,11 +7,22 @@
 class VulkanAPI;
 struct VulkanRenderpass;
 
+namespace VulkanTopology
+{
+    enum Class {
+        Point = 0,
+        Line = 1,
+        Triangle = 2,
+        MAX = Triangle + 1
+    };
+} // namespace VulkanTopology
+
+    
+
 class VulkanPipeline
 {
 public:
     /// @brief Структура конфигурации конвеера Vulkan.
-    
     struct Config {
         MString name;                                  // Имя конвейера. Используется в основном для отладки.
         VulkanRenderpass* renderpass;                  // Указатель на проход рендеринга для связывания с конвейером.
@@ -29,6 +40,7 @@ public:
         u32 ShaderFlags;                               // Флаги шейдера, используемые для создания конвейера.
         u32 PushConstantRangeCount;                    // Количество диапазонов данных констант push.
         Range* PushConstantRanges;                     // Массив диапазонов данных констант push.
+        u32 TopologyTypes;                             // Коллекция типов топологий, которые будут поддерживаться на этом конвейере.
 
         constexpr Config(const MString& name, VulkanRenderpass* renderpass, u32 stride, u32 AttributeCount, VkVertexInputAttributeDescription* attributes, u32 DescriptorSetLayoutCount, VkDescriptorSetLayout* DescriptorSetLayouts, u32 StageCount, VkPipelineShaderStageCreateInfo* stages, VkViewport viewport, VkRect2D scissor, FaceCullMode CullMode, bool IsWireframe, u32 ShaderFlags, u32 PushConstantRangeCount, Range* PushConstantRanges) 
         : 
@@ -47,11 +59,13 @@ public:
         IsWireframe(IsWireframe), 
         ShaderFlags(ShaderFlags),
         PushConstantRangeCount(PushConstantRangeCount),
-        PushConstantRanges(PushConstantRanges) {}
+        PushConstantRanges(PushConstantRanges),
+        TopologyTypes() {}
     };
 
-    VkPipeline handle{};
-    VkPipelineLayout PipelineLayout;
+    VkPipeline handle{};            // Внутренний дескриптор конвейера.
+    VkPipelineLayout PipelineLayout;// Макет конвейера.
+    u32 SupportedTopologyTypes;     // Указывает типы топологии, используемые этим конвейером. См. PrimitiveTopologyType.
 public:
     constexpr VulkanPipeline() : handle(), PipelineLayout() {}
     ~VulkanPipeline() = default;

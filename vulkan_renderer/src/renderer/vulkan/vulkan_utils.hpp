@@ -16,10 +16,10 @@ const char* VulkanResultString(VkResult result, bool GetExtended);
 bool VulkanResultIsSuccess(VkResult result);
 
 #if defined(_DEBUG)
-bool VulkanSetDebugObjectName(VulkanAPI* VkAPI, VkObjectType ObjectType, void* ObjectHandle, const char* ObjectName);
-bool VulkanSetDebugObjectTag(VulkanAPI* VkAPI, VkObjectType ObjectType, void* ObjectHandle, u64 TagSize, const void* TagData);
-bool VulkanBeginLabel(VulkanAPI* VkAPI, VkCommandBuffer buffer, const char* LabelName, const FVec4& colour);
-bool VulkanEndLabel(VulkanAPI* VkAPI, VkCommandBuffer buffer);
+void VulkanSetDebugObjectName(VulkanAPI* VkAPI, VkObjectType ObjectType, void* ObjectHandle, const char* ObjectName);
+void VulkanSetDebugObjectTag(VulkanAPI* VkAPI, VkObjectType ObjectType, void* ObjectHandle, u64 TagSize, const void* TagData);
+void VulkanBeginLabel(VulkanAPI* VkAPI, VkCommandBuffer buffer, const char* LabelName, const FVec4& colour);
+void VulkanEndLabel(VulkanAPI* VkAPI, VkCommandBuffer buffer);
 
 #define VK_SET_DEBUG_OBJECT_NAME(VkAPI, ObjectType, ObjectHandle, ObjectName) VulkanSetDebugObjectName(VkAPI, ObjectType, ObjectHandle, ObjectName)
 #define VK_SET_DEBUG_OBJECT_TAG(VkAPI, ObjectType, ObjectHandle, TagSize, TagData) VulkanSetDebugObjectTag(VkAPI, ObjectType, ObjectHandle, TagSize, TagData)

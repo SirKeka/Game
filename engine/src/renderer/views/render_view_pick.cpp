@@ -201,7 +201,7 @@ bool RenderViewPick::BuildPacket(LinearAllocator& FrameAllocator, void *data, Pa
         auto m = PacketData->UiMeshData.meshes[i];
         for (u32 j = 0; j < m->GeometryCount; ++j) {
             GeometryRenderData RenderData;
-            RenderData.gid = m->geometries[j];
+            RenderData.geometry = m->geometries[j];
             RenderData.model = m->transform.GetWorld();
             RenderData.UniqueID = m->UniqueID;
             OutPacket.geometries.PushBack(RenderData);

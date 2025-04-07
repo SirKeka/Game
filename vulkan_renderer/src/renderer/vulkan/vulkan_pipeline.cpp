@@ -1,9 +1,11 @@
-#include "vulkan_pipeline.hpp"
+#include "vulkan_pipeline.h"
 
 #include "vulkan_device.hpp"
 #include "vulkan_utils.hpp"
 #include "vulkan_renderpass.hpp"
 #include "vulkan_command_buffer.hpp"
+
+#include "resources/shader.h"
 
 bool VulkanPipeline::Create(VulkanAPI* VkAPI, const Config& config)
 {
@@ -19,7 +21,7 @@ bool VulkanPipeline::Create(VulkanAPI* VkAPI, const Config& config)
     RasterizerCreateInfo.depthClampEnable = VK_FALSE;
     RasterizerCreateInfo.rasterizerDiscardEnable = VK_FALSE;
     RasterizerCreateInfo.polygonMode = config.IsWireframe ? VK_POLYGON_MODE_LINE : VK_POLYGON_MODE_FILL;
-    RasterizerCreateInfo.lineWidth = 1.0f;
+    RasterizerCreateInfo.lineWidth = 1.F;
     switch (config.CullMode) {
         case FaceCullMode::None:
             RasterizerCreateInfo.cullMode = VK_CULL_MODE_NONE;
@@ -86,7 +88,8 @@ bool VulkanPipeline::Create(VulkanAPI* VkAPI, const Config& config)
     VkDynamicState DynamicStates[DynamicStateCount] = {
         VK_DYNAMIC_STATE_VIEWPORT,
         VK_DYNAMIC_STATE_SCISSOR,
-        VK_DYNAMIC_STATE_LINE_WIDTH};
+        VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY
+    };
 
     VkPipelineDynamicStateCreateInfo DynamicStateCreateInfo = {VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO};
     DynamicStateCreateInfo.dynamicStateCount = DynamicStateCount;
@@ -107,7 +110,37 @@ bool VulkanPipeline::Create(VulkanAPI* VkAPI, const Config& config)
 
     // Входной узел
     VkPipelineInputAssemblyStateCreateInfo InputAssembly = {VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO};
-    InputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    // Создаваемый конвейер уже имеет доступные типы, поэтому просто выберите первый из них.
+    for (u32 i = 1; i < PrimitiveTopology::Type::MAX; i = i << 1) {
+        if (SupportedTopologyTypes & i) {
+            PrimitiveTopology::Type ptt = (PrimitiveTopology::Type)i;
+
+            switch (ptt) {
+                case PrimitiveTopology::Type::PointList:
+                    InputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+                    break;
+                case PrimitiveTopology::Type::LineList:
+                    InputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+                    break;
+                case PrimitiveTopology::Type::LineStrip:
+                    InputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_LINE_STRIP;
+                    break;
+                case PrimitiveTopology::Type::TriangleList:
+                    InputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+                    break;
+                case PrimitiveTopology::Type::TriangleStrip:
+                    InputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+                    break;
+                case PrimitiveTopology::Type::TriangleFan:
+                    InputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN;
+                    break;
+                default:
+                    MWARN("Примитивная топология '%u' не поддерживается. Пропуск.", ptt);
+                    break;
+            }
+            break;
+        }
+    }
     InputAssembly.primitiveRestartEnable = VK_FALSE;
 
     // Макет конвейера
@@ -148,9 +181,7 @@ bool VulkanPipeline::Create(VulkanAPI* VkAPI, const Config& config)
 
     char PipelineLayoutNameBuf[512]{};
     MString::Format(PipelineLayoutNameBuf, "pipeline_layout_%s", config.name.c_str());
-    if (!VulkanSetDebugObjectName(VkAPI, VK_OBJECT_TYPE_PIPELINE_LAYOUT, PipelineLayout, PipelineLayoutNameBuf)) {
-        MWARN("Невозможно настроить имя объекта отладки для %s.", PipelineLayoutNameBuf);
-    }
+    VulkanSetDebugObjectName(VkAPI, VK_OBJECT_TYPE_PIPELINE_LAYOUT, PipelineLayout, PipelineLayoutNameBuf);
 
     // Создание конвейера
     VkGraphicsPipelineCreateInfo PipelineCreateInfo = {VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO};
@@ -185,9 +216,7 @@ bool VulkanPipeline::Create(VulkanAPI* VkAPI, const Config& config)
 
     char PipelineNameBuf[512]{};
     MString::Format(PipelineNameBuf, "pipeline_%s", config.name.c_str());
-    if (!VulkanSetDebugObjectName(VkAPI, VK_OBJECT_TYPE_PIPELINE, handle, PipelineNameBuf)) {
-        MWARN("Невозможно настроить имя объекта отладки для %s.", PipelineNameBuf);
-    }
+    VulkanSetDebugObjectName(VkAPI, VK_OBJECT_TYPE_PIPELINE, handle, PipelineNameBuf);
 
     if (VulkanResultIsSuccess(result)) {
         MDEBUG("Графический конвейер создан!");

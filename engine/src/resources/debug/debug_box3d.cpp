@@ -1,7 +1,12 @@
 #include "debug_box3d.h"
 #include "renderer/rendering_system.h"
 
-DebugBox3D::~DebugBox3D()
+// DebugBox3D::~DebugBox3D()
+// {
+//     Destroy();
+// }
+
+void DebugBox3D::Destroy()
 {
     Identifier::ReleaseID(UniqueID);
 }

@@ -1,6 +1,6 @@
 #pragma once
 #include "defines.hpp"
-#include "vulkan_pipeline.hpp"
+#include "vulkan_pipeline.h"
 #include "renderer/renderbuffer.hpp"
 
 /// @todo ЗАДАЧА: сделать настраиваемым
@@ -91,7 +91,9 @@ struct VulkanShader {
     VkDescriptorSetLayout DescriptorSetLayouts[2];                      // Макеты набора дескрипторов, максимум 2. Индекс 0 = глобальный, 1 = экземпляр.
     VkDescriptorSet GlobalDescriptorSets[3];                            // Наборы глобальных дескрипторов, по одному на кадр.
     RenderBuffer UniformBuffer;                                         // Универсальный буфер, используемый этим шейдером.
-    VulkanPipeline pipeline;                                            // Конвейер, связанный с этим шейдером.
+    VulkanPipeline** pipelines;                                         // Массив указателей на конвейеры, связанные с этим шейдером.
+    u8 BoundPipelineIndex;                                              // Текущий связанный индекс конвеера.
+    VkPrimitiveTopology CurrentTopology;                                // Текущая выбранная топология.
     u32 InstanceCount;                                                  // Экземпляр состояния для всех экземпляров. ЗАДАЧА: динамичным */
     VulkanShaderInstanceState InstanceStates[VULKAN_MAX_MATERIAL_COUNT];
     u8 GlobalUniformCount;                                              // Количество глобальных не-семплерных униформ.

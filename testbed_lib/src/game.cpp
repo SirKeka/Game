@@ -503,8 +503,8 @@ bool GameConfigureRenderViews(Application& app)
     // app.AppConfig.RenderViews[0].CustomShaderName
     // app.AppConfig.RenderViews[0].width = 0;
     // app.AppConfig.RenderViews[0].height = 0;
-    app.AppConfig.RenderViews[0].type = RenderView::KnownTypeSkybox;
-    app.AppConfig.RenderViews[0].VMS = RenderView::ViewMatrixSourceSceneCamera;
+    app.AppConfig.RenderViews[0].type = RenderView::Skybox;
+    app.AppConfig.RenderViews[0].VMS = RenderView::SceneCamera;
     app.AppConfig.RenderViews[0].PassCount = 1;
     app.AppConfig.RenderViews[0].passes = SkyboxPasses.MovePtr();
 
@@ -540,8 +540,8 @@ bool GameConfigureRenderViews(Application& app)
     app.AppConfig.RenderViews[1].name = "world";
     // app.AppConfig.RenderViews[1].width = 0;
     // app.AppConfig.RenderViews[1].height = 0;
-    app.AppConfig.RenderViews[1].type = RenderView::KnownTypeWorld;
-    app.AppConfig.RenderViews[1].VMS = RenderView::ViewMatrixSourceSceneCamera;
+    app.AppConfig.RenderViews[1].type = RenderView::World;
+    app.AppConfig.RenderViews[1].VMS = RenderView::SceneCamera;
     app.AppConfig.RenderViews[1].PassCount = 1;
     app.AppConfig.RenderViews[1].passes = WorldPasses.MovePtr();
 
@@ -570,8 +570,8 @@ bool GameConfigureRenderViews(Application& app)
     app.AppConfig.RenderViews[2].name = "ui";
     // app.AppConfig.RenderViews[2].width = 0;
     // app.AppConfig.RenderViews[2].height = 0;
-    app.AppConfig.RenderViews[2].type = RenderView::KnownTypeUI;
-    app.AppConfig.RenderViews[2].VMS = RenderView::ViewMatrixSourceUiCamera;
+    app.AppConfig.RenderViews[2].type = RenderView::UI;
+    app.AppConfig.RenderViews[2].VMS = RenderView::UiCamera;
     app.AppConfig.RenderViews[2].PassCount = 1;
     app.AppConfig.RenderViews[2].passes = UIPasses.MovePtr();
 
@@ -626,8 +626,8 @@ bool GameConfigureRenderViews(Application& app)
     app.AppConfig.RenderViews[3].name = "pick";
     // app.AppConfig.RenderViews[3].width = 0;
     // app.AppConfig.RenderViews[3].height = 0;
-    app.AppConfig.RenderViews[3].type = RenderView::KnownTypePick;
-    app.AppConfig.RenderViews[3].VMS = RenderView::ViewMatrixSourceSceneCamera;
+    app.AppConfig.RenderViews[3].type = RenderView::Pick;
+    app.AppConfig.RenderViews[3].VMS = RenderView::SceneCamera;
     app.AppConfig.RenderViews[3].PassCount = 2;
     app.AppConfig.RenderViews[3].passes = PickPasses.MovePtr();
 

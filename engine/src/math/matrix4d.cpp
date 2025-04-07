@@ -135,6 +135,8 @@ void Matrix4D::Inverse()
 
 void Matrix4D::Identity()
 {
+	// data[1] = data[2] = data[3] = data[4] = data[6] = data[7] = data[8] = data[9] = data[11] = data[12] = data[12] = data[13] = data[14] = 0.F;
+	*this = Matrix4D();
 	data[0] = data[5] = data[10] = data[15] = 1.f;
 }
 

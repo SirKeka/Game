@@ -67,8 +67,8 @@ void VulkanImage::Create(Config &config)
     MemoryAllocateInfo.memoryTypeIndex = MemoryType;
     VK_CHECK(vkAllocateMemory(config.VkAPI->Device.LogicalDevice, &MemoryAllocateInfo, config.VkAPI->allocator, &memory));
     
-    if (name && !VulkanSetDebugObjectName(config.VkAPI, VK_OBJECT_TYPE_DEVICE_MEMORY, memory, name.c_str())) {
-        //
+    if (name) {
+        VulkanSetDebugObjectName(config.VkAPI, VK_OBJECT_TYPE_DEVICE_MEMORY, memory, name.c_str());
     }
 
     // Свяжите память

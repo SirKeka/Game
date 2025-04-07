@@ -187,14 +187,14 @@ bool RenderViewWorld::BuildPacket(class LinearAllocator& FrameAllocator, void *d
     
     for (u32 i = 0; i < WorldData.WorldGeometries.Length(); ++i) {
         auto& gData = WorldData.WorldGeometries[i];
-        if (!gData.gid) {
+        if (!gData.geometry) {
             continue;
         }
 
         // ЗАДАЧА: Добавить что-то к материалу для проверки прозрачности.
         bool HasTransparancy = false;
-        if ((gData.gid->material->type == Material::Type::Phong) == 0) {
-            HasTransparancy = (gData.gid->material->maps[0].texture->flags & Texture::Flag::HasTransparency) == 0;
+        if ((gData.geometry->material->type == Material::Type::Phong) == 0) {
+            HasTransparancy = (gData.geometry->material->maps[0].texture->flags & Texture::Flag::HasTransparency) == 0;
         }
         if (HasTransparancy) {
             OutPacket.geometries.PushBack(gData);
@@ -203,7 +203,7 @@ bool RenderViewWorld::BuildPacket(class LinearAllocator& FrameAllocator, void *d
             // Получите центр, извлеките глобальную позицию из матрицы модели и добавьте ее в центр, 
             // затем вычислите расстояние между ней и камерой и, наконец, сохраните ее в списке для сортировки.
             // ПРИМЕЧАНИЕ: это не идеально для полупрозрачных сеток, которые пересекаются, но для наших целей сейчас достаточно.
-            auto center = gData.gid->center * gData.model; // transform
+            auto center = gData.geometry->center * gData.model; // transform
             auto distance = Distance(center, WorldCamera->GetPosition());
             GeometryDistance GeoDist;
             GeoDist.g = gData;
@@ -266,8 +266,8 @@ bool RenderViewWorld::Render(const Packet &packet, u64 FrameNumber, u64 RenderTa
 
             for (u32 i = 0; i < TerrainCount; ++i) {
                 Material* material = nullptr;
-                if (packet.TerrainGeometries[i].gid->material) {
-                    material = packet.TerrainGeometries[i].gid->material;
+                if (packet.TerrainGeometries[i].geometry->material) {
+                    material = packet.TerrainGeometries[i].geometry->material;
                 } else {
                     material = MaterialSystem::GetDefaultTerrainMaterial();
                 }
@@ -312,8 +312,8 @@ bool RenderViewWorld::Render(const Packet &packet, u64 FrameNumber, u64 RenderTa
             const auto& count = packet.geometries.Length();
             for (u32 i = 0; i < count; ++i) {
                 Material* m = nullptr;
-                if (packet.geometries[i].gid->material) {
-                    m = packet.geometries[i].gid->material;
+                if (packet.geometries[i].geometry->material) {
+                    m = packet.geometries[i].geometry->material;
                 } else {
                     m = MaterialSystem::GetDefaultMaterial();
                 }

@@ -132,7 +132,7 @@ bool RenderViewSkybox::Render(const Packet &packet, u64 FrameNumber, u64 RenderT
 
             // Нарисовать его.
             GeometryRenderData RenderData = {};
-            RenderData.gid = SkyboxData->sb->g;
+            RenderData.geometry = SkyboxData->sb->g;
             RenderingSystem::DrawGeometry(RenderData);
         }
 

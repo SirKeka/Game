@@ -95,22 +95,22 @@ bool RenderViewSystem::Create(RenderView::Config &config)
     // ЗАДАЧА: Шаблон фабрика
     switch (config.type)
     {
-    case RenderView::KnownTypeWorld:
+    case RenderView::World:
         if (!(state->RegisteredViews[id] = new RenderViewWorld(id, config))) {
             MERROR("Не удалось создать RenderViewWorld.");
         }
         break;
-    case RenderView::KnownTypeUI:
+    case RenderView::UI:
         if (!(state->RegisteredViews[id] = new RenderViewUI(id, config))) {
             MERROR("Не удалось создать RenderViewUI.");
         }
         break;
-    case RenderView::KnownTypeSkybox:
+    case RenderView::Skybox:
         if (!(state->RegisteredViews[id] = new RenderViewSkybox(id, config))) {
             MERROR("Не удалось создать RenderViewSkybox.");
         }
         break;
-    case RenderView::KnownTypePick:
+    case RenderView::Pick:
         if (!(state->RegisteredViews[id] = new RenderViewPick(id, config))) {
             MERROR("Не удалось создать RenderViewPick.")
         }

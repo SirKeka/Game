@@ -28,7 +28,15 @@ struct DebugBox3D {
     vertices(nullptr),
     geometry()
     {}
-    ~DebugBox3D();
+    // ~DebugBox3D();
+    void Destroy();
+
+    explicit operator bool() const {
+        if (!UniqueID || UniqueID == INVALID::ID) {
+            return false;
+        }
+        return true;
+    }
 
     void SetParent(Transform* parent);
     void SetColour(const FVec4& colour);

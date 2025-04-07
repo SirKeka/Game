@@ -17,8 +17,16 @@ struct MAPI DebugLine3D {
     GeometryID geometry;
 
     constexpr DebugLine3D(const FVec3& Point0, const FVec3& Point1, Transform *parent);
-    ~DebugLine3D();
+    // ~DebugLine3D();
 
+    operator bool() {
+        if (!UniqueID || UniqueID == INVALID::ID) {
+            return false;
+        }
+        return true;
+    }
+
+    void Destroy();
     void SetParent(Transform *parent);
     void SetColour(const FVec4& colour);
     void SetPoints(const FVec3& Point0, const FVec3& Point1);

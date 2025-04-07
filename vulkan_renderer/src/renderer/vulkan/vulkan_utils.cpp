@@ -135,7 +135,7 @@ bool VulkanResultIsSuccess(VkResult result)
 }
 
 #if defined(_DEBUG)
-bool VulkanSetDebugObjectName(VulkanAPI *VkAPI, VkObjectType ObjectType, void *ObjectHandle, const char *ObjectName)
+void VulkanSetDebugObjectName(VulkanAPI *VkAPI, VkObjectType ObjectType, void *ObjectHandle, const char *ObjectName)
 {
     const VkDebugUtilsObjectNameInfoEXT NameInfo = {
         VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
@@ -147,12 +147,10 @@ bool VulkanSetDebugObjectName(VulkanAPI *VkAPI, VkObjectType ObjectType, void *O
 
     if (VkAPI->pfnSetDebugUtilsObjectNameEXT) {
         VK_CHECK(VkAPI->pfnSetDebugUtilsObjectNameEXT(VkAPI->Device.LogicalDevice, &NameInfo));
-        return true;
     }
-    return false;
 }
 
-bool VulkanSetDebugObjectTag(VulkanAPI *VkAPI, VkObjectType ObjectType, void *ObjectHandle, u64 TagSize, const void *TagData)
+void VulkanSetDebugObjectTag(VulkanAPI *VkAPI, VkObjectType ObjectType, void *ObjectHandle, u64 TagSize, const void *TagData)
 {
     const VkDebugUtilsObjectTagInfoEXT TagInfo = {
         VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
@@ -165,12 +163,10 @@ bool VulkanSetDebugObjectTag(VulkanAPI *VkAPI, VkObjectType ObjectType, void *Ob
 
     if (VkAPI->pfnSetDebugUtilsObjectTagEXT) {
         VK_CHECK(VkAPI->pfnSetDebugUtilsObjectTagEXT(VkAPI->Device.LogicalDevice, &TagInfo));
-        return true;
     }
-    return false;
 }
 
-bool VulkanBeginLabel(VulkanAPI *VkAPI, VkCommandBuffer buffer, const char *LabelName, const FVec4& colour)
+void VulkanBeginLabel(VulkanAPI *VkAPI, VkCommandBuffer buffer, const char *LabelName, const FVec4& colour)
 {
     VkDebugUtilsLabelEXT LabelInfo = {
         VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT,
@@ -180,17 +176,13 @@ bool VulkanBeginLabel(VulkanAPI *VkAPI, VkCommandBuffer buffer, const char *Labe
 
     if (VkAPI->pfnCmdBeginDebugUtilsLabelEXT) {
         VkAPI->pfnCmdBeginDebugUtilsLabelEXT(buffer, &LabelInfo);
-        return true;
     }
-    return false;
 }
 
-bool VulkanEndLabel(VulkanAPI *VkAPI, VkCommandBuffer buffer)
+void VulkanEndLabel(VulkanAPI *VkAPI, VkCommandBuffer buffer)
 {
     if (VkAPI->pfnCmdEndDebugUtilsLabelEXT) {
         VkAPI->pfnCmdEndDebugUtilsLabelEXT(buffer);
-        return true;
     }
-    return false;
 }
 #endif

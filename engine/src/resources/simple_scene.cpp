@@ -350,6 +350,71 @@ bool SimpleScene::Unload(bool immediate)
 
 bool SimpleScene::Update(const FrameData &rFrameData)
 {
+    if (state >= SimpleScene::State::Loaded) {
+        // ЗАДАЧА: Обновите направленный свет, если он изменился.
+        if (DirLight && DirLight->DebugData) {
+            auto debug = reinterpret_cast<SimpleSceneDebugData*>(DirLight->DebugData);
+            if (debug->line.geometry.generation != INVALID::U16ID) {
+                // Обновите цвет. ПРИМЕЧАНИЕ: выполнение этого в каждом кадре может быть затратным, если нам придется постоянно перезагружать геометрию.
+                // ЗАДАЧА: Возможно, есть другой способ сделать это, например, шейдер, который использует униформу для цвета?
+                debug->line.SetColour(DirLight->data.colour);
+            }
+        }
+
+        // Обновите отладочные блоки точечного света.
+        const u32& PointLightCount = PointLights.Length();
+        for (u32 i = 0; i < PointLightCount; ++i) {
+            if (PointLights[i].DebugData) {
+                auto debug = reinterpret_cast<SimpleSceneDebugData*>(PointLights[i].DebugData);
+                if (debug->box.geometry.generation != INVALID::U16ID) {
+                    // Обновите преобразование.
+                    debug->box.xform.SetPosition(PointLights[i].data.position);
+
+                    // Обновите цвет. ПРИМЕЧАНИЕ: выполнение этого в каждом кадре может быть затратным, если нам придется постоянно перезагружать геометрию.
+                    // ЗАДАЧА: Возможно, есть другой способ сделать это, например, шейдер, который использует униформу для цвета?
+                    debug->box.SetColour(PointLights[i].data.colour);
+                }
+            }
+        }
+
+        // Проверьте сетки, чтобы узнать, есть ли у них отладочные данные. Если нет, добавьте их здесь и инициализируйте/загрузите их.
+        // Это делается здесь, потому что загрузка сеток многопоточная и может быть еще недоступна, даже если объект присутствует в сцене.
+        const u32& MeshCount = meshes.Length();
+        for (u32 i = 0; i < MeshCount; ++i) {
+            auto& mesh = meshes[i];
+            if (mesh.generation == INVALID::U8ID) {
+                continue;
+            }
+            if (!mesh.DebugData) {
+                mesh.DebugData = MemorySystem::Allocate(sizeof(SimpleSceneDebugData), Memory::Resource);
+                auto debug = reinterpret_cast<SimpleSceneDebugData*>(mesh.DebugData);
+
+                if (!(debug->box = DebugBox3D(0.2F, nullptr))) {
+                    MERROR("Не удалось создать отладочный блок для сетки '%s'.", mesh.config.name.c_str());
+                } else {
+                    debug->box.xform.SetParent(&mesh.transform);
+
+                    if (!debug->box.Initialize()) {
+                        MERROR("Не удалось инициализировать отладочный блок.");
+                        MemorySystem::Free(mesh.DebugData, sizeof(SimpleSceneDebugData), Memory::Resource);
+                        mesh.DebugData = nullptr;
+                        continue;
+                    }
+
+                    if (!debug->box.Load()) {
+                        MERROR("Не удалось загрузить отладочный блок.");
+                        MemorySystem::Free(mesh.DebugData, sizeof(SimpleSceneDebugData), Memory::Resource);
+                        mesh.DebugData = nullptr;
+                    }
+
+                    // Обновите экстенты.
+                    debug->box.SetColour(FVec4(0.F, 1.F, 0.F, 1.F));
+                    debug->box.SetExtents(mesh.extents);
+                }
+            }
+        }
+    }
+
     if (state == State::Unloading) {
         ActualUnload();
     }
@@ -363,7 +428,7 @@ bool SimpleScene::PopulateRenderPacket(Camera *CurrentCamera, f32 aspect, FrameD
     for (u32 i = 0; i < packet.ViewCount; ++i) {
         auto& ViewPacket = packet.views[i];
         const auto view = ViewPacket.view;
-        if (view->type == RenderView::KnownTypeSkybox) {
+        if (view->type == RenderView::Skybox) {
             if (sb) {
                 // Скайбокс
                 SkyboxPacketData SkyboxData = {sb};
@@ -376,13 +441,14 @@ bool SimpleScene::PopulateRenderPacket(Camera *CurrentCamera, f32 aspect, FrameD
         }
     }
 
-    for (u32 i = 0; i < packet.ViewCount; ++i) {
-        auto& ViewPacket = packet.views[i];
+    for (u32 v = 0; v < packet.ViewCount; ++v) {
+        auto& ViewPacket = packet.views[v];
         const auto view = ViewPacket.view;
-        if (view->type == RenderView::KnownTypeWorld) {
+        if (view->type == RenderView::KnownType::World) {
             // Обязательно очистите массив геометрии мира.
             WorldData.WorldGeometries.Clear();
             WorldData.TerrainGeometries.Clear();
+            WorldData.DebugGeometries.Clear();
 
             auto forward = CurrentCamera->Forward();
             auto right = CurrentCamera->Right();
@@ -446,7 +512,7 @@ bool SimpleScene::PopulateRenderPacket(Camera *CurrentCamera, f32 aspect, FrameD
                                 // Добавьте его в список для рендеринга.
                                 GeometryRenderData data = {};
                                 data.model = model;
-                                data.gid = g;
+                                data.geometry = g;
                                 data.UniqueID = m.UniqueID;
                                 WorldData.WorldGeometries.PushBack(data);
 
@@ -465,7 +531,7 @@ bool SimpleScene::PopulateRenderPacket(Camera *CurrentCamera, f32 aspect, FrameD
                 //
                 GeometryRenderData data = {};
                 data.model = terrains[i].xform.GetWorld();
-                data.gid = &terrains[i].geo;
+                data.geometry = &terrains[i].geo;
                 data.UniqueID = terrains[i].UniqueID;
 
                 WorldData.TerrainGeometries.PushBack(data);
@@ -474,7 +540,66 @@ bool SimpleScene::PopulateRenderPacket(Camera *CurrentCamera, f32 aspect, FrameD
                 rFrameData.DrawnMeshCount++;
             }
 
-            // World
+            // Геометрия отладки
+
+            // Сетка.
+            {
+                GeometryRenderData data{};
+                data.model = Matrix4D::MakeIdentity();
+                data.geometry = &grid.geometry;
+                data.UniqueID = INVALID::ID;
+                WorldData.DebugGeometries.PushBack(data);
+            }
+
+            // Направленный свет.
+            {
+                if (DirLight && DirLight->DebugData) {
+                    auto debug = reinterpret_cast<SimpleSceneDebugData*>(DirLight->DebugData);
+
+                    // Линия отладки 3d
+                    GeometryRenderData data{};
+                    data.model = debug->line.xform.GetWorld();
+                    data.geometry = &debug->line.geometry;
+                    data.UniqueID = debug->line.UniqueID;
+                    WorldData.DebugGeometries.PushBack(data);
+                }
+            }
+
+            // Точечные источники света
+            {
+                const u32& PointLightCount = PointLights.Length();
+                for (u32 i = 0; i < PointLightCount; ++i) {
+                    if (PointLights[i].DebugData) {
+                        auto debug = reinterpret_cast<SimpleSceneDebugData*>(PointLights[i].DebugData);
+
+                        // Отладочное поле 3d
+                        GeometryRenderData data{};
+                        data.model = debug->box.xform.GetWorld();
+                        data.geometry = &debug->box.geometry;
+                        data.UniqueID = debug->box.UniqueID;
+                        WorldData.DebugGeometries.PushBack(data);
+                    }
+                }
+            }
+
+            // Сетка отладочных форм
+            {
+                const u32& MeshCount = meshes.Length();
+                for (u32 i = 0; i < MeshCount; ++i) {
+                    if (meshes[i].DebugData) {
+                        auto debug = reinterpret_cast<SimpleSceneDebugData*>(meshes[i].DebugData);
+
+                        // Отладочное поле 3d
+                        GeometryRenderData data{};
+                        data.model = debug->box.xform.GetWorld();
+                        data.geometry = &debug->box.geometry;
+                        data.UniqueID = debug->box.UniqueID;
+                        WorldData.DebugGeometries.PushBack(data);
+                    }
+                }
+            }
+
+            // Мир
             if (!RenderViewSystem::BuildPacket(RenderViewSystem::Get("world"), *rFrameData.FrameAllocator, &WorldData.WorldGeometries, packet.views[1])) {
                 MERROR("Не удалось создать пакет для представления «мира».");
                 return false;
@@ -490,16 +615,60 @@ bool SimpleScene::AddDirectionalLight(const char* name, DirectionalLight &light)
     if (DirLight) {
         // ЗАДАЧА: Выполните необходимую выгрузку ресурсов.
         LightSystem::RemoveDirectional(DirLight);
+
+        if (DirLight->DebugData) {
+            auto debug = reinterpret_cast<SimpleSceneDebugData*>(DirLight->DebugData);
+
+            debug->line.Unload();
+            debug->line.Destroy();
+
+            // ПРИМЕЧАНИЕ: здесь нельзя освобождать, если нет света, так как он будет снова использован ниже.
+            // if (!light) {
+                // MemorySystem::Free(DirLight->DebugData, sizeof(SimpleSceneDebugData), Memory::Resource);
+                // DirLight->DebugData = nullptr;
+            // }
+        }
     }
 
-    // if (light) {
+    DirLight = &light;
+
+    if (DirLight) {
         if (!LightSystem::AddDirectional(&light)) {
             MERROR("SimpleScene::AddDirectionalLight - не удалось добавить направленный свет в систему освещения.");
             return false;
         }
-    // }
 
-    DirLight = &light;
+        // Добавьте линии, указывающие направление света.
+        auto debug = reinterpret_cast<SimpleSceneDebugData*>(DirLight->DebugData);
+
+        // Создайте точки линии на основе направления света.
+        // Первая точка всегда будет в начале координат сцены.
+        FVec3 Point0 {};
+        FVec3 Point1 = FVec3(DirLight->data.direction).Normalize() * -1.F;
+
+        if (!(debug->line = DebugLine3D(Point0, Point1, nullptr))) {
+            MERROR("Не удалось создать линию отладки для направленного света.");
+        } else {
+            if (state > State::Initialized) {
+                if (!debug->line.Initialize()) {
+                    MERROR("Не удалось инициализировать линию отладки.");
+                    MemorySystem::Free(light.DebugData, sizeof(SimpleSceneDebugData), Memory::Resource);
+                    light.DebugData = nullptr;
+                    return false;
+                }
+            }
+
+            if (state >=  State::Loaded) {
+                if (!debug->line.Load()) {
+                    MERROR("Неудалось загрузить отладочную линию.");
+                    MemorySystem::Free(light.DebugData, sizeof(SimpleSceneDebugData), Memory::Resource);
+                    light.DebugData = nullptr;
+                }
+            }
+        }
+    }
+
+    
 
     return true;
 }
@@ -509,6 +678,32 @@ bool SimpleScene::AddPointLight(const char* name, PointLight &light)
     if (!LightSystem::AddPoint(&light)) {
         MERROR("Не удалось добавить точечный источник света в сцену (сбой добавления системы освещения, проверьте журналы).");
         return false;
+    }
+
+    light.DebugData = MemorySystem::Allocate(sizeof(SimpleSceneDebugData), Memory::Resource);
+    auto debug = reinterpret_cast<SimpleSceneDebugData*>(light.DebugData);
+
+    if (!(debug->box = DebugBox3D(0.2F, nullptr))) {
+        MERROR("Не удалось создать отладочное поле для направленного света.");
+    } else {
+        debug->box.xform.SetPosition(light.data.position);
+
+        if (state > State::Initialized) {
+            if (!debug->box.Initialize()) {
+                MERROR("не удалось инициализировать отладочное поле.");
+                MemorySystem::Free(light.DebugData, sizeof(SimpleSceneDebugData), Memory::Resource);
+                light.DebugData = nullptr;
+                return false;
+            }
+        }
+
+        if (state >= State::Loaded) {
+            if (!debug->box.Load()) {
+                MERROR("не удалось загрузить отладочное поле.");
+                MemorySystem::Free(light.DebugData, sizeof(SimpleSceneDebugData), Memory::Resource);
+                light.DebugData = nullptr;
+            }
+        }
     }
 
     PointLights.PushBack(light);
@@ -646,6 +841,17 @@ bool SimpleScene::RemoveDirectionalLight()
     if (!LightSystem::RemoveDirectional(DirLight)) {
         MERROR("Не удалось удалить направленный свет из системы освещения.");
         return false;
+    } else {
+        // Выгрузите отладку направленного света, если она существует.
+        if (DirLight->DebugData) {
+            auto debug = reinterpret_cast<SimpleSceneDebugData*>(DirLight->DebugData);
+
+            debug->line.Unload();
+            debug->line.Destroy();
+
+            MemorySystem::Free(DirLight->DebugData, sizeof(SimpleSceneDebugData), Memory::Resource);
+            DirLight->DebugData = nullptr;
+        }
     }
 
     DirLight = nullptr;
@@ -665,6 +871,15 @@ bool SimpleScene::RemovePointLight(const MString& name, PointLight& light)
             if (!LightSystem::RemovePoint(&light)) {
                 MERROR("Не удалось удалить точечный источник света из системы освещения.");
                 return false;
+            } else {
+                // Уничтожьте отладочные данные, если они существуют.
+                if (PointLights[i].DebugData) {
+                    auto debug = reinterpret_cast<SimpleSceneDebugData*>(PointLights[i].DebugData);
+                    debug->box.Unload();
+                    debug->box.Destroy();
+                    MemorySystem::Free(PointLights[i].DebugData, sizeof(SimpleSceneDebugData), Memory::Resource);
+                    PointLights[i].DebugData = nullptr;
+                }
             }
 
             PointLights.PopAt(i);
@@ -686,6 +901,18 @@ bool SimpleScene::RemoveMesh(const char* name)
     const u64& MeshCount = meshes.Length();
     for (u32 i = 0; i < MeshCount; ++i) {
         if (meshes[i].config.name == name) {
+            // Выгрузите все отладочные данные.
+            if (meshes[i].DebugData) {
+                auto debug = reinterpret_cast<SimpleSceneDebugData*>(meshes[i].DebugData);
+            
+                debug->box.Unload();
+                debug->box.Destroy();
+            
+                MemorySystem::Free(meshes[i].DebugData, sizeof(SimpleSceneDebugData), Memory::Resource);
+                meshes[i].DebugData = nullptr;
+            }
+
+            // Выгрузите саму сетку.
             if (!meshes[i].Unload()) {
                 MERROR("Не удалось выгрузить сетку");
                 return false;
@@ -755,6 +982,18 @@ void SimpleScene::ActualUnload()
     const u64& MeshCount = meshes.Length();
     for (u32 i = 0; i < MeshCount; ++i) {
         if (meshes[i].generation != INVALID::U8ID) {
+            // Выгрузите все отладочные данные.
+            if (meshes[i].DebugData) {
+                auto debug = reinterpret_cast<SimpleSceneDebugData*>(meshes[i].DebugData);
+
+                debug->box.Unload();
+                debug->box.Destroy();
+
+                MemorySystem::Free(meshes[i].DebugData, sizeof(SimpleSceneDebugData), Memory::Resource);
+                meshes[i].DebugData = nullptr;
+            }
+
+            // Выгрузите саму сетку
             if (!meshes[i].Unload()) {
                 MERROR("Не удалось выгрузить сетку.");
             }
@@ -770,18 +1009,41 @@ void SimpleScene::ActualUnload()
         terrains[i].Destroy();
     }
 
+    // Отладочная сетка.
+    if (!grid.Unload()) {
+        MWARN("Не удалось выгрузить отладочную сетку.");
+    }
+
     if (DirLight) {
-        // ЗАДАЧА: Если есть ресурс для выгрузки, это должно быть сделано до следующей строки. Пример: поле, представляющее позицию/цвет
         if (!RemoveDirectionalLight()) {
             MERROR("Не удалось выгрузить/удалить направленный свет.");
         }
+
+        if (DirLight && DirLight->DebugData) {
+            auto debug = reinterpret_cast<SimpleSceneDebugData*>(DirLight->DebugData);
+            // Выгрузить данные о направленной световой линии.
+            debug->line.Unload();
+            debug->line.Destroy();
+            MemorySystem::Free(DirLight->DebugData, sizeof(SimpleSceneDebugData), Memory::Resource);
+            DirLight->DebugData = nullptr;
+        }
     }
+    
 
     const u64& pLightCount = PointLights.Length();
     for (u32 i = 0; i < pLightCount; ++i) {
         // ЗАДАЧА: Если есть ресурс для выгрузки, это должно быть сделано до следующей строки. Пример: поле, представляющее позицию/цвет
         if (!LightSystem::RemovePoint(&PointLights[i])) {
-            MERROR("Не удалось выгрузить/удалить точечный свет.");
+            MWARN("Не удалось выгрузить/удалить точечный свет.");
+        }
+
+        // Уничтожьте отладочные данные, если они существуют.
+        if (PointLights[i].DebugData) {
+            auto debug = reinterpret_cast<SimpleSceneDebugData*>(PointLights[i].DebugData);
+            debug->box.Unload();
+            debug->box.Destroy();
+            MemorySystem::Free(PointLights[i].DebugData, sizeof(SimpleSceneDebugData), Memory::Resource);
+            PointLights[i].DebugData = nullptr;
         }
     }
 
@@ -810,6 +1072,10 @@ void SimpleScene::ActualUnload()
 
     if (WorldData.TerrainGeometries) {
         WorldData.TerrainGeometries.Destroy();
+    }
+
+    if (WorldData.DebugGeometries) {
+        WorldData.DebugGeometries.Destroy();
     }
 
     // MemorySystem::ZeroMem(this, sizeof(SimpleScene));

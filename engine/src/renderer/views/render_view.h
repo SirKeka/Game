@@ -11,7 +11,7 @@ struct FrameData;
 struct GeometryRenderData 
 {
     Matrix4D model;
-    GeometryID* gid;
+    GeometryID* geometry;
     u32 UniqueID;
 };
 
@@ -27,23 +27,23 @@ class MAPI RenderView
 public:
     /// @brief Известные типы представления рендеринга, имеющие связанную с ними логику.
 enum KnownType {
-    KnownTypeWorld  = 0x01, // Представление, которое рендерит только объекты с *никакой* прозрачностью.
-    KnownTypeUI     = 0x02, // Представление, которое рендерит только объекты пользовательского интерфейса.
-    KnownTypeSkybox = 0x03, // Вид, отображающий только объекты скайбокса.
-    KnownTypePick   = 0x04  // Представление, которое отображает только объекты пользовательского интерфейса и мира, которые можно выбрать.
+    World  = 0x01, // Представление, которое рендерит только объекты с *никакой* прозрачностью.
+    UI     = 0x02, // Представление, которое рендерит только объекты пользовательского интерфейса.
+    Skybox = 0x03, // Вид, отображающий только объекты скайбокса.
+    Pick   = 0x04  // Представление, которое отображает только объекты пользовательского интерфейса и мира, которые можно выбрать.
 };
 
 /// @brief Известные источники матрицы представления.
 enum ViewMatrixSource {
-    ViewMatrixSourceSceneCamera = 0x01,
-    ViewMatrixSourceUiCamera    = 0x02,
-    ViewMatrixSourceLightCamera = 0x03,
+    SceneCamera = 0x01,
+    UiCamera    = 0x02,
+    LightCamera = 0x03,
 };
 
 /// @brief Известные источники матрицы проекции.
 enum ProjectionMatrixSource {
-    ProjectionMatrixSourceDefaultPerspective  = 0x01,
-    ProjectionMatrixSourceDefaultOrthographic = 0x02,
+    DefaultPerspective  = 0x01,
+    DefaultOrthographic = 0x02,
 };
 
 /// @brief Конфигурация представления рендеринга. Используется как цель сериализации.

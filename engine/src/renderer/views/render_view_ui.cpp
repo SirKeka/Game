@@ -96,7 +96,7 @@ bool RenderViewUI::BuildPacket(LinearAllocator& FrameAllocator, void *data, Pack
         auto* m = PacketData->MeshData.meshes[i];
         for (u32 j = 0; j < m->GeometryCount; ++j) {
             GeometryRenderData RenderData;
-            RenderData.gid = m->geometries[j];
+            RenderData.geometry = m->geometries[j];
             RenderData.model = m->transform.GetWorld();
             OutPacket.geometries.PushBack(RenderData);
             // OutPacket.GeometryCount++;
@@ -130,8 +130,8 @@ bool RenderViewUI::Render(const Packet &packet, u64 FrameNumber, u64 RenderTarge
         const u64& count = packet.geometries.Length();
         for (u32 i = 0; i < count; ++i) {
             Material* material = nullptr;
-            if (packet.geometries[i].gid->material) {
-                material = packet.geometries[i].gid->material;
+            if (packet.geometries[i].geometry->material) {
+                material = packet.geometries[i].geometry->material;
             } else {
                 material = MaterialSystem::GetDefaultUiMaterial();
             }
