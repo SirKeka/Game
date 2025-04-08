@@ -12,7 +12,7 @@ VulkanShader::VulkanShader()
     DescriptorSetLayouts(),
     GlobalDescriptorSets(),
     UniformBuffer(),
-    pipeline(),
+    pipelines(nullptr),
     InstanceCount(),
     InstanceStates() 
 {}

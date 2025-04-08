@@ -1,7 +1,12 @@
 #include "debug_grid.h"
 #include "renderer/rendering_system.h"
 
-DebugGrid::~DebugGrid()
+// DebugGrid::~DebugGrid()
+// {
+//     Destroy();
+// }
+
+void DebugGrid::Destroy()
 {
     Identifier::ReleaseID(UniqueID);
 }

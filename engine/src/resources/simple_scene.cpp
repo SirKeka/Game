@@ -83,7 +83,7 @@ bool SimpleScene::Initialize()
             DirLight->data.direction = config->DirectionalLightConfig.direction;
 
             // Добавьте отладочные данные и инициализируйте их.
-            DirLight->DebugData = MemorySystem::Allocate(sizeof(SimpleSceneDebugData), Memory::Resource);
+            DirLight->DebugData = MemorySystem::Allocate(sizeof(SimpleSceneDebugData), Memory::Resource, true);
             auto debug = reinterpret_cast<SimpleSceneDebugData*>(DirLight->DebugData);
 
             // Создайте точки линии на основе направления света.
@@ -91,10 +91,9 @@ bool SimpleScene::Initialize()
             FVec3 Point0{};
             FVec3 Point1 = FVec3(DirLight->data.direction).Normalize() * -1.F;
 
-            // if (!) {
-            //     MERROR("Не удалось создать отладочную линию для направленного света.");
-            // }
-            debug->line = DebugLine3D(Point0, Point1, nullptr);
+            if (!debug->line.Create(Point0, Point1)) {
+                MERROR("Не удалось создать отладочную линию для направленного света.");
+            }
         }
 
         // Точечные источники света.
@@ -1010,9 +1009,7 @@ void SimpleScene::ActualUnload()
     }
 
     // Отладочная сетка.
-    if (!grid.Unload()) {
-        MWARN("Не удалось выгрузить отладочную сетку.");
-    }
+    grid.Unload() ? grid.Destroy() : MWARN("Не удалось выгрузить отладочную сетку.");
 
     if (DirLight) {
         if (!RemoveDirectionalLight()) {

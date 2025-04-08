@@ -1520,7 +1520,7 @@ bool VulkanAPI::ShaderInitialize(Shader *shader)
     }
 
     // Создайте массив указателей на конвейеры, по одному на класс топологии. Нуль означает, что не поддерживается для этого шейдера.
-    VkShader->pipelines = reinterpret_cast<VulkanPipeline**>(MemorySystem::Allocate(sizeof(VulkanPipeline*) * VulkanTopology::Class::MAX, Memory::Array));
+    VkShader->pipelines = reinterpret_cast<VulkanPipeline**>(MemorySystem::Allocate(sizeof(VulkanPipeline*) * VulkanTopology::Class::MAX, Memory::Array, true));
 
     // Создайте один конвейер на класс топологии.
     // Точечный класс.

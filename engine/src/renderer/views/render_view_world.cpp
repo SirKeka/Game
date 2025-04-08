@@ -82,7 +82,7 @@ RenderMode()
         MERROR("Не удалось загрузить встроенный шейдер материала.");
         return;
     }
-    // ResourceSystem::Unload(ConfigResource);
+    ResourceSystem::Unload(ConfigResource);
 
     // Загрузка шейдера ландшафта.
     const char* TerrainShaderName = "Shader.Builtin.Terrain";
@@ -102,12 +102,11 @@ RenderMode()
     // Загрузить отладочный шейдер colour3d.
     // ЗАДАЧА: переместить встроенные шейдеры в саму систему шейдеров.
     const char* Colour3dShaderName = "Shader.Builtin.ColourShader3D";
-    // resource colour3d_shader_config_resource;
     if (!ResourceSystem::Load(Colour3dShaderName, eResource::Type::Shader, nullptr, ConfigResource)) {
         MERROR("Не удалось загрузить встроенный ресурс шейдера colour3d.");
         return;
     }
-    auto Colour3dShaderConfig = ConfigResource.data;
+    auto& Colour3dShaderConfig = ConfigResource.data;
     // ПРИМЕЧАНИЕ: предполагается первый проход, так как это все, что есть в этом представлении.
     if (!ShaderSystem::Create(passes[0], Colour3dShaderConfig)) {
         MERROR("Не удалось загрузить встроенный шейдер colour3d.");

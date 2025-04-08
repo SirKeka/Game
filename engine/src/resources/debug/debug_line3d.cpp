@@ -30,6 +30,16 @@ void DebugLine3D::Destroy()
     Identifier::ReleaseID(UniqueID);
 }
 
+bool DebugLine3D::Create(const FVec3 &Point0, const FVec3 &Point1, Transform *parent)
+{
+    UniqueID = Identifier::AquireNewID(this);
+    this->Point0 = Point0;
+    this->Point1 = Point1;
+    colour = FVec4::One();
+    xform = Transform();
+    return true;
+}
+
 void DebugLine3D::SetParent(Transform *parent)
 {
     xform.SetParent(parent);
@@ -112,6 +122,11 @@ bool DebugLine3D::Update()
 {
     return true;
 }
+
+// void *DebugLine3D::operator new(u64 size)
+// {
+//     return MemorySystem::Allocate(size, Memory::Resource);
+// }
 
 void DebugLine3D::UpdateVertColour()
 {

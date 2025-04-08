@@ -42,7 +42,7 @@ public:
         Range* PushConstantRanges;                     // Массив диапазонов данных констант push.
         u32 TopologyTypes;                             // Коллекция типов топологий, которые будут поддерживаться на этом конвейере.
 
-        constexpr Config(const MString& name, VulkanRenderpass* renderpass, u32 stride, u32 AttributeCount, VkVertexInputAttributeDescription* attributes, u32 DescriptorSetLayoutCount, VkDescriptorSetLayout* DescriptorSetLayouts, u32 StageCount, VkPipelineShaderStageCreateInfo* stages, VkViewport viewport, VkRect2D scissor, FaceCullMode CullMode, bool IsWireframe, u32 ShaderFlags, u32 PushConstantRangeCount, Range* PushConstantRanges) 
+        constexpr Config(const MString& name, VulkanRenderpass* renderpass, u32 stride, u32 AttributeCount, VkVertexInputAttributeDescription* attributes, u32 DescriptorSetLayoutCount, VkDescriptorSetLayout* DescriptorSetLayouts, u32 StageCount, VkPipelineShaderStageCreateInfo* stages, VkViewport viewport, VkRect2D scissor, FaceCullMode CullMode, bool IsWireframe, u32 ShaderFlags, u32 PushConstantRangeCount, Range* PushConstantRanges, u32 TopologyTypes) 
         : 
         name(name),
         renderpass(renderpass), 
@@ -60,7 +60,7 @@ public:
         ShaderFlags(ShaderFlags),
         PushConstantRangeCount(PushConstantRangeCount),
         PushConstantRanges(PushConstantRanges),
-        TopologyTypes() {}
+        TopologyTypes(TopologyTypes) {}
     };
 
     VkPipeline handle{};            // Внутренний дескриптор конвейера.

@@ -259,15 +259,14 @@ void Shader::Destroy()
 
 void Shader::Config::Clear()
 {
-    // name.Clear();
+    name.Clear();
     CullMode = FaceCullMode::None;
-    // AttributeCount = 0;
-    attributes.Clear();
-    // UniformCount = 0;                         
-    uniforms.Clear();    
-    // RenderpassName.Clear();                  
-    // StageCount = 0;                           
+    TopologyTypes = 1;
+    attributes.Clear();                       
+    uniforms.Clear();
     stages.Clear();              
     StageNames.Clear();              
-    StageFilenames.Clear();          
+    StageFilenames.Clear();  
+    DepthTest = false;
+    DepthWrite = false;
 }

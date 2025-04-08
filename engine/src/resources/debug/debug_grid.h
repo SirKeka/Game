@@ -100,7 +100,8 @@ struct DebugGrid {
                 break;
         }
     }
-    ~DebugGrid();
+    // ~DebugGrid();
+    void Destroy();
 
     bool Initialize();
     bool Load();

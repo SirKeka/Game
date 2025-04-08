@@ -16,6 +16,7 @@ struct MAPI DebugLine3D {
 
     GeometryID geometry;
 
+    constexpr DebugLine3D() : UniqueID(), name(), Point0(), Point1(), colour(), xform(), VertexCount(), vertices(nullptr), geometry() {}
     constexpr DebugLine3D(const FVec3& Point0, const FVec3& Point1, Transform *parent);
     // ~DebugLine3D();
 
@@ -26,6 +27,7 @@ struct MAPI DebugLine3D {
         return true;
     }
 
+    bool Create(const FVec3& Point0, const FVec3& Point1, Transform *parent = nullptr);
     void Destroy();
     void SetParent(Transform *parent);
     void SetColour(const FVec4& colour);
@@ -34,6 +36,9 @@ struct MAPI DebugLine3D {
     bool Load();
     bool Unload();
     bool Update();
+
+    // void* operator new(u64 size);
+    // void operator delete(void* ptr, u64 size);
 
 private:
     void UpdateVertColour();
