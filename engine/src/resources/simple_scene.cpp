@@ -109,15 +109,14 @@ bool SimpleScene::Initialize()
             PointLights[i].data.quadratic = config->PointLights[i].quadratic;
 
             // Добавьте отладочные данные и инициализируйте их.
-            PointLights[i].DebugData = MemorySystem::Allocate(sizeof(SimpleSceneDebugData), Memory::Resource);
+            PointLights[i].DebugData = MemorySystem::Allocate(sizeof(SimpleSceneDebugData), Memory::Resource, true);
             auto debug = reinterpret_cast<SimpleSceneDebugData*>(PointLights[i].DebugData);
             
-            debug->box = DebugBox3D(0.2F, nullptr);
-            // if (!debug_box3d_create((vec3){0.2f, 0.2f, 0.2f}, 0, &)) {
-            //     MERROR("Не удалось создать отладочное поле для направленного света.");
-            // } else {
-            //     transform_position_set(&debug->box.xform, vec3_from_vec4(new_light.data.position));
-            // }
+            if (!(debug->box = DebugBox3D(0.2F, nullptr))) {
+                MERROR("Не удалось создать отладочное поле для направленного света.");
+            } else {
+                debug->box.xform.SetPosition(PointLights[i].data.position);
+            }
 
             // PointLights.PushBack(NewLight);
         }
@@ -243,7 +242,7 @@ bool SimpleScene::Initialize()
 
     for (u32 i = 0; i < MeshCount; ++i) {
         if (!meshes[i].Initialize()) {
-            MERROR("Сетка не удалось инициализировать.");
+            MERROR("Сетку не удалось инициализировать.");
             // return false;
         }
     }
@@ -385,7 +384,7 @@ bool SimpleScene::Update(const FrameData &rFrameData)
                 continue;
             }
             if (!mesh.DebugData) {
-                mesh.DebugData = MemorySystem::Allocate(sizeof(SimpleSceneDebugData), Memory::Resource);
+                mesh.DebugData = MemorySystem::Allocate(sizeof(SimpleSceneDebugData), Memory::Resource, true);
                 auto debug = reinterpret_cast<SimpleSceneDebugData*>(mesh.DebugData);
 
                 if (!(debug->box = DebugBox3D(0.2F, nullptr))) {
@@ -679,7 +678,7 @@ bool SimpleScene::AddPointLight(const char* name, PointLight &light)
         return false;
     }
 
-    light.DebugData = MemorySystem::Allocate(sizeof(SimpleSceneDebugData), Memory::Resource);
+    light.DebugData = MemorySystem::Allocate(sizeof(SimpleSceneDebugData), Memory::Resource, true);
     auto debug = reinterpret_cast<SimpleSceneDebugData*>(light.DebugData);
 
     if (!(debug->box = DebugBox3D(0.2F, nullptr))) {

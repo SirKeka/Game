@@ -19,7 +19,7 @@ struct GeometryID {
     char name[GEOMETRY_NAME_MAX_LENGTH];
     struct Material* material;
 
-    constexpr GeometryID() : id(INVALID::ID), InternalID(INVALID::U16ID), generation(INVALID::U16ID), name(), material(nullptr) {}
+    constexpr GeometryID() : id(INVALID::ID), InternalID(INVALID::ID), generation(INVALID::U16ID), name(), material(nullptr) {}
     // GeometryID(u32 id, u16 generation) : id(id), InternalID(INVALID::ID), generation(generation), name(), material(nullptr) {}
     constexpr GeometryID(const char* name) : id(INVALID::ID), InternalID(INVALID::ID), generation(INVALID::U16ID), material(nullptr) {MemorySystem::CopyMem(this->name, name, GEOMETRY_NAME_MAX_LENGTH);}
     void* operator new[](u64 size) { return MemorySystem::Allocate(size, Memory::Array); }

@@ -37,6 +37,7 @@ bool DebugLine3D::Create(const FVec3 &Point0, const FVec3 &Point1, Transform *pa
     this->Point1 = Point1;
     colour = FVec4::One();
     xform = Transform();
+    geometry = GeometryID();
     return true;
 }
 

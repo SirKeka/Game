@@ -17,7 +17,7 @@ struct DebugBox3D {
 
     GeometryID geometry;
 
-    constexpr DebugBox3D(const FVec3& size, Transform* parent)
+    constexpr DebugBox3D(const FVec3& size, Transform* parent = nullptr)
     :
     UniqueID(Identifier::AquireNewID(this)),
     name(),
