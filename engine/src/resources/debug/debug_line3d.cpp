@@ -140,6 +140,6 @@ void DebugLine3D::UpdateVertColour()
 
 void DebugLine3D::RecalculatePoints()
 {
-    vertices[0].position = FVec4(Point0.x, Point0.y, Point0.z, 1.F);
-    vertices[1].position = FVec4(Point1.x, Point1.y, Point1.z, 1.F);
+    vertices[0].position = FVec4(Point0, 1.F);
+    vertices[1].position = FVec4(Point1, 1.F);
 }

@@ -54,8 +54,7 @@ void QuickSort(T arr[], i32 LowIndex, i32 HighIndex, bool ascending)
 template<typename T>
 class MAPI DArray
 {
-// Переменные
-private:
+    // Переменные
     /// @brief Количество элементов в массиве
     u32 size       {};
     /// @brief Выделенная память под данное количество элементов
@@ -144,17 +143,11 @@ public:
     // Доступ к элементу------------------------------------------------------------------------
 
     constexpr T& operator [] (u32 index) {
-        if(index < 0 || index >= size) {
-            MERROR("Индекс за пределами этого массива! Длина: %i, индекс: %i", size, index);
-        }
         return data[index];
     }
 
     // Доступ к элементу
     const T& operator [] (u32 index) const {
-        if(index < 0 || index >= size) {
-            MERROR("Индекс за пределами этого массива! Длина: %i, индекс: %i", size, index);
-        }
         return data[index];
     }
 

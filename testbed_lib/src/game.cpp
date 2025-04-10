@@ -226,7 +226,7 @@ bool ApplicationInitialize(Application& app)
     state->UiMeshes[0].transform.Translate(FVec3(650, 5, 0));
     
     state->WorldCamera = CameraSystem::GetDefault();
-    state->WorldCamera->SetPosition(FVec3(54.45F, 8.34F, 67.15F));
+    state->WorldCamera->SetPosition(FVec3(1.45F, 3.34F, 17.15F));
     state->WorldCamera->SetRotationEuler(FVec3(-11.083F, 262.600F, 0.F));
 
     state->UpdateClock.Zero();

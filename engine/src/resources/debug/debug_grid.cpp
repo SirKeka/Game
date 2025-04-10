@@ -13,7 +13,7 @@ void DebugGrid::Destroy()
 
 bool DebugGrid::Initialize()
 {
-    vertices = reinterpret_cast<ColourVertex3D*>(MemorySystem::Allocate(sizeof(ColourVertex3D) * VertexCount, Memory::Array));
+    vertices = reinterpret_cast<ColourVertex3D*>(MemorySystem::Allocate(sizeof(ColourVertex3D) * VertexCount, Memory::Array, true));
 
     // Длины линий сетки — это количество пробелов в противоположном направлении.
     i32 LineLength0 = TileCountDim1 * TileScale;
@@ -120,7 +120,7 @@ bool DebugGrid::Initialize()
         j++;
     }
 
-    geometry.InternalID = INVALID::ID;
+    // geometry.InternalID = INVALID::ID;
 
     return true;
 }
