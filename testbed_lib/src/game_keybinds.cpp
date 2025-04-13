@@ -44,49 +44,43 @@ void GameOnPitch(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifier
 void GameOnMoveForward(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) {
     auto GameInst = reinterpret_cast<Application*>(UserData);
     auto state = reinterpret_cast<Game*>(GameInst->state);
-    static const f32 TempMoveSpeed = 50.F;
     auto DeltaTime = GameInst->engine->GetFrameData().DeltaTime;
-    state->WorldCamera->MoveForward(TempMoveSpeed * DeltaTime);
+    state->WorldCamera->MoveForward(state->ForwardMoveSpeed * DeltaTime);
 }
 
 void GameOnMoveBackward(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) {
     auto GameInst = reinterpret_cast<Application*>(UserData);
     auto state = reinterpret_cast<Game*>(GameInst->state);
-    static const f32 TempMoveSpeed = 50.F;
     auto DeltaTime = GameInst->engine->GetFrameData().DeltaTime;
-    state->WorldCamera->MoveBackward(TempMoveSpeed * DeltaTime);
+    state->WorldCamera->MoveBackward(state->BackwardMoveSpeed * DeltaTime);
 }
 
 void GameOnMoveLeft(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) {
     auto GameInst = reinterpret_cast<Application*>(UserData);
     auto state = reinterpret_cast<Game*>(GameInst->state);
-    static const f32 TempMoveSpeed = 50.F;
     auto DeltaTime = GameInst->engine->GetFrameData().DeltaTime;
-    state->WorldCamera->MoveLeft(TempMoveSpeed * DeltaTime);
+    state->WorldCamera->MoveLeft(state->ForwardMoveSpeed * DeltaTime);
 }
 
 void GameOnMoveRight(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) {
     auto GameInst = reinterpret_cast<Application*>(UserData);
     auto state = reinterpret_cast<Game*>(GameInst->state);
-    static const f32 TempMoveSpeed = 50.F;
     auto DeltaTime = GameInst->engine->GetFrameData().DeltaTime;
-    state->WorldCamera->MoveRight(TempMoveSpeed * DeltaTime);
+    state->WorldCamera->MoveRight(state->ForwardMoveSpeed * DeltaTime);
 }
 
 void GameOnMoveUp(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) {
     auto GameInst = reinterpret_cast<Application*>(UserData);
     auto state = reinterpret_cast<Game*>(GameInst->state);
-    static const f32 TempMoveSpeed = 50.F;
     auto DeltaTime = GameInst->engine->GetFrameData().DeltaTime;
-    state->WorldCamera->MoveUp(TempMoveSpeed * DeltaTime);
+    state->WorldCamera->MoveUp(state->ForwardMoveSpeed * DeltaTime);
 }
 
 void GameOnMoveDown(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) {
     auto GameInst = reinterpret_cast<Application*>(UserData);
     auto state = reinterpret_cast<Game*>(GameInst->state);
-    static const f32 TempMoveSpeed = 50.F;
     auto DeltaTime = GameInst->engine->GetFrameData().DeltaTime;
-    state->WorldCamera->MoveDown(TempMoveSpeed * DeltaTime);
+    state->WorldCamera->MoveDown(state->ForwardMoveSpeed * DeltaTime);
 }
 
 void GameOnConsoleChangeVisibility(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) {

@@ -8,7 +8,7 @@
 
 void DebugGrid::Destroy()
 {
-    Identifier::ReleaseID(UniqueID);
+    if(UniqueID != INVALID::ID) Identifier::ReleaseID(UniqueID);
 }
 
 bool DebugGrid::Initialize()

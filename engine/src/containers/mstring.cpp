@@ -616,7 +616,68 @@ u64 MString::ToUInt(const char *s)
     return num/10;
 }
 
-bool MString::StringToF32(const char* s, f32& fn1, f32* fn2, f32* fn3, f32* fn4)
+bool MString::StringToF32(const char* string, f32(&fArray)[] , u32 aSize)
+{
+    if (!string) {
+        return false;
+    }
+    
+    while (*string != '-' && (*string < '0' || *string > '9' )) {
+        string++;
+    }
+    
+    // ЗАДАЧА: Убрать лишние проверки
+    u32  count    =     0;
+    f64  buffer   =     0; 
+    u32  factor   =    10;
+    bool sign     = false;
+    bool mantissa = false;
+    auto end      = [&]() {
+        buffer /= factor;
+        if (sign) {
+            buffer *= -1.F;
+        }
+        if (count < aSize) {
+            fArray[count++] = buffer;
+        }
+        return true;
+    };
+    while (*string != '\0') {
+        switch (*string) {
+            case '-': {
+                sign = true;
+                string++;
+            } break;
+            case '0': case '1': case '2': case '3': case '4':
+            case '5': case '6': case '7': case '8': case '9': {
+                buffer += *string - '0';
+                buffer *= 10;
+                if (mantissa) {
+                    factor *= 10;
+                }
+                string++;
+            } break;
+            case '.': case ',': {
+                mantissa = true;
+                string++;
+            } break;
+            case ' ': case '\0': {
+                end();
+                buffer   = 0;
+                factor   = 10;
+                sign     = false;
+                mantissa = false;
+                string++;
+            } break;
+            default: {
+                string++;
+            } break;
+        }
+    }
+    return end();
+}
+
+bool MString::StringToF32(const char *s, f32 &fn1, f32 *fn2, f32 *fn3, f32 *fn4)
 {
     while (*s != '-' && (*s < '0' || *s > '9' )) {
         s++;
@@ -856,8 +917,7 @@ bool MString::ToFVector(FVec4 &OutVector)
     if (!str) {
         return false;
     }
-
-    if (!StringToF32(str, OutVector.x, &OutVector.y, &OutVector.z, &OutVector.w)) {
+    if (!StringToF32(str, OutVector.elements, 4)) {
         return false;
     }
 
@@ -870,7 +930,7 @@ bool MString::ToFVector(char *str, FVec3 &OutVector)
         return false;
     }
 
-    if (!StringToF32(str, OutVector.x, &OutVector.y, &OutVector.z)) {
+    if (!StringToF32(str, OutVector.elements, 3)) {
         return false;
     }
 
@@ -883,7 +943,7 @@ bool MString::ToFVector(FVec3 &OutVector)
         return false;
     }
 
-    if (!StringToF32(str, OutVector.x, &OutVector.y, &OutVector.z)) {
+    if (!StringToF32(str, OutVector.elements, 3)) {
         return false;
     }
 
@@ -896,7 +956,7 @@ bool MString::ToFVector(char *str, FVec2 &OutVector)
         return false;
     }
 
-    if (!StringToF32(str, OutVector.x, &OutVector.y)) {
+    if (!StringToF32(str, OutVector.elements, 2)) {
         return false;
     }
 
@@ -909,7 +969,7 @@ bool MString::ToFVector(FVec2 &OutVector)
         return false;
     }
 
-    if (!StringToF32(str, OutVector.x, &OutVector.y)) {
+    if (!StringToF32(str, OutVector.elements, 2)) {
         return false;
     }
 

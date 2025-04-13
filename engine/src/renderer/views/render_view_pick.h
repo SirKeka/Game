@@ -46,7 +46,6 @@ public:
 
     void Resize(u32 width, u32 height) override;
     bool BuildPacket(class LinearAllocator& FrameAllocator, void* data, Packet& OutPacket) override;
-    void DestroyPacket(Packet& packet);
     bool Render(const Packet& packet, u64 FrameNumber, u64 RenderTargetIndex, const FrameData& rFrameData) override;
     bool RegenerateAttachmentTarget(u32 PassIndex = 0, struct RenderTargetAttachment* attachment = nullptr) override;
 

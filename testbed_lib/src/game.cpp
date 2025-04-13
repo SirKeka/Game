@@ -265,11 +265,11 @@ bool ApplicationUpdate(Application& app, const FrameData& rFrameData)
         
         if (state->PointLight1) {
             state->PointLight1->data.colour.Set(
-                MCLAMP((Math::sin(rFrameData.TotalTime + 0.F)  + 1.F) * 0.5F, 0.F, 1.F),
-                MCLAMP((Math::sin(rFrameData.TotalTime + 0.3F) + 1.F) * 0.5F, 0.F, 1.F),
-                MCLAMP((Math::sin(rFrameData.TotalTime + 0.6F) + 1.F) * 0.5F, 0.F, 1.F),
+                MCLAMP(Math::sin(rFrameData.TotalTime) * 0.75F * 0.5F, 0.F, 1.F),
+                MCLAMP(Math::sin(rFrameData.TotalTime) + (M_2PI / 3) * 0.75 * 0.5F, 0.F, 1.F),
+                MCLAMP(Math::sin(rFrameData.TotalTime) + (M_2PI / 3) * 0.75 * 0.5F, 0.F, 1.F),
                 1.F); 
-            state->PointLight1->data.position.x = 70.F + Math::sin(rFrameData.TotalTime);
+            state->PointLight1->data.position.z = 20.F + Math::sin(rFrameData.TotalTime);
         }
     }
 

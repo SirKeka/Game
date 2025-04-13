@@ -228,6 +228,7 @@ public:
     /// @return целочисленное 64 битное число без знака считанное из строки.
     static u64 ToUInt(const char* s);
 
+    static bool StringToF32 (const char* string, f32(&fArray)[] , u32 aSize);
     static bool StringToF32(const char* s, f32& fn1, f32* fn2 = nullptr, f32* fn3 = nullptr, f32* fn4 = nullptr);
 
     static char* Copy(char* dest, const char* source, u64 Length = 0, bool DelCon = false);

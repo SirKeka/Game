@@ -237,13 +237,6 @@ bool RenderViewPick::BuildPacket(LinearAllocator& FrameAllocator, void *data, Pa
     return true;
 }
 
-void RenderViewPick::DestroyPacket(Packet &packet)
-{
-    packet.geometries.Destroy();
-    packet.TerrainGeometries.Destroy();
-    MemorySystem::ZeroMem(&packet, sizeof(Packet));
-}
-
 bool RenderViewPick::Render(const Packet &packet, u64 FrameNumber, u64 RenderTargetIndex, const FrameData& rFrameData)
 {
     u32 p = 0;

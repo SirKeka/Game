@@ -1120,7 +1120,7 @@ bool VulkanAPI::Load(GeometryID *gid, u32 VertexSize, u32 VertexCount, const voi
         ObjectVertexBuffer.Free(OldRange.VertexElementSize * OldRange.VertexCount, OldRange.VertexBufferOffset);
 
         // Освобождение данных индексов, если применимо
-        if (OldRange.IndexElementSize > 0) {
+        if (OldRange.IndexCount) {
             ObjectIndexBuffer.Free(OldRange.IndexElementSize * OldRange.IndexCount, OldRange.IndexBufferOffset);
         }
     }
@@ -1140,7 +1140,7 @@ void VulkanAPI::Unload(GeometryID *gid)
         }
 
         // Освобождение данных индексов, если это применимо
-        if (vGeometry.IndexElementSize > 0) {
+        if (vGeometry.IndexCount) {
             if (!ObjectIndexBuffer.Free(vGeometry.IndexElementSize * vGeometry.IndexCount, vGeometry.IndexBufferOffset)) {
                 MERROR("VulkanAPI::UnloadGeometry не удалось освободить диапазон буфера индексов.");
             }

@@ -56,7 +56,9 @@ struct RenderPacket
     RenderView::Packet* views;  // Массив представлений, которые нужно отобразить.
     void Destroy() {
         for (u16 i = 0; i < ViewCount; i++) {
-            views[i].geometries.~DArray();
+            views[i].geometries.Destroy();
+            views[i].TerrainGeometries.Destroy();
+            views[i].DebugGeometries.Destroy();
         }
     }
 };
