@@ -19,6 +19,7 @@ bool ResourceLoader::Load(const char *name, void* params, ShaderResource &OutRes
 
     OutResource.FullPath = FullFilePath;
     auto& data = OutResource.data;
+    data.CullMode = FaceCullMode::Back;
 
     // Прочтите каждую строку файла.
     char LineBuf[512] = "";
