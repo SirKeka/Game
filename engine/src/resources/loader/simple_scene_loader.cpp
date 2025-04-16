@@ -266,7 +266,7 @@ bool ResourceLoader::Load(const char *name, void *params, SimpleSceneResource &O
                         MWARN("Ошибка анализа преобразования сетки. Используется значение по умолчанию.");
                     }
                 } else if (mode == SimpleSceneParseMode::Terrain) {
-                    if (!LineValue.ToTransform(CurrentMeshConfig.transform)) {
+                    if (!LineValue.ToTransform(CurrentTerrainConfig.xform)) {
                         MWARN("Ошибка анализа преобразования рельефа. Используется значение по умолчанию.");
                     }
                 } else {
