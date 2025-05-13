@@ -1057,14 +1057,14 @@ bool VulkanAPI::Load(GeometryID *gid, u32 VertexSize, u32 VertexCount, const voi
     }
     // Проверьте, не повторная ли это загрузка. Если это так, необходимо впоследствии освободить старые данные.
     bool IsReupload = gid->InternalID != INVALID::ID;
-    Geometry OldRange;
+    VulkanGeometry OldRange;
 
-    Geometry* geometry = nullptr;
+    VulkanGeometry* geometry = nullptr;
     if (IsReupload) {
         geometry = &this->geometries[gid->InternalID];
 
         // Скопируйте старый диапазон.
-        OldRange = geometry;
+        OldRange = *geometry;
     } else {
         for (u32 i = 0; i < VULKAN_MAX_GEOMETRY_COUNT; ++i) {
             if (this->geometries[i].id == INVALID::ID) {
@@ -1082,7 +1082,8 @@ bool VulkanAPI::Load(GeometryID *gid, u32 VertexSize, u32 VertexCount, const voi
     }
 
     // Данные вершин.
-    geometry->SetVertexIndex(VertexCount, VertexSize, IndexCount);
+    geometry->VertexCount = VertexCount;
+    geometry->VertexElementSize = VertexSize;
     u32 TotalSize = VertexCount * VertexSize;
     
     if (!ObjectVertexBuffer.Allocate(TotalSize, geometry->VertexBufferOffset)) {
@@ -1097,6 +1098,8 @@ bool VulkanAPI::Load(GeometryID *gid, u32 VertexSize, u32 VertexCount, const voi
 
     // Данные индексов, если применимо
     if (IndexCount && indices) {
+        geometry->IndexCount = IndexCount;
+        geometry->IndexElementSize = IndexSize;
         TotalSize = IndexCount * IndexSize;
         if (!ObjectIndexBuffer.Allocate(TotalSize, geometry->IndexBufferOffset)) {
             MERROR("VulkanAPI::LoadGeometry не удалось выделить память из буфера индексов!");
@@ -1132,7 +1135,7 @@ void VulkanAPI::Unload(GeometryID *gid)
 {
     if (gid && gid->InternalID != INVALID::ID) {
         vkDeviceWaitIdle(this->Device.LogicalDevice);
-        Geometry& vGeometry = this->geometries[gid->InternalID];
+        VulkanGeometry& vGeometry = this->geometries[gid->InternalID];
 
         // Освобождение данных вершин
         if (!ObjectVertexBuffer.Free(vGeometry.VertexElementSize * vGeometry.VertexCount, vGeometry.VertexBufferOffset)) {

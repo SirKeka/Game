@@ -110,7 +110,7 @@ namespace RenderingSystem
     /// @param IndexCount количество индексов.
     /// @param indices индексный массив.
     /// @return true в случае успеха; в противном случае false.
-    bool Load(GeometryID* gid, u32 VertexSize, u32 VertexCount, const void* vertices, u32 IndexSize, u32 IndexCount, const void* indices);
+    bool Load(GeometryID* gid, u32 VertexSize, u32 VertexCount, const void* vertices, u32 IndexSize = 0, u32 IndexCount = 0, const void* indices = nullptr);
     
     /// @brief Обновляет данные вершин в заданной геометрии предоставленными данными в заданном диапазоне.
     /// @param g Указатель на геометрию, которую нужно создать.

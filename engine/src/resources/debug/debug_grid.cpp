@@ -128,7 +128,7 @@ bool DebugGrid::Initialize()
 bool DebugGrid::Load()
 {
     // Отправьте геометрию в рендерер для загрузки в графический процессор.
-    if (!RenderingSystem::Load(&geometry, sizeof(ColourVertex3D), VertexCount, vertices, 0, 0, nullptr)) {
+    if (!RenderingSystem::Load(&geometry, sizeof(ColourVertex3D), VertexCount, vertices)) {
         return false;
     }
     return true;

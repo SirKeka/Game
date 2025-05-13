@@ -3,7 +3,7 @@
 #include "math/transform.h"
 #include "math/vertex.h"
 #include "core/identifier.h"
-#include "resources/geometry.hpp"
+#include "resources/geometry.h"
 
 struct DebugBox3D {
     u32 UniqueID;

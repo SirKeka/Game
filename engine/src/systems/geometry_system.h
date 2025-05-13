@@ -1,7 +1,7 @@
 #pragma once
 
 #include "defines.hpp"
-#include "resources/geometry.hpp"
+#include "resources/geometry.h"
 #include "resources/material.h"
 
 #define DEFAULT_GEOMETRY_NAME "default"

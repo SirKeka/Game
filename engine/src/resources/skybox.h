@@ -1,6 +1,6 @@
 #pragma once
 #include "texture_map.hpp"
-#include "geometry.hpp"
+#include "geometry.h"
 
 struct MAPI Skybox
 {

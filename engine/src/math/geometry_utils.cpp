@@ -1,5 +1,5 @@
 #include "geometry_utils.h"
-#include "resources/geometry.hpp"
+#include "resources/geometry.h"
 #include "resources/terrain.h"
 #include "vertex.h"
 #include "containers/darray.hpp"

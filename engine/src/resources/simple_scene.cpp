@@ -542,7 +542,7 @@ bool SimpleScene::PopulateRenderPacket(Camera *CurrentCamera, f32 aspect, FrameD
 
             // Сетка.
             {
-                GeometryRenderData data{};
+                GeometryRenderData data {};
                 data.model = Matrix4D::MakeIdentity();
                 data.geometry = &grid.geometry;
                 data.UniqueID = INVALID::ID;

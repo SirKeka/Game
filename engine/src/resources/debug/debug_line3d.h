@@ -1,7 +1,7 @@
 #pragma once
 #include "defines.hpp"
 #include "math/transform.h"
-#include "resources/geometry.hpp"
+#include "resources/geometry.h"
 
 struct MAPI DebugLine3D {
     u32 UniqueID;

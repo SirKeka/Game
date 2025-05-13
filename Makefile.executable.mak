@@ -19,9 +19,9 @@ ifeq ($(OS),Windows_NT)
 	rwildcard=$(wildcard $1$2) $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2))
 	DIR := $(subst /,\,${CURDIR})
 	
-	# .cpp files
+# .cpp files
 	SRC_FILES := $(call rwildcard,$(ASSEMBLY)/,*.cpp)
-	# directories with .hpp files
+# directories with .hpp files
 	DIRECTORIES := \$(ASSEMBLY)\src $(subst $(DIR),,$(shell dir $(ASSEMBLY)\src /S /AD /B | findstr /i src)) 
 	OBJ_FILES := $(SRC_FILES:%=$(OBJ_DIR)/%.o)
     ifeq ($(PROCESSOR_ARCHITEW6432),AMD64)
@@ -43,9 +43,9 @@ else
 		INCLUDE_FLAGS := -I$(ASSEMBLY)\src $(ADDL_INC_FLAGS)
 		LINKER_FLAGS := -L./$(BUILD_DIR) $(ADDL_LINK_FLAGS) -Wl,-rpath,.
 		LINKER_FLAGS := -L./$(BUILD_DIR) $(ENGINE_LINK) -Wl,-rpath,.
-		# .cpp files
+# .cpp files
 		SRC_FILES := $(shell find $(ASSEMBLY) -name *.cpp)
-		# directories with .hpp files
+# directories with .hpp files
 		DIRECTORIES := $(shell find $(ASSEMBLY) -type d)
 		OBJ_FILES := $(SRC_FILES:%=$(OBJ_DIR)/%.o)
     endif

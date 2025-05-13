@@ -6,7 +6,7 @@
 #include "math/vector3d_fwd.h"
 #include "math/vector4d_fwd.h"
 #include "math/transform.h"
-#include "geometry.hpp"
+#include "geometry.h"
 
 /*
  * Необходимо изменить структуру/функции геометрии, чтобы разрешить использование нескольких материалов.

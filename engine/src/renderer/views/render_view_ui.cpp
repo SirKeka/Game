@@ -8,7 +8,7 @@
 #include "resources/mesh.h"
 #include "systems/material_system.h"
 #include "systems/resource_system.h"
-#include "resources/geometry.hpp"
+#include "resources/geometry.h"
 
 RenderViewUI::RenderViewUI(u16 id, const Config &config)
 :

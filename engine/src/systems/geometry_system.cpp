@@ -4,7 +4,7 @@
 #include "math/geometry_utils.h"
 #include "memory/linear_allocator.hpp"
 #include <new>
-#include "resources/geometry.hpp"
+#include "resources/geometry.h"
 
 struct GeometryReference {
     u64 ReferenceCount;

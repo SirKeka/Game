@@ -7,7 +7,7 @@
 #include "systems/resource_system.h"
 #include "renderer/renderpass.hpp"
 #include "resources/mesh.h"
-#include "resources/geometry.hpp"
+#include "resources/geometry.h"
 
 /// @brief Частная структура, используемая для сортировки геометрии по расстоянию от камеры.
 struct GeometryDistance {

@@ -2,7 +2,7 @@
 #include "defines.hpp"
 #include "math/extents.h"
 #include "math/vertex.h"
-#include "resources/geometry.hpp"
+#include "resources/geometry.h"
 #include "core/identifier.h"
 
 struct DebugGrid {
@@ -70,7 +70,7 @@ struct DebugGrid {
     origin(),
     // 2 вершины на линию, 1 линия на плитку в каждом направлении, плюс одна в середине для каждого направления. Добавляем еще 2 для третьей оси.
     VertexCount(((TileCountDim0 * 2 + 1) * 2) + ((TileCountDim1 * 2 + 1) * 2) + 2),
-    vertices(),
+    vertices(nullptr),
     geometry()
     {
         f32 Max0 = TileCountDim0 * TileScale;
