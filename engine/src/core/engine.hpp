@@ -30,13 +30,13 @@ struct ApplicationConfig {
     i16 StartHeight;
     const char* name;
     FontSystemConfig FontConfig;
-    DArray<RenderView::Config> RenderViews;
+    DArray<RenderView> RenderViews;
     RendererPlugin* plugin;
     u64 FrameAllocatorSize;
     u64 AppFrameDataSize;
 };
 
-template class DArray<RenderView::Config>;
+// template class DArray<RenderView>;
 
 class Engine
 {

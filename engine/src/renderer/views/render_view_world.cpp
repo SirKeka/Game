@@ -58,9 +58,9 @@ bool RenderViewWorld::OnEvent(u16 code, void* sender, void* ListenerInst, EventC
     return false;
 }
 
-/*constexpr */RenderViewWorld::RenderViewWorld(u16 id, const Config &config)
+/*constexpr */RenderViewWorld::RenderViewWorld()
 :
-RenderView(id, config),
+RenderView(),
 shader(),
 fov(Math::DegToRad(45.F)),
 NearClip(0.1F),

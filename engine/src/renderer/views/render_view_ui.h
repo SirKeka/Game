@@ -14,8 +14,7 @@ private:
     u16 ModelLocation        {};
     // u32 RenderMode;
 public:
-    // constexpr RenderViewUI();
-    /*constexpr */RenderViewUI(u16 id, const Config &config);
+    /*constexpr */RenderViewUI();
     ~RenderViewUI();
 
     void Resize(u32 width, u32 height) override;

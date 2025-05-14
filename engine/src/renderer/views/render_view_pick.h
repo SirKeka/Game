@@ -41,7 +41,7 @@ private:
     // u32 RenderMode;
 
 public:
-    RenderViewPick(u16 id, const Config &config);
+    RenderViewPick();
     ~RenderViewPick();
 
     void Resize(u32 width, u32 height) override;

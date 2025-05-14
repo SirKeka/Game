@@ -25,60 +25,23 @@ struct SkyboxPacketData {
 class MAPI RenderView
 {
 public:
-    /// @brief Известные типы представления рендеринга, имеющие связанную с ними логику.
-enum KnownType {
-    World  = 0x01, // Представление, которое рендерит только объекты с *никакой* прозрачностью.
-    UI     = 0x02, // Представление, которое рендерит только объекты пользовательского интерфейса.
-    Skybox = 0x03, // Вид, отображающий только объекты скайбокса.
-    Pick   = 0x04  // Представление, которое отображает только объекты пользовательского интерфейса и мира, которые можно выбрать.
-};
-
-/// @brief Известные источники матрицы представления.
-enum ViewMatrixSource {
-    SceneCamera = 0x01,
-    UiCamera    = 0x02,
-    LightCamera = 0x03,
-};
-
-/// @brief Известные источники матрицы проекции.
-enum ProjectionMatrixSource {
-    DefaultPerspective  = 0x01,
-    DefaultOrthographic = 0x02,
-};
-
-/// @brief Конфигурация представления рендеринга. Используется как цель сериализации.
-struct Config {
-    const char* name;               // Имя представления.
-    const char* CustomShaderName;   // Имя пользовательского шейдера, который будет использоваться вместо шейдера по умолчанию для представления. Должен быть 0, если не используется.
-    u16 width;                      // Ширина представления. Установите на 0 для ширины 100%.
-    u16 height;                     // Высота представления. Установите на 0 для высоты 100%.
-    KnownType type;                 // Известный тип представления. Используется для связи с логикой представления.
-    ViewMatrixSource VMS;           // Источник матрицы представления.
-    ProjectionMatrixSource PMS;     // Источник матрицы проекции.
-    u8 PassCount;                   // Количество проходов рендеринга, используемых в этом представлении.
-    struct RenderpassConfig* passes;// Конфигурация проходов рендеринга, используемых в этом представлении.
-};
-
 struct Packet;
 // ЗАДАЧА: изменить архитектуру
 protected:
-    friend class RenderViewSystem;
+    friend class SystemsManager;
     friend struct SimpleScene;
-    u16 id;                         // Уникальный идентификатор этого представления.
-    MString name;                   // Имя представления.
+
+    const char* name;               // Имя представления.
     u16 width;                      // Текущая ширина этого представления.
     u16 height;                     // Текущая высота этого представления.
-    KnownType type;                 // Известный тип этого представления.
 
-    u8 RenderpassCount;             //Количество проходов рендеринга, используемых этим представлением.
-    Renderpass* passes;             //Массив указателей на проходы рендеринга, используемые этим представлением.
+    u8 RenderpassCount;             // Количество проходов рендеринга, используемых этим представлением.
+    Renderpass* passes;             // Массив указателей на проходы рендеринга, используемые этим представлением.
 
     const char* CustomShaderName;   // Имя пользовательского шейдера, используемого этим представлением, если таковой имеется.
 public:
-    constexpr RenderView()
-    : id(INVALID::U16ID), name(), width(), height(), type(), RenderpassCount(), passes(nullptr), CustomShaderName(nullptr) {}
-    RenderView(u16 id, const Config &config);
-    constexpr RenderView(u16 id, MString&& name, u16 width, u16 height, KnownType type, u8 RenderpassCount, const char* CustomShaderName);
+    constexpr RenderView() : name(), width(), height(), RenderpassCount(), passes(nullptr), CustomShaderName(nullptr) {}
+    constexpr RenderView(const char* name, u16 width, u16 height, u8 RenderpassCount, const char* CustomShaderName);
     virtual ~RenderView();
 
     void DestroyPacket(Packet& packet) {

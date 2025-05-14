@@ -26,8 +26,7 @@ private:
     } DebugLocations;
 
 public:
-    // RenderViewWorld();
-    /*constexpr */RenderViewWorld(u16 id, const Config &config);
+    /*constexpr */RenderViewWorld();
     ~RenderViewWorld();
 
     void Resize(u32 width, u32 height) override;

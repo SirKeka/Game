@@ -8,8 +8,8 @@
 #include "systems/shader_system.h"
 #include "resources/skybox.h"
 
-RenderViewSkybox::RenderViewSkybox(u16 id, const Config &config)
-: RenderView(id, config),
+RenderViewSkybox::RenderViewSkybox()
+: RenderView(),
 shader(),
 fov(Math::DegToRad(45.F)), NearClip(0.1F), FarClip(1000.F), 
 ProjectionMatrix(Matrix4D::MakeFrustumProjection(fov, 1280 / 720.F, NearClip, FarClip)), 

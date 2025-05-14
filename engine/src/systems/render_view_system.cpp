@@ -5,20 +5,28 @@
 
 #include <new>
 
+#include "renderer/views/render_view.h"
 // ЗАДАЧА: временно - создайте фабрику и зарегистрируйтесь.
 #include "renderer/views/render_view_world.h"
 #include "renderer/views/render_view_ui.h"
 #include "renderer/views/render_view_skybox.h"
 #include "renderer/views/render_view_pick.h"
 
-RenderViewSystem* RenderViewSystem::state = nullptr;
+struct render_view_system
+{
+    HashTable<u16> lookup;
+    void* TableBlock;
+    u32 MaxViewCount;
+    RenderView** RegisteredViews; // Массив указателей на представления, принадлежащих приложению.
 
-constexpr RenderViewSystem::RenderViewSystem(u16 MaxViewCount, u16* TableBlock, RenderView** RegisteredViews)
-:
-lookup(MaxViewCount, false, TableBlock, true, INVALID::U16ID),
-TableBlock(TableBlock),
-MaxViewCount(MaxViewCount),
-RegisteredViews(RegisteredViews) {}
+    constexpr render_view_system(u16 MaxViewCount, u16* TableBlock, RenderView** RegisteredViews) 
+    : lookup(MaxViewCount, false, TableBlock, true, INVALID::U16ID),
+      TableBlock(TableBlock),
+      MaxViewCount(MaxViewCount),
+      RegisteredViews(RegisteredViews) {}
+};
+
+static render_view_system* pState = nullptr;
 
 bool RenderViewSystem::Initialize(u64& MemoryRequirement, void* memory, void* config)
 {
@@ -40,47 +48,49 @@ bool RenderViewSystem::Initialize(u64& MemoryRequirement, void* memory, void* co
 
     u8* RVSPointer = reinterpret_cast<u8*>(memory);
 
-    state = new(RVSPointer) RenderViewSystem(pConfig->MaxViewCount, reinterpret_cast<u16*>(RVSPointer + ClassRequirement), reinterpret_cast<RenderView**>(RVSPointer + ClassRequirement + HashtableRequirement));
+    pState = new(RVSPointer) 
+    render_view_system(
+        pConfig->MaxViewCount, 
+        reinterpret_cast<u16*>(RVSPointer + ClassRequirement), 
+        reinterpret_cast<RenderView**>(RVSPointer + ClassRequirement + HashtableRequirement)
+    );
 
-    if (!state) {
-        return false;
-    }
     return true;
 }
 
 void RenderViewSystem::Shutdown()
 {
-    for (u32 i = 0; i < state->MaxViewCount; i++) {
-        auto view = state->RegisteredViews[i];
+    for (u32 i = 0; i < pState->MaxViewCount; i++) {
+        auto view = pState->RegisteredViews[i];
         if (view) {
             delete view;
         }
     }
 }
 
-bool RenderViewSystem::Create(RenderView::Config &config)
+bool RenderViewSystem::Register(RenderView *view)
 {
-    if (config.PassCount < 1) {
-        MERROR("RenderViewSystem::Create - Конфигурация должна иметь хотя бы один проход рендеринга.");
+    if (view->PassCount < 1) {
+        MERROR("RenderViewSystem::Register: Конфигурация должна иметь хотя бы один проход отрисовки.");
         return false;
     }
 
-    if (!config.name){
-        MERROR("RenderViewSystem::Create: имя обязательно");
+    if (!view->name || MString::Length(view->name) < 1){
+        MERROR("RenderViewSystem::Register: имя обязательно");
         return false;
     }
 
     u16 id = INVALID::U16ID;
     // Убедитесь, что запись с таким именем еще не зарегистрирована.
-    state->lookup.Get(config.name, &id);
+    pState->lookup.Get(config.name, &id);
     if (id != INVALID::U16ID) {
-        MERROR("RenderViewSystem::Create - Вид с именем '%s' уже существует. Новый не будет создан.", config.name);
+        MERROR("RenderViewSystem::Register: Вид с именем '%s' уже существует. Новый не будет создан.", view->name);
         return false;
     }
 
     // Найдите новый идентификатор.
-    for (u32 i = 0; i < state->MaxViewCount; ++i) {
-        if (state->RegisteredViews[i] == nullptr) {
+    for (u32 i = 0; i < pState->MaxViewCount; ++i) {
+        if (pState->RegisteredViews[i] == nullptr) {
             id = i;
             break;
         }
@@ -88,43 +98,17 @@ bool RenderViewSystem::Create(RenderView::Config &config)
 
     // Убедитесь, что найдена допустимая запись.
     if (id == INVALID::U16ID) {
-        MERROR("RenderViewSystem::Create - Нет доступного места для нового представления. Измените конфигурацию системы, чтобы учесть больше.");
+        MERROR("RenderViewSystem::Register: Нет доступного места для нового представления. Измените конфигурацию системы, чтобы учесть больше.");
         return false;
     }
 
-    // ЗАДАЧА: Шаблон фабрика
-    switch (config.type)
-    {
-    case RenderView::World:
-        if (!(state->RegisteredViews[id] = new RenderViewWorld(id, config))) {
-            MERROR("Не удалось создать RenderViewWorld.");
-        }
-        break;
-    case RenderView::UI:
-        if (!(state->RegisteredViews[id] = new RenderViewUI(id, config))) {
-            MERROR("Не удалось создать RenderViewUI.");
-        }
-        break;
-    case RenderView::Skybox:
-        if (!(state->RegisteredViews[id] = new RenderViewSkybox(id, config))) {
-            MERROR("Не удалось создать RenderViewSkybox.");
-        }
-        break;
-    case RenderView::Pick:
-        if (!(state->RegisteredViews[id] = new RenderViewPick(id, config))) {
-            MERROR("Не удалось создать RenderViewPick.")
-        }
-        break;
-    default:
-        break;
-    }
+    // Обновить запись хеш-таблицы.
+    pState->lookup.Set(view->name, id);
 
-    auto view = state->RegisteredViews[id];
+    // Установить указатель элемента массива.
+    pState->RegisteredViews[id] = view;
 
     RegenerateRenderTargets(view);
-
-    // Обновите запись хэш-таблицы.
-    state->lookup.Set(view->name.c_str(), id);
 
     return true;
 }
@@ -132,20 +116,20 @@ bool RenderViewSystem::Create(RenderView::Config &config)
 void RenderViewSystem::OnWindowResize(u32 width, u32 height)
 {
     // Отправить всем видам
-    for (u32 i = 0; i < state->MaxViewCount; ++i) {
-        if (state->RegisteredViews[i] != nullptr && state->RegisteredViews[i]->id != INVALID::U16ID) {
-            state->RegisteredViews[i]->Resize(width, height);
+    for (u32 i = 0; i < pState->MaxViewCount; ++i) {
+        if (pState->RegisteredViews[i] != nullptr && pState->RegisteredViews[i]->id != INVALID::U16ID) {
+            pState->RegisteredViews[i]->Resize(width, height);
         }
     }
 }
 
 RenderView *RenderViewSystem::Get(const char *name)
 {
-    if (state) {
+    if (pState) {
         u16 id = INVALID::U16ID;
-        state->lookup.Get(name, &id);
+        pState->lookup.Get(name, &id);
         if (id != INVALID::U16ID) {
-            return state->RegisteredViews[id];
+            return pState->RegisteredViews[id];
         }
     }
     return nullptr;

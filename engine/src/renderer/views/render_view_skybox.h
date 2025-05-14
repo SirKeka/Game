@@ -17,7 +17,7 @@ private:
     u16 ViewLocation                {};
     u16 CubeMapLocation             {};
 public:
-    RenderViewSkybox(u16 id, const Config &config);
+    RenderViewSkybox();
     ~RenderViewSkybox();
 
     void Resize(u32 width, u32 height) override;

@@ -155,6 +155,7 @@ bool ApplicationInitialize(Application& app)
     MDEBUG("Game::Initialize вызван!");
 
     ApplicationRegisterEvents(app);
+    ResourceSystem::RegisterLoader(eResource::Type::SimpleScene, MString(), "scene");
     auto state = reinterpret_cast<Game*>(app.state);
     state->console.Load();
 
@@ -344,15 +345,14 @@ bool ApplicationRender(Application& app, RenderPacket& packet, FrameData& rFrame
     state->RenderClock.Start();
     // ЗАДАЧА: временный код
 
-    // ЗАДАЧА: Чтение из конфигурации кадра
     packet.ViewCount = 4;
     packet.views = reinterpret_cast<RenderView::Packet*>(rFrameData.FrameAllocator->Allocate(sizeof(RenderView::Packet) * packet.ViewCount));
 
     // FIXME: Прочитать это из конфигурации
-    packet.views[0].view = RenderViewSystem::Get("skybox");
-    packet.views[1].view = RenderViewSystem::Get("world");
-    packet.views[2].view = RenderViewSystem::Get("ui");
-    packet.views[3].view = RenderViewSystem::Get("pick");
+    packet.views[Testbed::PacketViews::Skybox].view = RenderViewSystem::Get("skybox");
+    packet.views[Testbed::PacketViews::World].view  = RenderViewSystem::Get("world");
+    packet.views[Testbed::PacketViews::UI].view     = RenderViewSystem::Get("ui");
+    packet.views[Testbed::PacketViews::Pick].view   = RenderViewSystem::Get("pick");
 
     // Даем нашей сцене команду сгенерировать соответствующие пакетные данные.
     
@@ -500,11 +500,6 @@ bool GameConfigureRenderViews(Application& app)
 
     // Skybox view
     app.AppConfig.RenderViews[0].name = "skybox";
-    // app.AppConfig.RenderViews[0].CustomShaderName
-    // app.AppConfig.RenderViews[0].width = 0;
-    // app.AppConfig.RenderViews[0].height = 0;
-    app.AppConfig.RenderViews[0].type = RenderView::Skybox;
-    app.AppConfig.RenderViews[0].VMS = RenderView::SceneCamera;
     app.AppConfig.RenderViews[0].PassCount = 1;
     app.AppConfig.RenderViews[0].passes = SkyboxPasses.MovePtr();
 
@@ -540,8 +535,6 @@ bool GameConfigureRenderViews(Application& app)
     app.AppConfig.RenderViews[1].name = "world";
     // app.AppConfig.RenderViews[1].width = 0;
     // app.AppConfig.RenderViews[1].height = 0;
-    app.AppConfig.RenderViews[1].type = RenderView::World;
-    app.AppConfig.RenderViews[1].VMS = RenderView::SceneCamera;
     app.AppConfig.RenderViews[1].PassCount = 1;
     app.AppConfig.RenderViews[1].passes = WorldPasses.MovePtr();
 

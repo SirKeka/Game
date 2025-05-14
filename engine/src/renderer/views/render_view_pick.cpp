@@ -7,8 +7,8 @@
 #include "systems/resource_system.h"
 #include "systems/shader_system.h"
 
-RenderViewPick::RenderViewPick(u16 id, const Config &config)
-: RenderView(id, config),
+RenderViewPick::RenderViewPick()
+: RenderView(),
 ColoureTargetAttachmentTexture(),
 DepthTargetAttachmentTexture(),
 InstanceCount(),

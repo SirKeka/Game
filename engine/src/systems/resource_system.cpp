@@ -154,7 +154,7 @@ void RegisterLoaders()
     ResourceSystem::RegisterLoader(eResource::Type::Shader,      MString(),   "shaders");
     ResourceSystem::RegisterLoader(eResource::Type::BitmapFont,  MString(),     "fonts");
     ResourceSystem::RegisterLoader(eResource::Type::SystemFont,  MString(),     "fonts");
-    ResourceSystem::RegisterLoader(eResource::Type::SimpleScene, MString(),    "scenes");
+    // ResourceSystem::RegisterLoader(eResource::Type::SimpleScene, MString(),    "scenes");
     ResourceSystem::RegisterLoader(eResource::Type::Terrain,     MString(),  "terrains");
 }
 

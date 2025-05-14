@@ -252,9 +252,9 @@ bool SystemsManager::RegisterKnownSystemsPostBoot(ApplicationConfig &AppConfig)
     // Загрузить RenderView из конфигурации приложения.
     u32 ViewCount = AppConfig.RenderViews.Length();
     for (u32 v = 0; v < ViewCount; ++v) {
-        auto& view = AppConfig.RenderViews[v];
-        if (!RenderViewSystem::Create(view)) {
-            MFATAL("Не удалось создать представление '%s'. Отмена приложения.", view.name);
+        auto view = &AppConfig.RenderViews[v];
+        if (!RenderViewSystem::Register(view)) {
+            MFATAL("Не удалось создать представление '%s'. Отмена приложения.", view->name);
             return false;
         }
     }

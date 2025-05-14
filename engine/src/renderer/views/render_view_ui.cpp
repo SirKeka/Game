@@ -10,9 +10,9 @@
 #include "systems/resource_system.h"
 #include "resources/geometry.h"
 
-RenderViewUI::RenderViewUI(u16 id, const Config &config)
+RenderViewUI::RenderViewUI()
 :
-RenderView(id, config), 
+RenderView(), 
 shader(),
 NearClip(-100.F), 
 FarClip(100.F), 
