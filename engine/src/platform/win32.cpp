@@ -4,7 +4,7 @@
 #if MPLATFORM_WINDOWS
 
 #include "core/logger.hpp"
-#include "core/engine.hpp"
+#include "core/engine.h"
 #include "core/input.hpp"
 #include "core/mthread.hpp"
 #include "core/mmutex.hpp"

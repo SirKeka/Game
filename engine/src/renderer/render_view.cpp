@@ -1,6 +1,7 @@
 #include "render_view.h"
 #include "renderer/rendering_system.h"
 #include "systems/render_view_system.h"
+#include "renderer/renderpass.h"
 
 bool RenderViewOnEvent(u16 code, void *sender, void *ListenerInst, EventContext context)
 {

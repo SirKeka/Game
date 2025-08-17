@@ -1,7 +1,7 @@
 #include "render_view_pick.h"
 #include "memory/linear_allocator.hpp"
 #include "core/uuid.hpp"
-#include "renderer/rendering_system.h"
+#include "renderer/renderpass.h"
 #include "resources/ui_text.h"
 #include "systems/camera_system.hpp"
 #include "systems/resource_system.h"

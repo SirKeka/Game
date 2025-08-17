@@ -17,8 +17,8 @@ struct DirectionalLight {
     } data;
     /// @brief Отладочные данные, назначенные источнику света.
     void* DebugData;
-    void* operator new(u64 size);
-    void operator delete(void* ptr, u64 size);
+    MAPI void* operator new(u64 size);
+    MAPI void operator delete(void* ptr, u64 size);
 };
 
 /// @brief Точечный источник света, наиболее распространенный источник света, который исходит из заданной точки.

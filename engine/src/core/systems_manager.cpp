@@ -1,22 +1,23 @@
 #include "systems_manager.hpp"
 
-#include "mmemory.hpp"
-#include "engine.hpp"
-#include "console.hpp"
-#include "mvar.hpp"
-#include "event.hpp"
-#include "input.hpp"
+#include "core/console.hpp"
+#include "core/engine.h"
+#include "core/event.hpp"
+#include "core/mmemory.hpp"
+#include "core/mvar.hpp"
+#include "core/input.hpp"
 #include "platform/platform.hpp"
 
+#include "renderer/rendering_system.h"
+
+#include "systems/camera_system.hpp"
+#include "systems/geometry_system.h"
+#include "systems/job_systems.hpp"
+#include "systems/light_system.h"
+#include "systems/render_view_system.h"
 #include "systems/resource_system.h"
 #include "systems/shader_system.h"
-#include "renderer/rendering_system.h"
-#include "systems/job_systems.hpp"
 #include "systems/texture_system.h"
-#include "systems/camera_system.hpp"
-#include "systems/render_view_system.h"
-#include "systems/geometry_system.h"
-#include "systems/light_system.h"
 
 #include <new>
 
@@ -250,11 +251,11 @@ bool SystemsManager::RegisterKnownSystemsPostBoot(ApplicationConfig &AppConfig)
     }
 
     // Загрузить RenderView из конфигурации приложения.
-    u32 ViewCount = AppConfig.RenderViews.Length();
+    const u32& ViewCount = AppConfig.RenderViews.Length();
     for (u32 v = 0; v < ViewCount; ++v) {
         auto view = &AppConfig.RenderViews[v];
         if (!RenderViewSystem::Register(view)) {
-            MFATAL("Не удалось создать представление '%s'. Отмена приложения.", view->name);
+            MFATAL("Не удалось зарегистрировать представление '%s'. Отмена приложения.", view->name);
             return false;
         }
     }

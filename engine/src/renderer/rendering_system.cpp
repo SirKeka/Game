@@ -7,7 +7,7 @@
 #include "systems/shader_system.h"
 #include "systems/camera_system.hpp"
 #include "systems/render_view_system.h"
-#include "views/render_view.h"
+#include "render_view.h"
 #include "core/mvar.hpp"
 #include "core/systems_manager.hpp"
 
@@ -316,10 +316,10 @@ void RenderingSystem::RenderTargetDestroy(RenderTarget &target, bool FreeInterna
     pRenderingSystem->ptrRenderer->RenderTargetDestroy(target, FreeInternalMemory);
 }
 
-bool RenderingSystem::RenderpassCreate(RenderpassConfig &config, Renderpass &OutRenderpass)
+bool RenderingSystem::RenderpassCreate(RenderpassConfig &config, Renderpass &OutRenderpass, bool copy)
 {
     auto pRenderingSystem = reinterpret_cast<sRenderingSystem*>(SystemsManager::GetState(MSystem::Type::Renderer));
-    return pRenderingSystem->ptrRenderer->RenderpassCreate(config, OutRenderpass);
+    return pRenderingSystem->ptrRenderer->RenderpassCreate(config, OutRenderpass, copy);
 }
 
 void RenderingSystem::RenderpassDestroy(Renderpass *OutRenderpass)

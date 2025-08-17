@@ -117,7 +117,7 @@ public:
     void TextureMapReleaseResources(TextureMap* map) override;
     void RenderTargetCreate(u8 AttachmentCount, RenderTargetAttachment* attachments, Renderpass* pass, u32 width, u32 height, RenderTarget& OutTarget) override;
     void RenderTargetDestroy(RenderTarget& target, bool FreeInternalMemory = false) override;
-    bool RenderpassCreate(RenderpassConfig& config, Renderpass& OutRenderpass) override;
+    bool RenderpassCreate(RenderpassConfig& config, Renderpass& OutRenderpass, bool copy) override;
     void RenderpassDestroy(Renderpass* renderpass) override;
 
     Texture* WindowAttachmentGet(u8 index)  override;
@@ -125,7 +125,7 @@ public:
     u8 WindowAttachmentIndexGet()           override;
     u8 WindowAttachmentCountGet()           override;
 
-    //////////////////////////////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////////////////////////
                 //                           RenderBuffer                           //
     //////////////////////////////////////////////////////////////////////////////////////////////
 

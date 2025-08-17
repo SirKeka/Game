@@ -84,14 +84,14 @@ struct Terrain {
 
     Terrain() : name(), xform(), TileCountX(), TileCountZ(), TileScaleX(), TileScaleZ(), ScaleY(), VertexDatas(), extents(), origin(), VertexCount(), vertices(nullptr), IndexCount(), indices(nullptr), geo(), MaterialCount(), MaterialNames(nullptr) {}
 
-    bool Create(Config& config);
-    void Destroy();
+    MAPI bool Create(Config& config);
+    MAPI void Destroy();
 
-    bool Initialize();
-    bool Load();
-    bool Unload();
+    MAPI bool Initialize();
+    MAPI bool Load();
+    MAPI bool Unload();
 
-    bool Update();
+    MAPI bool Update();
 };
 
 

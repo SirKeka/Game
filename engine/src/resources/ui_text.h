@@ -1,5 +1,5 @@
 #pragma once
-#include "renderer/renderbuffer.hpp"
+#include "renderer/renderbuffer.h"
 #include "math/transform.h"
 #include "mesh.h"
 

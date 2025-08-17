@@ -1,7 +1,7 @@
 #pragma once
 #include "defines.hpp"
 
-struct uuid
+struct MAPI uuid
 {
     char value[37];
 

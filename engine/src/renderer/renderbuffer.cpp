@@ -1,4 +1,4 @@
-#include "renderbuffer.hpp"
+#include "renderbuffer.h"
 #include "renderer/rendering_system.h"
 
 RenderBuffer::~RenderBuffer()

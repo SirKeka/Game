@@ -12,9 +12,9 @@
 
 #pragma once
 
-#include "core/engine.hpp"
+#include "core/engine.h"
 #include "core/logger.hpp"
-#include "application_types.hpp"
+#include "application_types.h"
 
 #include <stdlib.h>
 #include <locale.h>

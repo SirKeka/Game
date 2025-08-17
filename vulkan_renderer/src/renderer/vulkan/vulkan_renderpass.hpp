@@ -144,7 +144,7 @@ struct VulkanRenderpass
                     return;
                 }
 
-                // TODO: Настраиваемость для прикреплений трафарета.
+                // ЗАДАЧА: Настраиваемость для прикреплений трафарета.
                 AttachmentDesc.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
                 AttachmentDesc.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
                 // Если исходит из предыдущего прохода, уже должно быть VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL. В противном случае не определено.

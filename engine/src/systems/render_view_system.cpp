@@ -2,15 +2,9 @@
 #include "memory/linear_allocator.hpp"
 #include "containers/hashtable.hpp"
 #include "renderer/rendering_system.h"
+#include "renderer/renderpass.h"
 
-#include <new>
-
-#include "renderer/views/render_view.h"
-// ЗАДАЧА: временно - создайте фабрику и зарегистрируйтесь.
-#include "renderer/views/render_view_world.h"
-#include "renderer/views/render_view_ui.h"
-#include "renderer/views/render_view_skybox.h"
-#include "renderer/views/render_view_pick.h"
+//#include <new>
 
 struct render_view_system
 {
@@ -37,7 +31,7 @@ bool RenderViewSystem::Initialize(u64& MemoryRequirement, void* memory, void* co
     }
 
     // Блок памяти будет содержать структуру состояния, затем блок для хеш-таблицы, затем блок для массива.
-    u64 ClassRequirement = sizeof(RenderViewSystem);
+    u64 ClassRequirement = sizeof(render_view_system);
     u64 HashtableRequirement = sizeof(u16) * pConfig->MaxViewCount;
     u64 ArrayRequirement = sizeof(RenderView*) * pConfig->MaxViewCount;
     MemoryRequirement = ClassRequirement + HashtableRequirement + ArrayRequirement;
@@ -70,7 +64,12 @@ void RenderViewSystem::Shutdown()
 
 bool RenderViewSystem::Register(RenderView *view)
 {
-    if (view->PassCount < 1) {
+    if (!view) {
+        MERROR("RenderViewSystem::Register требует указатель на допустимое представление.");
+        return false;
+    }
+    
+    if (view->RenderpassCount < 1) {
         MERROR("RenderViewSystem::Register: Конфигурация должна иметь хотя бы один проход отрисовки.");
         return false;
     }
@@ -82,7 +81,7 @@ bool RenderViewSystem::Register(RenderView *view)
 
     u16 id = INVALID::U16ID;
     // Убедитесь, что запись с таким именем еще не зарегистрирована.
-    pState->lookup.Get(config.name, &id);
+    pState->lookup.Get(view->name, &id);
     if (id != INVALID::U16ID) {
         MERROR("RenderViewSystem::Register: Вид с именем '%s' уже существует. Новый не будет создан.", view->name);
         return false;
@@ -117,7 +116,7 @@ void RenderViewSystem::OnWindowResize(u32 width, u32 height)
 {
     // Отправить всем видам
     for (u32 i = 0; i < pState->MaxViewCount; ++i) {
-        if (pState->RegisteredViews[i] != nullptr && pState->RegisteredViews[i]->id != INVALID::U16ID) {
+        if (pState->RegisteredViews[i]) {
             pState->RegisteredViews[i]->Resize(width, height);
         }
     }

@@ -1,17 +1,17 @@
 #pragma once 
-#include "render_view.h"
+#include "renderer/render_view.h"
 
 class RenderViewUI : public RenderView
 {
 private:
     struct Shader* shader     {};
-    f32 NearClip             {};
-    f32 FarClip              {};
-    Matrix4D ProjectionMatrix{};
-    Matrix4D ViewMatrix      {};
-    u16 DiffuseMapLocation   {};
-    u16 PropertiesLocation   {};
-    u16 ModelLocation        {};
+    f32 NearClip              {};
+    f32 FarClip               {};
+    Matrix4D ProjectionMatrix {};
+    Matrix4D ViewMatrix       {};
+    u16 DiffuseMapLocation    {};
+    u16 PropertiesLocation    {};
+    u16 ModelLocation         {};
     // u32 RenderMode;
 public:
     /*constexpr */RenderViewUI();

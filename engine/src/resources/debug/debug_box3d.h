@@ -5,7 +5,7 @@
 #include "core/identifier.h"
 #include "resources/geometry.h"
 
-struct DebugBox3D {
+struct MAPI DebugBox3D {
     u32 UniqueID;
     MString name;
     FVec3 size;

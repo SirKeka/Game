@@ -1,7 +1,7 @@
-#include "engine.hpp"
+#include "engine.h"
 #include "version.hpp"
 
-#include "application_types.hpp"
+#include "application_types.h"
 #include "renderer/rendering_system.h"
 
 #include "console.hpp"
@@ -20,8 +20,6 @@
 #include "systems/job_systems.hpp"
 #include "systems/font_system.h"
 #include "platform/platform.hpp"
-
-#include "renderer/views/render_view_pick.h"
 
 // Компоненты ядра движка
 #include "uuid.hpp"

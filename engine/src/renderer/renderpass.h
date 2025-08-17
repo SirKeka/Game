@@ -2,6 +2,7 @@
 #include "math/vector4d_fwd.h"
 #include "containers/darray.hpp"
 #include "core/mmemory.hpp"
+#include "rendering_system.h"
 
 struct Texture;
 
@@ -80,7 +81,7 @@ struct RenderpassConfig {
 };
 
 /// @brief Представляет собой общий проход рендеринга.
-struct Renderpass
+struct MAPI Renderpass
 {
     u16 id;                 // Идентификатор прохода рендеринга.
 
@@ -96,7 +97,7 @@ struct Renderpass
     void* InternalData;     // Внутренние данные прохода рендеринга.
 
     constexpr Renderpass() : id(INVALID::U16ID), name(), RenderArea(), ClearColour(), ClearFlags(), RenderTargetCount(), targets(nullptr), InternalData(nullptr) {}
-    constexpr Renderpass(const RenderpassConfig& config)
+    constexpr Renderpass(RenderpassConfig& config)
     : 
     id(INVALID::U16ID), 
     name(config.name),
@@ -104,8 +105,8 @@ struct Renderpass
     ClearColour(config.ClearColour), 
     ClearFlags(config.ClearFlags), 
     RenderTargetCount(config.RenderTargetCount), 
-    targets(MemorySystem::TAllocate<RenderTarget>(Memory::Array, RenderTargetCount)), 
-    InternalData(nullptr) {}
+    targets((RenderTarget*)(MemorySystem::Allocate(sizeof(RenderTarget) * RenderTargetCount, Memory::Array, true))), 
+    InternalData(nullptr) { RenderingSystem::RenderpassCreate(config, *this, false); }
     
     ~Renderpass();
 

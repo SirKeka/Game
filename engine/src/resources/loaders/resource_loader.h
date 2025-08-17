@@ -7,6 +7,8 @@
 #include "resources/simple_scene_config.h"
 #include "resources/terrain.h"
 
+struct SimpleSceneConfig;
+
 /// @brief Общая структура ресурса. Все загрузчики ресурсов загружают в них данные.
 /// @tparam T 
 template<typename T>
@@ -91,7 +93,7 @@ struct ResourceLoader
          bool Load(const char* name, void* params,      ShaderResource& OutResource);
          bool Load(const char* name, void* params,  BitmapFontResource& OutResource);
          bool Load(const char* name, void* params,  SystemFontResource& OutResource);
-         bool Load(const char* name, void* params, SimpleSceneResource& OutResource);
+    MAPI bool Load(const char* name, void* params, SimpleSceneResource& OutResource);
          bool Load(const char* name, void* params,     TerrainResource& OutResource);
     //bool Load(const char* name, void* params, CustomResource& OutResource);
     

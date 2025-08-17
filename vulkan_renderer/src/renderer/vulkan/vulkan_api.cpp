@@ -6,7 +6,7 @@
 #include "platform\vulkan_platform.hpp"
 #include "vulkan_renderpass.hpp"
 
-#include "renderer/renderbuffer.hpp"
+#include "renderer/renderbuffer.h"
 
 #include <systems/material_system.h>
 #include <systems/texture_system.h>
@@ -2247,20 +2247,22 @@ void VulkanAPI::RenderTargetDestroy(RenderTarget &target, bool FreeInternalMemor
     }
 }
 
-bool VulkanAPI::RenderpassCreate(RenderpassConfig& config, Renderpass& OutRenderpass)
+bool VulkanAPI::RenderpassCreate(RenderpassConfig& config, Renderpass& OutRenderpass, bool copy)
 {
-    OutRenderpass.RenderArea = config.RenderArea;
-    OutRenderpass.ClearColour = config.ClearColour;
-    OutRenderpass.ClearFlags = config.ClearFlags;
-    OutRenderpass.RenderTargetCount = config.RenderTargetCount;
-    OutRenderpass.targets = MemorySystem::TAllocate<RenderTarget>(Memory::Array, OutRenderpass.RenderTargetCount, true);
-    OutRenderpass.name = config.name;
+    if(copy) {
+        OutRenderpass.RenderArea = config.RenderArea;
+        OutRenderpass.ClearColour = config.ClearColour;
+        OutRenderpass.ClearFlags = config.ClearFlags;
+        OutRenderpass.RenderTargetCount = config.RenderTargetCount;
+        OutRenderpass.targets = (RenderTarget*)MemorySystem::Allocate(sizeof(RenderTarget) * OutRenderpass.RenderTargetCount, Memory::Array, true);
+        OutRenderpass.name = config.name;
+    }
 
     // Скопируйте конфигурацию для каждой цели.
     for (u32 t = 0; t < OutRenderpass.RenderTargetCount; ++t) {
         auto& target = OutRenderpass.targets[t];
         target.AttachmentCount = config.target.AttachmentCount;
-        target.attachments = MemorySystem::TAllocate<RenderTargetAttachment>(Memory::Array, target.AttachmentCount);
+        target.attachments = (RenderTargetAttachment*)MemorySystem::Allocate(sizeof(RenderTargetAttachment) * target.AttachmentCount, Memory::Array);
 
         // Каждое вложение для цели.
         for (u32 a = 0; a < target.AttachmentCount; ++a) {

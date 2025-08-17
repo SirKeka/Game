@@ -1,13 +1,12 @@
 #include "render_view_world.h"
-#include "renderer/rendering_system.h"
-#include "systems/shader_system.h"
+#include "renderer/renderpass.h"
+#include "resources/geometry.h"
+#include "resources/mesh.h"
 #include "systems/camera_system.hpp"
 #include "systems/material_system.h"
 #include "systems/render_view_system.h"
 #include "systems/resource_system.h"
-#include "renderer/renderpass.hpp"
-#include "resources/mesh.h"
-#include "resources/geometry.h"
+#include "systems/shader_system.h"
 
 /// @brief Частная структура, используемая для сортировки геометрии по расстоянию от камеры.
 struct GeometryDistance {

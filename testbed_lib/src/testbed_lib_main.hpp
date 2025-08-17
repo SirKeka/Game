@@ -1,6 +1,6 @@
 #pragma once
 
-#include <application_types.hpp>
+#include <application_types.h>
 
 extern "C" MAPI bool CreateGame(const ApplicationConfig& config);
 

@@ -1,7 +1,7 @@
 #include "simple_scene.h"
-#include "skybox.h"
-#include "debug/debug_box3d.h"
-#include "debug/debug_line3d.h"
+#include "resources/skybox.h"
+#include "resources/debug/debug_box3d.h"
+#include "resources/debug/debug_line3d.h"
 #include "renderer/renderer_types.h"
 #include "systems/render_view_system.h"
 #include "systems/camera_system.hpp"
@@ -9,6 +9,7 @@
 #include "systems/resource_system.h"
 #include "core/frame_data.h"
 #include "math/frustrum.h"
+#include "testbed_types.h"
 
 struct SimpleSceneDebugData {
     DebugBox3D box;
@@ -422,186 +423,182 @@ bool SimpleScene::Update(const FrameData &rFrameData)
 
 bool SimpleScene::PopulateRenderPacket(Camera *CurrentCamera, f32 aspect, FrameData &rFrameData, RenderPacket &packet)
 {
-    // ЗАДАЧА: Кэшируйте это где-нибудь, чтобы нам не приходилось проверять это каждый раз.
+    // Skybox
     for (u32 i = 0; i < packet.ViewCount; ++i) {
         auto& ViewPacket = packet.views[i];
         const auto view = ViewPacket.view;
-        if (view->type == RenderView::Skybox) {
-            if (sb) {
-                // Скайбокс
-                SkyboxPacketData SkyboxData = {sb};
-                if (!RenderViewSystem::BuildPacket(view, *rFrameData.FrameAllocator, &SkyboxData, ViewPacket)) {
-                    MERROR("Не удалось создать пакет для вида «skybox».");
-                    return false;
-                }
+        if (sb) {
+            // Скайбокс
+            SkyboxPacketData SkyboxData = {sb};
+            if (!RenderViewSystem::BuildPacket(view, *rFrameData.FrameAllocator, &SkyboxData, ViewPacket)) {
+                MERROR("Не удалось создать пакет для вида «skybox».");
+                return false;
             }
-            break;
         }
     }
 
     for (u32 v = 0; v < packet.ViewCount; ++v) {
-        auto& ViewPacket = packet.views[v];
+        auto& ViewPacket = packet.views[Testbed::PacketViews::Skybox];
         const auto view = ViewPacket.view;
-        if (view->type == RenderView::KnownType::World) {
-            // Обязательно очистите массив геометрии мира.
-            WorldData.WorldGeometries.Clear();
-            WorldData.TerrainGeometries.Clear();
-            WorldData.DebugGeometries.Clear();
 
-            auto forward = CurrentCamera->Forward();
-            auto right = CurrentCamera->Right();
-            auto up = CurrentCamera->Up();
+        // Обязательно очистите массив геометрии мира.
+        WorldData.WorldGeometries.Clear();
+        WorldData.TerrainGeometries.Clear();
+        WorldData.DebugGeometries.Clear();
 
-            // ЗАДАЧА: получите поле зрения камеры, аспект и т. д.
-            Frustum f;
-            f.Create(CurrentCamera->GetPosition(), forward, right, up, aspect, Math::DegToRad(45.F), 0.1F, 1000.F);
+        auto forward = CurrentCamera->Forward();
+        auto right = CurrentCamera->Right();
+        auto up = CurrentCamera->Up();
 
-            rFrameData.DrawnMeshCount = 0;
-            const u64& MeshCount = meshes.Length();
-            for (u32 i = 0; i < MeshCount; ++i) {
-                auto& m = meshes[i];
-                if (m.generation != INVALID::U8ID) {
-                    auto model = m.transform.GetWorld();
+        // ЗАДАЧА: получите поле зрения камеры, аспект и т. д.
+        Frustum f;
+        f.Create(CurrentCamera->GetPosition(), forward, right, up, aspect, Math::DegToRad(45.F), 0.1F, 1000.F);
 
-                    for (u32 j = 0; j < m.GeometryCount; ++j) {
-                        auto g = m.geometries[j];
+        rFrameData.DrawnMeshCount = 0;
+        const u64& MeshCount = meshes.Length();
+        for (u32 i = 0; i < MeshCount; ++i) {
+            auto& m = meshes[i];
+            if (m.generation != INVALID::U8ID) {
+                auto model = m.transform.GetWorld();
 
-                        // Расчет ограничивающей сферы.
-                        // {
-                        //     // Переместите/масштабируйте экстенты.
-                        //     auto ExtentsMin = g->extents.MinSize * model;
-                        //     auto ExtentsMax = g->extents.MaxSize * model;
+                for (u32 j = 0; j < m.GeometryCount; ++j) {
+                    auto g = m.geometries[j];
 
-                        //     f32 min = MMIN(MMIN(ExtentsMin.x, ExtentsMin.y), ExtentsMin.z);
-                        //     f32 max = MMAX(MMAX(ExtentsMax.x, ExtentsMax.y), ExtentsMax.z);
-                        //     f32 diff = Math::abs(max - min);
-                        //     f32 radius = diff * 0.5f;
+                    // Расчет ограничивающей сферы.
+                    // {
+                    //     // Переместите/масштабируйте экстенты.
+                    //     auto ExtentsMin = g->extents.MinSize * model;
+                    //     auto ExtentsMax = g->extents.MaxSize * model;
 
-                        //     // Переместите/масштабируйте центр.
-                        //     auto center = g->center * model;
+                    //     f32 min = MMIN(MMIN(ExtentsMin.x, ExtentsMin.y), ExtentsMin.z);
+                    //     f32 max = MMAX(MMAX(ExtentsMax.x, ExtentsMax.y), ExtentsMax.z);
+                    //     f32 diff = Math::abs(max - min);
+                    //     f32 radius = diff * 0.5f;
 
-                        //     if (state->CameraFrustrum.IntersectsSphere(center, radius)) {
-                        //         // Добавьте его в список для рендеринга.
-                        //         GeometryRenderData data = {};
-                        //         data.model = model;
-                        //         data.gid = g;
-                        //         data.UniqueID = m.UniqueID;
-                        //         WorldGeometries.PushBack(data);
+                    //     // Переместите/масштабируйте центр.
+                    //     auto center = g->center * model;
 
-                        //         rFrameData.DrawnMeshCount++;
-                        //     }
-                        // }
+                    //     if (state->CameraFrustrum.IntersectsSphere(center, radius)) {
+                    //         // Добавьте его в список для рендеринга.
+                    //         GeometryRenderData data = {};
+                    //         data.model = model;
+                    //         data.gid = g;
+                    //         data.UniqueID = m.UniqueID;
+                    //         WorldGeometries.PushBack(data);
 
-                        // Расчет AABB
-                        {
-                            // Переместите/масштабируйте экстенты.
-                            // auto ExtentsMin = g->extents.min * model;
-                            auto ExtentsMax = g->extents.max * model;
+                    //         rFrameData.DrawnMeshCount++;
+                    //     }
+                    // }
 
-                            // Переместить/масштабировать центр.
-                            auto center = g->center * model;
-                            FVec3 HalfExtents{
-                                Math::abs(ExtentsMax.x - center.x),
-                                Math::abs(ExtentsMax.y - center.y),
-                                Math::abs(ExtentsMax.z - center.z),
-                            };
+                    // Расчет AABB
+                    {
+                        // Переместите/масштабируйте экстенты.
+                        // auto ExtentsMin = g->extents.min * model;
+                        auto ExtentsMax = g->extents.max * model;
 
-                            if (f.IntersectsAABB(center, HalfExtents)) {
-                                // Добавьте его в список для рендеринга.
-                                GeometryRenderData data = {};
-                                data.model = model;
-                                data.geometry = g;
-                                data.UniqueID = m.UniqueID;
-                                WorldData.WorldGeometries.PushBack(data);
+                        // Переместить/масштабировать центр.
+                        auto center = g->center * model;
+                        FVec3 HalfExtents{
+                            Math::abs(ExtentsMax.x - center.x),
+                            Math::abs(ExtentsMax.y - center.y),
+                            Math::abs(ExtentsMax.z - center.z),
+                        };
 
-                                rFrameData.DrawnMeshCount++;
-                            }
+                        if (f.IntersectsAABB(center, HalfExtents)) {
+                            // Добавьте его в список для рендеринга.
+                            GeometryRenderData data = {};
+                            data.model = model;
+                            data.geometry = g;
+                            data.UniqueID = m.UniqueID;
+                            WorldData.WorldGeometries.PushBack(data);
+
+                            rFrameData.DrawnMeshCount++;
                         }
                     }
                 }
             }
+        }
 
-            // ЗАДАЧА: добавить ландшафт(ы)
-            const u32& TerrainCount = terrains.Length();
-            for (u32 i = 0; i < TerrainCount; ++i) {
-                // ЗАДАЧА: Проверить генерацию ландшафта
-                // ЗАДАЧА: Отбраковка усеченных пирамид
-                //
-                GeometryRenderData data = {};
-                data.model = terrains[i].xform.GetWorld();
-                data.geometry = &terrains[i].geo;
-                data.UniqueID = terrains[i].UniqueID;
+        // ЗАДАЧА: добавить ландшафт(ы)
+        const u32& TerrainCount = terrains.Length();
+        for (u32 i = 0; i < TerrainCount; ++i) {
+            // ЗАДАЧА: Проверить генерацию ландшафта
+            // ЗАДАЧА: Отбраковка усеченных пирамид
+            //
+            GeometryRenderData data = {};
+            data.model = terrains[i].xform.GetWorld();
+            data.geometry = &terrains[i].geo;
+            data.UniqueID = terrains[i].UniqueID;
 
-                WorldData.TerrainGeometries.PushBack(data);
+            WorldData.TerrainGeometries.PushBack(data);
 
-                // ЗАДАЧА: Счетчик для геометрии ландшафта.
-                rFrameData.DrawnMeshCount++;
-            }
+            // ЗАДАЧА: Счетчик для геометрии ландшафта.
+            rFrameData.DrawnMeshCount++;
+        }
 
-            // Геометрия отладки
+        // Геометрия отладки
 
-            // Сетка.
-            {
-                GeometryRenderData data {};
-                data.model = Matrix4D::MakeIdentity();
-                data.geometry = &grid.geometry;
-                data.UniqueID = INVALID::ID;
+        // Сетка.
+        {
+            GeometryRenderData data {};
+            data.model = Matrix4D::MakeIdentity();
+            data.geometry = &grid.geometry;
+            data.UniqueID = INVALID::ID;
+            WorldData.DebugGeometries.PushBack(data);
+        }
+
+        // Направленный свет.
+        {
+            if (DirLight && DirLight->DebugData) {
+                auto debug = reinterpret_cast<SimpleSceneDebugData*>(DirLight->DebugData);
+
+                // Линия отладки 3d
+                GeometryRenderData data{};
+                data.model = debug->line.xform.GetWorld();
+                data.geometry = &debug->line.geometry;
+                data.UniqueID = debug->line.UniqueID;
                 WorldData.DebugGeometries.PushBack(data);
             }
+        }
 
-            // Направленный свет.
-            {
-                if (DirLight && DirLight->DebugData) {
-                    auto debug = reinterpret_cast<SimpleSceneDebugData*>(DirLight->DebugData);
+        // Точечные источники света
+        {
+            const u32& PointLightCount = PointLights.Length();
+            for (u32 i = 0; i < PointLightCount; ++i) {
+                if (PointLights[i].DebugData) {
+                    auto debug = reinterpret_cast<SimpleSceneDebugData*>(PointLights[i].DebugData);
 
-                    // Линия отладки 3d
+                    // Отладочное поле 3d
                     GeometryRenderData data{};
-                    data.model = debug->line.xform.GetWorld();
-                    data.geometry = &debug->line.geometry;
-                    data.UniqueID = debug->line.UniqueID;
+                    data.model = debug->box.xform.GetWorld();
+                    data.geometry = &debug->box.geometry;
+                    data.UniqueID = debug->box.UniqueID;
                     WorldData.DebugGeometries.PushBack(data);
                 }
             }
+        }
 
-            // Точечные источники света
-            {
-                const u32& PointLightCount = PointLights.Length();
-                for (u32 i = 0; i < PointLightCount; ++i) {
-                    if (PointLights[i].DebugData) {
-                        auto debug = reinterpret_cast<SimpleSceneDebugData*>(PointLights[i].DebugData);
+        // Сетка отладочных форм
+        {
+            const u32& MeshCount = meshes.Length();
+            for (u32 i = 0; i < MeshCount; ++i) {
+                if (meshes[i].DebugData) {
+                    auto debug = reinterpret_cast<SimpleSceneDebugData*>(meshes[i].DebugData);
 
-                        // Отладочное поле 3d
-                        GeometryRenderData data{};
-                        data.model = debug->box.xform.GetWorld();
-                        data.geometry = &debug->box.geometry;
-                        data.UniqueID = debug->box.UniqueID;
-                        WorldData.DebugGeometries.PushBack(data);
-                    }
+                    // Отладочное поле 3d
+                    GeometryRenderData data{};
+                    data.model = debug->box.xform.GetWorld();
+                    data.geometry = &debug->box.geometry;
+                    data.UniqueID = debug->box.UniqueID;
+                    WorldData.DebugGeometries.PushBack(data);
                 }
             }
+        }
 
-            // Сетка отладочных форм
-            {
-                const u32& MeshCount = meshes.Length();
-                for (u32 i = 0; i < MeshCount; ++i) {
-                    if (meshes[i].DebugData) {
-                        auto debug = reinterpret_cast<SimpleSceneDebugData*>(meshes[i].DebugData);
-
-                        // Отладочное поле 3d
-                        GeometryRenderData data{};
-                        data.model = debug->box.xform.GetWorld();
-                        data.geometry = &debug->box.geometry;
-                        data.UniqueID = debug->box.UniqueID;
-                        WorldData.DebugGeometries.PushBack(data);
-                    }
-                }
-            }
-
-            // Мир
-            if (!RenderViewSystem::BuildPacket(RenderViewSystem::Get("world"), *rFrameData.FrameAllocator, &WorldData.WorldGeometries, packet.views[1])) {
-                MERROR("Не удалось создать пакет для представления «мира».");
-                return false;
-            }
+        // Мир
+        if (!RenderViewSystem::BuildPacket(view, *rFrameData.FrameAllocator, &WorldData.WorldGeometries, packet.views[1])) {
+            MERROR("Не удалось создать пакет для представления «мира».");
+            return false;
         }
     }
     

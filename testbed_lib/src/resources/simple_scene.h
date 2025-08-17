@@ -1,14 +1,13 @@
 #pragma once
 
 #include "defines.hpp"
-#include "simple_scene_config.h"
-#include "mesh.h"
-#include "lighting_structures.h"
-#include "terrain.h"
-#include "debug/debug_grid.h"
+#include "resources/debug/debug_grid.h"
+#include "resources/lighting_structures.h"
+#include "resources/mesh.h"
+#include "resources/terrain.h"
 
 #include "math/transform.h"
-#include "renderer/views/render_view_world.h"
+#include "views/render_view_world.h"
 
 struct FrameData;
 class Camera;
@@ -49,7 +48,7 @@ struct MAPI SimpleScene {
     Transform SceneTransform;
 
     // Единственный указатель на направленный свет.
-    struct DirectionalLight* DirLight;
+    DirectionalLight* DirLight;
 
     DArray<PointLight> PointLights;
     DArray<Mesh> meshes;
@@ -62,7 +61,7 @@ struct MAPI SimpleScene {
     DebugGrid grid;
 
     // Указатель на конфигурацию сцены, если она указана.
-    SimpleSceneConfig* config;
+    struct SimpleSceneConfig* config;
     RenderViewWorldData WorldData;
 
     SimpleScene() : id(GlobalSceneID++), state(State::Uninitialized), enabled(false), name(), description(), SceneTransform(), DirLight(nullptr), PointLights(), meshes(), terrains(), PendingMeshes(), sb(nullptr), grid(), config(nullptr), WorldData() {}

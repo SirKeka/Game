@@ -28,7 +28,7 @@ namespace PrimitiveTopology
     
 
 /// @brief Представляет шейдер во внешнем интерфейсе.
-struct Shader {
+struct MAPI Shader {
     enum Flags {
         NoneFlag = 0x0,
         DepthTestFlag = 0x1,

@@ -1,12 +1,17 @@
 #pragma once
 
-#include <application_types.hpp>
+#include <application_types.h>
 #include <math/frustrum.h>
-#include <core/keymap.hpp>
 #include <resources/simple_scene.h>
+
+//ЗАДАЧА: Временно
+#include <core/keymap.hpp>
 #include <resources/skybox.h>
-#include "debug_console.h"
+
 #include <systems/light_system.h>
+#include "resources/simple_scene.h"
+
+#include "debug_console.h"
 
 struct Game
 {

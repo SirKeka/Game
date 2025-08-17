@@ -5,7 +5,7 @@
 #include <core/metrics.hpp>
 
 #include <systems/camera_system.hpp>
-#include <renderer/rendering_system.h>
+#include <renderer/renderpass.h>
 #include <new>
 
 // ЗАДАЧА: временный код
@@ -13,11 +13,11 @@
 #include <systems/geometry_system.h>
 #include <systems/render_view_system.h>
 #include <systems/resource_system.h>
-#include <renderer/views/render_view_pick.h>
+#include "views/render_view_pick.h"
 #include "debug_console.h"
 // ЗАДАЧА: конец временного кода
 
-bool GameConfigureRenderViews(Application& app);
+bool GameConfigureRenderViews(ApplicationConfig& config);
 void ApplicationRegisterEvents(Application& app);
 void ApplicationUnregisterEvents(Application& app);
 static bool LoadMainScene(Application* app);
@@ -137,7 +137,7 @@ bool ApplicationBoot(Application& app)
     app.AppConfig.FontConfig.MaxBitmapFontCount = app.AppConfig.FontConfig.MaxSystemFontCount = 101;
 
     // Настроить представления рендеринга. ЗАДАЧА: прочитать из файла?
-    if (!GameConfigureRenderViews(app)) {
+    if (!GameConfigureRenderViews(app.AppConfig)) {
         MERROR("Не удалось настроить представления рендерера. Прерывание приложения.");
         return false;
     }
@@ -473,156 +473,197 @@ void ApplicationLibOnUnload(Application& app)
     GameRemoveKeymaps(&app);
 }
 
-bool GameConfigureRenderViews(Application& app)
+bool GameConfigureRenderViews(ApplicationConfig& config)
 {
-    app.AppConfig.RenderViews.Resize(4);
-
-    DArray<RenderTargetAttachmentConfig> SkyboxTargetAttachment;
-    SkyboxTargetAttachment.Resize(1);
-    SkyboxTargetAttachment[0].type = RenderTargetAttachmentType::Colour;
-    SkyboxTargetAttachment[0].source = RenderTargetAttachmentSource::Default;
-    // SkyboxTargetAttachment[0].LoadOperation = RenderTargetAttachmentLoadOperation::DontCare;
-    SkyboxTargetAttachment[0].StoreOperation = RenderTargetAttachmentStoreOperation::Store;
-    // SkyboxTargetAttachment[0].PresentAfter = false;
-
-    // Конфигурация подпрохода рендеринга
-    DArray<RenderpassConfig> SkyboxPasses;
-    SkyboxPasses.Resize(1);
-    SkyboxPasses[0].name = "Renderpass.Bultin.Skybox";
-    SkyboxPasses[0].depth = 1.F;
-    //SkyboxPasses[0].stencil = 0;
-    SkyboxPasses[0].RenderArea = FVec4(0.F, 0.F, 1280.F, 720.F);
-    SkyboxPasses[0].ClearColour = FVec4(0.F, 0.F, 0.2F, 1.F);
-    SkyboxPasses[0].ClearFlags = RenderpassClearFlag::ColourBuffer;
-    SkyboxPasses[0].RenderTargetCount = RenderingSystem::WindowAttachmentCountGet();
-    SkyboxPasses[0].target.AttachmentCount = 1;
-    SkyboxPasses[0].target.attachments = SkyboxTargetAttachment.MovePtr();
+    config.RenderViews.Resize(4);
 
     // Skybox view
-    app.AppConfig.RenderViews[0].name = "skybox";
-    app.AppConfig.RenderViews[0].PassCount = 1;
-    app.AppConfig.RenderViews[0].passes = SkyboxPasses.MovePtr();
+    {
+        auto& SkyboxView = config.RenderViews[0];
+
+        // Конфигурация подпрохода рендеринга
+        RenderpassConfig SkyboxPass;
+        SkyboxPass.name                   = "Renderpass.Bultin.Skybox";
+        SkyboxPass.depth                  = 1.F;
+        SkyboxPass.stencil                = 0;
+        SkyboxPass.RenderArea             = FVec4(0.F, 0.F, (f32)config.StartWidth, (f32)config.StartHeight);
+        SkyboxPass.ClearColour            = FVec4(0.F, 0.F, 0.2F, 1.F);
+        SkyboxPass.ClearFlags             = RenderpassClearFlag::ColourBuffer;
+        SkyboxPass.RenderTargetCount      = RenderingSystem::WindowAttachmentCountGet();
+        SkyboxPass.target.AttachmentCount = 1;
+        SkyboxPass.target.attachments     = (RenderTargetAttachmentConfig*)MemorySystem::Allocate(sizeof(RenderTargetAttachmentConfig) * SkyboxPass.target.AttachmentCount, Memory::Array);
+
+        // Цветовое вложение(Colour attachment)
+        auto& SkyboxTargetColour = SkyboxPass.target.attachments[0];
+        SkyboxTargetColour.type           = RenderTargetAttachmentType::Colour;
+        SkyboxTargetColour.source         = RenderTargetAttachmentSource::Default;
+        SkyboxTargetColour.LoadOperation  = RenderTargetAttachmentLoadOperation::DontCare;
+        SkyboxTargetColour.StoreOperation = RenderTargetAttachmentStoreOperation::Store;
+        SkyboxTargetColour.PresentAfter   = false;
+
+        
+        SkyboxView.name = "skybox";
+        SkyboxView.RenderpassCount = 1;
+        //SkyboxView.passes = MemorySystem::Allocate(sizeof(Renderpass) * SkyboxView.RenderpassCount, Memory::Array, true);
+
+        // ЗАДАЧА: если слишком рано в процессе инициализации, перейти к on_registered.
+        if (!(SkyboxView.passes = new Renderpass(SkyboxPass))) { // RenderingSystem::RenderpassCreate(SkyboxPass, *SkyboxView.passes)
+            MERROR("Skybox view — Не удалось создать проход рендеринга «%s»", SkyboxView.passes[0].name.c_str());
+            return false;
+        }
+    }
 
     // World view
-    DArray<RenderTargetAttachmentConfig> WorldTargetAttachment;
-    WorldTargetAttachment.Resize(2);
-    // Привязка цвета
-    WorldTargetAttachment[0].type           = RenderTargetAttachmentType::Colour;
-    WorldTargetAttachment[0].source         = RenderTargetAttachmentSource::Default;
-    WorldTargetAttachment[0].LoadOperation  = RenderTargetAttachmentLoadOperation::Load;
-    WorldTargetAttachment[0].StoreOperation = RenderTargetAttachmentStoreOperation::Store;
-    // WorldTargetAttachment[0].PresentAfter = false;
-    // Привязка глубины
-    WorldTargetAttachment[1].type           = RenderTargetAttachmentType::Depth;
-    WorldTargetAttachment[1].source         = RenderTargetAttachmentSource::Default;
-    // WorldTargetAttachment[1].LoadOperation  = RenderTargetAttachmentLoadOperation::DontCare;
-    WorldTargetAttachment[1].StoreOperation = RenderTargetAttachmentStoreOperation::Store;
-    // WorldTargetAttachment[1].PresentAfter = false;
+    {    
+        auto& WorldView = config.RenderViews[1];
+        WorldView.name = "world";
+        // WorldView.width = 0;
+        // WorldView.height = 0;
+        WorldView.RenderpassCount = 1;
+        WorldView.passes = (Renderpass*)MemorySystem::Allocate(sizeof(Renderpass) * WorldView.RenderpassCount, Memory::Array, true);
+        
+        // Конфигурация подпрохода рендеринга
+        RenderpassConfig WorldPass;
+        WorldPass.name                   = "Renderpass.Bultin.World";
+        WorldPass.depth                  = 1.F;
+        WorldPass.stencil                = 0;
+        WorldPass.RenderArea             = FVec4(0.F, 0.F, (f32)config.StartWidth, (f32)config.StartHeight); // Разрешение области рендеринга по умолчанию.
+        WorldPass.ClearColour            = FVec4(0.F, 0.F, 0.2F, 1.F); 
+        WorldPass.ClearFlags             = RenderpassClearFlag::DepthBuffer | RenderpassClearFlag::StencilBuffer;
+        WorldPass.RenderTargetCount      = RenderingSystem::WindowAttachmentCountGet();
+        WorldPass.target.AttachmentCount = 2;
+        WorldPass.target.attachments     = (RenderTargetAttachmentConfig*)MemorySystem::Allocate(sizeof(RenderTargetAttachmentConfig) * WorldPass.target.AttachmentCount, Memory::Array);
 
-    // Конфигурация подпрохода рендеринга
-    DArray<RenderpassConfig> WorldPasses;
-    WorldPasses.Resize(1);
-    WorldPasses[0].name = "Renderpass.Bultin.World";
-    WorldPasses[0].depth = 1.F;
-    // WorldPasses[0].stencil = 0;
-    WorldPasses[0].RenderArea = FVec4(0.F, 0.F, 1280.F, 720.F); // Разрешение области рендеринга по умолчанию.
-    WorldPasses[0].ClearColour = FVec4(0.F, 0.F, 0.2F, 1.F); 
-    WorldPasses[0].ClearFlags = RenderpassClearFlag::DepthBuffer | RenderpassClearFlag::StencilBuffer;
-    WorldPasses[0].RenderTargetCount = RenderingSystem::WindowAttachmentCountGet();
-    WorldPasses[0].target.AttachmentCount = 2;
-    WorldPasses[0].target.attachments = WorldTargetAttachment.MovePtr();
+        // Привязка цвета
+        auto& WorldTargetColour = WorldPass.target.attachments[0];
+        WorldTargetColour.type           = RenderTargetAttachmentType::Colour;
+        WorldTargetColour.source         = RenderTargetAttachmentSource::Default;
+        WorldTargetColour.LoadOperation  = RenderTargetAttachmentLoadOperation::Load;
+        WorldTargetColour.StoreOperation = RenderTargetAttachmentStoreOperation::Store;
+        WorldTargetColour.PresentAfter   = false;
 
-    app.AppConfig.RenderViews[1].name = "world";
-    // app.AppConfig.RenderViews[1].width = 0;
-    // app.AppConfig.RenderViews[1].height = 0;
-    app.AppConfig.RenderViews[1].PassCount = 1;
-    app.AppConfig.RenderViews[1].passes = WorldPasses.MovePtr();
+        // Привязка глубины
+        auto& WorldTargetDepth = WorldPass.target.attachments[1];
+        WorldTargetDepth.type            = RenderTargetAttachmentType::Depth;
+        WorldTargetDepth.source          = RenderTargetAttachmentSource::Default;
+        WorldTargetDepth.LoadOperation   = RenderTargetAttachmentLoadOperation::DontCare;
+        WorldTargetDepth.StoreOperation  = RenderTargetAttachmentStoreOperation::Store;
+        WorldTargetDepth.PresentAfter    = false;
+
+        // ЗАДАЧА: если слишком рано в процессе инициализации, перейти к on_registered.
+        if (!RenderingSystem::RenderpassCreate(WorldPass, *WorldView.passes)) {
+            MERROR("World view — Не удалось создать проход рендеринга «%s»", WorldView.passes[0].name.c_str());
+            return false;
+        };
+    }
 
     // UI view
-    DArray<RenderTargetAttachmentConfig> UiTargetAttachment;
-    UiTargetAttachment.Resize(1);
-    UiTargetAttachment[0].type           = RenderTargetAttachmentType::Colour;
-    UiTargetAttachment[0].source         = RenderTargetAttachmentSource::Default;
-    UiTargetAttachment[0].LoadOperation  = RenderTargetAttachmentLoadOperation::Load;
-    UiTargetAttachment[0].StoreOperation = RenderTargetAttachmentStoreOperation::Store;
-    UiTargetAttachment[0].PresentAfter   = true;
+    {
+        auto& UiView = config.RenderViews[2];
+        UiView.name = "ui";
+        // UiView.width = 0;
+        // UiView.height = 0;
+        UiView.RenderpassCount = 1;
+        UiView.passes = (Renderpass*)MemorySystem::Allocate(sizeof(Renderpass) * UiView.RenderpassCount, Memory::Array, true);
 
-    // Конфигурация подпрохода рендеринга
-    DArray<RenderpassConfig> UIPasses;
-    UIPasses.Resize(1);
-    UIPasses[0].name = "Renderpass.Bultin.UI";
-    UIPasses[0].depth = 1.F;
-    UIPasses[0].stencil = 0;
-    UIPasses[0].RenderArea = FVec4(0.F, 0.F, 1280.F, 720.F); // Разрешение области рендеринга по умолчанию.
-    UIPasses[0].ClearColour = FVec4(0.F, 0.F, 0.2F, 1.F);
-    UIPasses[0].ClearFlags = RenderpassClearFlag::None;
-    UIPasses[0].RenderTargetCount = RenderingSystem::WindowAttachmentCountGet();
-    UIPasses[0].target.AttachmentCount = 1;
-    UIPasses[0].target.attachments = UiTargetAttachment.MovePtr();
+        // Конфигурация подпрохода рендеринга
+        RenderpassConfig UiPass {};
+        UiPass.name                   = "Renderpass.Bultin.UI";
+        UiPass.depth                  = 1.F;
+        // UiPass.stencil = 0;
+        UiPass.RenderArea             = FVec4(0.F, 0.F, 1280.F, 720.F); // Разрешение области рендеринга по умолчанию.
+        UiPass.ClearColour            = FVec4(0.F, 0.F, 0.2F, 1.F);
+        UiPass.ClearFlags             = RenderpassClearFlag::None;
+        UiPass.RenderTargetCount      = RenderingSystem::WindowAttachmentCountGet();
+        UiPass.target.AttachmentCount = 1;
+        UiPass.target.attachments     = (RenderTargetAttachmentConfig*)MemorySystem::Allocate(sizeof(RenderTargetAttachmentConfig) * UiPass.target.AttachmentCount, Memory::Array);
 
-    app.AppConfig.RenderViews[2].name = "ui";
-    // app.AppConfig.RenderViews[2].width = 0;
-    // app.AppConfig.RenderViews[2].height = 0;
-    app.AppConfig.RenderViews[2].type = RenderView::UI;
-    app.AppConfig.RenderViews[2].VMS = RenderView::UiCamera;
-    app.AppConfig.RenderViews[2].PassCount = 1;
-    app.AppConfig.RenderViews[2].passes = UIPasses.MovePtr();
+        // Привязка цвета
+        auto& UiTargetAttachment = UiPass.target.attachments[0];
+        UiTargetAttachment.type           = RenderTargetAttachmentType::Colour;
+        UiTargetAttachment.source         = RenderTargetAttachmentSource::Default;
+        UiTargetAttachment.LoadOperation  = RenderTargetAttachmentLoadOperation::Load;
+        UiTargetAttachment.StoreOperation = RenderTargetAttachmentStoreOperation::Store;
+        UiTargetAttachment.PresentAfter   = true;
+
+        // ЗАДАЧА: если слишком рано в процессе инициализации, перейти к on_registered.
+        if (!RenderingSystem::RenderpassCreate(UiPass, *UiView.passes)) {
+            MERROR("UI view — Не удалось создать проход рендеринга «%s»", UiView.passes[0].name.c_str());
+            return false;
+        };
+
+    }
 
     // Pick view
-    DArray<RenderTargetAttachmentConfig> WorldPickTargetAttachment;
-    WorldPickTargetAttachment.Resize(2);
-    // Привязка цвета
-    WorldPickTargetAttachment[0].type = RenderTargetAttachmentType::Colour;
-    WorldPickTargetAttachment[0].source = RenderTargetAttachmentSource::View; // Получить вложение из представления.
-    // WorldPickTargetAttachment[0].LoadOperation = RenderTargetAttachmentLoadOperation::DontCare;
-    WorldPickTargetAttachment[0].StoreOperation = RenderTargetAttachmentStoreOperation::Store;
-    // WorldPickTargetAttachment[0].PresentAfter = false;
-    // Привязка глубины
-    WorldPickTargetAttachment[1].type = RenderTargetAttachmentType::Depth;
-    WorldPickTargetAttachment[1].source = RenderTargetAttachmentSource::View; // Получить вложение из представления.
-    // WorldPickTargetAttachment[1].LoadOperation = RenderTargetAttachmentLoadOperation::DontCare;
-    WorldPickTargetAttachment[1].StoreOperation = RenderTargetAttachmentStoreOperation::Store;
-    // WorldPickTargetAttachment[1].PresentAfter = false;
+    {
+        config.RenderViews[3] = RenderViewPick();
+        auto& PickView = config.RenderViews[3];
+        PickView.name = "pick";
+        // PickView.width = 0;
+        // PickView.height = 0;
+        PickView.RenderpassCount = 2;
+        PickView.passes = (Renderpass*)MemorySystem::Allocate(sizeof(Renderpass) * PickView.RenderpassCount, Memory::Array, true);
 
-    DArray<RenderTargetAttachmentConfig> UiPickTargetAttachment;
-    UiPickTargetAttachment.Resize(1);
-    // Привязка цвета
-    UiPickTargetAttachment[0].type = RenderTargetAttachmentType::Colour;
-    UiPickTargetAttachment[0].source = RenderTargetAttachmentSource::View; // Получить вложение из представления.
-    UiPickTargetAttachment[0].LoadOperation = RenderTargetAttachmentLoadOperation::Load;
-    UiPickTargetAttachment[0].StoreOperation = RenderTargetAttachmentStoreOperation::Store; // Необходимо сохранить его, чтобы впоследствии можно было взять образец.
-    // UiPickTargetAttachment.PresentAfter = false;
+        RenderpassConfig WorldPickPass;
+        WorldPickPass.name                   = "Renderpass.Builtin.WorldPick";
+        WorldPickPass.depth                  = 1.F;
+        WorldPickPass.stencil                = 0;
+        WorldPickPass.RenderArea             = FVec4(0.F, 0.F, (f32)config.StartWidth, (f32)config.StartHeight);  // Разрешение области рендеринга по умолчанию.
+        WorldPickPass.ClearColour            = FVec4(1.F, 1.F, 1.F, 1.F);       // ХАК: очищаем до белого цвета для лучшей видимости// ЗАДАЧА: очищаем до черного цвета, так как 0 — недопустимый идентификатор.
+        WorldPickPass.ClearFlags             = RenderpassClearFlag::ColourBuffer | RenderpassClearFlag::DepthBuffer;
+        WorldPickPass.RenderTargetCount      = 1;
+        WorldPickPass.target.AttachmentCount = 2;
+        WorldPickPass.target.attachments     = (RenderTargetAttachmentConfig*)MemorySystem::Allocate(sizeof(RenderTargetAttachmentConfig) * WorldPickPass.target.AttachmentCount, Memory::Array);
 
-    // Конфигурация подпрохода рендеринга
-    DArray<RenderpassConfig> PickPasses;
-    PickPasses.Resize(2);
-    PickPasses[0].name = "Renderpass.Builtin.WorldPick";
-    PickPasses[0].depth = 1.F;
-    // PickPasses[0].stencil = 0;
-    PickPasses[0].RenderArea = FVec4(0.F, 0.F, 1280.F, 720.F);  // Разрешение области рендеринга по умолчанию.
-    PickPasses[0].ClearColour = FVec4(1.F, 1.F, 1.F, 1.F);      // ХАК: очищаем до белого цвета для лучшей видимости// ЗАДАЧА: очищаем до черного цвета, так как 0 — недопустимый идентификатор.
-    PickPasses[0].ClearFlags = RenderpassClearFlag::ColourBuffer | RenderpassClearFlag::DepthBuffer;
-    PickPasses[0].RenderTargetCount = 1;
-    PickPasses[0].target.AttachmentCount = 2;
-    PickPasses[0].target.attachments = WorldPickTargetAttachment.MovePtr();
+        // Привязка цвета
+        auto& WorldPickPassColour = WorldPickPass.target.attachments[0];
+        WorldPickPassColour.type           = RenderTargetAttachmentType::Colour;
+        WorldPickPassColour.source         = RenderTargetAttachmentSource::View; // Получить вложение из представления.
+        WorldPickPassColour.LoadOperation  = RenderTargetAttachmentLoadOperation::DontCare;
+        WorldPickPassColour.StoreOperation = RenderTargetAttachmentStoreOperation::Store;
+        WorldPickPassColour.PresentAfter   = false;
 
-    PickPasses[1].name = "Renderpass.Bultin.UiPick";
-    PickPasses[1].depth = 1.F;
-    // PickPasses[1].stencil = 0;
-    PickPasses[1].RenderArea = FVec4(0.F, 0.F, 1280.F, 720.F);  // Разрешение области рендеринга по умолчанию.
-    PickPasses[1].ClearColour = FVec4(1.F, 1.F, 1.F, 1.F);
-    PickPasses[1].ClearFlags = RenderpassClearFlag::None;
-    PickPasses[1].RenderTargetCount = 1;
-    PickPasses[1].target.AttachmentCount = 1;
-    PickPasses[1].target.attachments = UiPickTargetAttachment.MovePtr();
+        // Привязка глубины
+        auto& WorldPickPassDepth = WorldPickPass.target.attachments[1];
+        WorldPickPassDepth.type           = RenderTargetAttachmentType::Depth;
+        WorldPickPassDepth.source         = RenderTargetAttachmentSource::View; // Получить вложение из представления.
+        WorldPickPassDepth.LoadOperation  = RenderTargetAttachmentLoadOperation::DontCare;
+        WorldPickPassDepth.StoreOperation = RenderTargetAttachmentStoreOperation::Store;
+        WorldPickPassDepth.PresentAfter   = false;
 
-    app.AppConfig.RenderViews[3].name = "pick";
-    // app.AppConfig.RenderViews[3].width = 0;
-    // app.AppConfig.RenderViews[3].height = 0;
-    app.AppConfig.RenderViews[3].type = RenderView::Pick;
-    app.AppConfig.RenderViews[3].VMS = RenderView::SceneCamera;
-    app.AppConfig.RenderViews[3].PassCount = 2;
-    app.AppConfig.RenderViews[3].passes = PickPasses.MovePtr();
+        // ЗАДАЧА: если слишком рано в процессе инициализации, перейти к on_registered.
+        if (!RenderingSystem::RenderpassCreate(WorldPickPass, PickView.passes[0])) {
+            MERROR("UI view — Не удалось создать проход рендеринга «%s»", PickView.passes[0].name.c_str());
+            return false;
+        };
+
+        // UIPick pass
+        // Конфигурация подпрохода рендеринга
+        RenderpassConfig UiPickPass;
+        UiPickPass.name                   = "Renderpass.Bultin.UiPick";
+        UiPickPass.depth                  = 1.F;
+        UiPickPass.stencil                = 0;
+        UiPickPass.RenderArea             = FVec4(0.F, 0.F, (f32)config.StartWidth, (f32)config.StartHeight);  // Разрешение области рендеринга по умолчанию.
+        UiPickPass.ClearColour            = FVec4(1.F, 1.F, 1.F, 1.F);
+        UiPickPass.ClearFlags             = RenderpassClearFlag::None;
+        UiPickPass.RenderTargetCount      = 1; // ПРИМЕЧАНИЕ: Тройная буферизация не применяется.
+        UiPickPass.target.AttachmentCount = 1;
+        UiPickPass.target.attachments     = (RenderTargetAttachmentConfig*)MemorySystem::Allocate(sizeof(RenderTargetAttachmentConfig) * UiPickPass.target.AttachmentCount, Memory::Array);
+        
+        // Привязка цвета
+        auto& UiPickPassColour = UiPickPass.target.attachments[0];
+        UiPickPassColour.type           = RenderTargetAttachmentType::Colour;
+        UiPickPassColour.source         = RenderTargetAttachmentSource::View; // Получить вложение из представления.
+        UiPickPassColour.LoadOperation  = RenderTargetAttachmentLoadOperation::Load;
+        UiPickPassColour.StoreOperation = RenderTargetAttachmentStoreOperation::Store; // Необходимо сохранить его, чтобы впоследствии можно было взять образец.
+        UiPickPassColour.PresentAfter   = false;
+
+        // ЗАДАЧА: если слишком рано в процессе инициализации, перейти к on_registered.
+        if (!RenderingSystem::RenderpassCreate(UiPickPass, PickView.passes[1])) {
+            MERROR("Pick view — Не удалось создать проход рендеринга «%s»", PickView.passes[1].name.c_str());
+            return false;
+        };
+    }
 
     return true;
 }

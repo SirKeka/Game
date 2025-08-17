@@ -1,6 +1,6 @@
 #pragma once
 #include "defines.hpp"
-#include "resources/loader/resource_loader.h"
+#include "resources/loaders/resource_loader.h"
 #include "core/mmemory.hpp"
 
 /// @brief Конфигурация для системы ресурсов

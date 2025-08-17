@@ -27,10 +27,6 @@ class MAPI RenderView
 public:
 struct Packet;
 // ЗАДАЧА: изменить архитектуру
-protected:
-    friend class SystemsManager;
-    friend struct SimpleScene;
-
     const char* name;               // Имя представления.
     u16 width;                      // Текущая ширина этого представления.
     u16 height;                     // Текущая высота этого представления.
@@ -39,7 +35,7 @@ protected:
     Renderpass* passes;             // Массив указателей на проходы рендеринга, используемые этим представлением.
 
     const char* CustomShaderName;   // Имя пользовательского шейдера, используемого этим представлением, если таковой имеется.
-public:
+
     constexpr RenderView() : name(), width(), height(), RenderpassCount(), passes(nullptr), CustomShaderName(nullptr) {}
     constexpr RenderView(const char* name, u16 width, u16 height, u8 RenderpassCount, const char* CustomShaderName);
     virtual ~RenderView();
@@ -114,5 +110,5 @@ public:
     };
 };
 
-bool RenderViewOnEvent(u16 code, void* sender, void* ListenerInst, EventContext context);
+MAPI bool RenderViewOnEvent(u16 code, void* sender, void* ListenerInst, EventContext context);
 

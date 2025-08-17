@@ -1,7 +1,7 @@
 #pragma once
 #include "defines.hpp"
 #include "vulkan_pipeline.h"
-#include "renderer/renderbuffer.hpp"
+#include "renderer/renderbuffer.h"
 
 /// @todo ЗАДАЧА: сделать настраиваемым
 constexpr int VULKAN_MAX_UI_COUNT = 1024;       // Максимальное количество экземпляров элемента управления пользовательского интерфейса

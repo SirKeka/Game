@@ -1,7 +1,7 @@
 #include "mmemory.hpp"
 
 #include "platform/platform.hpp"
-#include "core/engine.hpp"
+#include "core/engine.h"
 
 #include <cstring>
 #include <stdio.h>

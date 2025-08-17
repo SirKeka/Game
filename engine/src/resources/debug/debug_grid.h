@@ -5,7 +5,7 @@
 #include "resources/geometry.h"
 #include "core/identifier.h"
 
-struct DebugGrid {
+struct MAPI DebugGrid {
     enum Orientation {
         /// @brief Сетка, которая лежит «плоско» в мире вдоль плоскости земли (y-плоскости). Это конфигурация по умолчанию.
         XZ = 0,
