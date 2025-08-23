@@ -8,7 +8,7 @@ struct RenderViewWorldData {
     DArray<GeometryRenderData> DebugGeometries;
 };
 
-class RenderViewWorld : public RenderView
+class RenderViewWorld
 {
 private:
     struct Shader* shader;
@@ -26,12 +26,15 @@ private:
     } DebugLocations;
 
 public:
-    /*constexpr */RenderViewWorld();
+    constexpr RenderViewWorld() : shader(), fov(Math::DegToRad(45.F)), NearClip(0.1F), FarClip(4000.F), 
+    ProjectionMatrix(Matrix4D::MakeFrustumProjection(fov, 1280 / 720.F, NearClip, FarClip)), // Поумолчанию
+    WorldCamera(), AmbientColour(0.25F, 0.25F, 0.25F, 1.F), RenderMode() {}
     ~RenderViewWorld();
 
-    void Resize(u32 width, u32 height) override;
-    bool BuildPacket(class LinearAllocator& FrameAllocator, void* data, Packet& OutPacket) override;
-    bool Render(const Packet& packet, u64 FrameNumber, u64 RenderTargetIndex, const FrameData& rFrameData) override;
+    static bool OnRegistered(RenderView* self);
+    static void Resize(RenderView* self, u32 width, u32 height);
+    static bool BuildPacket(RenderView* self, class LinearAllocator& FrameAllocator, void* data, RenderView::Packet& OutPacket);
+    static bool Render(RenderView* self, const RenderView::Packet& packet, u64 FrameNumber, u64 RenderTargetIndex, const FrameData& rFrameData);
 
     void* operator new(u64 size);
     void operator delete(void* ptr, u64 size);

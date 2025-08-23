@@ -107,6 +107,12 @@ bool RenderViewSystem::Register(RenderView *view)
     // Установить указатель элемента массива.
     pState->RegisteredViews[id] = view;
 
+    // Вызов функции регистрации представления
+    if (!view->OnRegistered(view)) {
+        MERROR("Не удалось зарегистрировать представление '%s'.", view->name);
+        return false;
+    }
+
     RegenerateRenderTargets(view);
 
     return true;
@@ -116,8 +122,9 @@ void RenderViewSystem::OnWindowResize(u32 width, u32 height)
 {
     // Отправить всем видам
     for (u32 i = 0; i < pState->MaxViewCount; ++i) {
-        if (pState->RegisteredViews[i]) {
-            pState->RegisteredViews[i]->Resize(width, height);
+        auto view = pState->RegisteredViews[i];
+        if (view) {
+            view->Resize(view, width, height);
         }
     }
 }
@@ -137,7 +144,7 @@ RenderView *RenderViewSystem::Get(const char *name)
 bool RenderViewSystem::BuildPacket(RenderView *view, class LinearAllocator& FrameAllocator, void *data, RenderView::Packet &OutPacket)
 {
     if (view) {
-        return view->BuildPacket(FrameAllocator, data, OutPacket);
+        return view->BuildPacket(view, FrameAllocator, data, OutPacket);
     }
 
     MERROR("RenderViewSystem::BuildPacket требует действительных указателей на представление и пакет.");
@@ -147,7 +154,7 @@ bool RenderViewSystem::BuildPacket(RenderView *view, class LinearAllocator& Fram
 bool RenderViewSystem::OnRender(RenderView *view, const RenderView::Packet &packet, u64 FrameNumber, u64 RenderTargetIndex, const FrameData& rFramedata)
 {
     if (view) {
-        return view->Render(packet, FrameNumber, RenderTargetIndex, rFramedata);
+        return view->Render(view, packet, FrameNumber, RenderTargetIndex, rFramedata);
     }
 
     MERROR("RenderViewSystem::Render требует действительный указатель на данные.");
@@ -179,10 +186,10 @@ void RenderViewSystem::RegenerateRenderTargets(RenderView* view)
                         continue;
                     }
                 } else if (attachment.source == RenderTargetAttachmentSource::View) {
-                    if (!view->RegenerateAttachmentTarget()) {
+                    if (!view->RegenerateAttachmentTarget) {
                         continue;
                     } else {
-                        if (!view->RegenerateAttachmentTarget(r, &attachment)) {
+                        if (!view->RegenerateAttachmentTarget(view, r, &attachment)) {
                             MERROR("Не удалось повторно создать целевой объект вложения для типа вложения: 0x%x", attachment.type);
                         }
                     }

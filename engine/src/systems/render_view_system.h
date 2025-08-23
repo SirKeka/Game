@@ -10,7 +10,7 @@
 #include "renderer/render_view.h"
 
 struct FrameData;
-class RenderView;
+struct RenderView;
 
 /// @brief Конфигурация для системы рендеринга представлений.
 struct RenderViewSystemConfig

@@ -76,13 +76,6 @@ struct ResourceLoader
         id = INVALID::ID;
     };
 
-    void Create(eResource::Type type, MString&& CustomType, MString&& TypePath) {
-        this->id = INVALID::ID;
-        this->type = type;
-        this->CustomType = static_cast<MString&&>(CustomType);
-        this->TypePath = static_cast<MString&&>(TypePath);
-    }
-
     MINLINE void Destroy() { this->~ResourceLoader(); }
 
          bool Load(const char* name, void* params,        TextResource& OutResource);

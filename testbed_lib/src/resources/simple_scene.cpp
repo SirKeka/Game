@@ -25,7 +25,7 @@ bool SimpleScene::Create(SimpleSceneConfig *config)
 
     // Внутренние «списки» визуализируемых объектов.
     DirLight = nullptr;
-    sb = nullptr;
+    skybox = nullptr;
 
     if (config) {
         this->config = new SimpleSceneConfig((SimpleSceneConfig&&)*config); // MemorySystem::Allocate(sizeof(SimpleSceneConfig), Memory::Scene);
@@ -68,11 +68,11 @@ bool SimpleScene::Initialize()
         if (config->SkyboxConfig.name && config->SkyboxConfig.CubemapName) {
             Skybox::Config SbConfig = {0};
             SbConfig.CubemapName = (MString&&)config->SkyboxConfig.CubemapName;
-            sb = new Skybox();
-            if (!sb->Create(SbConfig)) {
+            skybox = new Skybox();
+            if (!skybox->Create(SbConfig)) {
                 MWARN("Не удалось создать скайбокс.");
-                delete sb;
-                sb = nullptr;
+                delete skybox;
+                skybox = nullptr;
             }
         }
 
@@ -233,10 +233,10 @@ bool SimpleScene::Initialize()
         }
     }
 
-    if (sb) {
-        if (!sb->Initialize()) {
+    if (skybox) {
+        if (!skybox->Initialize()) {
             MERROR("Skybox не удалось инициализировать.");
-            sb = nullptr;
+            skybox = nullptr;
             // return false;
         }
     }
@@ -267,11 +267,11 @@ bool SimpleScene::Load()
     // Обновите состояние, чтобы показать, что сцена в данный момент загружается.
     state = State::Loading;
 
-    if (sb) {
-        if (sb->InstanceID == INVALID::ID) {
-            if (!sb->Load()) {
+    if (skybox) {
+        if (skybox->InstanceID == INVALID::ID) {
+            if (!skybox->Load()) {
                 MERROR("Не удалось загрузить Skybox.");
-                sb = nullptr;
+                skybox = nullptr;
                 return false;
             }
         }
@@ -424,12 +424,11 @@ bool SimpleScene::Update(const FrameData &rFrameData)
 bool SimpleScene::PopulateRenderPacket(Camera *CurrentCamera, f32 aspect, FrameData &rFrameData, RenderPacket &packet)
 {
     // Skybox
-    for (u32 i = 0; i < packet.ViewCount; ++i) {
-        auto& ViewPacket = packet.views[i];
+    if (skybox) {
+        auto& ViewPacket = packet.views[Testbed::PacketViews::Skybox];
         const auto view = ViewPacket.view;
-        if (sb) {
-            // Скайбокс
-            SkyboxPacketData SkyboxData = {sb};
+        SkyboxPacketData SkyboxData = {skybox};
+        if (skybox) {
             if (!RenderViewSystem::BuildPacket(view, *rFrameData.FrameAllocator, &SkyboxData, ViewPacket)) {
                 MERROR("Не удалось создать пакет для вида «skybox».");
                 return false;
@@ -437,15 +436,15 @@ bool SimpleScene::PopulateRenderPacket(Camera *CurrentCamera, f32 aspect, FrameD
         }
     }
 
-    for (u32 v = 0; v < packet.ViewCount; ++v) {
-        auto& ViewPacket = packet.views[Testbed::PacketViews::Skybox];
+    {
+        auto& ViewPacket = packet.views[Testbed::PacketViews::World];
         const auto view = ViewPacket.view;
-
         // Обязательно очистите массив геометрии мира.
         WorldData.WorldGeometries.Clear();
         WorldData.TerrainGeometries.Clear();
         WorldData.DebugGeometries.Clear();
 
+        // Обновить усеченную пирамиду
         auto forward = CurrentCamera->Forward();
         auto right = CurrentCamera->Right();
         auto up = CurrentCamera->Up();
@@ -455,6 +454,7 @@ bool SimpleScene::PopulateRenderPacket(Camera *CurrentCamera, f32 aspect, FrameD
         f.Create(CurrentCamera->GetPosition(), forward, right, up, aspect, Math::DegToRad(45.F), 0.1F, 1000.F);
 
         rFrameData.DrawnMeshCount = 0;
+        
         const u64& MeshCount = meshes.Length();
         for (u32 i = 0; i < MeshCount; ++i) {
             auto& m = meshes[i];
@@ -730,11 +730,11 @@ bool SimpleScene::AddMesh(const char* name, Mesh &m)
 bool SimpleScene::AddSkybox(const char* name, Skybox &sb)
 {
     // ЗАДАЧА: если он уже существует, нужно ли что-то с ним делать?
-    this->sb = &sb;
+    this->skybox = &sb;
     if (state > State::Initialized) {
         if (!sb.Initialize()) {
             MERROR("Skybox не удалось инициализировать.");
-            this->sb = nullptr;
+            this->skybox = nullptr;
             return false;
         }
     }
@@ -742,7 +742,7 @@ bool SimpleScene::AddSkybox(const char* name, Skybox &sb)
     if (state >= State::Loaded) {
         if (!sb.Load()) {
             MERROR("Skybox не удалось загрузить.");
-            this->sb = nullptr;
+            this->skybox = nullptr;
             return false;
         }
     }
@@ -803,7 +803,7 @@ Mesh *SimpleScene::GetMesh(const MString &name)
 
 Skybox *SimpleScene::GetSkybox(const char *name)
 {
-    return sb;
+    return skybox;
 }
 
 Terrain *SimpleScene::GetTerrain(const char *name)
@@ -930,12 +930,12 @@ bool SimpleScene::RemoveSkybox(const char* name)
     }
 
     // ЗАДАЧА: имя?
-    if (!sb) {
+    if (!skybox) {
         MWARN("Невозможно удалить скайбокс из сцены, частью которой он не является.");
         return false;
     }
 
-    sb = nullptr;
+    skybox = nullptr;
 
     return true;
 }
@@ -966,12 +966,12 @@ bool SimpleScene::RemoveTerrain(const char *name)
 
 void SimpleScene::ActualUnload()
 {
-    if (sb) {
-        if (!sb->Unload()) {
+    if (skybox) {
+        if (!skybox->Unload()) {
             MERROR("Не удалось выгрузить скайбокс");
         }
-        sb->Destroy();
-        sb = nullptr;
+        skybox->Destroy();
+        skybox = nullptr;
     }
 
     const u64& MeshCount = meshes.Length();
@@ -1045,7 +1045,7 @@ void SimpleScene::ActualUnload()
 
     // Также уничтожьте сцену.
     DirLight = nullptr;
-    sb = nullptr;
+    skybox = nullptr;
 
     if (pLightCount > 0) {
         PointLights.Destroy();

@@ -20,23 +20,25 @@ bool RenderViewOnEvent(u16 code, void *sender, void *ListenerInst, EventContext 
     return false;
 }
 
-constexpr RenderView::RenderView(const char *name, u16 width, u16 height, u8 RenderpassCount, const char *CustomShaderName)
-    :
-      name(name),
-      width(width), height(height),
-      RenderpassCount(RenderpassCount),
-      passes(MemorySystem::TAllocate<Renderpass>(Memory::Renderer, RenderpassCount)),
-      CustomShaderName(CustomShaderName) {}
+// constexpr RenderView::RenderView(const char *name, u8 RenderpassCount, Renderpass *renderpass, const char *CustomShaderName,
+//                                  bool (*OnRegistered)(RenderView *), void (*Resize)(RenderView *, u32, u32),
+//                                  bool (*BuildPacket)(RenderView *, LinearAllocator &, void *, Packet &),
+//                                  bool (*Render)(RenderView *, const Packet &, u64, u64, const FrameData &),
+//                                  bool (*RegenerateAttachmentTarget)(RenderView *, u32, RenderTargetAttachment *))
+//     : name(name),
+//       width(), height(),
+//       RenderpassCount(RenderpassCount),
+//       passes(renderpass),
+//       CustomShaderName(CustomShaderName),
+//       OnRegistered(OnRegistered),
+//       BuildPacket(BuildPacket),
+//       Render(Render),
+//       RegenerateAttachmentTarget(RegenerateAttachmentTarget)
+// {}
 
 RenderView::~RenderView()
 {
     for (u32 i = 0; i < RenderpassCount; i++) {
         RenderingSystem::RenderpassDestroy(&passes[i]);
     }
-}
-
-bool RenderView::RegenerateAttachmentTarget(u32 PassIndex, RenderTargetAttachment *attachment)
-{
-    MFATAL("RENDER_TARGET_ATTACHMENT_SOURCE_VIEW настроен для вложения, представление которого не поддерживает эту операцию.");
-    return false;
 }

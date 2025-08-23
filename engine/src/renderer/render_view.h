@@ -7,6 +7,8 @@ struct Renderpass;
 struct GeometryID;
 struct Terrain;
 struct FrameData;
+class LinearAllocator;
+struct RenderTargetAttachment;
 
 struct GeometryRenderData 
 {
@@ -22,9 +24,8 @@ struct SkyboxPacketData {
     constexpr SkyboxPacketData(Skybox* sb) : sb(sb) {}
 };
 
-class MAPI RenderView
+struct MAPI RenderView
 {
-public:
 struct Packet;
 // ЗАДАЧА: изменить архитектуру
     const char* name;               // Имя представления.
@@ -35,9 +36,19 @@ struct Packet;
     Renderpass* passes;             // Массив указателей на проходы рендеринга, используемые этим представлением.
 
     const char* CustomShaderName;   // Имя пользовательского шейдера, используемого этим представлением, если таковой имеется.
+    
+    void* data;             // Внутренние данные, специфичные для данного представления.
 
-    constexpr RenderView() : name(), width(), height(), RenderpassCount(), passes(nullptr), CustomShaderName(nullptr) {}
-    constexpr RenderView(const char* name, u16 width, u16 height, u8 RenderpassCount, const char* CustomShaderName);
+    constexpr RenderView() : name(), width(), height(), RenderpassCount(), passes(nullptr), CustomShaderName(nullptr), 
+    OnRegistered(nullptr), Resize(nullptr), BuildPacket(nullptr), Render(nullptr), RegenerateAttachmentTarget(nullptr) 
+    {}
+    // constexpr RenderView(const char* name, u8 RenderpassCount, Renderpass* renderpass, const char* CustomShaderName, 
+    //     bool (*OnRegistered)(RenderView*) = nullptr, void (*Resize)(RenderView*, u32, u32) = nullptr, 
+    //     bool (*BuildPacket)(RenderView*, LinearAllocator&, void*, Packet&) = nullptr,
+    //     bool (*Render)(RenderView*, const Packet&, u64, u64, const FrameData&) = nullptr, 
+    //     bool (*RegenerateAttachmentTarget)(RenderView*, u32, RenderTargetAttachment*) = nullptr
+    // );
+
     virtual ~RenderView();
 
     void DestroyPacket(Packet& packet) {
@@ -47,30 +58,38 @@ struct Packet;
         MemorySystem::ZeroMem(&packet, sizeof(Packet));
     }
 
+    /// @brief Регистрирует данное представление
+    /// @param self Указатель на представление для использования.
+    /// @return true, если успешно иначе false
+    bool (*OnRegistered)(RenderView* self);
+
     /// @brief Измененяет размер владельца этого представления (например, окна).
+    /// @param self Указатель на представление для использования.
     /// @param width новая ширина в пикселях.
     /// @param height новая высота в пикселях.
-    virtual void Resize(u32 width, u32 height) {}
+    void (*Resize)(RenderView* self, u32 width, u32 height);
 
     /// @brief Создает пакет представления рендеринга, используя предоставленное представление(view) и сетки(meshes).
+    /// @param self Указатель на представление для использования.
     /// @param data данные свободной формы, используемые для создания пакета.
     /// @param OutPacket указатель для хранения сгенерированного пакета.
     /// @return true в случае успеха; в противном случае false.
-    virtual bool BuildPacket(class LinearAllocator& FrameAllocator, void* data, Packet& OutPacket) { return false; }
+    bool (*BuildPacket)(RenderView* self, LinearAllocator& FrameAllocator, void* data, Packet& OutPacket);
 
     /// @brief Использует заданное представление и пакет для визуализации содержимого.
+    /// @param self Указатель на представление для использования.
     /// @param packet указатель на пакет, данные которого должны быть визуализированы.
     /// @param FrameNumber текущий номер кадра визуализатора, обычно используемый для синхронизации данных.
     /// @param RenderTargetIndex текущий индекс цели визуализации для визуализаторов, которые используют несколько целей визуализации одновременно (например, Vulkan).
     /// @return true в случае успеха; в противном случае false.
-    virtual bool Render(const Packet& packet, u64 FrameNumber, u64 RenderTargetIndex, const FrameData& rFrameData) { return false; }
+    bool (*Render)(RenderView* self, const Packet& packet, u64 FrameNumber, u64 RenderTargetIndex, const FrameData& rFrameData);
 
     /// @brief Регенерирует ресурсы для указанного вложения по указанному индексу прохода.
     /// @param self Указатель на представление для использования.
     /// @param PassIndex Индекс прохода рендеринга для генерации.
     /// @param attachment Указатель на вложение, ресурсы которого должны быть регенерированы.
     /// @return True в случае успеха; в противном случае false.
-    virtual bool RegenerateAttachmentTarget(u32 PassIndex = 0, struct RenderTargetAttachment* attachment = nullptr);
+    bool (*RegenerateAttachmentTarget)(RenderView* self, u32 PassIndex, RenderTargetAttachment* attachment);
  
     /// @brief Пакет для представления рендеринга, созданный им и содержащий данные о том, что должно быть визуализировано.
     /// @param RenderView*_view Указатель на представление, с которым связан этот пакет.

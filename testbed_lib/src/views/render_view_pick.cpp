@@ -7,111 +7,118 @@
 #include "systems/resource_system.h"
 #include "systems/shader_system.h"
 
-RenderViewPick::RenderViewPick()
-: RenderView(),
-ColoureTargetAttachmentTexture(),
-DepthTargetAttachmentTexture(),
-InstanceCount(),
-MouseX(), MouseY()
+bool RenderViewPick::OnRegistered(RenderView* self)
 {
-    // ПРИМЕЧАНИЕ: В этом сильно настроенном представлении точное количество проходов известно, поэтому эти предположения индекса верны.
-    WorldShaderInfo.pass   = &passes[0];
-    TerrainShaderInfo.pass = &passes[0];
-    UiShaderInfo.pass      = &passes[1];
+    if (self) {
+        auto PickViewData = new RenderViewPick();
+        self->data = PickViewData;
 
-    // Встроенный шейдер UI Pick.
-    const char* UiShaderName = "Shader.Builtin.UIPick";
-    ShaderResource ConfigResource;
-    if (!ResourceSystem::Load(UiShaderName, eResource::Shader, nullptr, ConfigResource)) {
-        MERROR("Не удалось загрузить встроенный шейдер UI Pick.");
-        return;
-    }
+        // ПРИМЕЧАНИЕ: В этом сильно настроенном представлении точное количество проходов известно, поэтому эти предположения индекса верны.
+        auto& WorldShaderInfo   = PickViewData->WorldShaderInfo;
+        auto& TerrainShaderInfo = PickViewData->TerrainShaderInfo;
+        auto& UiShaderInfo      = PickViewData->UiShaderInfo;
 
-    if (!ShaderSystem::Create(*UiShaderInfo.pass, ConfigResource.data)) {
-        MERROR("Не удалось загрузить встроенный шейдер UI Pick.");
-        return;
-    }
-    ResourceSystem::Unload(ConfigResource);
-    UiShaderInfo.s = ShaderSystem::GetShader(UiShaderName);
+        WorldShaderInfo.pass   = &self->passes[0];
+        TerrainShaderInfo.pass = &self->passes[0];
+        UiShaderInfo.pass      = &self->passes[1];
 
-    // Извлечь однородные местоположения
-    UiShaderInfo.IdColourLocation   = ShaderSystem::UniformIndex(UiShaderInfo.s, "id_colour");
-    UiShaderInfo.ModelLocation      = ShaderSystem::UniformIndex(UiShaderInfo.s, "model");
-    UiShaderInfo.ProjectionLocation = ShaderSystem::UniformIndex(UiShaderInfo.s, "projection");
-    UiShaderInfo.ViewLocation       = ShaderSystem::UniformIndex(UiShaderInfo.s, "view");
+        // Встроенный шейдер UI Pick.
+        const char* UiShaderName = "Shader.Builtin.UIPick";
+        ShaderResource ConfigResource;
+        if (!ResourceSystem::Load(UiShaderName, eResource::Shader, nullptr, ConfigResource)) {
+            MERROR("Не удалось загрузить встроенный шейдер UI Pick.");
+            return false;
+        }
 
-    // Свойства UI по умолчанию
-    UiShaderInfo.NearClip = -100.F;
-    UiShaderInfo.FarClip = 100.F;
-    UiShaderInfo.fov = 0;
-    UiShaderInfo.projection = Matrix4D::MakeOrthographicProjection(0.F, 1280.F, 720.F, 0.F, UiShaderInfo.NearClip, UiShaderInfo.FarClip);
-    UiShaderInfo.view = Matrix4D::MakeIdentity();
+        if (!ShaderSystem::Create(*UiShaderInfo.pass, ConfigResource.data)) {
+            MERROR("Не удалось загрузить встроенный шейдер UI Pick.");
+            return false;
+        }
+        ResourceSystem::Unload(ConfigResource);
+        UiShaderInfo.s = ShaderSystem::GetShader(UiShaderName);
 
-    // Встроенный шейдер World Pick.
-    const char* WorldShaderName = "Shader.Builtin.WorldPick";
-    if (!ResourceSystem::Load(WorldShaderName, eResource::Shader, nullptr, ConfigResource)) {
-        MERROR("Не удалось загрузить встроенный шейдер World Pick.");
-        return;
+        // Извлечь однородные местоположения
+        UiShaderInfo.IdColourLocation   = ShaderSystem::UniformIndex(UiShaderInfo.s, "id_colour");
+        UiShaderInfo.ModelLocation      = ShaderSystem::UniformIndex(UiShaderInfo.s, "model");
+        UiShaderInfo.ProjectionLocation = ShaderSystem::UniformIndex(UiShaderInfo.s, "projection");
+        UiShaderInfo.ViewLocation       = ShaderSystem::UniformIndex(UiShaderInfo.s, "view");
+
+        // Свойства UI по умолчанию
+        UiShaderInfo.NearClip = -100.F;
+        UiShaderInfo.FarClip = 100.F;
+        UiShaderInfo.fov = 0;
+        UiShaderInfo.projection = Matrix4D::MakeOrthographicProjection(0.F, 1280.F, 720.F, 0.F, UiShaderInfo.NearClip, UiShaderInfo.FarClip);
+        UiShaderInfo.view = Matrix4D::MakeIdentity();
+
+        // Встроенный шейдер World Pick.
+        const char* WorldShaderName = "Shader.Builtin.WorldPick";
+        if (!ResourceSystem::Load(WorldShaderName, eResource::Shader, nullptr, ConfigResource)) {
+            MERROR("Не удалось загрузить встроенный шейдер World Pick.");
+            return false;
+        }
+        
+        if (!ShaderSystem::Create(*WorldShaderInfo.pass, ConfigResource.data)) {
+            MERROR("Не удалось загрузить встроенный шейдер World Pick.");
+            return false;
+        }
+        ResourceSystem::Unload(ConfigResource);
+        WorldShaderInfo.s = ShaderSystem::GetShader(WorldShaderName);
+
+        // Извлечь однородные местоположения.
+        WorldShaderInfo.IdColourLocation   = ShaderSystem::UniformIndex(WorldShaderInfo.s, "id_colour");
+        WorldShaderInfo.ModelLocation      = ShaderSystem::UniformIndex(WorldShaderInfo.s, "model");
+        WorldShaderInfo.ProjectionLocation = ShaderSystem::UniformIndex(WorldShaderInfo.s, "projection");
+        WorldShaderInfo.ViewLocation       = ShaderSystem::UniformIndex(WorldShaderInfo.s, "view");
+
+        // Свойства мира по умолчанию
+        WorldShaderInfo.NearClip = 0.1F;
+        WorldShaderInfo.FarClip = 4000.F;
+        WorldShaderInfo.fov = Math::DegToRad(45.0f);
+        WorldShaderInfo.projection = Matrix4D::MakeFrustumProjection(WorldShaderInfo.fov, 1280 / 720.F, WorldShaderInfo.NearClip, WorldShaderInfo.FarClip);
+        WorldShaderInfo.view = Matrix4D::MakeIdentity();
+
+        // Встроенный шейдер Terrain Pick.
+        const char* TerrainShaderName = "Shader.Builtin.TerrainPick";
+        if (!ResourceSystem::Load(TerrainShaderName, eResource::Shader, nullptr, ConfigResource)) {
+            MERROR("Не удалось загрузить встроенный шейдер Terrain Pick.");
+            return false;
+        }
+
+        if (!ShaderSystem::Create(*TerrainShaderInfo.pass, ConfigResource.data)) {
+            MERROR("Не удалось загрузить встроенный шейдер Terrain Pick.");
+            return false;
+        }
+        ResourceSystem::Unload(ConfigResource);
+        TerrainShaderInfo.s = ShaderSystem::GetShader(TerrainShaderName);
+
+        // Извлечь однородные местоположения.
+        TerrainShaderInfo.IdColourLocation   = ShaderSystem::UniformIndex(TerrainShaderInfo.s, "id_colour");
+        TerrainShaderInfo.ModelLocation      = ShaderSystem::UniformIndex(TerrainShaderInfo.s, "model");
+        TerrainShaderInfo.ProjectionLocation = ShaderSystem::UniformIndex(TerrainShaderInfo.s, "projection");
+        TerrainShaderInfo.ViewLocation       = ShaderSystem::UniformIndex(TerrainShaderInfo.s, "view");
+
+        // Свойства ландшафта по умолчанию.
+        TerrainShaderInfo.NearClip = 0.1F;
+        TerrainShaderInfo.FarClip = 4000.F;
+        TerrainShaderInfo.fov = Math::DegToRad(45.F);
+        TerrainShaderInfo.projection = Matrix4D::MakeFrustumProjection(TerrainShaderInfo.fov, 1280 / 720.F, TerrainShaderInfo.NearClip, TerrainShaderInfo.FarClip);
+        TerrainShaderInfo.view = Matrix4D::MakeIdentity();
+
+        // Регистрация для события перемещения мыши.
+        if (!EventSystem::Register(EventSystem::MouseMoved, self, OnMouseMoved)) {
+            MERROR("Не удалось прослушать событие перемещения мыши, создание не удалось.");
+            return false;
+        }
+
+        if (!EventSystem::Register(EventSystem::DefaultRendertargetRefreshRequired, self, RenderViewOnEvent)) {
+            MERROR("Не удалось прослушать требуемое событие обновления, создание не удалось.");
+            return false;
+        }
+
+        return true;
     }
     
-    if (!ShaderSystem::Create(*WorldShaderInfo.pass, ConfigResource.data)) {
-        MERROR("Не удалось загрузить встроенный шейдер World Pick.");
-        return;
-    }
-    ResourceSystem::Unload(ConfigResource);
-    WorldShaderInfo.s = ShaderSystem::GetShader(WorldShaderName);
-
-    // Извлечь однородные местоположения.
-    WorldShaderInfo.IdColourLocation   = ShaderSystem::UniformIndex(WorldShaderInfo.s, "id_colour");
-    WorldShaderInfo.ModelLocation      = ShaderSystem::UniformIndex(WorldShaderInfo.s, "model");
-    WorldShaderInfo.ProjectionLocation = ShaderSystem::UniformIndex(WorldShaderInfo.s, "projection");
-    WorldShaderInfo.ViewLocation       = ShaderSystem::UniformIndex(WorldShaderInfo.s, "view");
-
-    // Свойства мира по умолчанию
-    WorldShaderInfo.NearClip = 0.1F;
-    WorldShaderInfo.FarClip = 4000.F;
-    WorldShaderInfo.fov = Math::DegToRad(45.0f);
-    WorldShaderInfo.projection = Matrix4D::MakeFrustumProjection(WorldShaderInfo.fov, 1280 / 720.F, WorldShaderInfo.NearClip, WorldShaderInfo.FarClip);
-    WorldShaderInfo.view = Matrix4D::MakeIdentity();
-
-    // Встроенный шейдер Terrain Pick.
-    const char* TerrainShaderName = "Shader.Builtin.TerrainPick";
-    if (!ResourceSystem::Load(TerrainShaderName, eResource::Shader, nullptr, ConfigResource)) {
-        MERROR("Не удалось загрузить встроенный шейдер Terrain Pick.");
-        return;
-    }
-
-    if (!ShaderSystem::Create(*TerrainShaderInfo.pass, ConfigResource.data)) {
-        MERROR("Не удалось загрузить встроенный шейдер Terrain Pick.");
-        return;
-    }
-    ResourceSystem::Unload(ConfigResource);
-    TerrainShaderInfo.s = ShaderSystem::GetShader(TerrainShaderName);
-
-    // Извлечь однородные местоположения.
-    TerrainShaderInfo.IdColourLocation   = ShaderSystem::UniformIndex(TerrainShaderInfo.s, "id_colour");
-    TerrainShaderInfo.ModelLocation      = ShaderSystem::UniformIndex(TerrainShaderInfo.s, "model");
-    TerrainShaderInfo.ProjectionLocation = ShaderSystem::UniformIndex(TerrainShaderInfo.s, "projection");
-    TerrainShaderInfo.ViewLocation       = ShaderSystem::UniformIndex(TerrainShaderInfo.s, "view");
-
-    // Свойства ландшафта по умолчанию.
-    TerrainShaderInfo.NearClip = 0.1F;
-    TerrainShaderInfo.FarClip = 4000.F;
-    TerrainShaderInfo.fov = Math::DegToRad(45.F);
-    TerrainShaderInfo.projection = Matrix4D::MakeFrustumProjection(TerrainShaderInfo.fov, 1280 / 720.F, TerrainShaderInfo.NearClip, TerrainShaderInfo.FarClip);
-    TerrainShaderInfo.view = Matrix4D::MakeIdentity();
-
-    // Регистрация для события перемещения мыши.
-    if (!EventSystem::Register(EventSystem::MouseMoved, this, OnMouseMoved)) {
-        MERROR("Не удалось прослушать событие перемещения мыши, создание не удалось.");
-        return;
-    }
-
-    if (!EventSystem::Register(EventSystem::DefaultRendertargetRefreshRequired, this, RenderViewOnEvent)) {
-        MERROR("Не удалось прослушать требуемое событие обновления, создание не удалось.");
-        return;
-    }
-
+    return false;
 }
 
 RenderViewPick::~RenderViewPick()
@@ -125,45 +132,51 @@ RenderViewPick::~RenderViewPick()
     RenderingSystem::Unload(&DepthTargetAttachmentTexture);
 }
 
-void RenderViewPick::Resize(u32 width, u32 height)
+void RenderViewPick::Resize(RenderView* self, u32 width, u32 height)
 {
-    this->width = width;
-    this->height = height;
+    auto ViewPickData = static_cast<RenderViewPick*>(self->data);
+
+    self->width = width;
+    self->height = height;
 
     // Пользовательский интерфейс
+    auto& UiShaderInfo = ViewPickData->UiShaderInfo;
     UiShaderInfo.projection = Matrix4D::MakeOrthographicProjection(0.F, (f32)width, (f32)height, 0.F, UiShaderInfo.NearClip, UiShaderInfo.FarClip);
 
     // Мир
-    f32 aspect = (f32)this->width / this->height;
+    auto& WorldShaderInfo = ViewPickData->WorldShaderInfo;
+    f32 aspect = (f32)self->width / self->height;
     WorldShaderInfo.projection = Matrix4D::MakeFrustumProjection(WorldShaderInfo.fov, aspect, WorldShaderInfo.NearClip, WorldShaderInfo.FarClip);
 
     // Ландшафт
+    auto& TerrainShaderInfo = ViewPickData->TerrainShaderInfo;
     TerrainShaderInfo.projection = Matrix4D::MakeFrustumProjection(TerrainShaderInfo.fov, aspect, TerrainShaderInfo.NearClip, TerrainShaderInfo.FarClip);
 
-    for (u32 i = 0; i < RenderpassCount; ++i) {
-        passes[i].RenderArea.x = 0;
-        passes[i].RenderArea.y = 0;
-        passes[i].RenderArea.z = width;
-        passes[i].RenderArea.w = height;
+    for (u32 i = 0; i < self->RenderpassCount; ++i) {
+        self->passes[i].RenderArea.x = 0;
+        self->passes[i].RenderArea.y = 0;
+        self->passes[i].RenderArea.z = width;
+        self->passes[i].RenderArea.w = height;
     }
 }
 
-bool RenderViewPick::BuildPacket(LinearAllocator& FrameAllocator, void *data, Packet &OutPacket)
+bool RenderViewPick::BuildPacket(RenderView* self, LinearAllocator& FrameAllocator, void *data, RenderView::Packet &OutPacket)
 {
     if (!data) {
         MWARN("RenderViewPick::BuildPacket требует действительный указатель на вид, пакет и данные.");
         return false;
     }
 
+    auto ViewData = reinterpret_cast<RenderViewPick*>(self->data);
     auto PacketData = reinterpret_cast<RenderViewPick::PacketData*>(data);
 
     //OutPacket.geometries = darray_create(geometry_render_data);
-    OutPacket.view = this;
+    OutPacket.view = self;
 
     // ЗАДАЧА: Получить активную камеру.
     auto WorldCamera = CameraSystem::Instance()->GetDefault();
-    WorldShaderInfo.view = WorldCamera->GetView();
-    TerrainShaderInfo.view = WorldCamera->GetView();
+    ViewData->WorldShaderInfo.view = WorldCamera->GetView();
+    ViewData->TerrainShaderInfo.view = WorldCamera->GetView();
 
     // Установить данные пакета выбора на расширенные данные.
     PacketData->UiGeometryCount = 0;
@@ -224,10 +237,10 @@ bool RenderViewPick::BuildPacket(LinearAllocator& FrameAllocator, void *data, Pa
 
     // ЗАДАЧА: здесь необходимо учитывать самый высокий идентификатор, а не количество, потому что они могут пропускать и пропускают идентификаторы.
     // Проверить существование ресурсов экземпляра.
-    if (RequiredInstanceCount > InstanceCount) {
-        u32 diff = RequiredInstanceCount - InstanceCount;
+    if (RequiredInstanceCount > ViewData->InstanceCount) {
+        u32 diff = RequiredInstanceCount - ViewData->InstanceCount;
         for (u32 i = 0; i < diff; ++i) {
-            AcquireShaderInstances();
+            ViewData->AcquireShaderInstances();
         }
     }
 
@@ -237,16 +250,18 @@ bool RenderViewPick::BuildPacket(LinearAllocator& FrameAllocator, void *data, Pa
     return true;
 }
 
-bool RenderViewPick::Render(const Packet &packet, u64 FrameNumber, u64 RenderTargetIndex, const FrameData& rFrameData)
+bool RenderViewPick::Render(RenderView* self, const RenderView::Packet &packet, u64 FrameNumber, u64 RenderTargetIndex, const FrameData& rFrameData)
 {
+    auto PickData = reinterpret_cast<RenderViewPick*>(self->data);
+    
     u32 p = 0;
-    auto* pass = &passes[p];  // Первый проход отрисовщика
+    auto* pass = &self->passes[p];  // Первый проход отрисовщика
 
     if (RenderTargetIndex == 0) {
         // Reset.
-        const u64& count = InstanceUpdate.Length();
+        const u64& count = PickData->InstanceUpdate.Length();
         for (u64 i = 0; i < count; ++i) {
-            InstanceUpdate[i] = false;
+            PickData->InstanceUpdate[i] = false;
         }
 
         if (!RenderingSystem::RenderpassBegin(pass, pass->targets[RenderTargetIndex])) {
@@ -259,6 +274,7 @@ bool RenderViewPick::Render(const Packet &packet, u64 FrameNumber, u64 RenderTar
         i32 CurrentInstanceID = 0;
 
         // Мир
+        auto& WorldShaderInfo = PickData->WorldShaderInfo;
         if (!ShaderSystem::Use(WorldShaderInfo.s->id)) {
             MERROR("Не удалось использовать шейдер выбора мира. Не удалось выполнить рендеринг кадра.");
             return false;
@@ -291,9 +307,9 @@ bool RenderViewPick::Render(const Packet &packet, u64 FrameNumber, u64 RenderTar
                 return false;
             }
 
-            bool NeedsUpdate = !InstanceUpdate[CurrentInstanceID];
+            bool NeedsUpdate = !PickData->InstanceUpdate[CurrentInstanceID];
             ShaderSystem::ApplyInstance(NeedsUpdate);
-            InstanceUpdate[CurrentInstanceID] = true;
+            PickData->InstanceUpdate[CurrentInstanceID] = true;
 
             // Применить локальные переменные
             if (!ShaderSystem::UniformSet(WorldShaderInfo.ModelLocation, &geo.model)) {
@@ -306,6 +322,7 @@ bool RenderViewPick::Render(const Packet &packet, u64 FrameNumber, u64 RenderTar
         // Геометрии конечного мира
 
         //Геометрии ландшафта
+        auto& TerrainShaderInfo = PickData->TerrainShaderInfo;
         if (!ShaderSystem::Use(TerrainShaderInfo.s->id)) {
             MERROR("Не удалось использовать шейдер выбора ландшафта. Не удалось отрисовать кадр.");
             return false;
@@ -338,9 +355,9 @@ bool RenderViewPick::Render(const Packet &packet, u64 FrameNumber, u64 RenderTar
                 return false;
             }
 
-            bool NeedsUpdate = !InstanceUpdate[CurrentInstanceID];
+            bool NeedsUpdate = !PickData->InstanceUpdate[CurrentInstanceID];
             ShaderSystem::ApplyInstance(NeedsUpdate);
-            InstanceUpdate[CurrentInstanceID] = true;
+            PickData->InstanceUpdate[CurrentInstanceID] = true;
 
             // Применить локальные переменные
             if (!ShaderSystem::UniformSet(TerrainShaderInfo.ModelLocation, &geo.model)) {
@@ -357,7 +374,7 @@ bool RenderViewPick::Render(const Packet &packet, u64 FrameNumber, u64 RenderTar
         }
 
         p++;
-        pass = &passes[p];  // Второй проход
+        pass = &self->passes[p];  // Второй проход
 
         if (!RenderingSystem::RenderpassBegin(pass, pass->targets[RenderTargetIndex])) {
             MERROR("RenderViewPick::Render индекс прохода %u не удалось запустить.", p);
@@ -365,6 +382,7 @@ bool RenderViewPick::Render(const Packet &packet, u64 FrameNumber, u64 RenderTar
         }
 
         // пользовательский интерфейс
+        auto& UiShaderInfo = PickData->UiShaderInfo;
         if (!ShaderSystem::Use(UiShaderInfo.s->id)) {
             MERROR("Не удалось использовать шейдер материала. Не удалось выполнить рендеринг кадра.");
             return false;
@@ -396,9 +414,9 @@ bool RenderViewPick::Render(const Packet &packet, u64 FrameNumber, u64 RenderTar
                 return false;
             }
 
-            bool NeedsUpdate = !InstanceUpdate[CurrentInstanceID];
+            bool NeedsUpdate = !PickData->InstanceUpdate[CurrentInstanceID];
             ShaderSystem::ApplyInstance(NeedsUpdate);
-            InstanceUpdate[CurrentInstanceID] = true;
+            PickData->InstanceUpdate[CurrentInstanceID] = true;
 
             // Применить локальные переменные
             if (!ShaderSystem::UniformSet(UiShaderInfo.ModelLocation, &geo.model)) {
@@ -450,7 +468,7 @@ bool RenderViewPick::Render(const Packet &packet, u64 FrameNumber, u64 RenderTar
     // Прижать к размеру изображения
     // u16 xCoord = MCLAMP(MouseX, 0, width - 1);
     // u16 yCoord = MCLAMP(MouseY, 0, height - 1);
-    RenderingSystem::TextureReadPixel(&ColoureTargetAttachmentTexture, MouseX, MouseY, &pixel);
+    RenderingSystem::TextureReadPixel(&PickData->ColoureTargetAttachmentTexture, PickData->MouseX, PickData->MouseY, &pixel);
 
     // Извлечь идентификатор из выбранного цвета.
     u32 id = INVALID::ID;
@@ -467,16 +485,18 @@ bool RenderViewPick::Render(const Packet &packet, u64 FrameNumber, u64 RenderTar
     return true;
 }
 
-bool RenderViewPick::RegenerateAttachmentTarget(u32 PassIndex, RenderTargetAttachment *attachment)
+bool RenderViewPick::RegenerateAttachmentTarget(RenderView* self, u32 PassIndex, RenderTargetAttachment *attachment)
 {
+    auto PickData = reinterpret_cast<RenderViewPick*>(self->data);
+
     if (!PassIndex && !attachment) {
         return true;
     }
 
     if (attachment->type == RenderTargetAttachmentType::Colour) {
-        attachment->texture = &ColoureTargetAttachmentTexture;
+        attachment->texture = &PickData->ColoureTargetAttachmentTexture;
     } else if (attachment->type == RenderTargetAttachmentType::Depth) {
-        attachment->texture = &DepthTargetAttachmentTexture;
+        attachment->texture = &PickData->DepthTargetAttachmentTexture;
     } else {
         MERROR("Неподдерживаемый тип прикрепления 0x%x.", attachment->type);
         return false;
@@ -498,8 +518,8 @@ bool RenderViewPick::RegenerateAttachmentTarget(u32 PassIndex, RenderTargetAttac
     // Сгенерируйте UUID, который будет использоваться в качестве имени текстуры.
     uuid TextureNameUuid = uuid::Generate();
 
-    u32 width = passes[PassIndex].RenderArea.z;
-    u32 height = passes[PassIndex].RenderArea.w;
+    u32 width = self->passes[PassIndex].RenderArea.z;
+    u32 height = self->passes[PassIndex].RenderArea.w;
     bool HasTransparency = false;  // ЗАДАЧА: настраиваемый
 
     attachment->texture->id = INVALID::ID;

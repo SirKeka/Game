@@ -3,7 +3,7 @@
 #include "resources/texture.hpp"
 #include "resources/mesh.h"
 
-class RenderViewPick : public RenderView
+class RenderViewPick
 {
 public:
     struct PacketData {
@@ -41,13 +41,14 @@ private:
     // u32 RenderMode;
 
 public:
-    RenderViewPick();
+    constexpr RenderViewPick() : ColoureTargetAttachmentTexture(), DepthTargetAttachmentTexture(), InstanceCount(), MouseX(), MouseY() {}
     ~RenderViewPick();
 
-    void Resize(u32 width, u32 height) override;
-    bool BuildPacket(class LinearAllocator& FrameAllocator, void* data, Packet& OutPacket) override;
-    bool Render(const Packet& packet, u64 FrameNumber, u64 RenderTargetIndex, const FrameData& rFrameData) override;
-    bool RegenerateAttachmentTarget(u32 PassIndex = 0, struct RenderTargetAttachment* attachment = nullptr) override;
+    static bool OnRegistered(RenderView* self);
+    static void Resize(RenderView* self, u32 width, u32 height);
+    static bool BuildPacket(RenderView* self, class LinearAllocator& FrameAllocator, void* data, RenderView::Packet& OutPacket);
+    static bool Render(RenderView* self, const RenderView::Packet& packet, u64 FrameNumber, u64 RenderTargetIndex, const FrameData& rFrameData);
+    static bool RegenerateAttachmentTarget(RenderView* self, u32 PassIndex = 0, struct RenderTargetAttachment* attachment = nullptr);
 
     void GetMatrices(Matrix4D& OutView, Matrix4D& OutProjection);
 

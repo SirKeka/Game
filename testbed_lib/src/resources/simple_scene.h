@@ -55,7 +55,7 @@ struct MAPI SimpleScene {
     DArray<Terrain> terrains;
     DArray<PendingMesh> PendingMeshes;
 
-    struct Skybox* sb;
+    struct Skybox* skybox;
 
     // Сетка для сцены.
     DebugGrid grid;
@@ -64,7 +64,7 @@ struct MAPI SimpleScene {
     struct SimpleSceneConfig* config;
     RenderViewWorldData WorldData;
 
-    SimpleScene() : id(GlobalSceneID++), state(State::Uninitialized), enabled(false), name(), description(), SceneTransform(), DirLight(nullptr), PointLights(), meshes(), terrains(), PendingMeshes(), sb(nullptr), grid(), config(nullptr), WorldData() {}
+    SimpleScene() : id(GlobalSceneID++), state(State::Uninitialized), enabled(false), name(), description(), SceneTransform(), DirLight(nullptr), PointLights(), meshes(), terrains(), PendingMeshes(), skybox(nullptr), grid(), config(nullptr), WorldData() {}
 
     /// @brief Создает новую сцену с заданной конфигурацией со значениями по умолчанию. Ресурсы не выделены. Конфигурация еще не обработана.
     /// @param config Указатель на конфигурацию. Необязательно.

@@ -60,10 +60,10 @@
         },
         {
             "type": "shell",
-            "label": "Post-Build",
-            "command": "${workspaceFolder}/post-build.sh",
+            "label": "Shader-Build",
+            "command": "${workspaceFolder}/shader-build.sh",
             "windows": {
-                "command": "${workspaceFolder}/post-build.bat",
+                "command": "${workspaceFolder}/shader-build.bat",
             },
             "options": {
                 "cwd": "${workspaceFolder}"

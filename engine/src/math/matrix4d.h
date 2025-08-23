@@ -118,7 +118,7 @@ public:
 	/// @param n расстояние до ближней плоскости отсечения.
 	/// @param f расстояние до дальней плоскости отсечения.
 	/// @return класс Matrix4D
-	MINLINE static Matrix4D MakeFrustumProjection(f32 fovy, f32 s, f32 n, f32 f) {
+	MINLINE static constexpr Matrix4D MakeFrustumProjection(f32 fovy, f32 s, f32 n, f32 f) {
 		f32 g = 1.0F / Math::tan(fovy * 0.5F);
 		f32 k = f / (f - n);
 

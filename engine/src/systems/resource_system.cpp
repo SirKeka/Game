@@ -57,29 +57,31 @@ void ResourceSystem::Shutdown()
     }
 }
 
-bool ResourceSystem::RegisterLoader(eResource::Type type, MString &&CustomType, const char *TypePath)
+bool ResourceSystem::RegisterLoader(eResource::Type type, MString && CustomType, const char *TypePath)
 {
-    // Убедитесь, что загрузчики данного типа еще не существуют.
+    // Если встроеный загрузчик уже зарегистрирован в системе, то мы предупреждаем об этом и возвращаем true
     i32 index = -1;
-    for (u32 i = 0; i < state->MaxLoaderCount; ++i) {
-        auto& l = state->RegisteredLoaders[i];
-        if (l.id != INVALID::ID) {
-            if (l.type == type) {
-                MERROR("ResourceSystem::RegisterLoader — загрузчик типа %d уже существует и не будет зарегистрирован.", type);
-                return false;
-            } else if (CustomType && CustomType.Length() > 0 && l.CustomType == CustomType) {
-                MERROR("ResourceSystem::RegisterLoader — загрузчик пользовательского типа %s уже существует и не будет зарегистрирован.", CustomType.c_str());
-                return false;
+    if (type < eResource::Custom && state->RegisteredLoaders[type].id != INVALID::ID) {
+        MWARN("ResourceSystem::RegisterLoader — загрузчик типа %d уже существует и не будет зарегистрирован.", type);
+        return true;
+    } else if (type > eResource::Custom) {
+        for (u32 i = eResource::Custom; i < state->MaxLoaderCount; ++i) {
+            auto& l = state->RegisteredLoaders[i];
+            if (l.id != INVALID::ID && CustomType && l.CustomType == CustomType) {
+                MWARN("ResourceSystem::RegisterLoader — загрузчик пользовательского типа %s уже существует и не будет зарегистрирован.", CustomType.c_str());
+                return true;
+            } else {
+                index = i;
             }
-        } else if (index == -1) {
-            index = i;
         }
-        
-    }
+    } else index = type;
 
-    if (state->RegisteredLoaders[index].id == INVALID::ID) {
-        state->RegisteredLoaders[index].Create(type, static_cast<MString&&>(CustomType), TypePath);
-        state->RegisteredLoaders[index].id = index;
+    auto& loader = state->RegisteredLoaders[index];
+    if (loader.id == INVALID::ID) {
+        loader.type = type;
+        if (CustomType) loader.CustomType = static_cast<MString&&>(CustomType);
+        loader.TypePath = TypePath;
+        loader.id = index;
         MTRACE("Загрузчик зарегистрирован.");
         return true;
     }

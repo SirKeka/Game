@@ -14,6 +14,9 @@
 #include <systems/render_view_system.h>
 #include <systems/resource_system.h>
 #include "views/render_view_pick.h"
+#include "views/render_view_skybox.h"
+#include "views/render_view_ui.h"
+#include "views/render_view_world.h"
 #include "debug_console.h"
 // ЗАДАЧА: конец временного кода
 
@@ -155,7 +158,7 @@ bool ApplicationInitialize(Application& app)
     MDEBUG("Game::Initialize вызван!");
 
     ApplicationRegisterEvents(app);
-    ResourceSystem::RegisterLoader(eResource::Type::SimpleScene, MString(), "scene");
+    ResourceSystem::RegisterLoader(eResource::Type::SimpleScene, MString(), "scenes");
     auto state = reinterpret_cast<Game*>(app.state);
     state->console.Load();
 
@@ -480,6 +483,9 @@ bool GameConfigureRenderViews(ApplicationConfig& config)
     // Skybox view
     {
         auto& SkyboxView = config.RenderViews[0];
+        SkyboxView.name = "skybox";
+        SkyboxView.RenderpassCount = 1; 
+        SkyboxView.passes = (Renderpass*)MemorySystem::Allocate(sizeof(Renderpass) * SkyboxView.RenderpassCount, Memory::Array, true);
 
         // Конфигурация подпрохода рендеринга
         RenderpassConfig SkyboxPass;
@@ -501,16 +507,16 @@ bool GameConfigureRenderViews(ApplicationConfig& config)
         SkyboxTargetColour.StoreOperation = RenderTargetAttachmentStoreOperation::Store;
         SkyboxTargetColour.PresentAfter   = false;
 
-        
-        SkyboxView.name = "skybox";
-        SkyboxView.RenderpassCount = 1;
-        //SkyboxView.passes = MemorySystem::Allocate(sizeof(Renderpass) * SkyboxView.RenderpassCount, Memory::Array, true);
-
         // ЗАДАЧА: если слишком рано в процессе инициализации, перейти к on_registered.
-        if (!(SkyboxView.passes = new Renderpass(SkyboxPass))) { // RenderingSystem::RenderpassCreate(SkyboxPass, *SkyboxView.passes)
-            MERROR("Skybox view — Не удалось создать проход рендеринга «%s»", SkyboxView.passes[0].name.c_str());
+        if (!RenderingSystem::RenderpassCreate(SkyboxPass, *SkyboxView.passes)) { // 
+            MERROR("Skybox view — Не удалось создать проход рендеринга «%s»",  config.RenderViews[0].passes[0].name.c_str());
             return false;
         }
+
+        SkyboxView.OnRegistered = RenderViewSkybox::OnRegistered;
+        SkyboxView.Resize       = RenderViewSkybox::Resize;
+        SkyboxView.BuildPacket  = RenderViewSkybox::BuildPacket;
+        SkyboxView.Render       = RenderViewSkybox::Render;
     }
 
     // World view
@@ -555,6 +561,11 @@ bool GameConfigureRenderViews(ApplicationConfig& config)
             MERROR("World view — Не удалось создать проход рендеринга «%s»", WorldView.passes[0].name.c_str());
             return false;
         };
+
+        WorldView.OnRegistered = RenderViewWorld::OnRegistered;
+        WorldView.Resize       = RenderViewWorld::Resize;
+        WorldView.BuildPacket  = RenderViewWorld::BuildPacket;
+        WorldView.Render       = RenderViewWorld::Render;
     }
 
     // UI view
@@ -592,11 +603,14 @@ bool GameConfigureRenderViews(ApplicationConfig& config)
             return false;
         };
 
+        UiView.OnRegistered = RenderViewUI::OnRegistered;
+        UiView.Resize       = RenderViewUI::Resize;
+        UiView.BuildPacket  = RenderViewUI::BuildPacket;
+        UiView.Render       = RenderViewUI::Render;
     }
 
     // Pick view
     {
-        config.RenderViews[3] = RenderViewPick();
         auto& PickView = config.RenderViews[3];
         PickView.name = "pick";
         // PickView.width = 0;
@@ -663,6 +677,12 @@ bool GameConfigureRenderViews(ApplicationConfig& config)
             MERROR("Pick view — Не удалось создать проход рендеринга «%s»", PickView.passes[1].name.c_str());
             return false;
         };
+
+        PickView.OnRegistered               = RenderViewPick::OnRegistered;
+        PickView.Resize                     = RenderViewPick::Resize;
+        PickView.BuildPacket                = RenderViewPick::BuildPacket;
+        PickView.Render                     = RenderViewPick::Render;
+        PickView.RegenerateAttachmentTarget = RenderViewPick::RegenerateAttachmentTarget;
     }
 
     return true;
