@@ -8,12 +8,13 @@
 
 #pragma once
 
-#include "defines.hpp"
-#include "containers/hashtable.hpp"
-#include "resources/shader.h"
-#include "resources/texture.hpp"
+#include "defines.h"
 
 struct Renderpass;
+struct ShaderConfig;
+class MString;
+struct Shader;
+struct Texture;
 
 namespace ShaderSystem
 {
@@ -34,7 +35,7 @@ namespace ShaderSystem
     /// @brief Создает новый шейдер с заданной конфигурацией. 
     /// @param config конфигурация, которая будет использоваться при создании шейдера.
     /// @return true в случае успеха; в противном случае false.
-    MAPI bool Create(Renderpass& pass, Shader::Config& config);
+    MAPI bool Create(Renderpass& pass, ShaderConfig& config);
 
     /// @brief Получает идентификатор шейдера по имени.
     /// @param ShaderName имя шейдера.
@@ -92,8 +93,9 @@ namespace ShaderSystem
     MAPI bool SamplerSet(u16 index, const Texture* texture);
 
     /// @brief Применяет глобальную униформу. ПРИМЕЧАНИЕ: Работает с текущим шейдером.
+    /// @param NeedsUpdate указывает на то что нужно обновить униформу шейдера или только привязать.
     /// @return true в случае успеха; в противном случае false.
-    MAPI bool ApplyGlobal();
+    MAPI bool ApplyGlobal(bool NeedsUpdate);
 
     /// @brief Применяет униформы на уровне экземпляра. ПРИМЕЧАНИЕ: Работает с текущим шейдером.
     /// @param NeedsUpdate указывает на то что нужно обновить униформу шейдера или только привязать.

@@ -4,13 +4,13 @@
 #if MPLATFORM_WINDOWS
 
 #define WIN32_LEAN_AND_MEAN
-#include "vulkan_platform.hpp"
+#include "vulkan_platform.h"
 #include <Windows.h>
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_win32.h>
 
 
-#include "renderer/vulkan/vulkan_api.hpp"
+#include "renderer/vulkan/vulkan_api.h"
 
 struct Win32HandleInfo {
     HINSTANCE HInstance;

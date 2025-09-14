@@ -57,7 +57,11 @@ void RenderViewSystem::Shutdown()
     for (u32 i = 0; i < pState->MaxViewCount; i++) {
         auto view = pState->RegisteredViews[i];
         if (view) {
-            delete view;
+            view->Destroy(view);
+
+            for (u32 i = 0; i < view->RenderpassCount; i++) {
+                RenderingSystem::RenderpassDestroy(&view->passes[i]);
+            }
         }
     }
 }
@@ -141,7 +145,7 @@ RenderView *RenderViewSystem::Get(const char *name)
     return nullptr;
 }
 
-bool RenderViewSystem::BuildPacket(RenderView *view, class LinearAllocator& FrameAllocator, void *data, RenderView::Packet &OutPacket)
+bool RenderViewSystem::BuildPacket(RenderView *view, LinearAllocator& FrameAllocator, void *data, RenderViewPacket &OutPacket)
 {
     if (view) {
         return view->BuildPacket(view, FrameAllocator, data, OutPacket);
@@ -151,7 +155,7 @@ bool RenderViewSystem::BuildPacket(RenderView *view, class LinearAllocator& Fram
     return false;
 }
 
-bool RenderViewSystem::OnRender(RenderView *view, const RenderView::Packet &packet, u64 FrameNumber, u64 RenderTargetIndex, const FrameData& rFramedata)
+bool RenderViewSystem::OnRender(RenderView *view, const RenderViewPacket &packet, u64 FrameNumber, u64 RenderTargetIndex, const FrameData& rFramedata)
 {
     if (view) {
         return view->Render(view, packet, FrameNumber, RenderTargetIndex, rFramedata);

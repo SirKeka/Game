@@ -1,6 +1,6 @@
 #pragma once
 
-#include "defines.hpp"
+#include "defines.h"
 
 template<typename T> struct Vector3D;
 

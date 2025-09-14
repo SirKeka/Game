@@ -1,10 +1,10 @@
 #pragma once
-#include "defines.hpp"
+
 #include "math/transform.h"
 #include "math/extents.h"
-#include "core/mmemory.hpp"
+#include "core/memory_system.h"
 
-struct GeometryID;
+struct Geometry;
 
 struct MAPI Mesh {
     struct Config {
@@ -18,17 +18,17 @@ struct MAPI Mesh {
     u32 UniqueID;
     u8 generation;
     u16 GeometryCount;
-    GeometryID** geometries;
+    Geometry** geometries;
     Transform transform;
     Extents3D extents;
     void* DebugData;
 
     constexpr Mesh() : config(), UniqueID(), generation(), GeometryCount(), geometries(nullptr), transform() {}
     constexpr Mesh(Config& config) : config(static_cast<Config&&>(config)), UniqueID(INVALID::U8ID), generation(), GeometryCount(), geometries(nullptr), transform() {}
-    Mesh(u16 GeometryCount, GeometryID** geometries, const Transform& transform)
+    Mesh(u16 GeometryCount, Geometry** geometries, const Transform& transform)
     : UniqueID(), generation(), GeometryCount(GeometryCount), geometries(geometries), transform(transform) {}
     Mesh(const Mesh& mesh)
-    : config(mesh.config), UniqueID(mesh.UniqueID), generation(mesh.generation), GeometryCount(mesh.GeometryCount), geometries(new GeometryID*[GeometryCount]), transform(mesh.transform) {
+    : config(mesh.config), UniqueID(mesh.UniqueID), generation(mesh.generation), GeometryCount(mesh.GeometryCount), geometries(new Geometry*[GeometryCount]), transform(mesh.transform) {
         for (u64 i = 0; i < GeometryCount; i++) {
             geometries[i] = mesh.geometries[i];
         }
@@ -46,7 +46,7 @@ struct MAPI Mesh {
             this->GeometryCount = mesh.GeometryCount;
         }
 
-        geometries = new GeometryID*[GeometryCount];
+        geometries = new Geometry*[GeometryCount];
         for (u64 i = 0; i < GeometryCount; i++) {
             geometries[i] = mesh.geometries[i];
         }

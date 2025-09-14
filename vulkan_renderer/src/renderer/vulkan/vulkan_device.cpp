@@ -1,6 +1,6 @@
-#include "vulkan_device.hpp"
-#include "vulkan_utils.hpp"
-#include "vulkan_api.hpp"
+#include "vulkan_device.h"
+#include "vulkan_utils.h"
+#include "vulkan_api.h"
 #include "containers/mstring.hpp"
 
 struct VulkanPhysicalDeviceRequirements {
@@ -84,28 +84,52 @@ bool VulkanDevice::Create(VulkanAPI* VkAPI)
     }
     MemorySystem::Free(AvailableExtensions, sizeof(VkExtensionProperties) * AvailableExtensionCount, Memory::Renderer);
 
-    u32 ExtensionCount = PortabilityRequired ? 2 : 1;
-    /*const char** ExtensionNames = PortabilityRequired
-                                       ? (const char* [2]){VK_KHR_SWAPCHAIN_EXTENSION_NAME, "VK_KHR_portability_subset"}
-                                       : (const char* [1]){VK_KHR_SWAPCHAIN_EXTENSION_NAME};*/
-    DArray<const char*> ExtensionNames;
+    // Создайте массив из 3 элементов, даже если мы не будем использовать их все.
+    const char* ExtensionNames[4];
+    u32 ExtIndex = 0;
+    ExtensionNames[ExtIndex] = VK_KHR_SWAPCHAIN_EXTENSION_NAME;
+    ExtIndex++;
+    // Если требуется переносимость (например, для Mac), добавьте её.
     if (PortabilityRequired) {
-        ExtensionNames.PushBack(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-        ExtensionNames.PushBack("VK_KHR_portability_subset");
-    } else {
-        ExtensionNames.PushBack(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+        ExtensionNames[ExtIndex] = "VK_KHR_portability_subset";
+        ExtIndex++;
+    }
+    // Если динамическая топология не поддерживается изначально, но *поддерживается* через расширение, включите расширение. В случае Mac OS X оба этих условия могут быть ложными.
+    if (
+        ((VkAPI->Device.supportFlags & NativeDynamicTopologyBit) == 0) &&
+        ((VkAPI->Device.supportFlags & DynamicTopologyBit) != 0)) {
+        ExtensionNames[ExtIndex] = VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME;
+        ExtIndex++;
+    }
+    // Если поддерживаются плавные линии, загрузите расширение.
+    if ((VkAPI->Device.supportFlags & LineSmoothRasterisationBit)) {
+        ExtensionNames[ExtIndex] = VK_EXT_LINE_RASTERIZATION_EXTENSION_NAME;
+        ExtIndex++;
     }
     
     VkDeviceCreateInfo DeviceCreateInfo = {VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO};
     DeviceCreateInfo.queueCreateInfoCount = IndexCount;
     DeviceCreateInfo.pQueueCreateInfos = QueueCreateInfos;
     DeviceCreateInfo.pEnabledFeatures = &DeviceFeatures;
-    DeviceCreateInfo.enabledExtensionCount = ExtensionCount;
-    DeviceCreateInfo.ppEnabledExtensionNames = ExtensionNames.Data();
+    DeviceCreateInfo.enabledExtensionCount = ExtIndex;
+    DeviceCreateInfo.ppEnabledExtensionNames = ExtensionNames;
 
     // Устарел и игнорируется, так что ничего не передавайте.
     DeviceCreateInfo.enabledLayerCount = 0;
     DeviceCreateInfo.ppEnabledLayerNames = 0;
+
+    // VK_EXT_extended_dynamic_state
+    VkPhysicalDeviceExtendedDynamicStateFeaturesEXT ExtendedDynamicState = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT};
+    ExtendedDynamicState.extendedDynamicState = VK_TRUE;
+    DeviceCreateInfo.pNext = &ExtendedDynamicState;
+
+    // Плавная растеризация линий, если поддерживается.
+    VkPhysicalDeviceLineRasterizationFeaturesEXT LineRasterizationExt{};
+    if (VkAPI->Device.supportFlags & LineSmoothRasterisationBit) {
+        LineRasterizationExt.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_FEATURES_EXT;
+        LineRasterizationExt.smoothLines = VK_TRUE;
+        ExtendedDynamicState.pNext = &LineRasterizationExt;
+    }
 
     // Создайте устройство.
     VK_CHECK(vkCreateDevice(
@@ -118,6 +142,18 @@ bool VulkanDevice::Create(VulkanAPI* VkAPI)
     VK_SET_DEBUG_OBJECT_NAME(VkAPI, VK_OBJECT_TYPE_DEVICE, VkAPI->Device.LogicalDevice, "Vulkan Logical Device");
 
     MINFO("Логическое устройство создано.");
+
+    if (!(VkAPI->Device.supportFlags & NativeDynamicTopologyBit) &&
+        (VkAPI->Device.supportFlags & DynamicTopologyBit)) {
+        MINFO("Устройство Vulkan не поддерживает собственную динамическую топологию, но поддерживает её через расширение. Использование расширения.");
+        VkAPI->vkCmdSetPrimitiveTopologyEXT = (PFN_vkCmdSetPrimitiveTopologyEXT)vkGetInstanceProcAddr(VkAPI->instance, "vkCmdSetPrimitiveTopologyEXT");
+    } else {
+        if (VkAPI->Device.supportFlags & NativeDynamicTopologyBit) {
+            MINFO("Устройство Vulkan поддерживает собственную динамическую топологию.");
+        } else {
+            MINFO("Устройство Vulkan не поддерживает собственную или расширенную динамическую топологию.");
+        }
+    }
 
     // Получите очереди.
     vkGetDeviceQueue(
@@ -304,6 +340,16 @@ bool VulkanDevice::SelectPhysicalDevice(VulkanAPI *VkAPI)
         VkPhysicalDeviceFeatures features;
         vkGetPhysicalDeviceFeatures(device, &features);
 
+        VkPhysicalDeviceFeatures2 features2 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
+        // Проверьте поддержку динамической топологии через расширение.
+        VkPhysicalDeviceExtendedDynamicStateFeaturesEXT DynamicStateNext = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT};
+        features2.pNext = &DynamicStateNext;
+        // Проверьте поддержку растеризации сглаженных линий через расширение.
+        VkPhysicalDeviceLineRasterizationFeaturesEXT SmoothLineNext = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_FEATURES_EXT};
+        DynamicStateNext.pNext = &SmoothLineNext;
+        // Выполните запрос.
+        vkGetPhysicalDeviceFeatures2(device, &features2);
+
         VkPhysicalDeviceMemoryProperties memory;
         vkGetPhysicalDeviceMemoryProperties(device, &memory);
 
@@ -353,22 +399,22 @@ bool VulkanDevice::SelectPhysicalDevice(VulkanAPI *VkAPI)
                     break;
             }
 
-            MINFO(
-                "Версия драйвера графического процессора: %d.%d.%d",
+            MINFO("Версия драйвера графического процессора: %d.%d.%d",
                 VK_VERSION_MAJOR(properties.driverVersion),
                 VK_VERSION_MINOR(properties.driverVersion),
                 VK_VERSION_PATCH(properties.driverVersion));
 
+            // Сохпаняем версию API, которая поддерживается устройством.
+            VkAPI->Device.ApiMaijor = VK_VERSION_MAJOR(properties.apiVersion);
+            VkAPI->Device.ApiMinor  = VK_VERSION_MINOR(properties.apiVersion);
+            VkAPI->Device.ApiPatch  = VK_VERSION_PATCH(properties.apiVersion);
+
             // Версия API Vulkan.
-            MINFO(
-                "Версия API Vulkan: %d.%d.%d",
-                VK_VERSION_MAJOR(properties.apiVersion),
-                VK_VERSION_MINOR(properties.apiVersion),
-                VK_VERSION_PATCH(properties.apiVersion));
+            MINFO("Версия API Vulkan: %d.%d.%d", VkAPI->Device.ApiMaijor, VkAPI->Device.ApiMinor, VkAPI->Device.ApiPatch);
 
             // Информация о памяти
             for (u32 j = 0; j < memory.memoryHeapCount; ++j) {
-                f32 MemorySizeGiB = (((f32)memory.memoryHeaps[j].size) / 1024.0f / 1024.0f / 1024.0f);
+                f32 MemorySizeGiB = (((f32)memory.memoryHeaps[j].size) / 1024.F / 1024.F / 1024.F);
                 if (memory.memoryHeaps[j].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT) {
                     MINFO("Локальная память графического процессора: %.2f GiB", MemorySizeGiB);
                 } else {
@@ -387,6 +433,17 @@ bool VulkanDevice::SelectPhysicalDevice(VulkanAPI *VkAPI)
             this->features = features;
             this->memory = memory;
             this->SupportsDeviceLocalHostVisible = SupportsDeviceLocalHostVisible;
+
+            // Устройство может поддерживать или не поддерживать эту функцию, поэтому сохраните ее здесь.
+            if (DynamicStateNext.extendedDynamicState) {
+                VkAPI->Device.supportFlags |= DynamicTopologyBit;
+            }
+            if (VkAPI->Device.ApiMaijor > 1 || VkAPI->Device.ApiMinor > 2) {
+                VkAPI->Device.supportFlags |= NativeDynamicTopologyBit;
+            }
+            if (SmoothLineNext.smoothLines) {
+                VkAPI->Device.supportFlags |= LineSmoothRasterisationBit;
+            }
             break;
         }
     }

@@ -1,7 +1,5 @@
 #pragma once
 #include "math/vector4d_fwd.h"
-#include "containers/darray.hpp"
-#include "core/mmemory.hpp"
 #include "rendering_system.h"
 
 struct Texture;

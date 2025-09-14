@@ -6,11 +6,13 @@
 /// 
 /// @copyright
 #pragma once
-#include "defines.hpp"
-#include "renderer/render_view.h"
+
+#include "defines.h"
 
 struct FrameData;
 struct RenderView;
+struct LinearAllocator;
+struct RenderViewPacket;
 
 /// @brief Конфигурация для системы рендеринга представлений.
 struct RenderViewSystemConfig
@@ -45,7 +47,7 @@ namespace RenderViewSystem
     /// @param data данные свободной формы, используемые для создания пакета.
     /// @param OutPacket указатель для хранения сгенерированного пакета.
     /// @return true в случае успеха; в противном случае false.
-    MAPI bool BuildPacket(RenderView* view, LinearAllocator& FrameAllocator, void* data, RenderView::Packet& OutPacket);
+    MAPI bool BuildPacket(RenderView* view, LinearAllocator& FrameAllocator, void* data, RenderViewPacket& OutPacket);
 
     /// @brief Использует заданное представление и пакет для визуализации содержимого.
     /// @param view указатель на представление для использования.
@@ -53,7 +55,7 @@ namespace RenderViewSystem
     /// @param FrameNumber текущий номер кадра визуализатора, обычно используемый для синхронизации данных.
     /// @param RenderTargetIndex текущий индекс цели визуализации для визуализаторов, которые используют несколько целей визуализации одновременно (например, Vulkan).
     /// @return true в случае успеха; в противном случае false.
-    bool OnRender(RenderView* view, const RenderView::Packet& packet, u64 FrameNumber, u64 RenderTargetIndex, const FrameData& rFramedata);
+    bool OnRender(RenderView* view, const RenderViewPacket& packet, u64 FrameNumber, u64 RenderTargetIndex, const FrameData& rFramedata);
     
     MAPI void RegenerateRenderTargets(RenderView* view);
 }

@@ -1,9 +1,7 @@
 #pragma once
 
-#include "defines.hpp"
 #include <vulkan/vulkan.h>
 #include "renderer/renderpass.h"
-//#include "renderer/renderer_structs.hpp"
 
 class VulkanAPI;
 struct Texture;

@@ -1,4 +1,4 @@
-#include "vulkan_utils.hpp"
+#include "vulkan_utils.h"
 
 const char *VulkanResultString(VkResult result, bool GetExtended)
 {
@@ -153,7 +153,7 @@ void VulkanSetDebugObjectName(VulkanAPI *VkAPI, VkObjectType ObjectType, void *O
 void VulkanSetDebugObjectTag(VulkanAPI *VkAPI, VkObjectType ObjectType, void *ObjectHandle, u64 TagSize, const void *TagData)
 {
     const VkDebugUtilsObjectTagInfoEXT TagInfo = {
-        VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+        VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_TAG_INFO_EXT,
         0,
         ObjectType,
         (uint64_t)ObjectHandle,

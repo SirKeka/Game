@@ -4,7 +4,7 @@
 
 #include "renderer/renderer_types.h"
 
-#include "vulkan_device.hpp"
+#include "vulkan_device.h"
 #include "vulkan_swapchain.hpp"
 #include "vulkan_command_buffer.hpp"
 #include "vulkan_shader.hpp"
@@ -21,6 +21,10 @@
 class VulkanAPI : public RendererPlugin
 {
 public:
+    u32 ApiMajor;                                      // Поддерживаемая основная версия API на уровне устройства.
+    u32 ApiMinor;                                       // Поддерживаемая второстепенная версия API на уровне устройства.
+    u32 ApiPatch;                                       // Поддерживаемая версия исправления API на уровне устройства.
+
     f32 FrameDeltaTime{};                               // Время в секундах с момента последнего кадра.
     u32 FramebufferWidth{};                             // Текущая ширина фреймбуфера.
     u32 FramebufferHeight{};                            // Текущая высота фреймбуфера.
@@ -95,18 +99,19 @@ public:
                 //                           Geometry                           //
     //////////////////////////////////////////////////////////////////////////////////////////////    
     
-    bool Load        (GeometryID* gid, u32 VertexSize, u32 VertexCount, const void* vertices, u32 IndexSize, u32 IndexCount, const void* indices) override;
-    void Unload      (GeometryID* gid)                                                                                                            override;
-    void GeometryVertexUpdate(GeometryID* geometry, u32 offset, u32 VertexCount, void* vertices)                                                  override;
-    void DrawGeometry(const GeometryRenderData& data)                                                                                             override;
+    bool CreateGeometry      (Geometry* geometry)                                                                   override;
+    bool Load                (Geometry* geometry, u32 VertexOffset, u32 VertexSize, u32 IndexOffset, u32 IndexSize) override;
+    void Unload              (Geometry* geometry)                                                                   override;
+    void GeometryVertexUpdate(Geometry* geometry, u32 offset, u32 VertexCount, void* vertices)                      override;
+    void DrawGeometry(const GeometryRenderData& data)                                                               override;
 
     // Методы относящиеся к шейдерам---------------------------------------------------------------------------------------------------------------------------------------------
 
-    bool Load                          (Shader *shader, const Shader::Config& config, Renderpass* renderpass, const DArray<Shader::Stage>& stages, const DArray<MString>& StageFilenames) override;
+    bool Load                          (Shader *shader, const ShaderConfig& config, Renderpass* renderpass, const DArray<Shader::Stage>& stages, const DArray<MString>& StageFilenames) override;
     void Unload                        (Shader* shader)                                                                                                                                   override;
     bool ShaderInitialize              (Shader* shader)                                                                                                                                   override;
     bool ShaderUse                     (Shader* shader)                                                                                                                                   override;
-    bool ShaderApplyGlobals            (Shader* shader)                                                                                                                                   override;
+    bool ShaderApplyGlobals            (Shader* shader, bool NeedsUpdate)                                                                                                                 override;
     bool ShaderApplyInstance           (Shader* shader, bool NeedsUpdate)                                                                                                                 override;
     bool ShaderBindInstance            (Shader* shader, u32 InstanceID)                                                                                                                   override;
     bool ShaderAcquireInstanceResources(Shader* shader, u32 TextureMapCount, TextureMap** maps, u32& OutInstanceID)                                                                       override;
@@ -152,6 +157,8 @@ public:
     const bool& IsMultithreaded() override;
     bool FlagEnabled   (RendererConfigFlags flag)               override;
     void FlagSetEnabled(RendererConfigFlags flag, bool enabled) override;
+
+    PFN_vkCmdSetPrimitiveTopologyEXT vkCmdSetPrimitiveTopologyEXT;
 
 private:
     void CreateCommandBuffers();

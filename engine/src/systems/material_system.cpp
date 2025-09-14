@@ -532,7 +532,7 @@ bool MaterialSystem::ApplyGlobal(u32 ShaderID, u64 RenderFrameNumber, const Matr
         MERROR("MaterialSystem::ApplyGlobal(): Неизвестный идентификатор шейдера '%d' ", ShaderID);
         return false;
     }
-    MATERIAL_APPLY_OR_FAIL(ShaderSystem::ApplyGlobal());
+    MATERIAL_APPLY_OR_FAIL(ShaderSystem::ApplyGlobal(true));
     // Синхронизация номера кадра
     shader->RenderFrameNumber = RenderFrameNumber;
     return true;

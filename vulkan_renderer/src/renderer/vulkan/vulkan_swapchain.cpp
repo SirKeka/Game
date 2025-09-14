@@ -1,6 +1,6 @@
 #include "vulkan_swapchain.hpp"
 
-#include "vulkan_api.hpp"
+#include "vulkan_api.h"
 #include "vulkan_image.hpp"
 #include <systems/texture_system.h>
 

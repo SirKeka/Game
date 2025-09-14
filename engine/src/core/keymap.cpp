@@ -1,5 +1,5 @@
-#include "keymap.hpp"
-#include "mmemory.hpp"
+#include "keymap.h"
+#include "memory_system.h"
 
 Keymap::~Keymap()
 {

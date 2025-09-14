@@ -3,10 +3,11 @@
 namespace Testbed
 {
     enum PacketViews {
-        Skybox = 0,
-        World = 1,
-        UI = 2,
-        Pick = 3,
+        Skybox,
+        World,
+        EditorWorld,
+        UI,
+        Pick,
         Max = Pick + 1
     };
 } // namespace Testbed

@@ -1,8 +1,6 @@
 #pragma once
 
-#include "defines.hpp"
-
-class LinearAllocator;
+#include "defines.h"
 
 /// @brief Данные текущего кадра на уровне движка.
 struct FrameData {
@@ -16,7 +14,7 @@ struct FrameData {
     u32 DrawnMeshCount;
 
     /// @brief Указатель на распределитель кадров движка.
-    LinearAllocator* FrameAllocator;
+    struct LinearAllocator* FrameAllocator;
 
     /// @brief Данные кадра на уровне приложения. Необязательно, приложение должно знать, как использовать это, если необходимо.
     void* ApplicationFrameData;

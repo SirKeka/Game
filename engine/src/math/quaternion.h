@@ -1,6 +1,5 @@
 #pragma once
 
-#include "defines.hpp"
 #include "matrix3d.h"
 #include "vector3d_fwd.h"
 

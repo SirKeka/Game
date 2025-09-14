@@ -1,6 +1,6 @@
 #include "vulkan_shader_utils.hpp"
 
-#include "vulkan_api.hpp"
+#include "vulkan_api.h"
 
 #include "systems/resource_system.h"
 

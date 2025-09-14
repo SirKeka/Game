@@ -1,10 +1,8 @@
 #pragma once
 
-#include "defines.hpp"
-
 #include "memory/linear_allocator.hpp"
 #include "containers/stack.hpp"
-#include "keymap.hpp"
+#include "keymap.h"
 
 namespace InputSystem
 {

@@ -1,8 +1,7 @@
 #pragma once
 
-#include "defines.hpp"
 #include <containers/darray.hpp>
-#include <core/event.hpp>
+#include <core/event.h>
 #include <resources/ui_text.h>
 
 // struct ComandHistoryEntry

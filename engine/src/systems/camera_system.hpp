@@ -8,7 +8,7 @@
 #pragma once
 
 #include "containers/hashtable.hpp"
-#include "renderer/camera.hpp"
+#include "renderer/camera.h"
 
 constexpr const char* DEFAULT_CAMERA_NAME = "default";
 struct CameraLookup;

@@ -8,7 +8,7 @@
 // ЗАДАЧА: Перенести все это в фаил vulkan_api.cpp?
 #pragma once
 
-#include "vulkan_api.hpp"
+#include "vulkan_api.h"
 
 enum class VulkanRenderpassState 
 {

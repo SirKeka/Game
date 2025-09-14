@@ -1,6 +1,5 @@
 #pragma once
 
-#include "defines.hpp"
 #include "resources/geometry.h"
 #include "resources/material.h"
 
@@ -21,8 +20,8 @@ private:
     // потому что их может и будет больше одного на сетку.
     // Принимаем во внимание и другие системы
     u32 MaxGeometryCount{};
-    GeometryID DefaultGeometry{};
-    GeometryID Default2dGeometry{};
+    Geometry DefaultGeometry{};
+    Geometry Default2dGeometry{};
 
     // Массив зарегистрированных сеток.
     struct GeometryReference* RegisteredGeometries{nullptr};
@@ -43,22 +42,22 @@ public:
     /// @brief Получает существующую геометрию по идентификатору.
     /// @param id Идентификатор геометрии, по которому необходимо получить данные.
     /// @return Указатель на полученную геометрию или nullptr в случае неудачи.
-    MAPI static GeometryID* Acquire(u32 id);
+    MAPI static Geometry* Acquire(u32 id);
     /// @brief Регистрирует и получает новую геометрию, используя данную конфигурацию.
     /// @param config Конфигурация геометрии.
     /// @param AutoRelease Указывает, должна ли полученная геометрия быть выгружена, когда ее счетчик ссылок достигнет 0.
     /// @return Указатель на полученную геометрию или nullptr в случае неудачи. 
-    MAPI static GeometryID* Acquire(GeometryConfig& config, bool AutoRelease);
+    MAPI static Geometry* Acquire(GeometryConfig& config, bool AutoRelease);
 
     /// @brief Освобождает ссылку на предоставленную геометрию.
     /// @param Geometry Геометрия, которую нужно освободить.
-    static void Release(GeometryID *gid);
+    static void Release(Geometry *gid);
     /// @brief Получает указатель на геометрию по умолчанию.
     /// @return Указатель на геометрию по умолчанию.
-    static GeometryID* GetDefault();
+    static Geometry* GetDefault();
     /// @brief Получает указатель на геометрию по умолчанию.
     /// @return Указатель на геометрию по умолчанию.
-    static GeometryID* GetDefault2D();
+    static Geometry* GetDefault2D();
     /// @brief Генерирует конфигурацию для геометрии плоскости с учетом предоставленных параметров.
     /// ПРИМЕЧАНИЕ: массивы вершин и индексов распределяются динамически и должны освобождаться при удалении объекта.
     /// Таким образом, это не следует считать производственным кодом.
@@ -90,8 +89,8 @@ public:
     /// @return 
     MAPI static GeometryConfig GenerateCubeConfig(f32 width, f32 height, f32 depth, f32 TileX, f32 TileY, const char* name, const char* MaterialName);
 private:
-    static bool CreateGeometry(GeometryConfig& config, GeometryID* gid);
-    static void DestroyGeometry(GeometryID* gid);
+    static bool CreateGeometry(GeometryConfig& config, Geometry* geometry);
+    static void DestroyGeometry(Geometry* gid);
     static bool CreateDefaultGeometries();
 public:
     // void* operator new(u64 size);

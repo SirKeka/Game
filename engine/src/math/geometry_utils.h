@@ -1,9 +1,35 @@
 #pragma once
-#include "defines.hpp"
+
+#include "extents.h"
+#include "containers/darray.hpp"
 
 struct GeometryConfig;
 struct Vertex3D;
 struct TerrainVertex;
+
+/// @brief Представляет собой линию, начинающуюся в точке начала координат и продолжающуюся бесконечно в заданном направлении. Обычно используется для проверки попадания, выбора и т. д.
+struct MAPI Ray
+{
+    FVec3 origin;
+    FVec3 direction;
+
+    constexpr Ray(const FVec3& position, const FVec3& direction) : origin(position), direction(direction) {}
+    constexpr Ray(const FVec2& ScreenPosition, const FVec2& ViewportSize, const FVec3& origin, const Matrix4D& view, const Matrix4D& projection);    
+};
+
+struct RaycastHit
+{
+    enum Type { OBB, Surface } type;
+    u32 UniqueID;
+    FVec3 position;
+    f32 distance;
+};
+
+struct RaycastResult
+{
+    // Darray - создается только в том случае, если существует совпадение; в противном случае null.
+    DArray<RaycastHit> hits;
+};
 
 namespace Math
 {
@@ -35,6 +61,12 @@ namespace Math
 
         void GenerateTerrainTangents(u32 VertexCount, struct TerrainVertex *vertices, u32 IndexCount, u32 *indices);
     } // namespace Geometry
+
+    namespace Raycast
+    {
+        MAPI bool OrientedExtents(Extents3D bbExtents, const Matrix4D& bbModel, const Ray& ray, f32& OutDistance);
+    } // namespace Raycast
+    
 } // namespace Math
 
 

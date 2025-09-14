@@ -1,6 +1,6 @@
 #pragma once
 
-#include "defines.hpp"
+#include "defines.h"
 // #include "vector3d_fwd.hpp"
 // #include "matrix4d.hpp"
 
@@ -8,6 +8,8 @@
 constexpr f32 M_PI = 3.14159265358979323846F;
 /// @brief Приблизительное представление числа ПИ, умноженного на 2.
 constexpr f32 M_2PI = 2.F * M_PI;
+/// @brief риблизительное представление числа ПИ, умноженного на 4.
+constexpr f32 M_4PI = 4.F * M_2PI;
 /// @brief Приблизительное представление числа ПИ, деленного на 2.
 constexpr f32 M_HALF_PI = 0.5F * M_PI;
 /// @brief Приблизительное представление числа ПИ, деленного на 4.
@@ -81,6 +83,10 @@ namespace Math
     MINLINE f32 Smoothstep(f32 Edge0, f32 Edge1, f32 x) {
         f32 t = MCLAMP((x - Edge0) / (Edge1 - Edge0), 0.F, 1.F);
         return t * t * (3.F - 2.F * t);
+    }
+
+    MINLINE bool FloatCompare(f32 f0, f32 f1) {
+        return abs(f0 - f1) < M_FLOAT_EPSILON;
     }
 
     /// @brief Преобразует указанные градусы в радианы.

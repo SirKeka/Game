@@ -8,7 +8,7 @@
 
 struct GeometryReference {
     u64 ReferenceCount;
-    GeometryID gid;
+    Geometry gid;
     bool AutoRelease;
     // GeometryReference() : ReferenceCount(), gid(), AutoRelease() {}
 };
@@ -305,43 +305,54 @@ GeometryConfig GeometrySystem::GenerateCubeConfig(f32 width, f32 height, f32 dep
     return config;
 }
 
-bool GeometrySystem::CreateGeometry(GeometryConfig &config, GeometryID *gid)
+bool GeometrySystem::CreateGeometry(GeometryConfig &config, Geometry *geometry)
 {
-    if (!config.VertexCount || !config.vertices) {
-        MERROR("VulkanAPI::CreateGeometry требует данных вершин, но они не были предоставлены. VertexCount=%d, vertices=%p", config.VertexCount, config.vertices);
+    if (!geometry) {
+        MERROR("GeometrySystem::CreateGeometry требует действительного указателя на геометрию.");
         return false;
     }
 
     // Отправьте геометрию в рендерер для загрузки в графический процессор.
-    if (!RenderingSystem::Load(gid, config.VertexSize, config.VertexCount, config.vertices, config.IndexSize, config.IndexCount, config.indices)) {
+    if (!RenderingSystem::CreateGeometry(geometry, config.VertexSize, config.VertexCount, config.vertices, config.IndexSize, config.IndexCount, config.indices)) {
+        MERROR("GeometrySystem::CreateGeometry - не удалось создать геометрию.");
+        // Признать запись недействительной.
+        state->RegisteredGeometries[geometry->id].ReferenceCount = 0;
+        state->RegisteredGeometries[geometry->id].AutoRelease = false;
+        geometry->id = INVALID::ID;
+        geometry->generation = INVALID::U16ID;
+        geometry->InternalID = INVALID::ID;
+        return false;
+    }
+    if (!RenderingSystem::Load(geometry)) {
+        MERROR("GeometrySystem::CreateGeometry - не удалось создать геометрию.");
         // Сделайте запись недействительной.
-        state->RegisteredGeometries[gid->id].ReferenceCount = 0;
-        state->RegisteredGeometries[gid->id].AutoRelease = false;
-        gid->id = INVALID::ID;
-        gid->generation = INVALID::U16ID;
-        gid->InternalID = INVALID::ID;
+        state->RegisteredGeometries[geometry->id].ReferenceCount = 0;
+        state->RegisteredGeometries[geometry->id].AutoRelease = false;
+        geometry->id = INVALID::ID;
+        geometry->generation = INVALID::U16ID;
+        geometry->InternalID = INVALID::ID;
 
         return false;
     }
 
     // Копирование экстентов, центра и т.д.
-    gid->center = config.center;
-    gid->extents.min = config.MinExtents;
-    gid->extents.max = config.MaxExtents;
-    gid->generation++;
+    geometry->center = config.center;
+    geometry->extents.min = config.MinExtents;
+    geometry->extents.max = config.MaxExtents;
+    geometry->generation++;
 
     // Получить материал
     if (MString::Length(config.MaterialName) > 0) {
-        gid->material = MaterialSystem::Acquire(config.MaterialName);
-        if (!gid->material) {
-            gid->material = MaterialSystem::GetDefaultMaterial();
+        geometry->material = MaterialSystem::Acquire(config.MaterialName);
+        if (!geometry->material) {
+            geometry->material = MaterialSystem::GetDefaultMaterial();
         }
     }
 
     return true;
 }
 
-void GeometrySystem::DestroyGeometry(GeometryID *gid)
+void GeometrySystem::DestroyGeometry(Geometry *gid)
 {
     RenderingSystem::Unload(gid);
 
@@ -383,10 +394,16 @@ bool GeometrySystem::CreateDefaultGeometries()
     u32 indices[6] = {0, 1, 2, 0, 3, 1};
 
     // Отправьте геометрию в рендерер для загрузки в графический процессор.
-    if (!RenderingSystem::Load(&state->DefaultGeometry, sizeof(Vertex3D), 4, verts, sizeof(u32), 6, indices)) {
+    if (!RenderingSystem::CreateGeometry(&state->DefaultGeometry, sizeof(Vertex3D), 4, verts, sizeof(u32), 6, indices)) {
         MFATAL("Не удалось создать геометрию по умолчанию. Приложение не может быть продолжено.");
         return false;
     }
+
+    if (!RenderingSystem::Load(&state->DefaultGeometry)) {
+        MFATAL("Не удалось загрузить геометрию по умолчанию. Приложение не может быть продолжено.");
+        return false;
+    }
+    
 
     // Получите материал по умолчанию.
     state->DefaultGeometry.material = MaterialSystem::GetDefaultMaterial();
@@ -418,10 +435,16 @@ bool GeometrySystem::CreateDefaultGeometries()
 
     state->Default2dGeometry.InternalID = 0;
     // Отправьте геометрию в рендерер для загрузки в графический процессор.
-    if (!RenderingSystem::Load(&state->Default2dGeometry, sizeof(Vertex2D), 4, verts2d, sizeof(u32), 6, indices2d)) {
+    if (!RenderingSystem::CreateGeometry(&state->Default2dGeometry, sizeof(Vertex2D), 4, verts2d, sizeof(u32), 6, indices2d)) {
         MFATAL("Не удалось создать 2D-геометрию по умолчанию. Приложение не может быть продолжено.");
         return false;
     }
+
+    if (!RenderingSystem::Load(&state->Default2dGeometry)) {
+        MFATAL("Не удалось загрузить 2D-геометрию по умолчанию. Приложение не может быть продолжено.");
+        return false;
+    }
+    
 
     // Получите материал по умолчанию.
     state->Default2dGeometry.material = MaterialSystem::GetDefaultUiMaterial();
@@ -429,7 +452,7 @@ bool GeometrySystem::CreateDefaultGeometries()
     return true;
 }
 
-GeometryID *GeometrySystem::Acquire(u32 id)
+Geometry *GeometrySystem::Acquire(u32 id)
 {
     if (id != INVALID::ID && state->RegisteredGeometries[id].gid.id != INVALID::ID) {
         state->RegisteredGeometries[id].ReferenceCount++;
@@ -441,9 +464,9 @@ GeometryID *GeometrySystem::Acquire(u32 id)
     return nullptr;
 }
 
-GeometryID *GeometrySystem::Acquire(GeometryConfig& config, bool AutoRelease)
+Geometry *GeometrySystem::Acquire(GeometryConfig& config, bool AutoRelease)
 {
-    GeometryID* g = nullptr;
+    Geometry* g = nullptr;
     for (u32 i = 0; i < state->MaxGeometryCount; ++i) {
         if (state->RegisteredGeometries[i].gid.id == INVALID::ID) {
             // Поиск пустого слота.
@@ -468,7 +491,7 @@ GeometryID *GeometrySystem::Acquire(GeometryConfig& config, bool AutoRelease)
     return g;
 }
 
-void GeometrySystem::Release(GeometryID *gid)
+void GeometrySystem::Release(Geometry *gid)
 {
     if (gid && gid->id != INVALID::ID) {
         GeometryReference* ref = &state->RegisteredGeometries[gid->id];
@@ -494,7 +517,7 @@ void GeometrySystem::Release(GeometryID *gid)
     MWARN("GeometrySystem::Release не может освободить неверный идентификатор геометрии. Ничего не было сделано.");
 }
 
-GeometryID *GeometrySystem::GetDefault()
+Geometry *GeometrySystem::GetDefault()
 {
     return &state->DefaultGeometry;
 
@@ -502,7 +525,7 @@ GeometryID *GeometrySystem::GetDefault()
     return nullptr;
 }
 
-GeometryID *GeometrySystem::GetDefault2D()
+Geometry *GeometrySystem::GetDefault2D()
 {
     return &state->Default2dGeometry;
 }

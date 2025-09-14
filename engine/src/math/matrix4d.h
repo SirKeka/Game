@@ -1,6 +1,5 @@
 #pragma once
 
-#include "defines.hpp"
 #include "vector3d_fwd.h"
 #include "vector4d_fwd.h"
 #include "quaternion.h"

@@ -2,7 +2,6 @@
 #include "../test_manager.hpp"
 #include "../expect.hpp"
 
-#include <defines.hpp>
 #include "hash.hpp"
 
 u8 hashtable_should_create_and_destroy() {

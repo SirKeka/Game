@@ -1,5 +1,5 @@
 #pragma once
-#include "vulkan_api.hpp"
+#include "vulkan_api.h"
 
 /**
  * Возвращает строковое представление результата.

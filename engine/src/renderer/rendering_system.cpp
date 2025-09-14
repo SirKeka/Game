@@ -174,20 +174,59 @@ void RenderingSystem::Unload(Texture *texture)
     pRenderingSystem->ptrRenderer->Unload(texture);
 }
 
-bool RenderingSystem::Load(GeometryID *gid, u32 VertexSize, u32 VertexCount, const void *vertices, u32 IndexSize, u32 IndexCount, const void *indices)
+bool RenderingSystem::CreateGeometry(Geometry *geometry, u32 VertexSize, u32 VertexCount, const void *vertices, u32 IndexSize, u32 IndexCount, const void *indices)
 {
+    if (!geometry) {
+        MERROR("Для RenderingSystem::Load требуется действительный указатель на геометрию.");
+        return false;
+    }
+
+    if (!VertexCount || !vertices) {
+        MERROR("RenderingSystem::Load требуются данные о вершинах, но они не были предоставлены. VertexCount=%d, vertices=%p", VertexCount, vertices);
+        return false;
+    }
+
+    geometry->material = nullptr;
+
+    // Сделайте идентификаторы недействительными. ПРИМЕЧАНИЕ: Не делайте идентификатор геометрии недействительным! На этом этапе у него должен быть действительный идентификатор, и его отмена может привести к хаосу.
+    geometry->InternalID = INVALID::ID;
+    geometry->generation = INVALID::U16ID;
+
+    // Сделайте копию данных вершин.
+    geometry->VertexCount = VertexCount;
+    geometry->VertexElementSize = VertexSize;
+    geometry->vertices = MemorySystem::Allocate(VertexSize * VertexCount, Memory::Renderer);
+    MemorySystem::CopyMem(geometry->vertices, vertices, VertexSize * VertexCount);
+
+    geometry->IndexCount = IndexCount;
+    geometry->IndexElementSize = IndexSize;
+    geometry->indices = nullptr;
+    // Если есть, сделайте копию данных индекса.
+    if (IndexSize && IndexCount) {
+        geometry->indices = MemorySystem::Allocate(IndexSize * IndexCount, Memory::Renderer);
+        MemorySystem::CopyMem(geometry->indices, indices, IndexSize * IndexCount);
+    }
+
     auto pRenderingSystem = reinterpret_cast<sRenderingSystem*>(SystemsManager::GetState(MSystem::Type::Renderer));
-    return pRenderingSystem->ptrRenderer->Load(gid, VertexSize, VertexCount, vertices, IndexSize, IndexCount, indices);
+    return pRenderingSystem->ptrRenderer->CreateGeometry(geometry);
 }
 
-void RenderingSystem::GeometryVertexUpdate(GeometryID *g, u32 offset, u32 VertexCount, void *vertices)
-{
-}
-
-void RenderingSystem::Unload(GeometryID *gid)
+MAPI bool RenderingSystem::Load(Geometry *geometry)
 {
     auto pRenderingSystem = reinterpret_cast<sRenderingSystem*>(SystemsManager::GetState(MSystem::Type::Renderer));
-    return pRenderingSystem->ptrRenderer->Unload(gid);
+    return pRenderingSystem->ptrRenderer->Load(geometry, 0, geometry->VertexElementSize * geometry->VertexCount, 0, geometry->IndexElementSize * geometry->IndexCount);
+}
+
+void RenderingSystem::GeometryVertexUpdate(Geometry *geometry, u32 offset, u32 VertexCount, void *vertices)
+{
+    auto pRenderingSystem = reinterpret_cast<sRenderingSystem*>(SystemsManager::GetState(MSystem::Type::Renderer));
+    return pRenderingSystem->ptrRenderer->GeometryVertexUpdate(geometry, offset, VertexCount, vertices);
+}
+
+void RenderingSystem::Unload(Geometry *geometry)
+{
+    auto pRenderingSystem = reinterpret_cast<sRenderingSystem*>(SystemsManager::GetState(MSystem::Type::Renderer));
+    return pRenderingSystem->ptrRenderer->Unload(geometry);
 }
 
 void RenderingSystem::DrawGeometry(const GeometryRenderData &data)
@@ -232,7 +271,7 @@ bool RenderingSystem::RenderpassEnd(Renderpass *pass)
     return pRenderingSystem->ptrRenderer->RenderpassEnd(pass);
 }
 
-bool RenderingSystem::Load(Shader *shader, const Shader::Config& config, Renderpass* renderpass, const DArray<Shader::Stage>& stages, const DArray<MString>& StageFilenames)
+bool RenderingSystem::Load(Shader *shader, const ShaderConfig& config, Renderpass* renderpass, const DArray<Shader::Stage>& stages, const DArray<MString>& StageFilenames)
 {
     auto pRenderingSystem = reinterpret_cast<sRenderingSystem*>(SystemsManager::GetState(MSystem::Type::Renderer));
     return pRenderingSystem->ptrRenderer->Load(shader, config, renderpass, stages, StageFilenames);
@@ -256,10 +295,10 @@ bool RenderingSystem::ShaderUse(Shader *shader)
     return pRenderingSystem->ptrRenderer->ShaderUse(shader);
 }
 
-bool RenderingSystem::ShaderApplyGlobals(Shader *shader)
+bool RenderingSystem::ShaderApplyGlobals(Shader *shader, bool NeedsUpdate)
 {
     auto pRenderingSystem = reinterpret_cast<sRenderingSystem*>(SystemsManager::GetState(MSystem::Type::Renderer));
-    return pRenderingSystem->ptrRenderer->ShaderApplyGlobals(shader);
+    return pRenderingSystem->ptrRenderer->ShaderApplyGlobals(shader, NeedsUpdate);
 }
 
 bool RenderingSystem::ShaderApplyInstance(Shader *shader, bool NeedsUpdate)

@@ -1,8 +1,7 @@
 #pragma once
 
-#include <defines.hpp>
 #include <containers/mstring.hpp>
-#include <core/mmemory.hpp>
+#include <core/memory_system.h>
 
 /// @brief Представляет простую хеш-таблицу. Члены этой структуры не должны изменяться за пределами связанных с ней функций.
 /// Для типов, не являющихся указателями, таблица сохраняет копию значения.

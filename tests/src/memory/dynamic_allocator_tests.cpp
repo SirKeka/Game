@@ -2,9 +2,7 @@
 #include "../test_manager.hpp"
 #include "../expect.hpp"
 
-#include <defines.hpp>
-
-#include <core/mmemory.hpp>
+#include <core/memory_system.h>
 #include <memory/dynamic_allocator.hpp>
 
 u8 DynamicAllocatorShouldCreateAndDestroy() {

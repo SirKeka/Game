@@ -1,6 +1,5 @@
 #pragma once
 
-#include "defines.hpp"
 #include "containers/darray.hpp"
 
 struct DynamicLibraryFunction {

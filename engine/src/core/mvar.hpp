@@ -1,8 +1,6 @@
 #pragma once
 
-#include "defines.hpp"
-
-class LinearAllocator;
+#include "defines.h"
 
 namespace MVar
 {

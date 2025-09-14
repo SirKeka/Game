@@ -3,8 +3,6 @@
 #include "../test_manager.hpp"
 #include "../expect.hpp"
 
-#include <defines.hpp>
-
 #include <memory/linear_allocator.hpp>
 
 u8 LinearAllocatorShouldCreateAndDestroy() {

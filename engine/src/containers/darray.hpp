@@ -1,14 +1,14 @@
 #pragma once
-#include "defines.hpp"
-#include "core/mmemory.hpp"
+
+#include "core/memory_system.h"
 
 #include <utility>
 
 template<typename T>
 void Swap(T& a, T& b) {
-    auto temp = std::move(a);
-    a = std::move(b);
-    b = std::move(temp);
+    auto temp = static_cast<T&&>(a);
+    a = static_cast<T&&>(b);
+    b = static_cast<T&&>(temp);
 }
 
 template<typename T>
@@ -134,10 +134,7 @@ public:
     }
 
     explicit operator bool() const {
-        if (!data && capacity < 1 && size < 1) {
-            return false;
-        }
-        return true;
+        return data && capacity > 0 && size > 0;
     }
 
     // Доступ к элементу------------------------------------------------------------------------

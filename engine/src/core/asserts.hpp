@@ -1,6 +1,6 @@
 #pragma once
 
-#include "defines.hpp"
+#include "defines.h"
 
 // Отключите утверждения, закомментировав строку ниже.
 #define MASSERTIONS_ENABLED

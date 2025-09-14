@@ -3,7 +3,7 @@
 #include "containers/ring_queue.hpp"
 #include "core/mmutex.hpp"
 #include "core/mthread.hpp"
-#include "core/mmemory.hpp"
+#include "core/memory_system.h"
 
 constexpr i32 MAX_JOB_RESULTS = 512; // Максимальное количество результатов задания, которые можно сохранить одновременно.
 

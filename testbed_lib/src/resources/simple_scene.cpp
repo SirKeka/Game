@@ -9,7 +9,8 @@
 #include "systems/resource_system.h"
 #include "core/frame_data.h"
 #include "math/frustrum.h"
-#include "testbed_types.h"
+#include "math/geometry_utils.h"
+#include "game.h"
 
 struct SimpleSceneDebugData {
     DebugBox3D box;
@@ -363,15 +364,19 @@ bool SimpleScene::Update(const FrameData &rFrameData)
         // Обновите отладочные блоки точечного света.
         const u32& PointLightCount = PointLights.Length();
         for (u32 i = 0; i < PointLightCount; ++i) {
-            if (PointLights[i].DebugData) {
-                auto debug = reinterpret_cast<SimpleSceneDebugData*>(PointLights[i].DebugData);
+
+            auto& pLight = PointLights[i];
+
+            if (pLight.DebugData) {
+                auto debug = reinterpret_cast<SimpleSceneDebugData*>(pLight.DebugData);
                 if (debug->box.geometry.generation != INVALID::U16ID) {
+            
                     // Обновите преобразование.
-                    debug->box.xform.SetPosition(PointLights[i].data.position);
+                    debug->box.xform.SetPosition(pLight.data.position);
 
                     // Обновите цвет. ПРИМЕЧАНИЕ: выполнение этого в каждом кадре может быть затратным, если нам придется постоянно перезагружать геометрию.
                     // ЗАДАЧА: Возможно, есть другой способ сделать это, например, шейдер, который использует униформу для цвета?
-                    debug->box.SetColour(PointLights[i].data.colour);
+                    debug->box.SetColour(pLight.data.colour);
                 }
             }
         }
@@ -596,7 +601,7 @@ bool SimpleScene::PopulateRenderPacket(Camera *CurrentCamera, f32 aspect, FrameD
         }
 
         // Мир
-        if (!RenderViewSystem::BuildPacket(view, *rFrameData.FrameAllocator, &WorldData.WorldGeometries, packet.views[1])) {
+        if (!RenderViewSystem::BuildPacket(view, *rFrameData.FrameAllocator, &WorldData.WorldGeometries, ViewPacket)) {
             MERROR("Не удалось создать пакет для представления «мира».");
             return false;
         }
@@ -962,6 +967,39 @@ bool SimpleScene::RemoveTerrain(const char *name)
 
     MERROR("Невозможно удалить ландшафт из сцены, частью которой он не является.");
     return false;
+}
+
+bool SimpleScene::Raycast(const Ray &ray, RaycastResult &OutResult)
+{
+    if (state < State::Loaded) {
+        return false;
+    }
+
+    // Создавайте только при необходимости.
+    OutResult.hits = 0;
+
+    // Перебирайте сетки в сцене.
+    // ЗАДАЧА: Это необходимо оптимизировать. Для ускорения процесса нам понадобится какое-то пространственное разбиение.
+    // В противном случае сцена с тысячами объектов будет очень медленной!
+    const u32& MeshCount = meshes.Length();
+    for (u32 i = 0; i < MeshCount; ++i) {
+        auto& mesh = meshes[i];
+        Matrix4D model = mesh.transform.GetWorld();
+        f32 dist;
+        if (Math::Raycast::OrientedExtents(mesh.extents, model, ray, dist)) {
+            // Hit
+
+            RaycastHit hit;
+            hit.distance = dist;
+            hit.type = RaycastHit::Type::OBB;
+            hit.position = ray.origin + ray.direction * hit.distance;
+            hit.UniqueID = mesh.UniqueID;
+
+            OutResult.hits.PushBack(hit);
+        }
+    }
+
+    return bool(OutResult.hits);
 }
 
 void SimpleScene::ActualUnload()

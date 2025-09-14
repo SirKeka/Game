@@ -1,5 +1,5 @@
 #pragma once
-#include "defines.hpp"
+
 #include "renderer_types.h"
 
 // struct RenderingConfig;
@@ -121,19 +121,29 @@ public:
     /// @param texture указатель на текстуру которую нужно выгрузить.
     virtual void Unload(Texture* texture) = 0;
 
-    virtual bool Load(struct GeometryID* gid, u32 VertexSize, u32 VertexCount, const void* vertices, u32 IndexSize, u32 IndexCount, const void* indices) = 0;
-    virtual void Unload(struct GeometryID* gid) = 0;
+    virtual bool CreateGeometry(Geometry* geometry) = 0;
+
+    /// @brief Получает внутренние ресурсы, специфичные для API рендерера, для заданной геометрии и загружает данные в графический процессор.
+    /// @param geometry указатель на геометрию, которую нужно инициализировать.
+    /// @param VertexOffset смещение в байтах от начала данных вершин геометрии.
+    /// @param VertexSize количество загружаемых данных вершин в байтах.
+    /// @param IndexOffset смещение в байтах от начала данных индекса геометрии.
+    /// @param IndexSize количество загружаемых данных индекса в байтах.
+    /// @return True в случае успешного выполнения; в противном случае false.
+    virtual bool Load(Geometry* geometry, u32 VertexOffset, u32 VertexSize, u32 IndexOffset, u32 IndexSize) = 0;
+    
+    virtual void Unload(Geometry* gid) = 0;
+
+    /// @brief Обновляет данные вершин в заданной геометрии предоставленными данными в заданном диапазоне.
+    /// @param geometry Указатель на геометрию, которую нужно создать.
+    /// @param offset Смещение в байтах для обновления. 0, если обновление с начала.
+    /// @param VertexCount Количество вершин, которые будут обновлены.
+    /// @param vertices Данные вершин.
+    virtual void GeometryVertexUpdate(Geometry* geometry, u32 offset, u32 VertexCount, void* vertices) = 0;
 
     /// @brief Рисует заданную геометрию. Должен вызываться только внутри прохода рендеринга, внутри кадра.
     /// @param data данные рендеринга геометрии, которая должна быть нарисована.
     virtual void DrawGeometry(const GeometryRenderData& data) = 0;
-
-    /// @brief Обновляет данные вершин в заданной геометрии предоставленными данными в заданном диапазоне.
-    /// @param g Указатель на геометрию, которую нужно создать.
-    /// @param offset Смещение в байтах для обновления. 0, если обновление с начала.
-    /// @param VertexCount Количество вершин, которые будут обновлены.
-    /// @param vertices Данные вершин.
-    virtual void GeometryVertexUpdate(GeometryID* geometry, u32 offset, u32 VertexCount, void* vertices) = 0;
 
     //////////////////////////////////////////////////////////////////////
     //                              Shader                              //
@@ -147,7 +157,7 @@ public:
     /// @param StageFilenames массив имен файлов этапов шейдера, которые будут загружены. Должно соответствовать массиву этапов.
     /// @param stages массив этапов шейдера(ShaderStage), указывающий, какие этапы рендеринга (вершина, фрагмент и т. д.) используются в этом шейдере.
     /// @return true в случае успеха, иначе false.
-    virtual bool Load(Shader *shader, const Shader::Config& config, Renderpass* renderpass, const DArray<Shader::Stage>& stages, const DArray<MString>& StageFilenames) = 0;
+    virtual bool Load(Shader *shader, const ShaderConfig& config, Renderpass* renderpass, const DArray<Shader::Stage>& stages, const DArray<MString>& StageFilenames) = 0;
 
     /// @brief Уничтожает данный шейдер и освобождает все имеющиеся в нем ресурсы.--------------------------------------------------------------------
     /// @param shader указатель на шейдер, который нужно уничтожить.
@@ -167,7 +177,7 @@ public:
     /// @brief Применяет глобальные данные к универсальному буферу.-----------------------------------------------------------------------------------
     /// @param shader указатель на шейдер, к которому нужно применить глобальные данные.
     /// @return true в случае успеха, иначе false.
-    virtual bool ShaderApplyGlobals(Shader* shader) = 0;
+    virtual bool ShaderApplyGlobals(Shader* shader, bool NeedsUpdate) = 0;
 
     /// @brief Применяет данные для текущего привязанного экземпляра.---------------------------------------------------------------------------------
     /// @param shader указатель на шейдер, глобальные значения которого должны быть связаны.

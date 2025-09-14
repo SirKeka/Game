@@ -1,6 +1,6 @@
 #pragma once
 
-#include "defines.hpp"
+
 #include "containers/mstring.hpp"
 #include "math/vector4d_fwd.h"
 

@@ -8,14 +8,11 @@
 /// @copyright 
 #pragma once
 
-#include "defines.hpp"
-
 #include "render_interface.h"
 //#include "math/vertex.h"
 //#include "core/event.hpp"
 
 class MWindow;
-class LinearAllocator;
 struct StaticMeshData;
 struct PlatformState;
 class VulkanAPI;
@@ -59,16 +56,19 @@ namespace RenderingSystem
     /// @param pixels Необработанные данные изображения, которые будут загружены в графический процессор.
     /// @return true в случае успеха, иначе false.
     MAPI void Load(const u8* pixels, Texture* texture);
+
     /// @brief Загружает новую записываемую текстуру без записи в нее данных.
     /// @param texture указатель на текстуру которую нужно загрузить.
     /// @return true в случае успеха, иначе false.
     MAPI void LoadTextureWriteable(Texture* texture);
+
     /// @brief Изменяет размер текстуры. На этом уровне нет проверки возможности записи текстуры. 
     /// Внутренние ресурсы уничтожаются и воссоздаются при новом разрешении. Данные потеряны, и их необходимо перезагрузить.
     /// @param texture указатель на текстуру, размер которой нужно изменить.
     /// @param NewWidth новая ширина в пикселях.
     /// @param NewHeight новая высота в пикселях.
     MAPI void TextureResize(Texture* texture, u32 NewWidth, u32 NewHeight);
+
     /// @brief Записывает данные в предоставленную текстуру. ПРИМЕЧАНИЕ: На этом уровне это может быть как записываемая, 
     /// так и незаписываемая текстура, поскольку она также обрабатывает начальную загрузку текстуры. Сама система текстур 
     /// должна отвечать за блокировку запросов на запись в недоступные для записи текстуры.
@@ -101,7 +101,7 @@ namespace RenderingSystem
     /// @param texture указатель на текстуру которую нужно выгрузить.
     MAPI void Unload(Texture* texture);
 
-    /// @brief Загружает данные геометрии в графический процессор.------------------------------------------------------------------------------------
+    /// @brief Загружает геометрию, копируя предоставленные данные и настраивая структуру данных.------------------------------------------------------------------------------------
     /// @param gid указатель на геометрию, которую требуется загрузить.
     /// @param VertexSize размер каждой вершины.
     /// @param VertexCount количество вершин.
@@ -110,18 +110,23 @@ namespace RenderingSystem
     /// @param IndexCount количество индексов.
     /// @param indices индексный массив.
     /// @return true в случае успеха; в противном случае false.
-    MAPI bool Load(GeometryID* gid, u32 VertexSize, u32 VertexCount, const void* vertices, u32 IndexSize = 0, u32 IndexCount = 0, const void* indices = nullptr);
+    MAPI bool CreateGeometry(Geometry* geometry, u32 VertexSize, u32 VertexCount, const void* vertices, u32 IndexSize = 0, u32 IndexCount = 0, const void* indices = nullptr);
+
+    /// @brief Получает ресурсы графического процессора и загружает геометрические данные.
+    /// @param geometry указатель на геометрию для загрузки.
+    /// @return True в случае успешного выполнения; в противном случае — false.
+    MAPI bool Load(Geometry* geometry);
     
     /// @brief Обновляет данные вершин в заданной геометрии предоставленными данными в заданном диапазоне.
     /// @param g Указатель на геометрию, которую нужно создать.
     /// @param offset Смещение в байтах для обновления. 0, если обновление с начала.
     /// @param VertexCount Количество вершин, которые будут обновлены.
     /// @param vertices Данные вершин.
-    MAPI void GeometryVertexUpdate(GeometryID* g, u32 offset, u32 VertexCount, void* vertices);
+    MAPI void GeometryVertexUpdate(Geometry* geometry, u32 offset, u32 VertexCount, void* vertices);
 
     /// @brief Уничтожает заданную геометрию, освобождая ресурсы графического процессора.-------------------------------------------------------------
     /// @param gid указатель на геометрию, которую нужно уничтожить.
-    MAPI void Unload(GeometryID* gid);
+    MAPI void Unload(Geometry* geometry);
     /// @brief Рисует заданную геометрию. Должен вызываться только внутри прохода рендеринга, внутри кадра.
     /// @param data Данные рендеринга геометрии, которая должна быть нарисована.
     MAPI void DrawGeometry(const GeometryRenderData& data);
@@ -160,7 +165,7 @@ namespace RenderingSystem
     /// @param StageFilenames массив имен файлов этапов шейдера, которые будут загружены. Должно соответствовать массиву этапов.
     /// @param stages массив этапов шейдера(ShaderStage), указывающий, какие этапы рендеринга (вершина, фрагмент и т. д.) используются в этом шейдере.
     /// @return true в случае успеха, иначе false.
-    MAPI bool Load(Shader *shader, const Shader::Config& config, Renderpass* renderpass, const DArray<Shader::Stage>& stages, const DArray<MString>& StageFilenames);
+    MAPI bool Load(Shader *shader, const ShaderConfig& config, Renderpass* renderpass, const DArray<Shader::Stage>& stages, const DArray<MString>& StageFilenames);
     /// @brief Уничтожает данный шейдер и освобождает все имеющиеся в нем ресурсы.--------------------------------------------------------------------
     /// @param shader указатель на шейдер, который нужно уничтожить.
     MAPI void Unload(Shader* shader);
@@ -179,7 +184,7 @@ namespace RenderingSystem
     /// @brief Применяет глобальные данные к универсальному буферу.-----------------------------------------------------------------------------------
     /// @param shader указатель на шейдер, к которому нужно применить глобальные данные.
     /// @return true в случае успеха, иначе false.
-    MAPI bool ShaderApplyGlobals(Shader* shader);
+    MAPI bool ShaderApplyGlobals(Shader* shader, bool NeedsUpdate);
 
     /// @brief Применяет данные для текущего привязанного экземпляра.---------------------------------------------------------------------------------
     /// @param shader указатель на шейдер, глобальные значения которого должны быть связаны.

@@ -1,6 +1,5 @@
 #pragma once
 
-#include "defines.hpp"
 #include "math/vector2d_fwd.h"
 #include "math/vector3d_fwd.h"
 #include "math/vector4d_fwd.h"

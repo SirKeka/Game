@@ -104,9 +104,14 @@ void ShaderSystem::Shutdown()
     }
 }
 
-bool ShaderSystem::Create(Renderpass& pass, Shader::Config &config)
+bool ShaderSystem::Create(Renderpass& pass, ShaderConfig &config)
 {
     u32 id = NewShaderID();
+    if (id == INVALID::ID) {
+        MERROR("Не удалось найти свободный слот для создания нового шейдера. Отмена.");
+        return false;
+    }
+    
     auto NewShader = &pShaderSystem->shaders[id];
     new(NewShader) Shader(id, config);
     
@@ -126,7 +131,7 @@ bool ShaderSystem::Create(Renderpass& pass, Shader::Config &config)
     // Готов к инициализации.
     NewShader->state = Shader::State::Uninitialized;
 
-    // Атрибуты процесса
+    // Атрибуты процесса ЗАДАЧА: переделать
     for (u32 i = 0; i < config.attributes.Length(); ++i) {
         NewShader->AddAttribute(config.attributes[i]);
     }
@@ -256,9 +261,9 @@ bool ShaderSystem::SamplerSet(u16 index, const Texture *texture)
     return UniformSet(index, texture);
 }
 
-bool ShaderSystem::ApplyGlobal()
+bool ShaderSystem::ApplyGlobal(bool NeedsUpdate)
 {
-    return RenderingSystem::ShaderApplyGlobals(&pShaderSystem->shaders[pShaderSystem->CurrentShaderID]);
+    return RenderingSystem::ShaderApplyGlobals(&pShaderSystem->shaders[pShaderSystem->CurrentShaderID], NeedsUpdate);
 }
 
 bool ShaderSystem::ApplyInstance(bool NeedsUpdate)

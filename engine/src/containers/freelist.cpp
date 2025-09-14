@@ -1,6 +1,6 @@
 #include "freelist.hpp"
 #include "core/logger.hpp"
-#include "core/mmemory.hpp"
+#include "core/memory_system.h"
 
 struct FreelistNode {
     u64 offset{};

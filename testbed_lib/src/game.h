@@ -2,14 +2,18 @@
 
 #include <application_types.h>
 #include <math/frustrum.h>
+#include "editor/gizmo.h"
 #include <resources/simple_scene.h>
 
 //ЗАДАЧА: Временно
-#include <core/keymap.hpp>
+#include <core/keymap.h>
 #include <resources/skybox.h>
 
 #include <systems/light_system.h>
 #include "resources/simple_scene.h"
+
+#include "resources/debug/debug_box3d.h"
+#include "resources/debug/debug_line3d.h"
 
 #include "debug_console.h"
 
@@ -49,8 +53,16 @@ struct Game
 
     f32 ForwardMoveSpeed;
     f32 BackwardMoveSpeed;
+
+    Gizmo gizmo;
+
+    // Используется для визуализации наших кастов/столкновений.
+    DArray<DebugLine3D> TestLines;
+    DArray<DebugBox3D> TestBoxes;
     // ЗАДАЧА: конец временно
     // constexpr Game(const ApplicationConfig& config) : Application(config, sizeof(State)) {}
+
+    void ClearDebugObjects();
 };
 
 extern "C" MAPI bool ApplicationBoot(Application& app);
@@ -89,10 +101,11 @@ struct TestbedApplicationFrameData {
 namespace Testbed
 {
     enum PacketViews {
-        Skybox = 0,
-        World = 1,
-        UI = 2,
-        Pick = 3,
+        Skybox,
+        World,
+        EditorWorld,
+        UI,
+        Pick,
         Max = Pick + 1
     };
 } // namespace Testbed

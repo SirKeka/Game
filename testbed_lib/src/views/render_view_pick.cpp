@@ -105,12 +105,12 @@ bool RenderViewPick::OnRegistered(RenderView* self)
         TerrainShaderInfo.view = Matrix4D::MakeIdentity();
 
         // Регистрация для события перемещения мыши.
-        if (!EventSystem::Register(EventSystem::MouseMoved, self, OnMouseMoved)) {
+        if (!EventSystem::Register(EventSystem::MouseMoved, self->data, OnMouseMoved)) {
             MERROR("Не удалось прослушать событие перемещения мыши, создание не удалось.");
             return false;
         }
 
-        if (!EventSystem::Register(EventSystem::DefaultRendertargetRefreshRequired, self, RenderViewOnEvent)) {
+        if (!EventSystem::Register(EventSystem::DefaultRendertargetRefreshRequired, self->data, RenderViewOnEvent)) {
             MERROR("Не удалось прослушать требуемое событие обновления, создание не удалось.");
             return false;
         }
@@ -121,15 +121,19 @@ bool RenderViewPick::OnRegistered(RenderView* self)
     return false;
 }
 
-RenderViewPick::~RenderViewPick()
+void RenderViewPick::Destroy(RenderView *self)
 {
-    EventSystem::Unregister(EventSystem::MouseMoved, this, OnMouseMoved);
-    EventSystem::Unregister(EventSystem::DefaultRendertargetRefreshRequired, this, RenderViewOnEvent);
+    auto data = (RenderViewPick*)self->data;
+    EventSystem::Unregister(EventSystem::MouseMoved, self->data, OnMouseMoved);
+    EventSystem::Unregister(EventSystem::DefaultRendertargetRefreshRequired, self->data, RenderViewOnEvent);
 
-    ReleaseShaderInstances();
+    data->ReleaseShaderInstances();
 
-    RenderingSystem::Unload(&ColoureTargetAttachmentTexture);
-    RenderingSystem::Unload(&DepthTargetAttachmentTexture);
+    RenderingSystem::Unload(&data->ColoureTargetAttachmentTexture);
+    RenderingSystem::Unload(&data->DepthTargetAttachmentTexture);
+
+    MemorySystem::Free(self->data, sizeof(RenderViewPick), Memory::Renderer);
+    self->data = nullptr;
 }
 
 void RenderViewPick::Resize(RenderView* self, u32 width, u32 height)
@@ -160,7 +164,7 @@ void RenderViewPick::Resize(RenderView* self, u32 width, u32 height)
     }
 }
 
-bool RenderViewPick::BuildPacket(RenderView* self, LinearAllocator& FrameAllocator, void *data, RenderView::Packet &OutPacket)
+bool RenderViewPick::BuildPacket(RenderView* self, LinearAllocator& FrameAllocator, void *data, RenderViewPacket &OutPacket)
 {
     if (!data) {
         MWARN("RenderViewPick::BuildPacket требует действительный указатель на вид, пакет и данные.");
@@ -250,7 +254,7 @@ bool RenderViewPick::BuildPacket(RenderView* self, LinearAllocator& FrameAllocat
     return true;
 }
 
-bool RenderViewPick::Render(RenderView* self, const RenderView::Packet &packet, u64 FrameNumber, u64 RenderTargetIndex, const FrameData& rFrameData)
+bool RenderViewPick::Render(const RenderView* self, const RenderViewPacket &packet, u64 FrameNumber, u64 RenderTargetIndex, const FrameData& rFrameData)
 {
     auto PickData = reinterpret_cast<RenderViewPick*>(self->data);
     
@@ -258,6 +262,11 @@ bool RenderViewPick::Render(RenderView* self, const RenderView::Packet &packet, 
     auto* pass = &self->passes[p];  // Первый проход отрисовщика
 
     if (RenderTargetIndex == 0) {
+        auto pData = (PacketData*)packet.ExtendedData;
+        if (!pData) {
+            return true;
+        }
+
         // Reset.
         const u64& count = PickData->InstanceUpdate.Length();
         for (u64 i = 0; i < count; ++i) {
@@ -268,8 +277,6 @@ bool RenderViewPick::Render(RenderView* self, const RenderView::Packet &packet, 
             MERROR("RenderViewPick::Render Не удалось запустить индекс прохода рендеринга %u.", p);
             return false;
         }
-
-        auto PacketData = reinterpret_cast<RenderViewPick::PacketData*>(packet.ExtendedData);
 
         i32 CurrentInstanceID = 0;
 
@@ -284,12 +291,14 @@ bool RenderViewPick::Render(RenderView* self, const RenderView::Packet &packet, 
         if (!ShaderSystem::UniformSet(WorldShaderInfo.ProjectionLocation, &WorldShaderInfo.projection)) {
             MERROR("Не удалось применить проекционную матрицу");
         }
+
         if (!ShaderSystem::UniformSet(WorldShaderInfo.ViewLocation, &WorldShaderInfo.view)) {
             MERROR("Не удалось применить матрицу вида");
         }
-        ShaderSystem::ApplyGlobal();
 
-        const u64& WorldGeometryCount = PacketData->WorldMeshData->Length();
+        ShaderSystem::ApplyGlobal(true);
+
+        const u64& WorldGeometryCount = pData->WorldMeshData->Length();
         // Нарисовать геометрию. Начните с 0, так как геометрия мира добавляется первой, и остановитесь на количестве геометрий мира.
         for (u32 i = 0; i < WorldGeometryCount; ++i) {
             const auto& geo = packet.geometries[i];
@@ -335,10 +344,10 @@ bool RenderViewPick::Render(RenderView* self, const RenderView::Packet &packet, 
         if (!ShaderSystem::UniformSet(TerrainShaderInfo.ViewLocation, &TerrainShaderInfo.view)) {
             MERROR("Не удалось применить матрицу вида");
         }
-        ShaderSystem::ApplyGlobal();
+        ShaderSystem::ApplyGlobal(true);
 
         // Нарисовать геометрию. Начните с 0, так как геометрия ландшафта добавляется первой, и остановитесь на количестве геометрий ландшафта.
-        u32 TerrainGeometryCount = PacketData->TerrainMeshData->Length();
+        u32 TerrainGeometryCount = pData->TerrainMeshData->Length();
         for (u32 i = 0; i < TerrainGeometryCount; ++i) {
             const auto& geo = packet.TerrainGeometries[i];
             CurrentInstanceID = geo.UniqueID;
@@ -395,7 +404,7 @@ bool RenderViewPick::Render(RenderView* self, const RenderView::Packet &packet, 
         if (!ShaderSystem::UniformSet(UiShaderInfo.ViewLocation, &UiShaderInfo.view)) {
             MERROR("Не удалось применить матрицу вида");
         }
-        ShaderSystem::ApplyGlobal();
+        ShaderSystem::ApplyGlobal(true);
 
         // Нарисовать геометрию. Начните с того места, где остановились мировые геометрии.
         for (u32 i = WorldGeometryCount; i < packet.geometries.Length(); ++i) {
@@ -428,8 +437,8 @@ bool RenderViewPick::Render(RenderView* self, const RenderView::Packet &packet, 
         }
 
         // Нарисовать растровый текст
-        for (u32 i = 0; i < PacketData->TextCount; ++i) {
-            auto text = PacketData->texts[i];
+        for (u32 i = 0; i < pData->TextCount; ++i) {
+            auto text = pData->texts[i];
             CurrentInstanceID = text->UniqueID;
             ShaderSystem::BindInstance(CurrentInstanceID);
 

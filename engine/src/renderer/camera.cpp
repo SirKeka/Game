@@ -1,4 +1,4 @@
-#include "camera.hpp"
+#include "camera.h"
 
 void Camera::Reset()
 {

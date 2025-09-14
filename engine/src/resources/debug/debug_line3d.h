@@ -1,5 +1,5 @@
 #pragma once
-#include "defines.hpp"
+
 #include "math/transform.h"
 #include "resources/geometry.h"
 
@@ -14,10 +14,10 @@ struct MAPI DebugLine3D {
     u32 VertexCount;
     struct ColourVertex3D *vertices;
 
-    GeometryID geometry;
+    Geometry geometry;
 
     constexpr DebugLine3D() : UniqueID(), name(), Point0(), Point1(), colour(), xform(), VertexCount(), vertices(nullptr), geometry() {}
-    constexpr DebugLine3D(const FVec3& Point0, const FVec3& Point1, Transform *parent);
+    constexpr DebugLine3D(const FVec3& Point0, const FVec3& Point1, Transform *parent = nullptr);
     // ~DebugLine3D();
 
     operator bool() {

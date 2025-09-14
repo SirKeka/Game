@@ -1,7 +1,7 @@
 #pragma once
-#include "defines.hpp"
+
 #include "resources/loaders/resource_loader.h"
-#include "core/mmemory.hpp"
+#include "core/memory_system.h"
 
 /// @brief Конфигурация для системы ресурсов
 struct ResourceSystemConfig {

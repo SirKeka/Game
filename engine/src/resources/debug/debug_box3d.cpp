@@ -18,11 +18,11 @@ void DebugBox3D::SetParent(Transform *parent)
 
 void DebugBox3D::SetColour(const FVec4 &colour)
 {
-    this->colour = colour;
-
     if (!this->colour.a) {
         this->colour.a = 1.F;
     }
+
+    this->colour = colour;
     
     if (geometry.generation != INVALID::U16ID && VertexCount && vertices) {
         UpdateVertColour();
@@ -78,9 +78,15 @@ bool DebugBox3D::Initialize()
 bool DebugBox3D::Load()
 {
     // Отправьте геометрию в рендерер для загрузки в графический процессор.
-    if (!RenderingSystem::Load(&geometry, sizeof(ColourVertex3D), VertexCount, vertices, 0, 0, nullptr)) {
+    if (!RenderingSystem::CreateGeometry(&geometry, sizeof(ColourVertex3D), VertexCount, vertices)) {
         return false;
     }
+
+    // Отправляем геометрию в рендерер для загрузки в графический процессор.
+    if (!RenderingSystem::Load(&geometry)) {
+        return false;
+    }
+
     if (geometry.generation == INVALID::U16ID) {
         geometry.generation = 0;
     } else {

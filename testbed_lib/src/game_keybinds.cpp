@@ -1,10 +1,9 @@
 #include "game.h"
 
-#include <core/event.hpp>
 #include <core/logger.hpp>
 #include <core/input.hpp>
 #include <core/console.hpp>
-#include <renderer/camera.hpp>
+#include <renderer/camera.h>
 #include <renderer/rendering_system.h>
 #include "debug_console.h"
 
@@ -115,6 +114,28 @@ void GameOnSetRenderModeNormals(Keys key, Keymap::EntryBindType type, Keymap::Mo
     EventSystem::Fire(EventSystem::SetRenderMode, /*(Game*)*/UserData, data);
 }
 
+void GameOnSetGizmoMode(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) {
+    auto GameInst = (Application*)UserData;
+    auto state = (Game*)GameInst->state;
+
+    switch (key) {
+        case Keys::KEY_1:
+            state->gizmo.mode = Gizmo::Mode::None;
+            break;
+        case Keys::KEY_2:
+            state->gizmo.mode = Gizmo::Mode::Move;
+            break;
+        case Keys::KEY_3:
+            state->gizmo.mode = Gizmo::Mode::Rotate;
+            break;
+        case Keys::KEY_4:
+            state->gizmo.mode = Gizmo::Mode::Scale;
+            break;
+        default:
+            break;
+    }
+}
+
 void GameOnLoadScene(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) {
     EventSystem::Fire(EventSystem::DEBUG1, /*(Game*)*/UserData, (EventContext){});
 }
@@ -222,9 +243,14 @@ void GameSetupKeymaps(Application* app) {
     TestbedKeymap.BindingAdd(Keys::SPACE, Keymap::BindTypeHold,  Keymap::ModifierNoneBit, app, GameOnMoveUp);
     TestbedKeymap.BindingAdd(Keys::X,     Keymap::BindTypeHold,  Keymap::ModifierNoneBit, app, GameOnMoveDown);
 
-    TestbedKeymap.BindingAdd(Keys::KEY_0, Keymap::BindTypePress, Keymap::ModifierNoneBit, app, GameOnSetRenderModeDefault);
-    TestbedKeymap.BindingAdd(Keys::KEY_1, Keymap::BindTypePress, Keymap::ModifierNoneBit, app, GameOnSetRenderModeLighting);
-    TestbedKeymap.BindingAdd(Keys::KEY_2, Keymap::BindTypePress, Keymap::ModifierNoneBit, app, GameOnSetRenderModeNormals);
+    TestbedKeymap.BindingAdd(Keys::KEY_0, Keymap::BindTypePress, Keymap::ModifierControlBit, app, GameOnSetRenderModeDefault);
+    TestbedKeymap.BindingAdd(Keys::KEY_1, Keymap::BindTypePress, Keymap::ModifierControlBit, app, GameOnSetRenderModeLighting);
+    TestbedKeymap.BindingAdd(Keys::KEY_2, Keymap::BindTypePress, Keymap::ModifierControlBit, app, GameOnSetRenderModeNormals);
+
+    TestbedKeymap.BindingAdd(Keys::KEY_1, Keymap::BindTypePress, Keymap::ModifierNoneBit, app, GameOnSetGizmoMode);
+    TestbedKeymap.BindingAdd(Keys::KEY_2, Keymap::BindTypePress, Keymap::ModifierNoneBit, app, GameOnSetGizmoMode);
+    TestbedKeymap.BindingAdd(Keys::KEY_3, Keymap::BindTypePress, Keymap::ModifierNoneBit, app, GameOnSetGizmoMode);
+    TestbedKeymap.BindingAdd(Keys::KEY_4, Keymap::BindTypePress, Keymap::ModifierNoneBit, app, GameOnSetGizmoMode);
 
     TestbedKeymap.BindingAdd(Keys::L,     Keymap::BindTypePress, Keymap::ModifierNoneBit, app, GameOnLoadScene);
     TestbedKeymap.BindingAdd(Keys::U,     Keymap::BindTypePress, Keymap::ModifierNoneBit, app, GameOnUnloadScene);

@@ -1,5 +1,5 @@
 #pragma once
-#include "defines.hpp"
+
 #include "vulkan_pipeline.h"
 #include "renderer/renderbuffer.h"
 

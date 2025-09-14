@@ -1,6 +1,6 @@
 #include "linear_allocator.hpp"
 
-#include "core/mmemory.hpp"
+#include "core/memory_system.h"
 
 constexpr LinearAllocator::LinearAllocator(u64 TotalSize, void *memory)
 :

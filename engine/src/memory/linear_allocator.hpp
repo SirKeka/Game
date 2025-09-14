@@ -2,14 +2,13 @@
 
 #include "core/logger.hpp"
 
-class MAPI LinearAllocator
+struct MAPI LinearAllocator
 {
-public:
     u64 TotalSize{0};
     u64 allocated{0};
     void* memory{nullptr};
     bool OwnsMemory{false};
-public:
+
     constexpr LinearAllocator() : TotalSize(0), allocated(0), memory(nullptr), OwnsMemory(false) {}
     constexpr LinearAllocator(u64 TotalSize, void* memory = nullptr);
 

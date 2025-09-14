@@ -46,10 +46,12 @@ bool RenderViewUI::OnRegistered(RenderView* self)
     return false;
 }
 
-RenderViewUI::~RenderViewUI()
+void RenderViewUI::Destroy(RenderView *self)
 {
     // Отменить регистрацию на мероприятии.
-    EventSystem::Unregister(EventSystem::DefaultRendertargetRefreshRequired, this, RenderViewOnEvent);
+    EventSystem::Unregister(EventSystem::DefaultRendertargetRefreshRequired, self->data, RenderViewOnEvent);
+    MemorySystem::Free(self->data, sizeof(RenderViewUI), Memory::Renderer);
+    self->data = nullptr;
 }
 
 void RenderViewUI::Resize(RenderView* self, u32 width, u32 height)
@@ -70,7 +72,7 @@ void RenderViewUI::Resize(RenderView* self, u32 width, u32 height)
     }
 }
 
-bool RenderViewUI::BuildPacket(RenderView* self, LinearAllocator& FrameAllocator, void *data, RenderView::Packet &OutPacket)
+bool RenderViewUI::BuildPacket(RenderView* self, LinearAllocator& FrameAllocator, void *data, RenderViewPacket &OutPacket)
 {
     if (!data) {
         MWARN("RenderViewUI::BuildPacket требует действительный указатель на представление, пакет и данные.");
@@ -109,7 +111,7 @@ bool RenderViewUI::BuildPacket(RenderView* self, LinearAllocator& FrameAllocator
     return false;
 }
 
-bool RenderViewUI::Render(RenderView* self, const RenderView::Packet &packet, u64 FrameNumber, u64 RenderTargetIndex, const FrameData& rFrameData)
+bool RenderViewUI::Render(const RenderView* self, const RenderViewPacket &packet, u64 FrameNumber, u64 RenderTargetIndex, const FrameData& rFrameData)
 {
     if (self) {
         auto data = reinterpret_cast<RenderViewUI*>(self->data);

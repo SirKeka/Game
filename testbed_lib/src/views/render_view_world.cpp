@@ -143,10 +143,13 @@ bool RenderViewWorld::OnRegistered(RenderView* self)
     return false;
 }
 
-RenderViewWorld::~RenderViewWorld()
+void RenderViewWorld::Destroy(RenderView *self)
 {
-    EventSystem::Unregister(EventSystem::DefaultRendertargetRefreshRequired, this, OnEvent);
-    EventSystem::Unregister(EventSystem::SetRenderMode, this, OnEvent);
+    EventSystem::Unregister(EventSystem::DefaultRendertargetRefreshRequired, self->data, OnEvent);
+    EventSystem::Unregister(EventSystem::SetRenderMode, self->data, OnEvent);
+
+    MemorySystem::Free(self->data, sizeof(RenderViewWorld), Memory::Renderer);
+    self->data = nullptr;
 }
 
 void RenderViewWorld::Resize(RenderView* self, u32 width, u32 height)
@@ -170,7 +173,7 @@ void RenderViewWorld::Resize(RenderView* self, u32 width, u32 height)
     
 }
 
-bool RenderViewWorld::BuildPacket(RenderView* self, class LinearAllocator& FrameAllocator, void *data, RenderView::Packet &OutPacket)
+bool RenderViewWorld::BuildPacket(RenderView* self, LinearAllocator& FrameAllocator, void *data, RenderViewPacket &OutPacket)
 {
     if (!data) {
         MWARN("RenderViewWorld::BuildPacket требует действительный указатель на вид, пакет и данные.");
@@ -247,7 +250,7 @@ bool RenderViewWorld::BuildPacket(RenderView* self, class LinearAllocator& Frame
     return false;
 }
 
-bool RenderViewWorld::Render(RenderView* self, const RenderView::Packet &packet, u64 FrameNumber, u64 RenderTargetIndex, const FrameData& rFrameData)
+bool RenderViewWorld::Render(const RenderView* self, const RenderViewPacket &packet, u64 FrameNumber, u64 RenderTargetIndex, const FrameData& rFrameData)
 {
     if (self) {
         auto data = reinterpret_cast<RenderViewWorld*>(self->data);
@@ -368,7 +371,7 @@ bool RenderViewWorld::Render(RenderView* self, const RenderView::Packet &packet,
                 ShaderSystem::UniformSet(data->DebugLocations.projection, &packet.ProjectionMatrix);
                 ShaderSystem::UniformSet(data->DebugLocations.view, &packet.ViewMatrix);
 
-                ShaderSystem::ApplyGlobal();
+                ShaderSystem::ApplyGlobal(true);
 
                 // Каждая геометрия.
                 for (u32 i = 0; i < DebugGeometryCount; ++i) {
@@ -380,6 +383,8 @@ bool RenderViewWorld::Render(RenderView* self, const RenderView::Packet &packet,
                     // Нарисуйте ее.
                     RenderingSystem::DrawGeometry(packet.DebugGeometries[i]);
                 }
+                // HACK: Это должно каким-то образом обрабатываться в каждом кадре шейдерной системой.
+                shader->RenderFrameNumber = FrameNumber;
             }
 
             if (!RenderingSystem::RenderpassEnd(pass)) {

@@ -1,9 +1,7 @@
 #pragma once
-#include "defines.hpp"
+
 #include "logger.hpp"
 #include "containers/darray.hpp"
-
-class LinearAllocator;
 
 /// @brief Функция записи потребителя консоли, которая вызывается каждый раз, когда происходит событие регистрации. Потребители должны реализовать это и обрабатывать ввод таким образом.
 using PFN_ConsoleConsumerWrite = bool(*)(void*, Log::Level, const char*);
@@ -26,7 +24,7 @@ using PFN_ConsoleCommand = void(*)(ConsoleCommandContext);
 
 namespace Console
 {
-    bool Initialize(u64& MemoryRequirement, void* memory, void* config); // LinearAllocator& SystemAllocator
+    bool Initialize(u64& MemoryRequirement, void* memory, void* config);
     void Shutdown();
 
     MAPI void RegisterConsumer(void* inst, PFN_ConsoleConsumerWrite callback, u8& OutConsumerID);

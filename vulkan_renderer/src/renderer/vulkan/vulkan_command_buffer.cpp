@@ -1,5 +1,5 @@
 #include "vulkan_command_buffer.hpp"
-#include "vulkan_api.hpp"
+#include "vulkan_api.h"
 
 //#include "core/mmemory.hpp"
 
@@ -82,10 +82,13 @@ void VulkanCommandBufferEndSingleUse(VulkanAPI *VkAPI, VkCommandPool pool, Vulka
     VkSubmitInfo SubmitInfo = {VK_STRUCTURE_TYPE_SUBMIT_INFO};
     SubmitInfo.commandBufferCount = 1;
     SubmitInfo.pCommandBuffers = &CommandBuffer.handle;
-    VK_CHECK(vkQueueSubmit(queue, 1, &SubmitInfo, 0));
+
+    VkResult result = vkQueueSubmit(queue, 1, &SubmitInfo, 0);
+    VK_CHECK(result);
 
     // Подождите, пока это закончится
-    VK_CHECK(vkQueueWaitIdle(queue));
+    result = vkQueueWaitIdle(queue);
+    VK_CHECK(result);
 
     // Освободите буфер команд.v
     VulkanCommandBufferFree(VkAPI, pool, &CommandBuffer);

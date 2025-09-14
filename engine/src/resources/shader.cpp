@@ -31,7 +31,7 @@ constexpr Shader::Shader()
     ShaderData(nullptr) 
 {}
 
-Shader::Shader(u32 id, Config &config) 
+Shader::Shader(u32 id, ShaderConfig &config) 
     : 
     id(id), 
     name(static_cast<MString&&>(config.name)), 
@@ -58,13 +58,7 @@ Shader::Shader(u32 id, Config &config)
     PushConstantRanges(), 
     AttributeStride(), 
     RenderFrameNumber(INVALID::U64ID),
-    ShaderData(nullptr)
-{
-    if (this->id == INVALID::ID) {
-        MERROR("Невозможно найти свободный слот для создания нового шейдера. Прерывание.");
-        return;
-    }
-}
+    ShaderData(nullptr) {}
 
 Shader::~Shader()
 {
@@ -74,7 +68,7 @@ Shader::~Shader()
     state = State::NotCreated;
 }
 
-bool Shader::Create(u32 id, Config &config)
+bool Shader::Create(u32 id, ShaderConfig &config)
 {
     this->id = id;
     if (this->id == INVALID::ID) {
@@ -257,7 +251,7 @@ void Shader::Destroy()
     this->~Shader();
 }
 
-void Shader::Config::Clear()
+void ShaderConfig::Clear()
 {
     name.Clear();
     CullMode = FaceCullMode::None;

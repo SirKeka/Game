@@ -1,5 +1,4 @@
 #pragma once
-#include "defines.hpp"
 
 class VulkanAPI;
 template<typename T> class DArray;

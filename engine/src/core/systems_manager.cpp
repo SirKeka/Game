@@ -2,8 +2,8 @@
 
 #include "core/console.hpp"
 #include "core/engine.h"
-#include "core/event.hpp"
-#include "core/mmemory.hpp"
+#include "core/event.h"
+#include "core/memory_system.h"
 #include "core/mvar.hpp"
 #include "core/input.hpp"
 #include "platform/platform.hpp"

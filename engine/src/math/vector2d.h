@@ -1,7 +1,5 @@
 #pragma once
 
-#include "defines.hpp"
-
 #include "math.h"
 
 template<typename T>

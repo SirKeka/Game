@@ -1,7 +1,5 @@
 #pragma once
 
-#include "defines.hpp"
-
 #include "math.h"
 #include "vector2d.h"
 
@@ -29,7 +27,7 @@ public:
 	/// @brief Заполняет все кординаты вектора одним значением
 	/// @param value значение, которое заполнит все координаты вектора
 	constexpr Vector3D(T value) 			  		  noexcept : x(value), y(value), z(value) {}
-	constexpr explicit Vector3D(T x, T y, T z = 0) 	  noexcept : x(x),     y(y),     z(z)     {}
+	constexpr Vector3D(T x, T y, T z = 0) 	  noexcept : x(x),     y(y),     z(z)     {}
 	constexpr explicit Vector3D(const Vector2D<T>& v) noexcept : x(v.x),   y(v.y),   z()      {}
 	constexpr Vector3D(const Vector4D<T>& v) noexcept : x(v.x),   y(v.y),   z(v.z)   {}
 

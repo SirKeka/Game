@@ -1,6 +1,6 @@
 #include "render_view_skybox.h"
 #include "memory/linear_allocator.hpp"
-#include "renderer/camera.hpp"
+#include "renderer/camera.h"
 #include "renderer/renderpass.h" 
 #include "systems/camera_system.hpp"
 #include "systems/render_view_system.h"
@@ -49,10 +49,12 @@ bool RenderViewSkybox::OnRegistered(RenderView* self)
     return false;
 }
 
-RenderViewSkybox::~RenderViewSkybox()
+void RenderViewSkybox::Destroy(RenderView* self)
 {
     // Отменить регистрацию на мероприятии.
-    EventSystem::Unregister(EventSystem::DefaultRendertargetRefreshRequired, this, RenderViewOnEvent);
+    EventSystem::Unregister(EventSystem::DefaultRendertargetRefreshRequired, self->data, RenderViewOnEvent);
+    MemorySystem::Free(self->data, sizeof(RenderViewSkybox), Memory::Renderer);
+    self->data = nullptr;
 }
 
 void RenderViewSkybox::Resize(RenderView* self, u32 width, u32 height)
@@ -74,7 +76,7 @@ void RenderViewSkybox::Resize(RenderView* self, u32 width, u32 height)
     }
 }
 
-bool RenderViewSkybox::BuildPacket(RenderView* self, class LinearAllocator& FrameAllocator, void *data, RenderView::Packet &OutPacket)
+bool RenderViewSkybox::BuildPacket(RenderView* self, LinearAllocator& FrameAllocator, void *data, RenderViewPacket &OutPacket)
 {
     if (self) {
         auto SkyboxData = reinterpret_cast<RenderViewSkybox*>(self->data);
@@ -95,7 +97,7 @@ bool RenderViewSkybox::BuildPacket(RenderView* self, class LinearAllocator& Fram
     return false;
 }
 
-bool RenderViewSkybox::Render(RenderView* self, const RenderView::Packet &packet, u64 FrameNumber, u64 RenderTargetIndex, const FrameData& rFrameData)
+bool RenderViewSkybox::Render(const RenderView* self, const RenderViewPacket &packet, u64 FrameNumber, u64 RenderTargetIndex, const FrameData& rFrameData)
 {
     if (self) {
         auto data = reinterpret_cast<RenderViewSkybox*>(self->data);
@@ -129,7 +131,7 @@ bool RenderViewSkybox::Render(RenderView* self, const RenderView::Packet &packet
                     MERROR("Не удалось применить единообразие вида скайбокса.");
                     return false;
                 }
-                ShaderSystem::ApplyGlobal();
+                ShaderSystem::ApplyGlobal(true);
 
                 // Экземпляр
                 ShaderSystem::BindInstance(sPacketData->sb->InstanceID);

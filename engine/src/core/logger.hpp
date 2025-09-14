@@ -1,6 +1,5 @@
 #pragma once
 
-#include "defines.hpp"
 #include "platform/filesystem.hpp"
 
 #define LOG_WARN_ENABLED  1

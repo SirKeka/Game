@@ -1,6 +1,5 @@
 #pragma once
 
-#include <defines.hpp>
 #include <vulkan/vulkan.h>
 #include "containers/darray.hpp"
 
@@ -19,6 +18,24 @@ struct VulkanSwapchainSupportInfo
 class VulkanDevice
 {
 public:
+    enum SupportFlagBits {
+        NoneBit = 0x0,
+
+        /// @brief Указывает, поддерживает ли устройство собственную динамическую топологию (т. е. * при использовании Vulkan API >= 1.3).
+        NativeDynamicTopologyBit = 0x1,
+
+        /// @brief Указывает, поддерживает ли устройство динамическую топологию. В противном случае рендереру потребуется сгенерировать отдельный конвейер для каждого типа топологии.
+        DynamicTopologyBit = 0x2,
+        LineSmoothRasterisationBit = 0x4
+    };
+
+    /// @brief Побитовые флаги поддержки устройств. @see VulkanDevice::SupportFlagBits.
+    using SupportFlags = u32;
+
+    u32 ApiMaijor;                               // Поддерживаемая основная версия API на уровне устройства.
+    u32 ApiMinor;                                // Поддерживаемая второстепенная версия API на уровне устройства.
+    u32 ApiPatch;                                // Поддерживаемая версия исправления API на уровне устройства.
+
     VkPhysicalDevice PhysicalDevice;             // Физическое устройство. Это представление самого графического процессора.
     VkDevice LogicalDevice;                      // Логическое устройство. Это представление устройства приложением, используемое для большинства операций Vulkan.
     VulkanSwapchainSupportInfo SwapchainSupport; // Информация о поддержке swapchain.
@@ -39,6 +56,8 @@ public:
 
     VkFormat DepthFormat;                        // Выбранный поддерживаемый формат глубины.
     u8 DepthChannelCount;                        // Количество каналов выбранного формата глубины.
+
+    SupportFlags supportFlags;                   // Указывает на поддержку различных функций.
 public:
     VulkanDevice() : PhysicalDevice(), LogicalDevice(), SwapchainSupport(), GraphicsQueueIndex(), PresentQueueIndex(), TransferQueueIndex(), SupportsDeviceLocalHostVisible(), 
     GraphicsQueue(), PresentQueue(), TransferQueue(), GraphicsCommandPool(), properties(), features(), memory(), DepthFormat() {}

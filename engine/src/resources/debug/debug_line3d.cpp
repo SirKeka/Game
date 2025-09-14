@@ -14,6 +14,10 @@ VertexCount(),
 vertices(nullptr),
 geometry()
 {
+    if (parent) {
+        xform.SetParent(parent);
+    }
+    
     // UniqueID = Identifier::AquireNewID(this);
     // geo.id = INVALID_ID;
     // geo.generation = INVALID_ID_U16;
@@ -37,7 +41,10 @@ bool DebugLine3D::Create(const FVec3 &Point0, const FVec3 &Point1, Transform *pa
     this->Point1 = Point1;
     colour = FVec4::One();
     xform = Transform();
-    geometry = GeometryID();
+    geometry = Geometry();
+    if (parent) {
+        xform.SetParent(parent);
+    }
     return true;
 }
 
@@ -101,9 +108,15 @@ bool DebugLine3D::Initialize()
 bool DebugLine3D::Load()
 {
     // Отправьте геометрию в рендерер для загрузки в графический процессор.
-    if (!RenderingSystem::Load(&geometry, sizeof(ColourVertex3D), VertexCount, vertices, 0, 0, nullptr)) {
+    if (!RenderingSystem::CreateGeometry(&geometry, sizeof(ColourVertex3D), VertexCount, vertices)) {
         return false;
     }
+
+    // Отправляем геометрию в рендерер для загрузки в графический процессор.
+    if (!RenderingSystem::Load(&geometry)) {
+        return false;
+    }
+    
     if (geometry.generation == INVALID::U16ID) {
         geometry.generation = 0;
     } else {

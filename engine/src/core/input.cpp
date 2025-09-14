@@ -1,7 +1,7 @@
 #include "input.hpp"
-#include "event.hpp"
+#include "event.h"
 #include "memory/linear_allocator.hpp"
-#include "keymap.hpp"
+#include "keymap.h"
 
 #include <new>
 
@@ -258,6 +258,8 @@ void InputSystem::ProcessButton(Buttons button, bool pressed)
         // Запустите событие.
         EventContext context;
         context.data.u16[0] = ToInt(button);
+        context.data.i16[1] = pInput->MouseCurrent.PosX;
+        context.data.i16[2] = pInput->MouseCurrent.PosY;
         EventSystem::Fire(pressed ? EventSystem::ButtonPressed : EventSystem::ButtonReleased, nullptr, context);
     }
 }

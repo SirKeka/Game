@@ -1,5 +1,5 @@
 #pragma once
-#include "defines.hpp"
+
 #include "math/extents.h"
 #include "math/vertex.h"
 #include "resources/geometry.h"
@@ -54,7 +54,7 @@ struct MAPI DebugGrid {
     u32 VertexCount;
     ColourVertex3D* vertices;
 
-    GeometryID geometry;
+    Geometry geometry;
 
     constexpr DebugGrid() : UniqueID(), name(), orientation(), TileCountDim0(), TileCountDim1(), TileScale(), UseThirdAxis(), extents(), origin(), VertexCount(), vertices(nullptr) {}
     constexpr DebugGrid(Config& config)

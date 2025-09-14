@@ -1,6 +1,6 @@
 #pragma once
-#include <defines.hpp>
-#include <core/mmemory.hpp>
+
+#include <core/memory_system.h>
 #include <core/logger.hpp>
 
 template<typename T>

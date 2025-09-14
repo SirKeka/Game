@@ -10,18 +10,27 @@ constexpr int GEOMETRY_NAME_MAX_LENGTH = 256;
 // ЗАДАЧА: сделать настраиваемым
 constexpr int VULKAN_MAX_GEOMETRY_COUNT = 4096;
 
-struct GeometryID {
-    u32 id;
-    u32 InternalID;
-    u16 generation;
-    FVec3 center;
-    Extents3D extents;
+struct Geometry {
+    u32 id;                // Идентификатор геометрии
+    u32 InternalID;        // Внутренний идентификатор геометрии, используемый растеризатором для сопоставления с внутренними ресурсами.
+    u16 generation;        // Генерация геометрии. Увеличивается каждый раз при изменении геометрии.
+    FVec3 center;          // Центр геометрии в локальных координатах.
+    Extents3D extents;     // Протяженность геометрии в локальных координатах.
+
+    u32 VertexCount;       // Количество вершин данной герметрии
+    u32 VertexElementSize; // Размер каждой вершины.
+    void* vertices;        // Данные вершин
+
+    u32 IndexCount;        // Количество вершин в данной геометрии
+    u32 IndexElementSize;  // Размер одной вершины
+    void* indices;         // Данные вершин
+
     char name[GEOMETRY_NAME_MAX_LENGTH];
     struct Material* material;
 
-    constexpr GeometryID() : id(INVALID::ID), InternalID(INVALID::ID), generation(INVALID::U16ID), name(), material(nullptr) {}
-    // GeometryID(u32 id, u16 generation) : id(id), InternalID(INVALID::ID), generation(generation), name(), material(nullptr) {}
-    constexpr GeometryID(const char* name) : id(INVALID::ID), InternalID(INVALID::ID), generation(INVALID::U16ID), material(nullptr) {MemorySystem::CopyMem(this->name, name, GEOMETRY_NAME_MAX_LENGTH);}
+    constexpr Geometry() : id(), InternalID(INVALID::ID), generation(INVALID::U16ID), name(), material(nullptr) {}
+    // Geometry(u32 id, u16 generation) : id(id), InternalID(INVALID::ID), generation(generation), name(), material(nullptr) {}
+    constexpr Geometry(const char* name) : id(), InternalID(INVALID::ID), generation(INVALID::U16ID), material(nullptr) {MemorySystem::CopyMem(this->name, name, GEOMETRY_NAME_MAX_LENGTH);}
     void* operator new[](u64 size) { return MemorySystem::Allocate(size, Memory::Array); }
     void operator delete[](void* ptr, u64 size) { MemorySystem::Free(ptr, size, Memory::Array); }
 };

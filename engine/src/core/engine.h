@@ -1,7 +1,5 @@
 #pragma once
 
-#include "defines.hpp"
-
 // Основные компоненты ядра
 #include "clock.hpp"
 #include "systems_manager.hpp"

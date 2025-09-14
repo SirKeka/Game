@@ -1,7 +1,5 @@
 #pragma once
 
-#include "defines.hpp"
-
 #include "math.h"
 #include "vector3d.h"
 
@@ -29,7 +27,7 @@ struct Vector4D
     };
 
 	constexpr Vector4D() noexcept : x(), y(), z(), w() {};
-	constexpr explicit Vector4D(T x, T y, T z, T w) noexcept : x(x), y(y), z(z), w(w) {
+	constexpr Vector4D(T x, T y, T z, T w) noexcept : x(x), y(y), z(z), w(w) {
 #if defined(MUSE_SIMD)
     	data = _mm_setr_ps(x, y, z, w);
 #endif

@@ -8,6 +8,12 @@
 #include <renderer/renderpass.h>
 #include <new>
 
+#include <math/geometry_utils.h>
+
+// ЗАДАЧА: Реедактор временно
+#include "editor/gizmo.h"
+#include "editor/render_view_editor_world.h"
+
 // ЗАДАЧА: временный код
 #include <core/identifier.h>
 #include <systems/geometry_system.h>
@@ -24,6 +30,29 @@ bool GameConfigureRenderViews(ApplicationConfig& config);
 void ApplicationRegisterEvents(Application& app);
 void ApplicationUnregisterEvents(Application& app);
 static bool LoadMainScene(Application* app);
+
+void Game::ClearDebugObjects() 
+{
+    if (TestBoxes) {
+        const u32& BoxCount = TestBoxes.Length();
+        for (u32 i = 0; i < BoxCount; ++i) {
+            auto& box = TestBoxes[i];
+            box.Unload();
+            box.Destroy();
+        }
+        TestBoxes.Clear();
+    }
+
+    if (TestLines) {
+        const u32& LineCount = TestLines.Length();
+        for (u32 i = 0; i < LineCount; ++i) {
+            auto line = TestLines[i];
+            line.Unload();
+            line.Destroy();
+        }
+        TestLines.Clear();
+    }
+}
 
 bool GameOnEvent(u16 code, void *sender, void *ListenerInst, EventContext context)
 {
@@ -86,6 +115,7 @@ bool GameOnDebugEvent(u16 code, void *sender, void *ListenerInst, EventContext c
         if (state->MainScene.state == SimpleScene::State::Loaded) {
             MDEBUG("Выгрузка сцены...");
             state->MainScene.Unload(false);
+            state->ClearDebugObjects();
             MDEBUG("Выполнено.")
         }
         return true;
@@ -114,6 +144,82 @@ bool GameOnKey(u16 code, void *sender, void *ListenerInst, EventContext context)
     //         MDEBUG("'%c' клавиша отпущена в окне.", KeyCode);
     //     }
     // }
+
+    return false;
+}
+
+bool GameOnButtonUp(u16 code, void* sender, void* ListenerInst, EventContext context) {
+    if (code == EventSystem::ButtonReleased) {
+        Buttons button = (Buttons)context.data.u16[0];
+        switch (button) {
+            case Buttons::Left: {
+                i16 x = context.data.i16[1];
+                i16 y = context.data.i16[2];
+                auto state = (Game*)ListenerInst;
+
+                // Если сцена не загружена, не делайте ничего другого.
+                if (state->MainScene.state < SimpleScene::State::Loaded) {
+                    return false;
+                }
+
+                auto view = state->WorldCamera->GetView();
+                auto origin = state->WorldCamera->GetPosition();
+
+                // ЗАДАЧА: Получите это из области просмотра.
+                auto ProjectionMatrix = Matrix4D::MakeFrustumProjection(Math::DegToRad(45.F), (f32)state->width / state->height, 0.1F, 4000.F);
+                Ray ray {
+                    FVec2((f32)x, (f32)y),
+                    FVec2((f32)state->width, (f32)state->height),
+                    origin,
+                    view,
+                    ProjectionMatrix
+                };
+
+                RaycastResult RayResult;
+                if (state->MainScene.Raycast(ray, RayResult)) {
+                    const u32& HitCount = RayResult.hits.Length();
+                    for (u32 i = 0; i < HitCount; ++i) {
+                        auto& hit = RayResult.hits[i];
+                        MINFO("Попадание! id: %u, дистанция: %f", hit.UniqueID, hit.distance);
+
+                        // Создайте линию отладки в точке начала и конца луча (на пересечении).
+                        DebugLine3D TestLine {ray.origin, hit.position};
+                        TestLine.Initialize();
+                        TestLine.Load();
+                        // Жёлтый — для попаданий.
+                        TestLine.SetColour(FVec4(1.F, 1.F, 0.F, 1.F));
+
+                        state->TestLines.PushBack(TestLine);
+
+                        // Создайте поле отладки для отображения точки пересечения.
+                        DebugBox3D TestBox {FVec3(0.1f, 0.1f, 0.1f)};
+                        TestBox.Initialize();
+                        TestBox.Load();
+
+                        Extents3D ext;
+                        ext.min = FVec3(hit.position.x - 0.05F, hit.position.y - 0.05F, hit.position.z - 0.05F);
+                        ext.max = FVec3(hit.position.x + 0.05F, hit.position.y + 0.05F, hit.position.z + 0.05F);
+                        TestBox.SetExtents(ext);
+
+                        state->TestBoxes.PushBack(TestBox);
+                    }
+                } else {
+                    MINFO("Нет попадания");
+
+                    // Создайте отладочную строку, где начинается и продолжается испускание луча.
+                    DebugLine3D TestLine{ray.origin, ray.origin + ray.direction * 100.F};
+                    TestLine.Initialize();
+                    TestLine.Load();
+                    // Пурпурный — для случаев отсутствия попадания.
+                    TestLine.SetColour(FVec4(1.F, 0.F, 1.F, 1.F));
+
+                    state->TestLines.PushBack(TestLine);
+                }
+
+            } break;
+            default: break;
+        }
+    }
 
     return false;
 }
@@ -164,6 +270,22 @@ bool ApplicationInitialize(Application& app)
 
     state->ForwardMoveSpeed  = 5.F;
     state->BackwardMoveSpeed = 2.5F;
+
+    // Настройка редактора gizmo.
+    /* if (!state->gizmo.Create()) {
+        MERROR("Не удалось создать редактор!");
+        return false;
+    } */
+
+    if (!state->gizmo.Initialize()) {
+        MERROR("Не удалось инициализировать редактор!");
+        return false;
+    }
+
+    if (!state->gizmo.Load()) {
+        MERROR("Не удалось загрузить редактор!");
+        return false;
+    }
 
     // Сетки мира
     // Отменить все сетки.
@@ -222,7 +344,7 @@ bool ApplicationInitialize(Application& app)
     // Получите геометрию пользовательского интерфейса из конфигурации.
     state->UiMeshes[0].UniqueID = Identifier::AquireNewID(&state->UiMeshes[0]);
     state->UiMeshes[0].GeometryCount = 1;
-    state->UiMeshes[0].geometries = new GeometryID*[1];
+    state->UiMeshes[0].geometries = new Geometry*[1];
     state->UiMeshes[0].geometries[0] = GeometrySystem::Acquire(UI_Config, true);
     state->UiMeshes[0].transform = Transform();
     state->UiMeshes[0].generation = 0;
@@ -231,7 +353,7 @@ bool ApplicationInitialize(Application& app)
     
     state->WorldCamera = CameraSystem::GetDefault();
     state->WorldCamera->SetPosition(FVec3(1.45F, 3.34F, 17.15F));
-    state->WorldCamera->SetRotationEuler(FVec3(-11.083F, 262.600F, 0.F));
+    state->WorldCamera->SetRotationEuler(FVec3(-11.083F, 18.250F, 0.F));
 
     state->UpdateClock.Zero();
     state->RenderClock.Zero();
@@ -269,9 +391,9 @@ bool ApplicationUpdate(Application& app, const FrameData& rFrameData)
         
         if (state->PointLight1) {
             state->PointLight1->data.colour.Set(
-                MCLAMP(Math::sin(rFrameData.TotalTime) * 0.75F * 0.5F, 0.F, 1.F),
-                MCLAMP(Math::sin(rFrameData.TotalTime) + (M_2PI / 3) * 0.75 * 0.5F, 0.F, 1.F),
-                MCLAMP(Math::sin(rFrameData.TotalTime) + (M_2PI / 3) * 0.75 * 0.5F, 0.F, 1.F),
+                MCLAMP(Math::sin(rFrameData.TotalTime) * 0.75F + 0.5F, 0.F, 1.F),
+                MCLAMP(Math::sin(rFrameData.TotalTime + M_2PI / 3) * 0.75 + 0.5F, 0.F, 1.F),
+                MCLAMP(Math::sin(rFrameData.TotalTime + M_4PI / 3) * 0.75 + 0.5F, 0.F, 1.F),
                 1.F); 
             state->PointLight1->data.position.z = 20.F + Math::sin(rFrameData.TotalTime);
         }
@@ -348,16 +470,17 @@ bool ApplicationRender(Application& app, RenderPacket& packet, FrameData& rFrame
     state->RenderClock.Start();
     // ЗАДАЧА: временный код
 
-    packet.ViewCount = 4;
-    packet.views = reinterpret_cast<RenderView::Packet*>(rFrameData.FrameAllocator->Allocate(sizeof(RenderView::Packet) * packet.ViewCount));
+    packet.ViewCount = 5;
+    packet.views = reinterpret_cast<RenderViewPacket*>(rFrameData.FrameAllocator->Allocate(sizeof(RenderViewPacket) * packet.ViewCount));
 
     // FIXME: Прочитать это из конфигурации
-    packet.views[Testbed::PacketViews::Skybox].view = RenderViewSystem::Get("skybox");
-    packet.views[Testbed::PacketViews::World].view  = RenderViewSystem::Get("world");
-    packet.views[Testbed::PacketViews::UI].view     = RenderViewSystem::Get("ui");
-    packet.views[Testbed::PacketViews::Pick].view   = RenderViewSystem::Get("pick");
+    packet.views[Testbed::PacketViews::Skybox].view      = RenderViewSystem::Get("skybox");
+    packet.views[Testbed::PacketViews::World].view       = RenderViewSystem::Get("world");
+    packet.views[Testbed::PacketViews::EditorWorld].view = RenderViewSystem::Get("editor_world");
+    packet.views[Testbed::PacketViews::UI].view          = RenderViewSystem::Get("ui");
+    packet.views[Testbed::PacketViews::Pick].view        = RenderViewSystem::Get("pick");
 
-    // Даем нашей сцене команду сгенерировать соответствующие пакетные данные.
+    // Даем нашей сцене команду сгенерировать соответствующие пакетные данные. ПРИМЕЧАНИЕ: Генерирует пакеты скайбокса и мира.
     
     // Мир 
     // ЗАДАЧА: выполняет поиск в каждом кадре.
@@ -368,50 +491,100 @@ bool ApplicationRender(Application& app, RenderPacket& packet, FrameData& rFrame
         }
     }
 
-    // Пользовательский интерфейс
-    UiPacketData UiPacket{};
-    u32 UIMeshCount = 0;
-    u32 MaxUiMeshes = 10;
-    auto UIMeshes = reinterpret_cast<Mesh**>(rFrameData.FrameAllocator->Allocate(sizeof(Mesh*) * MaxUiMeshes));
-    // ЗАДАЧА: массив гибкого размера
-    for (u32 i = 0; i < 10; ++i) {
-        if (state->UiMeshes[i].generation != INVALID::U8ID) {
-            UIMeshes[UIMeshCount] = &state->UiMeshes[i];
-            UIMeshCount++;
+    // HACK: Внедрение отладочной геометрии в пакет мира.
+    if (state->MainScene.state == SimpleScene::State::Loaded) {
+        const u32& LineCount = state->TestLines.Length();
+        for (u32 i = 0; i < LineCount; ++i) {
+            GeometryRenderData rdata;
+            rdata.model = state->TestLines[i].xform.GetWorld();
+            rdata.geometry = &state->TestLines[i].geometry;
+            rdata.UniqueID = INVALID::ID;
+            packet.views[Testbed::World].DebugGeometries.PushBack(rdata);
+        }
+
+        const u32& BoxCount = state->TestBoxes.Length();
+        for (u32 i = 0; i < BoxCount; ++i) {
+            GeometryRenderData rData;
+            rData.model = state->TestBoxes[i].xform.GetWorld();
+            rData.geometry = &state->TestBoxes[i].geometry;
+            rData.UniqueID = INVALID::ID;
+            packet.views[Testbed::World].DebugGeometries.PushBack(rData);
         }
     }
-    UiPacket.MeshData.MeshCount = UIMeshCount;
-    UiPacket.MeshData.meshes = UIMeshes;
-    UiPacket.TextCount = 2;
-    auto& DebugConsoleText = state->console.GetText();
-    bool RenderDebugConsole = DebugConsoleText && state->console.Visible();
-    if (RenderDebugConsole) {
-        UiPacket.TextCount += 2;
-    }
-    auto texts = reinterpret_cast<Text**>(rFrameData.FrameAllocator->Allocate(sizeof(Text*) * UiPacket.TextCount));
-    texts[0] = &state->TestText;
-    texts[1] = &state->TestSysText;
-    if (RenderDebugConsole) {
-        texts[2] = &DebugConsoleText;
-        texts[3] = &state->console.GetEntryText();
-    }
-    UiPacket.texts = texts;
-    if (!RenderViewSystem::BuildPacket(RenderViewSystem::Get("ui"), *rFrameData.FrameAllocator, &UiPacket, packet.views[2])) {
-        MERROR("Не удалось построить пакет для представления «ui».");
-        return false;
+
+    // Редактор мира
+    {
+        auto& ViewPacket = packet.views[Testbed::PacketViews::EditorWorld];
+        const auto view = ViewPacket.view;
+
+        EditorWorldPacketData EditorWorldData{};
+        EditorWorldData.gizmo = &state->gizmo;
+        if (!RenderViewSystem::BuildPacket(view, *rFrameData.FrameAllocator, &EditorWorldData, ViewPacket)) {
+            MERROR("Не удалось построить пакет для представления «editor_world».");
+            return false;
+        }
     }
 
-    RenderViewPick::PacketData PickPacket;
-    PickPacket.UiMeshData = UiPacket.MeshData;
-    PickPacket.WorldMeshData = &packet.views[1].geometries;  // ЗАДАЧА: не жестко закодированный индекс?
-    PickPacket.TerrainMeshData = &packet.views[1].TerrainGeometries;
-    PickPacket.texts = UiPacket.texts;
-    PickPacket.TextCount = UiPacket.TextCount;
-    PickPacket.UiGeometryCount = 0;
+    // Пользовательский интерфейс
+    UiPacketData UiPacket{};
+    {
+        auto& ViewPacket = packet.views[Testbed::PacketViews::UI];
+        const auto view = ViewPacket.view;
 
-    if (!RenderViewSystem::BuildPacket(RenderViewSystem::Get("pick"), *rFrameData.FrameAllocator, &PickPacket, packet.views[3])) {
-        MERROR("Не удалось построить пакет для представления «pick».");
-        return false;
+        u32 UIMeshCount = 0;
+        u32 MaxUiMeshes = 10;
+        auto UIMeshes = reinterpret_cast<Mesh**>(rFrameData.FrameAllocator->Allocate(sizeof(Mesh*) * MaxUiMeshes));
+
+        // ЗАДАЧА: массив гибкого размера
+        for (u32 i = 0; i < 10; ++i) {
+            if (state->UiMeshes[i].generation != INVALID::U8ID) {
+                UIMeshes[UIMeshCount] = &state->UiMeshes[i];
+                UIMeshCount++;
+            }
+        }
+
+        UiPacket.MeshData.MeshCount = UIMeshCount;
+        UiPacket.MeshData.meshes = UIMeshes;
+        UiPacket.TextCount = 2;
+        auto& DebugConsoleText = state->console.GetText();
+        bool RenderDebugConsole = DebugConsoleText && state->console.Visible();
+
+        if (RenderDebugConsole) {
+            UiPacket.TextCount += 2;
+        }
+
+        auto texts = reinterpret_cast<Text**>(rFrameData.FrameAllocator->Allocate(sizeof(Text*) * UiPacket.TextCount));
+        texts[0] = &state->TestText;
+        texts[1] = &state->TestSysText;
+
+        if (RenderDebugConsole) {
+            texts[2] = &DebugConsoleText;
+            texts[3] = &state->console.GetEntryText();
+        }
+
+        UiPacket.texts = texts;
+        if (!RenderViewSystem::BuildPacket(view, *rFrameData.FrameAllocator, &UiPacket, ViewPacket)) {
+            MERROR("Не удалось построить пакет для представления «ui».");
+            return false;
+        }
+    }
+
+    {
+        auto& ViewPacket = packet.views[Testbed::PacketViews::Pick];
+        const auto view = ViewPacket.view;
+
+        RenderViewPick::PacketData PickPacket;
+        PickPacket.UiMeshData = UiPacket.MeshData;
+        PickPacket.WorldMeshData = &packet.views[1].geometries;  // ЗАДАЧА: не жестко закодированный индекс?
+        PickPacket.TerrainMeshData = &packet.views[1].TerrainGeometries;
+        PickPacket.texts = UiPacket.texts;
+        PickPacket.TextCount = UiPacket.TextCount;
+        PickPacket.UiGeometryCount = 0;
+
+        if (!RenderViewSystem::BuildPacket(view, *rFrameData.FrameAllocator, &PickPacket, ViewPacket)) {
+            MERROR("Не удалось построить пакет для представления «pick».");
+            return false;
+        }
     }
 
     // ЗАДАЧА: конец временного кода
@@ -447,6 +620,7 @@ void ApplicationShutdown(Application& app)
         MDEBUG("Выгрузка сцены...");
 
         state->MainScene.Unload(true);
+        state->ClearDebugObjects();
 
         MDEBUG("Выполнено.");
     }
@@ -478,7 +652,7 @@ void ApplicationLibOnUnload(Application& app)
 
 bool GameConfigureRenderViews(ApplicationConfig& config)
 {
-    config.RenderViews.Resize(4);
+    config.RenderViews.Resize(5);
 
     // Skybox view
     {
@@ -507,13 +681,13 @@ bool GameConfigureRenderViews(ApplicationConfig& config)
         SkyboxTargetColour.StoreOperation = RenderTargetAttachmentStoreOperation::Store;
         SkyboxTargetColour.PresentAfter   = false;
 
-        // ЗАДАЧА: если слишком рано в процессе инициализации, перейти к on_registered.
         if (!RenderingSystem::RenderpassCreate(SkyboxPass, *SkyboxView.passes)) { // 
             MERROR("Skybox view — Не удалось создать проход рендеринга «%s»",  config.RenderViews[0].passes[0].name.c_str());
             return false;
         }
 
         SkyboxView.OnRegistered = RenderViewSkybox::OnRegistered;
+        SkyboxView.Destroy      = RenderViewSkybox::Destroy;
         SkyboxView.Resize       = RenderViewSkybox::Resize;
         SkyboxView.BuildPacket  = RenderViewSkybox::BuildPacket;
         SkyboxView.Render       = RenderViewSkybox::Render;
@@ -556,21 +730,70 @@ bool GameConfigureRenderViews(ApplicationConfig& config)
         WorldTargetDepth.StoreOperation  = RenderTargetAttachmentStoreOperation::Store;
         WorldTargetDepth.PresentAfter    = false;
 
-        // ЗАДАЧА: если слишком рано в процессе инициализации, перейти к on_registered.
         if (!RenderingSystem::RenderpassCreate(WorldPass, *WorldView.passes)) {
             MERROR("World view — Не удалось создать проход рендеринга «%s»", WorldView.passes[0].name.c_str());
             return false;
         };
 
         WorldView.OnRegistered = RenderViewWorld::OnRegistered;
+        WorldView.Destroy      = RenderViewWorld::Destroy;
         WorldView.Resize       = RenderViewWorld::Resize;
         WorldView.BuildPacket  = RenderViewWorld::BuildPacket;
         WorldView.Render       = RenderViewWorld::Render;
     }
 
+    // ЗАДАЧА: Редактор временно
+    // Editor World view.
+    {
+        auto& EditorWorldView = config.RenderViews[2];
+        EditorWorldView.name = "editor_world";
+        EditorWorldView.RenderpassCount = 1;
+        EditorWorldView.passes = (Renderpass*)MemorySystem::Allocate(sizeof(Renderpass) * EditorWorldView.RenderpassCount, Memory::Array, true);
+
+        // Конфигурация подпрохода рендеринга
+        RenderpassConfig EditorWorldPass;
+        EditorWorldPass.name = "Renderpass.Testbed.EditorWorld";
+        EditorWorldPass.depth = 1.F;
+        EditorWorldPass.stencil = 0;
+        EditorWorldPass.RenderArea = FVec4(0, 0, (f32)config.StartWidth, (f32)config.StartHeight);  // Разрешение области рендеринга по умолчанию.
+        EditorWorldPass.ClearColour = FVec4(0.F, 0.F, 0.F, 1.F);
+        EditorWorldPass.ClearFlags = RenderpassClearFlag::DepthBuffer | RenderpassClearFlag::StencilBuffer;
+        EditorWorldPass.RenderTargetCount = RenderingSystem::WindowAttachmentCountGet();
+        EditorWorldPass.target.AttachmentCount = 2;
+        EditorWorldPass.target.attachments = (RenderTargetAttachmentConfig*)MemorySystem::Allocate(sizeof(RenderTargetAttachmentConfig) * EditorWorldPass.target.AttachmentCount, Memory::Array);
+
+        // Привязка цвета
+        auto& EditorWorldTargetColour = EditorWorldPass.target.attachments[0];
+        EditorWorldTargetColour.type = RenderTargetAttachmentType::Colour;
+        EditorWorldTargetColour.source = RenderTargetAttachmentSource::Default;
+        EditorWorldTargetColour.LoadOperation = RenderTargetAttachmentLoadOperation::Load;
+        EditorWorldTargetColour.StoreOperation = RenderTargetAttachmentStoreOperation::Store;
+        EditorWorldTargetColour.PresentAfter = false;
+
+        // Привязка глубины
+        auto& EditorWorldTargetDepth = EditorWorldPass.target.attachments[1];
+        EditorWorldTargetDepth.type = RenderTargetAttachmentType::Depth;
+        EditorWorldTargetDepth.source = RenderTargetAttachmentSource::Default;;
+        EditorWorldTargetDepth.LoadOperation = RenderTargetAttachmentLoadOperation::DontCare;
+        EditorWorldTargetDepth.StoreOperation = RenderTargetAttachmentStoreOperation::Store;
+        EditorWorldTargetDepth.PresentAfter = false;
+
+        if (!RenderingSystem::RenderpassCreate(EditorWorldPass, EditorWorldView.passes[0])) {
+            MERROR("EditorWorldView — Не удалось создать проход рендеринга «%s»", EditorWorldView.passes[0].name.c_str());
+            return false;
+        }
+
+        // Назначьте указатели на функции.
+        EditorWorldView.OnRegistered = RenderViewEditorWorld::OnRegistered;
+        EditorWorldView.Destroy = RenderViewEditorWorld::Destroy;
+        EditorWorldView.Resize = RenderViewEditorWorld::Resize;
+        EditorWorldView.BuildPacket = RenderViewEditorWorld::BuildPacket;
+        EditorWorldView.Render = RenderViewEditorWorld::Render;
+    }
+
     // UI view
     {
-        auto& UiView = config.RenderViews[2];
+        auto& UiView = config.RenderViews[3];
         UiView.name = "ui";
         // UiView.width = 0;
         // UiView.height = 0;
@@ -597,13 +820,13 @@ bool GameConfigureRenderViews(ApplicationConfig& config)
         UiTargetAttachment.StoreOperation = RenderTargetAttachmentStoreOperation::Store;
         UiTargetAttachment.PresentAfter   = true;
 
-        // ЗАДАЧА: если слишком рано в процессе инициализации, перейти к on_registered.
         if (!RenderingSystem::RenderpassCreate(UiPass, *UiView.passes)) {
             MERROR("UI view — Не удалось создать проход рендеринга «%s»", UiView.passes[0].name.c_str());
             return false;
         };
 
         UiView.OnRegistered = RenderViewUI::OnRegistered;
+        UiView.Destroy      = RenderViewUI::Destroy;
         UiView.Resize       = RenderViewUI::Resize;
         UiView.BuildPacket  = RenderViewUI::BuildPacket;
         UiView.Render       = RenderViewUI::Render;
@@ -611,7 +834,7 @@ bool GameConfigureRenderViews(ApplicationConfig& config)
 
     // Pick view
     {
-        auto& PickView = config.RenderViews[3];
+        auto& PickView = config.RenderViews[4];
         PickView.name = "pick";
         // PickView.width = 0;
         // PickView.height = 0;
@@ -645,7 +868,6 @@ bool GameConfigureRenderViews(ApplicationConfig& config)
         WorldPickPassDepth.StoreOperation = RenderTargetAttachmentStoreOperation::Store;
         WorldPickPassDepth.PresentAfter   = false;
 
-        // ЗАДАЧА: если слишком рано в процессе инициализации, перейти к on_registered.
         if (!RenderingSystem::RenderpassCreate(WorldPickPass, PickView.passes[0])) {
             MERROR("UI view — Не удалось создать проход рендеринга «%s»", PickView.passes[0].name.c_str());
             return false;
@@ -672,13 +894,13 @@ bool GameConfigureRenderViews(ApplicationConfig& config)
         UiPickPassColour.StoreOperation = RenderTargetAttachmentStoreOperation::Store; // Необходимо сохранить его, чтобы впоследствии можно было взять образец.
         UiPickPassColour.PresentAfter   = false;
 
-        // ЗАДАЧА: если слишком рано в процессе инициализации, перейти к on_registered.
         if (!RenderingSystem::RenderpassCreate(UiPickPass, PickView.passes[1])) {
             MERROR("Pick view — Не удалось создать проход рендеринга «%s»", PickView.passes[1].name.c_str());
             return false;
         };
 
         PickView.OnRegistered               = RenderViewPick::OnRegistered;
+        PickView.Destroy                    = RenderViewPick::Destroy;
         PickView.Resize                     = RenderViewPick::Resize;
         PickView.BuildPacket                = RenderViewPick::BuildPacket;
         PickView.Render                     = RenderViewPick::Render;
@@ -704,10 +926,11 @@ static bool GameOnMVarChanged(u16 code, void* sender, void* ListenerInst, EventC
 void ApplicationRegisterEvents(Application &app)
 {
     //ЗАДАЧА: временно
-    EventSystem::Register(EventSystem::DEBUG0, &app, GameOnDebugEvent);
-    EventSystem::Register(EventSystem::DEBUG1, &app, GameOnDebugEvent);
-    EventSystem::Register(EventSystem::DEBUG2, &app, GameOnDebugEvent);
+    EventSystem::Register(EventSystem::DEBUG0,               &app, GameOnDebugEvent);
+    EventSystem::Register(EventSystem::DEBUG1,               &app, GameOnDebugEvent);
+    EventSystem::Register(EventSystem::DEBUG2,               &app, GameOnDebugEvent);
     EventSystem::Register(EventSystem::OojectHoverIdChanged, &app, GameOnEvent);
+    EventSystem::Register(EventSystem::ButtonReleased, app.state, GameOnButtonUp);
     //ЗАДАЧА: временно
 
     EventSystem::Register(EventSystem::KeyPressed,  &app, GameOnKey);
@@ -721,6 +944,7 @@ void ApplicationUnregisterEvents(Application &app)
     EventSystem::Unregister(EventSystem::DEBUG1, &app, GameOnDebugEvent);
     EventSystem::Unregister(EventSystem::DEBUG2, &app, GameOnDebugEvent);
     EventSystem::Unregister(EventSystem::OojectHoverIdChanged, &app, GameOnEvent);
+    EventSystem::Unregister(EventSystem::ButtonReleased, app.state, GameOnButtonUp);
     // ЗАДАЧА: конец временного блока кода
 
     EventSystem::Unregister(EventSystem::KeyPressed, &app, GameOnKey);

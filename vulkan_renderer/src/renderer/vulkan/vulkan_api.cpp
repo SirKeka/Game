@@ -1,9 +1,9 @@
-#include "vulkan_api.hpp"
+#include "vulkan_api.h"
 #include "vulkan_command_buffer.hpp"
 #include "vulkan_swapchain.hpp"
 #include "vulkan_image.hpp"
 #include "vulkan_buffer.hpp"
-#include "platform\vulkan_platform.hpp"
+#include "platform\vulkan_platform.h"
 #include "vulkan_renderpass.hpp"
 
 #include "renderer/renderbuffer.h"
@@ -15,7 +15,7 @@
 
 #include <math/vertex.h>
 
-#include "vulkan_utils.hpp"
+#include "vulkan_utils.h"
 
 // ПРИМЕЧАНИЕ: Если вы хотите отслеживать выделения, раскомментируйте это.
 // #ifndef MVULKAN_ALLOCATOR_TRACE
@@ -190,8 +190,11 @@ bool VulkanAPI::CreateVulkanAllocator(VkAllocationCallbacks* callbacks) {
 }
 #endif // MVULKAN_USE_CUSTOM_ALLOCATOR == 1
 
-VulkanAPI::VulkanAPI()
-: FrameDeltaTime(),
+VulkanAPI::VulkanAPI() : 
+ApiMajor(),
+ApiMinor(),
+ApiPatch(),
+FrameDeltaTime(),
 // Просто установите некоторые значения по умолчанию для буфера кадра на данный момент.
 // На самом деле неважно, что это, потому что они будут переопределены, но они необходимы для создания цепочки обмена.
 FramebufferWidth(800), FramebufferHeight(600), 
@@ -301,9 +304,16 @@ bool VulkanAPI::Initialize(const RenderingConfig &config, u8 &OutWindowRenderTar
     allocator = nullptr;
 #endif
 
+    // Получите текущую установленную версию экземпляра. Не обязательно ту, что используется на устройстве. Используйте её для создания экземпляра.
+    u32 ApiVersion = 0;
+    vkEnumerateInstanceVersion(&ApiVersion);
+    ApiMajor = VK_VERSION_MAJOR(ApiVersion);
+    ApiMinor = VK_VERSION_MINOR(ApiVersion);
+    ApiPatch = VK_VERSION_PATCH(ApiVersion);
+
     // Общая структура информации о приложении.
     VkApplicationInfo AppInfo = {VK_STRUCTURE_TYPE_APPLICATION_INFO};
-    AppInfo.apiVersion = VK_API_VERSION_1_3;
+    AppInfo.apiVersion = VK_MAKE_API_VERSION(0, ApiMajor, ApiMinor, ApiPatch);
     AppInfo.pApplicationName = config.ApplicationName;
     AppInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0); // VK_MAKE_API_VERSION(0, 1, 0, 0);
     AppInfo.pEngineName = "Moon Engine";
@@ -1049,125 +1059,120 @@ void VulkanAPI::Unload(Texture *texture)
     //kzero_memory(texture, sizeof(struct texture));
 }
 
-bool VulkanAPI::Load(GeometryID *gid, u32 VertexSize, u32 VertexCount, const void *vertices, u32 IndexSize, u32 IndexCount, const void *indices)
+bool VulkanAPI::CreateGeometry(Geometry *geometry)
 {
-    if (!VertexCount || !vertices) {
-        MERROR("VulkanAPI::LoadGeometry требует данных вершин, но они не были предоставлены. Количество вершин=%d, вершины=%p", VertexCount, vertices);
-        return false;
-    }
+    // ПРИМЕЧАНИЕ: этому конкретному растеризатору не нужно ничего делать.
+    return true;
+}
+
+bool VulkanAPI::Load(Geometry *geometry, u32 VertexOffset, u32 VertexSize, u32 IndexOffset, u32 IndexSize)
+{
     // Проверьте, не повторная ли это загрузка. Если это так, необходимо впоследствии освободить старые данные.
-    bool IsReupload = gid->InternalID != INVALID::ID;
+    bool IsReupload = geometry->InternalID != INVALID::ID;
+
     VulkanGeometry OldRange;
 
-    VulkanGeometry* geometry = nullptr;
+    VulkanGeometry* vkGeometry = nullptr;
     if (IsReupload) {
-        geometry = &this->geometries[gid->InternalID];
+        vkGeometry = &this->geometries[geometry->InternalID];
 
         // Скопируйте старый диапазон.
-        OldRange = *geometry;
+        OldRange = *vkGeometry;
     } else {
         for (u32 i = 0; i < VULKAN_MAX_GEOMETRY_COUNT; ++i) {
             if (this->geometries[i].id == INVALID::ID) {
                 // Найден свободный индекс.
-                gid->InternalID = i;
+                geometry->InternalID = i;
                 this->geometries[i].id = i;
-                geometry = &this->geometries[i];
+                vkGeometry = &this->geometries[i];
                 break;
             }
         }
     }
-    if (!geometry) {
+
+    if (!vkGeometry) {
         MFATAL("VulkanRenderer::Load не удалось найти свободный индекс для загрузки новой геометрии. Настройте конфигурацию, чтобы обеспечить больше.");
         return false;
     }
 
     // Данные вершин.
-    geometry->VertexCount = VertexCount;
-    geometry->VertexElementSize = VertexSize;
-    u32 TotalSize = VertexCount * VertexSize;
-    
-    if (!ObjectVertexBuffer.Allocate(TotalSize, geometry->VertexBufferOffset)) {
-        MERROR("VulkanAPI::LoadDeometry не удалось выделить память из буфера вершин!");
-        return false;
-    }
-    
-    if (!RenderBufferLoadRange(ObjectVertexBuffer, geometry->VertexBufferOffset, TotalSize, vertices)) {
-        MERROR("VulkanAPI::LoadGeometry не удалось загрузить в буфер вершин!");
-        return false;
-    }
-
-    // Данные индексов, если применимо
-    if (IndexCount && indices) {
-        geometry->IndexCount = IndexCount;
-        geometry->IndexElementSize = IndexSize;
-        TotalSize = IndexCount * IndexSize;
-        if (!ObjectIndexBuffer.Allocate(TotalSize, geometry->IndexBufferOffset)) {
-            MERROR("VulkanAPI::LoadGeometry не удалось выделить память из буфера индексов!");
-            return false;
-        }
-    
-        if (!RenderBufferLoadRange(ObjectIndexBuffer, geometry->IndexBufferOffset, TotalSize, indices)) {
-            MERROR("VulkanAPI::LoadGeometry не удалось загрузить в индексный буфер!");
+    if (!IsReupload) {
+        // Выделить место в буфере.
+        if (!ObjectVertexBuffer.Allocate(geometry->VertexElementSize * geometry->VertexCount, vkGeometry->VertexBufferOffset)) {
+            MERROR("VulkanAPI::Load не удалось выделить память из буфера вершин!");
             return false;
         }
     }
 
-    if (gid->generation == INVALID::U16ID) {
-        gid->generation = 0;
+    // Загрузите данные.
+    if (!RenderBufferLoadRange(ObjectVertexBuffer, vkGeometry->VertexBufferOffset + VertexOffset, VertexSize, (u8*)geometry->vertices + VertexOffset)) {
+        MERROR("VulkanAPI::Load не удалось загрузить данные в буфер вершин!");
+        return false;
+    }
+
+    // Данные индексов, если применимо.
+    if (geometry->IndexCount && geometry->indices && IndexSize) {
+        if (!IsReupload) {
+            // Выделите место в буфере.
+            if (!ObjectIndexBuffer.Allocate(geometry->IndexElementSize * geometry->IndexCount, vkGeometry->IndexBufferOffset)) {
+                MERROR("VulkanAPI::Load не удалось выделить данные из буфера индекса!");
+                return false;
+            }
+        }
+
+        // Загрузите данные.
+        if (!RenderBufferLoadRange(ObjectIndexBuffer, vkGeometry->IndexBufferOffset + IndexOffset, IndexSize, (u8*)geometry->indices + IndexOffset)) {
+            MERROR("VulkanAPI::Load не удалось загрузить данные в буфер индекса!");
+            return false;
+        }
+    }
+
+    if (vkGeometry->generation == INVALID::ID) {
+        vkGeometry->generation = 0;
     } else {
-        gid->generation++;
-    }
-
-    if (IsReupload) {
-        // Освобождение данных вершин
-        ObjectVertexBuffer.Free(OldRange.VertexElementSize * OldRange.VertexCount, OldRange.VertexBufferOffset);
-
-        // Освобождение данных индексов, если применимо
-        if (OldRange.IndexCount) {
-            ObjectIndexBuffer.Free(OldRange.IndexElementSize * OldRange.IndexCount, OldRange.IndexBufferOffset);
-        }
+        vkGeometry->generation++;
     }
 
     return true;
 }
 
-void VulkanAPI::Unload(GeometryID *gid)
+void VulkanAPI::Unload(Geometry *geometry)
 {
-    if (gid && gid->InternalID != INVALID::ID) {
+    if (geometry && geometry->InternalID != INVALID::ID) {
         vkDeviceWaitIdle(this->Device.LogicalDevice);
-        VulkanGeometry& vGeometry = this->geometries[gid->InternalID];
+        auto& vkGeometry = this->geometries[geometry->InternalID];
 
         // Освобождение данных вершин
-        if (!ObjectVertexBuffer.Free(vGeometry.VertexElementSize * vGeometry.VertexCount, vGeometry.VertexBufferOffset)) {
+        if (!ObjectVertexBuffer.Free(geometry->VertexElementSize * geometry->VertexCount, vkGeometry.VertexBufferOffset)) {
             MERROR("VulkanAPI::UnloadGeometry не удалось освободить диапазон буфера вершин.");
         }
 
         // Освобождение данных индексов, если это применимо
-        if (vGeometry.IndexCount) {
-            if (!ObjectIndexBuffer.Free(vGeometry.IndexElementSize * vGeometry.IndexCount, vGeometry.IndexBufferOffset)) {
+        if (geometry->IndexCount) {
+            if (!ObjectIndexBuffer.Free(geometry->IndexElementSize * geometry->IndexCount, vkGeometry.IndexBufferOffset)) {
                 MERROR("VulkanAPI::UnloadGeometry не удалось освободить диапазон буфера индексов.");
             }
             
         }
 
         // Очистка данных.
-        vGeometry.Destroy();
+        vkGeometry.Destroy();
     }
 }
 
-void VulkanAPI::GeometryVertexUpdate(GeometryID *geometry, u32 offset, u32 VertexCount, void *vertices)
+void VulkanAPI::GeometryVertexUpdate(Geometry *geometry, u32 offset, u32 VertexCount, void *vertices)
 {
-    auto& GeometryData = geometries[geometry->InternalID];
-    if (VertexCount > GeometryData.VertexCount) {
+    auto& vkGeometry = geometries[geometry->InternalID];
+    if (VertexCount > geometry->VertexCount) {
         // ЗАДАЧА: требуется перераспределение.
         MFATAL("VulkanAPI::GeometryVertexUpdate realloc не поддерживается.");
         return;
     }
 
-    u32 TotalSize = VertexCount * GeometryData.VertexElementSize;
+    u32 TotalSize = VertexCount * geometry->VertexElementSize;
 
     // Загрузить данные.
-    if (!RenderBufferLoadRange(ObjectVertexBuffer, GeometryData.VertexBufferOffset + offset, TotalSize, vertices)) {
+    if (!RenderBufferLoadRange(ObjectVertexBuffer, vkGeometry.VertexBufferOffset + offset, TotalSize, (u8*)vertices + offset)) {
         MERROR("VulkanAPI::GeometryVertexUpdate не удалось загрузить в буфер вершин!");
     }
 }
@@ -1180,14 +1185,14 @@ void VulkanAPI::DrawGeometry(const GeometryRenderData& data)
     }
 
     auto& BufferData = geometries[data.geometry->InternalID];
-    bool IncludesIndexData = BufferData.IndexCount > 0;
-    if (!RenderBufferDraw(ObjectVertexBuffer, BufferData.VertexBufferOffset, BufferData.VertexCount, IncludesIndexData)) {
+    bool IncludesIndexData = data.geometry->IndexCount > 0;
+    if (!RenderBufferDraw(ObjectVertexBuffer, BufferData.VertexBufferOffset, data.geometry->VertexCount, IncludesIndexData)) {
         MERROR("VulkanAPI::DrawGeometry не удалось отрисовать буфер вершин.");
         return;
     }
 
     if (IncludesIndexData) {
-        if (!RenderBufferDraw(ObjectIndexBuffer, BufferData.IndexBufferOffset, BufferData.IndexCount, !IncludesIndexData)) {
+        if (!RenderBufferDraw(ObjectIndexBuffer, BufferData.IndexBufferOffset, data.geometry->IndexCount, !IncludesIndexData)) {
             MERROR("VulkanAPI::DrawGeometry не удалось отрисовать буфер индексов.");
             return;
         }
@@ -1201,7 +1206,7 @@ void VulkanAPI::DrawGeometry(const GeometryRenderData& data)
 const u32 DESC_SET_INDEX_GLOBAL   = 0;  // Индекс набора глобальных дескрипторов.
 const u32 DESC_SET_INDEX_INSTANCE = 1;  // Индекс набора дескрипторов экземпляра.
 
-bool VulkanAPI::Load(Shader *shader, const Shader::Config& config, Renderpass* renderpass, const DArray<Shader::Stage>& stages, const DArray<MString>& StageFilenames)
+bool VulkanAPI::Load(Shader *shader, const ShaderConfig& config, Renderpass* renderpass, const DArray<Shader::Stage>& stages, const DArray<MString>& StageFilenames)
 {
     // Этапы перевода
     VkShaderStageFlags VkStages[VulkanShaderConstants::MaxStages];
@@ -1241,7 +1246,7 @@ bool VulkanAPI::Load(Shader *shader, const Shader::Config& config, Renderpass* r
     VulkShader->config.MaxDescriptorSetCount = MaxDescriptorAllocateCount;
 
     // Этапы шейдера. Разбираем флаги.
-    // MMemory::ZeroMem(OutShader->config.stages, sizeof(VulkanShaderStageConfig) * VulkanShaderConstants::MaxStages);
+    // MMemory::ZeroMem(VulkShader->config.stages, sizeof(VulkanShaderStageConfig) * VulkanShaderConstants::MaxStages);
     VulkShader->config.StageCount = 0;
     // Перебрать предоставленные этапы.
     for (u32 i = 0; i < stages.Length(); i++) {
@@ -1276,11 +1281,11 @@ bool VulkanAPI::Load(Shader *shader, const Shader::Config& config, Renderpass* r
     VulkShader->config.DescriptorSets[1].SamplerBindingIndex = INVALID::U8ID;
 
     // Получите данные по количеству униформы.
-    VulkShader->GlobalUniformCount = 0;
-    VulkShader->GlobalUniformSamplerCount = 0;
-    VulkShader->InstanceUniformCount = 0;
-    VulkShader->InstanceUniformSamplerCount = 0;
-    VulkShader->LocalUniformCount = 0;
+    // VulkShader->GlobalUniformCount = 0;
+    // VulkShader->GlobalUniformSamplerCount = 0;
+    // VulkShader->InstanceUniformCount = 0;
+    // VulkShader->InstanceUniformSamplerCount = 0;
+    // VulkShader->LocalUniformCount = 0;
     const u32& TotalCount = config.uniforms.Length();
     for (u32 i = 0; i < TotalCount; ++i) {
         switch (config.uniforms[i].scope) {
@@ -1522,38 +1527,85 @@ bool VulkanAPI::ShaderInitialize(Shader *shader)
         StageCreateIfos[i] = VkShader->stages[i].ShaderStageCreateInfo;
     }
 
-    // Создайте массив указателей на конвейеры, по одному на класс топологии. Нуль означает, что не поддерживается для этого шейдера.
-    VkShader->pipelines = reinterpret_cast<VulkanPipeline**>(MemorySystem::Allocate(sizeof(VulkanPipeline*) * VulkanTopology::Class::MAX, Memory::Array, true));
+    u32 PipelineCount = 0;
+    // Если поддерживается динамическая топология, создайте один конвейер для каждого класса топологии. В противном случае необходимо создать один конвейер для каждого типа топологии.
 
-    // Создайте один конвейер на класс топологии.
-    // Точечный класс.
-    if (shader->TopologyTypes & PrimitiveTopology::Type::PointList) {
-        VkShader->pipelines[VulkanTopology::Class::Point] = reinterpret_cast<VulkanPipeline*>(MemorySystem::Allocate(sizeof(VulkanPipeline), Memory::Vulkan));
-        // Установите поддерживаемые типы для этого класса.
-        VkShader->pipelines[VulkanTopology::Class::Point]->SupportedTopologyTypes |= PrimitiveTopology::Type::PointList;
-    }
+    if ((Device.supportFlags & VulkanDevice::NativeDynamicTopologyBit) ||
+        (Device.supportFlags & VulkanDevice::DynamicTopologyBit)) {
+        PipelineCount = 3;
 
-    // Линейный класс.
-    if (shader->TopologyTypes & PrimitiveTopology::Type::LineList || shader->TopologyTypes & PrimitiveTopology::Type::LineStrip) {
-        VkShader->pipelines[VulkanTopology::Class::Line] = reinterpret_cast<VulkanPipeline*>(MemorySystem::Allocate(sizeof(VulkanPipeline), Memory::Vulkan));
-        // Установите поддерживаемые типы для этого класса.
-        VkShader->pipelines[VulkanTopology::Class::Line]->SupportedTopologyTypes |= PrimitiveTopology::Type::LineList;
-        VkShader->pipelines[VulkanTopology::Class::Line]->SupportedTopologyTypes |= PrimitiveTopology::Type::LineStrip;
-    }
+        // Создайте массив указателей на конвейеры, по одному на класс топологии. Нуль означает, что не поддерживается для этого шейдера.
+        VkShader->pipelines = reinterpret_cast<VulkanPipeline**>(MemorySystem::Allocate(sizeof(VulkanPipeline*) * PipelineCount, Memory::Array, true));
 
-    // Треугольный класс.
-    if (shader->TopologyTypes & PrimitiveTopology::Type::TriangleList ||
-        shader->TopologyTypes & PrimitiveTopology::Type::TriangleStrip ||
-        shader->TopologyTypes & PrimitiveTopology::Type::TriangleFan) {
-        VkShader->pipelines[VulkanTopology::Class::Triangle] = reinterpret_cast<VulkanPipeline*>(MemorySystem::Allocate(sizeof(VulkanPipeline), Memory::Vulkan));
-        // Установите поддерживаемые типы для этого класса.
-        VkShader->pipelines[VulkanTopology::Class::Triangle]->SupportedTopologyTypes |= PrimitiveTopology::Type::TriangleList;
-        VkShader->pipelines[VulkanTopology::Class::Triangle]->SupportedTopologyTypes |= PrimitiveTopology::Type::TriangleStrip;
-        VkShader->pipelines[VulkanTopology::Class::Triangle]->SupportedTopologyTypes |= PrimitiveTopology::Type::TriangleFan;
+        // Создайте один конвейер на класс топологии.
+        // Точечный класс.
+        if (shader->TopologyTypes & PrimitiveTopology::Type::PointList) {
+            VkShader->pipelines[VulkanTopology::Class::Point] = reinterpret_cast<VulkanPipeline*>(MemorySystem::Allocate(sizeof(VulkanPipeline), Memory::Vulkan, true));
+            // Установите поддерживаемые типы для этого класса.
+            VkShader->pipelines[VulkanTopology::Class::Point]->SupportedTopologyTypes |= PrimitiveTopology::Type::PointList;
+        }
+
+        // Линейный класс.
+        if (shader->TopologyTypes & PrimitiveTopology::Type::LineList || shader->TopologyTypes & PrimitiveTopology::Type::LineStrip) {
+            VkShader->pipelines[VulkanTopology::Class::Line] = reinterpret_cast<VulkanPipeline*>(MemorySystem::Allocate(sizeof(VulkanPipeline), Memory::Vulkan, true));
+            // Установите поддерживаемые типы для этого класса.
+            VkShader->pipelines[VulkanTopology::Class::Line]->SupportedTopologyTypes |= PrimitiveTopology::Type::LineList;
+            VkShader->pipelines[VulkanTopology::Class::Line]->SupportedTopologyTypes |= PrimitiveTopology::Type::LineStrip;
+        }
+
+        // Треугольный класс.
+        if (shader->TopologyTypes & PrimitiveTopology::Type::TriangleList ||
+            shader->TopologyTypes & PrimitiveTopology::Type::TriangleStrip ||
+            shader->TopologyTypes & PrimitiveTopology::Type::TriangleFan) {
+            VkShader->pipelines[VulkanTopology::Class::Triangle] = reinterpret_cast<VulkanPipeline*>(MemorySystem::Allocate(sizeof(VulkanPipeline), Memory::Vulkan, true));
+            // Установите поддерживаемые типы для этого класса.
+            VkShader->pipelines[VulkanTopology::Class::Triangle]->SupportedTopologyTypes |= PrimitiveTopology::Type::TriangleList;
+            VkShader->pipelines[VulkanTopology::Class::Triangle]->SupportedTopologyTypes |= PrimitiveTopology::Type::TriangleStrip;
+            VkShader->pipelines[VulkanTopology::Class::Triangle]->SupportedTopologyTypes |= PrimitiveTopology::Type::TriangleFan;
+        }
+    } else {
+        // В этом случае необходимо создать один конвейер для каждого типа топологии.
+        PipelineCount = 6;
+
+        // Создайте массив указателей на конвейеры, по одному на каждый тип топологии. Значение NULL означает, что этот шейдер не поддерживается.
+        VkShader->pipelines = reinterpret_cast<VulkanPipeline**>(MemorySystem::Allocate(sizeof(VulkanPipeline*) * PipelineCount, Memory::Array, true));
+
+        // Проверяйте каждый тип отдельно. Всегда будет в этом порядке.
+
+        // Точка
+        if (shader->TopologyTypes & PrimitiveTopology::PointList) {
+            VkShader->pipelines[0] = reinterpret_cast<VulkanPipeline*>(MemorySystem::Allocate(sizeof(VulkanPipeline), Memory::Vulkan, true));
+            VkShader->pipelines[0]->SupportedTopologyTypes = PrimitiveTopology::PointList;
+        }
+
+        // Линия
+        if (shader->TopologyTypes & PrimitiveTopology::LineList) {
+            VkShader->pipelines[1] = reinterpret_cast<VulkanPipeline*>(MemorySystem::Allocate(sizeof(VulkanPipeline), Memory::Vulkan, true));
+            VkShader->pipelines[1]->SupportedTopologyTypes = PrimitiveTopology::LineList;
+        }
+        if (shader->TopologyTypes & PrimitiveTopology::LineStrip) {
+            VkShader->pipelines[2] = reinterpret_cast<VulkanPipeline*>(MemorySystem::Allocate(sizeof(VulkanPipeline), Memory::Vulkan, true));
+            VkShader->pipelines[2]->SupportedTopologyTypes = PrimitiveTopology::LineStrip;
+        }
+
+        // Треугольник
+        if (shader->TopologyTypes & PrimitiveTopology::TriangleList) {
+            VkShader->pipelines[3] = reinterpret_cast<VulkanPipeline*>(MemorySystem::Allocate(sizeof(VulkanPipeline), Memory::Vulkan, true));
+            VkShader->pipelines[3]->SupportedTopologyTypes = PrimitiveTopology::TriangleList;
+        }
+        if (shader->TopologyTypes & PrimitiveTopology::TriangleStrip) {
+            VkShader->pipelines[4] = reinterpret_cast<VulkanPipeline*>(MemorySystem::Allocate(sizeof(VulkanPipeline), Memory::Vulkan, true));
+            VkShader->pipelines[4]->SupportedTopologyTypes = PrimitiveTopology::TriangleStrip;
+        }
+        if (shader->TopologyTypes & PrimitiveTopology::TriangleFan) {
+            VkShader->pipelines[5] = reinterpret_cast<VulkanPipeline*>(MemorySystem::Allocate(sizeof(VulkanPipeline), Memory::Vulkan, true));
+            VkShader->pipelines[5]->SupportedTopologyTypes = PrimitiveTopology::TriangleFan;
+        }
     }
+    
 
     // Пройти по циклу и настроить/создать один конвейер на класс. Нулевые записи пропускаются.
-    for (u32 i = 0; i < VulkanTopology::Class::MAX; ++i) {
+    for (u32 i = 0; i < PipelineCount; ++i) {
         if (!VkShader->pipelines[i]) {
             continue;
         }
@@ -1589,7 +1641,7 @@ bool VulkanAPI::ShaderInitialize(Shader *shader)
     // ЗАДАЧА: Выяснить, что должно быть по умолчанию здесь.
     VkShader->BoundPipelineIndex = 0;
     bool PipelineFound = false;
-    for (u32 i = 0; i < VulkanTopology::Class::MAX; ++i) {
+    for (u32 i = 0; i < PipelineCount; ++i) {
         if (VkShader->pipelines[i]) {
             VkShader->BoundPipelineIndex = i;
 
@@ -1680,51 +1732,58 @@ bool VulkanAPI::ShaderInitialize(Shader *shader)
 bool VulkanAPI::ShaderUse(Shader *shader)
 {
     auto VkShader = reinterpret_cast<VulkanShader*>(shader->ShaderData);
-    VkShader->pipelines[VkShader->BoundPipelineIndex]->Bind(GraphicsCommandBuffers[ImageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS);
+    auto& CommandBuffer = GraphicsCommandBuffers[ImageIndex];
+    VkShader->pipelines[VkShader->BoundPipelineIndex]->Bind(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS);
 
     // Обязательно используйте текущий тип привязки.
-    vkCmdSetPrimitiveTopology(GraphicsCommandBuffers[ImageIndex].handle, VkShader->CurrentTopology);
+    if (Device.supportFlags & VulkanDevice::NativeDynamicTopologyBit) {
+        vkCmdSetPrimitiveTopology(CommandBuffer.handle, VkShader->CurrentTopology);
+    } else if (Device.supportFlags & VulkanDevice::DynamicTopologyBit) {
+        vkCmdSetPrimitiveTopologyEXT(CommandBuffer.handle, VkShader->CurrentTopology);
+    }
     return true;
 }
 
-bool VulkanAPI::ShaderApplyGlobals(Shader *shader)
+bool VulkanAPI::ShaderApplyGlobals(Shader *shader, bool NeedsUpdate)
 {
     auto VkShader = shader->ShaderData;
     auto& CommandBuffer = GraphicsCommandBuffers[ImageIndex].handle;
     auto& GlobalDescriptor = VkShader->GlobalDescriptorSets[ImageIndex];
 
-    // Сначала примените UBO
-    VkDescriptorBufferInfo BufferInfo;
-    BufferInfo.buffer = reinterpret_cast<VulkanBuffer*>(VkShader->UniformBuffer.data)->handle;
-    BufferInfo.offset = shader->GlobalUboOffset;
-    BufferInfo.range = shader->GlobalUboStride;
+    if (NeedsUpdate) {
+        // Сначала примените UBO
+        VkDescriptorBufferInfo BufferInfo;
+        BufferInfo.buffer = reinterpret_cast<VulkanBuffer*>(VkShader->UniformBuffer.data)->handle;
+        BufferInfo.offset = shader->GlobalUboOffset;
+        BufferInfo.range = shader->GlobalUboStride;
 
-    // Обновить наборы дескрипторов.
-    VkWriteDescriptorSet UboWrite = {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
-    UboWrite.dstSet = VkShader->GlobalDescriptorSets[ImageIndex];
-    UboWrite.dstBinding = 0;
-    UboWrite.dstArrayElement = 0;
-    UboWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    UboWrite.descriptorCount = 1;
-    UboWrite.pBufferInfo = &BufferInfo;
+        // Обновить наборы дескрипторов.
+        VkWriteDescriptorSet UboWrite = {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+        UboWrite.dstSet = VkShader->GlobalDescriptorSets[ImageIndex];
+        UboWrite.dstBinding = 0;
+        UboWrite.dstArrayElement = 0;
+        UboWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        UboWrite.descriptorCount = 1;
+        UboWrite.pBufferInfo = &BufferInfo;
 
-    VkWriteDescriptorSet DescriptorWrites[2];
-    DescriptorWrites[0] = UboWrite;
+        VkWriteDescriptorSet DescriptorWrites[2];
+        DescriptorWrites[0] = UboWrite;
 
-    u8& GlobalSetBindingCount = VkShader->config.DescriptorSets[DESC_SET_INDEX_GLOBAL].BindingCount;
-    if (GlobalSetBindingCount > 1) {
-        // ЗАДАЧА: Есть семплеры, которые нужно написать. Поддержите это.
-        GlobalSetBindingCount = 1;
-        MERROR("Глобальные образцы изображений пока не поддерживаются.");
+        u8& GlobalSetBindingCount = VkShader->config.DescriptorSets[DESC_SET_INDEX_GLOBAL].BindingCount;
+        if (GlobalSetBindingCount > 1) {
+            // ЗАДАЧА: Есть семплеры, которые нужно написать. Поддержите это.
+            GlobalSetBindingCount = 1;
+            MERROR("Глобальные образцы изображений пока не поддерживаются.");
 
-        // VkWriteDescriptorSet sampler_write = {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
-        // descriptor_writes[1] = ...
+            // VkWriteDescriptorSet sampler_write = {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+            // descriptor_writes[1] = ...
+        }
+
+        vkUpdateDescriptorSets(Device.LogicalDevice, GlobalSetBindingCount, DescriptorWrites, 0, nullptr);
     }
 
-    vkUpdateDescriptorSets(Device.LogicalDevice, GlobalSetBindingCount, DescriptorWrites, 0, 0);
-
     // Привяжите набор глобальных дескрипторов для обновления.
-    vkCmdBindDescriptorSets(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, VkShader->pipelines[VkShader->BoundPipelineIndex]->PipelineLayout, 0, 1, &GlobalDescriptor, 0, 0);
+    vkCmdBindDescriptorSets(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, VkShader->pipelines[VkShader->BoundPipelineIndex]->PipelineLayout, 0, 1, &GlobalDescriptor, 0, nullptr);
     return true;
 }
 

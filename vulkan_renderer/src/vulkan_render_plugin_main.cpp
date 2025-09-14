@@ -1,5 +1,5 @@
-#include "vulkan_render_plugin_main.hpp"
-#include "renderer/vulkan/vulkan_api.hpp"
+#include "vulkan_render_plugin_main.h"
+#include "renderer/vulkan/vulkan_api.h"
 
 RendererPlugin *PluginCreate()
 {

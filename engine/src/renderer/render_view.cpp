@@ -35,10 +35,3 @@ bool RenderViewOnEvent(u16 code, void *sender, void *ListenerInst, EventContext 
 //       Render(Render),
 //       RegenerateAttachmentTarget(RegenerateAttachmentTarget)
 // {}
-
-RenderView::~RenderView()
-{
-    for (u32 i = 0; i < RenderpassCount; i++) {
-        RenderingSystem::RenderpassDestroy(&passes[i]);
-    }
-}

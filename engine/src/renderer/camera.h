@@ -1,4 +1,4 @@
-/// @file camera.hpp
+/// @file camera.h
 /// @author 
 /// @brief 
 /// @version 1.0

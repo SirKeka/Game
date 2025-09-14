@@ -1,6 +1,6 @@
 #pragma once
 
-#include "defines.hpp"
+#include "defines.h"
 
 enum class Buttons { Left, Right, Middle, Max };
 

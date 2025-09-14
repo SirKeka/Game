@@ -1,5 +1,5 @@
 #include "metrics.hpp"
-#include "core/mmemory.hpp"
+#include "core/memory_system.h"
 
 constexpr u8 AVG_COUNT = 30;
 

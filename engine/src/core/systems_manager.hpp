@@ -1,6 +1,5 @@
 #pragma once
 
-#include "defines.hpp"
 #include "memory/linear_allocator.hpp"
 
 struct FrameData;

@@ -1,7 +1,6 @@
 #pragma once
 
 #include "core/frame_data.h"
-#include "defines.hpp"
 #include "math/vector2d_fwd.h"
 #include "math/vector3d_fwd.h"
 #include "math/vector4d_fwd.h"
@@ -77,7 +76,7 @@ struct Terrain {
     u32 IndexCount;
     u32* indices;
 
-    GeometryID geo;
+    Geometry geo;
 
     u32 MaterialCount;
     char** MaterialNames; // DArray<MString>?

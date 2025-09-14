@@ -1,6 +1,6 @@
 #include "vulkan_image.hpp"
-#include "vulkan_api.hpp"
-#include "vulkan_utils.hpp"
+#include "vulkan_api.h"
+#include "vulkan_utils.h"
 #include "vulkan_command_buffer.hpp"
 #include "core/asserts.hpp"
 

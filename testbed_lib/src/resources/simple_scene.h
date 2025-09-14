@@ -1,6 +1,5 @@
 #pragma once
 
-#include "defines.hpp"
 #include "resources/debug/debug_grid.h"
 #include "resources/lighting_structures.h"
 #include "resources/mesh.h"
@@ -178,6 +177,8 @@ struct MAPI SimpleScene {
     /// @param name название ландшафта, который нужно удалить
     /// @return true если удаление прошло успешно, иначе false
     bool RemoveTerrain(const char* name);
+
+    bool Raycast(const struct Ray& ray, struct RaycastResult& OutResult);
 
 private:
     static inline u32 GlobalSceneID;

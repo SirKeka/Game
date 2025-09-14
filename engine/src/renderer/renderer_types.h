@@ -47,8 +47,8 @@ struct VulkanUI_ShaderInstanceUniformObject {
 /// Состоит из любых требуемых данных, таких как дельта-время и коллекция представлений для рендеринга.
 struct RenderPacket
 {
-    u16 ViewCount;              // Количество представлений, которые нужно отобразить. 
-    RenderView::Packet* views;  // Массив представлений, которые нужно отобразить.
+    u16 ViewCount;           // Количество представлений, которые нужно отобразить. 
+    RenderViewPacket* views; // Массив представлений, которые нужно отобразить.
     void Destroy() {
         for (u16 i = 0; i < ViewCount; i++) {
             views[i].geometries.Destroy();

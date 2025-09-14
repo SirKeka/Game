@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/mmemory.hpp"
+#include "core/memory_system.h"
 #include "containers/mstring.hpp"
 
 constexpr u32 TEXTURE_NAME_MAX_LENGTH = 512;

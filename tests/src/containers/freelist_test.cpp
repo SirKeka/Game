@@ -3,7 +3,7 @@
 #include "../expect.hpp"
 
 #include <containers/freelist.hpp>
-#include <core/mmemory.hpp>
+#include <core/memory_system.h>
 
 u8 FreelistShouldCreateAndDestroy() {
     // ПРИМЕЧАНИЕ: Создание списка небольшого размера, который вызовет предупреждение.

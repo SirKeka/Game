@@ -19,7 +19,7 @@ void MeshLoadJobSuccess(void* params) {
     // Это также обрабатывает загрузку GPU. Не может быть джобифицировано, пока рендерер не станет многопоточным.
     auto configs = MeshParams->MeshRes.data.Data();
     MeshParams->OutMesh->GeometryCount = MeshParams->MeshRes.data.Length();
-    MeshParams->OutMesh->geometries = reinterpret_cast<GeometryID**>(MemorySystem::Allocate(sizeof(GeometryID*) * MeshParams->OutMesh->GeometryCount, Memory::Array, true));
+    MeshParams->OutMesh->geometries = reinterpret_cast<Geometry**>(MemorySystem::Allocate(sizeof(Geometry*) * MeshParams->OutMesh->GeometryCount, Memory::Array, true));
     for (u32 i = 0; i < MeshParams->OutMesh->GeometryCount; ++i) {
         MeshParams->OutMesh->geometries[i] = GeometrySystem::Instance()->Acquire(configs[i], true);
 
@@ -138,7 +138,7 @@ bool Mesh::Initialize()
         }
 
         GeometryCount = config.GeometryCount;
-        geometries = reinterpret_cast<GeometryID**>(MemorySystem::Allocate(sizeof(GeometryID*), Memory::Array));
+        geometries = reinterpret_cast<Geometry**>(MemorySystem::Allocate(sizeof(Geometry*), Memory::Array));
     }
     return true;
 }
@@ -173,7 +173,7 @@ bool Mesh::Unload()
         GeometrySystem::Instance()->Release(geometries[i]);
     }
 
-    MemorySystem::Free(geometries, sizeof(GeometryID*) * GeometryCount, Memory::Array);
+    MemorySystem::Free(geometries, sizeof(Geometry*) * GeometryCount, Memory::Array);
     geometries = nullptr;
     generation = INVALID::U8ID; // Для верности сделайте геометрию недействительной, чтобы она не пыталась визуализироваться.
     GeometryCount = 0;

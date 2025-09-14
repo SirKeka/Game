@@ -19,9 +19,10 @@ public:
     ~RenderViewUI();
 
     static bool OnRegistered(RenderView* self);
+    static void Destroy(RenderView* self);
     static void Resize(RenderView* self, u32 width, u32 height);
-    static bool BuildPacket(RenderView* self, class LinearAllocator& FrameAllocator, void* data, RenderView::Packet& OutPacket);
-    static bool Render(RenderView* self, const RenderView::Packet& packet, u64 FrameNumber, u64 RenderTargetIndex, const FrameData& rFrameData);
+    static bool BuildPacket(RenderView* self, struct LinearAllocator& FrameAllocator, void* data, RenderViewPacket& OutPacket);
+    static bool Render(const RenderView* self, const RenderViewPacket& packet, u64 FrameNumber, u64 RenderTargetIndex, const FrameData& rFrameData);
 
     void* operator new(u64 size);
     void operator delete(void* ptr, u64 size);

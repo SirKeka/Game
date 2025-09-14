@@ -1,7 +1,7 @@
 #include "mvar.hpp"
 
 #include "console.hpp"
-#include "event.hpp"
+#include "event.h"
 #include <new>
 
 struct MVarIntEntry

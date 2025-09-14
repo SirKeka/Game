@@ -12,7 +12,6 @@
 /// 
 #pragma once
 
-#include "defines.hpp"
 #include "core/logger.hpp"
 #include "containers/mstring.hpp"
 #include "memory/dynamic_allocator.hpp"

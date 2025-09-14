@@ -1,7 +1,7 @@
 #include "vulkan_pipeline.h"
 
-#include "vulkan_device.hpp"
-#include "vulkan_utils.hpp"
+#include "vulkan_device.h"
+#include "vulkan_utils.h"
 #include "vulkan_renderpass.hpp"
 #include "vulkan_command_buffer.hpp"
 
@@ -39,15 +39,23 @@ bool VulkanPipeline::Create(VulkanAPI* VkAPI, const Config& config)
     }
     RasterizerCreateInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
     RasterizerCreateInfo.depthBiasEnable = VK_FALSE;
-    RasterizerCreateInfo.depthBiasConstantFactor = 0.0f;
-    RasterizerCreateInfo.depthBiasClamp = 0.0f;
-    RasterizerCreateInfo.depthBiasSlopeFactor = 0.0f;
+    RasterizerCreateInfo.depthBiasConstantFactor = 0.F;
+    RasterizerCreateInfo.depthBiasClamp = 0.F;
+    RasterizerCreateInfo.depthBiasSlopeFactor = 0.F;
+
+    // Плавная растеризация линий, если поддерживается.
+    VkPipelineRasterizationLineStateCreateInfoEXT LineRasterizationExt{};
+    if (VkAPI->Device.supportFlags & VulkanDevice::LineSmoothRasterisationBit) {
+        LineRasterizationExt.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_LINE_STATE_CREATE_INFO_EXT;
+        LineRasterizationExt.lineRasterizationMode = VK_LINE_RASTERIZATION_MODE_RECTANGULAR_SMOOTH_EXT;
+        RasterizerCreateInfo.pNext = &LineRasterizationExt;
+    }
 
     // Мультисэмплинг.
     VkPipelineMultisampleStateCreateInfo MultisamplingCreateInfo = {VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO};
     MultisamplingCreateInfo.sampleShadingEnable = VK_FALSE;
     MultisamplingCreateInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-    MultisamplingCreateInfo.minSampleShading = 1.0f;
+    MultisamplingCreateInfo.minSampleShading = 1.F;
     MultisamplingCreateInfo.pSampleMask = 0;
     MultisamplingCreateInfo.alphaToCoverageEnable = VK_FALSE;
     MultisamplingCreateInfo.alphaToOneEnable = VK_FALSE;

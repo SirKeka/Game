@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/mmemory.hpp"
+#include "core/memory_system.h"
 
 // ЗАДАЧА: Шаблонизировать
 

@@ -147,9 +147,12 @@ bool Terrain::Load()
     UniqueID = Identifier::AquireNewID(this);
 
     // Отправьте геометрию в рендерер для загрузки в графический процессор.
-    if (!RenderingSystem::Load(&geo, sizeof(TerrainVertex), VertexCount,
-                                  vertices, sizeof(u32), IndexCount,
-                                  indices)) {
+    if (!RenderingSystem::CreateGeometry(&geo, sizeof(TerrainVertex), VertexCount, vertices, sizeof(u32), IndexCount, indices)) {
+        return false;
+    }
+
+    // Отправляем геометрию в рендерер для загрузки в графический процессор.
+    if (!RenderingSystem::Load(&geo)) {
         return false;
     }
 

@@ -13,7 +13,7 @@ struct MAPI Skybox
     } config;
 
     TextureMap cubemap;
-    struct GeometryID* g;
+    struct Geometry* g;
     u32 InstanceID;
     u64 RenderFrameNumber;  // Синхронизируется с текущим номером кадра рендерера, когда материал был применен к этому кадру.
 

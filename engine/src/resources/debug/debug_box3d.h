@@ -1,5 +1,5 @@
 #pragma once
-#include "defines.hpp"
+
 #include "math/transform.h"
 #include "math/vertex.h"
 #include "core/identifier.h"
@@ -15,7 +15,7 @@ struct MAPI DebugBox3D {
     u32 VertexCount;
     ColourVertex3D* vertices;
 
-    GeometryID geometry;
+    Geometry geometry;
 
     constexpr DebugBox3D(const FVec3& size, Transform* parent = nullptr)
     :
@@ -27,7 +27,11 @@ struct MAPI DebugBox3D {
     VertexCount(),
     vertices(nullptr),
     geometry()
-    {}
+    {
+        if (parent) {
+            xform.SetParent(parent);
+        }
+    }
     // ~DebugBox3D();
     void Destroy();
 

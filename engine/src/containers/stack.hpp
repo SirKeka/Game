@@ -1,6 +1,6 @@
 #pragma once
-#include "defines.hpp"
-#include "core/mmemory.hpp"
+
+#include "core/memory_system.h"
 
 /// @brief Простой стековый контейнер. Элементы могут быть только вставлены в стек или вытащены из него.
 /// @tparam T Тип элемента который может быть вставлен в стек.
@@ -20,7 +20,7 @@ public:
     void EnsureAllocated(u32 count) {
         if (allocated < ElementSize * count) {
             // data = reinterpret_cast<T*>(MemorySystem::Realloc(data, ));
-            T* temp = MemorySystem::TAllocate<T>(Memory::Stack, count);
+            T* temp = (T*)MemorySystem::Allocate(ElementSize * count, Memory::Stack);
             if (data) {
                 for (u32 i = 0; i < ElementCount; i++) {
                     temp[i] = static_cast<T&&>(data[i]);
