@@ -137,15 +137,16 @@ bool RenderViewEditorWorld::BuildPacket(RenderView *self, LinearAllocator &Frame
     if (PacketData->gizmo) {
         auto& geometry = PacketData->gizmo->modeData[PacketData->gizmo->mode].geometry;
 
-        FVec3 CameraPosition = rvewData->WorldCamera->GetPosition();
-        FVec3 GizmoPosition  = PacketData->gizmo->xform.GetPosition();
+        // FVec3 CameraPosition = rvewData->WorldCamera->GetPosition();
+        // FVec3 GizmoPosition  = PacketData->gizmo->xform.GetPosition();
         // ЗАДАЧА: получить это из камеры/области просмотра.
-        f32 fov = Math::DegToRad(45.F);
-        f32 dist = Distance(CameraPosition, GizmoPosition);
+        // f32 fov = Math::DegToRad(45.F);
+        // f32 dist = Distance(CameraPosition, GizmoPosition);
 
         auto model = PacketData->gizmo->xform.GetWorld();
-        f32 FixedSize = 0.1F;  // ЗАДАЧА: сделать этот параметр настраиваемым для размера гизмо.
-        f32 ScaleScalar = ((2.F * Math::tan(fov * 0.5F)) * dist) * FixedSize;
+        // f32 FixedSize = 0.1F;  // ЗАДАЧА: сделать этот параметр настраиваемым для размера гизмо.
+        f32 ScaleScalar = 1.F; // ((2.F * Math::tan(fov * 0.5F)) * dist) * FixedSize;
+        PacketData->gizmo->ScaleScalar = ScaleScalar; // Сохраните копию для обнаружения попаданий.
         auto scale = Matrix4D::MakeScale(ScaleScalar);
         model = model * scale;
 
@@ -155,6 +156,13 @@ bool RenderViewEditorWorld::BuildPacket(RenderView *self, LinearAllocator &Frame
         RenderData.UniqueID = INVALID::ID;
 
         OutPacket.geometries.PushBack(RenderData);
+    #ifdef _DEBUG
+        GeometryRenderData PlaneNormalRenderData{};
+        PlaneNormalRenderData.model = PacketData->gizmo->PlaneNormalLine.xform.GetWorld();
+        PlaneNormalRenderData.geometry = &PacketData->gizmo->PlaneNormalLine.geometry;
+        PlaneNormalRenderData.UniqueID = INVALID::ID;
+        OutPacket.geometries.PushBack(PlaneNormalRenderData);
+    #endif
     }
 
     return true;

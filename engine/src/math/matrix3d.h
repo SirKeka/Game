@@ -4,13 +4,12 @@
 
 template<typename T> struct Vector3D;
 
-class Matrix3D
+struct Matrix3D
 {
-private:
-
-	f32 n[3][3];
-
-public:
+	union{
+		f32 data[16];
+		f32 n[4][4];
+	};
 
 	constexpr Matrix3D() : n{} {}
 	constexpr Matrix3D(f32 n00, f32 n01, f32 n02,

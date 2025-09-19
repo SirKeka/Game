@@ -315,7 +315,7 @@ void PlatformConsoleWrite(const char* message, u8 colour) {
 void PlatformConsoleWriteError(const char* message, u8 colour) {
     // FATAL,ERROR,WARN,INFO,DEBUG,TRACE
     const char* colour_strings[] = {"0;41", "1;31", "1;33", "1;32", "1;34", "1;30"};
-    printf("\033[%sm%s\033[0m", colour_strings[colour], message);
+    printf(stderr, "\033[%sm%s\033[0m", colour_strings[colour], message);
 }
 
 f64 PlatformGetAbsoluteTime() {

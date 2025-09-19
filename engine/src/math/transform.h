@@ -6,13 +6,13 @@
 /// @brief Представляет преобразование объекта в мире.
 /// Преобразования могут иметь родителя, собственное преобразование которого затем учитывается. 
 /// ПРИМЕЧАНИЕ: Его свойства следует редактировать не напрямую, а для обеспечения правильной генерации матрицы.
-class MAPI Transform {
-    friend class MString;
+struct MAPI Transform {
     FVec3 position;         // Положение в мире.
     Quaternion rotation;    // Вращение в мире.
     FVec3 scale;            // Масштаб в мире.
     bool IsDirty;           // Указывает, изменилось ли положение, вращение или масштаб, что указывает на необходимость пересчета локальной матрицы.
     Matrix4D local;         // Матрица локального преобразования, обновляемая при изменении положения, поворота или масштаба.
+    f32 determinant;
 
     Transform* parent;      // Указатель на родительское преобразование, если оно назначено. Также может быть нулевым.
 public:
@@ -24,7 +24,7 @@ public:
     /// @brief Создает преобразование из заданной позиции.
     /// Использует нулевое вращение и единичный масштаб.
     /// @param position позиция, которую нужно использовать.
-    constexpr Transform(const FVec3& position) : position(position), rotation(0.f, 0.f, 0.f, 1.f), scale(FVec3::One()), IsDirty(true), local(Matrix4D::MakeIdentity()), parent(nullptr) {}
+    constexpr Transform(const FVec3& position) : position(position), rotation(0.F, 0.F, 0.F, 1.F), scale(FVec3::One()), IsDirty(true), local(Matrix4D::MakeIdentity()), parent(nullptr) {}
 
     /// @brief Создает преобразование из заданного поворота.
     /// Использует нулевое положение и единичный масштаб.

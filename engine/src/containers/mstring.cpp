@@ -101,7 +101,9 @@ MString &MString::operator=(const char *s)
         if (!str) {
             str = reinterpret_cast<char*>(MemorySystem::Allocate(ssize, Memory::String));
         } else if (size != ssize) {
-            str = reinterpret_cast<char*>(MemorySystem::Realloc(str, size, ssize, Memory::String));
+            // str = reinterpret_cast<char*>(MemorySystem::Realloc(str, size, ssize, Memory::String)); ЗАДАЧА: Отдадить realloc
+            MemorySystem::Free(str, size, Memory::String);
+            str = reinterpret_cast<char*>(MemorySystem::Allocate(ssize, Memory::String));
         }
 
         length = slength;
@@ -1320,6 +1322,11 @@ bool MString::ToTransform(const char *str, Transform &transform)
         Quaternion yRot{FVec3(0, 1.F, 0), Math::DegToRad(values[1]), true};
         Quaternion zRot{FVec3(0, 0, 1.F), Math::DegToRad(values[2]), true};
         transform.rotation = xRot * (yRot * zRot);
+
+        // Установить масштаб
+        transform.scale.x = values[4];
+        transform.scale.y = values[5];
+        transform.scale.z = values[6];
     } else {
         MWARN("Ошибка формата: предоставлено недопустимое преобразование. Будет использовано преобразование идентичности.");
         transform = Transform();

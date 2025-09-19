@@ -3,6 +3,7 @@
 #include "containers/darray.hpp"
 #include "resources/geometry.h"
 #include "resources/terrain.h"
+#include "plane.h"
 #include "vertex.h"
 
 namespace Math
@@ -235,78 +236,135 @@ namespace Math
         }
     }
 
-    bool Raycast::OrientedExtents(Extents3D bbExtents, const Matrix4D &bbModel, const Ray &ray, f32 &OutDistance)
+    bool RaycastAABB(Extents3D bbExtents, const Ray &ray, FVec3 &OutPoint)
     {
-        // Пересечение на основе рендеринга в реальном времени и основ математики для игр
+        // Основано на реализации быстрого пересечения лучей и прямоугольников Graphics Gems.
+        bool inside = true;
+        i8 quadrant[3];
+        FVec3 max_t;
+        FVec3 CandidatePlane;
 
-        // Ближайшее «дальнее» пересечение (в пределах пар плоскостей x, y и z)
-        f32 NearestFarIntersection = 0.F;
-
-        // Самое дальнее «ближнее» пересечение (в пределах пар плоскостей x, y и z)
-        f32 FarthestNearIntersection = 100000.F;
-
-        // Выберите положение в мировой системе координат из матрицы модели.
-        FVec3 OrientedPosWorld {bbModel.data[12], bbModel.data[13], bbModel.data[14]};
-
-        // Преобразовать границы — это сориентирует/масштабирует их в соответствии с матрицей модели.
-        bbExtents.min = bbModel * bbExtents.min;
-        bbExtents.max = bbModel * bbExtents.max;
-
-        // Расстояние между положением в мировой системе координат и началом луча.
-        FVec3 delta = OrientedPosWorld - ray.origin;
-
-        // Проверка на пересечение с другими плоскостями, перпендикулярными каждой оси.
-        FVec3 xAxis = Matrix4D::Right(bbModel);
-        FVec3 yAxis = Matrix4D::Up(bbModel);
-        FVec3 zAxis = Matrix4D::Backward(bbModel);
-        FVec3 axes[3] = {xAxis, yAxis, zAxis};
         for (u32 i = 0; i < 3; ++i) {
-            f32 e = Dot(axes[i], delta);
-            f32 f = Dot(ray.direction, axes[i]);
-
-            if (Math::abs(f) > 0.0001F) {
-                // Сохраните расстояния между началом луча и пересечениями плоскостей луча в t1 и t2.
-
-                // Пересечение с «левой» плоскостью.
-                f32 t1 = (e + bbExtents.min.elements[i]) / f;
-
-                // Пересечение с «правой» плоскостью.
-                f32 t2 = (e + bbExtents.max.elements[i]) / f;
-
-                // Убедитесь, что t1 — ближайшее пересечение, и поменяйте местами при необходимости.
-                if (t1 > t2) {
-                    f32 temp = t1;
-                    t1 = t2;
-                    t2 = temp;
-                }
-
-                if (t2 < FarthestNearIntersection) {
-                    FarthestNearIntersection = t2;
-                }
-
-                if (t1 > NearestFarIntersection) {
-                    NearestFarIntersection = t1;
-                }
-
-                // Если «дальняя» точка ближе «ближней», то можно сказать, что пересечения нет.
-                if (FarthestNearIntersection < NearestFarIntersection) {
-                    return false;
-                }
+            if (ray.origin.elements[i] < bbExtents.min.elements[i]) {
+                quadrant[i] = 1;  // слева
+                CandidatePlane.elements[i] = bbExtents.min.elements[i];
+                inside = false;
+            } else if (ray.origin.elements[i] > bbExtents.max.elements[i]) {
+                quadrant[i] = 0;  // справа
+                CandidatePlane.elements[i] = bbExtents.max.elements[i];
+                inside = false;
             } else {
-                // В крайнем случае, когда луч почти параллелен плоскостям, они не пересекаются.
-                if (-e + bbExtents.min.elements[i] > 0.F || -e + bbExtents.max.elements[i] < 0.F) {
-                    return false;
-                }
+                quadrant[i] = 2;  //посередине
             }
         }
 
-        // Это, по сути, предотвращает пересечения внутри ограничивающего прямоугольника, если луч исходит оттуда.
-        if (NearestFarIntersection == 0.F) {
+        // Начало луча внутри ограничивающего прямоугольника.
+        if (inside) {
+            OutPoint = ray.origin;
+            return true;
+        }
+
+        // Рассчитать расстояния до потенциальных плоскостей.
+        for (u32 i = 0; i < 3; ++i) {
+            if (quadrant[i] != 2 && ray.direction.elements[i] != 0.F) {
+                max_t.elements[i] = (CandidatePlane.elements[i] - ray.origin.elements[i]) / ray.direction.elements[i];
+            } else {
+                max_t.elements[i] = -1.F;
+            }
+        }
+
+        // Получить наибольшее из max_ts для окончательного выбора пересечения.
+        u32 WhichPlane = 0;
+        for (u32 i = 1; i < 3; ++i) {
+            if (max_t.elements[WhichPlane] < max_t.elements[i]) {
+                WhichPlane = i;
+            }
+        }
+
+        // Проверить, действительно ли последний кандидат находится внутри прямоугольника.
+        if (max_t.elements[WhichPlane] < 0.0f) {
+            return false;
+        }
+        for (u32 i = 0; i < 3; ++i) {
+            if (WhichPlane != i) {
+                OutPoint.elements[i] = ray.origin.elements[i] + max_t.elements[WhichPlane] * ray.direction.elements[i];
+                if (OutPoint.elements[i] < bbExtents.min.elements[i] || OutPoint.elements[i] > bbExtents.max.elements[i]) {
+                    return false;
+                }
+            } else {
+                OutPoint.elements[i] = CandidatePlane.elements[i];
+            }
+        }
+
+        // Попадает в прямоугольник.
+        return true;
+    }
+
+    bool RaycastOrientedExtents(Extents3D bbExtents, const Matrix4D &model, const Ray &ray, f32 &OutDistance)
+    {
+        auto inv = Matrix4D::MakeInverse(model);
+
+        // Преобразовать луч в пространство AABB.
+        Ray TransformedRay {
+            VectorTransform(ray.origin, 1.F, inv),
+            VectorTransform(ray.direction, 0.F, inv)
+        };
+
+        FVec3 OutPoint;
+        bool result = Math::RaycastAABB(bbExtents, TransformedRay, OutPoint);
+
+        // Если произошло попадание, преобразовать точку в ориентированное пространство, 
+        // а затем вычислить расстояние до попадания, 
+        // используя преобразованное положение относительно исходного непреобразованного массива.
+        if (result) {
+            OutPoint = VectorTransform(OutPoint, 1.F, model);
+            OutDistance = Distance(OutPoint, ray.origin);
+        }
+
+        return result;
+    }
+
+    bool RaycastPlane(const Ray &ray, const Plane &plane, FVec3 &OutPoint, f32 &OutDistance)
+    {
+        f32 NormalDir = Dot(ray.direction, plane.GetNormal());
+        f32 PointNormal = Dot(ray.origin, plane.GetNormal());
+
+        // Если луч и нормаль плоскости направлены в одну сторону, попадания быть не может.
+        if (NormalDir >= 0.F) {
             return false;
         }
 
-        OutDistance = NearestFarIntersection;
-        return true;
+        // Рассчитайте расстояние.
+        f32 t = (plane.distance - PointNormal) / NormalDir;
+
+        // Расстояние должно быть положительным или равным 0, в противном случае луч попадает за плоскость, что технически не является попаданием.
+        if (t >= 0.F) {
+            OutDistance = t;
+            OutPoint = ray.origin + (ray.direction * t);
+            return true;
+        }
+
+        return false;
+    }
+
+    bool RaycastDisc(const Ray &ray, const FVec3 &center, const FVec3 &normal, f32 OuterRadius, f32 InnerRadius, FVec3 &OutPoint, f32 &OutDistance)
+    {
+        Plane plane {center, normal};
+        if (RaycastPlane(ray, plane, OutPoint, OutDistance)) {
+            // Возведите радиусы в квадрат и сравните с квадратом расстояния.
+            f32 OradSq = OuterRadius * OuterRadius;
+            f32 IradSq = InnerRadius * InnerRadius;
+            f32 DistSq = DistanceSquared(center, OutPoint);
+            if (DistSq > OradSq) {
+                return false;
+            }
+            if (InnerRadius > 0 && DistSq < IradSq) {
+                return false;
+            }
+            return true;
+        }
+
+        return false;
     }
 
 } // namespace Math

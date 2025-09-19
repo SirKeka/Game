@@ -87,3 +87,12 @@ struct RenderingConfig {
     const char* ApplicationName;    // Имя приложения.
     RendererConfigFlags flags;      // Различные флаги конфигурации для настройки рендерера.
 };
+
+/// @brief Порядок обхода вершин, используемый для определения передней грани треугольника.
+enum class RendererWinding 
+{
+    /// @brief Обход вершин против часовой стрелки.
+   CounterClockwise = 0,
+    /// @brief Обход вершин против часовой стрелки.
+    Clockwise = 1
+};

@@ -5,7 +5,7 @@
 #include "core/event.h"
 #include "core/memory_system.h"
 #include "core/mvar.hpp"
-#include "core/input.hpp"
+#include "core/input.h"
 #include "platform/platform.hpp"
 
 #include "renderer/rendering_system.h"

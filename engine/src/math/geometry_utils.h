@@ -6,6 +6,7 @@
 struct GeometryConfig;
 struct Vertex3D;
 struct TerrainVertex;
+struct Plane;
 
 /// @brief Представляет собой линию, начинающуюся в точке начала координат и продолжающуюся бесконечно в заданном направлении. Обычно используется для проверки попадания, выбора и т. д.
 struct MAPI Ray
@@ -62,10 +63,13 @@ namespace Math
         void GenerateTerrainTangents(u32 VertexCount, struct TerrainVertex *vertices, u32 IndexCount, u32 *indices);
     } // namespace Geometry
 
-    namespace Raycast
-    {
-        MAPI bool OrientedExtents(Extents3D bbExtents, const Matrix4D& bbModel, const Ray& ray, f32& OutDistance);
-    } // namespace Raycast
+    MAPI bool RaycastAABB(Extents3D bbExtents, const Ray& ray, FVec3& OutPoint);
+
+    MAPI bool RaycastOrientedExtents(Extents3D bbExtents, const Matrix4D& model, const Ray& ray, f32& OutDistance);
+
+    MAPI bool RaycastPlane(const Ray& ray, const Plane& plane, FVec3& OutPoint, f32& OutDistance);
+
+    MAPI bool RaycastDisc(const Ray& ray, const FVec3& center, const FVec3& normal, f32 OuterRadius, f32 InnerRadius, FVec3& OutPoint, f32& OutDistance);
     
 } // namespace Math
 

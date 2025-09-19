@@ -12,8 +12,12 @@ struct sMetrics
     f64 AccumulatedFrameMs;
     f64 fps;
 
+    // ЗАДАЧА: Добавить массив или словарь для отслеживания времени нескольких функций
+    const char* str; 
+    f64 FunctionExecutionTime;
+
     /// @brief Инициализирует систему метрик.
-    constexpr sMetrics() : FrameAvgCounter(), MsTimes(), MsAvg(), frames(), AccumulatedFrameMs(), fps() {}
+    constexpr sMetrics() : FrameAvgCounter(), MsTimes(), MsAvg(), frames(), AccumulatedFrameMs(), fps(), str(nullptr), FunctionExecutionTime() {}
 
     void* operator new(u64 size) {
         return MemorySystem::Allocate(size, Memory::Engine);
@@ -68,4 +72,19 @@ void Metrics::Frame(f64 &OutFPS, f64 &OutFrameMs)
 {
     OutFPS = pMetrics->fps;
     OutFrameMs = pMetrics->MsAvg;
+}
+
+void Metrics::FunctionExecutionTimeStart(const char *FunctionName)
+{
+
+}
+
+void Metrics::FunctionExecutionTimeStop(const char *FunctionName)
+{
+
+}
+
+const f64 &Metrics::GetFunctionExecutionTime(const char *FunctionName)
+{
+    return pMetrics->FunctionExecutionTime;
 }

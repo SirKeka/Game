@@ -576,10 +576,8 @@ bool RenderViewPick::OnMouseMoved(u16 code, void *sender, void *ListenerInst, Ev
 
         self->MouseX = x;
         self->MouseY = y;
-
-        return true;
     }
-    return false;
+    return false; // Разрешить другим обработчикам перехватывать событие.
 }
 
 void RenderViewPick::AcquireShaderInstances()

@@ -6,7 +6,7 @@
 
 #include "console.hpp"
 #include "mvar.hpp"
-#include "input.hpp"
+#include "input.h"
 #include "metrics.hpp"
 
 // Системы

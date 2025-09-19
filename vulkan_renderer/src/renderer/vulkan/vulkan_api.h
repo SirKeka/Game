@@ -7,7 +7,7 @@
 #include "vulkan_device.h"
 #include "vulkan_swapchain.hpp"
 #include "vulkan_command_buffer.hpp"
-#include "vulkan_shader.hpp"
+#include "vulkan_shader.h"
 #include "vulkan_structs.h"
 #include "resources/geometry.h"
 #include "math/vertex.h"
@@ -65,6 +65,7 @@ public:
     VulkanGeometry geometries[VULKAN_MAX_GEOMETRY_COUNT]{};   // ЗАДАЧА: динамическим, копии геометрий хранятся в системе геометрий, возможно стоит хранить здесь указатели на геометрии
     RenderTarget WorldRenderTargets[3]{};               // Цели рендера, используемые для рендеринга мира, по одному на кадр.
     bool MultithreadingEnabled;                         // Указывает, поддерживает ли данное устройство многопоточность.
+    struct Shader* BoundShader;                         // Указатель на текущий привязанный шейдер.
 
 public:
     /// @brief Инициализирует рендер.
@@ -83,6 +84,7 @@ public:
     void ViewportReset()                                                                  override;
     void ScissorSet(const FVec4& rect)                                                    override;
     void ScissorReset()                                                                   override;
+    void SetWinding(RendererWinding winding)                                              override;
     bool RenderpassBegin(Renderpass* pass, RenderTarget& target)                          override;
     bool RenderpassEnd(Renderpass* pass)                                                  override;
 
@@ -159,6 +161,7 @@ public:
     void FlagSetEnabled(RendererConfigFlags flag, bool enabled) override;
 
     PFN_vkCmdSetPrimitiveTopologyEXT vkCmdSetPrimitiveTopologyEXT;
+    PFN_vkCmdSetFrontFaceEXT vkCmdSetFrontFaceEXT;
 
 private:
     void CreateCommandBuffers();

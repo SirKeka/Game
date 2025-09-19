@@ -214,7 +214,7 @@ bool RenderViewWorld::BuildPacket(RenderView* self, LinearAllocator& FrameAlloca
                 // Получите центр, извлеките глобальную позицию из матрицы модели и добавьте ее в центр, 
                 // затем вычислите расстояние между ней и камерой и, наконец, сохраните ее в списке для сортировки.
                 // ПРИМЕЧАНИЕ: это не идеально для полупрозрачных сеток, которые пересекаются, но для наших целей сейчас достаточно.
-                auto center = gData.geometry->center * gData.model; // transform
+                auto center = VectorTransform(gData.geometry->center, 1.F, gData.model);
                 auto distance = Distance(center, rwwData->WorldCamera->GetPosition());
                 GeometryDistance GeoDist;
                 GeoDist.g = gData;
@@ -351,8 +351,18 @@ bool RenderViewWorld::Render(const RenderView* self, const RenderViewPacket &pac
                     // Примените локальные переменные
                     MaterialSystem::ApplyLocal(m, packet.geometries[i].model);
 
+                    // При необходимости инвертируйте.
+                    if (packet.geometries[i].WindingInverted) {
+                        RenderingSystem::SetWinding(RendererWinding::Clockwise);
+                    }
+
                     // Нарисуйте его.
                     RenderingSystem::DrawGeometry(packet.geometries[i]);
+
+                    // При необходимости верните обратно.
+                    if (packet.geometries[i].WindingInverted) {
+                        RenderingSystem::SetWinding(RendererWinding::CounterClockwise);
+                    }
                 }
             }
 

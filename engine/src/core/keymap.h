@@ -34,8 +34,8 @@ enum class Keys : u16 {
     DOWN        = 0x28,
     SELECT      = 0x29,
     PRINT       = 0x2A,
-    EXECUTE     = 0x2B,     // просто EXECUTE не рабоатет
-    SNAPSHOT    = 0x2C,
+    EXECUTE     = 0x2B,
+    PRINTSCREEN = 0x2C,
     INSERT      = 0x2D,
     DELETE      = 0x2E,
     HELP        = 0x2F,

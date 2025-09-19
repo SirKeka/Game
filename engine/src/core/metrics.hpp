@@ -21,4 +21,8 @@ namespace Metrics
     /// @param OutFPS Ссылка на переменную для хранения текущего среднего количества кадров в секунду (fps).
     /// @param OutFrameMs Ссылка на переменную для хранения текущего среднего времени кадра в миллисекундах.
     MAPI void Frame(f64& OutFPS, f64& OutFrameMs);
+
+    MAPI void FunctionExecutionTimeStart(const char* FunctionName);
+    MAPI void FunctionExecutionTimeStop(const char* FunctionName);
+    MAPI const f64& GetFunctionExecutionTime(const char* FunctionName);
 } // namespace Metrics

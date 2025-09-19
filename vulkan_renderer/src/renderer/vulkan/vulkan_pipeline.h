@@ -1,6 +1,7 @@
 #pragma once
 
 #include "vulkan/vulkan.h"
+#include "renderer/renderer_types.h"
 #include "resources/texture.hpp"
 
 class VulkanAPI;
@@ -38,6 +39,7 @@ public:
         u32 PushConstantRangeCount;                    // Количество диапазонов данных констант push.
         Range* PushConstantRanges;                     // Массив диапазонов данных констант push.
         u32 TopologyTypes;                             // Коллекция типов топологий, которые будут поддерживаться на этом конвейере.
+        RendererWinding winding;                       // Порядок обхода вершин, используемый для определения передней грани треугольников.
 
         constexpr Config(const MString& name, VulkanRenderpass* renderpass, u32 stride, u32 AttributeCount, VkVertexInputAttributeDescription* attributes, u32 DescriptorSetLayoutCount, VkDescriptorSetLayout* DescriptorSetLayouts, u32 StageCount, VkPipelineShaderStageCreateInfo* stages, VkViewport viewport, VkRect2D scissor, FaceCullMode CullMode, bool IsWireframe, u32 ShaderFlags, u32 PushConstantRangeCount, Range* PushConstantRanges, u32 TopologyTypes) 
         : 

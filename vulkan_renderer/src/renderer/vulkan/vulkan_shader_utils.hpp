@@ -1,6 +1,6 @@
 #pragma once
 
-#include "vulkan_shader.hpp"
+#include "vulkan_shader.h"
 
 namespace VulkanShadersUtil
 {

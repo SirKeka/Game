@@ -177,7 +177,7 @@ bool ResourceLoader::Load(const char *name, void *params, SimpleSceneResource &O
                 switch (mode) {
                     default:
                     case SimpleSceneParseMode::Root:
-                        MWARN("Предупреждение формата: Невозможно обработать имя в корневом узле.");
+                        MWARN("Предупреждение формата: Невозможно обработать имя в корневом режиме.");
                         break;
                     case SimpleSceneParseMode::Scene:
                         data.name = static_cast<MString&&>(LineValue);
@@ -201,7 +201,7 @@ bool ResourceLoader::Load(const char *name, void *params, SimpleSceneResource &O
             } else if (LineVarName.Comparei("colour")) {
                 switch (mode) {
                     default:
-                        MWARN("Предупреждение формата: Невозможно обработать имя в текущем узле.");
+                        MWARN("Предупреждение формата: Невозможно обработать цвет в текущем режиме.");
                         break;
                     case SimpleSceneParseMode::DieectionalLight:
                         if (!LineValue.ToFVector(data.DirectionalLightConfig.colour)) {
@@ -220,13 +220,13 @@ bool ResourceLoader::Load(const char *name, void *params, SimpleSceneResource &O
                 if (mode == SimpleSceneParseMode::Scene) {
                     data.description = static_cast<MString&&>(LineValue);
                 } else {
-                    MWARN("Предупреждение формата: Невозможно обработать описание в текущем узле.");
+                    MWARN("Предупреждение формата: Невозможно обработать описание в текущем режиме.");
                 }
             } else if (LineVarName.Comparei("cubemap_name")) {
                 if (mode == SimpleSceneParseMode::Skybox) {
                     data.SkyboxConfig.CubemapName = static_cast<MString&&>(LineValue);
                 } else {
-                    MWARN("Предупреждение формата: Невозможно обработать cubemap_name в текущем узле.");
+                    MWARN("Предупреждение формата: Невозможно обработать cubemap_name в текущем режиме.");
                 }
             } else if (LineVarName.Comparei("resource_name")) {
                 if (mode == SimpleSceneParseMode::Mesh) {
@@ -234,13 +234,13 @@ bool ResourceLoader::Load(const char *name, void *params, SimpleSceneResource &O
                 } else if (mode == SimpleSceneParseMode::Terrain) {
                     CurrentTerrainConfig.ResourceName = static_cast<MString&&>(LineValue);
                 } else {
-                    MWARN("Предупреждение формата: Невозможно обработать resource_name в текущем узле.");
+                    MWARN("Предупреждение формата: Невозможно обработать resource_name в текущем режиме.");
                 }
             } else if (LineVarName.Comparei("parent")) {
                 if (mode == SimpleSceneParseMode::Mesh) {
                     CurrentMeshConfig.ParentName = static_cast<MString&&>(LineValue);
                 } else {
-                    MWARN("Предупреждение формата: Невозможно обработать resource_name в текущем узле.");
+                    MWARN("Предупреждение формата: невозможно обработать родительский объект в текущем режиме.");
                 }
             } else if (LineVarName.Comparei("direction")) {
                 if (mode == SimpleSceneParseMode::DieectionalLight) {
@@ -249,7 +249,7 @@ bool ResourceLoader::Load(const char *name, void *params, SimpleSceneResource &O
                         data.DirectionalLightConfig.direction.Set(-0.57735F, -0.57735F, -0.57735F, 0.F);
                     }
                 } else {
-                    MWARN("Предупреждение формата: Невозможно обработать направление в текущем узле.");
+                    MWARN("Предупреждение формата: Невозможно обработать направление в текущем режиме.");
                 }
             } else if (LineVarName.Comparei("position")) {
                 if (mode == SimpleSceneParseMode::PointLight) {
@@ -258,7 +258,7 @@ bool ResourceLoader::Load(const char *name, void *params, SimpleSceneResource &O
                         CurrentPointLightConfig.position = FVec4();
                     }
                 } else {
-                    MWARN("Предупреждение формата: Невозможно обработать направление в текущем узле.");
+                    MWARN("Предупреждение формата: Невозможно обработать позицию в текущем режиме.");
                 }
             } else if (LineVarName.Comparei("transform")) {
                 if (mode == SimpleSceneParseMode::Mesh) {
@@ -270,7 +270,7 @@ bool ResourceLoader::Load(const char *name, void *params, SimpleSceneResource &O
                         MWARN("Ошибка анализа преобразования рельефа. Используется значение по умолчанию.");
                     }
                 } else {
-                    MWARN("Предупреждение формата: Невозможно обработать преобразование в текущем узле.");
+                    MWARN("Предупреждение формата: Невозможно обработать преобразование в текущем режиме.");
                 }
             } else if (LineVarName.Comparei("constant_f")) {
                 if (mode == SimpleSceneParseMode::PointLight) {
@@ -279,7 +279,7 @@ bool ResourceLoader::Load(const char *name, void *params, SimpleSceneResource &O
                         CurrentPointLightConfig.ConstantF = 1.F;
                     }
                 } else {
-                    MWARN("Предупреждение формата: Невозможно обработать константу в текущем узле.");
+                    MWARN("Предупреждение формата: Невозможно обработать константу в текущем режиме.");
                 }
             } else if (LineVarName.Comparei("linear")) {
                 if (mode == SimpleSceneParseMode::PointLight) {
@@ -288,7 +288,7 @@ bool ResourceLoader::Load(const char *name, void *params, SimpleSceneResource &O
                         CurrentPointLightConfig.linear = 0.35F;
                     }
                 } else {
-                    MWARN("Предупреждение формата: Невозможно обработать линейное в текущем узле.");
+                    MWARN("Предупреждение формата: Невозможно обработать линейное в текущем режиме.");
                 }
             } else if (LineVarName.Comparei("quadratic")) {
                 if (mode == SimpleSceneParseMode::PointLight) {
@@ -297,7 +297,7 @@ bool ResourceLoader::Load(const char *name, void *params, SimpleSceneResource &O
                         CurrentPointLightConfig.quadratic = 0.44F;
                     }
                 } else {
-                    MWARN("Предупреждение формата: Невозможно обработать квадратичное в текущем узле.");
+                    MWARN("Предупреждение формата: Невозможно обработать квадратичное в текущем режиме.");
                 }
             }
         }

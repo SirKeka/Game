@@ -4,7 +4,7 @@
 #include "vector2d.h"
 
 template<typename T> struct Vector4D;
-class Matrix4D;
+struct Matrix4D;
 
 template<typename T>
 struct Vector3D
@@ -147,16 +147,6 @@ public:
     	return *this /= VectorLenght<T>(*this);
 	}
 
-	/// @brief 
-	/// @param m 
-	/// @return 
-	/*Vector3D& Transform(const Matrix4D& m) {
-		x = x * m.data[0 + 0] + y * m.data[4 + 0] + z * m.data[8 + 0] + 1.F * m.data[12 + 0];
-    	y = x * m.data[0 + 1] + y * m.data[4 + 1] + z * m.data[8 + 1] + 1.F * m.data[12 + 1];
-    	z = x * m.data[0 + 2] + y * m.data[4 + 2] + z * m.data[8 + 2] + 1.F * m.data[12 + 2];
-		return *this;
-	}*/
-
 	/// @brief Преобразует vec3 значений rgb [0.0-1.0] в целые значения rgb [0-255].
 	/// @param v Вектор значений rgb [0.0-1.0], который нужно преобразовать.
 	/// @param OutR Указатель для хранения значения красного.
@@ -167,6 +157,7 @@ public:
 	    OutG = g * 255;
 	    OutB = b * 255;
 	}
+
 };
 
 template<typename T>
@@ -191,7 +182,7 @@ MINLINE Vector3D<T> operator *(const Vector3D<T>& a, const Vector3D<T>& b)
 /// @tparam T тип компонентов вектора и скаляра
 /// @param v вектор
 /// @param s скаляр
-/// @return Копию вектора кмноженного на скаляр
+/// @return Копию вектора умноженного на скаляр
 template<typename T>
 MINLINE Vector3D<T> operator *(const Vector3D<T>& v, T s)
 {
@@ -286,6 +277,17 @@ MINLINE T Distance(const Vector3D<T>& a, const Vector3D<T>& b)
 	return VectorLenght(a - b);
 }
 
+/// @brief Возвращает квадрат расстояния между вектором а и вектором b. Менее трудоёмкий вызов, чем неквадратная версия из-за использования квадратного корня.
+/// @tparam T тип коммпонентов векторов и возвращаемого значения
+/// @param a вектор
+/// @param b вектор
+/// @return Квадрат расстояния между вектороми а и b.
+template<typename T>
+MINLINE T DistanceSquared(const Vector3D<T>& a, const Vector3D<T>& b)
+{
+	return VectorLenghtSquared(a - b);
+}
+
 template<typename T>
 MINLINE T ScalarTripleProduct(const Vector3D<T>& a, const Vector3D<T>& b, const Vector3D<T>& c)
 {
@@ -314,4 +316,22 @@ template<typename T>
 MINLINE void RGBu32ToFVec3(u32 r, u32 g, u32 b, Vector3D<T>& v) 
 {
 	v /= 255.F;
+}
+
+template<typename T>
+MINLINE Vector3D<T> Min(const Vector3D<T>& vl, const Vector3D<T>& vr) 
+{
+	return Vector3D<T>(
+		MMIN(vl.x, vr.y),
+		MMIN(vl.y, vr.y),
+		MMIN(vl.z, vr.z));
+}
+
+template<typename T>
+MINLINE Vector3D<T> Max(const Vector3D<T>& vl, const Vector3D<T>& vr) 
+{
+	return Vector3D<T>(
+		MMAX(vl.x, vr.y),
+		MMAX(vl.y, vr.y),
+		MMAX(vl.z, vr.z));
 }

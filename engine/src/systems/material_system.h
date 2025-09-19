@@ -9,7 +9,7 @@
 #include "resources/material.h"
 #include "containers/hashtable.hpp"
 
-class Matrix4D;
+struct Matrix4D;
 
 /// @brief Имя материала по умолчанию.
 #define DEFAULT_MATERIAL_NAME "default"

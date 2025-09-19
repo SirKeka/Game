@@ -37,7 +37,15 @@ bool VulkanPipeline::Create(VulkanAPI* VkAPI, const Config& config)
             RasterizerCreateInfo.cullMode = VK_CULL_MODE_FRONT_AND_BACK;
             break;
     }
-    RasterizerCreateInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+
+    if (config.winding == RendererWinding::Clockwise) {
+        RasterizerCreateInfo.frontFace = VK_FRONT_FACE_CLOCKWISE;
+    } else if (config.winding == RendererWinding::CounterClockwise) {
+        RasterizerCreateInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+    } else {
+        MWARN("Указан неверный порядок намотки на лицевой стороне, по умолчанию против часовой стрелки.");
+        RasterizerCreateInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+    }
     RasterizerCreateInfo.depthBiasEnable = VK_FALSE;
     RasterizerCreateInfo.depthBiasConstantFactor = 0.F;
     RasterizerCreateInfo.depthBiasClamp = 0.F;
@@ -92,16 +100,21 @@ bool VulkanPipeline::Create(VulkanAPI* VkAPI, const Config& config)
     ColorBlendStateCreateInfo.pAttachments = &ColorBlendAttachmentState;
 
     // Динамическое состояние
-    const u32 DynamicStateCount = 3;
-    VkDynamicState DynamicStates[DynamicStateCount] = {
-        VK_DYNAMIC_STATE_VIEWPORT,
-        VK_DYNAMIC_STATE_SCISSOR,
-        VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY
-    };
+    DArray<VkDynamicState> DynamicStates;
+    DynamicStates.PushBack(VK_DYNAMIC_STATE_VIEWPORT);
+    DynamicStates.PushBack(VK_DYNAMIC_STATE_SCISSOR);
+    // Примитивная топология, если поддерживается.
+    if ((VkAPI->Device.supportFlags & VulkanDevice::NativeDynamicTopologyBit) || (VkAPI->Device.supportFlags & VulkanDevice::DynamicTopologyBit)) {
+        DynamicStates.PushBack(VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY);
+    }
+    // Лицевая, если поддерживается.
+    if ((VkAPI->Device.supportFlags & VulkanDevice::NativeDynamicFrontFaceBit) || (VkAPI->Device.supportFlags & VulkanDevice::DynamicFrontFaceBit)) {
+        DynamicStates.PushBack(VK_DYNAMIC_STATE_FRONT_FACE);
+    }
 
     VkPipelineDynamicStateCreateInfo DynamicStateCreateInfo = {VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO};
-    DynamicStateCreateInfo.dynamicStateCount = DynamicStateCount;
-    DynamicStateCreateInfo.pDynamicStates = DynamicStates;
+    DynamicStateCreateInfo.dynamicStateCount = DynamicStates.Length();
+    DynamicStateCreateInfo.pDynamicStates = DynamicStates.Data();
 
     // Вершинный ввод
     VkVertexInputBindingDescription BindingDescription;

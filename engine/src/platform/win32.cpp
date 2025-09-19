@@ -5,7 +5,7 @@
 
 #include "core/logger.hpp"
 #include "core/engine.h"
-#include "core/input.hpp"
+#include "core/input.h"
 #include "core/mthread.hpp"
 #include "core/mmutex.hpp"
 

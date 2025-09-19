@@ -465,6 +465,7 @@ bool SimpleScene::PopulateRenderPacket(Camera *CurrentCamera, f32 aspect, FrameD
             auto& m = meshes[i];
             if (m.generation != INVALID::U8ID) {
                 auto model = m.transform.GetWorld();
+                bool WindingInverted = m.transform.determinant < 0;
 
                 for (u32 j = 0; j < m.GeometryCount; ++j) {
                     auto g = m.geometries[j];
@@ -515,6 +516,7 @@ bool SimpleScene::PopulateRenderPacket(Camera *CurrentCamera, f32 aspect, FrameD
                             data.model = model;
                             data.geometry = g;
                             data.UniqueID = m.UniqueID;
+                            data.WindingInverted = WindingInverted;
                             WorldData.WorldGeometries.PushBack(data);
 
                             rFrameData.DrawnMeshCount++;
@@ -827,6 +829,27 @@ Terrain *SimpleScene::GetTerrain(const char *name)
     return nullptr;
 }
 
+Transform *SimpleScene::GetTransform(u32 UniqueID)
+{
+    const u32& MeshCount = meshes.Length();
+    for (u32 i = 0; i < MeshCount; ++i) {
+        auto& mesh = meshes[i];
+        if (mesh.UniqueID == UniqueID) {
+            return &mesh.transform;
+        }
+    }
+
+    u32 TerrainCount = terrains.Length();
+    for (u32 i = 0; i < TerrainCount; ++i) {
+        auto& terrain = terrains[i];
+        if (terrain.UniqueID == UniqueID) {
+            return &terrain.xform;
+        }
+    }
+
+    return nullptr;
+}
+
 bool SimpleScene::RemoveDirectionalLight()
 {
     // if (!name) {
@@ -986,7 +1009,7 @@ bool SimpleScene::Raycast(const Ray &ray, RaycastResult &OutResult)
         auto& mesh = meshes[i];
         Matrix4D model = mesh.transform.GetWorld();
         f32 dist;
-        if (Math::Raycast::OrientedExtents(mesh.extents, model, ray, dist)) {
+        if (Math::RaycastOrientedExtents(mesh.extents, model, ray, dist)) {
             // Hit
 
             RaycastHit hit;
@@ -996,6 +1019,26 @@ bool SimpleScene::Raycast(const Ray &ray, RaycastResult &OutResult)
             hit.UniqueID = mesh.UniqueID;
 
             OutResult.hits.PushBack(hit);
+        }
+    }
+
+    // Сортируем результаты по расстоянию.
+    if (OutResult.hits) {
+        bool swapped;
+        const u32& length = OutResult.hits.Length();
+        for (u32 i = 0; i < length - 1; ++i) {
+            swapped = false;
+            for (u32 j = 0; j < length - 1; ++j) {
+                if (OutResult.hits[j].distance > OutResult.hits[j + 1].distance) {
+                    MSWAP(RaycastHit, OutResult.hits[j], OutResult.hits[j + 1]);
+                    swapped = true;
+                }
+            }
+
+            // Если ни один из элементов не был перепутан, сортировка завершена.
+            if (!swapped) {
+                break;
+            }
         }
     }
 

@@ -1,8 +1,6 @@
 #pragma once
 
 #include "defines.h"
-// #include "vector3d_fwd.hpp"
-// #include "matrix4d.hpp"
 
 /// @brief Приблизительное представление числа ПИ.
 constexpr f32 M_PI = 3.14159265358979323846F;
@@ -52,6 +50,33 @@ namespace Math
     // Общие математические функции
     // ------------------------------------------
 
+    /// @brief Меняет местами значения в заданных адресах с плавающей точкой.
+    /// @param a ссылка на первый элемент с плавающей точкой.
+    /// @param b ссылка на второй элемент с плавающей точкой.
+    /// @return 
+    MINLINE void Swapf(f32& a, f32& b) {
+        f32 temp = a;
+        a = b;
+        b = temp;
+    }
+
+    #define MSWAP(type, a, b) \
+        {                     \
+            type temp = a;    \
+            a = b;            \
+            b = temp;         \
+        }
+
+    /// @brief Возвращает 0.F, если x == 0.F, -1.F, если значение отрицательное, в противном случае 1.F.
+    MINLINE f32 Sign(f32 x) {
+        return x == 0.F ? 0.F : x < 0.F ? -1.F : 1.F;
+    }
+
+    /// @brief Сравнивает x с ребром, возвращая 0, если x < ребра; в противном случае 1.F.
+    MINLINE f32 Step(f32 edge, f32 x) {
+        return x < edge ? 0.F : 1.F;
+    }
+
     MAPI f32 sin(f32 x);
     MAPI f32 cos(f32 x);
     MAPI f32 tan(f32 x);
@@ -64,8 +89,7 @@ namespace Math
      * @param value Значение, подлежащее интерпретации.
      * @returns Истинно, если степень равна 2, в противном случае ложно.
      */
-    MINLINE bool IsPowerOf2(u64 value) 
-    {
+    MINLINE bool IsPowerOf2(u64 value) {
         return (value != 0) && ((value & (value - 1)) == 0);
     }
 
@@ -133,17 +157,5 @@ namespace Math
         OutG = (rgbu >> 8) & 0x0FF;
         OutB = (rgbu)&0x0FF;
     }
-
-	/// @brief Преобразовать v по m. ПРИМЕЧАНИЕ: эта функция предполагает, что вектор v является точкой, а не направлением, и вычисляется так, как если бы там был компонент w со значением 1.0f.
-	/// @param v Вектор для преобразования.
-	/// @param m Матрица для преобразования.
-	/// @return Преобразованная копия v.
-	// MINLINE FVec3 Transform(const FVec3& v, const Matrix4D& m) {
-	// 	FVec3 out;
-	// 	out.x = v.x * m.data[0 + 0] + v.y * m.data[4 + 0] + v.z * m.data[8 + 0] + 1.0f * m.data[12 + 0];
-    // 	out.y = v.x * m.data[0 + 1] + v.y * m.data[4 + 1] + v.z * m.data[8 + 1] + 1.0f * m.data[12 + 1];
-    // 	out.z = v.x * m.data[0 + 2] + v.y * m.data[4 + 2] + v.z * m.data[8 + 2] + 1.0f * m.data[12 + 2];
-	// 	return out;
-	// }
 
 } // namespace Math

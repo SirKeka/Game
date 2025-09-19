@@ -135,13 +135,34 @@ namespace EventSystem
 
         /// @brief Событие, срабатывающее при записи в отслеживаемый файл.
         /// Контекст использования:
-        /// u32 watch_id = context.data.u32[0];
-        WatchedFileWritten = 0X18,
+        /// u32 WatchID = context.data.u32[0];
+        WatchedFileWritten = 0x18,
 
         /// @brief Событие, срабатывающее при удалении отслеживаемого файла.
         /// Контекст использования:
-        /// u32 watch_id = context.data.u32[0];
+        /// u32 WatchID = context.data.u32[0];
         WatchedFileDeleted = 0x19,
+
+        /// @brief Событие, возникающее при удерживании кнопки и перемещении мыши.
+        // Контекст использования:
+        // i16 x = context.data.i16[0]
+        // i16 y = context.data.i16[1]
+        // u16 button = context.data.u16[2]
+       MouseDragged = 0x20,
+
+        /// @brief Событие, возникающее при нажатии кнопки и перемещении мыши во время нажатия.
+        // Контекст использования:
+        // i16 x = context.data.i16[0]
+        // i16 y = context.data.i16[1]
+        // u16 button = context.data.u16[2]
+        MouseDragBegin = 0x21,
+
+        /// @brief Событие, возникающее при отпускании кнопки, ранее называлось перетаскиванием.
+        // Контекст использования:
+        // i16 x = context.data.i16[0]
+        // i16 y = context.data.i16[1]
+        // u16 button = context.data.u16[2]
+        MouseDragEnd = 0x22,
 
         MaxEventCode = 0xFF       // Максимальный код события, который можно использовать внутри.
     };

@@ -17,6 +17,11 @@
 
 #include "debug_console.h"
 
+struct SelectedObject {
+    u32 UniqueID;
+    Transform* xform;
+};
+
 struct Game
 {
     bool running;
@@ -59,6 +64,9 @@ struct Game
     // Используется для визуализации наших кастов/столкновений.
     DArray<DebugLine3D> TestLines;
     DArray<DebugBox3D> TestBoxes;
+
+    SelectedObject selection;
+    bool UsingGizmo;
     // ЗАДАЧА: конец временно
     // constexpr Game(const ApplicationConfig& config) : Application(config, sizeof(State)) {}
 

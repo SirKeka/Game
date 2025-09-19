@@ -110,16 +110,6 @@ Quaternion& Quaternion::Normalize()
 	return *this;
 }
 
-MINLINE Quaternion Conjugate(const Quaternion &q)
-{
-    return Quaternion(-q.x, -q.y, -q.z, q.w);
-}
-
-MINLINE Quaternion Inverse(const Quaternion &q)
-{
-    return Normalize(Conjugate(q));
-}
-
 MINLINE f32 Dot(const Quaternion &q1, const Quaternion &q2)
 {
     return q1.x * q2.x + q1.y * q2.y + q1.z * q2.z + q1.w * q2.w;

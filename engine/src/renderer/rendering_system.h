@@ -147,6 +147,10 @@ namespace RenderingSystem
     /// Должно быть сделано в проходе рендеринга.
     MAPI void ScissorReset();
 
+    /// @brief Настройте рендерер на использование указанного направления поворота.
+    /// @param winding Направление поворота.
+    MAPI void SetWinding(RendererWinding winding);
+
     /// @brief Начинает проход рендеринга с указанной целью.
     /// @param pass указатель на проход рендеринга для начала.
     /// @param target указатель на цель рендеринга для использования.

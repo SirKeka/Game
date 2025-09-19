@@ -170,6 +170,10 @@ void *MemorySystem::AllocateAligned(u64 bytes, u16 alignment, Memory::Tag tag, b
 
 void *MemorySystem::Realloc(void *ptr, u64 size, u64 NewSize, Memory::Tag tag, bool copy)
 {
+    if (NewSize == size) {
+        return ptr;
+    }
+    
     if (tag == Memory::Unknown) {
         MWARN("MMemory::AllocateAligned вызывается с использованием MemoryTag::Unknown. Переклассифицировать это распределение.");
     }
@@ -180,7 +184,10 @@ void *MemorySystem::Realloc(void *ptr, u64 size, u64 NewSize, Memory::Tag tag, b
     if (NewSize > size) {
         DeltaSize = NewSize - size;
     } else {
-        Free((u8*)ptr + NewSize, size - NewSize, tag);
+        auto p = (u8*)ptr + NewSize;
+        u64 u = size - NewSize;
+        MTRACE("Освобождается облась памяти %p развером %u", p, u);
+        Free(p, u, tag);
         return ptr;
     }
 
@@ -200,7 +207,7 @@ void *MemorySystem::Realloc(void *ptr, u64 size, u64 NewSize, Memory::Tag tag, b
         } else {
             block = reinterpret_cast<u8*>(state->allocator.Allocate(NewSize));
         }
-        
+        MTRACE("Присваивается новый указатель: %p старому: %p с размером %u", block, ptr, size);
         state->AllocationMutex.Unlock();
     }
 
@@ -246,7 +253,8 @@ void MemorySystem::FreeAligned(void *block, u64 size, u16 alignment, Memory::Tag
             state->TotalAllocated -= size;
             state->TaggedAllocations[tag] -= size;
             state->AllocCount--;
-            [[maybe_unused]]bool result = state->allocator.Free(block, size, alignment);
+            // bool result = 
+            state->allocator.Free(block, size, alignment);
             // Если освобождение не удалось, возможно, это связано с тем, что выделение было выполнено до запуска этой системы. 
             // Поскольку это абсолютно должно быть исключением из правил, попробуйте освободить его на уровне платформы. 
             // Если это не удастся, значит, начнется какой-то другой вид мошенничества, и у нас возникнут более серьезные проблемы.

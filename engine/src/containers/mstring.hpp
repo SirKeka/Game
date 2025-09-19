@@ -5,7 +5,7 @@
 #include "math/vector4d_fwd.h"
 
 template<typename> class DArray;
-class Transform;
+struct Transform;
 
 class MAPI MString
 {

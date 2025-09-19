@@ -70,10 +70,10 @@ bool VulkanDevice::Create(VulkanAPI* VkAPI)
     bool PortabilityRequired = false;
     u32 AvailableExtensionCount = 0;
     VkExtensionProperties* AvailableExtensions = 0;
-    VK_CHECK(vkEnumerateDeviceExtensionProperties(VkAPI->Device.PhysicalDevice, 0, &AvailableExtensionCount, 0));
+    VK_CHECK(vkEnumerateDeviceExtensionProperties(PhysicalDevice, 0, &AvailableExtensionCount, 0));
     if (AvailableExtensionCount != 0) {
         AvailableExtensions = MemorySystem::TAllocate<VkExtensionProperties>(Memory::Renderer, AvailableExtensionCount);
-        VK_CHECK(vkEnumerateDeviceExtensionProperties(VkAPI->Device.PhysicalDevice, 0, &AvailableExtensionCount, AvailableExtensions));
+        VK_CHECK(vkEnumerateDeviceExtensionProperties(PhysicalDevice, 0, &AvailableExtensionCount, AvailableExtensions));
         for (u32 i = 0; i < AvailableExtensionCount; ++i) {
             if (MString::Equal(AvailableExtensions[i].extensionName, "VK_KHR_portability_subset")) {
                 MINFO("Добавляем необходимое расширение VK_KHR_portability_subset.");
@@ -94,19 +94,31 @@ bool VulkanDevice::Create(VulkanAPI* VkAPI)
         ExtensionNames[ExtIndex] = "VK_KHR_portability_subset";
         ExtIndex++;
     }
+
+    bool DynamicStateExtensionIncluded = false;
     // Если динамическая топология не поддерживается изначально, но *поддерживается* через расширение, включите расширение. В случае Mac OS X оба этих условия могут быть ложными.
-    if (
-        ((VkAPI->Device.supportFlags & NativeDynamicTopologyBit) == 0) &&
-        ((VkAPI->Device.supportFlags & DynamicTopologyBit) != 0)) {
+    if (((supportFlags & NativeDynamicTopologyBit) == 0) &&
+        ((supportFlags & DynamicTopologyBit) != 0)) {
         ExtensionNames[ExtIndex] = VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME;
         ExtIndex++;
+        DynamicStateExtensionIncluded = true;
     }
+
     // Если поддерживаются плавные линии, загрузите расширение.
-    if ((VkAPI->Device.supportFlags & LineSmoothRasterisationBit)) {
+    if ((supportFlags & LineSmoothRasterisationBit)) {
         ExtensionNames[ExtIndex] = VK_EXT_LINE_RASTERIZATION_EXTENSION_NAME;
         ExtIndex++;
     }
-    
+
+    if (!DynamicStateExtensionIncluded) {
+        // Если динамическая передняя сторона не поддерживается изначально, но *поддерживается* через расширение, включите это расширение. В случае Mac OS X оба этих значения могут быть неверными.
+        if (((supportFlags & NativeDynamicFrontFaceBit) == 0) &&
+            ((supportFlags & DynamicFrontFaceBit) != 0)) {
+            ExtensionNames[ExtIndex] = VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME;
+            ExtIndex++;
+            DynamicStateExtensionIncluded = true;
+        }
+    }
     VkDeviceCreateInfo DeviceCreateInfo = {VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO};
     DeviceCreateInfo.queueCreateInfoCount = IndexCount;
     DeviceCreateInfo.pQueueCreateInfos = QueueCreateInfos;
@@ -125,7 +137,7 @@ bool VulkanDevice::Create(VulkanAPI* VkAPI)
 
     // Плавная растеризация линий, если поддерживается.
     VkPhysicalDeviceLineRasterizationFeaturesEXT LineRasterizationExt{};
-    if (VkAPI->Device.supportFlags & LineSmoothRasterisationBit) {
+    if (supportFlags & LineSmoothRasterisationBit) {
         LineRasterizationExt.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_FEATURES_EXT;
         LineRasterizationExt.smoothLines = VK_TRUE;
         ExtendedDynamicState.pNext = &LineRasterizationExt;
@@ -139,19 +151,33 @@ bool VulkanDevice::Create(VulkanAPI* VkAPI)
         &this->LogicalDevice)
     );
 
-    VK_SET_DEBUG_OBJECT_NAME(VkAPI, VK_OBJECT_TYPE_DEVICE, VkAPI->Device.LogicalDevice, "Vulkan Logical Device");
+    VK_SET_DEBUG_OBJECT_NAME(VkAPI, VK_OBJECT_TYPE_DEVICE, LogicalDevice, "Vulkan Logical Device");
 
     MINFO("Логическое устройство создано.");
 
-    if (!(VkAPI->Device.supportFlags & NativeDynamicTopologyBit) &&
-        (VkAPI->Device.supportFlags & DynamicTopologyBit)) {
+    // Проверить поддержку динамической топологии и загрузить указатель функции, если необходимо.
+    if (!(supportFlags & NativeDynamicTopologyBit) &&
+        (supportFlags & DynamicTopologyBit)) {
         MINFO("Устройство Vulkan не поддерживает собственную динамическую топологию, но поддерживает её через расширение. Использование расширения.");
         VkAPI->vkCmdSetPrimitiveTopologyEXT = (PFN_vkCmdSetPrimitiveTopologyEXT)vkGetInstanceProcAddr(VkAPI->instance, "vkCmdSetPrimitiveTopologyEXT");
     } else {
-        if (VkAPI->Device.supportFlags & NativeDynamicTopologyBit) {
+        if (supportFlags & NativeDynamicTopologyBit) {
             MINFO("Устройство Vulkan поддерживает собственную динамическую топологию.");
         } else {
             MINFO("Устройство Vulkan не поддерживает собственную или расширенную динамическую топологию.");
+        }
+    }
+
+    // Проверьте поддержку динамического интерфейса и загрузите указатель на функцию при необходимости.
+    if (!(supportFlags & NativeDynamicFrontFaceBit) &&
+        (supportFlags & DynamicFrontFaceBit)) {
+        MINFO("Устройство Vulkan не поддерживает встроенный динамический интерфейс, но поддерживает его через расширение. Использование расширения.");
+        VkAPI->vkCmdSetFrontFaceEXT = (PFN_vkCmdSetFrontFaceEXT)vkGetInstanceProcAddr(VkAPI->instance, "vkCmdSetFrontFaceEXT");
+    } else {
+        if (supportFlags & NativeDynamicFrontFaceBit) {
+            MINFO("Устройство Vulkan поддерживает встроенный динамический интерфейс.");
+        } else {
+            MINFO("Устройство Vulkan не поддерживает встроенный или расширенный динамический интерфейс.");
         }
     }
 
@@ -334,8 +360,11 @@ bool VulkanDevice::SelectPhysicalDevice(VulkanAPI *VkAPI)
     VkPhysicalDevice PhysicalDevices[32];
     VK_CHECK(vkEnumeratePhysicalDevices(VkAPI->instance, &PhysicalDeviceCount, PhysicalDevices));
     for (auto &&device : PhysicalDevices) {
-        VkPhysicalDeviceProperties properties;
-        vkGetPhysicalDeviceProperties(device, &properties);
+        VkPhysicalDeviceProperties2 properties2 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2};
+        VkPhysicalDeviceDriverProperties driverProperties = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES};
+        properties2.pNext = &driverProperties;
+        vkGetPhysicalDeviceProperties2(device, &properties2);
+        VkPhysicalDeviceProperties properties = properties2.properties;
 
         VkPhysicalDeviceFeatures features;
         vkGetPhysicalDeviceFeatures(device, &features);
@@ -399,18 +428,15 @@ bool VulkanDevice::SelectPhysicalDevice(VulkanAPI *VkAPI)
                     break;
             }
 
-            MINFO("Версия драйвера графического процессора: %d.%d.%d",
-                VK_VERSION_MAJOR(properties.driverVersion),
-                VK_VERSION_MINOR(properties.driverVersion),
-                VK_VERSION_PATCH(properties.driverVersion));
+            MINFO("Версия драйвера графического процессора: %s", driverProperties.driverInfo);
 
             // Сохпаняем версию API, которая поддерживается устройством.
-            VkAPI->Device.ApiMaijor = VK_VERSION_MAJOR(properties.apiVersion);
-            VkAPI->Device.ApiMinor  = VK_VERSION_MINOR(properties.apiVersion);
-            VkAPI->Device.ApiPatch  = VK_VERSION_PATCH(properties.apiVersion);
+            ApiMaijor = VK_VERSION_MAJOR(properties.apiVersion);
+            ApiMinor  = VK_VERSION_MINOR(properties.apiVersion);
+            ApiPatch  = VK_VERSION_PATCH(properties.apiVersion);
 
             // Версия API Vulkan.
-            MINFO("Версия API Vulkan: %d.%d.%d", VkAPI->Device.ApiMaijor, VkAPI->Device.ApiMinor, VkAPI->Device.ApiPatch);
+            MINFO("Версия API Vulkan: %d.%d.%d", ApiMaijor, ApiMinor, ApiPatch);
 
             // Информация о памяти
             for (u32 j = 0; j < memory.memoryHeapCount; ++j) {
@@ -436,13 +462,15 @@ bool VulkanDevice::SelectPhysicalDevice(VulkanAPI *VkAPI)
 
             // Устройство может поддерживать или не поддерживать эту функцию, поэтому сохраните ее здесь.
             if (DynamicStateNext.extendedDynamicState) {
-                VkAPI->Device.supportFlags |= DynamicTopologyBit;
+                supportFlags |= DynamicTopologyBit;
+                supportFlags |= DynamicFrontFaceBit;
             }
-            if (VkAPI->Device.ApiMaijor > 1 || VkAPI->Device.ApiMinor > 2) {
-                VkAPI->Device.supportFlags |= NativeDynamicTopologyBit;
+            if (ApiMaijor > 1 || ApiMinor > 2) {
+                supportFlags |= NativeDynamicTopologyBit;
+                supportFlags |= NativeDynamicFrontFaceBit;
             }
             if (SmoothLineNext.smoothLines) {
-                VkAPI->Device.supportFlags |= LineSmoothRasterisationBit;
+                supportFlags |= LineSmoothRasterisationBit;
             }
             break;
         }

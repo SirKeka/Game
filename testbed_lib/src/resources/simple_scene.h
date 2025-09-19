@@ -153,6 +153,8 @@ struct MAPI SimpleScene {
     /// @return Ландшафт
     Terrain* GetTerrain(const char* name);
 
+    Transform* GetTransform(u32 UniqueID);
+
     /// @brief Удаляет направленный источник освещения из сцены
     /// @param light направленный источник освещения
     /// @return true если удаление прошло успешно, иначе false

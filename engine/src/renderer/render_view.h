@@ -14,6 +14,7 @@ struct GeometryRenderData
     Matrix4D model;
     Geometry* geometry;
     u32 UniqueID;
+    bool WindingInverted;
 };
 
 template class DArray<GeometryRenderData>;

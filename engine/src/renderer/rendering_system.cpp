@@ -259,6 +259,12 @@ void RenderingSystem::ScissorReset()
     pRenderingSystem->ptrRenderer->ScissorReset();
 }
 
+void RenderingSystem::SetWinding(RendererWinding winding)
+{
+    auto pRenderingSystem = reinterpret_cast<sRenderingSystem*>(SystemsManager::GetState(MSystem::Type::Renderer));
+    pRenderingSystem->ptrRenderer->SetWinding(winding);
+}
+
 bool RenderingSystem::RenderpassBegin(Renderpass *pass, RenderTarget &target)
 {
     auto pRenderingSystem = reinterpret_cast<sRenderingSystem*>(SystemsManager::GetState(MSystem::Type::Renderer));

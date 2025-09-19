@@ -4,16 +4,14 @@
 #include "vector4d_fwd.h"
 #include "quaternion.h"
 
-class MAPI Matrix4D
+struct MAPI Matrix4D
 {
-public:
 	// ЗАДАЧА: SIMD
 	union{
 		f32 data[16];
 		f32 n[4][4];
 	};
 
-public:
 	constexpr Matrix4D() : data() {}
 	constexpr Matrix4D(f32 n11, f32 n12, f32 n13, f32 n14,
 			 		   f32 n21, f32 n22, f32 n23, f32 n24,
@@ -45,6 +43,38 @@ public:
 			}
 		}
 		return (*this = t);
+	}
+
+	/// @brief Определитель можно представить как числовой «коэффициент масштабирования», который показывает, во сколько раз линейное преобразование изменяет объём (или площадь) пространства, а также указывает на сохранение или изменение его ориентации.
+	/// @return Определитель матрицы.
+	MINLINE f32 Determinant() {
+		const auto m = data;
+
+		f32 t0 = m[10] * m[15];
+		f32 t1 = m[14] * m[11];
+		f32 t2 = m[6] * m[15];
+		f32 t3 = m[14] * m[7];
+		f32 t4 = m[6] * m[11];
+		f32 t5 = m[10] * m[7];
+		f32 t6 = m[2] * m[15];
+		f32 t7 = m[14] * m[3];
+		f32 t8 = m[2] * m[11];
+		f32 t9 = m[10] * m[3];
+		f32 t10 = m[2] * m[7];
+		f32 t11 = m[6] * m[3];
+
+		Matrix3D TempMat;
+		auto o = TempMat.data;
+
+		o[0] = (t0 * m[5] + t3 * m[9] + t4 * m[13]) - (t1 * m[5] + t2 * m[9] + t5 * m[13]);
+		o[1] = (t1 * m[1] + t6 * m[9] + t9 * m[13]) - (t0 * m[1] + t7 * m[9] + t8 * m[13]);
+		o[2] = (t2 * m[1] + t7 * m[5] + t10 * m[13]) -
+			(t3 * m[1] + t6 * m[5] + t11 * m[13]);
+		o[3] = (t5 * m[1] + t8 * m[5] + t11 * m[9]) -
+			(t4 * m[1] + t9 * m[5] + t10 * m[9]);
+
+		f32 determinant = 1.F / (m[0] * o[0] + m[4] * o[1] + m[8] * o[2] + m[12] * o[3]);
+		return determinant;
 	}
 
 	/// @brief Инвертирует текущую матрицу
@@ -80,10 +110,10 @@ public:
 	/// @brief Создает и возвращает единичную матрицу:
 	/// @return новая единичная матрица
 	MINLINE static constexpr Matrix4D MakeIdentity() {
-		return Matrix4D(1.f, 0.f, 0.f, 0.f,
-						0.f, 1.f, 0.f, 0.f,
-						0.f, 0.f, 1.f, 0.f,
-						0.f, 0.f, 0.f, 1.f);
+		return Matrix4D(1.F, 0.F, 0.F, 0.F,
+						0.F, 1.F, 0.F, 0.F,
+						0.F, 0.F, 1.F, 0.F,
+						0.F, 0.F, 0.F, 1.F);
 	}
 	/// @brief Создает и возвращает матрицу ортогональной проекции. Обычно используется для рендеринга плоских или 2D-сцен.
 	/// @param left левая сторона усеченного изображения.
@@ -116,15 +146,15 @@ public:
 	/// @param s соотношение сторон области просмотра.
 	/// @param n расстояние до ближней плоскости отсечения.
 	/// @param f расстояние до дальней плоскости отсечения.
-	/// @return класс Matrix4D
+	/// @return объект класса Matrix4D
 	MINLINE static constexpr Matrix4D MakeFrustumProjection(f32 fovy, f32 s, f32 n, f32 f) {
-		f32 g = 1.0F / Math::tan(fovy * 0.5F);
+		f32 g = 1.F / Math::tan(fovy * 0.5F);
 		f32 k = f / (f - n);
 
-		return (Matrix4D(g / s, 0.f,   0.f,  0.f,		// Matrix4D(g / s, 0.f, 0.f,  0.f,
-		                  0.f,   g,    0.f,  0.f,		// 			 0.f,   g,  0.f,  0.f,
-		                  0.f,  0.f,   -k,  -1.f,		// 	         0.f,  0.f,  k, -n * k,
-		                  0.f,  0.f, -n * k, 0.f));		// 	         0.f,  0.f, 1.f,  0.f));
+		return (Matrix4D(g / s, 0.F,   0.F,  0.F,		// Matrix4D(g / s, 0.F, 0.F,  0.F,
+		                  0.F,   g,    0.F,  0.F,		// 			 0.F,   g,  0.F,  0.F,
+		                  0.F,  0.F,   -k,  -1.F,		// 	         0.F,  0.F,  k, -n * k,
+		                  0.F,  0.F, -n * k, 0.F));		// 	         0.F,  0.F, 1.F,  0.F));
 	}
 
 	/// @brief Cоздает матрицу 4×4, которая представляет обратную перспективную проекцию для усеченного вида
@@ -137,10 +167,10 @@ public:
 		f32 g = 1.0F / Math::tan(fovy * 0.5F);
 		f32 k = n / (n - f);
 
-		return (Matrix4D(g / s, 0.0F,  0.0F, 0.0F,
-		                  0.0F,  g,    0.0F, 0.0F,
-		                  0.0F, 0.0F,   k,  -f * k,
-		                  0.0F, 0.0F, -1.0F, 0.0F));
+		return (Matrix4D(g / s, 0.F,  0.F,   0.F,
+		                  0.F,  g,    0.F,   0.F,
+		                  0.F,  0.F,   k,  -f * k,
+		                  0.F,  0.F, -1.F,   0.F));
 	}
 	
 	/**Часто непрактично или, по крайней мере, неудобно, чтобы усеченный вид имел дальнюю плоскость, 
@@ -158,13 +188,13 @@ public:
 	/// @param e 
 	/// @return структура данных Matrix4D
 	MINLINE static Matrix4D MakeInfiniteProjection(f32 fovy, f32 s, f32 n, f32 e) {
-		f32 g = 1.0f / Math::tan(fovy * 0.5f);
-		e = 1.0F - e;
+		f32 g = 1.F / Math::tan(fovy * 0.5F);
+		e = 1.F - e;
 
-		return (Matrix4D(g / s, 0.0f, 0.0f, 0.0f,
-		                  0.0f,  g,   0.0f, 0.0f,
-		                  0.0f, 0.0f,  e,  -n * e,
-		                  0.0f, 0.0f, 1.0f, 0.0f));
+		return (Matrix4D(g / s, 0.F, 0.F,   0.F,
+		                  0.F,   g,  0.F,   0.F,
+		                  0.F,  0.F,  e,  -n * e,
+		                  0.F,  0.F, 1.F,   0.F));
 	}
 
 	/**
@@ -213,7 +243,7 @@ public:
 		FVec3 u = a * y - b * x;
 		FVec3 v = c * w - d * z;
 
-		float invDet = 1.0F / (Dot(s, v) + Dot(t, u));
+		float invDet = 1.F / (Dot(s, v) + Dot(t, u));
 		s *= invDet;
 		t *= invDet;
 		u *= invDet;
@@ -400,3 +430,15 @@ MINLINE FVec4 operator *(const FVec4& v, const Matrix4D& m)
 /// @param b матрица 4x4
 /// @return результат умножения матрицы а на матрицу b
 MAPI Matrix4D operator*(Matrix4D a, const Matrix4D& b);
+
+/// @brief Преобразовать вектор по матрице.
+/// @param vector вектор для преобразования.
+/// @param w передайте 1.F для точки или 0.F для направления.
+/// @param matrix матрица для преобразования.
+/// @return Преобразованная копия вектора.
+MINLINE FVec3 VectorTransform(const FVec3& v, f32 w, const Matrix4D& m) {
+	return FVec3(v.x * m.data[0 + 0] + v.y * m.data[4 + 0] + v.z * m.data[8 + 0] + w * m.data[12 + 0],
+                 v.x * m.data[0 + 1] + v.y * m.data[4 + 1] + v.z * m.data[8 + 1] + w * m.data[12 + 1],
+                 v.x * m.data[0 + 2] + v.y * m.data[4 + 2] + v.z * m.data[8 + 2] + w * m.data[12 + 2]
+    );
+}

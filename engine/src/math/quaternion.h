@@ -3,8 +3,6 @@
 #include "matrix3d.h"
 #include "vector3d_fwd.h"
 
-#include "math.h"
-
 class MAPI Quaternion
 {
 public:
@@ -83,6 +81,7 @@ MINLINE f32 Normal(const Quaternion& q)
 {
     return Math::sqrt(q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w);
 }
+
 /// @brief Функция нормализует принимаемый кватернилн
 /// @param q кватернион который нужно нормалищовать
 /// @return копию нормализованного кватерниона
@@ -91,11 +90,20 @@ MINLINE Quaternion Normalize(const Quaternion& q)
 	f32 n = Normal(q);
     return Quaternion(q.x / n, q.y / n, q.z / n, q.w / n);
 }
+
 /// @brief Функция вычисляет сопряженное число кватерниона
 /// @param q кватернион сопряженное число которого нужно найти
 /// @return Quaterrnion(-x, -y, -z, w)
-MINLINE Quaternion Conjugate(const Quaternion& q);
-MINLINE Quaternion Inverse(const Quaternion& q);
+MINLINE Quaternion Conjugate(const Quaternion& q)
+{
+	return Quaternion(-q.x, -q.y, -q.z, q.w);
+}
+
+MINLINE Quaternion Inverse(const Quaternion& q)
+{
+	return Normalize(Conjugate(q));
+}
+
 /// @brief 
 /// @param q1 
 /// @param q2 
@@ -107,3 +115,15 @@ MINLINE f32 Dot(const Quaternion& q1, const Quaternion& q2);
 /// @param percentage 
 /// @return 
 MINLINE Quaternion SLERP(const Quaternion& q1, const Quaternion& q2, f32 percentage);
+
+/// @brief Эта функция вращает вектор v, используя кватернион q, вычисляя сэндвич-произведение. Предполагается, что q — единичный кватернион.
+/// @param v 
+/// @param q
+/// @return 
+MINLINE FVec3 Rotate(const FVec3& v, const Quaternion& q) 
+{
+	const FVec3& b = q.GetVectorPart();
+    f32 b2 = b.x * b.x + b.y * b.y + b.z * b.z;
+
+	return (v * (q.w * q.w - b2) + b * (Dot(v, b) * 2.F) + Cross(b, v) * (q.w * 2.F));
+}

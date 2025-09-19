@@ -1,7 +1,7 @@
 #include "game.h"
 
 #include <core/logger.hpp>
-#include <core/input.hpp>
+#include <core/input.h>
 #include <core/console.hpp>
 #include <renderer/camera.h>
 #include <renderer/rendering_system.h>
@@ -120,16 +120,16 @@ void GameOnSetGizmoMode(Keys key, Keymap::EntryBindType type, Keymap::Modifier m
 
     switch (key) {
         case Keys::KEY_1:
-            state->gizmo.mode = Gizmo::Mode::None;
+            state->gizmo.mode = Gizmo::Mode::NONE;
             break;
         case Keys::KEY_2:
-            state->gizmo.mode = Gizmo::Mode::Move;
+            state->gizmo.mode = Gizmo::Mode::MOVE;
             break;
         case Keys::KEY_3:
-            state->gizmo.mode = Gizmo::Mode::Rotate;
+            state->gizmo.mode = Gizmo::Mode::ROTATE;
             break;
         case Keys::KEY_4:
-            state->gizmo.mode = Gizmo::Mode::Scale;
+            state->gizmo.mode = Gizmo::Mode::SCALE;
             break;
         default:
             break;

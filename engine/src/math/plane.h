@@ -2,7 +2,7 @@
 
 #include "vector3d_fwd.h"
 
-struct Plane
+struct MAPI Plane
 {
 	f32 x, y, z, distance;
 
@@ -11,6 +11,8 @@ struct Plane
 	constexpr Plane(float x, float y, float z, float d) : x(x), y(y), z(z), distance(d) {}
 
 	constexpr Plane(const FVec3& n, float d) : x(n.x), y(n.y), z(n.z), distance(d) {}
+
+	constexpr Plane(const FVec3& p1, const FVec3& norm) : x(norm.x), y(norm.y), z(norm.z), distance(Dot(norm, p1)) {}
 
 	/// @brief Создает плоскость.
 	/// @param p1 константная ссылка на вектор, который определяет положение точки.

@@ -1,6 +1,6 @@
 #include "debug_console.h"
 #include <core/console.hpp>
-#include <core/input.hpp>
+#include <core/input.h>
 #include <platform/platform.hpp>
 
 // ЗАДАЧА: на данный момент статически определенное состояние.

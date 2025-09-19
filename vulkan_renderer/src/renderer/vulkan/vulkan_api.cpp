@@ -597,8 +597,9 @@ bool VulkanAPI::BeginFrame(const FrameData& rFrameData)
     }
 
     // Начните запись команд.
-    VulkanCommandBufferReset(&GraphicsCommandBuffers[ImageIndex]);
-    VulkanCommandBufferBegin(&GraphicsCommandBuffers[ImageIndex], false, false, false);
+    auto* CommandBuffer = &GraphicsCommandBuffers[ImageIndex];
+    VulkanCommandBufferReset(CommandBuffer);
+    VulkanCommandBufferBegin(CommandBuffer, false, false, false);
 
     // Динамическое состояние
     ViewportRect = FVec4(0.F, (f32)FramebufferHeight, (f32)FramebufferWidth, -(f32)FramebufferHeight);
@@ -607,12 +608,15 @@ bool VulkanAPI::BeginFrame(const FrameData& rFrameData)
     ScissorRect = FVec4(0.F, 0.F, FramebufferWidth, FramebufferHeight);
     ScissorSet(ScissorRect);
 
+    SetWinding(RendererWinding::CounterClockwise);
+
     return true;
 }
 
 bool VulkanAPI::EndFrame(const FrameData& rFrameData)
 {
-    VulkanCommandBufferEnd(&GraphicsCommandBuffers[ImageIndex]);
+    auto* CommandBuffer = &GraphicsCommandBuffers[ImageIndex];
+    VulkanCommandBufferEnd(CommandBuffer);
 
     // Убедитесь, что предыдущий кадр не использует это изображение (т.е. его ограждение находится в режиме ожидания).
     if (ImagesInFlight[ImageIndex] != VK_NULL_HANDLE) { // был кадр
@@ -634,7 +638,7 @@ bool VulkanAPI::EndFrame(const FrameData& rFrameData)
 
     // Буфер(ы) команд, которые должны быть выполнены.
     SubmitInfo.commandBufferCount = 1;
-    SubmitInfo.pCommandBuffers = &GraphicsCommandBuffers[ImageIndex].handle;
+    SubmitInfo.pCommandBuffers = &CommandBuffer->handle;
 
     // Семафор(ы), который(ы) будет сигнализирован при заполнении очереди.
     SubmitInfo.signalSemaphoreCount = 1;
@@ -660,7 +664,7 @@ bool VulkanAPI::EndFrame(const FrameData& rFrameData)
         return false;
     }
 
-    VulkanCommandBufferUpdateSubmitted(&GraphicsCommandBuffers[ImageIndex]);
+    VulkanCommandBufferUpdateSubmitted(CommandBuffer);
     // Отправка в конечную очередь
 
     // Верните изображение обратно в swapchain.
@@ -712,6 +716,30 @@ void VulkanAPI::ScissorReset()
 {
     // Просто установите текущий прямоугольник ножниц.
     ScissorSet(ScissorRect);
+}
+
+void VulkanAPI::SetWinding(RendererWinding winding)
+{
+    auto& CommandBuffer = GraphicsCommandBuffers[ImageIndex];
+
+    VkFrontFace vkWinding = winding == RendererWinding::CounterClockwise ? VK_FRONT_FACE_COUNTER_CLOCKWISE : VK_FRONT_FACE_CLOCKWISE;
+    if (Device.supportFlags & VulkanDevice::NativeDynamicFrontFaceBit) {
+        vkCmdSetFrontFace(CommandBuffer.handle, vkWinding);
+    } else if (Device.supportFlags * VulkanDevice::DynamicFrontFaceBit) {
+        vkCmdSetFrontFaceEXT(CommandBuffer.handle, vkWinding);
+    } else {
+        if (BoundShader) {
+            auto InternalShader = BoundShader->ShaderData;
+            // Свяжите правильный намоточный трубопровод.
+            if (winding == RendererWinding::CounterClockwise) {
+                InternalShader->pipelines[InternalShader->BoundPipelineIndex]->Bind(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS);
+            } else {
+                InternalShader->ClockwisePipelines[InternalShader->BoundPipelineIndex]->Bind(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS);
+            }
+        } else {
+            MERROR("Невозможно установить намотку, так как в данный момент нет привязанного шейдера.");
+        }
+    }
 }
 
 bool VulkanAPI::RenderpassBegin(Renderpass* pass, RenderTarget& target)

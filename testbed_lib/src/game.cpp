@@ -1,7 +1,7 @@
 #include "game.h"
 
 #include <core/logger.hpp>
-#include <core/input.hpp>
+#include <core/input.h>
 #include <core/metrics.hpp>
 
 #include <systems/camera_system.hpp>
@@ -54,7 +54,7 @@ void Game::ClearDebugObjects()
     }
 }
 
-bool GameOnEvent(u16 code, void *sender, void *ListenerInst, EventContext context)
+static bool GameOnEvent(u16 code, void *sender, void *ListenerInst, EventContext context)
 {
     auto GameInst = reinterpret_cast<Application*>(ListenerInst);
     auto state = reinterpret_cast<Game*>(GameInst->state);
@@ -69,7 +69,7 @@ bool GameOnEvent(u16 code, void *sender, void *ListenerInst, EventContext contex
 }
 
 // ЗАДАЧА: временно
-bool GameOnDebugEvent(u16 code, void *sender, void *ListenerInst, EventContext context)
+static bool GameOnDebugEvent(u16 code, void *sender, void *ListenerInst, EventContext context)
 {
     auto GameInst = reinterpret_cast<Application*>(ListenerInst);
     auto state = reinterpret_cast<Game*>(GameInst->state);
@@ -125,31 +125,68 @@ bool GameOnDebugEvent(u16 code, void *sender, void *ListenerInst, EventContext c
 }
 //ЗАДАЧА: временно
 
-bool GameOnKey(u16 code, void *sender, void *ListenerInst, EventContext context)
+static bool GameOnKey(u16 code, void *sender, void *ListenerInst, EventContext context)
 {
-    // if (code == EVENT_CODE_KEY_PRESSED) {
-    //     u16 KeyCode = context.data.u16[0];
-    //     if (KeyCode == Keys::A) {
-    //         // Пример проверки клавиши
-    //         MDEBUG("Явно — клавиша A нажата!");
-    //     } else {
-    //         MDEBUG("'%c' нажатие клавиши в окне.", KeyCode);
-    //     }
-    // } else if (code == EVENT_CODE_KEY_RELEASED) {
-    //     u16 KeyCode = context.data.u16[0];
-    //     if (KeyCode == Keys::B) {
-    //         // Пример проверки клавиши
-    //         MDEBUG("Явно — клавиша B отущена!");
-    //     } else {
-    //         MDEBUG("'%c' клавиша отпущена в окне.", KeyCode);
-    //     }
-    // }
+    auto GameInst = (Application*)ListenerInst;
+    auto state = (Game*)GameInst->state;
+    if (code == EventSystem::KeyReleased) {
+        Keys KeyCode = (Keys)context.data.u16[0];
+        // Измените ориентацию гизмо.
+        if (KeyCode == Keys::G) {
+            u16 orientation = state->gizmo.GetOrientation();
+            orientation++;
+            if (orientation > Gizmo::Orientation::Max) {
+                orientation = Gizmo::Orientation::Global;
+            }
+            state->gizmo.SetOrientation(static_cast<Gizmo::Orientation>(orientation));
+        }
+    }
 
     return false;
 }
 
-bool GameOnButtonUp(u16 code, void* sender, void* ListenerInst, EventContext context) {
-    if (code == EventSystem::ButtonReleased) {
+static bool GameOnDrag(u16 code, void* sender, void* ListenerInst, EventContext context)
+{
+    i16 x = context.data.i16[0];
+    i16 y = context.data.i16[1];
+    Buttons DragButton = static_cast<Buttons>(context.data.u16[2]);
+    auto state = (Game*)ListenerInst;
+
+    // Обращайте внимание только на перетаскивание левой кнопкой.
+    if (DragButton == Buttons::Left) {
+        auto view = state->WorldCamera->GetView();
+        auto origin = state->WorldCamera->GetPosition();
+
+        // ЗАДАЧА: Получите это из области просмотра.
+        auto ProjectionMatrix = Matrix4D::MakeFrustumProjection(Math::DegToRad(45.F), (f32)state->width / state->height, 0.1F, 4000.F);
+
+        Ray ray {
+            FVec2((f32)x, (f32)y),
+            FVec2((f32)state->width, (f32)state->height),
+            origin,
+            view,
+            ProjectionMatrix
+        };
+
+        if (code == EventSystem::MouseDragBegin) {
+            state->UsingGizmo = true;
+            // Начало перетаскивания — измените режим взаимодействия на «перетаскивание».
+            state->gizmo.InteractionBegin(state->WorldCamera, ray, Gizmo::InteractionType::MouseDrag);
+        } else if (code == EventSystem::MouseDragged) {
+            state->gizmo.HandleInteraction(state->WorldCamera, ray, Gizmo::InteractionType::MouseDrag);
+        } else if (code == EventSystem::MouseDragEnd) {
+            state->gizmo.InteractionEnd();
+            state->UsingGizmo = false;
+        }
+    }
+
+    return false;  // Позвольте другим обработчикам обрабатывать.
+}
+
+static bool GameOnButton(u16 code, void* sender, void* ListenerInst, EventContext context) {
+    if (code == EventSystem::ButtonPressed) {
+        //
+    } else if (code == EventSystem::ButtonReleased) {
         Buttons button = (Buttons)context.data.u16[0];
         switch (button) {
             case Buttons::Left: {
@@ -159,6 +196,11 @@ bool GameOnButtonUp(u16 code, void* sender, void* ListenerInst, EventContext con
 
                 // Если сцена не загружена, не делайте ничего другого.
                 if (state->MainScene.state < SimpleScene::State::Loaded) {
+                    return false;
+                }
+
+                // Если вы «манипулируете штуковиной», не следуйте приведенной ниже логике.
+                if (state->UsingGizmo) {
                     return false;
                 }
 
@@ -192,7 +234,7 @@ bool GameOnButtonUp(u16 code, void* sender, void* ListenerInst, EventContext con
                         state->TestLines.PushBack(TestLine);
 
                         // Создайте поле отладки для отображения точки пересечения.
-                        DebugBox3D TestBox {FVec3(0.1f, 0.1f, 0.1f)};
+                        DebugBox3D TestBox {FVec3(0.1F, 0.1F, 0.1F)};
                         TestBox.Initialize();
                         TestBox.Load();
 
@@ -202,6 +244,18 @@ bool GameOnButtonUp(u16 code, void* sender, void* ListenerInst, EventContext con
                         TestBox.SetExtents(ext);
 
                         state->TestBoxes.PushBack(TestBox);
+
+                        // Выбор объекта
+                        if (i == 0) {
+                            state->selection.UniqueID = hit.UniqueID;
+                            state->selection.xform = state->MainScene.GetTransform(hit.UniqueID);
+                            if (state->selection.xform) {
+                                MINFO("Selected object id %u", hit.UniqueID);
+                                // state->gizmo.SelectedXform = state->selection.xform;
+                                state->gizmo.SetSelectedTransform(state->selection.xform);
+                                // state->gizmo.xform.SetParent(state->selection.xform);
+                            }
+                        }
                     }
                 } else {
                     MINFO("Нет попадания");
@@ -214,6 +268,16 @@ bool GameOnButtonUp(u16 code, void* sender, void* ListenerInst, EventContext con
                     TestLine.SetColour(FVec4(1.F, 0.F, 1.F, 1.F));
 
                     state->TestLines.PushBack(TestLine);
+
+                    if (state->selection.xform) {
+                        MINFO("Object deselected.");
+                        state->selection.xform = nullptr;
+                        state->selection.UniqueID = INVALID::ID;
+
+                        state->gizmo.SetSelectedTransform();
+                    }
+
+                    // ЗАДАЧА: скрыть гаджет, отключить ввод и т. д.
                 }
 
             } break;
@@ -222,6 +286,32 @@ bool GameOnButtonUp(u16 code, void* sender, void* ListenerInst, EventContext con
     }
 
     return false;
+}
+
+static bool GameOnMouseMove(u16 code, void* sender, void* ListenerInst, EventContext context) {
+    if (code == EventSystem::MouseMoved && !InputSystem::IsButtonDragging(Buttons::Left)) {
+        i16 x = context.data.i16[0];
+        i16 y = context.data.i16[1];
+
+        auto state = (Game*)ListenerInst;
+
+        const auto& view = state->WorldCamera->GetView();
+        const auto& origin = state->WorldCamera->GetPosition();
+
+        // ЗАДАЧА: Получить это из области просмотра.
+        auto ProjectionMatrix = Matrix4D::MakeFrustumProjection(Math::DegToRad(45.F), (f32)state->width / state->height, 0.1F, 4000.F);
+
+        Ray ray {
+            FVec2((f32)x, (f32)y),
+            FVec2((f32)state->width, (f32)state->height),
+            origin,
+            view,
+            ProjectionMatrix
+        };
+
+        state->gizmo.HandleInteraction(state->WorldCamera, ray, Gizmo::InteractionType::MouseHover);
+    }
+    return false;  // Разрешить другим обработчикам событий получать это событие.
 }
 
 bool ApplicationBoot(Application& app)
@@ -265,7 +355,11 @@ bool ApplicationInitialize(Application& app)
 
     ApplicationRegisterEvents(app);
     ResourceSystem::RegisterLoader(eResource::Type::SimpleScene, MString(), "scenes");
+
     auto state = reinterpret_cast<Game*>(app.state);
+
+    state->selection.UniqueID = INVALID::ID;
+    state->selection.xform = nullptr;
     state->console.Load();
 
     state->ForwardMoveSpeed  = 5.F;
@@ -352,8 +446,8 @@ bool ApplicationInitialize(Application& app)
     state->UiMeshes[0].transform.Translate(FVec3(650, 5, 0));
     
     state->WorldCamera = CameraSystem::GetDefault();
-    state->WorldCamera->SetPosition(FVec3(1.45F, 3.34F, 17.15F));
-    state->WorldCamera->SetRotationEuler(FVec3(-11.083F, 18.250F, 0.F));
+    state->WorldCamera->SetPosition(FVec3(16.07F, 4.5F, 25.F));
+    state->WorldCamera->SetRotationEuler(FVec3(-20.F, 51.F, 0.F));
 
     state->UpdateClock.Zero();
     state->RenderClock.Zero();
@@ -377,8 +471,9 @@ bool ApplicationUpdate(Application& app, const FrameData& rFrameData)
             MWARN("Не удалось обновить основную сцену.");
         }
 
+        state->gizmo.Update();
         // Выполните небольшой поворот на первой сетке.
-        Quaternion rotation( FVec3(0.F, 1.F, 0.F), 0.5F * rFrameData.DeltaTime, false );
+        // Quaternion rotation( FVec3(0.F, 1.F, 0.F), 0.5F * rFrameData.DeltaTime, false );
         // state->meshes[0].transform.Rotate(rotation);
 
         // Выполняем аналогичное вращение для второй сетки, если она существует.
@@ -929,22 +1024,31 @@ void ApplicationRegisterEvents(Application &app)
     EventSystem::Register(EventSystem::DEBUG0,               &app, GameOnDebugEvent);
     EventSystem::Register(EventSystem::DEBUG1,               &app, GameOnDebugEvent);
     EventSystem::Register(EventSystem::DEBUG2,               &app, GameOnDebugEvent);
-    EventSystem::Register(EventSystem::OojectHoverIdChanged, &app, GameOnEvent);
-    EventSystem::Register(EventSystem::ButtonReleased, app.state, GameOnButtonUp);
+    EventSystem::Register(EventSystem::OojectHoverIdChanged, &app, GameOnEvent     );
+    EventSystem::Register(EventSystem::ButtonReleased,  app.state, GameOnButton    );
+    EventSystem::Register(EventSystem::MouseMoved,      app.state, GameOnMouseMove );
+    EventSystem::Register(EventSystem::MouseDragBegin,  app.state, GameOnDrag      );
+    EventSystem::Register(EventSystem::MouseDragEnd,    app.state, GameOnDrag      );
+    EventSystem::Register(EventSystem::MouseDragged,    app.state, GameOnDrag      );
     //ЗАДАЧА: временно
 
-    EventSystem::Register(EventSystem::KeyPressed,  &app, GameOnKey);
-    EventSystem::Register(EventSystem::KeyReleased, &app, GameOnKey);
-    EventSystem::Register(EventSystem::MVarChanged, nullptr, GameOnMVarChanged);
+    EventSystem::Register(EventSystem::KeyPressed,           &app, GameOnKey        );
+    EventSystem::Register(EventSystem::KeyReleased,          &app, GameOnKey        );
+    EventSystem::Register(EventSystem::MVarChanged,       nullptr, GameOnMVarChanged);
 }
 
 void ApplicationUnregisterEvents(Application &app)
 {
-    EventSystem::Unregister(EventSystem::DEBUG0, &app, GameOnDebugEvent);
-    EventSystem::Unregister(EventSystem::DEBUG1, &app, GameOnDebugEvent);
-    EventSystem::Unregister(EventSystem::DEBUG2, &app, GameOnDebugEvent);
-    EventSystem::Unregister(EventSystem::OojectHoverIdChanged, &app, GameOnEvent);
-    EventSystem::Unregister(EventSystem::ButtonReleased, app.state, GameOnButtonUp);
+    EventSystem::Unregister(EventSystem::DEBUG0,               &app, GameOnDebugEvent);
+    EventSystem::Unregister(EventSystem::DEBUG1,               &app, GameOnDebugEvent);
+    EventSystem::Unregister(EventSystem::DEBUG2,               &app, GameOnDebugEvent);
+    EventSystem::Unregister(EventSystem::OojectHoverIdChanged, &app, GameOnEvent     );
+    EventSystem::Unregister(EventSystem::ButtonReleased,  app.state, GameOnButton    );
+    EventSystem::Unregister(EventSystem::MouseMoved,      app.state, GameOnMouseMove );
+    EventSystem::Unregister(EventSystem::MouseDragBegin,  app.state, GameOnDrag      );
+    EventSystem::Unregister(EventSystem::MouseDragEnd,    app.state, GameOnDrag      );
+    EventSystem::Unregister(EventSystem::MouseDragged,    app.state, GameOnDrag      );
+
     // ЗАДАЧА: конец временного блока кода
 
     EventSystem::Unregister(EventSystem::KeyPressed, &app, GameOnKey);

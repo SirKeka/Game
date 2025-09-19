@@ -96,9 +96,15 @@ constexpr Matrix4D &Transform::GetLocation()
 
 Matrix4D Transform::GetWorld()
 {
+    auto m = GetLocal();
     if (parent) {
-        return GetLocal() * parent->GetWorld();
+        m *= parent->GetWorld();
+        // Сохраните определитель на самом нижнем уровне.
+        determinant = m.Determinant();
+        return m;
     }
+    // Если родителя нет, сделайте это с использованием локальной матрицы.
+    determinant = m.Determinant();
     return GetLocal();
 }
 

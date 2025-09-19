@@ -1,4 +1,4 @@
-#include "vulkan_shader.hpp"
+#include "vulkan_shader.h"
 #include "core/memory_system.h"
 
 VulkanShader::VulkanShader()

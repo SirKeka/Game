@@ -92,6 +92,7 @@ struct VulkanShader {
     VkDescriptorSet GlobalDescriptorSets[3];                            // Наборы глобальных дескрипторов, по одному на кадр.
     RenderBuffer UniformBuffer;                                         // Универсальный буфер, используемый этим шейдером.
     VulkanPipeline** pipelines;                                         // Массив указателей на конвейеры, связанные с этим шейдером.
+    VulkanPipeline** ClockwisePipelines;                                // Массив указателей на конвейеры, связанные с этим шейдером. Намотка по часовой стрелке. Используется только при отсутствии собственной поддержки или поддержки расширений.
     u8 BoundPipelineIndex;                                              // Текущий связанный индекс конвеера.
     VkPrimitiveTopology CurrentTopology;                                // Текущая выбранная топология.
     u32 InstanceCount;                                                  // Экземпляр состояния для всех экземпляров. ЗАДАЧА: динамичным */

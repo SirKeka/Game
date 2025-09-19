@@ -19,14 +19,18 @@ class VulkanDevice
 {
 public:
     enum SupportFlagBits {
-        NoneBit = 0x0,
+        NoneBit = 0x00,
 
         /// @brief Указывает, поддерживает ли устройство собственную динамическую топологию (т. е. * при использовании Vulkan API >= 1.3).
-        NativeDynamicTopologyBit = 0x1,
+        NativeDynamicTopologyBit = 0x01,
 
         /// @brief Указывает, поддерживает ли устройство динамическую топологию. В противном случае рендереру потребуется сгенерировать отдельный конвейер для каждого типа топологии.
-        DynamicTopologyBit = 0x2,
-        LineSmoothRasterisationBit = 0x4
+        DynamicTopologyBit = 0x02,
+        LineSmoothRasterisationBit = 0x04,
+        /// @brief Указывает, поддерживает ли устройство динамическую замену лицевой плоскости(face) (т.е. с использованием API Vulkan версии ≥ 1.3).
+        NativeDynamicFrontFaceBit = 0x08,
+        /// @brief Указывает, поддерживает ли устройство динамическую замену лицевой плоскости(face) на основе расширений.
+        DynamicFrontFaceBit = 0x10,
     };
 
     /// @brief Побитовые флаги поддержки устройств. @see VulkanDevice::SupportFlagBits.
