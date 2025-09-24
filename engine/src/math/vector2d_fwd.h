@@ -7,6 +7,8 @@ using FVec2     = Vector2D<f32>;
 //using i8Vec2  = Vector2D<i8>;
 //using i16Vec2 = Vector2D<i16>;
 //using i32Vec2 = Vector2D<i32>;
+
+using Point = Vector2D<i32>;
 //using i64Vec2 = Vector2D<i64>;
 //using u8Vec2  = Vector2D<u8>;
 //using u16Vec2 = Vector2D<u16>;

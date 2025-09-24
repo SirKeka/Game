@@ -3,6 +3,8 @@
 #include "core/event.h"
 #include "math/matrix4d.h"
 
+struct Viewport;
+struct RenderView;
 struct Renderpass;
 struct Geometry;
 struct Terrain;
@@ -20,8 +22,9 @@ struct GeometryRenderData
 template class DArray<GeometryRenderData>;
 
 struct SkyboxPacketData {
-    struct Skybox* sb;
-    constexpr SkyboxPacketData(Skybox* sb) : sb(sb) {}
+    struct Skybox* skybox;
+    constexpr SkyboxPacketData() = default;
+    constexpr SkyboxPacketData(Skybox* skybox) : skybox(skybox) {}
 };
 
 /// @brief Пакет для представления рендеринга, созданный им и содержащий данные о том, что должно быть визуализировано.
@@ -35,8 +38,10 @@ struct SkyboxPacketData {
     /// @param const_char*_CustomShaderName Имя используемого пользовательского шейдера, если применимо. В противном случае 0.
     /// @param void*_ExtendedData Содержит указатель на данные свободной формы, обычно понимаемые как объектом, так и потребляющим представлением.
     struct RenderViewPacket {
+        /// @brief Указатель на область просмотра, которая будет использоваться.
+        Viewport* viewport;
         /// @brief Указатель на представление, с которым связан этот пакет.
-        struct RenderView* view;
+        RenderView* view;
         /// @brief Текущая матрица вида.
         Matrix4D ViewMatrix;
         /// @brief Текущая проекционная матрица.
@@ -45,6 +50,8 @@ struct SkyboxPacketData {
         FVec3 ViewPosition;
         /// @brief Текущий окружающий цвет сцены, если применимо.
         FVec4 AmbientColour;
+        /// @brief Данные для текущего скайбокса.
+        SkyboxPacketData SkyboxData;
         /// @brief Количество геометрических фигур, которые необходимо нарисовать.
         // u32 GeometryCount;
         /// @brief Геометрии, которые необходимо нарисовать.
@@ -73,17 +80,11 @@ struct MAPI RenderView
 
     const char* CustomShaderName;   // Имя пользовательского шейдера, используемого этим представлением, если таковой имеется.
     
-    void* data;             // Внутренние данные, специфичные для данного представления.
+    void* data;                     // Внутренние данные, специфичные для данного представления.
 
     constexpr RenderView() : name(), width(), height(), RenderpassCount(), passes(nullptr), CustomShaderName(nullptr), 
     OnRegistered(nullptr), Resize(nullptr), BuildPacket(nullptr), Render(nullptr), RegenerateAttachmentTarget(nullptr) 
     {}
-    // constexpr RenderView(const char* name, u8 RenderpassCount, Renderpass* renderpass, const char* CustomShaderName, 
-    //     bool (*OnRegistered)(RenderView*) = nullptr, void (*Resize)(RenderView*, u32, u32) = nullptr, 
-    //     bool (*BuildPacket)(RenderView*, LinearAllocator&, void*, Packet&) = nullptr,
-    //     bool (*Render)(RenderView*, const Packet&, u64, u64, const FrameData&) = nullptr, 
-    //     bool (*RegenerateAttachmentTarget)(RenderView*, u32, RenderTargetAttachment*) = nullptr
-    // );
 
     void DestroyPacket(RenderViewPacket& packet) {
         packet.geometries.Destroy();
@@ -108,19 +109,20 @@ struct MAPI RenderView
     void (*Resize)(RenderView* self, u32 width, u32 height);
 
     /// @brief Создает пакет представления рендеринга, используя предоставленное представление(view) и сетки(meshes).
-    /// @param self Указатель на представление для использования.
+    /// @param self указатель на представление для использования.
+    /// @param rFrameData ссылка на текущие данные кадра
+    /// @param viewport 
     /// @param data данные свободной формы, используемые для создания пакета.
     /// @param OutPacket указатель для хранения сгенерированного пакета.
     /// @return true в случае успеха; в противном случае false.
-    bool (*BuildPacket)(RenderView* self, struct LinearAllocator& FrameAllocator, void* data, RenderViewPacket& OutPacket);
+    bool (*BuildPacket)(RenderView* self, FrameData& rFrameData, Viewport& viewport, void* data, RenderViewPacket& OutPacket);
 
     /// @brief Использует заданное представление и пакет для визуализации содержимого.
     /// @param self Указатель на представление для использования.
     /// @param packet указатель на пакет, данные которого должны быть визуализированы.
-    /// @param FrameNumber текущий номер кадра визуализатора, обычно используемый для синхронизации данных.
-    /// @param RenderTargetIndex текущий индекс цели визуализации для визуализаторов, которые используют несколько целей визуализации одновременно (например, Vulkan).
+    /// @param rFrameData ссылка на текущие данные кадра
     /// @return true в случае успеха; в противном случае false.
-    bool (*Render)(const RenderView* self, const RenderViewPacket& packet, u64 FrameNumber, u64 RenderTargetIndex, const FrameData& rFrameData);
+    bool (*Render)(const RenderView* self, const RenderViewPacket& packet, const FrameData& rFrameData);
 
     /// @brief Регенерирует ресурсы для указанного вложения по указанному индексу прохода.
     /// @param self Указатель на представление для использования.

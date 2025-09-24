@@ -110,7 +110,8 @@ struct Material {
     u32 ShaderID;
 
     /// @brief Синхронизируется с текущим номером кадра рендерера, когда материал был применен к этому кадру.
-    u32 RenderFrameNumber;
+    u64 RenderFrameNumber;
+    u64 RenderDrawIndex;
 
     void* operator new(u64 size) { return MemorySystem::Allocate(size, Memory::MaterialInstance); }
     void operator delete(void* ptr, u64 size) { MemorySystem::Free(ptr, size, Memory::MaterialInstance); }

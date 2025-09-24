@@ -20,7 +20,6 @@
 #include <systems/render_view_system.h>
 #include <systems/resource_system.h>
 #include "views/render_view_pick.h"
-#include "views/render_view_skybox.h"
 #include "views/render_view_ui.h"
 #include "views/render_view_world.h"
 #include "debug_console.h"
@@ -157,15 +156,14 @@ static bool GameOnDrag(u16 code, void* sender, void* ListenerInst, EventContext 
         auto view = state->WorldCamera->GetView();
         auto origin = state->WorldCamera->GetPosition();
 
-        // ЗАДАЧА: Получите это из области просмотра.
-        auto ProjectionMatrix = Matrix4D::MakeFrustumProjection(Math::DegToRad(45.F), (f32)state->width / state->height, 0.1F, 4000.F);
+        auto& viewport = state->WorldViewport;
 
         Ray ray {
             FVec2((f32)x, (f32)y),
-            FVec2((f32)state->width, (f32)state->height),
+            viewport.rect,
             origin,
             view,
-            ProjectionMatrix
+            viewport.projection
         };
 
         if (code == EventSystem::MouseDragBegin) {
@@ -207,78 +205,82 @@ static bool GameOnButton(u16 code, void* sender, void* ListenerInst, EventContex
                 auto view = state->WorldCamera->GetView();
                 auto origin = state->WorldCamera->GetPosition();
 
-                // ЗАДАЧА: Получите это из области просмотра.
-                auto ProjectionMatrix = Matrix4D::MakeFrustumProjection(Math::DegToRad(45.F), (f32)state->width / state->height, 0.1F, 4000.F);
-                Ray ray {
-                    FVec2((f32)x, (f32)y),
-                    FVec2((f32)state->width, (f32)state->height),
-                    origin,
-                    view,
-                    ProjectionMatrix
-                };
+                auto& viewport = state->WorldViewport;
+                // Разрешить это действие только в «основном» окне просмотра.
+                if (Math::PointInRect2d(Point(x,y), viewport.rect)) {
+                    Ray ray {
+                        FVec2((f32)x, (f32)y),
+                        viewport.rect,
+                        origin,
+                        view,
+                        viewport.projection
+                    };
 
-                RaycastResult RayResult;
-                if (state->MainScene.Raycast(ray, RayResult)) {
-                    const u32& HitCount = RayResult.hits.Length();
-                    for (u32 i = 0; i < HitCount; ++i) {
-                        auto& hit = RayResult.hits[i];
-                        MINFO("Попадание! id: %u, дистанция: %f", hit.UniqueID, hit.distance);
+                    RaycastResult RayResult;
+                    if (state->MainScene.Raycast(ray, RayResult)) {
+                        const u32& HitCount = RayResult.hits.Length();
+                        for (u32 i = 0; i < HitCount; ++i) {
+                            auto& hit = RayResult.hits[i];
+                            MINFO("Попадание! id: %u, дистанция: %f", hit.UniqueID, hit.distance);
 
-                        // Создайте линию отладки в точке начала и конца луча (на пересечении).
-                        DebugLine3D TestLine {ray.origin, hit.position};
+                            // Создайте линию отладки в точке начала и конца луча (на пересечении).
+                            DebugLine3D TestLine {ray.origin, hit.position};
+                            TestLine.Initialize();
+                            TestLine.Load();
+                            // Жёлтый — для попаданий.
+                            TestLine.SetColour(FVec4(1.F, 1.F, 0.F, 1.F));
+
+                            state->TestLines.PushBack(TestLine);
+
+                            // Создайте поле отладки для отображения точки пересечения.
+                            DebugBox3D TestBox {FVec3(0.1F, 0.1F, 0.1F)};
+                            TestBox.Initialize();
+                            TestBox.Load();
+
+                            Extents3D ext;
+                            ext.min = FVec3(hit.position.x - 0.05F, hit.position.y - 0.05F, hit.position.z - 0.05F);
+                            ext.max = FVec3(hit.position.x + 0.05F, hit.position.y + 0.05F, hit.position.z + 0.05F);
+                            TestBox.SetExtents(ext);
+
+                            state->TestBoxes.PushBack(TestBox);
+
+                            // Выбор объекта
+                            if (i == 0) {
+                                state->selection.UniqueID = hit.UniqueID;
+                                state->selection.xform = state->MainScene.GetTransform(hit.UniqueID);
+                                if (state->selection.xform) {
+                                    MINFO("Selected object id %u", hit.UniqueID);
+                                    // state->gizmo.SelectedXform = state->selection.xform;
+                                    state->gizmo.SetSelectedTransform(state->selection.xform);
+                                    // state->gizmo.xform.SetParent(state->selection.xform);
+                                }
+                            }
+                        }
+                    } else {
+                        MINFO("Нет попадания");
+
+                        // Создайте отладочную строку, где начинается и продолжается испускание луча.
+                        DebugLine3D TestLine{ray.origin, ray.origin + ray.direction * 100.F};
                         TestLine.Initialize();
                         TestLine.Load();
-                        // Жёлтый — для попаданий.
-                        TestLine.SetColour(FVec4(1.F, 1.F, 0.F, 1.F));
+                        // Пурпурный — для случаев отсутствия попадания.
+                        TestLine.SetColour(FVec4(1.F, 0.F, 1.F, 1.F));
 
                         state->TestLines.PushBack(TestLine);
 
-                        // Создайте поле отладки для отображения точки пересечения.
-                        DebugBox3D TestBox {FVec3(0.1F, 0.1F, 0.1F)};
-                        TestBox.Initialize();
-                        TestBox.Load();
+                        if (state->selection.xform) {
+                            MINFO("Object deselected.");
+                            state->selection.xform = nullptr;
+                            state->selection.UniqueID = INVALID::ID;
 
-                        Extents3D ext;
-                        ext.min = FVec3(hit.position.x - 0.05F, hit.position.y - 0.05F, hit.position.z - 0.05F);
-                        ext.max = FVec3(hit.position.x + 0.05F, hit.position.y + 0.05F, hit.position.z + 0.05F);
-                        TestBox.SetExtents(ext);
-
-                        state->TestBoxes.PushBack(TestBox);
-
-                        // Выбор объекта
-                        if (i == 0) {
-                            state->selection.UniqueID = hit.UniqueID;
-                            state->selection.xform = state->MainScene.GetTransform(hit.UniqueID);
-                            if (state->selection.xform) {
-                                MINFO("Selected object id %u", hit.UniqueID);
-                                // state->gizmo.SelectedXform = state->selection.xform;
-                                state->gizmo.SetSelectedTransform(state->selection.xform);
-                                // state->gizmo.xform.SetParent(state->selection.xform);
-                            }
+                            state->gizmo.SetSelectedTransform();
                         }
+
+                        // ЗАДАЧА: скрыть гаджет, отключить ввод и т. д.
                     }
-                } else {
-                    MINFO("Нет попадания");
-
-                    // Создайте отладочную строку, где начинается и продолжается испускание луча.
-                    DebugLine3D TestLine{ray.origin, ray.origin + ray.direction * 100.F};
-                    TestLine.Initialize();
-                    TestLine.Load();
-                    // Пурпурный — для случаев отсутствия попадания.
-                    TestLine.SetColour(FVec4(1.F, 0.F, 1.F, 1.F));
-
-                    state->TestLines.PushBack(TestLine);
-
-                    if (state->selection.xform) {
-                        MINFO("Object deselected.");
-                        state->selection.xform = nullptr;
-                        state->selection.UniqueID = INVALID::ID;
-
-                        state->gizmo.SetSelectedTransform();
-                    }
-
-                    // ЗАДАЧА: скрыть гаджет, отключить ввод и т. д.
                 }
+                
+                
 
             } break;
             default: break;
@@ -298,15 +300,14 @@ static bool GameOnMouseMove(u16 code, void* sender, void* ListenerInst, EventCon
         const auto& view = state->WorldCamera->GetView();
         const auto& origin = state->WorldCamera->GetPosition();
 
-        // ЗАДАЧА: Получить это из области просмотра.
-        auto ProjectionMatrix = Matrix4D::MakeFrustumProjection(Math::DegToRad(45.F), (f32)state->width / state->height, 0.1F, 4000.F);
+        auto& viewport = state->WorldViewport;
 
         Ray ray {
             FVec2((f32)x, (f32)y),
-            FVec2((f32)state->width, (f32)state->height),
+            viewport.rect,
             origin,
             view,
-            ProjectionMatrix
+            viewport.projection
         };
 
         state->gizmo.HandleInteraction(state->WorldCamera, ray, Gizmo::InteractionType::MouseHover);
@@ -362,14 +363,30 @@ bool ApplicationInitialize(Application& app)
     state->selection.xform = nullptr;
     state->console.Load();
 
+        // Настройка области просмотра.
+        // Область просмотра мира
+        Rect2D WorldVieportRect {20, 20, 1280 - 40, 720 - 40};
+        if (!state->WorldViewport.Create(WorldVieportRect, Math::DegToRad(45.F), 0.1F, 4000.F, RendererProjectionMatrixType::Perspective)) {
+            MERROR("Не удалось создать область просмотра мира. Не удаётся запустить приложение.");
+            return false;
+        }
+
+        // Область просмотра пользовательского интерфейса
+        Rect2D UiViewportRect {0, 0, 1280, 720};
+        if (!state->UiViewport.Create(UiViewportRect, 0.F, -100.F, 100.F, RendererProjectionMatrixType::Orthographic)) {
+            MERROR("Не удалось создать область просмотра пользовательского интерфейса. Не удаётся запустить приложение.");
+            return false;
+        }
+
+        // ЗАДАЧА: тестирование
+        Rect2D WorldViewportRect2 {20, 20, 128, 72};
+        if (!state->WorldViewport2.Create(WorldViewportRect2, Math::DegToRad(45.F), 0.1f, 4000.F, RendererProjectionMatrixType::Perspective)) {
+            MERROR("Не удалось создать область просмотра мира. Не удаётся запустить приложение.");
+            return false;
+        }
+
     state->ForwardMoveSpeed  = 5.F;
     state->BackwardMoveSpeed = 2.5F;
-
-    // Настройка редактора gizmo.
-    /* if (!state->gizmo.Create()) {
-        MERROR("Не удалось создать редактор!");
-        return false;
-    } */
 
     if (!state->gizmo.Initialize()) {
         MERROR("Не удалось инициализировать редактор!");
@@ -487,8 +504,8 @@ bool ApplicationUpdate(Application& app, const FrameData& rFrameData)
         if (state->PointLight1) {
             state->PointLight1->data.colour.Set(
                 MCLAMP(Math::sin(rFrameData.TotalTime) * 0.75F + 0.5F, 0.F, 1.F),
-                MCLAMP(Math::sin(rFrameData.TotalTime + M_2PI / 3) * 0.75 + 0.5F, 0.F, 1.F),
-                MCLAMP(Math::sin(rFrameData.TotalTime + M_4PI / 3) * 0.75 + 0.5F, 0.F, 1.F),
+                MCLAMP(Math::sin(rFrameData.TotalTime + (M_2PI / 3)) * 0.75 + 0.5F, 0.F, 1.F),
+                MCLAMP(Math::sin(rFrameData.TotalTime + (M_4PI / 3)) * 0.75 + 0.5F, 0.F, 1.F),
                 1.F); 
             state->PointLight1->data.position.z = 20.F + Math::sin(rFrameData.TotalTime);
         }
@@ -523,7 +540,8 @@ bool ApplicationUpdate(Application& app, const FrameData& rFrameData)
         "\
         FPS: %5.1f(%4.1fмс) Позиция=[%7.3F, %7.3F, %7.3F] Вращение=[%7.3F, %7.3F, %7.3F]\n\
         Upd: %8.3fмкс, Rend: %8.3fмкс Мышь: X=%-5d Y=%-5d   L=%s R=%s   NDC: X=%.6f, Y=%.6f\n\
-        Vsync: %s Draw: %-5u Hovered: %s%u",
+        Vsync: %s Draw: %-5u Hovered: %s%u\n\
+        Text",
         fps,
         FrameTime,
         pos.x, pos.y, pos.z,
@@ -553,37 +571,37 @@ bool ApplicationUpdate(Application& app, const FrameData& rFrameData)
     return true;
 }
 
-bool ApplicationRender(Application& app, RenderPacket& packet, FrameData& rFrameData) 
+bool ApplicationPrepareRenderPacket(Application& app, RenderPacket& packet, FrameData& rFrameData) 
 {
     auto state = reinterpret_cast<Game*>(app.state);
 
     if (!state->running) {
         return true;
     }
-    // auto AppFrameData = reinterpret_cast<TestbedApplicationFrameData*>(rFrameData.ApplicationFrameData);
 
-    state->RenderClock.Start();
-    // ЗАДАЧА: временный код
-
-    packet.ViewCount = 5;
+    packet.ViewCount = 3;
     packet.views = reinterpret_cast<RenderViewPacket*>(rFrameData.FrameAllocator->Allocate(sizeof(RenderViewPacket) * packet.ViewCount));
 
     // FIXME: Прочитать это из конфигурации
-    packet.views[Testbed::PacketViews::Skybox].view      = RenderViewSystem::Get("skybox");
+    // packet.views[Testbed::PacketViews::Skybox].view      = RenderViewSystem::Get("skybox");
     packet.views[Testbed::PacketViews::World].view       = RenderViewSystem::Get("world");
     packet.views[Testbed::PacketViews::EditorWorld].view = RenderViewSystem::Get("editor_world");
     packet.views[Testbed::PacketViews::UI].view          = RenderViewSystem::Get("ui");
-    packet.views[Testbed::PacketViews::Pick].view        = RenderViewSystem::Get("pick");
+    // packet.views[Testbed::PacketViews::Pick].view        = RenderViewSystem::Get("pick");
 
     // Даем нашей сцене команду сгенерировать соответствующие пакетные данные. ПРИМЕЧАНИЕ: Генерирует пакеты скайбокса и мира.
     
     // Мир 
     // ЗАДАЧА: выполняет поиск в каждом кадре.
     if (state->MainScene.state == SimpleScene::State::Loaded) {
-        if (!state->MainScene.PopulateRenderPacket(state->WorldCamera, (f32)state->width / state->height, rFrameData, packet)) {
+        if (!state->MainScene.PopulateRenderPacket(state->WorldCamera, state->WorldViewport, rFrameData, packet)) {
             MERROR("Не удалось выполнить общедоступный рендеринг пакета для основной сцены.");
             return false;
-        }
+        } 
+    } else {
+        // Убедитесь, что у них хотя бы есть окно просмотра.
+        // packet.views[Testbed::PacketViews::Skybox].viewport = &state->WorldViewport;
+        packet.views[Testbed::PacketViews::World].viewport = &state->WorldViewport;
     }
 
     // HACK: Внедрение отладочной геометрии в пакет мира.
@@ -614,15 +632,15 @@ bool ApplicationRender(Application& app, RenderPacket& packet, FrameData& rFrame
 
         EditorWorldPacketData EditorWorldData{};
         EditorWorldData.gizmo = &state->gizmo;
-        if (!RenderViewSystem::BuildPacket(view, *rFrameData.FrameAllocator, &EditorWorldData, ViewPacket)) {
+        if (!RenderViewSystem::BuildPacket(view, rFrameData, state->WorldViewport, &EditorWorldData, ViewPacket)) {
             MERROR("Не удалось построить пакет для представления «editor_world».");
             return false;
         }
     }
 
     // Пользовательский интерфейс
-    UiPacketData UiPacket{};
     {
+        UiPacketData UiPacket{};
         auto& ViewPacket = packet.views[Testbed::PacketViews::UI];
         const auto view = ViewPacket.view;
 
@@ -658,13 +676,13 @@ bool ApplicationRender(Application& app, RenderPacket& packet, FrameData& rFrame
         }
 
         UiPacket.texts = texts;
-        if (!RenderViewSystem::BuildPacket(view, *rFrameData.FrameAllocator, &UiPacket, ViewPacket)) {
+        if (!RenderViewSystem::BuildPacket(view, rFrameData, state->UiViewport, &UiPacket, ViewPacket)) {
             MERROR("Не удалось построить пакет для представления «ui».");
             return false;
         }
     }
 
-    {
+    /*{
         auto& ViewPacket = packet.views[Testbed::PacketViews::Pick];
         const auto view = ViewPacket.view;
 
@@ -676,16 +694,70 @@ bool ApplicationRender(Application& app, RenderPacket& packet, FrameData& rFrame
         PickPacket.TextCount = UiPacket.TextCount;
         PickPacket.UiGeometryCount = 0;
 
-        if (!RenderViewSystem::BuildPacket(view, *rFrameData.FrameAllocator, &PickPacket, ViewPacket)) {
+        if (!RenderViewSystem::BuildPacket(view, rFrameData, state->WorldViewport, &PickPacket, ViewPacket)) {
             MERROR("Не удалось построить пакет для представления «pick».");
             return false;
         }
-    }
+    }*/
 
     // ЗАДАЧА: конец временного кода
+    
+    return true;
+}
+
+bool ApplicationRender(Application& app, RenderPacket& packet, FrameData& rFrameData)
+{
+    // Старт кадра
+    if (!RenderingSystem::PrepareFrame(rFrameData)) {
+        return true;
+    }
+
+    if (!RenderingSystem::Begin(rFrameData)) {
+        //
+    }
+
+    auto state = (Game*)app.state;
+    if (!state->running) {
+        return true;
+    }
+    
+    // auto AppFrameData = (TestbedApplicationFrameData*)rFrameData.ApplicationFrameData;
+
+    state->RenderClock.Start();
+
+    // Мир
+    auto ViewPacket = &packet.views[Testbed::World];
+    ViewPacket->view->Render(ViewPacket->view, *ViewPacket, rFrameData);
+
+    // Редактор мира
+    ViewPacket = &packet.views[Testbed::EditorWorld];
+    ViewPacket->view->Render(ViewPacket->view, *ViewPacket, rFrameData);
+
+    // Выполняет текущий буфер команд.
+    RenderingSystem::End(rFrameData);
+
+    // Начинает буфер команд.
+    RenderingSystem::Begin(rFrameData);
+
+    // Снова визуализирует мир, но с новой областью просмотра и камерой.
+    ViewPacket = &packet.views[Testbed::World];
+    ViewPacket->ProjectionMatrix = state->WorldViewport2.projection;
+    ViewPacket->viewport = &state->WorldViewport2;
+    ViewPacket->view->Render(ViewPacket->view, *ViewPacket, rFrameData);
+
+    // UI
+    ViewPacket = &packet.views[Testbed::UI];
+    ViewPacket->view->Render(ViewPacket->view, *ViewPacket, rFrameData);
 
     state->RenderClock.Update();
-    
+
+    RenderingSystem::End(rFrameData);
+
+    if (!RenderingSystem::Present(rFrameData)) {
+        MERROR("Вызов RenderingSystem::Present не удался. Вероятно, это невозможно исправить. Завершаю работу.");
+        return false;
+    }
+
     return true;
 }
 
@@ -699,6 +771,25 @@ void ApplicationOnResize(Application& app, u32 width, u32 height)
 
     state->width = width;
     state->height = height;
+
+    if (!width || !height) {
+        return;
+    }
+
+    i32 HalfWidth = state->width * 0.5F;
+
+    // Изменение размера областей просмотра.
+    // Область просмотра мира — правая сторона
+    Rect2D WorldViewportRect {HalfWidth + 20, 20, HalfWidth - 40, state->height - 40};
+    state->WorldViewport.Resize(WorldViewportRect);
+
+    // Область просмотра интерфейса
+    Rect2D UiViewportRect {0, 0, state->width, state->height};
+    state->UiViewport.Resize(UiViewportRect);
+
+    // Область просмотра мира 2
+    Rect2D WorldViewportRect2{20, 20, HalfWidth - 40, state->height - 40};
+    state->WorldViewport2.Resize(WorldViewportRect2);
 
     // ЗАДАЧА: временный блок кода
     // Переместить отладочный текст в новую нижнюю часть экрана.
@@ -747,21 +838,20 @@ void ApplicationLibOnUnload(Application& app)
 
 bool GameConfigureRenderViews(ApplicationConfig& config)
 {
-    config.RenderViews.Resize(5);
+    config.RenderViews.Resize(3);
 
-    // Skybox view
+    // World view
     {
-        auto& SkyboxView = config.RenderViews[0];
-        SkyboxView.name = "skybox";
-        SkyboxView.RenderpassCount = 1; 
-        SkyboxView.passes = (Renderpass*)MemorySystem::Allocate(sizeof(Renderpass) * SkyboxView.RenderpassCount, Memory::Array, true);
+        auto& WorldView = config.RenderViews[0];
+        WorldView.name = "world";
+        WorldView.RenderpassCount = 2; 
+        WorldView.passes = (Renderpass*)MemorySystem::Allocate(sizeof(Renderpass) * WorldView.RenderpassCount, Memory::Array, true);
 
         // Конфигурация подпрохода рендеринга
         RenderpassConfig SkyboxPass;
         SkyboxPass.name                   = "Renderpass.Bultin.Skybox";
         SkyboxPass.depth                  = 1.F;
         SkyboxPass.stencil                = 0;
-        SkyboxPass.RenderArea             = FVec4(0.F, 0.F, (f32)config.StartWidth, (f32)config.StartHeight);
         SkyboxPass.ClearColour            = FVec4(0.F, 0.F, 0.2F, 1.F);
         SkyboxPass.ClearFlags             = RenderpassClearFlag::ColourBuffer;
         SkyboxPass.RenderTargetCount      = RenderingSystem::WindowAttachmentCountGet();
@@ -776,33 +866,16 @@ bool GameConfigureRenderViews(ApplicationConfig& config)
         SkyboxTargetColour.StoreOperation = RenderTargetAttachmentStoreOperation::Store;
         SkyboxTargetColour.PresentAfter   = false;
 
-        if (!RenderingSystem::RenderpassCreate(SkyboxPass, *SkyboxView.passes)) { // 
+        if (!RenderingSystem::RenderpassCreate(SkyboxPass, WorldView.passes[0])) { // 
             MERROR("Skybox view — Не удалось создать проход рендеринга «%s»",  config.RenderViews[0].passes[0].name.c_str());
             return false;
         }
-
-        SkyboxView.OnRegistered = RenderViewSkybox::OnRegistered;
-        SkyboxView.Destroy      = RenderViewSkybox::Destroy;
-        SkyboxView.Resize       = RenderViewSkybox::Resize;
-        SkyboxView.BuildPacket  = RenderViewSkybox::BuildPacket;
-        SkyboxView.Render       = RenderViewSkybox::Render;
-    }
-
-    // World view
-    {    
-        auto& WorldView = config.RenderViews[1];
-        WorldView.name = "world";
-        // WorldView.width = 0;
-        // WorldView.height = 0;
-        WorldView.RenderpassCount = 1;
-        WorldView.passes = (Renderpass*)MemorySystem::Allocate(sizeof(Renderpass) * WorldView.RenderpassCount, Memory::Array, true);
         
         // Конфигурация подпрохода рендеринга
         RenderpassConfig WorldPass;
         WorldPass.name                   = "Renderpass.Bultin.World";
         WorldPass.depth                  = 1.F;
         WorldPass.stencil                = 0;
-        WorldPass.RenderArea             = FVec4(0.F, 0.F, (f32)config.StartWidth, (f32)config.StartHeight); // Разрешение области рендеринга по умолчанию.
         WorldPass.ClearColour            = FVec4(0.F, 0.F, 0.2F, 1.F); 
         WorldPass.ClearFlags             = RenderpassClearFlag::DepthBuffer | RenderpassClearFlag::StencilBuffer;
         WorldPass.RenderTargetCount      = RenderingSystem::WindowAttachmentCountGet();
@@ -825,7 +898,7 @@ bool GameConfigureRenderViews(ApplicationConfig& config)
         WorldTargetDepth.StoreOperation  = RenderTargetAttachmentStoreOperation::Store;
         WorldTargetDepth.PresentAfter    = false;
 
-        if (!RenderingSystem::RenderpassCreate(WorldPass, *WorldView.passes)) {
+        if (!RenderingSystem::RenderpassCreate(WorldPass, WorldView.passes[1])) {
             MERROR("World view — Не удалось создать проход рендеринга «%s»", WorldView.passes[0].name.c_str());
             return false;
         };
@@ -840,7 +913,7 @@ bool GameConfigureRenderViews(ApplicationConfig& config)
     // ЗАДАЧА: Редактор временно
     // Editor World view.
     {
-        auto& EditorWorldView = config.RenderViews[2];
+        auto& EditorWorldView = config.RenderViews[1];
         EditorWorldView.name = "editor_world";
         EditorWorldView.RenderpassCount = 1;
         EditorWorldView.passes = (Renderpass*)MemorySystem::Allocate(sizeof(Renderpass) * EditorWorldView.RenderpassCount, Memory::Array, true);
@@ -850,7 +923,6 @@ bool GameConfigureRenderViews(ApplicationConfig& config)
         EditorWorldPass.name = "Renderpass.Testbed.EditorWorld";
         EditorWorldPass.depth = 1.F;
         EditorWorldPass.stencil = 0;
-        EditorWorldPass.RenderArea = FVec4(0, 0, (f32)config.StartWidth, (f32)config.StartHeight);  // Разрешение области рендеринга по умолчанию.
         EditorWorldPass.ClearColour = FVec4(0.F, 0.F, 0.F, 1.F);
         EditorWorldPass.ClearFlags = RenderpassClearFlag::DepthBuffer | RenderpassClearFlag::StencilBuffer;
         EditorWorldPass.RenderTargetCount = RenderingSystem::WindowAttachmentCountGet();
@@ -888,7 +960,7 @@ bool GameConfigureRenderViews(ApplicationConfig& config)
 
     // UI view
     {
-        auto& UiView = config.RenderViews[3];
+        auto& UiView = config.RenderViews[2];
         UiView.name = "ui";
         // UiView.width = 0;
         // UiView.height = 0;
@@ -900,7 +972,6 @@ bool GameConfigureRenderViews(ApplicationConfig& config)
         UiPass.name                   = "Renderpass.Bultin.UI";
         UiPass.depth                  = 1.F;
         // UiPass.stencil = 0;
-        UiPass.RenderArea             = FVec4(0.F, 0.F, 1280.F, 720.F); // Разрешение области рендеринга по умолчанию.
         UiPass.ClearColour            = FVec4(0.F, 0.F, 0.2F, 1.F);
         UiPass.ClearFlags             = RenderpassClearFlag::None;
         UiPass.RenderTargetCount      = RenderingSystem::WindowAttachmentCountGet();
@@ -927,8 +998,9 @@ bool GameConfigureRenderViews(ApplicationConfig& config)
         UiView.Render       = RenderViewUI::Render;
     }
 
+    // ЗАДАЧА: Разделить на 2 представления и снова включить.
     // Pick view
-    {
+    /*{
         auto& PickView = config.RenderViews[4];
         PickView.name = "pick";
         // PickView.width = 0;
@@ -940,7 +1012,6 @@ bool GameConfigureRenderViews(ApplicationConfig& config)
         WorldPickPass.name                   = "Renderpass.Builtin.WorldPick";
         WorldPickPass.depth                  = 1.F;
         WorldPickPass.stencil                = 0;
-        WorldPickPass.RenderArea             = FVec4(0.F, 0.F, (f32)config.StartWidth, (f32)config.StartHeight);  // Разрешение области рендеринга по умолчанию.
         WorldPickPass.ClearColour            = FVec4(1.F, 1.F, 1.F, 1.F);       // ХАК: очищаем до белого цвета для лучшей видимости// ЗАДАЧА: очищаем до черного цвета, так как 0 — недопустимый идентификатор.
         WorldPickPass.ClearFlags             = RenderpassClearFlag::ColourBuffer | RenderpassClearFlag::DepthBuffer;
         WorldPickPass.RenderTargetCount      = 1;
@@ -974,7 +1045,6 @@ bool GameConfigureRenderViews(ApplicationConfig& config)
         UiPickPass.name                   = "Renderpass.Bultin.UiPick";
         UiPickPass.depth                  = 1.F;
         UiPickPass.stencil                = 0;
-        UiPickPass.RenderArea             = FVec4(0.F, 0.F, (f32)config.StartWidth, (f32)config.StartHeight);  // Разрешение области рендеринга по умолчанию.
         UiPickPass.ClearColour            = FVec4(1.F, 1.F, 1.F, 1.F);
         UiPickPass.ClearFlags             = RenderpassClearFlag::None;
         UiPickPass.RenderTargetCount      = 1; // ПРИМЕЧАНИЕ: Тройная буферизация не применяется.
@@ -1000,7 +1070,7 @@ bool GameConfigureRenderViews(ApplicationConfig& config)
         PickView.BuildPacket                = RenderViewPick::BuildPacket;
         PickView.Render                     = RenderViewPick::Render;
         PickView.RegenerateAttachmentTarget = RenderViewPick::RegenerateAttachmentTarget;
-    }
+    }*/
 
     return true;
 }

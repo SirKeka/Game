@@ -5,7 +5,7 @@
 #include "renderer/rendering_system.h"
 
 #include "console.hpp"
-#include "mvar.hpp"
+#include "mvar.h"
 #include "input.h"
 #include "metrics.hpp"
 
@@ -40,7 +40,7 @@ height(),
 clock(),
 LastTime(),
 FrameAllocator(config.FrameAllocatorSize),
-pFrameData() {}
+frameData() {}
 
 bool Engine::Create(Application& GameInst)
 {
@@ -72,11 +72,11 @@ bool Engine::Create(Application& GameInst)
     } GameInst.stage = Application::Stage::BootComplete;
 
     // Настройте распределитель кадров.
-    pEngine->pFrameData.FrameAllocator = &pEngine->FrameAllocator;
+    pEngine->frameData.FrameAllocator = &pEngine->FrameAllocator;
     if (GameInst.AppConfig.AppFrameDataSize > 0) {
-        pEngine->pFrameData.ApplicationFrameData = MemorySystem::Allocate(GameInst.AppConfig.AppFrameDataSize, Memory::Game, true);
+        pEngine->frameData.ApplicationFrameData = MemorySystem::Allocate(GameInst.AppConfig.AppFrameDataSize, Memory::Game, true);
     } else {
-        pEngine->pFrameData.ApplicationFrameData = nullptr;
+        pEngine->frameData.ApplicationFrameData = nullptr;
     }
 
     if (!pEngine->SysManager.PostBootInitialize(GameInst.AppConfig)) {
@@ -109,7 +109,7 @@ bool Engine::Run() {
     LastTime = clock.elapsed;
     // f64 RunningTime = 0;
     [[maybe_unused]]u8 FrameCount = 0;      // 
-    f64 TargetFrameSeconds = 1.0f / 60;
+    f64 TargetFrameSeconds = 1.F / 60;
     f64 FrameElapsedTime = 0;
 
     MINFO(MemorySystem::GetMemoryUsageStr().c_str());
@@ -126,19 +126,19 @@ bool Engine::Run() {
             f64 delta = (CurrentTime - LastTime);
             f64 FrameStartTime = WindowSystem::PlatformGetAbsoluteTime();
 
-            pFrameData.TotalTime = CurrentTime;
-            pFrameData.DeltaTime = (f32)delta;
+            frameData.TotalTime = CurrentTime;
+            frameData.DeltaTime = (f32)delta;
 
             // Сброс распределителя кадров
             FrameAllocator.FreeAll();
 
             // Обновлление системы работы(потоков)
-            SysManager.Update(pFrameData);
+            SysManager.Update(frameData);
 
             //Обновление метрик(статистики)
             Metrics::Update(FrameElapsedTime);
 
-            if (!GameInst->Update(*GameInst, pFrameData)) {
+            if (!GameInst->Update(*GameInst, frameData)) {
                 MFATAL("Ошибка обновления игры, выключение.");
                 IsRunning = false;
                 break;
@@ -146,15 +146,19 @@ bool Engine::Run() {
 
             RenderPacket packet = {};
 
+            // Позвольте приложению сгенерировать пакет рендеринга.
+            bool PrepareResult = pEngine->GameInst->PrepareRenderPacket(pEngine->GameInst, packet, pEngine->frameData);
+            if (!PrepareResult) {
+                MERROR("Приложению не удалось подготовить пакет рендеринга. Пропускаем этот кадр.");
+                continue;
+            }
+
             // Вызовите процедуру рендеринга игры.
-            if (!GameInst->Render(*GameInst, packet, pFrameData)) {
+            if (!GameInst->Render(*GameInst, packet, frameData)) {
                 MFATAL("Ошибка рендеринга игры, выключение.");
                 IsRunning = false;
                 break;
             }
-
-            RenderingSystem::DrawFrame(packet, pFrameData);
-
             
             packet.Destroy();
 
@@ -266,5 +270,5 @@ void Engine::OnEventSystemInitialized()
 
 const FrameData &Engine::GetFrameData() const
 {
-    return pFrameData;
+    return frameData;
 }

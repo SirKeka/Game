@@ -8,7 +8,8 @@
 #include "systems/camera_system.hpp"
 #include "systems/render_view_system.h"
 #include "render_view.h"
-#include "core/mvar.hpp"
+#include "viewport.h"
+#include "core/mvar.h"
 #include "core/systems_manager.hpp"
 
 #include <new>
@@ -23,8 +24,9 @@ struct sRenderingSystem
     u8 WindowRenderTargetCount;   // Количество целей рендеринга. Обычно совпадает с количеством изображений swapchain.
     bool resizing;                // Указывает, изменяется ли размер окна в данный момент.
     u8 FramesSinceResize;         // Текущее количество кадров с момента последней операции изменения размера. Устанавливается только если resizing = true. В противном случае 0.
-    // Размер буфера кадра по умолчанию. Переопределяется при создании окна.
-    constexpr sRenderingSystem(RendererPlugin* plugin) : ptrRenderer(plugin), FramebufferWidth(1280), FramebufferHeight(720), WindowRenderTargetCount(), resizing(false), FramesSinceResize() {}
+    Viewport* ActiveViewport;
+
+    constexpr sRenderingSystem(RendererPlugin* plugin) : ptrRenderer(plugin), FramebufferWidth(1280), FramebufferHeight(720), WindowRenderTargetCount(), resizing(false), FramesSinceResize(), ActiveViewport(nullptr) {}
 };
 
 bool RenderingSystem::Initialize(u64& MemoryRequirement, void* memory, void* config)
@@ -74,11 +76,16 @@ void RenderingSystem::OnResized(u16 width, u16 height)
     }
 }
 
-bool RenderingSystem::DrawFrame(const RenderPacket &packet, const FrameData& rFrameData)
+bool RenderingSystem::PrepareFrame(FrameData& rFrameData)
 {
     auto pRenderingSystem = reinterpret_cast<sRenderingSystem*>(SystemsManager::GetState(MSystem::Type::Renderer));
-    auto& renderer = pRenderingSystem->ptrRenderer;
-    renderer->FrameNumber++;
+    auto& plugin = pRenderingSystem->ptrRenderer;
+
+    // Увеличиваем номер кадра.
+    plugin->FrameNumber++;
+
+    // Сбросить индекс отрисовки для этого кадра.
+    plugin->DrawIndex = 0;
 
     // Убедитесь, что окно в данный момент не меняет размер, подождав указанное количество кадров после последней операции изменения размера, прежде чем выполнять внутренние обновления.
     if (pRenderingSystem->resizing) {
@@ -98,35 +105,53 @@ bool RenderingSystem::DrawFrame(const RenderPacket &packet, const FrameData& rFr
             // Пропустите рендеринг кадра и попробуйте снова в следующий раз.
             // ПРИМЕЧАНИЕ: Имитация «отрисовки» кадра со скоростью 60 кадров в секунду.
             PlatformSleep(16);
-            return true;
-        }
-    }
-
-    // Если начальный кадр возвращается успешно, операции в середине кадра могут продолжаться.
-    if (renderer->BeginFrame(rFrameData)) {
-        
-        const u8& AttachmentIndex = renderer->WindowAttachmentIndexGet();
-        
-        // Отобразить каждое представление.
-        for (u32 i = 0; i < packet.ViewCount; i++) {
-            if (!RenderViewSystem::OnRender(packet.views[i].view, packet.views[i], renderer->FrameNumber, AttachmentIndex, rFrameData)) {
-                MERROR("Ошибка рендеринга индекса представления %i.", i);
-            }
-        }
-        
-        // Завершите кадр. Если это не удастся, скорее всего, это будет невозможно восстановить.
-        bool result = renderer->EndFrame(rFrameData);
-
-        if (!result) {
-            MERROR("Ошибка EndFrame. Приложение закрывается...");
             return false;
         }
     }
 
-    return false;
+    bool result = plugin->PrepareFrame(rFrameData);
+
+    // Обновляем данные кадра с учетом информации о рендерере.
+    const u8& AttachmentIndex = plugin->WindowAttachmentIndexGet();
+
+    rFrameData.RendererFrameNumber = plugin->FrameNumber;
+    rFrameData.DrawIndex = plugin->DrawIndex;
+    rFrameData.RenderTargetIndex = AttachmentIndex;
+
+    return result;
 }
 
-void RenderingSystem::Load(const u8* pixels, Texture *texture)
+bool RenderingSystem::Begin(const FrameData &rFrameData)
+{
+    auto pRenderingSystem = reinterpret_cast<sRenderingSystem*>(SystemsManager::GetState(MSystem::Type::Renderer));
+    return pRenderingSystem->ptrRenderer->Begin(rFrameData);
+}
+
+bool RenderingSystem::End(FrameData &rFrameData)
+{
+    auto pRenderingSystem = reinterpret_cast<sRenderingSystem*>(SystemsManager::GetState(MSystem::Type::Renderer));
+    auto plugin = pRenderingSystem->ptrRenderer;
+    bool result = plugin->End(rFrameData);
+    // Увеличьте индекс отрисовки для этого кадра.
+    plugin->DrawIndex++;
+    // Синхронизируйте с ним данные кадра.
+    rFrameData.DrawIndex = plugin->DrawIndex;
+    return result;
+}
+
+bool RenderingSystem::Present(const FrameData &rFrameData)
+{
+    auto pRenderingSystem = reinterpret_cast<sRenderingSystem*>(SystemsManager::GetState(MSystem::Type::Renderer));
+    // Завершите кадр. Если это не удастся, восстановление, скорее всего, невозможно.
+    bool result = pRenderingSystem->ptrRenderer->Present(rFrameData);
+
+    if (!result) {
+        MERROR("Ошибка RenderingSystem::Present. Приложение завершает работу...");
+    }
+    return result;
+}
+
+void RenderingSystem::Load(const u8 *pixels, Texture *texture)
 {
     auto pRenderingSystem = reinterpret_cast<sRenderingSystem*>(SystemsManager::GetState(MSystem::Type::Renderer));
     return pRenderingSystem->ptrRenderer->Load(pixels, texture);
@@ -235,10 +260,10 @@ void RenderingSystem::DrawGeometry(const GeometryRenderData &data)
     pRenderingSystem->ptrRenderer->DrawGeometry(data);
 }
 
-void RenderingSystem::ViewportSet(const FVec4 &rect)
+void RenderingSystem::ViewportSet(const Rect2D &rect)
 {
     auto pRenderingSystem = reinterpret_cast<sRenderingSystem*>(SystemsManager::GetState(MSystem::Type::Renderer));
-    pRenderingSystem->ptrRenderer->ViewportSet(rect);
+    pRenderingSystem->ptrRenderer->SetViewport(rect);
 }
 
 void RenderingSystem::ViewportReset()
@@ -247,10 +272,10 @@ void RenderingSystem::ViewportReset()
     pRenderingSystem->ptrRenderer->ViewportReset();
 }
 
-void RenderingSystem::ScissorSet(const FVec4 &rect)
+void RenderingSystem::ScissorSet(const Rect2D &rect)
 {
     auto pRenderingSystem = reinterpret_cast<sRenderingSystem*>(SystemsManager::GetState(MSystem::Type::Renderer));
-    pRenderingSystem->ptrRenderer->ScissorSet(rect);
+    pRenderingSystem->ptrRenderer->SetScissor(rect);
 }
 
 void RenderingSystem::ScissorReset()
@@ -506,4 +531,24 @@ bool RenderingSystem::RenderBufferDraw(RenderBuffer &buffer, u64 offset, u32 Ele
 {
     auto pRenderingSystem = reinterpret_cast<sRenderingSystem*>(SystemsManager::GetState(MSystem::Type::Renderer));
     return pRenderingSystem->ptrRenderer->RenderBufferDraw(buffer, offset, ElementCount, BindOnly);
+}
+
+Viewport *RenderingSystem::GetActiveViewport()
+{
+    auto pRenderingSystem = reinterpret_cast<sRenderingSystem*>(SystemsManager::GetState(MSystem::Type::Renderer));
+    return pRenderingSystem->ActiveViewport;
+}
+
+void RenderingSystem::SetActiveViewport(Viewport *viewvport)
+{
+    auto pRenderingSystem = reinterpret_cast<sRenderingSystem*>(SystemsManager::GetState(MSystem::Type::Renderer));
+    auto Renderer = pRenderingSystem->ptrRenderer;
+    pRenderingSystem->ActiveViewport = viewvport;
+
+    auto& rect = viewvport->rect;
+    Rect2D ViewportRect {rect.x, rect.y + rect.height, rect.width, -rect.height};
+    Renderer->SetViewport(ViewportRect);
+
+    Rect2D ScissorRect {rect.x, rect.y, rect.width, rect.height};
+    Renderer->SetScissor(ScissorRect);
 }

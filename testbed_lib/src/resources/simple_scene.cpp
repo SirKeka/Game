@@ -426,21 +426,10 @@ bool SimpleScene::Update(const FrameData &rFrameData)
     return true;
 }
 
-bool SimpleScene::PopulateRenderPacket(Camera *CurrentCamera, f32 aspect, FrameData &rFrameData, RenderPacket &packet)
+bool SimpleScene::PopulateRenderPacket(Camera *CurrentCamera, Viewport& viewport, FrameData &rFrameData, RenderPacket &packet)
 {
-    // Skybox
-    if (skybox) {
-        auto& ViewPacket = packet.views[Testbed::PacketViews::Skybox];
-        const auto view = ViewPacket.view;
-        SkyboxPacketData SkyboxData = {skybox};
-        if (skybox) {
-            if (!RenderViewSystem::BuildPacket(view, *rFrameData.FrameAllocator, &SkyboxData, ViewPacket)) {
-                MERROR("Не удалось создать пакет для вида «skybox».");
-                return false;
-            }
-        }
-    }
 
+    // Мир
     {
         auto& ViewPacket = packet.views[Testbed::PacketViews::World];
         const auto view = ViewPacket.view;
@@ -449,14 +438,18 @@ bool SimpleScene::PopulateRenderPacket(Camera *CurrentCamera, f32 aspect, FrameD
         WorldData.TerrainGeometries.Clear();
         WorldData.DebugGeometries.Clear();
 
+        // Skybox
+        WorldData.SkyboxData.skybox = skybox;
+
         // Обновить усеченную пирамиду
         auto forward = CurrentCamera->Forward();
         auto right = CurrentCamera->Right();
         auto up = CurrentCamera->Up();
 
         // ЗАДАЧА: получите поле зрения камеры, аспект и т. д.
+        auto& rect = viewport.rect;
         Frustum f;
-        f.Create(CurrentCamera->GetPosition(), forward, right, up, aspect, Math::DegToRad(45.F), 0.1F, 1000.F);
+        f.Create(CurrentCamera->GetPosition(), forward, right, up, (f32)rect.width / rect.height, viewport.FOV, viewport.NearClip, viewport.FarClip);
 
         rFrameData.DrawnMeshCount = 0;
         
@@ -603,7 +596,7 @@ bool SimpleScene::PopulateRenderPacket(Camera *CurrentCamera, f32 aspect, FrameD
         }
 
         // Мир
-        if (!RenderViewSystem::BuildPacket(view, *rFrameData.FrameAllocator, &WorldData.WorldGeometries, ViewPacket)) {
+        if (!RenderViewSystem::BuildPacket(view, rFrameData, viewport, &WorldData.WorldGeometries, ViewPacket)) {
             MERROR("Не удалось создать пакет для представления «мира».");
             return false;
         }

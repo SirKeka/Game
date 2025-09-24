@@ -3,7 +3,7 @@
 #include <application_types.h>
 #include <math/frustrum.h>
 #include "editor/gizmo.h"
-#include <resources/simple_scene.h>
+#include "renderer/viewport.h"
 
 //ЗАДАЧА: Временно
 #include <core/keymap.h>
@@ -65,6 +65,11 @@ struct Game
     DArray<DebugLine3D> TestLines;
     DArray<DebugBox3D> TestBoxes;
 
+    Viewport WorldViewport;
+    Viewport UiViewport;
+
+    Viewport WorldViewport2;
+
     SelectedObject selection;
     bool UsingGizmo;
     // ЗАДАЧА: конец временно
@@ -73,28 +78,46 @@ struct Game
     void ClearDebugObjects();
 };
 
+/// @param app ссылка на приложение
 extern "C" MAPI bool ApplicationBoot(Application& app);
 
 /// @brief Функция инициализации
 /// @return true в случае успеха; в противном случае false.
 extern "C" MAPI bool ApplicationInitialize(Application& app);
+
 /// @brief Функция обновления игры
-/// @param DeltaTime Время в секундах с момента последнего кадра.
+/// @param app ссылка на приложение
+/// @param rFrameData ссылка на данные кадра
 /// @return true в случае успеха; в противном случае false.
 extern "C" MAPI bool ApplicationUpdate(Application& app, const FrameData& rFrameData);
+
+/// @brief 
+/// @param app 
+/// @param packet 
+/// @param rFrameData ссылка на данные кадра
+/// @return 
+extern "C" MAPI bool ApplicationPrepareRenderPacket(Application& app, RenderPacket& packet, FrameData& rFrameData);
 /// @brief Функция рендеринга игры
-/// @param DeltaTime Время в секундах с момента последнего кадра.
+/// @param app ссылка на приложение
+/// @param packet
+/// @param rFrameData ссылка на данные кадра
 /// @return true в случае успеха; в противном случае false.
 extern "C" MAPI bool ApplicationRender(Application& app, RenderPacket& packet, FrameData& rFrameData);
+
 /// @brief Функция изменения размера окна игры
+/// @param app ссылка на приложение
 /// @param Width ширина окна в пикселях.
 /// @param Height высота окна в пикселях.
 extern "C" MAPI void ApplicationOnResize(Application& app, u32 width, u32 height);
 
 /// @brief Завершает игру, вызывая высвобождение ресурсов.
+/// @param app ссылка на приложение
 extern "C" MAPI void ApplicationShutdown(Application& app);
 
+/// @param app ссылка на приложение
 extern "C" MAPI void ApplicationLibOnLoad(Application& app);
+
+/// @param app ссылка на приложение
 extern "C" MAPI void ApplicationLibOnUnload(Application& app);
 
 void GameSetupCommands();
@@ -109,7 +132,6 @@ struct TestbedApplicationFrameData {
 namespace Testbed
 {
     enum PacketViews {
-        Skybox,
         World,
         EditorWorld,
         UI,

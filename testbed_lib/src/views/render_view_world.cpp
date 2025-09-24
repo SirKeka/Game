@@ -1,7 +1,9 @@
 #include "render_view_world.h"
 #include "renderer/renderpass.h"
+#include "renderer/viewport.h"
 #include "resources/geometry.h"
 #include "resources/mesh.h"
+#include "resources/skybox.h"
 #include "systems/camera_system.hpp"
 #include "systems/material_system.h"
 #include "systems/render_view_system.h"
@@ -67,15 +69,38 @@ bool RenderViewWorld::OnRegistered(RenderView* self)
         self->data = data; 
 
         data->WorldCamera = CameraSystem::Instance()->GetDefault();
-        const char* ShaderName = "Shader.Builtin.Material";
         ShaderResource ConfigResource;
-        if (!ResourceSystem::Load(ShaderName, eResource::Shader, nullptr, ConfigResource)) {
+
+        // Загрузка шейдера скабокса.
+        const char* SkyboxShaderName = "Shader.Builtin.Skybox";
+        if (!ResourceSystem::Load(SkyboxShaderName, eResource::Shader, nullptr, ConfigResource)) {
+            MERROR("Не удалось загрузить встроенный шейдер скайбокса.");
+            return false;
+        }
+
+        // ПРИМЕЧАНИЕ: предполагается первый проход, так как это все, что есть в этом представлении.
+        if (!ShaderSystem::Create(self->passes[0],ConfigResource.data)) {
+            MERROR("Не удалось загрузить встроенный шейдер скайбокса.");
+            return false;
+        }
+        ResourceSystem::Unload(ConfigResource);
+
+        // Получить указатель на шейдер.
+        data->SkyboxShader = ShaderSystem::GetShader(self->CustomShaderName ? self->CustomShaderName : SkyboxShaderName);
+
+        data->SkyboxLocation.ProjectionLocation = ShaderSystem::UniformIndex(data->SkyboxShader, "projection");
+        data->SkyboxLocation.ViewLocation = ShaderSystem::UniformIndex(data->SkyboxShader, "view");
+        data->SkyboxLocation.CubeMapLocation = ShaderSystem::UniformIndex(data->SkyboxShader, "cube_texture");
+
+        // Загрузка шейдера материала
+        const char* MaterialShaderName = "Shader.Builtin.Material";
+        if (!ResourceSystem::Load(MaterialShaderName, eResource::Shader, nullptr, ConfigResource)) {
             MERROR("Не удалось загрузить ресурс встроенного шейдера материала.");
             return false;
         }
 
         // ПРИМЕЧАНИЕ: Предположим, что это первый проход, так как это все, что есть в этом представлении.
-        if (!ShaderSystem::Create(self->passes[0], ConfigResource.data)) {
+        if (!ShaderSystem::Create(self->passes[1], ConfigResource.data)) {
             MERROR("Не удалось загрузить встроенный шейдер материала.");
             return false;
         }
@@ -83,18 +108,17 @@ bool RenderViewWorld::OnRegistered(RenderView* self)
 
         // Загрузка шейдера ландшафта.
         const char* TerrainShaderName = "Shader.Builtin.Terrain";
-        ShaderResource TerrainShaderConfigResource;
-        if (!ResourceSystem::Load(TerrainShaderName, eResource::Type::Shader, nullptr, TerrainShaderConfigResource)) {
+        if (!ResourceSystem::Load(TerrainShaderName, eResource::Type::Shader, nullptr, ConfigResource)) {
             MERROR("Не удалось загрузить встроенный ресурс шейдера ландшафта.");
             return false;
         }
-        auto& TerrainShaderConfig = TerrainShaderConfigResource.data;
+        auto& TerrainShaderConfig = ConfigResource.data;
         // ПРИМЕЧАНИЕ: Предположим, что это первый проход, поскольку это все, что есть в этом представлении.
-        if (!ShaderSystem::Create(self->passes[0], TerrainShaderConfig)) {
+        if (!ShaderSystem::Create(self->passes[1], TerrainShaderConfig)) {
             MERROR("Не удалось загрузить встроенный шейдер ландшафта.");
             return false;
         }
-        // ResourceSystem::Unload(TerrainShaderConfigResource);
+        ResourceSystem::Unload(ConfigResource);
 
         // Загрузить отладочный шейдер colour3d.
         // ЗАДАЧА: переместить встроенные шейдеры в саму систему шейдеров.
@@ -105,7 +129,7 @@ bool RenderViewWorld::OnRegistered(RenderView* self)
         }
         auto& Colour3dShaderConfig = ConfigResource.data;
         // ПРИМЕЧАНИЕ: предполагается первый проход, так как это все, что есть в этом представлении.
-        if (!ShaderSystem::Create(self->passes[0], Colour3dShaderConfig)) {
+        if (!ShaderSystem::Create(self->passes[1], Colour3dShaderConfig)) {
             MERROR("Не удалось загрузить встроенный шейдер colour3d.");
             return false;
         }
@@ -124,7 +148,7 @@ bool RenderViewWorld::OnRegistered(RenderView* self)
         }
 
         // Получите либо переопределение пользовательского шейдера, либо заданное значение по умолчанию.
-        data->shader = ShaderSystem::GetShader(self->CustomShaderName ? self->CustomShaderName : ShaderName);
+        data->shader = ShaderSystem::GetShader(self->CustomShaderName ? self->CustomShaderName : MaterialShaderName);
 
         // Следите за изменениями режима.
         if (!EventSystem::Register(EventSystem::SetRenderMode, self, OnEvent)) {
@@ -155,25 +179,12 @@ void RenderViewWorld::Destroy(RenderView *self)
 void RenderViewWorld::Resize(RenderView* self, u32 width, u32 height)
 {
     if (self) {
-        auto data = reinterpret_cast<RenderViewWorld*>(self->data);
-
-        // Проверьте, отличается ли. Если да, пересоздайте матрицу проекции.
-        if (width != self->width || height != self->height) {
-
-            self->width = width;
-            self->height = height;
-            f32 aspect = (f32)self->width / self->height;
-            data->ProjectionMatrix = Matrix4D::MakeFrustumProjection(data->fov, aspect, data->NearClip, data->FarClip);
-
-            for (u32 i = 0; i < self->RenderpassCount; ++i) {
-                self->passes[i].RenderArea = FVec4(0, 0, width, height);
-            }
-        }
+        self->width = width;
+        self->height = height;
     }
-    
 }
 
-bool RenderViewWorld::BuildPacket(RenderView* self, LinearAllocator& FrameAllocator, void *data, RenderViewPacket &OutPacket)
+bool RenderViewWorld::BuildPacket(RenderView* self, FrameData& rFrameData, Viewport& viewport, void *data, RenderViewPacket &OutPacket)
 {
     if (!data) {
         MWARN("RenderViewWorld::BuildPacket требует действительный указатель на вид, пакет и данные.");
@@ -185,12 +196,16 @@ bool RenderViewWorld::BuildPacket(RenderView* self, LinearAllocator& FrameAlloca
         auto& WorldData = *reinterpret_cast<RenderViewWorldData*>(data);
     
         OutPacket.view = self;
+        OutPacket.viewport = &viewport;
 
         // Установить матрицы и т. д.
-        OutPacket.ProjectionMatrix = rwwData->ProjectionMatrix;
+        OutPacket.ProjectionMatrix = viewport.projection;
         OutPacket.ViewMatrix       = rwwData->WorldCamera->GetView();
         OutPacket.ViewPosition     = rwwData->WorldCamera->GetPosition();
-        OutPacket.AmbientColour     = rwwData->AmbientColour;
+        OutPacket.AmbientColour    = rwwData->AmbientColour;
+
+        // Данные скайбокса
+        OutPacket.SkyboxData = WorldData.SkyboxData;
 
         // ЗАДАЧА: перенести сортировку в динамический массив.
         // Получить все геометрии из текущей сцены.
@@ -250,16 +265,77 @@ bool RenderViewWorld::BuildPacket(RenderView* self, LinearAllocator& FrameAlloca
     return false;
 }
 
-bool RenderViewWorld::Render(const RenderView* self, const RenderViewPacket &packet, u64 FrameNumber, u64 RenderTargetIndex, const FrameData& rFrameData)
+bool RenderViewWorld::Render(const RenderView* self, const RenderViewPacket &packet, const FrameData& rFrameData)
 {
     if (self) {
         auto data = reinterpret_cast<RenderViewWorld*>(self->data);
 
-        const auto& ShaderID = data->shader->id;
-        for (u32 p = 0; p < self->RenderpassCount; ++p) {
-            auto pass = &self->passes[p];
-            if (!RenderingSystem::RenderpassBegin(pass, pass->targets[RenderTargetIndex])) {
-                MERROR("RenderViewWorld::Render pass index %u не удалось запустить.", p);
+        // Привязка области просмотра
+        RenderingSystem::SetActiveViewport(packet.viewport);
+
+        // Подпроход рендера для скайбокса
+        {
+            auto SkyboxPass = &self->passes[0];
+            if (!RenderingSystem::RenderpassBegin(SkyboxPass, SkyboxPass->targets[rFrameData.RenderTargetIndex])) {
+                MERROR("RenderViewWorld::Render не удалось запустить проход рендеринга скайбокса.");
+                return false;
+            }
+
+            // Скайбокс.
+            if (packet.SkyboxData.skybox) {
+                const u32& ShaderID = data->SkyboxShader->id;
+                ShaderSystem::Use(ShaderID);
+
+                // Get the view matrix, but zero out the position so the skybox stays put on screen.
+                auto ViewMatrix = data->WorldCamera->GetView();
+                ViewMatrix.data[12] = 0.F;
+                ViewMatrix.data[13] = 0.F;
+                ViewMatrix.data[14] = 0.F;
+
+                // Применение глобальных переменных
+                // ЗАДАЧА: Это ужасно. Необходимо привязать по идентификатору.
+                ShaderSystem::GetShader(ShaderID)->BindGlobals();
+                if (!ShaderSystem::UniformSet(data->SkyboxLocation.ProjectionLocation, &packet.ProjectionMatrix)) {
+                    MERROR("Не удалось применить равномерную(uniform) проекцию скайбокса.");
+                    return false;
+                }
+                if (!ShaderSystem::UniformSet(data->SkyboxLocation.ViewLocation, &ViewMatrix)) {
+                    MERROR("Не удалось применить равномерный(uniform) вид скайбокса.");
+                    return false;
+                }
+                ShaderSystem::ApplyGlobal(true);
+
+                // Экземпляр
+                ShaderSystem::BindInstance(packet.SkyboxData.skybox->InstanceID);
+                if (!ShaderSystem::UniformSet(data->SkyboxLocation.CubeMapLocation, &packet.SkyboxData.skybox->cubemap)) {
+                    MERROR("Не удалось применить равномерную(uniform) кубическоую карту скайбокса.");
+                    return false;
+                }
+                bool NeedsUpdate = packet.SkyboxData.skybox->RenderFrameNumber != rFrameData.RendererFrameNumber || packet.SkyboxData.skybox->DrawIndex != rFrameData.DrawIndex;
+                ShaderSystem::ApplyInstance(NeedsUpdate);
+
+                // Синхронизируйте номер кадра и индекс отрисовки.
+                packet.SkyboxData.skybox->RenderFrameNumber = rFrameData.RendererFrameNumber;
+                packet.SkyboxData.skybox->DrawIndex = rFrameData.DrawIndex;
+
+                // Нарисуйте его.
+                GeometryRenderData RenderData;
+                RenderData.geometry = packet.SkyboxData.skybox->geometry;
+                RenderingSystem::DrawGeometry(RenderData);
+            }
+
+            if (!RenderingSystem::RenderpassEnd(SkyboxPass)) {
+                MERROR("RenderViewWorld::Проход рендеринга скайбокса не удалось завершить.");
+                return false;
+            }
+        }
+
+        // Проход рендеринга мира
+        {
+            const auto& ShaderID = data->shader->id;
+            auto WorldPass = &self->passes[1];
+            if (!RenderingSystem::RenderpassBegin(WorldPass, WorldPass->targets[rFrameData.RenderTargetIndex])) {
+                MERROR("RenderViewWorld::Render pass index %u не удалось запустить.");
                 return false;
             }
 
@@ -276,7 +352,7 @@ bool RenderViewWorld::Render(const RenderView* self, const RenderViewPacket &pac
 
                 // Применить глобальные переменные
                 // ЗАДАЧА: Найдите общий способ запроса данных, таких как цвет окружения (который должен быть из сцены) и режим (из рендерера)
-                if (!MaterialSystem::ApplyGlobal(shader->id, FrameNumber, packet.ProjectionMatrix, packet.ViewMatrix, packet.AmbientColour, packet.ViewPosition,  data->RenderMode)) {
+                if (!MaterialSystem::ApplyGlobal(shader->id, rFrameData.RendererFrameNumber, rFrameData.DrawIndex, packet.ProjectionMatrix, packet.ViewMatrix, packet.AmbientColour, packet.ViewPosition,  data->RenderMode)) {
                     MERROR("Не удалось применить глобальные переменные для шейдера ландшафта. Кадр рендеринга не удалось.");
                     return false;
                 }
@@ -293,13 +369,15 @@ bool RenderViewWorld::Render(const RenderView* self, const RenderViewPacket &pac
                     // Это предотвращает многократное обновление одного и того же материала. 
                     // Его все равно нужно привязать в любом случае, поэтому этот результат проверки передается на бэкэнд, 
                     // который либо обновляет внутренние привязки шейдера и привязывает их, либо только привязывает их.
-                    bool NeedsUpdate = material->RenderFrameNumber != FrameNumber;
+                    // Также необходимо свериться с индексом отрисовки рендерера.
+                    bool NeedsUpdate = material->RenderFrameNumber != rFrameData.RendererFrameNumber || material->RenderDrawIndex != rFrameData.DrawIndex;
                     if (!MaterialSystem::ApplyInstance(material, NeedsUpdate)) {
                         MWARN("Не удалось применить материал ландшафта '%s'. Пропуск отрисовки.", material->name);
                         continue;
                     } else {
-                        // Синхронизируйте номер кадра.
-                        material->RenderFrameNumber = FrameNumber;
+                        // Синхронизируйте номер кадра и индекс отрисовки.
+                        material->RenderFrameNumber = rFrameData.RendererFrameNumber;
+                        material->RenderDrawIndex = rFrameData.DrawIndex;
                     }
 
                     // Примените локальные
@@ -320,7 +398,7 @@ bool RenderViewWorld::Render(const RenderView* self, const RenderViewPacket &pac
 
                 // Применить глобальные переменные
                 // ЗАДАЧА: Найти общий способ запроса данных, таких как окружающий цвет (который должен быть из сцены) и режим (из рендерера)
-                if (!MaterialSystem::ApplyGlobal(ShaderID, FrameNumber, packet.ProjectionMatrix, packet.ViewMatrix, packet.AmbientColour, packet.ViewPosition,  data->RenderMode)) {
+                if (!MaterialSystem::ApplyGlobal(ShaderID, rFrameData.RendererFrameNumber, rFrameData.DrawIndex, packet.ProjectionMatrix, packet.ViewMatrix, packet.AmbientColour, packet.ViewPosition,  data->RenderMode)) {
                     MERROR("Не удалось использовать применить глобальные переменные для шейдера материала. Не удалось отрисовать кадр.");
                     return false;
                 }
@@ -328,28 +406,29 @@ bool RenderViewWorld::Render(const RenderView* self, const RenderViewPacket &pac
                 // Нарисовать геометрию.
                 const auto& count = packet.geometries.Length();
                 for (u32 i = 0; i < count; ++i) {
-                    Material* m = nullptr;
+                    Material* material = nullptr;
                     if (packet.geometries[i].geometry->material) {
-                        m = packet.geometries[i].geometry->material;
+                        material = packet.geometries[i].geometry->material;
                     } else {
-                        m = MaterialSystem::GetDefaultMaterial();
+                        material = MaterialSystem::GetDefaultMaterial();
                     }
 
                     // Обновите материал, если он еще не был в этом кадре. 
                     // Это предотвращает многократное обновление одного и того же материала. 
                     // Его все равно нужно привязать в любом случае, поэтому этот результат проверки передается на бэкэнд, 
                     // который либо обновляет внутренние привязки шейдера и привязывает их, либо только привязывает их.
-                    bool NeedsUpdate = m->RenderFrameNumber != FrameNumber;
-                    if (!MaterialSystem::ApplyInstance(m, NeedsUpdate)) {
-                        MWARN("Не удалось применить материал '%s'. Пропуск отрисовки.", m->name);
+                    bool NeedsUpdate = material->RenderFrameNumber != rFrameData.RendererFrameNumber || material->RenderDrawIndex != rFrameData.DrawIndex;
+                    if (!MaterialSystem::ApplyInstance(material, NeedsUpdate)) {
+                        MWARN("Не удалось применить материал '%s'. Пропуск отрисовки.", material->name);
                         continue;
                     } else {
-                        // Синхронизируйте номер кадра.
-                        m->RenderFrameNumber = FrameNumber;
+                        // Синхронизируйте номер кадра и индекс отрисовки.
+                        material->RenderFrameNumber = rFrameData.RendererFrameNumber;
+                        material->RenderDrawIndex = rFrameData.DrawIndex;
                     }
 
                     // Примените локальные переменные
-                    MaterialSystem::ApplyLocal(m, packet.geometries[i].model);
+                    MaterialSystem::ApplyLocal(material, packet.geometries[i].model);
 
                     // При необходимости инвертируйте.
                     if (packet.geometries[i].WindingInverted) {
@@ -394,11 +473,11 @@ bool RenderViewWorld::Render(const RenderView* self, const RenderViewPacket &pac
                     RenderingSystem::DrawGeometry(packet.DebugGeometries[i]);
                 }
                 // HACK: Это должно каким-то образом обрабатываться в каждом кадре шейдерной системой.
-                shader->RenderFrameNumber = FrameNumber;
+                shader->RenderFrameNumber = rFrameData.RendererFrameNumber;
             }
 
-            if (!RenderingSystem::RenderpassEnd(pass)) {
-                MERROR("Не удалось завершить проход RenderViewWorld::Render индекс %u.", p);
+            if (!RenderingSystem::RenderpassEnd(WorldPass)) {
+                MERROR("RenderViewWorld::Render: не удалось завершить проход рендера мира индекс %u.");
                 return false;
             }
         }

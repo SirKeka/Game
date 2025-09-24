@@ -87,7 +87,7 @@ endif
 link: scaffold $(OBJ_FILES) # ссылка
 	@echo Linking "$(ASSEMBLY)"...
 ifeq ($(BUILD_PLATFORM),windows)
-	clang++ $(OBJ_FILES) -o $(BUILD_DIR)\$(ASSEMBLY)$(EXTENSION) $(LINKER_FLAGS)
+	@clang++ $(OBJ_FILES) -o $(BUILD_DIR)\$(ASSEMBLY)$(EXTENSION) $(LINKER_FLAGS)
 else
 	@clang++ $(OBJ_FILES) -o $(BUILD_DIR)/$(ASSEMBLY)$(EXTENSION) $(LINKER_FLAGS)
 endif
@@ -116,3 +116,11 @@ $(OBJ_DIR)/%.cpp.o: %.cpp
 	@clang++ $< $(COMPILER_FLAGS) -c -o $@ $(DEFINES) $(INCLUDE_FLAGS)
 
 -include $(OBJ_FILES:.o=.d)
+
+.PHONY: gen_compile_flags
+gen_compile_flags:
+ifeq ($(BUILD_PLATFORM),windows)
+	$(shell powershell \"$(INCLUDE_FLAGS) $(DEFINES)\".replace('-I', '-I..\').replace(' ', \"`n\").replace('-I..\C:', '-IC:') > $(ASSEMBLY)/compile_flags.txt)
+else
+	@echo $(INCLUDE_FLAGS) $(DEFINES) | tr " " "\n" | sed "s/\-I\.\//\-I\.\.\//g" > $(ASSEMBLY)/compile_flags.txt
+endif

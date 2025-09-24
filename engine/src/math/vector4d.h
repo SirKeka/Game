@@ -20,9 +20,9 @@ struct Vector4D
             // Второй элемент.
 			union {T y, g;};
 			// Третий элемент.
-			union {T z, b;};
+			union {T z, b, width;};
 			// Четвертый элемент.
-			union {T w, a;};
+			union {T w, a, height;};
         };
     };
 

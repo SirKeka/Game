@@ -211,3 +211,14 @@ MINLINE Vector2D<T>& Distance(const Vector2D<T> &a, const Vector2D<T> &b)
 {
     return VectorLenght(a - b);
 }
+
+/// @brief Возвращает квадрат расстояния между a и b. ПРИМЕЧАНИЕ: Если вы используете это исключительно для сравнения, предпочтите этот вариант, а не версию без возведения в квадрат, чтобы избежать вызова sqrt.
+/// @tparam T тип компонентов
+/// @param a вектор
+/// @param b вектор
+/// @return дистанцию между векторами а и b
+template <typename T>
+MINLINE f32 DistanceSquared(const Vector2D<T>& a, const Vector2D<T>& b) 
+{
+    return VectorLengthSquared(a - b);
+}

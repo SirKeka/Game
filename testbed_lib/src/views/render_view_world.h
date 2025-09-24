@@ -1,20 +1,29 @@
 #pragma once
 #include "renderer/render_view.h"
 
+struct Shader;
+
 struct RenderViewWorldData {
     DArray<GeometryRenderData> WorldGeometries;
     DArray<GeometryRenderData> TerrainGeometries;
     DArray<GeometryRenderData> DebugGeometries;
+    SkyboxPacketData SkyboxData;
 };
+
+struct SkyboxShaderLocation
+{
+    u16 ProjectionLocation;
+    u16 ViewLocation;
+    u16 CubeMapLocation;
+};
+
 
 class RenderViewWorld
 {
 private:
-    struct Shader* shader;
-    f32 fov;
-    f32 NearClip;
-    f32 FarClip;
-    Matrix4D ProjectionMatrix;
+    Shader* shader;
+    Shader* SkyboxShader;
+
     class Camera* WorldCamera;
     FVec4 AmbientColour;
     u32 RenderMode;
@@ -23,17 +32,16 @@ private:
         u16 view;
         u16 model;
     } DebugLocations;
+    SkyboxShaderLocation SkyboxLocation;
 
 public:
-    constexpr RenderViewWorld() : shader(), fov(Math::DegToRad(45.F)), NearClip(0.1F), FarClip(4000.F), 
-    ProjectionMatrix(Matrix4D::MakeFrustumProjection(fov, 1280 / 720.F, NearClip, FarClip)), // Поумолчанию
-    WorldCamera(), AmbientColour(0.25F, 0.25F, 0.25F, 1.F), RenderMode() {}
+    constexpr RenderViewWorld() : shader(), WorldCamera(), AmbientColour(0.25F, 0.25F, 0.25F, 1.F), RenderMode() {}
 
     static bool OnRegistered(RenderView* self);
     static void Destroy(RenderView* self);
     static void Resize(RenderView* self, u32 width, u32 height);
-    static bool BuildPacket(RenderView* self, LinearAllocator& FrameAllocator, void* data, RenderViewPacket& OutPacket);
-    static bool Render(const RenderView* self, const RenderViewPacket& packet, u64 FrameNumber, u64 RenderTargetIndex, const FrameData& rFrameData);
+    static bool BuildPacket(RenderView* self, FrameData& rFrameData, Viewport& viewport, void* data, RenderViewPacket& OutPacket);
+    static bool Render(const RenderView* self, const RenderViewPacket& packet, const FrameData& rFrameData);
 
     void* operator new(u64 size);
     void operator delete(void* ptr, u64 size);

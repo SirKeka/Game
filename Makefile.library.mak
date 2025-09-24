@@ -75,10 +75,12 @@ ifeq ($(DO_VERSION),yes)
 endif
 
 # Создать только числовую версию для PDB.
+ifeq ($(DO_VERSION),yes)
 ifeq ($(BUILD_PLATFORM),windows)
 	MNUMERIC_VERSION := $(shell $(DIR)\$(BUILD_DIR)\versiongen.exe -n)
 else
 	MNUMERIC_VERSION := $(shell $(BUILD_DIR)/versiongen -n)
+endif
 endif
 
 # По умолчанию используется режим отладки, если не указана версия.
@@ -150,3 +152,11 @@ $(OBJ_DIR)/%.cpp.o: %.cpp
 	@clang++ $< $(COMPILER_FLAGS) -c -o $@ $(DEFINES) $(INCLUDE_FLAGS)
 
 -include $(OBJ_FILES:.o=.d)
+
+.PHONY: gen_compile_flags
+gen_compile_flags:
+ifeq ($(BUILD_PLATFORM),windows)
+	$(shell powershell \"$(INCLUDE_FLAGS) $(DEFINES)\".replace('-I', '-I..\').replace(' ', \"`n\").replace('-I..\C:', '-IC:') > $(ASSEMBLY)/compile_flags.txt)
+else
+	@echo $(INCLUDE_FLAGS) $(DEFINES) | tr " " "\n" | sed "s/\-I\.\//\-I\.\.\//g" > $(ASSEMBLY)/compile_flags.txt
+endif

@@ -7,6 +7,7 @@
 #include "vulkan_renderpass.hpp"
 
 #include "renderer/renderbuffer.h"
+#include "renderer/viewport.h"
 
 #include <systems/material_system.h>
 #include <systems/texture_system.h>
@@ -541,9 +542,9 @@ void VulkanAPI::Resized(u16 width, u16 height)
     MINFO("API рендеринга Vulkan-> изменен размер: w/h/gen: %i/%i/%llu", width, height, FramebufferSizeGeneration);
 }
 
-bool VulkanAPI::BeginFrame(const FrameData& rFrameData)
+bool VulkanAPI::PrepareFrame(const FrameData& rFrameData)
 {
-    FrameDeltaTime = rFrameData.DeltaTime;
+    // FrameDeltaTime = rFrameData.DeltaTime;
 
     // Проверьте, не воссоздается ли цепочка подкачки заново, и загрузитесь.
     if (RecreatingSwapchain) {
@@ -596,26 +597,35 @@ bool VulkanAPI::BeginFrame(const FrameData& rFrameData)
         return false;
     }
 
-    // Начните запись команд.
-    auto* CommandBuffer = &GraphicsCommandBuffers[ImageIndex];
-    VulkanCommandBufferReset(CommandBuffer);
-    VulkanCommandBufferBegin(CommandBuffer, false, false, false);
-
-    // Динамическое состояние
-    ViewportRect = FVec4(0.F, (f32)FramebufferHeight, (f32)FramebufferWidth, -(f32)FramebufferHeight);
-    ViewportSet(ViewportRect);
-
-    ScissorRect = FVec4(0.F, 0.F, FramebufferWidth, FramebufferHeight);
-    ScissorSet(ScissorRect);
-
-    SetWinding(RendererWinding::CounterClockwise);
-
     return true;
 }
 
-bool VulkanAPI::EndFrame(const FrameData& rFrameData)
+bool VulkanAPI::Begin(const FrameData &rFrameData)
+{
+    // Начните запись команд.
+    auto* CommandBuffer = &GraphicsCommandBuffers[ImageIndex];
+
+    // Дождитесь завершения выполнения текущего кадра. Освобождение ограждения позволит этому кадру двигаться дальше.
+    VkResult result = vkWaitForFences(
+        Device.LogicalDevice, 1,
+        &InFlightFences[CurrentFrame], true, UINT64_MAX);
+    if (!VulkanResultIsSuccess(result)) {
+        MFATAL("vkWaitForFences ошибка: %s", VulkanResultString(result, true));
+        return false;
+    }
+
+    VulkanCommandBufferReset(CommandBuffer);
+    VulkanCommandBufferBegin(CommandBuffer, false, false, false);
+
+    SetWinding(RendererWinding::CounterClockwise);
+
+    return false;
+}
+
+bool VulkanAPI::End(const FrameData& rFrameData)
 {
     auto* CommandBuffer = &GraphicsCommandBuffers[ImageIndex];
+
     VulkanCommandBufferEnd(CommandBuffer);
 
     // Убедитесь, что предыдущий кадр не использует это изображение (т.е. его ограждение находится в режиме ожидания).
@@ -640,13 +650,19 @@ bool VulkanAPI::EndFrame(const FrameData& rFrameData)
     SubmitInfo.commandBufferCount = 1;
     SubmitInfo.pCommandBuffers = &CommandBuffer->handle;
 
-    // Семафор(ы), который(ы) будет сигнализирован при заполнении очереди.
-    SubmitInfo.signalSemaphoreCount = 1;
-    SubmitInfo.pSignalSemaphores = &QueueCompleteSemaphores[CurrentFrame];
+    
+    if (DrawIndex == 0) {
+        // Семафор(ы), который(ы) будет сигнализирован при заполнении очереди.
+        SubmitInfo.signalSemaphoreCount = 1;
+        SubmitInfo.pSignalSemaphores = &QueueCompleteSemaphores[CurrentFrame];
 
-    // Семафор ожидания гарантирует, что операция не может начаться до тех пор, пока изображение не будет доступно.
-    SubmitInfo.waitSemaphoreCount = 1;
-    SubmitInfo.pWaitSemaphores = &ImageAvailableSemaphores[CurrentFrame];
+        // Семафор ожидания гарантирует, что операция не может начаться до тех пор, пока изображение не будет доступно.
+        SubmitInfo.waitSemaphoreCount = 1;
+        SubmitInfo.pWaitSemaphores = &ImageAvailableSemaphores[CurrentFrame];
+    } else {
+        SubmitInfo.signalSemaphoreCount = 0;
+        SubmitInfo.waitSemaphoreCount = 0;
+    }
 
     // Каждый семафор ожидает завершения соответствующего этапа конвейера. Соотношение 1:1.
     // VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT предотвращает выполнение последующих 
@@ -667,6 +683,11 @@ bool VulkanAPI::EndFrame(const FrameData& rFrameData)
     VulkanCommandBufferUpdateSubmitted(CommandBuffer);
     // Отправка в конечную очередь
 
+    return true;
+}
+
+bool VulkanAPI::Present(const FrameData &rFrameData)
+{
     // Верните изображение обратно в swapchain.
     swapchain.Present(
         this,
@@ -678,7 +699,7 @@ bool VulkanAPI::EndFrame(const FrameData& rFrameData)
     return true;
 }
 
-void VulkanAPI::ViewportSet(const FVec4 &rect)
+void VulkanAPI::SetViewport(const Rect2D &rect)
 {
     VkViewport viewport;
     viewport.x = rect.x;
@@ -696,10 +717,10 @@ void VulkanAPI::ViewportSet(const FVec4 &rect)
 void VulkanAPI::ViewportReset()
 {
     // Просто установите текущий прямоугольник области просмотра.
-    ViewportSet(ViewportRect);
+    SetViewport(ViewportRect);
 }
 
-void VulkanAPI::ScissorSet(const FVec4 &rect)
+void VulkanAPI::SetScissor(const Rect2D &rect)
 {
     VkRect2D scissor;
     scissor.offset.x = rect.x;
@@ -715,7 +736,7 @@ void VulkanAPI::ScissorSet(const FVec4 &rect)
 void VulkanAPI::ScissorReset()
 {
     // Просто установите текущий прямоугольник ножниц.
-    ScissorSet(ScissorRect);
+    SetScissor(ScissorRect);
 }
 
 void VulkanAPI::SetWinding(RendererWinding winding)
@@ -749,13 +770,15 @@ bool VulkanAPI::RenderpassBegin(Renderpass* pass, RenderTarget& target)
     // Начало этапа рендеринга.
     auto VkRenderpass = reinterpret_cast<VulkanRenderpass*>(pass->InternalData);
 
+    auto ActiveViewport = RenderingSystem::GetActiveViewport();
+
     VkRenderPassBeginInfo BeginInfo = {VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
     BeginInfo.renderPass = VkRenderpass->handle;
     BeginInfo.framebuffer = reinterpret_cast<VkFramebuffer>(target.InternalFramebuffer);
-    BeginInfo.renderArea.offset.x = pass->RenderArea.x;
-    BeginInfo.renderArea.offset.y = pass->RenderArea.y;
-    BeginInfo.renderArea.extent.width = pass->RenderArea.z;
-    BeginInfo.renderArea.extent.height = pass->RenderArea.w;
+    BeginInfo.renderArea.offset.x = ActiveViewport->rect.x;
+    BeginInfo.renderArea.offset.y = ActiveViewport->rect.y;
+    BeginInfo.renderArea.extent.width = ActiveViewport->rect.width;
+    BeginInfo.renderArea.extent.height = ActiveViewport->rect.height;
 
     BeginInfo.clearValueCount = 0;
     BeginInfo.pClearValues = 0;
@@ -1762,6 +1785,7 @@ bool VulkanAPI::ShaderUse(Shader *shader)
     auto VkShader = reinterpret_cast<VulkanShader*>(shader->ShaderData);
     auto& CommandBuffer = GraphicsCommandBuffers[ImageIndex];
     VkShader->pipelines[VkShader->BoundPipelineIndex]->Bind(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS);
+    BoundShader = shader;
 
     // Обязательно используйте текущий тип привязки.
     if (Device.supportFlags & VulkanDevice::NativeDynamicTopologyBit) {

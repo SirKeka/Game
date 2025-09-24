@@ -8,9 +8,7 @@
 /// @copyright 
 #pragma once
 
-#include "render_interface.h"
-//#include "math/vertex.h"
-//#include "core/event.hpp"
+#include "renderer_plugin.h"
 
 class MWindow;
 struct StaticMeshData;
@@ -18,6 +16,7 @@ struct PlatformState;
 class VulkanAPI;
 struct Shader;
 struct FrameData;
+struct Viewport;
 
 struct RenderingSystemConfig
 {
@@ -45,7 +44,22 @@ namespace RenderingSystem
     /// @param packet константная ссылка на пакет рендеринга, который содержит данные о том, что должно быть визуализировано.
     /// @param rFrameData константная ссылка на данные текущего кадра
     /// @return true в случае успеха; в противном случае false.
-    bool DrawFrame(const RenderPacket& packet, const FrameData& rFrameData);
+    MAPI bool PrepareFrame(FrameData& rFrameData);
+
+    /// @brief Начинает рендеринг. В каждом кадре должен быть хотя бы один такой элемент и соответствующий ему конец.
+    /// @param rFrameData константная ссылка на данные текущего кадра.
+    /// @return true в случае успеха; в противном случае false.
+    MAPI bool Begin(const FrameData& rFrameData);
+
+    /// @brief Завершает рендеринг.
+    /// @param rFrameData константная ссылка на данные текущего кадра.
+    /// @return True в случае успеха; в противном случае false.
+    MAPI bool End(FrameData& rFrameData);
+
+    /// @brief Выполняет процедуры, необходимые для отрисовки кадра, например, презентации. Вызывается только после успешного возврата Begin.
+    /// @param rFrameData константная ссылка на данные текущего кадра.
+    /// @return True в случае успеха; в противном случае false.
+    MAPI bool Present(const FrameData& rFrameData);
 
     /// @brief Функция/метод предоставляющая доступ к самому отрисовщику.
     /// @return указатель на отрисовщик вулкан.
@@ -133,7 +147,7 @@ namespace RenderingSystem
 
     /// @brief Устанавливает область просмотра рендерера на заданный прямоугольник. Должно быть сделано в проходе рендеринга.
     /// @param rect Прямоугольник области просмотра, который необходимо установить.
-    MAPI void ViewportSet(const FVec4& rect);
+    MAPI void ViewportSet(const Rect2D& rect);
 
     /// @brief Сбрасывает область просмотра на значение по умолчанию, которое соответствует окну приложения.
     /// Должно быть сделано в проходе рендеринга.
@@ -141,7 +155,7 @@ namespace RenderingSystem
 
     /// @brief Устанавливает ножницы рендерера на заданный прямоугольник. Должно быть сделано в проходе рендеринга.
     /// @param rect Прямоугольник ножниц, который необходимо установить.
-    MAPI void ScissorSet(const FVec4& rect);
+    MAPI void ScissorSet(const Rect2D& rect);
 
     /// @brief Сбрасывает ножницы на значение по умолчанию, которое соответствует окну приложения.
     /// Должно быть сделано в проходе рендеринга.
@@ -382,5 +396,13 @@ namespace RenderingSystem
     /// @param BindOnly только связывает буфер, но не вызывает draw.
     /// @return True в случае успеха; в противном случае false.
     MAPI bool RenderBufferDraw(RenderBuffer& buffer, u64 offset, u32 ElementCount, bool BindOnly);
+
+    /// @brief 
+    /// @return ссылку на текущую активную область просмотра
+    MAPI Viewport* GetActiveViewport();
+
+    /// @brief Устанавливает текущую активную область просмотра.
+    /// @param viewvport ccskrf на область просмотра, которую необходимо установить.
+    MAPI void SetActiveViewport(Viewport* viewvport);
 };
 

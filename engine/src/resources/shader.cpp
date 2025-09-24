@@ -28,6 +28,7 @@ constexpr Shader::Shader()
     PushConstantRanges(), 
     AttributeStride(), 
     RenderFrameNumber(),
+    DrawIndex(),
     ShaderData(nullptr) 
 {}
 
@@ -58,6 +59,7 @@ Shader::Shader(u32 id, ShaderConfig &config)
     PushConstantRanges(), 
     AttributeStride(), 
     RenderFrameNumber(INVALID::U64ID),
+    DrawIndex(),
     ShaderData(nullptr) {}
 
 Shader::~Shader()

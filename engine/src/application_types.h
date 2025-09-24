@@ -35,26 +35,39 @@ struct Application
     bool (*Initialize)(Application& app) = nullptr;
 
     /// @brief Функция обновления игры
-    /// @param DeltaTime Время в секундах с момента последнего кадра.
+    /// @param app ссылка на экземпляр приложения.
+    /// @param rFrameData ссылка на данные текущего кадра.
     /// @return true в случае успеха; в противном случае false.
     bool (*Update)(Application& app, const FrameData& rFrameData) = nullptr;
 
-    /// @brief Функция рендеринга игры
+    /// @brief Указатель функции на функцию PrepareRenderPacket приложения.
+    /// @param app ссылка на экземпляр приложения.
     /// @param packet ссылка на пакет, который будет заполнен игрой.
-    /// @param DeltaTime Время в секундах с момента последнего кадра.
+    /// @param rFrameData ссылка на данные текущего кадра.
+    /// @return true в случае успеха; в противном случае false.
+    bool (*PrepareRenderPacket)(Application* app, RenderPacket& packet, FrameData& rFrameData);
+
+    /// @brief Функция рендеринга игры
+    /// @param app ссылка на экземпляр приложения.
+    /// @param packet ссылка на пакет, который будет заполнен игрой.
+    /// @param rFrameData ссылка на данные текущего кадра.
     /// @return true в случае успеха; в противном случае false.
     bool (*Render)(Application& app, RenderPacket& packet, FrameData& rFrameData) = nullptr;
 
     /// @brief Функция изменения размера окна игры
+    /// @param app ссылка на экземпляр приложения.
     /// @param Width ширина окна в пикселях.
     /// @param Height высота окна в пикселях.
     void (*OnResize)(Application& app, u32 Width, u32 Height) = nullptr;
 
     /// @brief Завершает игру, вызывая высвобождение ресурсов.
+    /// @param app ссылка на экземпляр приложения.
     void (*Shutdown)(Application& app) = nullptr;
 
+    /// @param app ссылка на экземпляр приложения.
     void (*LibOnLoad)(Application& app) = nullptr;
 
+    /// @param app ссылка на экземпляр приложения.
     void (*LibOnUnload)(Application& app) = nullptr;
 
     /// @brief Представляет различные этапы жизненного цикла приложения.

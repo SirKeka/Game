@@ -4,7 +4,7 @@
 #include "core/engine.h"
 #include "core/event.h"
 #include "core/memory_system.h"
-#include "core/mvar.hpp"
+#include "core/mvar.h"
 #include "core/input.h"
 #include "platform/platform.hpp"
 

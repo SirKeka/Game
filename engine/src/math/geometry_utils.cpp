@@ -369,12 +369,12 @@ namespace Math
 
 } // namespace Math
 
-constexpr Ray::Ray(const FVec2 &ScreenPosition, const FVec2 &ViewportSize, const FVec3 &origin, const Matrix4D &view, const Matrix4D &projection) : origin(origin)
+constexpr Ray::Ray(const FVec2 &ScreenPosition, const Rect2D &ViewportRect, const FVec3 &origin, const Matrix4D &view, const Matrix4D &projection) : origin(origin)
 {
     // Получить нормализованные координаты устройства (т.е. диапазон -1:1).
     FVec2 RayNDC {
-        (2.F * ScreenPosition.x) / ViewportSize.x - 1.F,
-        1.F - (2.F * ScreenPosition.y) / ViewportSize.y,
+        (2.F * (ScreenPosition.x - ViewportRect.x)) / ViewportRect.width - 1.F,
+        1.F - (2.F * (ScreenPosition.y - ViewportRect.y)) / ViewportRect.height,
         // 1.F
     };
 

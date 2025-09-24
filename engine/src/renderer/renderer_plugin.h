@@ -18,7 +18,9 @@ struct RenderpassConfig;
 class MAPI RendererPlugin
 {
 public:
-    u64 FrameNumber{};
+    u64 FrameNumber{}; // Текущий номер кадра.
+
+    u8 DrawIndex;      // Индекс отрисовки текущего кадра. Обычно совпадает с количеством отправок в очередь на кадр.
 
     virtual ~RendererPlugin() = default;
 
@@ -33,16 +35,26 @@ public:
     /// Конечный кадр не нужно (и не следует) вызывать, если это так.
     /// @param rFrameData константная ссылка на данные текущего кадра.
     /// @return true в случае успеха; в противном случае false.
-    virtual bool BeginFrame(const FrameData& rFrameData) = 0;
+    virtual bool PrepareFrame(const FrameData& rFrameData) = 0;
 
-    /// @brief Выполняет процедуры, необходимые для рисования кадра. Следует вызывать только после успешного возврата BeginFrame.
+    /// @brief Начинает рендеринг. В каждом кадре должен быть хотя бы один такой элемент и соответствующий ему конец.
+    /// @param rFrameData константная ссылка на данные текущего кадра.
+    /// @return true в случае успеха; в противном случае false.
+    virtual bool Begin(const FrameData& rFrameData) = 0;
+
+    /// @brief Завершает рендеринг.
     /// @param rFrameData константная ссылка на данные текущего кадра.
     /// @return True в случае успеха; в противном случае false.
-    virtual bool EndFrame(const FrameData& rFrameData) = 0;
+    virtual bool End(const FrameData& rFrameData) = 0;
+
+    /// @brief Выполняет процедуры, необходимые для отрисовки кадра, например, презентации. Вызывается только после успешного возврата Begin.
+    /// @param rFrameData константная ссылка на данные текущего кадра.
+    /// @return True в случае успеха; в противном случае false.
+    virtual bool Present(const FrameData& rFrameData) = 0;
 
     /// @brief Устанавливает область просмотра рендерера на заданный прямоугольник. Должно быть сделано в проходе рендеринга.
     /// @param rect Прямоугольник области просмотра, который необходимо установить.
-    virtual void ViewportSet(const FVec4& rect) = 0;
+    virtual void SetViewport(const Rect2D& rect) = 0;
 
     /// @brief Сбрасывает область просмотра на значение по умолчанию, которое соответствует окну приложения.
     /// Должно быть сделано в проходе рендеринга.
@@ -50,7 +62,7 @@ public:
 
     /// @brief Устанавливает ножницы рендерера на заданный прямоугольник. Должно быть сделано в проходе рендеринга.
     /// @param rect Прямоугольник ножниц, который необходимо установить.
-    virtual void ScissorSet(const FVec4& rect) = 0;
+    virtual void SetScissor(const Rect2D& rect) = 0;
 
     /// @brief Сбрасывает ножницы на значение по умолчанию, которое соответствует окну приложения.
     /// Должно быть сделано в проходе рендеринга.

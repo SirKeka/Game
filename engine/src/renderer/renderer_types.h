@@ -96,3 +96,8 @@ enum class RendererWinding
     /// @brief Обход вершин против часовой стрелки.
     Clockwise = 1
 };
+
+enum class RendererProjectionMatrixType {
+    Perspective = 0x0,
+    Orthographic = 0x1
+};

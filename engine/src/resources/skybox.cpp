@@ -48,7 +48,7 @@ bool Skybox::Load()
         return false;
     }
 
-    g = GeometrySystem::Acquire(config.GConfig, true);
+    geometry = GeometrySystem::Acquire(config.GConfig, true);
     RenderFrameNumber= INVALID::U64ID;
 
     auto SkyboxShader = ShaderSystem::GetShader("Shader.Builtin.Skybox");  // ЗАДАЧА: разрешить настраиваемый шейдер.
@@ -82,7 +82,7 @@ bool Skybox::Unload()
         config.CubemapName = nullptr;
     }
 
-    GeometrySystem::Release(g);
+    GeometrySystem::Release(geometry);
 
     return true;
 }

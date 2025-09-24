@@ -1,7 +1,9 @@
 #include "render_view_editor_world.h"
+#include "core/frame_data.h"
 #include "renderer/camera.h"
 #include "renderer/render_view.h"
 #include "renderer/renderpass.h"
+#include "renderer/viewport.h"
 #include "resources/shader.h"
 #include "systems/camera_system.hpp"
 #include "systems/render_view_system.h"
@@ -16,17 +18,11 @@ struct DebugColourShaderLocations {
 
 struct sRenderViewEditorWorld {
     Shader* shader;
-    f32 fov;
-    f32 NearClip;
-    f32 FarClip;
-    Matrix4D ProjectionMatrix;
     Camera* WorldCamera;
 
     DebugColourShaderLocations DebugLocations;
 
-    constexpr sRenderViewEditorWorld() : shader(nullptr), 
-    fov(Math::DegToRad(45.F)), NearClip(0.1F), FarClip(4000.F), // Получить либо переопределение пользовательского шейдера, либо заданное значение по умолчанию. ЗАДАЧА: Установить из конфигурации.
-    ProjectionMatrix(Matrix4D::MakeFrustumProjection(fov, 1280 / 720.F, NearClip, FarClip)), WorldCamera(nullptr), DebugLocations() {}
+    constexpr sRenderViewEditorWorld() : shader(nullptr), WorldCamera(nullptr), DebugLocations() {}
 
     void *operator new(u64 size) {
         return MemorySystem::Allocate(size, Memory::Renderer);
@@ -104,23 +100,12 @@ void RenderViewEditorWorld::Resize(RenderView* self, u32 width, u32 height)
 {
     // Проверьте, отличается ли значение. Если да, пересоздайте проекционную матрицу.
     if (width != self->width || height != self->height) {
-        auto data = (sRenderViewEditorWorld*)self->data;
-
         self->width = width;
         self->height = height;
-        f32 aspect = (f32)self->width / self->height;
-        data->ProjectionMatrix = Matrix4D::MakeFrustumProjection(data->fov, aspect, data->NearClip, data->FarClip);
-
-        for (u32 i = 0; i < self->RenderpassCount; ++i) {
-            self->passes[i].RenderArea.x = 0;
-            self->passes[i].RenderArea.y = 0;
-            self->passes[i].RenderArea.z = width;
-            self->passes[i].RenderArea.w = height;
-        }
     }
 }
 
-bool RenderViewEditorWorld::BuildPacket(RenderView *self, LinearAllocator &FrameAllocator, void *data, RenderViewPacket &OutPacket)
+bool RenderViewEditorWorld::BuildPacket(RenderView *self, FrameData& pFrameData, Viewport& viewport, void *data, RenderViewPacket &OutPacket)
 {
     if (!self || !data) {
         MWARN("RenderViewEditorWorld::BuildPacket требует корректного указателя на вид, пакет и данные.");
@@ -130,7 +115,9 @@ bool RenderViewEditorWorld::BuildPacket(RenderView *self, LinearAllocator &Frame
     // ЗАДАЧА: использовать распределитель кадров.
 
     auto rvewData = (sRenderViewEditorWorld*)self->data;
-    OutPacket.ProjectionMatrix = rvewData->ProjectionMatrix;
+    OutPacket.view = self;
+    OutPacket.viewport = &viewport;
+    OutPacket.ProjectionMatrix = viewport.projection;
     OutPacket.ViewMatrix = rvewData->WorldCamera->GetView();
 
     auto PacketData = (EditorWorldPacketData*)data;
@@ -168,14 +155,17 @@ bool RenderViewEditorWorld::BuildPacket(RenderView *self, LinearAllocator &Frame
     return true;
 }
 
-bool RenderViewEditorWorld::Render(const RenderView *self, const RenderViewPacket &packet, u64 FrameNumber, u64 RenderTargetIndex, const FrameData &pFrameData)
+bool RenderViewEditorWorld::Render(const RenderView *self, const RenderViewPacket &packet, const FrameData &rFrameData)
 {
     auto data = (sRenderViewEditorWorld*)self->data;
     // u32 ShaderID = data->shader->id;
 
+    // Привязываем область просмотра
+    RenderingSystem::SetActiveViewport(packet.viewport);
+
     for (u32 p = 0; p < self->RenderpassCount; ++p) {
         auto& pass = self->passes[p];
-        if (!RenderingSystem::RenderpassBegin(&pass, pass.targets[RenderTargetIndex])) {
+        if (!RenderingSystem::RenderpassBegin(&pass, pass.targets[rFrameData.RenderTargetIndex])) {
             MERROR("Не удалось запустить проход RenderViewEditorWorld::Render с индексом %u.", p);
             return false;
         }
@@ -189,12 +179,16 @@ bool RenderViewEditorWorld::Render(const RenderView *self, const RenderViewPacke
 
         shader->BindGlobals();
         // Globals
-        bool NeedsUpdate = FrameNumber != shader->RenderFrameNumber;
+        bool NeedsUpdate = rFrameData.RendererFrameNumber != shader->RenderFrameNumber || shader->DrawIndex != rFrameData.DrawIndex;
         if (NeedsUpdate) {
             ShaderSystem::UniformSet(data->DebugLocations.projection, &packet.ProjectionMatrix);
             ShaderSystem::UniformSet(data->DebugLocations.view, &packet.ViewMatrix);
         }
         ShaderSystem::ApplyGlobal(NeedsUpdate);
+
+        // Синхронизировать номер кадра и индекс отрисовки.
+        shader->RenderFrameNumber = rFrameData.RendererFrameNumber;
+        shader->DrawIndex = rFrameData.DrawIndex;
 
         u32 GeometryCount = packet.geometries.Length();
         for (u32 i = 0; i < GeometryCount; ++i) {

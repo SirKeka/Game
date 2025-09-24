@@ -3,3 +3,4 @@ obj/
 *.spv
 
 engine/src/version.h
+compile_flags.txt

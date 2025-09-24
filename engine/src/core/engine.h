@@ -7,7 +7,7 @@
 #include "systems/font_system.h"
 
 #include "platform/platform.hpp"
-#include "renderer/render_interface.h"
+#include "renderer/renderer_plugin.h"
 
 #include "frame_data.h"
 
@@ -54,7 +54,7 @@ class Engine
 
     LinearAllocator FrameAllocator; // Распределитель, используемый для покадрового распределения, который сбрасывается каждый кадр.
 
-    FrameData pFrameData;
+    FrameData frameData;
 
     MAPI static Engine* pEngine; //ЗАДАЧА: убрать MAPI 
 

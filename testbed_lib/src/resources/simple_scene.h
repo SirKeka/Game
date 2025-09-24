@@ -96,11 +96,11 @@ struct MAPI SimpleScene {
     /// @brief Заполняет указанный пакет рендеринга данными из предоставленной сцены.
     /// @param scene ссылка на сцену для обновления.
     /// @param CurrentCamera текущая камера для использования при рендеринге сцены.
-    /// @param aspect Соотношение сторон.
+    /// @param viewport указатель на область просмотра, которая будет использоваться при заполнении пакетов рендеринга.
     /// @param rFrameData константная ссылка на данные текущего кадра.
     /// @param packet ссылка на пакет для заполнения.
     /// @return True в случае успеха; в противном случае false.
-    bool PopulateRenderPacket(Camera* CurrentCamera, f32 aspect, FrameData& rFrameData, RenderPacket& packet);
+    bool PopulateRenderPacket(Camera* CurrentCamera, Viewport& viewport, FrameData& rFrameData, RenderPacket& packet);
 
     /// @brief Добавляет направленый источник освещения на сцену
     /// @param name название направленного источника света

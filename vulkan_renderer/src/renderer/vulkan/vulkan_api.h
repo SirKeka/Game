@@ -30,8 +30,8 @@ public:
     u32 FramebufferHeight{};                            // Текущая высота фреймбуфера.
     u64 FramebufferSizeGeneration{};                    // Текущее поколение размера кадрового буфера. Если он не соответствует FramebufferSizeLastGeneration, необходимо создать новый.
     u64 FramebufferSizeLastGeneration{};                // Генерация кадрового буфера при его последнем создании. При обновлении установите значение FramebufferSizeGeneration.
-    FVec4 ViewportRect;                                 // Прямоугольник области просмотра.
-    FVec4 ScissorRect;                                  // Прямоугольник ножниц.
+    Rect2D ViewportRect;                                // Прямоугольник области просмотра.
+    Rect2D ScissorRect;                                 // Прямоугольник ножниц.
     VkInstance instance;                                // Дескриптор внутреннего экземпляра Vulkan.
     VkAllocationCallbacks* allocator{nullptr};          // Внутренний распределитель Vulkan.
     VkSurfaceKHR surface;                               // Внутренняя поверхность Vulkan, на которой будет отображаться окно.
@@ -78,11 +78,13 @@ public:
     bool Initialize(const RenderingConfig& config, u8& OutWindowRenderTargetCount)        override;
     void ShutDown()                                                                       override;
     void Resized(u16 width, u16 height)                                                   override;
-    bool BeginFrame(const FrameData& rFrameData)                                          override;
-    bool EndFrame(const FrameData& rFrameData)                                            override;
-    void ViewportSet(const FVec4& rect)                                                   override;
+    bool PrepareFrame(const FrameData& rFrameDat)                                         override;
+    bool Begin(const FrameData& rFrameData)                                               override;
+    bool End(const FrameData& rFrameData)                                                 override;
+    bool Present(const FrameData& rFrameData)                                             override;
+    void SetViewport(const Rect2D& rect)                                                  override;
     void ViewportReset()                                                                  override;
-    void ScissorSet(const FVec4& rect)                                                    override;
+    void SetScissor(const Rect2D& rect)                                                   override;
     void ScissorReset()                                                                   override;
     void SetWinding(RendererWinding winding)                                              override;
     bool RenderpassBegin(Renderpass* pass, RenderTarget& target)                          override;

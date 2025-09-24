@@ -2,6 +2,7 @@
 #include "memory/linear_allocator.hpp"
 #include "core/uuid.hpp"
 #include "renderer/renderpass.h"
+#include "renderer/viewport.h"
 #include "resources/ui_text.h"
 #include "systems/camera_system.hpp"
 #include "systems/resource_system.h"
@@ -44,10 +45,6 @@ bool RenderViewPick::OnRegistered(RenderView* self)
         UiShaderInfo.ViewLocation       = ShaderSystem::UniformIndex(UiShaderInfo.s, "view");
 
         // Свойства UI по умолчанию
-        UiShaderInfo.NearClip = -100.F;
-        UiShaderInfo.FarClip = 100.F;
-        UiShaderInfo.fov = 0;
-        UiShaderInfo.projection = Matrix4D::MakeOrthographicProjection(0.F, 1280.F, 720.F, 0.F, UiShaderInfo.NearClip, UiShaderInfo.FarClip);
         UiShaderInfo.view = Matrix4D::MakeIdentity();
 
         // Встроенный шейдер World Pick.
@@ -71,10 +68,6 @@ bool RenderViewPick::OnRegistered(RenderView* self)
         WorldShaderInfo.ViewLocation       = ShaderSystem::UniformIndex(WorldShaderInfo.s, "view");
 
         // Свойства мира по умолчанию
-        WorldShaderInfo.NearClip = 0.1F;
-        WorldShaderInfo.FarClip = 4000.F;
-        WorldShaderInfo.fov = Math::DegToRad(45.0f);
-        WorldShaderInfo.projection = Matrix4D::MakeFrustumProjection(WorldShaderInfo.fov, 1280 / 720.F, WorldShaderInfo.NearClip, WorldShaderInfo.FarClip);
         WorldShaderInfo.view = Matrix4D::MakeIdentity();
 
         // Встроенный шейдер Terrain Pick.
@@ -98,10 +91,6 @@ bool RenderViewPick::OnRegistered(RenderView* self)
         TerrainShaderInfo.ViewLocation       = ShaderSystem::UniformIndex(TerrainShaderInfo.s, "view");
 
         // Свойства ландшафта по умолчанию.
-        TerrainShaderInfo.NearClip = 0.1F;
-        TerrainShaderInfo.FarClip = 4000.F;
-        TerrainShaderInfo.fov = Math::DegToRad(45.F);
-        TerrainShaderInfo.projection = Matrix4D::MakeFrustumProjection(TerrainShaderInfo.fov, 1280 / 720.F, TerrainShaderInfo.NearClip, TerrainShaderInfo.FarClip);
         TerrainShaderInfo.view = Matrix4D::MakeIdentity();
 
         // Регистрация для события перемещения мыши.
@@ -138,33 +127,13 @@ void RenderViewPick::Destroy(RenderView *self)
 
 void RenderViewPick::Resize(RenderView* self, u32 width, u32 height)
 {
-    auto ViewPickData = static_cast<RenderViewPick*>(self->data);
-
-    self->width = width;
-    self->height = height;
-
-    // Пользовательский интерфейс
-    auto& UiShaderInfo = ViewPickData->UiShaderInfo;
-    UiShaderInfo.projection = Matrix4D::MakeOrthographicProjection(0.F, (f32)width, (f32)height, 0.F, UiShaderInfo.NearClip, UiShaderInfo.FarClip);
-
-    // Мир
-    auto& WorldShaderInfo = ViewPickData->WorldShaderInfo;
-    f32 aspect = (f32)self->width / self->height;
-    WorldShaderInfo.projection = Matrix4D::MakeFrustumProjection(WorldShaderInfo.fov, aspect, WorldShaderInfo.NearClip, WorldShaderInfo.FarClip);
-
-    // Ландшафт
-    auto& TerrainShaderInfo = ViewPickData->TerrainShaderInfo;
-    TerrainShaderInfo.projection = Matrix4D::MakeFrustumProjection(TerrainShaderInfo.fov, aspect, TerrainShaderInfo.NearClip, TerrainShaderInfo.FarClip);
-
-    for (u32 i = 0; i < self->RenderpassCount; ++i) {
-        self->passes[i].RenderArea.x = 0;
-        self->passes[i].RenderArea.y = 0;
-        self->passes[i].RenderArea.z = width;
-        self->passes[i].RenderArea.w = height;
+    if (self) {
+        self->width = width;
+        self->height = height;
     }
 }
 
-bool RenderViewPick::BuildPacket(RenderView* self, LinearAllocator& FrameAllocator, void *data, RenderViewPacket &OutPacket)
+bool RenderViewPick::BuildPacket(RenderView* self, FrameData& rFrameData, Viewport& viewport, void *data, RenderViewPacket &OutPacket)
 {
     if (!data) {
         MWARN("RenderViewPick::BuildPacket требует действительный указатель на вид, пакет и данные.");
@@ -176,6 +145,7 @@ bool RenderViewPick::BuildPacket(RenderView* self, LinearAllocator& FrameAllocat
 
     //OutPacket.geometries = darray_create(geometry_render_data);
     OutPacket.view = self;
+    OutPacket.viewport = &viewport;
 
     // ЗАДАЧА: Получить активную камеру.
     auto WorldCamera = CameraSystem::Instance()->GetDefault();
@@ -184,7 +154,7 @@ bool RenderViewPick::BuildPacket(RenderView* self, LinearAllocator& FrameAllocat
 
     // Установить данные пакета выбора на расширенные данные.
     PacketData->UiGeometryCount = 0;
-    OutPacket.ExtendedData = FrameAllocator.Allocate(sizeof(RenderViewPick::PacketData));
+    OutPacket.ExtendedData = rFrameData.FrameAllocator->Allocate(sizeof(RenderViewPick::PacketData));
 
     auto& WorldMeshData = *PacketData->WorldMeshData;
     const u64& WorldGeometryCount = WorldMeshData.Length();
@@ -254,14 +224,16 @@ bool RenderViewPick::BuildPacket(RenderView* self, LinearAllocator& FrameAllocat
     return true;
 }
 
-bool RenderViewPick::Render(const RenderView* self, const RenderViewPacket &packet, u64 FrameNumber, u64 RenderTargetIndex, const FrameData& rFrameData)
+bool RenderViewPick::Render(const RenderView* self, const RenderViewPacket &packet, const FrameData& rFrameData)
 {
     auto PickData = reinterpret_cast<RenderViewPick*>(self->data);
+
+    RenderingSystem::SetActiveViewport(packet.viewport);
     
     u32 p = 0;
     auto* pass = &self->passes[p];  // Первый проход отрисовщика
 
-    if (RenderTargetIndex == 0) {
+    if (rFrameData.RenderTargetIndex == 0) {
         auto pData = (PacketData*)packet.ExtendedData;
         if (!pData) {
             return true;
@@ -273,7 +245,7 @@ bool RenderViewPick::Render(const RenderView* self, const RenderViewPacket &pack
             PickData->InstanceUpdate[i] = false;
         }
 
-        if (!RenderingSystem::RenderpassBegin(pass, pass->targets[RenderTargetIndex])) {
+        if (!RenderingSystem::RenderpassBegin(pass, pass->targets[rFrameData.RenderTargetIndex])) {
             MERROR("RenderViewPick::Render Не удалось запустить индекс прохода рендеринга %u.", p);
             return false;
         }
@@ -288,7 +260,8 @@ bool RenderViewPick::Render(const RenderView* self, const RenderViewPacket &pack
         }
 
         // Применить глобальные переменные
-        if (!ShaderSystem::UniformSet(WorldShaderInfo.ProjectionLocation, &WorldShaderInfo.projection)) {
+        auto* projection = &packet.viewport->projection;
+        if (!ShaderSystem::UniformSet(WorldShaderInfo.ProjectionLocation, projection)) {
             MERROR("Не удалось применить проекционную матрицу");
         }
 
@@ -338,7 +311,7 @@ bool RenderViewPick::Render(const RenderView* self, const RenderViewPacket &pack
         }
 
         //Применить глобальные переменные
-        if (!ShaderSystem::UniformSet(TerrainShaderInfo.ProjectionLocation, &TerrainShaderInfo.projection)) {
+        if (!ShaderSystem::UniformSet(TerrainShaderInfo.ProjectionLocation, projection)) {
             MERROR("Не удалось применить матрицу проекции");
         }
         if (!ShaderSystem::UniformSet(TerrainShaderInfo.ViewLocation, &TerrainShaderInfo.view)) {
@@ -385,7 +358,7 @@ bool RenderViewPick::Render(const RenderView* self, const RenderViewPacket &pack
         p++;
         pass = &self->passes[p];  // Второй проход
 
-        if (!RenderingSystem::RenderpassBegin(pass, pass->targets[RenderTargetIndex])) {
+        if (!RenderingSystem::RenderpassBegin(pass, pass->targets[rFrameData.RenderTargetIndex])) {
             MERROR("RenderViewPick::Render индекс прохода %u не удалось запустить.", p);
             return false;
         }
@@ -398,9 +371,15 @@ bool RenderViewPick::Render(const RenderView* self, const RenderViewPacket &pack
         }
 
         // Применить глобальные переменные
-        if (!ShaderSystem::UniformSet(UiShaderInfo.ProjectionLocation, &UiShaderInfo.projection)) {
-            MERROR("Не удалось применить проекционную матрицу");
-        }
+
+        // ЗАДАЧА: Это не будет работать как единое представление, поскольку приложению требуется возможность устанавливать область просмотра между ними. В любом случае, пользовательский интерфейс и мир должны обрабатываться отдельно.
+        // При попытке использовать это одновременно возникает ошибка.
+        MFATAL("Невозможно использовать проход выбора без предварительного разделения на пользовательский интерфейс/мир из-за изменений области просмотра.");
+        // ЗАДАЧА: Получить проекцию из текущей области просмотра после разделения.
+        // if (!ShaderSystem::UniformSet(UiShaderInfo.ProjectionLocation, projection)) {
+        //     MERROR("Не удалось применить проекционную матрицу");
+        // }
+        
         if (!ShaderSystem::UniformSet(UiShaderInfo.ViewLocation, &UiShaderInfo.view)) {
             MERROR("Не удалось применить матрицу вида");
         }
@@ -527,8 +506,8 @@ bool RenderViewPick::RegenerateAttachmentTarget(RenderView* self, u32 PassIndex,
     // Сгенерируйте UUID, который будет использоваться в качестве имени текстуры.
     uuid TextureNameUuid = uuid::Generate();
 
-    u32 width = self->passes[PassIndex].RenderArea.z;
-    u32 height = self->passes[PassIndex].RenderArea.w;
+    u32 width = self->width;
+    u32 height = self->height;
     bool HasTransparency = false;  // ЗАДАЧА: настраиваемый
 
     attachment->texture->id = INVALID::ID;

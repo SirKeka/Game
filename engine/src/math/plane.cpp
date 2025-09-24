@@ -2,10 +2,11 @@
 
 void Plane::Create(const FVec3 &p1, const FVec3 &norm)
 {
-    x = norm.x;
-    y = norm.y;
-    z = norm.z;
-    distance = Dot(norm, p1);
+    auto n = Normalize(norm);
+    x = n.x;
+    y = n.y;
+    z = n.z;
+    distance = Dot(n, p1);
 }
 
 f32 Plane::SignedDistance(const FVec3& position)

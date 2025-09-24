@@ -73,12 +73,13 @@ namespace MaterialSystem
     /// @brief Применяет данные глобального уровня для идентификатора шейдера материала.
     /// @param ShaderID идентификатор шейдера, к которому применяются глобальные переменные.
     /// @param RenderFrameNumber текущий номер кадра рендерера.
+    /// @param RendererDrawIndex текущий индекс отрисовки рендерера.
     /// @param projection константная ссылка на матрицу проекции.
     /// @param view константная ссылка на матрицу представления.
     /// @param AmbientColour окружающий цвет сцены.
     /// @param ViewPosition позиция камеры.
     /// @return true в случае успеха иначе false.
-    MAPI bool ApplyGlobal(u32 ShaderID, u64 RenderFrameNumber, const Matrix4D& projection, const Matrix4D& view, const FVec4& AmbientColour = FVec4(), const FVec3& ViewPosition = FVec3(), u32 RenderMode = 0);
+    MAPI bool ApplyGlobal(u32 ShaderID, u64 RenderFrameNumber, u8 RendererDrawIndex, const Matrix4D& projection, const Matrix4D& view, const FVec4& AmbientColour = FVec4(), const FVec3& ViewPosition = FVec3(), u32 RenderMode = 0);
     
     /// @brief Применяет данные материала на уровне экземпляра для данного материала.
     /// @param material указатель на материал, который будет применен.

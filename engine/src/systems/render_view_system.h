@@ -13,6 +13,7 @@ struct FrameData;
 struct RenderView;
 struct LinearAllocator;
 struct RenderViewPacket;
+struct Viewport;
 
 /// @brief Конфигурация для системы рендеринга представлений.
 struct RenderViewSystemConfig
@@ -47,7 +48,7 @@ namespace RenderViewSystem
     /// @param data данные свободной формы, используемые для создания пакета.
     /// @param OutPacket указатель для хранения сгенерированного пакета.
     /// @return true в случае успеха; в противном случае false.
-    MAPI bool BuildPacket(RenderView* view, LinearAllocator& FrameAllocator, void* data, RenderViewPacket& OutPacket);
+    MAPI bool BuildPacket(RenderView* view, FrameData& rFrameData, Viewport& viewport, void* data, RenderViewPacket& OutPacket);
 
     /// @brief Использует заданное представление и пакет для визуализации содержимого.
     /// @param view указатель на представление для использования.

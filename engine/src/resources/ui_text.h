@@ -20,6 +20,7 @@
         Transform transform;
         u32 InstanceID;
         u64 RenderFrameNumber;
+        u8 DrawIndex;
 
         // constexpr Text() : UniqueID(), type(), data(), VertexBuffer(), IndexBuffer(), text(), transform(), InstanceID(INVALID::ID), RenderFrameNumber(INVALID::U64ID) {}
         ~Text();

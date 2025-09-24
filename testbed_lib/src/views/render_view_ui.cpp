@@ -2,6 +2,7 @@
 #include "memory/linear_allocator.hpp"
 #include "systems/shader_system.h"
 #include "renderer/renderpass.h"
+#include "renderer/viewport.h"
 #include "resources/font_resource.hpp"
 #include "resources/mesh.h"
 #include "systems/material_system.h"
@@ -57,22 +58,15 @@ void RenderViewUI::Destroy(RenderView *self)
 void RenderViewUI::Resize(RenderView* self, u32 width, u32 height)
 {
     if (self) {
-        auto UiData = reinterpret_cast<RenderViewUI*>(self->data);
         // Проверьте, отличается ли. Если да, пересоздайте матрицу проекции.
         if (width != self->width || height != self->height) {
-
             self->width = width;
             self->height = height;
-            UiData->ProjectionMatrix = Matrix4D::MakeOrthographicProjection(0.0f, (f32)self->width, (f32)self->height, 0.0f, UiData->NearClip, UiData->FarClip);
-
-            for (u32 i = 0; i < self->RenderpassCount; ++i) {
-                self->passes[i].RenderArea = FVec4(0, 0, width, height);
-            }
         }
     }
 }
 
-bool RenderViewUI::BuildPacket(RenderView* self, LinearAllocator& FrameAllocator, void *data, RenderViewPacket &OutPacket)
+bool RenderViewUI::BuildPacket(RenderView* self, FrameData& rFrameData, Viewport& viewport, void* data, RenderViewPacket& OutPacket)
 {
     if (!data) {
         MWARN("RenderViewUI::BuildPacket требует действительный указатель на представление, пакет и данные.");
@@ -84,13 +78,14 @@ bool RenderViewUI::BuildPacket(RenderView* self, LinearAllocator& FrameAllocator
         auto PacketData = reinterpret_cast<UiPacketData*>(data);
 
         OutPacket.view = self;
+        OutPacket.viewport = &viewport;
 
         // Установить матрицы и т. д.
-        OutPacket.ProjectionMatrix = RenderViewUiData->ProjectionMatrix;
+        OutPacket.ProjectionMatrix = viewport.projection;
         OutPacket.ViewMatrix = RenderViewUiData->ViewMatrix;
 
         // ЗАДАЧА: временно установить расширенные данные для тестовых текстовых объектов на данный момент.
-        OutPacket.ExtendedData = FrameAllocator.Allocate(sizeof(UiPacketData));
+        OutPacket.ExtendedData = rFrameData.FrameAllocator->Allocate(sizeof(UiPacketData));
         MemorySystem::CopyMem(OutPacket.ExtendedData, PacketData, sizeof(UiPacketData));
 
         // Получить все геометрии из текущей сцены.
@@ -111,15 +106,17 @@ bool RenderViewUI::BuildPacket(RenderView* self, LinearAllocator& FrameAllocator
     return false;
 }
 
-bool RenderViewUI::Render(const RenderView* self, const RenderViewPacket &packet, u64 FrameNumber, u64 RenderTargetIndex, const FrameData& rFrameData)
+bool RenderViewUI::Render(const RenderView* self, const RenderViewPacket &packet, const FrameData& rFrameData)
 {
     if (self) {
         auto data = reinterpret_cast<RenderViewUI*>(self->data);
 
         const auto& ShaderID = data->shader->id;
+        // Bind the viewport
+        RenderingSystem::SetActiveViewport(packet.viewport);
         for (u32 p = 0; p < self->RenderpassCount; ++p) {
             auto pass = &self->passes[p];
-            if (!RenderingSystem::RenderpassBegin(pass, pass->targets[RenderTargetIndex])) {
+            if (!RenderingSystem::RenderpassBegin(pass, pass->targets[rFrameData.RenderTargetIndex])) {
                 MERROR("RenderViewUI::Render pass index %u не удалось запустить.", p);
                 return false;
             }
@@ -130,7 +127,7 @@ bool RenderViewUI::Render(const RenderView* self, const RenderViewPacket &packet
             }
 
             // Применить глобальные переменные
-            if (!MaterialSystem::ApplyGlobal(ShaderID, FrameNumber, packet.ProjectionMatrix, packet.ViewMatrix)) {
+            if (!MaterialSystem::ApplyGlobal(ShaderID, rFrameData.RendererFrameNumber, rFrameData.DrawIndex, packet.ProjectionMatrix, packet.ViewMatrix)) {
                 MERROR("Не удалось использовать применение глобальных переменных для шейдера материала. Не удалось отрисовать кадр.");
                 return false;
             }
@@ -150,13 +147,13 @@ bool RenderViewUI::Render(const RenderView* self, const RenderViewPacket &packet
                 // Его все равно нужно привязать в любом случае, 
                 // поэтому результат этой проверки передается на бэкэнд, 
                 // который либо обновляет внутренние привязки шейдера и привязывает их, либо только привязывает их.
-                bool NeedsUpdate = material->RenderFrameNumber != FrameNumber;
+                bool NeedsUpdate = material->RenderFrameNumber != rFrameData.RendererFrameNumber;
                 if (!MaterialSystem::ApplyInstance(material, NeedsUpdate)) {
                     MWARN("Не удалось применить материал '%s'. Пропуск рисования.", material->name);
                     continue;
                 } else {
                     // Синхронизируйте номер кадра.
-                    material->RenderFrameNumber = FrameNumber;
+                    material->RenderFrameNumber = rFrameData.RendererFrameNumber;
                 }
 
                 // Примените локальные
@@ -183,11 +180,11 @@ bool RenderViewUI::Render(const RenderView* self, const RenderViewPacket &packet
                     MERROR("Не удалось применить диффузную цветовую форму растрового шрифта.");
                     return false;
                 }
-                bool NeedsUpdate = text->RenderFrameNumber != FrameNumber;
+                bool NeedsUpdate = text->RenderFrameNumber != rFrameData.RendererFrameNumber;
                 ShaderSystem::ApplyInstance(NeedsUpdate);
 
                 // Синхронизируйте номер кадра.
-                text->RenderFrameNumber = FrameNumber;
+                text->RenderFrameNumber = rFrameData.RendererFrameNumber;
 
                 // Применить локальные переменные
                 Matrix4D model = text->transform.GetWorld();

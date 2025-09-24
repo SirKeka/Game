@@ -145,10 +145,10 @@ RenderView *RenderViewSystem::Get(const char *name)
     return nullptr;
 }
 
-bool RenderViewSystem::BuildPacket(RenderView *view, LinearAllocator& FrameAllocator, void *data, RenderViewPacket &OutPacket)
+bool RenderViewSystem::BuildPacket(RenderView* view, FrameData& rFrameData, Viewport& viewport, void* data,  RenderViewPacket& OutPacket)
 {
     if (view) {
-        return view->BuildPacket(view, FrameAllocator, data, OutPacket);
+        return view->BuildPacket(view, rFrameData, viewport, data, OutPacket);
     }
 
     MERROR("RenderViewSystem::BuildPacket требует действительных указателей на представление и пакет.");
@@ -158,7 +158,7 @@ bool RenderViewSystem::BuildPacket(RenderView *view, LinearAllocator& FrameAlloc
 bool RenderViewSystem::OnRender(RenderView *view, const RenderViewPacket &packet, u64 FrameNumber, u64 RenderTargetIndex, const FrameData& rFramedata)
 {
     if (view) {
-        return view->Render(view, packet, FrameNumber, RenderTargetIndex, rFramedata);
+        return view->Render(view, packet, rFramedata);
     }
 
     MERROR("RenderViewSystem::Render требует действительный указатель на данные.");

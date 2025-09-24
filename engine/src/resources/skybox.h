@@ -13,11 +13,12 @@ struct MAPI Skybox
     } config;
 
     TextureMap cubemap;
-    struct Geometry* g;
+    struct Geometry* geometry;
     u32 InstanceID;
     u64 RenderFrameNumber;  // Синхронизируется с текущим номером кадра рендерера, когда материал был применен к этому кадру.
+    u8 DrawIndex;           // Синхронизируется с текущим индексом отрисовки рендерера, когда материал был применен к этому кадру.
 
-    // constexpr Skybox(): cubemap(), g(), InstanceID(), RenderFrameNumber() {}
+    // constexpr Skybox() = default;
     // ~Skybox();
 
     /// @brief Создает скайбокс

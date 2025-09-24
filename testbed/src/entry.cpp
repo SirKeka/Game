@@ -1,4 +1,4 @@
-#include <entry.hpp>
+#include <entry.h>
 
 #include "platform/platform.hpp"
 
@@ -15,18 +15,27 @@ bool LoadGameLib(Application& app)
     if (!PlatformDynamicLibraryLoadFunction("ApplicationBoot", app.GameLibrary)) {
         return false;
     }
+
     if (!PlatformDynamicLibraryLoadFunction("ApplicationInitialize", app.GameLibrary)) {
         return false;
     }
+
     if (!PlatformDynamicLibraryLoadFunction("ApplicationUpdate", app.GameLibrary)) {
         return false;
     }
+
+    if (!PlatformDynamicLibraryLoadFunction("ApplicationPrepareRenderPacket", app.GameLibrary)) {
+        return false;
+    }
+
     if (!PlatformDynamicLibraryLoadFunction("ApplicationRender", app.GameLibrary)) {
         return false;
     }
+
     if (!PlatformDynamicLibraryLoadFunction("ApplicationOnResize", app.GameLibrary)) {
         return false;
     }
+
     if (!PlatformDynamicLibraryLoadFunction("ApplicationShutdown", app.GameLibrary)) {
         return false;
     }
@@ -43,11 +52,12 @@ bool LoadGameLib(Application& app)
     app.Boot = (bool(*)(Application&))app.GameLibrary.functions[0].pfn;
     app.Initialize = (bool(*)(Application&))app.GameLibrary.functions[1].pfn;
     app.Update = (bool(*)(Application&, const FrameData&))app.GameLibrary.functions[2].pfn;
-    app.Render = (bool(*)(Application&, RenderPacket&, FrameData&))app.GameLibrary.functions[3].pfn;
-    app.OnResize = (void(*)(Application&, u32, u32))app.GameLibrary.functions[4].pfn;
-    app.Shutdown = (void(*)(Application&))app.GameLibrary.functions[5].pfn;
-    app.LibOnLoad = (void(*)(Application&))app.GameLibrary.functions[6].pfn;
-    app.LibOnUnload = (void(*)(Application&))app.GameLibrary.functions[7].pfn;
+    app.PrepareRenderPacket = (bool(*)(Application*, RenderPacket&, FrameData&))app.GameLibrary.functions[3].pfn;
+    app.Render = (bool(*)(Application&, RenderPacket&, FrameData&))app.GameLibrary.functions[4].pfn;
+    app.OnResize = (void(*)(Application&, u32, u32))app.GameLibrary.functions[5].pfn;
+    app.Shutdown = (void(*)(Application&))app.GameLibrary.functions[6].pfn;
+    app.LibOnLoad = (void(*)(Application&))app.GameLibrary.functions[7].pfn;
+    app.LibOnUnload = (void(*)(Application&))app.GameLibrary.functions[8].pfn;
 
     // Вызовите onload.
     app.LibOnLoad(app);
