@@ -129,7 +129,7 @@ void* VulkanAllocReallocation(void* UserData, void* original, size_t size, size_
 #endif
 
         // Копирование поверх исходной памяти.
-        MemorySystem::CopyMem(result, original, size);
+        MemorySystem::CopyMem(result, original, AllocSize);
 #ifdef MVULKAN_ALLOCATOR_TRACE
         MTRACE("Освобождение исходного выровненного блока %p...", original);
 #endif

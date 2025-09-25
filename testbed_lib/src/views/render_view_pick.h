@@ -23,11 +23,7 @@ private:
         u16 ModelLocation;
         u16 ProjectionLocation;
         u16 ViewLocation;
-        Matrix4D projection;
         Matrix4D view;
-        f32 NearClip;
-        f32 FarClip;
-        f32 fov;
     };
     
     ShaderInfo UiShaderInfo;
@@ -46,7 +42,7 @@ public:
     static bool OnRegistered(RenderView* self);
     static void Destroy(RenderView* self);
     static void Resize(RenderView* self, u32 width, u32 height);
-    static bool BuildPacket(RenderView* self, FrameData& rFrameData, Viewport& viewport, void* data, RenderViewPacket& OutPacket);
+    static bool BuildPacket(RenderView* self, FrameData& rFrameData, Viewport& viewport, Camera* camera, void* data, RenderViewPacket& OutPacket);
     static bool Render(const RenderView* self, const RenderViewPacket& packet, const FrameData& rFrameData);
     static bool RegenerateAttachmentTarget(RenderView* self, u32 PassIndex = 0, struct RenderTargetAttachment* attachment = nullptr);
 

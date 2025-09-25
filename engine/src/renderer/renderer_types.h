@@ -63,7 +63,6 @@ struct UiPacketData {
     // ЗАДАЧА: временно
     u32 TextCount;
     Text** texts;
-    // constexpr UiPacketData(Mesh::PacketData MeshData, u32 TextCount, Text** texts) : MeshData(MeshData), TextCount(TextCount), texts(texts) {}
 };
 
 namespace Render

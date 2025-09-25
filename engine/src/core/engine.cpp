@@ -252,8 +252,7 @@ bool Engine::OnResized(u16 code, void *sender, void *ListenerInst, EventContext 
                     pEngine->IsSuspended = false;
                 }
                 pEngine->GameInst->OnResize(*pEngine->GameInst, width, height);
-                //pEngine->Render->OnResized(width, height);
-                return true;
+                RenderingSystem::OnResized(width, height);
             }
         }
     }

@@ -133,7 +133,7 @@ void RenderViewPick::Resize(RenderView* self, u32 width, u32 height)
     }
 }
 
-bool RenderViewPick::BuildPacket(RenderView* self, FrameData& rFrameData, Viewport& viewport, void *data, RenderViewPacket &OutPacket)
+bool RenderViewPick::BuildPacket(RenderView* self, FrameData& rFrameData, Viewport& viewport, Camera* camera, void *data, RenderViewPacket &OutPacket)
 {
     if (!data) {
         MWARN("RenderViewPick::BuildPacket требует действительный указатель на вид, пакет и данные.");

@@ -10,6 +10,7 @@ struct Geometry;
 struct Terrain;
 struct FrameData;
 struct RenderTargetAttachment;
+class Camera;
 
 struct GeometryRenderData 
 {
@@ -112,10 +113,11 @@ struct MAPI RenderView
     /// @param self указатель на представление для использования.
     /// @param rFrameData ссылка на текущие данные кадра
     /// @param viewport 
+    /// @param camera 
     /// @param data данные свободной формы, используемые для создания пакета.
     /// @param OutPacket указатель для хранения сгенерированного пакета.
     /// @return true в случае успеха; в противном случае false.
-    bool (*BuildPacket)(RenderView* self, FrameData& rFrameData, Viewport& viewport, void* data, RenderViewPacket& OutPacket);
+    bool (*BuildPacket)(RenderView* self, FrameData& rFrameData, Viewport& viewport, Camera* camera, void* data, RenderViewPacket& OutPacket);
 
     /// @brief Использует заданное представление и пакет для визуализации содержимого.
     /// @param self Указатель на представление для использования.

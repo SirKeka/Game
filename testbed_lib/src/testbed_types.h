@@ -3,7 +3,6 @@
 namespace Testbed
 {
     enum PacketViews {
-        Skybox,
         World,
         EditorWorld,
         UI,

@@ -14,6 +14,7 @@ struct RenderView;
 struct LinearAllocator;
 struct RenderViewPacket;
 struct Viewport;
+class Camera;
 
 /// @brief Конфигурация для системы рендеринга представлений.
 struct RenderViewSystemConfig
@@ -43,12 +44,13 @@ namespace RenderViewSystem
     MAPI RenderView *Get(const char *name);
 
     /// @brief Создает пакет представления рендеринга, используя предоставленное представление и сетки.
+    /// @param rFrameData ссылка на данные кадра
     /// @param view указатель на представление для использования.
-    /// @param  распределитель использовал этот кадр для создания пакета.
+    /// @param camera указатель на камеру
     /// @param data данные свободной формы, используемые для создания пакета.
     /// @param OutPacket указатель для хранения сгенерированного пакета.
     /// @return true в случае успеха; в противном случае false.
-    MAPI bool BuildPacket(RenderView* view, FrameData& rFrameData, Viewport& viewport, void* data, RenderViewPacket& OutPacket);
+    MAPI bool BuildPacket(RenderView* view, FrameData& rFrameData, Viewport& viewport, Camera* camera, void* data, RenderViewPacket& OutPacket);
 
     /// @brief Использует заданное представление и пакет для визуализации содержимого.
     /// @param view указатель на представление для использования.

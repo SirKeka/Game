@@ -133,10 +133,7 @@ void VulkanSwapchain::Create(VulkanAPI *VkAPI, u32 width, u32 height, RendererCo
         
     } else {
         PresentMode = VK_PRESENT_MODE_IMMEDIATE_KHR;
-    }
-    
-    
-    
+    }  
 
     // Запросить поддержку цепочки обмена. ЗАДАЧА: переделать
     VkAPI->Device.QuerySwapchainSupport(VkAPI->Device.PhysicalDevice, VkAPI->surface, &VkAPI->Device.SwapchainSupport);

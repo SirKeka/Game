@@ -184,7 +184,7 @@ void RenderViewWorld::Resize(RenderView* self, u32 width, u32 height)
     }
 }
 
-bool RenderViewWorld::BuildPacket(RenderView* self, FrameData& rFrameData, Viewport& viewport, void *data, RenderViewPacket &OutPacket)
+bool RenderViewWorld::BuildPacket(RenderView* self, FrameData& rFrameData, Viewport& viewport, Camera* camera, void *data, RenderViewPacket &OutPacket)
 {
     if (!data) {
         MWARN("RenderViewWorld::BuildPacket требует действительный указатель на вид, пакет и данные.");
@@ -286,7 +286,7 @@ bool RenderViewWorld::Render(const RenderView* self, const RenderViewPacket &pac
                 const u32& ShaderID = data->SkyboxShader->id;
                 ShaderSystem::Use(ShaderID);
 
-                // Get the view matrix, but zero out the position so the skybox stays put on screen.
+                // Получите матрицу вида, но обнулите позицию, чтобы скайбокс оставался на экране.
                 auto ViewMatrix = data->WorldCamera->GetView();
                 ViewMatrix.data[12] = 0.F;
                 ViewMatrix.data[13] = 0.F;
@@ -352,7 +352,7 @@ bool RenderViewWorld::Render(const RenderView* self, const RenderViewPacket &pac
 
                 // Применить глобальные переменные
                 // ЗАДАЧА: Найдите общий способ запроса данных, таких как цвет окружения (который должен быть из сцены) и режим (из рендерера)
-                if (!MaterialSystem::ApplyGlobal(shader->id, rFrameData.RendererFrameNumber, rFrameData.DrawIndex, packet.ProjectionMatrix, packet.ViewMatrix, packet.AmbientColour, packet.ViewPosition,  data->RenderMode)) {
+                if (!MaterialSystem::ApplyGlobal(shader->id, rFrameData, packet.ProjectionMatrix, packet.ViewMatrix, packet.AmbientColour, packet.ViewPosition, data->RenderMode)) {
                     MERROR("Не удалось применить глобальные переменные для шейдера ландшафта. Кадр рендеринга не удалось.");
                     return false;
                 }
@@ -398,7 +398,7 @@ bool RenderViewWorld::Render(const RenderView* self, const RenderViewPacket &pac
 
                 // Применить глобальные переменные
                 // ЗАДАЧА: Найти общий способ запроса данных, таких как окружающий цвет (который должен быть из сцены) и режим (из рендерера)
-                if (!MaterialSystem::ApplyGlobal(ShaderID, rFrameData.RendererFrameNumber, rFrameData.DrawIndex, packet.ProjectionMatrix, packet.ViewMatrix, packet.AmbientColour, packet.ViewPosition,  data->RenderMode)) {
+                if (!MaterialSystem::ApplyGlobal(ShaderID, rFrameData, packet.ProjectionMatrix, packet.ViewMatrix, packet.AmbientColour, packet.ViewPosition, data->RenderMode)) {
                     MERROR("Не удалось использовать применить глобальные переменные для шейдера материала. Не удалось отрисовать кадр.");
                     return false;
                 }

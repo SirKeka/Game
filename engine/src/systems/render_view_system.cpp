@@ -145,10 +145,10 @@ RenderView *RenderViewSystem::Get(const char *name)
     return nullptr;
 }
 
-bool RenderViewSystem::BuildPacket(RenderView* view, FrameData& rFrameData, Viewport& viewport, void* data,  RenderViewPacket& OutPacket)
+bool RenderViewSystem::BuildPacket(RenderView* view, FrameData& rFrameData, Viewport& viewport, Camera* camera, void* data,  RenderViewPacket& OutPacket)
 {
     if (view) {
-        return view->BuildPacket(view, rFrameData, viewport, data, OutPacket);
+        return view->BuildPacket(view, rFrameData, viewport, camera, data, OutPacket);
     }
 
     MERROR("RenderViewSystem::BuildPacket требует действительных указателей на представление и пакет.");

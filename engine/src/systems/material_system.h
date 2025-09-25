@@ -10,6 +10,7 @@
 #include "containers/hashtable.hpp"
 
 struct Matrix4D;
+struct FrameData;
 
 /// @brief Имя материала по умолчанию.
 #define DEFAULT_MATERIAL_NAME "default"
@@ -79,7 +80,7 @@ namespace MaterialSystem
     /// @param AmbientColour окружающий цвет сцены.
     /// @param ViewPosition позиция камеры.
     /// @return true в случае успеха иначе false.
-    MAPI bool ApplyGlobal(u32 ShaderID, u64 RenderFrameNumber, u8 RendererDrawIndex, const Matrix4D& projection, const Matrix4D& view, const FVec4& AmbientColour = FVec4(), const FVec3& ViewPosition = FVec3(), u32 RenderMode = 0);
+    MAPI bool ApplyGlobal(u32 ShaderID, const FrameData& rFrameData, const Matrix4D& projection, const Matrix4D& view, const FVec4& AmbientColour = FVec4(), const FVec3& ViewPosition = FVec3(), u32 RenderMode = 0);
     
     /// @brief Применяет данные материала на уровне экземпляра для данного материала.
     /// @param material указатель на материал, который будет применен.

@@ -17,6 +17,8 @@
 
 #include "debug_console.h"
 
+class Camera;
+
 struct SelectedObject {
     u32 UniqueID;
     Transform* xform;
@@ -25,7 +27,9 @@ struct SelectedObject {
 struct Game
 {
     bool running;
-    class Camera* WorldCamera;
+    Camera* WorldCamera;
+
+    Camera* WorldCamera2;
 
     u16 width, height;
 

@@ -66,7 +66,7 @@ void RenderViewUI::Resize(RenderView* self, u32 width, u32 height)
     }
 }
 
-bool RenderViewUI::BuildPacket(RenderView* self, FrameData& rFrameData, Viewport& viewport, void* data, RenderViewPacket& OutPacket)
+bool RenderViewUI::BuildPacket(RenderView* self, FrameData& rFrameData, Viewport& viewport, Camera* camera, void* data, RenderViewPacket& OutPacket)
 {
     if (!data) {
         MWARN("RenderViewUI::BuildPacket требует действительный указатель на представление, пакет и данные.");
@@ -127,7 +127,7 @@ bool RenderViewUI::Render(const RenderView* self, const RenderViewPacket &packet
             }
 
             // Применить глобальные переменные
-            if (!MaterialSystem::ApplyGlobal(ShaderID, rFrameData.RendererFrameNumber, rFrameData.DrawIndex, packet.ProjectionMatrix, packet.ViewMatrix)) {
+            if (!MaterialSystem::ApplyGlobal(ShaderID, rFrameData, packet.ProjectionMatrix, packet.ViewMatrix)) {
                 MERROR("Не удалось использовать применение глобальных переменных для шейдера материала. Не удалось отрисовать кадр.");
                 return false;
             }

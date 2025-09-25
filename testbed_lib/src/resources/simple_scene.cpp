@@ -596,7 +596,7 @@ bool SimpleScene::PopulateRenderPacket(Camera *CurrentCamera, Viewport& viewport
         }
 
         // Мир
-        if (!RenderViewSystem::BuildPacket(view, rFrameData, viewport, &WorldData.WorldGeometries, ViewPacket)) {
+        if (!RenderViewSystem::BuildPacket(view, rFrameData, viewport, CurrentCamera, &WorldData.WorldGeometries, ViewPacket)) {
             MERROR("Не удалось создать пакет для представления «мира».");
             return false;
         }

@@ -105,7 +105,7 @@ void RenderViewEditorWorld::Resize(RenderView* self, u32 width, u32 height)
     }
 }
 
-bool RenderViewEditorWorld::BuildPacket(RenderView *self, FrameData& pFrameData, Viewport& viewport, void *data, RenderViewPacket &OutPacket)
+bool RenderViewEditorWorld::BuildPacket(RenderView *self, FrameData& pFrameData, Viewport& viewport, Camera* camera, void *data, RenderViewPacket &OutPacket)
 {
     if (!self || !data) {
         MWARN("RenderViewEditorWorld::BuildPacket требует корректного указателя на вид, пакет и данные.");

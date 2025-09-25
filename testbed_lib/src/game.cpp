@@ -462,9 +462,13 @@ bool ApplicationInitialize(Application& app)
 
     state->UiMeshes[0].transform.Translate(FVec3(650, 5, 0));
     
-    state->WorldCamera = CameraSystem::GetDefault();
+    state->WorldCamera = CameraSystem::Acquire("world");
     state->WorldCamera->SetPosition(FVec3(16.07F, 4.5F, 25.F));
     state->WorldCamera->SetRotationEuler(FVec3(-20.F, 51.F, 0.F));
+
+    state->WorldCamera = CameraSystem::Acquire("world2");
+    state->WorldCamera->SetPosition(FVec3(-17.64F, 22.07F, 30.89F));
+    state->WorldCamera->SetRotationEuler(FVec3(-40.F, -51.F, 0.F));
 
     state->UpdateClock.Zero();
     state->RenderClock.Zero();
@@ -516,9 +520,8 @@ bool ApplicationUpdate(Application& app, const FrameData& rFrameData)
     state->AllocCount = MemorySystem::GetMemoryAllocCount();
 
     // Обновляем растровый текст с позицией камеры. ПРИМЕЧАНИЕ: пока используем камеру по умолчанию.
-    auto WorldCamera = CameraSystem::GetDefault();
-    const auto& pos = WorldCamera->GetPosition();
-    const auto& rot = WorldCamera->GetRotationEuler();
+    const auto& pos = state->WorldCamera->GetPosition();
+    const auto& rot = state->WorldCamera->GetRotationEuler();
 
     // Также прикрепите текущее состояние мыши.
     bool LeftDown = InputSystem::IsButtonDown(Buttons::Left);
@@ -574,13 +577,14 @@ bool ApplicationUpdate(Application& app, const FrameData& rFrameData)
 bool ApplicationPrepareRenderPacket(Application& app, RenderPacket& packet, FrameData& rFrameData) 
 {
     auto state = reinterpret_cast<Game*>(app.state);
+    auto FrameAllocatttor = rFrameData.FrameAllocator;
 
     if (!state->running) {
         return true;
     }
 
     packet.ViewCount = 3;
-    packet.views = reinterpret_cast<RenderViewPacket*>(rFrameData.FrameAllocator->Allocate(sizeof(RenderViewPacket) * packet.ViewCount));
+    packet.views = reinterpret_cast<RenderViewPacket*>(FrameAllocatttor->Allocate(sizeof(RenderViewPacket) * packet.ViewCount));
 
     // FIXME: Прочитать это из конфигурации
     // packet.views[Testbed::PacketViews::Skybox].view      = RenderViewSystem::Get("skybox");
@@ -632,7 +636,7 @@ bool ApplicationPrepareRenderPacket(Application& app, RenderPacket& packet, Fram
 
         EditorWorldPacketData EditorWorldData{};
         EditorWorldData.gizmo = &state->gizmo;
-        if (!RenderViewSystem::BuildPacket(view, rFrameData, state->WorldViewport, &EditorWorldData, ViewPacket)) {
+        if (!RenderViewSystem::BuildPacket(view, rFrameData, state->WorldViewport, state->WorldCamera, &EditorWorldData, ViewPacket)) {
             MERROR("Не удалось построить пакет для представления «editor_world».");
             return false;
         }
@@ -646,7 +650,7 @@ bool ApplicationPrepareRenderPacket(Application& app, RenderPacket& packet, Fram
 
         u32 UIMeshCount = 0;
         u32 MaxUiMeshes = 10;
-        auto UIMeshes = reinterpret_cast<Mesh**>(rFrameData.FrameAllocator->Allocate(sizeof(Mesh*) * MaxUiMeshes));
+        auto UIMeshes = reinterpret_cast<Mesh**>(FrameAllocatttor->Allocate(sizeof(Mesh*) * MaxUiMeshes));
 
         // ЗАДАЧА: массив гибкого размера
         for (u32 i = 0; i < 10; ++i) {
@@ -666,7 +670,7 @@ bool ApplicationPrepareRenderPacket(Application& app, RenderPacket& packet, Fram
             UiPacket.TextCount += 2;
         }
 
-        auto texts = reinterpret_cast<Text**>(rFrameData.FrameAllocator->Allocate(sizeof(Text*) * UiPacket.TextCount));
+        auto texts = reinterpret_cast<Text**>(FrameAllocatttor->Allocate(sizeof(Text*) * UiPacket.TextCount));
         texts[0] = &state->TestText;
         texts[1] = &state->TestSysText;
 
@@ -676,7 +680,7 @@ bool ApplicationPrepareRenderPacket(Application& app, RenderPacket& packet, Fram
         }
 
         UiPacket.texts = texts;
-        if (!RenderViewSystem::BuildPacket(view, rFrameData, state->UiViewport, &UiPacket, ViewPacket)) {
+        if (!RenderViewSystem::BuildPacket(view, rFrameData, state->UiViewport, nullptr, &UiPacket, ViewPacket)) {
             MERROR("Не удалось построить пакет для представления «ui».");
             return false;
         }
@@ -743,6 +747,7 @@ bool ApplicationRender(Application& app, RenderPacket& packet, FrameData& rFrame
     ViewPacket = &packet.views[Testbed::World];
     ViewPacket->ProjectionMatrix = state->WorldViewport2.projection;
     ViewPacket->viewport = &state->WorldViewport2;
+    ViewPacket->ViewMatrix = state->WorldCamera2->GetView();
     ViewPacket->view->Render(ViewPacket->view, *ViewPacket, rFrameData);
 
     // UI

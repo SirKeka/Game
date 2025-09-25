@@ -508,14 +508,14 @@ void MaterialSystem::Release(const char *name)
         return false;                                       \
     }
 
-bool MaterialSystem::ApplyGlobal(u32 ShaderID, u64 RenderFrameNumber, u8 RendererDrawIndex, const Matrix4D &projection, const Matrix4D &view, const FVec4& AmbientColour, const FVec3& ViewPosition, u32 RenderMode)
+bool MaterialSystem::ApplyGlobal(u32 ShaderID, const FrameData& rFrameData, const Matrix4D &projection, const Matrix4D &view, const FVec4& AmbientColour, const FVec3& ViewPosition, u32 RenderMode)
 {
     auto shader = ShaderSystem::GetShader(ShaderID);
     if (!shader) {
         return false;
     }
 
-    if (shader->RenderFrameNumber == RenderFrameNumber && shader->DrawIndex == RendererDrawIndex) {
+    if (shader->RenderFrameNumber == rFrameData.RendererFrameNumber && shader->DrawIndex == rFrameData.DrawIndex) {
         return true;
     }
     
@@ -534,7 +534,7 @@ bool MaterialSystem::ApplyGlobal(u32 ShaderID, u64 RenderFrameNumber, u8 Rendere
     }
     MATERIAL_APPLY_OR_FAIL(ShaderSystem::ApplyGlobal(true));
     // Синхронизация номера кадра
-    shader->RenderFrameNumber = RenderFrameNumber;
+    shader->RenderFrameNumber = rFrameData.RendererFrameNumber;
     return true;
 }
 

@@ -17,7 +17,7 @@ public:
     static bool OnRegistered(RenderView* self);
     static void Destroy(RenderView* self);
     static void Resize(RenderView* self, u32 width, u32 height);
-    static bool BuildPacket(RenderView* self, FrameData& rFrameData, Viewport& viewport, void* data, RenderViewPacket& OutPacket);
+    static bool BuildPacket(RenderView* self, FrameData& rFrameData, Viewport& viewport, Camera* camera, void* data, RenderViewPacket& OutPacket);
     static bool Render(const RenderView* self, const RenderViewPacket& packet, const FrameData& rFrameData);
 
     void* operator new(u64 size);

@@ -61,18 +61,18 @@ Camera *CameraSystem::Acquire(const char *name)
 {
     if (state) {
         if (MString::Equali(name, DEFAULT_CAMERA_NAME)) {
-            return &DefaultCamera;
+            return &state->DefaultCamera;
         }
         u16 id = INVALID::U16ID;
-        if (!lookup.Get(name, &id)) {
+        if (!state->lookup.Get(name, &id)) {
             MERROR("CameraSystem::Acquire не удалось выполнить поиск. Возвращено значение Null.");
             return nullptr;
         }
 
         if (id == INVALID::U16ID) {
             // Найти свободный слот
-            for (u16 i = 0; i < MaxCameraCount; ++i) {
-                if (cameras[i].id == INVALID::U16ID) {
+            for (u16 i = 0; i < state->MaxCameraCount; ++i) {
+                if (state->cameras[i].id == INVALID::U16ID) {
                     id = i;
                     break;
                 }
@@ -83,15 +83,15 @@ Camera *CameraSystem::Acquire(const char *name)
             }
 
             // Создать/зарегистрировать новую камеру.
-            MTRACE("Создание новой камеры с именем '%s'...");
+            MTRACE("Создание новой камеры с именем '%s'...", name);
             //cameras[id].c = Camera();
-            cameras[id].id = id;
+            state->cameras[id].id = id;
 
             // Обновить хеш-таблицу.
-            lookup.Set(name, id);
+            state->lookup.Set(name, id);
         }
-        cameras[id].ReferenceCount++;
-        return &cameras[id].c;
+        state->cameras[id].ReferenceCount++;
+        return &state->cameras[id].c;
     }
 
     MERROR("CameraSystem::Acquire вызвано перед инициализацией системы. Возвращено значение Null.");

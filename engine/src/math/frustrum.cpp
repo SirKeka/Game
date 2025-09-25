@@ -27,7 +27,7 @@ bool Frustum::IntersectsSphere(const FVec3 &center, f32 radius)
 bool Frustum::IntersectsAABB(const FVec3 &center, const FVec3 &extents)
 {
     for (u8 i = 0; i < 6; ++i) {
-        if (!sides[i].IntersectsAABB(center, extents)) {
+        if (!sides[i].IntersectsAABB(center, extents) || !sides[i += 1].IntersectsAABB(center, extents)) {
             return false;
         }
     }

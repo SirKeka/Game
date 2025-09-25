@@ -56,7 +56,7 @@ class Engine
 
     FrameData frameData;
 
-    MAPI static Engine* pEngine; //ЗАДАЧА: убрать MAPI 
+    MAPI static Engine* pEngine; //ЗАДАЧА: отказаться от статика
 
     constexpr Engine(const ApplicationConfig& config);
 public:
