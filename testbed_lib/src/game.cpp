@@ -269,7 +269,7 @@ static bool GameOnButton(u16 code, void* sender, void* ListenerInst, EventContex
                         state->TestLines.PushBack(TestLine);
 
                         if (state->selection.xform) {
-                            MINFO("Object deselected.");
+                            MINFO("Выбор объекта отменен.");
                             state->selection.xform = nullptr;
                             state->selection.UniqueID = INVALID::ID;
 
@@ -466,9 +466,9 @@ bool ApplicationInitialize(Application& app)
     state->WorldCamera->SetPosition(FVec3(16.07F, 4.5F, 25.F));
     state->WorldCamera->SetRotationEuler(FVec3(-20.F, 51.F, 0.F));
 
-    state->WorldCamera = CameraSystem::Acquire("world2");
-    state->WorldCamera->SetPosition(FVec3(-17.64F, 22.07F, 30.89F));
-    state->WorldCamera->SetRotationEuler(FVec3(-40.F, -51.F, 0.F));
+    state->WorldCamera2 = CameraSystem::Acquire("world2");
+    state->WorldCamera2->SetPosition(FVec3(-17.64F, 22.07F, 30.89F));
+    state->WorldCamera2->SetRotationEuler(FVec3(-40.F, -51.F, 0.F));
 
     state->UpdateClock.Zero();
     state->RenderClock.Zero();

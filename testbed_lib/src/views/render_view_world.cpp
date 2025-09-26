@@ -200,8 +200,8 @@ bool RenderViewWorld::BuildPacket(RenderView* self, FrameData& rFrameData, Viewp
 
         // Установить матрицы и т. д.
         OutPacket.ProjectionMatrix = viewport.projection;
-        OutPacket.ViewMatrix       = rwwData->WorldCamera->GetView();
-        OutPacket.ViewPosition     = rwwData->WorldCamera->GetPosition();
+        OutPacket.ViewMatrix       = camera->GetView();
+        OutPacket.ViewPosition     = camera->GetPosition();
         OutPacket.AmbientColour    = rwwData->AmbientColour;
 
         // Данные скайбокса

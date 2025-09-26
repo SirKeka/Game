@@ -13,7 +13,7 @@ struct CameraLookup {
 CameraSystem::CameraSystem(u16 MaxCameraCount, void* HashtableBlock, CameraLookup* cameras)
 :
     MaxCameraCount(MaxCameraCount),
-    lookup(MaxCameraCount, false, reinterpret_cast<u16*>(HashtableBlock), INVALID::U16ID),
+    lookup(MaxCameraCount, false, reinterpret_cast<u16*>(HashtableBlock), true, INVALID::U16ID),
     HashtableBlock(HashtableBlock),
     cameras(cameras),
     DefaultCamera()
@@ -44,8 +44,10 @@ bool CameraSystem::Initialize(u64 &MemoryRequirement, void *memory, void *config
     }
 
     u8* CSPointer = reinterpret_cast<u8*>(memory); // выделяем память под систему камер
+    u8* HashtableBlock = CSPointer + StructRequirement;
+    auto CamerasBlock = new(HashtableBlock + HashtableRequirement) CameraLookup[pConfig->MaxCameraCount]();
 
-    if (!(state = new(CSPointer) CameraSystem(pConfig->MaxCameraCount, CSPointer + StructRequirement + ArrayRequirement, reinterpret_cast<CameraLookup*>(CSPointer + ArrayRequirement)))) {
+    if (!(state = new(CSPointer) CameraSystem(pConfig->MaxCameraCount, HashtableBlock, CamerasBlock))) {
         return false;
     }
 
