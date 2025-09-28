@@ -1,6 +1,6 @@
 #include "input.h"
 #include "event.h"
-#include "memory/linear_allocator.hpp"
+#include "memory/linear_allocator.h"
 #include "keymap.h"
 
 #include <new>

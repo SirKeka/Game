@@ -84,8 +84,9 @@ namespace MaterialSystem
     
     /// @brief Применяет данные материала на уровне экземпляра для данного материала.
     /// @param material указатель на материал, который будет применен.
+    /// @param rFrameData ссылка на данные текущего кадра.
     /// @return true в случае успеха иначе false.
-    MAPI bool ApplyInstance(Material* material, bool NeedsUpdate);
+    MAPI bool ApplyInstance(Material* material, const FrameData& rFrameData, bool NeedsUpdate);
 
     /// @brief Применяет данные о материале локального уровня (обычно только матрицу модели).
     /// @param material указатель на материал, который будет применен.

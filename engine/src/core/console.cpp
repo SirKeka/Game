@@ -1,5 +1,5 @@
 #include "console.hpp"
-#include "memory/linear_allocator.hpp"
+#include "memory/linear_allocator.h"
 #include "asserts.hpp"
 #include <new>
 

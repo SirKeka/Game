@@ -2,7 +2,7 @@
 
 #include <core/logger.hpp>
 #include <core/input.h>
-#include <core/metrics.hpp>
+#include <core/metrics.h>
 
 #include <systems/camera_system.hpp>
 #include <renderer/renderpass.h>
@@ -416,7 +416,7 @@ bool ApplicationInitialize(Application& app)
         MERROR("Не удалось загрузить базовый системный текст пользовательского интерфейса.");
         return false;
     }
-    state->TestSysText.SetPosition(FVec3(500.F, 550.F, 0.F));
+    state->TestSysText.SetPosition(FVec3(500.F, 500.F, 0.F));
 
     const f32 w = 128.F;
     const f32 h = 49.F;
@@ -544,7 +544,7 @@ bool ApplicationUpdate(Application& app, const FrameData& rFrameData)
         FPS: %5.1f(%4.1fмс) Позиция=[%7.3F, %7.3F, %7.3F] Вращение=[%7.3F, %7.3F, %7.3F]\n\
         Upd: %8.3fмкс, Rend: %8.3fмкс Мышь: X=%-5d Y=%-5d   L=%s R=%s   NDC: X=%.6f, Y=%.6f\n\
         Vsync: %s Draw: %-5u Hovered: %s%u\n\
-        Text",
+        Время выполнения функции RenderingSystem::PrepareFrame: %f мс",
         fps,
         FrameTime,
         pos.x, pos.y, pos.z,
@@ -559,7 +559,8 @@ bool ApplicationUpdate(Application& app, const FrameData& rFrameData)
         VsyncText,
         rFrameData.DrawnMeshCount,
         state->HoveredObjectID == INVALID::ID ? "none" : "",
-        state->HoveredObjectID == INVALID::ID ? 0 : state->HoveredObjectID
+        state->HoveredObjectID == INVALID::ID ? 0 : state->HoveredObjectID,
+        Metrics::GetFunctionExecutionTime("RenderingSystem::PrepareFrame")/1000
     );
 
     if (state->running) {
@@ -724,8 +725,6 @@ bool ApplicationRender(Application& app, RenderPacket& packet, FrameData& rFrame
     if (!state->running) {
         return true;
     }
-    
-    // auto AppFrameData = (TestbedApplicationFrameData*)rFrameData.ApplicationFrameData;
 
     state->RenderClock.Start();
 
@@ -798,7 +797,7 @@ void ApplicationOnResize(Application& app, u32 width, u32 height)
 
     // ЗАДАЧА: временный блок кода
     // Переместить отладочный текст в новую нижнюю часть экрана.
-    state->TestText.SetPosition(FVec3(20, state->height - 75, 0));
+    state->TestText.SetPosition(FVec3(20, state->height - 100, 0));
     // ЗАДАЧА: конец временного блока кода
 }
 

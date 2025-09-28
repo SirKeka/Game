@@ -1,5 +1,5 @@
 #include "render_view_pick.h"
-#include "memory/linear_allocator.hpp"
+#include "memory/linear_allocator.h"
 #include "core/uuid.hpp"
 #include "renderer/renderpass.h"
 #include "renderer/viewport.h"

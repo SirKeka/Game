@@ -1,5 +1,5 @@
 #include "camera_system.hpp"
-#include "memory/linear_allocator.hpp"
+#include "memory/linear_allocator.h"
 #include <new>
 
 CameraSystem* CameraSystem::state = nullptr;

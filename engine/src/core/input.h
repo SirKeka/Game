@@ -1,6 +1,6 @@
 #pragma once
 
-#include "memory/linear_allocator.hpp"
+#include "memory/linear_allocator.h"
 #include "containers/stack.hpp"
 #include "keymap.h"
 

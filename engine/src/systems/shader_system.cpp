@@ -1,5 +1,5 @@
 #include "shader_system.h"
-#include "memory/linear_allocator.hpp"
+#include "memory/linear_allocator.h"
 #include "systems/texture_system.h"
 #include "renderer/rendering_system.h"
 #include "resources/texture_map.hpp"

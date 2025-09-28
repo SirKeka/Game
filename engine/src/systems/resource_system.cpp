@@ -1,6 +1,6 @@
 #include "resource_system.h"
 #include "core/logger.hpp"
-#include "memory/linear_allocator.hpp"
+#include "memory/linear_allocator.h"
 
 #include "core/memory_system.h"
 #include <new>

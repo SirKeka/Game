@@ -426,6 +426,20 @@ const char *MString::c_str() const noexcept
     return s;
 }
 
+bool MString::Compare(const char *strL, const char *strR)
+{
+    if (strL && strR) {
+        while (*strL && *strR) {
+            if (*strL != *strR) {
+                return false;
+            }
+            strL++; strR++;
+        }
+        return true;
+    }
+    return false;
+}
+
 bool MString::Comparei(const MString &string) const
 {
     return MString::Equali(str, string.str);

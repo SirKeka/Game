@@ -6,7 +6,7 @@
 #include "systems/light_system.h"
 #include "renderer/rendering_system.h"
 
-#include "memory/linear_allocator.hpp"
+#include "memory/linear_allocator.h"
 #include <new>
 
 struct MaterialReference {
@@ -536,7 +536,7 @@ bool MaterialSystem::ApplyGlobal(u32 ShaderID, const FrameData& rFrameData, cons
     return true;
 }
 
-bool MaterialSystem::ApplyInstance(Material *material, bool NeedsUpdate)
+bool MaterialSystem::ApplyInstance(Material *material, const FrameData& rFrameData, bool NeedsUpdate)
 {
     // Примените униформу на уровне экземпляра.
     MATERIAL_APPLY_OR_FAIL(ShaderSystem::BindInstance(material->InternalId));
@@ -562,19 +562,16 @@ bool MaterialSystem::ApplyInstance(Material *material, bool NeedsUpdate)
             if (PointLightCount) {
                 // ЗАДАЧА: frame allocator?
                 u64 PointLightsSize = sizeof(PointLight) * PointLightCount;
-                auto PointLights = reinterpret_cast<PointLight*>(MemorySystem::Allocate(PointLightsSize, Memory::Array, true));
+                auto PointLights = reinterpret_cast<PointLight*>(rFrameData.FrameAllocator->Allocate(PointLightsSize));
                 LightSystem::GetPointLights(PointLights);
 
                 u64 PointLightDatasSize = sizeof(PointLight::Data) * PointLightCount;
-                auto PointLightDatas = reinterpret_cast<PointLight::Data*>(MemorySystem::Allocate(PointLightDatasSize, Memory::Array, true));
+                auto PointLightDatas = reinterpret_cast<PointLight::Data*>(rFrameData.FrameAllocator->Allocate(PointLightDatasSize));
                 for (u32 i = 0; i < PointLightCount; ++i) {
                     PointLightDatas[i] = PointLights[i].data;
                 }
 
                 MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->MaterialLocations.PointLights, PointLightDatas));
-
-                MemorySystem::Free(PointLightDatas, PointLightDatasSize, Memory::Array);
-                MemorySystem::Free(PointLights, PointLightsSize, Memory::Array);
             }
 
             MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->MaterialLocations.NumPointLights, &PointLightCount)); 
@@ -606,18 +603,16 @@ bool MaterialSystem::ApplyInstance(Material *material, bool NeedsUpdate)
             if (PointLightCount) {
                 // ЗАДАЧА: Распределитель кадров?
                 u64 PointLightsSize = sizeof(PointLight) * PointLightCount;
-                auto PointLights = reinterpret_cast<PointLight*>(MemorySystem::Allocate(PointLightsSize, Memory::Array, true));
+                auto PointLights = reinterpret_cast<PointLight*>(rFrameData.FrameAllocator->Allocate(PointLightsSize));
                 LightSystem::GetPointLights(PointLights);
 
                 u64 PointLightDatasSize = sizeof(PointLight::Data) * PointLightCount;
-                auto PointLightDatas = reinterpret_cast<PointLight::Data*>(MemorySystem::Allocate(PointLightDatasSize, Memory::Array));
+                auto PointLightDatas = reinterpret_cast<PointLight::Data*>(rFrameData.FrameAllocator->Allocate(PointLightDatasSize));
                 for (u32 i = 0; i < PointLightCount; ++i) {
                     PointLightDatas[i] = PointLights[i].data;
                 }
 
                 MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->TerrainLocations.PointLights, PointLightDatas));
-                MemorySystem::Free(PointLightDatas, PointLightDatasSize, Memory::Array);
-                MemorySystem::Free(PointLights, PointLightsSize, Memory::Array);
             }
 
             MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->TerrainLocations.NumPointLights, &PointLightCount));

@@ -3,7 +3,7 @@
 #include "../test_manager.hpp"
 #include "../expect.hpp"
 
-#include <memory/linear_allocator.hpp>
+#include <memory/linear_allocator.h>
 
 u8 LinearAllocatorShouldCreateAndDestroy() {
     LinearAllocator alloc{ sizeof(u64) };
@@ -94,7 +94,7 @@ u8 LinearAllocatorMultiAllocationAllSpaceThenFree() {
     }
 
     // Убедитесь, что указатель сброшен
-    alloc.FreeAll();
+    alloc.FreeAll(true);
     ExpectShouldBe(0, alloc.allocated);
 
     alloc.~LinearAllocator();

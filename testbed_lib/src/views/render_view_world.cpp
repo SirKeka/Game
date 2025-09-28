@@ -364,7 +364,7 @@ bool RenderViewWorld::Render(const RenderView* self, const RenderViewPacket &pac
                     // который либо обновляет внутренние привязки шейдера и привязывает их, либо только привязывает их.
                     // Также необходимо свериться с индексом отрисовки рендерера.
                     bool NeedsUpdate = material->RenderFrameNumber != rFrameData.RendererFrameNumber || material->RenderDrawIndex != rFrameData.DrawIndex;
-                    if (!MaterialSystem::ApplyInstance(material, NeedsUpdate)) {
+                    if (!MaterialSystem::ApplyInstance(material, rFrameData, NeedsUpdate)) {
                         MWARN("Не удалось применить материал ландшафта '%s'. Пропуск отрисовки.", material->name);
                         continue;
                     } else {
@@ -412,7 +412,7 @@ bool RenderViewWorld::Render(const RenderView* self, const RenderViewPacket &pac
                     // Его все равно нужно привязать в любом случае, поэтому этот результат проверки передается на бэкэнд, 
                     // который либо обновляет внутренние привязки шейдера и привязывает их, либо только привязывает их.
                     bool NeedsUpdate = material->RenderFrameNumber != rFrameData.RendererFrameNumber || material->RenderDrawIndex != rFrameData.DrawIndex;
-                    if (!MaterialSystem::ApplyInstance(material, NeedsUpdate)) {
+                    if (!MaterialSystem::ApplyInstance(material, rFrameData, NeedsUpdate)) {
                         MWARN("Не удалось применить материал '%s'. Пропуск отрисовки.", material->name);
                         continue;
                     } else {

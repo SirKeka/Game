@@ -1,5 +1,6 @@
-#include "metrics.hpp"
+#include "metrics.h"
 #include "core/memory_system.h"
+#include "clock.h"
 
 constexpr u8 AVG_COUNT = 30;
 
@@ -12,12 +13,14 @@ struct sMetrics
     f64 AccumulatedFrameMs;
     f64 fps;
 
-    // ЗАДАЧА: Добавить массив или словарь для отслеживания времени нескольких функций
-    const char* str; 
-    f64 FunctionExecutionTime;
+    struct Function {
+        // ЗАДАЧА: Добавить массив или словарь для отслеживания времени нескольких функций
+        const char* str; 
+        Clock timer;
+    } function; 
 
     /// @brief Инициализирует систему метрик.
-    constexpr sMetrics() : FrameAvgCounter(), MsTimes(), MsAvg(), frames(), AccumulatedFrameMs(), fps(), str(nullptr), FunctionExecutionTime() {}
+    constexpr sMetrics() : FrameAvgCounter(), MsTimes(), MsAvg(), frames(), AccumulatedFrameMs(), fps(), function() {}
 
     void* operator new(u64 size) {
         return MemorySystem::Allocate(size, Memory::Engine);
@@ -74,17 +77,25 @@ void Metrics::Frame(f64 &OutFPS, f64 &OutFrameMs)
     OutFrameMs = pMetrics->MsAvg;
 }
 
-void Metrics::FunctionExecutionTimeStart(const char *FunctionName)
+void Metrics::BeginFunction(const char *FunctionName)
 {
-
+    if (pMetrics) {
+        pMetrics->function.str = FunctionName;
+        pMetrics->function.timer.Start();
+    }
 }
 
-void Metrics::FunctionExecutionTimeStop(const char *FunctionName)
+void Metrics::EndFunction(const char *FunctionName)
 {
-
+    if (pMetrics && MString::Compare(pMetrics->function.str, FunctionName)) {
+        pMetrics->function.timer.Update();
+    }
 }
 
-const f64 &Metrics::GetFunctionExecutionTime(const char *FunctionName)
+f64 Metrics::GetFunctionExecutionTime(const char *FunctionName)
 {
-    return pMetrics->FunctionExecutionTime;
+    if (MString::Compare(pMetrics->function.str, FunctionName)) {
+        return pMetrics->function.timer.elapsed;
+    }
+    return 0;
 }

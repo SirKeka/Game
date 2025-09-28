@@ -4,7 +4,7 @@
 #include "systems/resource_system.h"
 #include "systems/job_systems.hpp"
 
-#include "memory/linear_allocator.hpp"
+#include "memory/linear_allocator.h"
 #include <new>
 
 struct TextureReference {

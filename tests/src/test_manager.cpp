@@ -2,8 +2,7 @@
 
 #include "containers/arr.hpp"
 #include <core/logger.hpp>
-//#include <containers/mstring.hpp>
-#include <core/clock.hpp>
+#include <core/clock.h>
 
 struct TestEntry {
     PFN_Test func;

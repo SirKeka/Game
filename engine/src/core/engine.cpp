@@ -7,7 +7,7 @@
 #include "console.hpp"
 #include "mvar.h"
 #include "input.h"
-#include "metrics.hpp"
+#include "metrics.h"
 
 // Системы
 #include "systems/texture_system.h"
@@ -130,7 +130,7 @@ bool Engine::Run() {
             frameData.DeltaTime = (f32)delta;
 
             // Сброс распределителя кадров
-            FrameAllocator.FreeAll();
+            FrameAllocator.FreeAll(false);
 
             // Обновлление системы работы(потоков)
             SysManager.Update(frameData);

@@ -18,7 +18,7 @@ struct MAPI LinearAllocator
     LinearAllocator(const LinearAllocator&) = delete;
 
     void* Allocate(u64 size);
-    void FreeAll();
+    void FreeAll(bool clear);
 
     /// @brief 
     /// @tparam T 

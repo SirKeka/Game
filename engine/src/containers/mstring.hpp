@@ -164,9 +164,15 @@ public:
     /// @return строку типа си
     const char* c_str() const noexcept;
 
+    /// @brief Сравнение строк с учетом регистра.
+    /// @param strL строка которую нужно сравнить
+    /// @param strR строка с которой нужно сравнить
+    /// @return true, если строки равны и false, если нет
+    static bool Compare(const char* strL, const char* strR);
+
     /// @brief Срвавнивает строки между собой без учета регистра.
     /// @param string строка с которой нужно сравнить
-    /// @return true, если строки равны и false, если нет 
+    /// @return true, если строки равны и false, если нет
     bool Comparei(const MString& string) const;
 
     /// @brief Срвавнивает строки между собой без учета регистра.
@@ -375,13 +381,13 @@ public:
 
     bool ToTransform(Transform& transform);
 
-    /// @brief Сравнение строк с учетом регистра. True, если совпадает, в противном случае false.
+    /// @brief Сравнение строк с учетом регистра.
     /// @param strL строка которую будем сравнивать
     /// @param strR строка с которой будем сравнивать
     /// @return True если строки одинаковые, false если хотябы на один символ различаются
     static bool Equal(const char* strL, const char* strR);
 
-    /// @brief Сравнение строк без учета регистра. True, если совпадает, в противном случае false.
+    /// @brief Сравнение строк без учета регистра.
     /// @param str0 строка которую будем сравнивать
     /// @param str1 строка с которой будем сравнивать
     /// @return True если строки одинаковые, false если хотябы на один символ различаются

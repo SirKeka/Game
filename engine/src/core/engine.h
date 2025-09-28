@@ -1,7 +1,7 @@
 #pragma once
 
 // Основные компоненты ядра
-#include "clock.hpp"
+#include "clock.h"
 #include "systems_manager.hpp"
 
 #include "systems/font_system.h"

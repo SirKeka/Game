@@ -1,12 +1,11 @@
 #pragma once
 #include "defines.h"
 
-class MAPI Clock
+struct MAPI Clock
 {
-public:
     f64 StartTime;
     f64 elapsed;
-public:
+
     constexpr Clock() : StartTime(), elapsed() {}
     ~Clock();
 

@@ -1,5 +1,5 @@
 #include "rendering_system.h"
-#include "memory/linear_allocator.hpp"
+#include "memory/linear_allocator.h"
 #include "platform/platform.hpp"
 #include "systems/resource_system.h"
 #include "systems/texture_system.h"
@@ -13,6 +13,8 @@
 #include "core/systems_manager.hpp"
 
 #include <new>
+
+#include "core/metrics.h"
 
 struct sRenderingSystem
 {
@@ -78,6 +80,7 @@ void RenderingSystem::OnResized(u16 width, u16 height)
 
 bool RenderingSystem::PrepareFrame(FrameData& rFrameData)
 {
+    Metrics::BeginFunction("RenderingSystem::PrepareFrame");
     auto pRenderingSystem = reinterpret_cast<sRenderingSystem*>(SystemsManager::GetState(MSystem::Type::Renderer));
     auto& plugin = pRenderingSystem->ptrRenderer;
 
@@ -118,6 +121,7 @@ bool RenderingSystem::PrepareFrame(FrameData& rFrameData)
     rFrameData.DrawIndex = plugin->DrawIndex;
     rFrameData.RenderTargetIndex = AttachmentIndex;
 
+    Metrics::EndFunction("RenderingSystem::PrepareFrame");
     return result;
 }
 

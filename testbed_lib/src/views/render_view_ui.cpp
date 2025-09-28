@@ -1,5 +1,5 @@
 #include "render_view_ui.h"
-#include "memory/linear_allocator.hpp"
+#include "memory/linear_allocator.h"
 #include "systems/shader_system.h"
 #include "renderer/renderpass.h"
 #include "renderer/viewport.h"
@@ -148,7 +148,7 @@ bool RenderViewUI::Render(const RenderView* self, const RenderViewPacket &packet
                 // поэтому результат этой проверки передается на бэкэнд, 
                 // который либо обновляет внутренние привязки шейдера и привязывает их, либо только привязывает их.
                 bool NeedsUpdate = material->RenderFrameNumber != rFrameData.RendererFrameNumber;
-                if (!MaterialSystem::ApplyInstance(material, NeedsUpdate)) {
+                if (!MaterialSystem::ApplyInstance(material, rFrameData, NeedsUpdate)) {
                     MWARN("Не удалось применить материал '%s'. Пропуск рисования.", material->name);
                     continue;
                 } else {

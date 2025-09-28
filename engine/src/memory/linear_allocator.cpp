@@ -1,4 +1,4 @@
-#include "linear_allocator.hpp"
+#include "linear_allocator.h"
 
 #include "core/memory_system.h"
 
@@ -47,10 +47,12 @@ void *LinearAllocator::Allocate(u64 size)
     return nullptr;
 }
 
-void LinearAllocator::FreeAll()
+void LinearAllocator::FreeAll(bool clear)
 {
     if (memory) {
-       allocated = 0;
-        MemorySystem::ZeroMem(memory, TotalSize);
+        allocated = 0;
+        if (clear) {
+            MemorySystem::ZeroMem(memory, TotalSize);
+        }
     }
 }

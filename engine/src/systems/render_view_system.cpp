@@ -1,5 +1,5 @@
 #include "render_view_system.h"
-#include "memory/linear_allocator.hpp"
+#include "memory/linear_allocator.h"
 #include "containers/hashtable.hpp"
 #include "renderer/rendering_system.h"
 #include "renderer/renderpass.h"
