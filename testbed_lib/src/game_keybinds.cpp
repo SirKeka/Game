@@ -75,14 +75,16 @@ void GameOnMoveUp(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifie
     state->WorldCamera->MoveUp(state->ForwardMoveSpeed * DeltaTime);
 }
 
-void GameOnMoveDown(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) {
+void GameOnMoveDown(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) 
+{
     auto GameInst = reinterpret_cast<Application*>(UserData);
     auto state = reinterpret_cast<Game*>(GameInst->state);
     auto DeltaTime = GameInst->engine->GetFrameData().DeltaTime;
     state->WorldCamera->MoveDown(state->ForwardMoveSpeed * DeltaTime);
 }
 
-void GameOnConsoleChangeVisibility(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) {
+void GameOnConsoleChangeVisibility(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) 
+{
     auto state = reinterpret_cast<Game*>(UserData);
 
     bool ConsoleVisible = state->console.Visible();
@@ -96,25 +98,29 @@ void GameOnConsoleChangeVisibility(Keys key, Keymap::EntryBindType type, Keymap:
     }
 }
 
-void GameOnSetRenderModeDefault(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) {
+void GameOnSetRenderModeDefault(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) 
+{
     EventContext data = {};
     data.data.i32[0] = Render::Default;
     EventSystem::Fire(EventSystem::SetRenderMode, /*(Game*)*/UserData, data);
 }
 
-void GameOnSetRenderModeLighting(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) {
+void GameOnSetRenderModeLighting(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) 
+{
     EventContext data = {};
     data.data.i32[0] = Render::Lighting;
     EventSystem::Fire(EventSystem::SetRenderMode, /*(Game*)*/UserData, data);
 }
 
-void GameOnSetRenderModeNormals(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) {
+void GameOnSetRenderModeNormals(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) 
+{
     EventContext data = {};
     data.data.i32[0] = Render::Normals;
     EventSystem::Fire(EventSystem::SetRenderMode, /*(Game*)*/UserData, data);
 }
 
-void GameOnSetGizmoMode(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) {
+void GameOnSetGizmoMode(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) 
+{
     auto GameInst = (Application*)UserData;
     auto state = (Game*)GameInst->state;
 
@@ -136,15 +142,18 @@ void GameOnSetGizmoMode(Keys key, Keymap::EntryBindType type, Keymap::Modifier m
     }
 }
 
-void GameOnLoadScene(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) {
+void GameOnLoadScene(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) 
+{
     EventSystem::Fire(EventSystem::DEBUG1, /*(Game*)*/UserData, (EventContext){});
 }
 
-void GameOnUnloadScene(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) {
+void GameOnUnloadScene(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) 
+{
     EventSystem::Fire(EventSystem::DEBUG2, UserData, EventContext());
 }
 
-void GameOnConsoleScroll(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) {
+void GameOnConsoleScroll(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) 
+{
     auto console = reinterpret_cast<DebugConsole*>(UserData);
     if (key == Keys::PAGEUP) {
         console->MoveUp();
@@ -153,7 +162,8 @@ void GameOnConsoleScroll(Keys key, Keymap::EntryBindType type, Keymap::Modifier 
     }
 }
 
-void GameOnConsoleScrollHold(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) {
+void GameOnConsoleScrollHold(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) 
+{
     auto GameInst = reinterpret_cast<Application*>(UserData);
     auto state = reinterpret_cast<Game*>(GameInst->state);
     auto DeltaTime = GameInst->engine->GetFrameData().DeltaTime;

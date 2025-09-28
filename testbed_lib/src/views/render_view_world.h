@@ -21,10 +21,11 @@ struct SkyboxShaderLocation
 class RenderViewWorld
 {
 private:
-    Shader* shader;
+    Shader* MaterialShader;
     Shader* SkyboxShader;
+    Shader* TerrainShader;
+    Shader* ColourShader;
 
-    class Camera* WorldCamera;
     FVec4 AmbientColour;
     u32 RenderMode;
     struct DebugColourShaderLocations {
@@ -35,7 +36,7 @@ private:
     SkyboxShaderLocation SkyboxLocation;
 
 public:
-    constexpr RenderViewWorld() : shader(), WorldCamera(), AmbientColour(0.25F, 0.25F, 0.25F, 1.F), RenderMode() {}
+    constexpr RenderViewWorld() : MaterialShader(nullptr), SkyboxShader(nullptr), TerrainShader(nullptr), ColourShader(nullptr),  AmbientColour(0.25F, 0.25F, 0.25F, 1.F), RenderMode(), DebugLocations(), SkyboxLocation() {}
 
     static bool OnRegistered(RenderView* self);
     static void Destroy(RenderView* self);

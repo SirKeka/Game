@@ -370,11 +370,9 @@ Material* MaterialSystem::Acquire(const char* MaterialName, u32 MaterialCount, c
 
         // Выделите память для карт и свойств.
         material->PropertyStructSize = sizeof(Material::TerrainProperties);
-        material->properties = MemorySystem::Allocate(material->PropertyStructSize, Memory::MaterialInstance);
-        auto properties = reinterpret_cast<Material::TerrainProperties*>(material->properties);
+        auto properties = reinterpret_cast<Material::TerrainProperties*>(MemorySystem::Allocate(material->PropertyStructSize, Memory::MaterialInstance, true));
+        material->properties = properties;
         properties->NumMaterials = MaterialCount;
-        properties->padding = FVec3();
-        properties->padding2 = FVec4();
 
         // 3 карты на материал. Выделите достаточно слотов для всех материалов.
         // u32 map_count = material_count * 3;
@@ -545,7 +543,7 @@ bool MaterialSystem::ApplyInstance(Material *material, bool NeedsUpdate)
     if(NeedsUpdate) {
         if (material->ShaderID == state->MaterialShaderID) {
             // Шейдер материала
-            MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->MaterialLocations.properties, &material->properties));
+            MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->MaterialLocations.properties, material->properties));
             MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->MaterialLocations.DiffuseTexture, &material->maps[0]));
             MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->MaterialLocations.SpecularTexture, &material->maps[1]));
             MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->MaterialLocations.NormalTexture, &material->maps[2]));
@@ -607,17 +605,19 @@ bool MaterialSystem::ApplyInstance(Material *material, bool NeedsUpdate)
             u32 PointLightCount = LightSystem::PointLightCount();
             if (PointLightCount) {
                 // ЗАДАЧА: Распределитель кадров?
-                auto PointLights = reinterpret_cast<PointLight*>(MemorySystem::Allocate(sizeof(PointLight) * PointLightCount, Memory::Array, true));
+                u64 PointLightsSize = sizeof(PointLight) * PointLightCount;
+                auto PointLights = reinterpret_cast<PointLight*>(MemorySystem::Allocate(PointLightsSize, Memory::Array, true));
                 LightSystem::GetPointLights(PointLights);
 
-                auto PointLightDatas = reinterpret_cast<PointLight::Data*>(MemorySystem::Allocate(sizeof(PointLight::Data) * PointLightCount, Memory::Array));
+                u64 PointLightDatasSize = sizeof(PointLight::Data) * PointLightCount;
+                auto PointLightDatas = reinterpret_cast<PointLight::Data*>(MemorySystem::Allocate(PointLightDatasSize, Memory::Array));
                 for (u32 i = 0; i < PointLightCount; ++i) {
                     PointLightDatas[i] = PointLights[i].data;
                 }
 
                 MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->TerrainLocations.PointLights, PointLightDatas));
-                MemorySystem::Free(PointLightDatas, sizeof(PointLight::Data), Memory::Array);
-                MemorySystem::Free(PointLights, sizeof(PointLight), Memory::Array);
+                MemorySystem::Free(PointLightDatas, PointLightDatasSize, Memory::Array);
+                MemorySystem::Free(PointLights, PointLightsSize, Memory::Array);
             }
 
             MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->TerrainLocations.NumPointLights, &PointLightCount));
@@ -831,11 +831,11 @@ static bool LoadMaterial(const Material::Config &config, Material *material)
 
             // Значения по умолчанию
             material->PropertyStructSize = sizeof(Material::PhongProperties);
-            material->properties = MemorySystem::Allocate(sizeof(Material::PhongProperties), Memory::MaterialInstance);
-            auto properties = (Material::PhongProperties*)material->properties;
+            auto properties = (Material::PhongProperties*)MemorySystem::Allocate(material->PropertyStructSize, Memory::MaterialInstance, true);
+            material->properties = properties;
             properties->DiffuseColour = FVec4::One();
             properties->specular = 32.F;
-            properties->padding = FVec3();
+
             for (u32 i = 0; i < PropCount; ++i) {
                 if (config.properties[i].name.Comparei("diffuse_colour")) {
                     // Рассеянный цвет

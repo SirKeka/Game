@@ -22,6 +22,7 @@ void Viewport::Destroy()
 void Viewport::Resize(const Rect2D &rect)
 {
     this->rect = rect;
+    projection = RegenerateProjectionMatrix();
 }
 
 constexpr Matrix4D Viewport::RegenerateProjectionMatrix()

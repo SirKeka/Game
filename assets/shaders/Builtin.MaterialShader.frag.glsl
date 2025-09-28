@@ -11,7 +11,7 @@ struct point_light {
     vec4 colour;
     vec3 position;
     // Обычно 1, следите за тем, чтобы знаменатель никогда не был меньше 1.
-    float constant;
+    float constant_f;
     // Линейно снижает интенсивность света
     float linear;
     // Заставляет свет падать медленнее на больших расстояниях.
@@ -21,12 +21,17 @@ struct point_light {
 
 const int MAX_POINT_LIGHTS = 10;
 
-layout(set = 1, binding = 0) uniform instance_uniform_object {
+struct phong_properties {
     vec4 diffuse_colour;
-    directional_light dir_light;
-    point_light p_lights[MAX_POINT_LIGHTS];
-    int num_p_lights;
+    vec3 padding;
     float specular;
+};
+
+layout(set = 1, binding = 0) uniform instance_uniform_object {
+    directional_light dir_light;            // ЗАДАЧА: сделать глобальным;
+    point_light p_lights[MAX_POINT_LIGHTS]; // ЗАДАЧА: переместить после props
+    phong_properties properties;
+    int num_p_lights;
 } instance_ubo;
 
 // Samplers, diffuse, spec
@@ -56,7 +61,7 @@ vec4 calculate_point_light(point_light light, vec3 normal, vec3 frag_position, v
 
 void main() {
     vec3 normal = in_dto.normal;
-    vec3 tangent = in_dto.tangent.xyz;
+    vec3 tangent = in_dto.tangent;
     tangent = (tangent - dot(tangent, normal) *  normal);
     vec3 bitangent = cross(in_dto.normal, in_dto.tangent);
     TBN = mat3(tangent, bitangent, normal);
@@ -83,10 +88,10 @@ vec4 calculate_directional_light(directional_light light, vec3 normal, vec3 view
     float diffuse_factor = max(dot(normal, -light.direction.xyz), 0.0);
 
     vec3 half_direction = normalize(view_direction - light.direction.xyz);
-    float specular_factor = pow(max(dot(half_direction, normal), 0.0), instance_ubo.specular);
+    float specular_factor = pow(max(dot(half_direction, normal), 0.0), instance_ubo.properties.specular);
 
     vec4 diff_samp = texture(samplers[SAMP_DIFFUSE], in_dto.tex_coord);
-    vec4 ambient = vec4(vec3(in_dto.ambient * instance_ubo.diffuse_colour), diff_samp.a);
+    vec4 ambient = vec4(vec3(in_dto.ambient * instance_ubo.properties.diffuse_colour), diff_samp.a);
     vec4 diffuse = vec4(vec3(light.colour * diffuse_factor), diff_samp.a);
     vec4 specular = vec4(vec3(light.colour * specular_factor), diff_samp.a);
     
@@ -104,11 +109,11 @@ vec4 calculate_point_light(point_light light, vec3 normal, vec3 frag_position, v
     float diff = max(dot(normal, light_direction), 0.0);
 
     vec3 reflect_direction = reflect(-light_direction, normal);
-    float spec = pow(max(dot(view_direction, reflect_direction), 0.0), instance_ubo.specular);
+    float spec = pow(max(dot(view_direction, reflect_direction), 0.0), instance_ubo.properties.specular);
 
     // Рассчитайте затухание или затухание света с расстоянием.
     float distance = length(light.position.xyz - frag_position);
-    float attenuation = 1.0 / (light.constant + light.linear * distance + light.quadratic * (distance * distance));
+    float attenuation = 1.0 / (light.constant_f + light.linear * distance + light.quadratic * (distance * distance));
 
     vec4 ambient  = in_dto.ambient;
     vec4 diffuse  = light.colour * diff;

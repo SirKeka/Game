@@ -838,9 +838,10 @@ bool VulkanAPI::RenderpassEnd(Renderpass* pass)
 void VulkanAPI::Load(const u8* pixels, Texture *texture)
 {
     // Создание внутренних данных.
-    u32 ImageSize = texture->width * texture->height * texture->ChannelCount  * (texture->type == TextureType::Cube ? 6 : 1);
+    u32 ImageSize = texture->width * texture->height * texture->ChannelCount * (texture->type == TextureType::Cube ? 6 : 1);
 
     // ПРИМЕЧАНИЕ: Предполагается, что на канал приходится 8 бит.
+    // ЗАДАЧА: подумать о выборе формата для изображений с линейным цветовым пространсвом и без.
     VkFormat ImageFormat = VK_FORMAT_R8G8B8A8_UNORM;
 
     // ПРИМЕЧАНИЕ: Здесь много предположений, для разных типов текстур потребуются разные параметры.
@@ -2491,9 +2492,9 @@ bool VulkanAPI::RenderBufferCreateInternal(RenderBuffer &buffer)
             InternalBuffer.MemoryPropertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
             break;
         case RenderBufferType::Uniform: {
-            // u32 DeviceLocalBits = Device.SupportsDeviceLocalHostVisible ? VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT : 0;
+            u32 DeviceLocalBits = Device.SupportsDeviceLocalHostVisible ? VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT : 0;
             InternalBuffer.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-            InternalBuffer.MemoryPropertyFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT; // | DeviceLocalBits;
+            InternalBuffer.MemoryPropertyFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | DeviceLocalBits;
         } break;
         case RenderBufferType::Staging:
             InternalBuffer.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
@@ -2533,6 +2534,7 @@ bool VulkanAPI::RenderBufferCreateInternal(RenderBuffer &buffer)
 
     // Выделите память.
     VkResult result = vkAllocateMemory(Device.LogicalDevice, &AllocateInfo, allocator, &InternalBuffer.memory);
+    VK_SET_DEBUG_OBJECT_NAME(this, VK_OBJECT_TYPE_DEVICE_MEMORY, InternalBuffer.memory, buffer.name.c_str());
 
     // Определите, находится ли память в куче устройства.
     bool IsDeviceMemory = (InternalBuffer.MemoryPropertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) == VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
