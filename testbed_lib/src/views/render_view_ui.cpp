@@ -23,7 +23,7 @@ bool RenderViewUI::OnRegistered(RenderView* self)
         }
 
         // ПРИМЕЧАНИЕ: Предположим, что это первый проход, так как это все, что есть в этом представлении.
-        if (!ShaderSystem::Create(self->passes[0], ConfigResource.data)) {
+        if (!ShaderSystem::CreateShader(self->passes[0], ConfigResource.data)) {
             MERROR("Не удалось загрузить встроенный шейдер пользовательского интерфейса.");
             return false;
         }
@@ -36,7 +36,7 @@ bool RenderViewUI::OnRegistered(RenderView* self)
         data->PropertiesLocation  = ShaderSystem::UniformIndex(data->shader, "properties");
         data->ModelLocation       = ShaderSystem::UniformIndex(data->shader, "model");
 
-        if(!EventSystem::Register(EventSystem::DefaultRendertargetRefreshRequired, self, RenderViewOnEvent)) {
+        if(!EventSystem::Register(EventSystem::DefaultRendertargetRefreshRequired, self, EditorWorldOnEvent)) {
             MERROR("Не удалось прослушать событие, требующее обновления, создание не удалось.");
             return false;
         }
@@ -50,7 +50,7 @@ bool RenderViewUI::OnRegistered(RenderView* self)
 void RenderViewUI::Destroy(RenderView *self)
 {
     // Отменить регистрацию на мероприятии.
-    EventSystem::Unregister(EventSystem::DefaultRendertargetRefreshRequired, self->data, RenderViewOnEvent);
+    EventSystem::Unregister(EventSystem::DefaultRendertargetRefreshRequired, self->data, EditorWorldOnEvent);
     MemorySystem::Free(self->data, sizeof(RenderViewUI), Memory::Renderer);
     self->data = nullptr;
 }

@@ -1,5 +1,5 @@
 #include "resource_loader.h"
-#include "containers/darray.hpp"
+#include "containers/darray.h"
 #include "systems/geometry_system.h"
 #include "systems/resource_system.h"
 #include "math/geometry_utils.h"

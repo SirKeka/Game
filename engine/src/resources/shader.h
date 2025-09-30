@@ -6,7 +6,7 @@
 /// @copyright 
 #pragma once
 
-#include "containers/darray.hpp"
+#include "containers/darray.h"
 #include "containers/hashtable.hpp"
 #include "resources/texture.hpp"
 
@@ -31,9 +31,10 @@ namespace PrimitiveTopology
 /// @brief Представляет шейдер во внешнем интерфейсе.
 struct MAPI Shader {
     enum Flags {
-        NoneFlag = 0x0,
-        DepthTestFlag = 0x1,
-        DepthWriteFlag = 0x2
+        NoneFlag       = 0x0,
+        DepthTestFlag  = 0x1,
+        DepthWriteFlag = 0x2,
+        WireframeFlag  = 0x4
     };
 
     using FlagBits = u32;
@@ -238,11 +239,9 @@ public:
         DArray<Shader::Stage> stages;               // Сборник этапов.
         DArray<MString> StageNames;         // Коллекция сценических имен. Должно соответствовать массиву этапов.
         DArray<MString> StageFilenames;     // Коллекция имен файлов этапов, которые необходимо загрузить (по одному на этап). Должно соответствовать массиву этапов.
-        // ЗАДАЧА: Преобразуйте эти логические значения во флаги.
-        bool DepthTest;                       // Указывает, следует ли проводить тестирование глубины.
-        bool DepthWrite;                      // Указывает, следует ли записывать результаты тестирования глубины в буфер глубины. ПРИМЕЧАНИЕ: Это игнорируется, если DepthTest имеет значение false.
+        Shader::FlagBits flags;             // Флаги, установленные для этого шейдера.
 
-        ShaderConfig() : name(), CullMode(FaceCullMode::Back), TopologyTypes(PrimitiveTopology::Type::TriangleList), /*AttributeCount(),*/ attributes(), /*UniformCount(),*/ uniforms(), /*StageCount(),*/ stages(), StageNames(), StageFilenames() {}
+        ShaderConfig() : name(), CullMode(FaceCullMode::Back), TopologyTypes(PrimitiveTopology::Type::TriangleList), /*AttributeCount(),*/ attributes(), /*UniformCount(),*/ uniforms(), /*StageCount(),*/ stages(), StageNames(), StageFilenames(), flags() {}
         void Clear();
         void* operator new(u64 size) { return MemorySystem::Allocate(size, Memory::Resource); }
         void operator delete(void* ptr, u64 size) { MemorySystem::Free(ptr, size, Memory::Resource); }

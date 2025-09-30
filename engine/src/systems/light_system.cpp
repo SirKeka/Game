@@ -103,6 +103,25 @@ u32 LightSystem::PointLightCount()
     return count;
 }
 
+bool LightSystem::GetPointLights(PointLight **PointLights)
+{
+    if (!PointLights) {
+        return false;
+    }
+
+    auto state = reinterpret_cast<LightSystemState*>(SystemsManager::GetState(MSystem::Light));
+
+    for (u32 i = 0, j = 0; i < MAX_POINT_LIGHTS; ++i) {
+        auto PointLight = state->PointLights[i];
+        if (PointLight) {
+            PointLights[j] = PointLight;
+            j++;
+        }
+    }
+
+    return true;
+}
+
 bool LightSystem::GetPointLights(PointLight *PointLights)
 {
     if (!PointLights) {

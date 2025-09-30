@@ -33,7 +33,7 @@ struct sRenderViewEditorWorld {
     }
 };
 
-static bool RenderViewOnEvent(u16 code, void* sender, void* ListenerInst, EventContext context) {
+static bool EditorWorldOnEvent(u16 code, void* sender, void* ListenerInst, EventContext context) {
     auto self = (RenderView*)ListenerInst;
     if (!self) {
         return false;
@@ -76,7 +76,7 @@ bool RenderViewEditorWorld::OnRegistered(RenderView* self)
 
         data->WorldCamera = CameraSystem::GetDefault();
 
-        if (!EventSystem::Register(EventSystem::DefaultRendertargetRefreshRequired, self, RenderViewOnEvent)) {
+        if (!EventSystem::Register(EventSystem::DefaultRendertargetRefreshRequired, self, EditorWorldOnEvent)) {
             MERROR("Не удалось обработать требуемое событие обновления, создание не удалось.");
             return false;
         }
@@ -90,7 +90,7 @@ bool RenderViewEditorWorld::OnRegistered(RenderView* self)
 void RenderViewEditorWorld::Destroy(RenderView *self)
 {
     // Отменить регистрацию на мероприятии.
-    EventSystem::Unregister(EventSystem::DefaultRendertargetRefreshRequired, self, RenderViewOnEvent);
+    EventSystem::Unregister(EventSystem::DefaultRendertargetRefreshRequired, self, EditorWorldOnEvent);
 
     MemorySystem::Free(self->data, sizeof(sRenderViewEditorWorld), Memory::Renderer);
     self->data = nullptr;

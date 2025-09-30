@@ -1,5 +1,5 @@
 #pragma once 
-#include "containers/darray.hpp"
+#include "containers/darray.h"
 #include "core/event.h"
 #include "math/matrix4d.h"
 
@@ -29,6 +29,7 @@ struct SkyboxPacketData {
 };
 
 /// @brief Пакет для представления рендеринга, созданный им и содержащий данные о том, что должно быть визуализировано.
+    /// @param Viewport*_viewport Указатель на область просмотра в котрой нужно отрисовать данные.
     /// @param RenderView*_view Указатель на представление, с которым связан этот пакет.
     /// @param Matrix4D_ViewMatrix Текущая матрица представления.
     /// @param Matrix4D_ProjectionMatrix Текущая матрица проекции.
@@ -134,5 +135,5 @@ struct MAPI RenderView
     bool (*RegenerateAttachmentTarget)(RenderView* self, u32 PassIndex, RenderTargetAttachment* attachment);
 };
 
-MAPI bool RenderViewOnEvent(u16 code, void* sender, void* ListenerInst, EventContext context);
+MAPI bool EditorWorldOnEvent(u16 code, void* sender, void* ListenerInst, EventContext context);
 

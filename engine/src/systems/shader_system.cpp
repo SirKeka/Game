@@ -104,7 +104,7 @@ void ShaderSystem::Shutdown()
     }
 }
 
-bool ShaderSystem::Create(Renderpass& pass, ShaderConfig &config)
+bool ShaderSystem::CreateShader(Renderpass& pass, ShaderConfig &config)
 {
     u32 id = NewShaderID();
     if (id == INVALID::ID) {
@@ -114,14 +114,6 @@ bool ShaderSystem::Create(Renderpass& pass, ShaderConfig &config)
     
     auto NewShader = &pShaderSystem->shaders[id];
     new(NewShader) Shader(id, config);
-    
-    // Флаги процесса.
-    if (config.DepthTest) {
-        NewShader->flags |= Shader::DepthTestFlag;
-    }
-    if (config.DepthWrite) {
-        NewShader->flags |= Shader::DepthWriteFlag;
-    }
     
     if (!RenderingSystem::Load(NewShader, config, &pass, config.stages, config.StageFilenames)) {
         MERROR("Ошибка создания шейдера.");

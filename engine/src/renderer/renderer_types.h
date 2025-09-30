@@ -98,5 +98,8 @@ enum class RendererWinding
 
 enum class RendererProjectionMatrixType {
     Perspective = 0x0,
-    Orthographic = 0x1
+    /// @brief Ортографическая матрица, центрированная на нуле в левом верхнем углу.
+    Orthographic = 0x1,
+    /// @brief Ортографическая матрица, центрированная на ширине/высоте, а не на нулевом уровне. Использует поле зрения (FOV) в качестве «масштаба».
+    OrthographicCentered = 0x2
 };

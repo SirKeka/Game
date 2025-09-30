@@ -13,6 +13,7 @@
 // ЗАДАЧА: Реедактор временно
 #include "editor/gizmo.h"
 #include "editor/render_view_editor_world.h"
+#include "editor/render_view_wireframe.h"
 
 // ЗАДАЧА: временный код
 #include <core/identifier.h>
@@ -380,8 +381,8 @@ bool ApplicationInitialize(Application& app)
 
         // ЗАДАЧА: тестирование
         Rect2D WorldViewportRect2 {20, 20, 128, 72};
-        if (!state->WorldViewport2.Create(WorldViewportRect2, Math::DegToRad(45.F), 0.1f, 4000.F, RendererProjectionMatrixType::Perspective)) {
-            MERROR("Не удалось создать область просмотра мира. Не удаётся запустить приложение.");
+        if (!state->WorldViewport2.Create(WorldViewportRect2, 0.015F, -100.F, 100.F, RendererProjectionMatrixType::OrthographicCentered)) {
+            MERROR("Не удалось создать область просмотра каркаса. Не удаётся запустить приложение.");
             return false;
         }
 
@@ -584,12 +585,13 @@ bool ApplicationPrepareRenderPacket(Application& app, RenderPacket& packet, Fram
         return true;
     }
 
-    packet.ViewCount = 3;
+    packet.ViewCount = 4;
     packet.views = reinterpret_cast<RenderViewPacket*>(FrameAllocatttor->Allocate(sizeof(RenderViewPacket) * packet.ViewCount));
 
     // FIXME: Прочитать это из конфигурации
     // packet.views[Testbed::PacketViews::Skybox].view      = RenderViewSystem::Get("skybox");
     packet.views[Testbed::PacketViews::World].view       = RenderViewSystem::Get("world");
+    packet.views[Testbed::PacketViews::Wireframe].view   = RenderViewSystem::Get("wireframe");
     packet.views[Testbed::PacketViews::EditorWorld].view = RenderViewSystem::Get("editor_world");
     packet.views[Testbed::PacketViews::UI].view          = RenderViewSystem::Get("ui");
     // packet.views[Testbed::PacketViews::Pick].view        = RenderViewSystem::Get("pick");
@@ -639,6 +641,21 @@ bool ApplicationPrepareRenderPacket(Application& app, RenderPacket& packet, Fram
         EditorWorldData.gizmo = &state->gizmo;
         if (!RenderViewSystem::BuildPacket(view, rFrameData, state->WorldViewport, state->WorldCamera, &EditorWorldData, ViewPacket)) {
             MERROR("Не удалось построить пакет для представления «editor_world».");
+            return false;
+        }
+    }
+
+    // Wireframe
+    {
+        auto& ViewPacket = packet.views[Testbed::PacketViews::Wireframe];
+        const auto view = ViewPacket.view;
+
+        RenderViewWireframeData WireframeData{};
+        // ЗАДАЧА: Получить список геометрий, не отобранных для текущей камеры.
+        WireframeData.SelectedID = state->selection.UniqueID;
+        WireframeData.WorldGeometries = &packet.views[Testbed::PacketViews::World].geometries;
+        if (!RenderViewSystem::BuildPacket(view, rFrameData, state->WorldViewport2, state->WorldCamera2, &WireframeData, ViewPacket)) {
+            MERROR("Не удалось построить пакет для представления «каркас»");
             return false;
         }
     }
@@ -736,17 +753,8 @@ bool ApplicationRender(Application& app, RenderPacket& packet, FrameData& rFrame
     ViewPacket = &packet.views[Testbed::EditorWorld];
     ViewPacket->view->Render(ViewPacket->view, *ViewPacket, rFrameData);
 
-    // Выполняет текущий буфер команд.
-    RenderingSystem::End(rFrameData);
-
-    // Начинает буфер команд.
-    RenderingSystem::Begin(rFrameData);
-
     // Снова визуализирует мир, но с новой областью просмотра и камерой.
-    ViewPacket = &packet.views[Testbed::World];
-    ViewPacket->ProjectionMatrix = state->WorldViewport2.projection;
-    ViewPacket->viewport = &state->WorldViewport2;
-    ViewPacket->ViewMatrix = state->WorldCamera2->GetView();
+    ViewPacket = &packet.views[Testbed::Wireframe];
     ViewPacket->view->Render(ViewPacket->view, *ViewPacket, rFrameData);
 
     // UI
@@ -842,11 +850,11 @@ void ApplicationLibOnUnload(Application& app)
 
 bool GameConfigureRenderViews(ApplicationConfig& config)
 {
-    config.RenderViews.Resize(3);
+    config.RenderViews.Resize(4);
 
     // World view
     {
-        auto& WorldView = config.RenderViews[0];
+        auto& WorldView = config.RenderViews[Testbed::World];
         WorldView.name = "world";
         WorldView.RenderpassCount = 2; 
         WorldView.passes = (Renderpass*)MemorySystem::Allocate(sizeof(Renderpass) * WorldView.RenderpassCount, Memory::Array, true);
@@ -917,7 +925,7 @@ bool GameConfigureRenderViews(ApplicationConfig& config)
     // ЗАДАЧА: Редактор временно
     // Editor World view.
     {
-        auto& EditorWorldView = config.RenderViews[1];
+        auto& EditorWorldView = config.RenderViews[Testbed::EditorWorld];
         EditorWorldView.name = "editor_world";
         EditorWorldView.RenderpassCount = 1;
         EditorWorldView.passes = (Renderpass*)MemorySystem::Allocate(sizeof(Renderpass) * EditorWorldView.RenderpassCount, Memory::Array, true);
@@ -962,9 +970,57 @@ bool GameConfigureRenderViews(ApplicationConfig& config)
         EditorWorldView.Render = RenderViewEditorWorld::Render;
     }
 
+    // Каркасное представление.
+    {
+        auto& WireframeView = config.RenderViews[Testbed::Wireframe];
+        WireframeView.name = "wireframe";
+        WireframeView.RenderpassCount = 1;
+        WireframeView.passes = (Renderpass*)MemorySystem::Allocate(sizeof(Renderpass) * WireframeView.RenderpassCount, Memory::Array, true);
+
+        // Конфигурация Renderpass.
+        RenderpassConfig WireframePass;
+        WireframePass.name = "Renderpass.Testbed.Wireframe";
+        WireframePass.depth = 1.F;
+        WireframePass.stencil = 0;
+        WireframePass.ClearColour = FVec4(0.2F, 0.2F, 0.2F, 1.F);
+        WireframePass.ClearFlags = RenderpassClearFlag::ColourBuffer | RenderpassClearFlag::DepthBuffer | RenderpassClearFlag::StencilBuffer;
+        WireframePass.target.AttachmentCount = 2;
+        WireframePass.target.attachments = (RenderTargetAttachmentConfig*)MemorySystem::Allocate(sizeof(RenderTargetAttachmentConfig) * WireframePass.target.AttachmentCount, Memory::Array);
+        WireframePass.RenderTargetCount = RenderingSystem::WindowAttachmentCountGet();
+
+        // Привязка цвета
+        auto& WireframeTargetColour = WireframePass.target.attachments[0];
+        WireframeTargetColour.type = RenderTargetAttachmentType::Colour;
+        WireframeTargetColour.source = RenderTargetAttachmentSource::Default;
+        WireframeTargetColour.LoadOperation = RenderTargetAttachmentLoadOperation::Load;
+        WireframeTargetColour.StoreOperation = RenderTargetAttachmentStoreOperation::Store;
+        WireframeTargetColour.PresentAfter = false;
+
+        // Привязка глубины
+        auto& WireframeTargetDepth = WireframePass.target.attachments[1];
+        WireframeTargetDepth.type = RenderTargetAttachmentType::Depth;
+        WireframeTargetDepth.source = RenderTargetAttachmentSource::Default;
+        WireframeTargetDepth.LoadOperation = RenderTargetAttachmentLoadOperation::DontCare;
+        WireframeTargetDepth.StoreOperation = RenderTargetAttachmentStoreOperation::Store;
+        WireframeTargetDepth.PresentAfter = false;
+
+        if (!RenderingSystem::RenderpassCreate(WireframePass, WireframeView.passes[0])) {
+            MERROR("Wireframe view — Не удалось создать проход рендеринга «%s»", WireframeView.passes[0].name.c_str());
+            return false;
+        }
+
+        // Назначьте указатели на функции.
+        WireframeView.OnRegistered = RenderViewWireframe::OnRegistered;
+        WireframeView.Destroy = RenderViewWireframe::Destroy;
+        WireframeView.Resize = RenderViewWireframe::Resize;
+        WireframeView.BuildPacket = RenderViewWireframe::BuildPacket;
+        WireframeView.Render = RenderViewWireframe::Render;
+        WireframeView.RegenerateAttachmentTarget = nullptr;
+    }
+
     // UI view
     {
-        auto& UiView = config.RenderViews[2];
+        auto& UiView = config.RenderViews[Testbed::UI];
         UiView.name = "ui";
         // UiView.width = 0;
         // UiView.height = 0;
@@ -1005,7 +1061,7 @@ bool GameConfigureRenderViews(ApplicationConfig& config)
     // ЗАДАЧА: Разделить на 2 представления и снова включить.
     // Pick view
     /*{
-        auto& PickView = config.RenderViews[4];
+        auto& PickView = config.RenderViews[Testbed::Pick];
         PickView.name = "pick";
         // PickView.width = 0;
         // PickView.height = 0;

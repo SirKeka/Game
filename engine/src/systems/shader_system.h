@@ -35,7 +35,7 @@ namespace ShaderSystem
     /// @brief Создает новый шейдер с заданной конфигурацией. 
     /// @param config конфигурация, которая будет использоваться при создании шейдера.
     /// @return true в случае успеха; в противном случае false.
-    MAPI bool Create(Renderpass& pass, ShaderConfig& config);
+    MAPI bool CreateShader(Renderpass& pass, ShaderConfig& config);
 
     /// @brief Получает идентификатор шейдера по имени.
     /// @param ShaderName имя шейдера.

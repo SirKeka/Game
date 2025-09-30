@@ -34,14 +34,13 @@ public:
         VkViewport viewport;                           // Начальная конфигурация области просмотра.
         VkRect2D scissor;                              // Начальная конфигурация ножниц.
         FaceCullMode CullMode;                         // Режим отбраковки граней.
-        bool IsWireframe;                              // Указывает, должен ли этот конвейер использовать каркасный режим.
         u32 ShaderFlags;                               // Флаги шейдера, используемые для создания конвейера.
         u32 PushConstantRangeCount;                    // Количество диапазонов данных констант push.
         Range* PushConstantRanges;                     // Массив диапазонов данных констант push.
         u32 TopologyTypes;                             // Коллекция типов топологий, которые будут поддерживаться на этом конвейере.
         RendererWinding winding;                       // Порядок обхода вершин, используемый для определения передней грани треугольников.
 
-        constexpr Config(const MString& name, VulkanRenderpass* renderpass, u32 stride, u32 AttributeCount, VkVertexInputAttributeDescription* attributes, u32 DescriptorSetLayoutCount, VkDescriptorSetLayout* DescriptorSetLayouts, u32 StageCount, VkPipelineShaderStageCreateInfo* stages, VkViewport viewport, VkRect2D scissor, FaceCullMode CullMode, bool IsWireframe, u32 ShaderFlags, u32 PushConstantRangeCount, Range* PushConstantRanges, u32 TopologyTypes) 
+        constexpr Config(const MString& name, VulkanRenderpass* renderpass, u32 stride, u32 AttributeCount, VkVertexInputAttributeDescription* attributes, u32 DescriptorSetLayoutCount, VkDescriptorSetLayout* DescriptorSetLayouts, u32 StageCount, VkPipelineShaderStageCreateInfo* stages, VkViewport viewport, VkRect2D scissor, FaceCullMode CullMode, u32 ShaderFlags, u32 PushConstantRangeCount, Range* PushConstantRanges, u32 TopologyTypes) 
         : 
         name(name),
         renderpass(renderpass), 
@@ -55,7 +54,6 @@ public:
         viewport(viewport), 
         scissor(scissor), 
         CullMode(CullMode), 
-        IsWireframe(IsWireframe), 
         ShaderFlags(ShaderFlags),
         PushConstantRangeCount(PushConstantRangeCount),
         PushConstantRanges(PushConstantRanges),

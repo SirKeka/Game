@@ -56,36 +56,44 @@ class MAPI DArray
 {
     // Переменные
     /// @brief Количество элементов в массиве
-    u32 size       {};
+    u32 size;
     /// @brief Выделенная память под данное количество элементов
-    u32 capacity   {};
+    u32 capacity;
     /// @brief Размер одного элемента в байтах
-    u32 elementSize{};
+    u32 elementSize;
+    /// @brief Указывает использовался ли линейный распределитель для выделения памяти.
+    bool LinearAllocation;
     /// @brief Указатель на область памяти где хранятся элементы
-    T* data {nullptr};
+    T* data;
 
 // Функции
 public:
-    constexpr DArray() : size(), capacity(), elementSize(sizeof(T)), data(nullptr) {}
+    constexpr DArray() : size(), capacity(), elementSize(sizeof(T)), LinearAllocation(false), data(nullptr) {}
     // constexpr DArray(T&& value) : size(), capacity(), elementSize(sizeof(T)), data(nullptr) { PushBack(value); }
-    constexpr DArray(u32 capacity) : size(), capacity(capacity), elementSize(sizeof(T)), data(reinterpret_cast<T*>(MemorySystem::Allocate(capacity * elementSize, Memory::DArray, true))){}
-    constexpr DArray(u32 size, u32 capacity, T* array) : size(size), capacity(capacity ? capacity : size), elementSize(sizeof(T)), data(array) {}
+    constexpr DArray(u32 capacity) : size(), capacity(capacity), elementSize(sizeof(T)), LinearAllocation(false), data(reinterpret_cast<T*>(MemorySystem::Allocate(capacity * elementSize, Memory::DArray, true))){}
+    constexpr DArray(u32 size, u32 capacity, bool LinearAllocation, void* array) : size(size), capacity(capacity ? capacity : size), elementSize(sizeof(T)), LinearAllocation(LinearAllocation), data((T*)array) {}
 
     /// @brief Конструктор копирования
     /// @param other динамический массив из которого нужно копировать данные
-    constexpr DArray(const DArray& other) : size(other.size), capacity(other.capacity), elementSize(other.elementSize), data() {
+    constexpr DArray(const DArray& other) : size(other.size), capacity(other.capacity), elementSize(other.elementSize), LinearAllocation(other.LinearAllocation), data() {
         if (!capacity) {
             return;
         }
+
+        if (LinearAllocation) {
+            MWARN("На данный момент динамический массив не поддерживает копирование, если память была распределена линейным распределителем");
+            return;
+        } else {
+            data = reinterpret_cast<T*>(MemorySystem::Allocate(capacity * elementSize, Memory::DArray));
+        }
         
-        data = reinterpret_cast<T*>(MemorySystem::Allocate(capacity * elementSize, Memory::DArray));
         for (u32 i = 0; i < size; i++) {
             data[i] = other.data[i];
         }
     }
     /// @brief Конструктор перемещения
     /// @param other динамический массив из которого нужно переместить данные
-    constexpr DArray(DArray&& other) : size(other.size), capacity(other.capacity), elementSize(other.elementSize), data(other.data) {
+    constexpr DArray(DArray&& other) : size(other.size), capacity(other.capacity), elementSize(other.elementSize), LinearAllocation(other.LinearAllocation), data(other.data) {
         other.size = other.capacity = other.elementSize = 0;
         other.data = nullptr;
     }
@@ -114,6 +122,7 @@ public:
         for (u64 i = 0; i < da.size; i++) {
             data[i] = da.data[i];
         }
+        size = da.size;
         
         return *this;
     }
@@ -127,9 +136,10 @@ public:
         size = darr.size;
         capacity = darr.capacity;
         elementSize = darr.elementSize;
+        LinearAllocation = darr.LinearAllocation;
         darr.data = nullptr;
-        darr.size = 0;
-        darr.capacity = 0;
+        darr.size = darr.capacity = 0;
+        darr.LinearAllocation = false;
         return *this;
     }
 
@@ -238,10 +248,14 @@ public:
     // Модифицирующие методы--------------------------------------------------------------------
 
     void Destroy() {
-        Clear();
-        MemorySystem::Free(data, elementSize * capacity, Memory::DArray);
-        size = capacity = elementSize = 0;
-        data = nullptr;
+        if(!LinearAllocation) {
+            Clear();
+            MemorySystem::Free(data, elementSize * capacity, Memory::DArray);
+            size = capacity = elementSize = 0;
+            data = nullptr;
+        } else {
+            MemorySystem::ZeroMem(this, sizeof(*this));
+        }
     }
 
     /// @brief Очищает массив. Емкость остается прежней.

@@ -78,7 +78,7 @@ bool RenderViewWorld::OnRegistered(RenderView* self)
         }
 
         // ПРИМЕЧАНИЕ: предполагается первый проход, так как это все, что есть в этом представлении.
-        if (!ShaderSystem::Create(self->passes[0],ConfigResource.data)) {
+        if (!ShaderSystem::CreateShader(self->passes[0],ConfigResource.data)) {
             MERROR("Не удалось загрузить встроенный шейдер скайбокса.");
             return false;
         }
@@ -99,7 +99,7 @@ bool RenderViewWorld::OnRegistered(RenderView* self)
         }
 
         // ПРИМЕЧАНИЕ: Предположим, что это первый проход, так как это все, что есть в этом представлении.
-        if (!ShaderSystem::Create(self->passes[1], ConfigResource.data)) {
+        if (!ShaderSystem::CreateShader(self->passes[1], ConfigResource.data)) {
             MERROR("Не удалось загрузить встроенный шейдер материала.");
             return false;
         }
@@ -115,7 +115,7 @@ bool RenderViewWorld::OnRegistered(RenderView* self)
         }
         auto& TerrainShaderConfig = ConfigResource.data;
         // ПРИМЕЧАНИЕ: Предположим, что это первый проход, поскольку это все, что есть в этом представлении.
-        if (!ShaderSystem::Create(self->passes[1], TerrainShaderConfig)) {
+        if (!ShaderSystem::CreateShader(self->passes[1], TerrainShaderConfig)) {
             MERROR("Не удалось загрузить встроенный шейдер ландшафта.");
             return false;
         }
@@ -132,7 +132,7 @@ bool RenderViewWorld::OnRegistered(RenderView* self)
         }
         auto& Colour3dShaderConfig = ConfigResource.data;
         // ПРИМЕЧАНИЕ: предполагается первый проход, так как это все, что есть в этом представлении.
-        if (!ShaderSystem::Create(self->passes[1], Colour3dShaderConfig)) {
+        if (!ShaderSystem::CreateShader(self->passes[1], Colour3dShaderConfig)) {
             MERROR("Не удалось загрузить встроенный шейдер colour3d.");
             return false;
         }

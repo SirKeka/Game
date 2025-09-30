@@ -31,7 +31,7 @@ bool RenderViewPick::OnRegistered(RenderView* self)
             return false;
         }
 
-        if (!ShaderSystem::Create(*UiShaderInfo.pass, ConfigResource.data)) {
+        if (!ShaderSystem::CreateShader(*UiShaderInfo.pass, ConfigResource.data)) {
             MERROR("Не удалось загрузить встроенный шейдер UI Pick.");
             return false;
         }
@@ -54,7 +54,7 @@ bool RenderViewPick::OnRegistered(RenderView* self)
             return false;
         }
         
-        if (!ShaderSystem::Create(*WorldShaderInfo.pass, ConfigResource.data)) {
+        if (!ShaderSystem::CreateShader(*WorldShaderInfo.pass, ConfigResource.data)) {
             MERROR("Не удалось загрузить встроенный шейдер World Pick.");
             return false;
         }
@@ -77,7 +77,7 @@ bool RenderViewPick::OnRegistered(RenderView* self)
             return false;
         }
 
-        if (!ShaderSystem::Create(*TerrainShaderInfo.pass, ConfigResource.data)) {
+        if (!ShaderSystem::CreateShader(*TerrainShaderInfo.pass, ConfigResource.data)) {
             MERROR("Не удалось загрузить встроенный шейдер Terrain Pick.");
             return false;
         }
@@ -99,7 +99,7 @@ bool RenderViewPick::OnRegistered(RenderView* self)
             return false;
         }
 
-        if (!EventSystem::Register(EventSystem::DefaultRendertargetRefreshRequired, self->data, RenderViewOnEvent)) {
+        if (!EventSystem::Register(EventSystem::DefaultRendertargetRefreshRequired, self->data, EditorWorldOnEvent)) {
             MERROR("Не удалось прослушать требуемое событие обновления, создание не удалось.");
             return false;
         }
@@ -114,7 +114,7 @@ void RenderViewPick::Destroy(RenderView *self)
 {
     auto data = (RenderViewPick*)self->data;
     EventSystem::Unregister(EventSystem::MouseMoved, self->data, OnMouseMoved);
-    EventSystem::Unregister(EventSystem::DefaultRendertargetRefreshRequired, self->data, RenderViewOnEvent);
+    EventSystem::Unregister(EventSystem::DefaultRendertargetRefreshRequired, self->data, EditorWorldOnEvent);
 
     data->ReleaseShaderInstances();
 

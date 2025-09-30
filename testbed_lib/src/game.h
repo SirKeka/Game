@@ -138,6 +138,7 @@ namespace Testbed
     enum PacketViews {
         World,
         EditorWorld,
+        Wireframe,
         UI,
         Pick,
         Max = Pick + 1

@@ -15,6 +15,7 @@ namespace LightSystem
     MAPI DirectionalLight* GetDirectionalLight();
 
     MAPI u32 PointLightCount();
+    MAPI bool GetPointLights(PointLight** PointLights);
     MAPI bool GetPointLights(PointLight* PointLights);
 } // namespace name
 

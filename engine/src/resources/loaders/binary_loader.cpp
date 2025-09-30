@@ -1,5 +1,5 @@
 #include "resource_loader.h"
-#include "containers/darray.hpp"
+#include "containers/darray.h"
 #include "systems/resource_system.h"
 
 bool ResourceLoader::Load(const char *name, void* params, BinaryResource &OutResource)

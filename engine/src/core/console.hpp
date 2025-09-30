@@ -1,7 +1,7 @@
 #pragma once
 
 #include "logger.hpp"
-#include "containers/darray.hpp"
+#include "containers/darray.h"
 
 /// @brief Функция записи потребителя консоли, которая вызывается каждый раз, когда происходит событие регистрации. Потребители должны реализовать это и обрабатывать ввод таким образом.
 using PFN_ConsoleConsumerWrite = bool(*)(void*, Log::Level, const char*);

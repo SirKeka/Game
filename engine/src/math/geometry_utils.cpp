@@ -1,6 +1,6 @@
 #include "geometry_utils.h"
 
-#include "containers/darray.hpp"
+#include "containers/darray.h"
 #include "resources/geometry.h"
 #include "resources/terrain.h"
 #include "plane.h"
@@ -126,7 +126,7 @@ namespace Math
         // auto vertices = reinterpret_cast<Vertex3D*>(geometry.vertices);
         auto indices = reinterpret_cast<u32*>(geometry.indices);
         // u64 VertexSize = geometry.VertexCount * geometry.VertexSize;
-        DArray<Vertex3D> vertices { geometry.VertexCount, 0, reinterpret_cast<Vertex3D*>(geometry.vertices) };
+        DArray<Vertex3D> vertices { geometry.VertexCount, 0, false, reinterpret_cast<Vertex3D*>(geometry.vertices) };
         DArray<Vertex3D> UniqueVerts { geometry.VertexCount }; // auto UniqueVerts = reinterpret_cast<Vertex3D*>(MemorySystem::Allocate(VertexSize, Memory::Array, true));
         u64 UniqueVertexCount = 0;
 

@@ -1332,12 +1332,6 @@ bool VulkanAPI::Load(Shader *shader, const ShaderConfig& config, Renderpass* ren
     VulkShader->config.DescriptorSets[0].SamplerBindingIndex = INVALID::U8ID;
     VulkShader->config.DescriptorSets[1].SamplerBindingIndex = INVALID::U8ID;
 
-    // Получите данные по количеству униформы.
-    // VulkShader->GlobalUniformCount = 0;
-    // VulkShader->GlobalUniformSamplerCount = 0;
-    // VulkShader->InstanceUniformCount = 0;
-    // VulkShader->InstanceUniformSamplerCount = 0;
-    // VulkShader->LocalUniformCount = 0;
     const u32& TotalCount = config.uniforms.Length();
     for (u32 i = 0; i < TotalCount; ++i) {
         switch (config.uniforms[i].scope) {
@@ -1675,7 +1669,6 @@ bool VulkanAPI::ShaderInitialize(Shader *shader)
             viewport,
             scissor,
             VkShader->config.CullMode,
-            false,
             shader->flags,
             shader->PushConstantRangeCount,
             shader->PushConstantRanges,

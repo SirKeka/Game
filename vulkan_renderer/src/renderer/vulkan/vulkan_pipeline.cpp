@@ -20,7 +20,7 @@ bool VulkanPipeline::Create(VulkanAPI* VkAPI, const Config& config)
     VkPipelineRasterizationStateCreateInfo RasterizerCreateInfo = {VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO};
     RasterizerCreateInfo.depthClampEnable = VK_FALSE;
     RasterizerCreateInfo.rasterizerDiscardEnable = VK_FALSE;
-    RasterizerCreateInfo.polygonMode = config.IsWireframe ? VK_POLYGON_MODE_LINE : VK_POLYGON_MODE_FILL;
+    RasterizerCreateInfo.polygonMode = (config.ShaderFlags & Shader::WireframeFlag) ? VK_POLYGON_MODE_LINE : VK_POLYGON_MODE_FILL;
     RasterizerCreateInfo.lineWidth = 1.F;
     switch (config.CullMode) {
         case FaceCullMode::None:

@@ -1,6 +1,6 @@
 #pragma once
 #include "resources/texture_map.hpp"
-#include "containers/darray.hpp"
+#include "containers/darray.h"
 
 struct FontGlyph {
     i32 codepoint;

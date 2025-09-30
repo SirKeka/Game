@@ -3,7 +3,7 @@
 #include "systems/render_view_system.h"
 #include "renderer/renderpass.h"
 
-bool RenderViewOnEvent(u16 code, void *sender, void *ListenerInst, EventContext context)
+bool EditorWorldOnEvent(u16 code, void *sender, void *ListenerInst, EventContext context)
 {
     auto self = (RenderView*)ListenerInst;
     if (!self) {

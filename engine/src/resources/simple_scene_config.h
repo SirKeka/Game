@@ -1,7 +1,7 @@
 #pragma once
 
 #include "math/transform.h"
-#include "containers/darray.hpp"
+#include "containers/darray.h"
 
 struct SkyboxSimpleSceneConfig
 {

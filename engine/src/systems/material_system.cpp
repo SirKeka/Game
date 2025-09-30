@@ -561,14 +561,14 @@ bool MaterialSystem::ApplyInstance(Material *material, const FrameData& rFrameDa
             u32 PointLightCount = LightSystem::PointLightCount();
             if (PointLightCount) {
                 // ЗАДАЧА: frame allocator?
-                u64 PointLightsSize = sizeof(PointLight) * PointLightCount;
-                auto PointLights = reinterpret_cast<PointLight*>(rFrameData.FrameAllocator->Allocate(PointLightsSize));
+                u64 PointLightsSize = sizeof(PointLight*) * PointLightCount;
+                const auto PointLights = reinterpret_cast<PointLight**>(rFrameData.FrameAllocator->Allocate(PointLightsSize));
                 LightSystem::GetPointLights(PointLights);
 
                 u64 PointLightDatasSize = sizeof(PointLight::Data) * PointLightCount;
                 auto PointLightDatas = reinterpret_cast<PointLight::Data*>(rFrameData.FrameAllocator->Allocate(PointLightDatasSize));
                 for (u32 i = 0; i < PointLightCount; ++i) {
-                    PointLightDatas[i] = PointLights[i].data;
+                    PointLightDatas[i] = PointLights[i]->data;
                 }
 
                 MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->MaterialLocations.PointLights, PointLightDatas));
@@ -601,15 +601,14 @@ bool MaterialSystem::ApplyInstance(Material *material, const FrameData& rFrameDa
             // Точечные источники света.
             u32 PointLightCount = LightSystem::PointLightCount();
             if (PointLightCount) {
-                // ЗАДАЧА: Распределитель кадров?
-                u64 PointLightsSize = sizeof(PointLight) * PointLightCount;
-                auto PointLights = reinterpret_cast<PointLight*>(rFrameData.FrameAllocator->Allocate(PointLightsSize));
+                u64 PointLightsSize = sizeof(PointLight*) * PointLightCount;
+                const auto PointLights = reinterpret_cast<PointLight**>(rFrameData.FrameAllocator->Allocate(PointLightsSize));
                 LightSystem::GetPointLights(PointLights);
 
                 u64 PointLightDatasSize = sizeof(PointLight::Data) * PointLightCount;
                 auto PointLightDatas = reinterpret_cast<PointLight::Data*>(rFrameData.FrameAllocator->Allocate(PointLightDatasSize));
                 for (u32 i = 0; i < PointLightCount; ++i) {
-                    PointLightDatas[i] = PointLights[i].data;
+                    PointLightDatas[i] = PointLights[i]->data;
                 }
 
                 MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->TerrainLocations.PointLights, PointLightDatas));

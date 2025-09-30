@@ -1,7 +1,7 @@
 #pragma once
 
 #include "extents.h"
-#include "containers/darray.hpp"
+#include "containers/darray.h"
 
 struct GeometryConfig;
 struct Vertex3D;

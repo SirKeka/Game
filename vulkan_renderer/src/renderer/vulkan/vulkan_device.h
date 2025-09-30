@@ -1,7 +1,7 @@
 #pragma once
 
 #include <vulkan/vulkan.h>
-#include "containers/darray.hpp"
+#include "containers/darray.h"
 
 class VulkanAPI;
 struct VulkanPhysicalDeviceRequirements;

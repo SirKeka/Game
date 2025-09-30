@@ -36,7 +36,7 @@ Shader::Shader(u32 id, ShaderConfig &config)
     : 
     id(id), 
     name(static_cast<MString&&>(config.name)), 
-    flags(),
+    flags(config.flags),
     RequiredUboAlignment(), 
     GlobalUboSize(), 
     GlobalUboStride(), 
@@ -263,6 +263,5 @@ void ShaderConfig::Clear()
     stages.Clear();              
     StageNames.Clear();              
     StageFilenames.Clear();  
-    DepthTest = false;
-    DepthWrite = false;
+    flags = 0;
 }

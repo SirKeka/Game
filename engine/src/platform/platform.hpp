@@ -1,6 +1,6 @@
 #pragma once
 
-#include "containers/darray.hpp"
+#include "containers/darray.h"
 
 struct DynamicLibraryFunction {
     MString name;

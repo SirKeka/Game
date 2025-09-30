@@ -134,9 +134,23 @@ bool ResourceLoader::Load(const char *name, void* params, ShaderResource &OutRes
                 }
             }
         } else if (TrimmedVarName.Comparei("depth_test")) {
-            TrimmedValue.ToBool(data.DepthTest);
+            bool DepthTest;
+            TrimmedValue.ToBool(DepthTest);
+            if (DepthTest) {
+                data.flags |= Shader::DepthTestFlag;
+            }
         } else if (TrimmedVarName.Comparei("depth_write")) {
-            TrimmedValue.ToBool(data.DepthWrite); 
+            bool DepthWrite;
+            TrimmedValue.ToBool(DepthWrite);
+            if (DepthWrite) {
+                data.flags |= Shader::DepthWriteFlag;
+            }
+        } else if (TrimmedVarName.Comparei("wireframe")) {
+            bool wireframe;
+            TrimmedValue.ToBool(wireframe);
+            if (wireframe) {
+                data.flags |= Shader::WireframeFlag;
+            }
         } else if (TrimmedVarName.Comparei("attribute")) {
             // Анализ атрибута.
             DArray<MString>fields{2};
