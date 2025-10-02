@@ -155,7 +155,7 @@ bool RenderViewSystem::BuildPacket(RenderView* view, FrameData& rFrameData, View
     return false;
 }
 
-bool RenderViewSystem::OnRender(RenderView *view, const RenderViewPacket &packet, u64 FrameNumber, u64 RenderTargetIndex, const FrameData& rFramedata)
+bool RenderViewSystem::OnRender(RenderView *view, RenderViewPacket &packet, u64 FrameNumber, u64 RenderTargetIndex, const FrameData& rFramedata)
 {
     if (view) {
         return view->Render(view, packet, rFramedata);

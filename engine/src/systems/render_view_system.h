@@ -58,7 +58,7 @@ namespace RenderViewSystem
     /// @param FrameNumber текущий номер кадра визуализатора, обычно используемый для синхронизации данных.
     /// @param RenderTargetIndex текущий индекс цели визуализации для визуализаторов, которые используют несколько целей визуализации одновременно (например, Vulkan).
     /// @return true в случае успеха; в противном случае false.
-    bool OnRender(RenderView* view, const RenderViewPacket& packet, u64 FrameNumber, u64 RenderTargetIndex, const FrameData& rFramedata);
+    bool OnRender(RenderView* view, RenderViewPacket& packet, u64 FrameNumber, u64 RenderTargetIndex, const FrameData& rFramedata);
     
     MAPI void RegenerateRenderTargets(RenderView* view);
 }

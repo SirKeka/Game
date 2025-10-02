@@ -264,7 +264,7 @@ bool RenderViewWorld::BuildPacket(RenderView* self, FrameData& rFrameData, Viewp
     return false;
 }
 
-bool RenderViewWorld::Render(const RenderView* self, const RenderViewPacket &packet, const FrameData& rFrameData)
+bool RenderViewWorld::Render(const RenderView* self, RenderViewPacket &packet, const FrameData& rFrameData)
 {
     if (self) {
         auto data = reinterpret_cast<RenderViewWorld*>(self->data);

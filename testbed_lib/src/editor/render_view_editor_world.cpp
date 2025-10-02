@@ -155,7 +155,7 @@ bool RenderViewEditorWorld::BuildPacket(RenderView *self, FrameData& pFrameData,
     return true;
 }
 
-bool RenderViewEditorWorld::Render(const RenderView *self, const RenderViewPacket &packet, const FrameData &rFrameData)
+bool RenderViewEditorWorld::Render(const RenderView *self, RenderViewPacket &packet, const FrameData &rFrameData)
 {
     auto data = (sRenderViewEditorWorld*)self->data;
     // u32 ShaderID = data->shader->id;

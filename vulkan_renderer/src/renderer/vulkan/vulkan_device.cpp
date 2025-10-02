@@ -65,7 +65,7 @@ bool VulkanDevice::Create(VulkanAPI* VkAPI)
     // ЗАДАЧА: должно управляться конфигурацией
     VkPhysicalDeviceFeatures DeviceFeatures = {};
     DeviceFeatures.samplerAnisotropy = VK_TRUE;  // Запросить анизотропию
-    // DeviceFeatures.fillModeNonSolid = VK_TRUE;
+    DeviceFeatures.fillModeNonSolid = VK_TRUE;   // ЗАДАЧА: Проверить, поддерживается ли?
 
     bool PortabilityRequired = false;
     u32 AvailableExtensionCount = 0;

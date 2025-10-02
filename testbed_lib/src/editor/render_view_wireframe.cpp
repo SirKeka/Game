@@ -24,15 +24,19 @@ struct WireframeColoureInstance
     FVec4 colour;
 };
 
+struct WireframeShaderInfo {
+    Shader* shader;
+    WireframeShaderLocations locations;
+    // Выбран один экземпляр каждого цвета.
+    WireframeColoureInstance NormalInstance;
+    WireframeColoureInstance SelectedInstance;
+};
+
 struct sRenderViewWireframe
 {
-    Shader* shader{nullptr};
-    WireframeShaderLocations WireframeLocations;
     u32 SelectedID{INVALID::ID};
-    // Один экземпляр на каждый нарисованный цвет.
-    WireframeColoureInstance GeometrtyInstance{};
-    WireframeColoureInstance TerrainInstance{};
-    WireframeColoureInstance SelectedInstance{};
+    WireframeShaderInfo MeshShader{};
+    WireframeShaderInfo TerrainShader{};
 
     void* operator new(u64 size) {
         return MemorySystem::Allocate(size, Memory::Renderer);
@@ -73,46 +77,45 @@ bool RenderViewWireframe::OnRegistered(RenderView *self)
     auto data = new sRenderViewWireframe();
     self->data = data;
 
-    // Загрузите каркасный шейдер и его местоположение.
-    const char* WireframeShaderName = "Shader.Builtin.Wireframe";
-    ShaderResource WireframeShaderConfigResource;
-    if (!ResourceSystem::Load(WireframeShaderName, eResource::Shader, nullptr, WireframeShaderConfigResource)) {
-        MERROR("Не удалось загрузить встроенный каркасный шейдер.");
-        return false;
-    }
-    auto& WireframeShaderConfig = WireframeShaderConfigResource.data;
-    if (!ShaderSystem::CreateShader(self->passes[0], WireframeShaderConfig)) {
-        MERROR("Не удалось загрузить встроенный каркасный шейдер.");
-        return false;
-    }
-    // ResourceSystem::Unload(WireframeShaderConfigResource);
+    const char* ShaderNames[2] = {"Shader.Builtin.Wireframe", "Shader.Builtin.WireframeTerrain"};
+    WireframeShaderInfo* ShaderInfos[2] = {&data->MeshShader, &data->TerrainShader};
+    FVec4 NormalColours[2] = {FVec4(0.5F, 0.8F, 0.8F, 1.F), FVec4(0.8F, 0.8F, 0.5F, 1.F)};
 
-    data->shader = ShaderSystem::GetShader(WireframeShaderName);
-    data->WireframeLocations.projection = ShaderSystem::UniformIndex(data->shader, "projection");
-    data->WireframeLocations.view = ShaderSystem::UniformIndex(data->shader, "view");
-    data->WireframeLocations.model = ShaderSystem::UniformIndex(data->shader, "model");
-    data->WireframeLocations.colour = ShaderSystem::UniformIndex(data->shader, "colour");
+    for (u32 s = 0; s < 2; ++s) {
+        WireframeShaderInfo* info = ShaderInfos[s];
+        // Загрузите каркасный шейдер и его местоположение.
+        ShaderResource WireframeShaderConfigResource;
+        if (!ResourceSystem::Load(ShaderNames[s], eResource::Shader, nullptr, WireframeShaderConfigResource)) {
+            MERROR("Не удалось загрузить встроенный каркасный шейдер.");
+            return false;
+        }
+        auto& WireframeShaderConfig = WireframeShaderConfigResource.data;
+        if (!ShaderSystem::CreateShader(self->passes[0], WireframeShaderConfig)) {
+            MERROR("Не удалось загрузить встроенный каркасный шейдер.");
+            return false;
+        }
+        // ResourceSystem::Unload(WireframeShaderConfigResource);
 
-    // Приобретите ресурсы экземпляра шейдера.
-    // data->GeometrtyInstance = (WireframeColoureInstance){0};
-    data->GeometrtyInstance.colour = FVec4(0.5F, 0.8F, 0.8F, 1.F);
-    if (!RenderingSystem::ShaderAcquireInstanceResources(data->shader, 0, nullptr, data->GeometrtyInstance.id)) {
-        MERROR("Не удалось получить ресурсы экземпляра геометрического шейдера из каркасного шейдера.");
-        return false;
-    }
+        info->shader = ShaderSystem::GetShader(ShaderNames[s]);
+        info->locations.projection = ShaderSystem::UniformIndex(info->shader, "projection");
+        info->locations.view       = ShaderSystem::UniformIndex(info->shader, "view");
+        info->locations.model      = ShaderSystem::UniformIndex(info->shader, "model");
+        info->locations.colour     = ShaderSystem::UniformIndex(info->shader, "colour");
 
-    // data->TerrainInstance = (WireframeColoureInstance){0};
-    data->TerrainInstance.colour = FVec4(0.8F, 0.8F, 0.5F, 1.F);
-    if (!RenderingSystem::ShaderAcquireInstanceResources(data->shader, 0, nullptr, data->TerrainInstance.id)) {
-        MERROR("Не удалось получить ресурсы экземпляра шейдера рельефа из каркасного шейдера.");
-        return false;
-    }
+        // Приобретите ресурсы экземпляра шейдера.
+        // info->NormalInstance = (WireframeColoureInstance){0};
+        info->NormalInstance.colour = NormalColours[s];
+        if (!RenderingSystem::ShaderAcquireInstanceResources(info->shader, 0, nullptr, info->NormalInstance.id)) {
+            MERROR("Не удалось получить ресурсы экземпляра геометрического шейдера из каркасного шейдера.");
+            return false;
+        }
 
-    // data->SelectedInstance = (WireframeColoureInstance){0};
-    data->SelectedInstance.colour = FVec4(0.F, 1.F, 0.F, 1.F);
-    if (!RenderingSystem::ShaderAcquireInstanceResources(data->shader, 0, nullptr, data->SelectedInstance.id)) {
-        MERROR("Не удалось получить выбранные ресурсы экземпляра шейдера из каркасного шейдера.");
-        return false;
+        // info->SelectedInstance = (WireframeColoureInstance){0};
+        info->SelectedInstance.colour = FVec4(0.F, 1.F, 0.F, 1.F);
+        if (!RenderingSystem::ShaderAcquireInstanceResources(info->shader, 0, nullptr, info->SelectedInstance.id)) {
+            MERROR("Не удалось получить выбранные ресурсы экземпляра шейдера из каркасного шейдера.");
+            return false;
+        }
     }
 
     // Регистрация союытия.
@@ -136,9 +139,10 @@ void RenderViewWireframe::Destroy(RenderView *self)
     EventSystem::Unregister(EventSystem::DefaultRendertargetRefreshRequired, self, EditorWorldOnEvent);
 
     // Освободить ресурсы экземпляра шейдера.
-    RenderingSystem::ShaderReleaseInstanceResources(data->shader, data->GeometrtyInstance.id);
-    RenderingSystem::ShaderReleaseInstanceResources(data->shader, data->TerrainInstance.id);
-    RenderingSystem::ShaderReleaseInstanceResources(data->shader, data->SelectedInstance.id);
+    RenderingSystem::ShaderReleaseInstanceResources(data->MeshShader.shader,    data->MeshShader.NormalInstance.id);
+    RenderingSystem::ShaderReleaseInstanceResources(data->MeshShader.shader,    data->MeshShader.SelectedInstance.id);
+    RenderingSystem::ShaderReleaseInstanceResources(data->TerrainShader.shader, data->TerrainShader.NormalInstance.id);
+    RenderingSystem::ShaderReleaseInstanceResources(data->TerrainShader.shader, data->TerrainShader.SelectedInstance.id);
 
     // Освободить внутреннюю структуру данных.
     delete data;
@@ -172,35 +176,32 @@ bool RenderViewWireframe::BuildPacket(RenderView *self, FrameData &rFrameData, V
     OutPacket.ViewMatrix = camera->GetView();
     OutPacket.ViewPosition = camera->GetPosition();
 
-    // Сбросить индексы отрисовки.
-    InternalData->GeometrtyInstance.DrawIndex = InternalData->TerrainInstance.DrawIndex = InternalData->SelectedInstance.DrawIndex = 0;
-
     // Запомнить текущий выбранный объект.
     InternalData->SelectedID = WorldData->SelectedID;
 
+    // Сбросить индексы отрисовки.
+    InternalData->MeshShader.NormalInstance.DrawIndex    = InternalData->MeshShader.SelectedInstance.DrawIndex    = 0;
+    InternalData->TerrainShader.NormalInstance.DrawIndex = InternalData->TerrainShader.SelectedInstance.DrawIndex = 0;
+
     // Геометрия.
-    if (WorldData->WorldGeometries) {
+    if (*WorldData->WorldGeometries) {
         const u32& GeometryDataCount = WorldData->WorldGeometries->Length();
-        // OutPacket.geometries.Resize(GeometryDataCount);
-        if (GeometryDataCount) {
-            // Для этого представления отрисовать всё предоставленное.
-            OutPacket.geometries = DArray<GeometryRenderData>(GeometryDataCount, GeometryDataCount, true, rFrameData.FrameAllocator->Allocate(sizeof(GeometryRenderData) * GeometryDataCount));
-            /*for (u32 i = 0; i < GeometryDataCount; ++i) {
-                auto& RenderData = OutPacket.geometries[i];
-                auto& WorldGeometry = WorldData->WorldGeometries[i];
-                RenderData.UniqueID = WorldGeometry.UniqueID;
-                RenderData.geometry = WorldGeometry.geometry;
-                RenderData.model = WorldGeometry.model;
-                RenderData.WindingInverted = WorldGeometry.WindingInverted;
-            }*/
-           OutPacket.geometries = *WorldData->WorldGeometries;
-        }
+        // Для этого представления отрисовать всё предоставленное.
+        OutPacket.geometries = DArray<GeometryRenderData>(GeometryDataCount, GeometryDataCount, true, rFrameData.FrameAllocator->Allocate(sizeof(GeometryRenderData) * GeometryDataCount));
+        OutPacket.geometries = *WorldData->WorldGeometries;
+    }
+    // Ландшафт
+    if (*WorldData->TerrainGeometries) {
+        const u32& TerrainDataCount = WorldData->TerrainGeometries->Length();
+        // Для этого представления отрисовать всё предоставленное.
+        OutPacket.TerrainGeometries = DArray<GeometryRenderData>(TerrainDataCount, TerrainDataCount, true, rFrameData.FrameAllocator->Allocate(sizeof(GeometryRenderData) * TerrainDataCount));
+        OutPacket.TerrainGeometries = *WorldData->TerrainGeometries;
     }
 
     return true;
 }
 
-bool RenderViewWireframe::Render(const RenderView *self, const RenderViewPacket &packet, const FrameData &rFrameData)
+bool RenderViewWireframe::Render(const RenderView *self, RenderViewPacket &packet, const FrameData &rFrameData)
 {
     if (self) {
         auto data = (sRenderViewWireframe*)self->data;
@@ -216,61 +217,69 @@ bool RenderViewWireframe::Render(const RenderView *self, const RenderViewPacket 
             return false;
         }
 
-        ShaderSystem::Use(data->shader->id);
+        auto render { [data, &packet, &rFrameData](WireframeShaderInfo& info, DArray<GeometryRenderData>& array) {
+            ShaderSystem::Use(info.shader->id);
 
-        // Установить глобальные униформы
-        data->shader->BindGlobals();
-        if (!ShaderSystem::UniformSet(data->WireframeLocations.projection, &packet.ProjectionMatrix)) {
-            MERROR("Не удалось установить униформу матрицы проекции для каркасного шейдера.");
-            return false;
-        }
-        if (!ShaderSystem::UniformSet(data->WireframeLocations.view, &packet.ViewMatrix)) {
-            MERROR("Не удалось установить униформу матрицы вида для каркасного шейдера.");
-            return false;
-        }
-        ShaderSystem::ApplyGlobal(true);
+            // Установить глобальные униформы
+            info.shader->BindGlobals();
+            if (!ShaderSystem::UniformSet(info.locations.projection, &packet.ProjectionMatrix)) {
+                MERROR("Не удалось установить униформу матрицы проекции для каркасного шейдера.");
+                return false;
+            }
+            if (!ShaderSystem::UniformSet(info.locations.view, &packet.ViewMatrix)) {
+                MERROR("Не удалось установить униформу матрицы вида для каркасного шейдера.");
+                return false;
+            }
+            ShaderSystem::ApplyGlobal(true);
 
-        // Геометрии
-        if (packet.geometries) {
-            for (u32 i = 0; i < packet.geometries.Length(); ++i) {
-                // Установить униформы экземпляра.
-                auto& geometry = packet.geometries[i];
-                // Выбор экземпляра позволяет легко менять цвет.
-                WireframeColoureInstance* inst = nullptr;
-                if (geometry.UniqueID == data->SelectedID) {
-                    inst = &data->SelectedInstance;
-                } else {
-                    inst = &data->GeometrtyInstance;
-                }
+            if (array) {
+                for (u32 i = 0; i < array.Length(); ++i) {
+                    // Установить униформы экземпляра.
+                    auto& geometry = array[i];
+                    // Выбор экземпляра позволяет легко менять цвет.
+                    WireframeColoureInstance* inst = nullptr;
+                    if (geometry.UniqueID == data->SelectedID) {
+                        inst = &info.SelectedInstance;
+                    } else {
+                        inst = &info.NormalInstance;
+                    }
 
-                ShaderSystem::BindInstance(inst->id);
+                    ShaderSystem::BindInstance(inst->id);
 
-                bool NeedsUpdate = inst->FrameNumber != rFrameData.RendererFrameNumber || inst->DrawIndex != rFrameData.DrawIndex;
-                if (NeedsUpdate) {
-                    if (!ShaderSystem::UniformSet(data->WireframeLocations.colour, &inst->colour)) {
-                        MERROR("Не удалось установить униформу матрицы проекции для каркасного шейдера.");
+                    bool NeedsUpdate = inst->FrameNumber != rFrameData.RendererFrameNumber || inst->DrawIndex != rFrameData.DrawIndex;
+                    if (NeedsUpdate) {
+                        if (!ShaderSystem::UniformSet(info.locations.colour, &inst->colour)) {
+                            MERROR("Не удалось установить униформу матрицы проекции для каркасного шейдера.");
+                            return false;
+                        }
+                    }
+
+                    ShaderSystem::ApplyInstance(NeedsUpdate);
+
+                    // Синхронизировать номер кадра и индекс отрисовки.
+                    inst->FrameNumber = rFrameData.RendererFrameNumber;
+                    inst->DrawIndex = rFrameData.DrawIndex;
+
+                    // Локальные переменные.
+                    if (!ShaderSystem::UniformSet(info.locations.model, &geometry.model)) {
+                        MERROR("Не удалось применить униформу матрицы модели для каркасного шейдера.");
                         return false;
                     }
+
+                    // Нарисовать его.
+                    RenderingSystem::DrawGeometry(geometry);
                 }
-
-                ShaderSystem::ApplyInstance(NeedsUpdate);
-
-                // Синхронизировать номер кадра и индекс отрисовки.
-                inst->FrameNumber = rFrameData.RendererFrameNumber;
-                inst->DrawIndex = rFrameData.DrawIndex;
-
-                // Локальные переменные.
-                if (!ShaderSystem::UniformSet(data->WireframeLocations.model, &geometry.model)) {
-                    MERROR("Не удалось применить униформу матрицы модели для каркасного шейдера.");
-                    return false;
-                }
-
-                // Нарисовать его.
-                RenderingSystem::DrawGeometry(geometry);
             }
-        }
+            return true;
+        } };
 
-        // ЗАДАЧА: ландшафты.
+        if (!render(data->MeshShader, packet.geometries)) {
+            return false;
+        }
+        
+        if (!render(data->TerrainShader, packet.TerrainGeometries)) {
+            return false;
+        }
 
         if (!RenderingSystem::RenderpassEnd(pass)) {
             MERROR("RenderViewWireframe::Render Не удалось завершить проход рендеринга.");

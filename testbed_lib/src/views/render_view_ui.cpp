@@ -106,7 +106,7 @@ bool RenderViewUI::BuildPacket(RenderView* self, FrameData& rFrameData, Viewport
     return false;
 }
 
-bool RenderViewUI::Render(const RenderView* self, const RenderViewPacket &packet, const FrameData& rFrameData)
+bool RenderViewUI::Render(const RenderView* self, RenderViewPacket &packet, const FrameData& rFrameData)
 {
     if (self) {
         auto data = reinterpret_cast<RenderViewUI*>(self->data);

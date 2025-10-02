@@ -20,5 +20,5 @@ namespace RenderViewEditorWorld
     void Destroy(RenderView* self);
     void Resize(RenderView* self, u32 width, u32 height);
     bool BuildPacket(RenderView* self, FrameData& pFrameData, Viewport& viewport, Camera* camera, void* data, RenderViewPacket& OutPacket);
-    bool Render(const RenderView* self, const RenderViewPacket& packet, const FrameData& rFrameData);
+    bool Render(const RenderView* self, RenderViewPacket& packet, const FrameData& rFrameData);
 } // namespace RenderViewEditorWorld

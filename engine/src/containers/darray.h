@@ -144,7 +144,7 @@ public:
     }
 
     explicit operator bool() const {
-        return data && capacity > 0 && size > 0;
+        return data && capacity && size > 0;
     }
 
     // Доступ к элементу------------------------------------------------------------------------

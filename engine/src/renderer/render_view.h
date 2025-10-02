@@ -125,7 +125,7 @@ struct MAPI RenderView
     /// @param packet указатель на пакет, данные которого должны быть визуализированы.
     /// @param rFrameData ссылка на текущие данные кадра
     /// @return true в случае успеха; в противном случае false.
-    bool (*Render)(const RenderView* self, const RenderViewPacket& packet, const FrameData& rFrameData);
+    bool (*Render)(const RenderView* self, RenderViewPacket& packet, const FrameData& rFrameData);
 
     /// @brief Регенерирует ресурсы для указанного вложения по указанному индексу прохода.
     /// @param self Указатель на представление для использования.

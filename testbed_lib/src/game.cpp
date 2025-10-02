@@ -381,7 +381,7 @@ bool ApplicationInitialize(Application& app)
 
         // ЗАДАЧА: тестирование
         Rect2D WorldViewportRect2 {20, 20, 128, 72};
-        if (!state->WorldViewport2.Create(WorldViewportRect2, 0.015F, -100.F, 100.F, RendererProjectionMatrixType::OrthographicCentered)) {
+        if (!state->WorldViewport2.Create(WorldViewportRect2, 0.015F, -4000.F, 4000.F, RendererProjectionMatrixType::OrthographicCentered)) {
             MERROR("Не удалось создать область просмотра каркаса. Не удаётся запустить приложение.");
             return false;
         }
@@ -468,8 +468,8 @@ bool ApplicationInitialize(Application& app)
     state->WorldCamera->SetRotationEuler(FVec3(-20.F, 51.F, 0.F));
 
     state->WorldCamera2 = CameraSystem::Acquire("world2");
-    state->WorldCamera2->SetPosition(FVec3(-17.64F, 22.07F, 30.89F));
-    state->WorldCamera2->SetRotationEuler(FVec3(-40.F, -51.F, 0.F));
+    state->WorldCamera2->SetPosition(FVec3(8.F, 0.F, 10.F));
+    state->WorldCamera2->SetRotationEuler(FVec3(0.F, -90.F, 0.F));
 
     state->UpdateClock.Zero();
     state->RenderClock.Zero();
@@ -654,6 +654,7 @@ bool ApplicationPrepareRenderPacket(Application& app, RenderPacket& packet, Fram
         // ЗАДАЧА: Получить список геометрий, не отобранных для текущей камеры.
         WireframeData.SelectedID = state->selection.UniqueID;
         WireframeData.WorldGeometries = &packet.views[Testbed::PacketViews::World].geometries;
+        WireframeData.TerrainGeometries = &packet.views[Testbed::PacketViews::World].TerrainGeometries;
         if (!RenderViewSystem::BuildPacket(view, rFrameData, state->WorldViewport2, state->WorldCamera2, &WireframeData, ViewPacket)) {
             MERROR("Не удалось построить пакет для представления «каркас»");
             return false;

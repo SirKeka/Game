@@ -224,7 +224,7 @@ bool RenderViewPick::BuildPacket(RenderView* self, FrameData& rFrameData, Viewpo
     return true;
 }
 
-bool RenderViewPick::Render(const RenderView* self, const RenderViewPacket &packet, const FrameData& rFrameData)
+bool RenderViewPick::Render(const RenderView* self, RenderViewPacket &packet, const FrameData& rFrameData)
 {
     auto PickData = reinterpret_cast<RenderViewPick*>(self->data);
 
