@@ -5,7 +5,9 @@
             "includePath": [
                 "${workspaceFolder}/vulkan_renderer/src/**",
                 "${VULKAN_SDK}/include",
-                "${workspaceFolder}/engine/src"
+                "${workspaceFolder}/engine/src",
+                "${workspaceFolder}/ui/src/**",
+                "${workspaceFolder}/testbed_lib/src/**"
             ],
             "defines": [
                 "_DEBUG",
@@ -23,7 +25,9 @@
             "includePath": [
                 "${workspaceFolder}/vulkan_renderer/src/**",
                 "${VULKAN_SDK}/include",
-                "${workspaceFolder}/engine/src/"
+                "${workspaceFolder}/engine/src/",
+                "${workspaceFolder}/ui/src/**",
+                "${workspaceFolder}/testbed_lib/src/**"
             ],
             "defines": [
                 "_DEBUG",
