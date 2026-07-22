@@ -1,6 +1,7 @@
 bin/
 obj/
 *.spv
+*.rar
 
 engine/src/version.h
 compile_flags.txt
