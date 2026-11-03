@@ -14,8 +14,12 @@ cubemap_name=skybox
 
 [DirectionalLight]
 name=sun
-colour=0.4 0.4 0.2 1.0
-direction=-0.57735 -0.57735 -0.57735 0.0
+colour=80.0 80.0 70.0 1.0
+direction=0.1 -1.0 0.1 1.0
+shadow_distance=100
+shadow_fade_distance=5
+shadow_split_mult=0.95
+# direction=-0.57735 -0.57735 -0.57735 0.0
 [/DirectionalLight]
 
 [Mesh]
@@ -30,10 +34,16 @@ resource_name=falcon
 transform=10.0 0.8 20.0 0.0 0.0 0.0 1.0 0.35 0.35 0.35
 [/Mesh]
 
+[Mesh]
+name=tree
+resource_name=Tree
+transform=7.4 0.8 14.0 0.0 0.0 0.0 1.0 2.0 2.0 2.0
+[/Mesh]
+
 [PointLight]
 name=point_light_0
-colour=1.0 0.0 0.0 1.0
-position=7.0 1.25 18.0 0.0
+colour=100.0 0.0 0.0 1.0
+position=7.5 1.25 14.0 0.0
 constant_f=1.0
 linear=0.35
 quadratic=0.44
@@ -41,7 +51,7 @@ quadratic=0.44
 
 [PointLight]
 name=point_light_1
-colour=0.0 1.0 0.0 1.0
+colour=0.0 0.0 100.0 1.0
 position=7.0 1.25 20.0 0.0
 constant_f=1.0
 linear=0.35
@@ -50,7 +60,7 @@ quadratic=0.44
 
 [PointLight]
 name=point_light_2
-colour=0.0 0.0 1.0 1.0
+colour=0.0 0.0 100.0 1.0
 position=7.0 1.25 22.0 0.0
 constant_f=1.0
 linear=0.35
@@ -60,5 +70,5 @@ quadratic=0.44
 [Terrain]
 name=test_terrain
 resource_name=test_terrain
-transform=-50.0 -5.0 -50.0 0.0 0.0 0.0 1.0 1.0 1.0 1.0
+transform=-50.0 -3.9 -50.0 0.0 0.0 0.0 1.0 1.0 1.0 1.0
 [/Terrain]
