@@ -44,7 +44,7 @@ bool Button::Load()
     // Выделите ресурсы экземпляра для этого элемента управления.
     TextureMap* maps[1] = { &uiSys->Atlas() };
     Shader* shader = nullptr;
-    if ((shader = ShaderSystem::GetShader("Shader.StandardUI"))) {
+    if (!(shader = ShaderSystem::GetShader("Shader.StandardUI"))) {
         MERROR("Не удалось получить шейдер при загрузке кнопки!");
         return false;
     }
@@ -52,11 +52,14 @@ bool Button::Load()
     u16 AtlasLocation = shader->uniforms[shader->InstanceSamplerIndices[0]].index;
     // Известно количество карт этого типа.
     ShaderInstanceUniformTextureConfig AtlasTexture{
-        AtlasLocation, // u16 UniformLocation;
-        1,             // u32 TextureMapCount;
-        maps,          // TextureMap** TextureMaps;
+        .UniformLocation = AtlasLocation,
+        .TextureMapCount = 1,
+        .TextureMaps = maps
     };
-    ShaderInstanceResourceConfig InstanceResourceConfig{ 1, &AtlasTexture };
+    ShaderInstanceResourceConfig InstanceResourceConfig{ 
+        .UniformConfigCount = 1,
+        .UniformConfigs = &AtlasTexture
+    };
 
     SystemsManager::GetRenderingSystem()->ShaderAcquireInstanceResources(shader, InstanceResourceConfig, InstanceID);
     return true;
@@ -71,18 +74,26 @@ bool Button::Update(FrameData &rFrameData)
     return false;
 }
 
+void Button::RenderPrepare(const FrameData &rFrameData)
+{
+    nSlice.RenderFramePrepare(rFrameData);
+}
+
 bool Button::Render(FrameData &rFrameData, UiRenderData &RenderData)
 {
     if (nSlice.geometry) {
-        auto renderable = RenderData.renderables.PushBack();
-        renderable->RenderData.UniqueID = id.UniqueID;
-        renderable->RenderData.geometry = nSlice.geometry;
-        renderable->RenderData.model = xform.GetWorld();
-        renderable->RenderData.DiffuseColour = FVec4::One();  //белый. ЗАДАЧА: извлечь данные из свойств объекта.
-
+        UiRenderable* renderable = RenderData.renderables.PushBack();
+        MemorySystem::ZeroMem(renderable, sizeof(UiRenderable));
         renderable->InstanceID = &InstanceID;
         renderable->FrameNumber = &FrameNumber;
         renderable->DrawIndex = &DrawIndex;
+
+        GeometryRenderData& grd = renderable->RenderData;
+        grd.UniqueID            = id.UniqueID;
+        grd.model               = xform.GetWorld();
+        grd.DiffuseColour       = FVec4::One();  //белый. ЗАДАЧА: извлечь данные из свойств объекта.
+        grd.CopyData(nSlice.geometry);
+
     }
 
     return true;
@@ -144,4 +155,12 @@ void Button::OnMouseOut(UiElement* self, UiMouseEvent event)
     nSlice.AtlasPxMax.x = 158;
     nSlice.AtlasPxMax.y = 19;
     nSlice.Update();
+}
+
+void Button::InitFunctions()
+{
+    UiElement::OnMouseDown = OnMouseDown;
+    UiElement::OnMouseUp   = OnMouseUp;
+    UiElement::OnMouseOver = OnMouseOver;
+    UiElement::OnMouseOut  = OnMouseOut;
 }
