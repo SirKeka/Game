@@ -2,20 +2,26 @@
 /// @author 
 /// @brief Содержит систему создания числовых идентификаторов.
 /// @version 1.0
-/// @date 2024-09-20
+/// @date 15.10.2025
 /// @copyright 
 #pragma once
 
 #include "defines.h"
 
-namespace Identifier
+/// @brief Глобально/универсально уникальный идентификатор в формате 64-битного беззнакового целого числа. Используется в первую очередь как идентификатор ресурсов. Удобен для (де)сериализации.
+struct MAPI Identifier
 {
-    ///@brief Получает новый идентификатор для данного владельца.
-    ///@param owner Владелец идентификатора.
-    ///@return Новый идентификатор.
-    MAPI u32 AquireNewID(void* owner);
+    u64 UniqueID;    // Фактический внутренний идентификатор.
 
-    /// @brief Освобождает данный идентификатор, который затем может быть использован снова.
-    /// @param id Идентификатор, который будет освобожден.
-    MAPI void ReleaseID(u32& id);
-} // namespace Identifier
+    constexpr Identifier() = default;
+    ///@brief Генерирует новый уникальный идентификатор.
+    Identifier& Generate();
+
+    /// @brief Создаёт идентификатор на основе известного значения. Полезно для десериализации.
+    constexpr Identifier(u64 UniqueID) : UniqueID(UniqueID) {}
+
+    MINLINE bool operator==(Identifier id) { return UniqueID == id.UniqueID; }
+};
+
+MINLINE bool operator==(Identifier lid, u64 rid) { return lid.UniqueID == rid; }
+MINLINE bool operator>(Identifier lid, u64 rid) { return lid.UniqueID > rid; }
