@@ -9,12 +9,14 @@ template<typename T>
 class MAPI Array
 {
 public:
-    constexpr Array() : capacity(), size(), FrameAllocator(), data() {}
-    constexpr Array(u32 capacity, LinearAllocator* allocator = nullptr) : capacity(capacity), size(), FrameAllocator(allocator), data(allocator ? (T*)allocator->Allocate(sizeof(T) * capacity) : nul_alloc(T, capacity, Memory::Array)) {}
+    constexpr Array(LinearAllocator* allocator = nullptr) : capacity(), size(), FrameAllocator(allocator), data() {}
+    constexpr Array(u32 capacity, LinearAllocator* allocator = nullptr) 
+    : capacity(capacity), size(), FrameAllocator(allocator), data(allocator ? (T*)allocator->Allocate(sizeof(T) * capacity) : nul_alloc(T, capacity, Memory::Array)) {}
     ~Array() {
         if (!FrameAllocator) {
             MemorySystem::Free(data, capacity * sizeof(T), Memory::Array);
         }
+        capacity = size = 0;
         data = nullptr;
     }
 
@@ -61,9 +63,10 @@ void Clear() {
 /// @brief Создает массив
 /// @param capacity максимальное количество элементтов в массиве
 /// @param s если true, то size = capacity
-/// @param n если true, то массив является временным
+/// @param t если true, то массив является временным
 /// @param allocator 
 Array& Create(u32 capacity, bool s = false, bool t = false, LinearAllocator* allocator = nullptr) {
+    size = 0;
     this->capacity = capacity;
     if (s) {
         size = capacity;
@@ -72,11 +75,28 @@ Array& Create(u32 capacity, bool s = false, bool t = false, LinearAllocator* all
     if (!FrameAllocator && allocator) {
         FrameAllocator = true;
         data = (T*)allocator->Allocate(sizeof(T) * capacity);
-    } else if (t) {
-        data = AllocateTemp<T>(capacity, true, true);
+    } else if ((temp = t)) {
+        data = AllocateTemp<T>(sizeof(T) * capacity, true);
     } else {
         data = (T*)MemorySystem::Allocate(sizeof(T) * capacity, Memory::Array, true);
     }
+    return *this;
+}
+
+/// @brief Оборачивает уже созданный "сырой" массив
+/// @param count количество элементов
+/// @param array указатель на данные
+/// @param allocator указатель на линейный аллокатор, если он использовался при создании
+/// @return 
+Array& Create(u32 count, T*& array, bool LinearAllocator = false) {
+    if (!array) {
+        return *this;
+    }
+    
+    capacity = size = count;
+    FrameAllocator = LinearAllocator;
+    data = array;
+    array = nullptr;
     return *this;
 }
 
