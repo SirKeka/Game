@@ -1,5 +1,5 @@
-#include <core/logger.hpp>
-#include <math/math.h>
+#include "core/logger.h"
+#include "math/math.h"
 
 /// @brief Ожидания будут соответствовать реальным.
 #define ExpectShouldBe(expected, actual)                                                                  \

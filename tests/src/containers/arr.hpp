@@ -1,7 +1,6 @@
 #pragma once
 
-#include <core/memory_system.h>
-#include <core/logger.hpp>
+#include "core/memory_system.h"
 
 template<typename T>
 class DArray
