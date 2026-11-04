@@ -1,9 +1,9 @@
-#include "vulkan_renderpass.hpp"
+#include "vulkan_renderpass.h"
 
 void VulkanRenderpass::Destroy(VulkanAPI *VkAPI)
 {
     if (this->handle) {
-        vkDestroyRenderPass(VkAPI->Device.LogicalDevice, this->handle, VkAPI->allocator);
+        vkDestroyRenderPass(VkAPI->device.LogicalDevice, this->handle, VkAPI->allocator);
         this->handle = 0;
     }
 }
