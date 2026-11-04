@@ -1,18 +1,19 @@
 #include "label.h"
+#include "core/asserts.h"
 #include "core/systems_manager.h"
 #include "renderer/rendering_system.h"
 #include "resources/shader.h"
 #include "systems/font_system.h"
 #include "systems/shader_system.h"
 
-static bool LabelCreate(FontData* data, const MString& text, u32 InstanceID) {
+static bool LabelCreate(FontData* data, const MString& text, u32& InstanceID) {
     // Получите ресурсы для карты текстуры шрифта.
     // ЗАДАЧА: Должна ли быть возможность переопределения для шейдера?
     auto UiShader = ShaderSystem::GetShader("Shader.StandardUI");  // ЗАДАЧА: Текстовый шейдер.
     TextureMap* FontMaps[1] = { &data->atlas }; 
     u16 AtlasLocation = UiShader->uniforms[UiShader->InstanceSamplerIndices[0]].index;
     // Известно количество карт этого типа.
-    ShaderInstanceUniformTextureConfig AtlasTexture{
+    ShaderInstanceUniformTextureConfig AtlasTexture {
         .UniformLocation = AtlasLocation,
         .TextureMapCount = 1,
         .TextureMaps = FontMaps
@@ -37,59 +38,44 @@ static bool LabelCreate(FontData* data, const MString& text, u32 InstanceID) {
     return true;
 }
 
-constexpr Label::Label()
-{
-    MemorySystem::ZeroMem(this, sizeof(Label));
-}
-
 constexpr Label::Label(const char *name, FontType type, const char *FontName, u16 FontSize, const char *text, UiElement *parent)
-    : UiElement(name, parent), colour(FVec4::One()), geometry(), text(text), data(FontSystem::Acquire(FontName, FontSize, type)), type(type)
+    : UiElement(name, parent), size(), colour(FVec4::One()), 
+    VertexBufferOffset(INVALID::U64ID), IndexBufferOffset(INVALID::U64ID), VertexBufferSize(INVALID::U64ID), IndexBufferSize(INVALID::U64ID), 
+    text(), data(FontSystem::Acquire(FontName, FontSize, type)), type(type), MaxTextLength()
 {
     LabelCreate(data, this->text, InstanceID);
+    SetText(text);
 }
 
 constexpr Label::Label(MString &&name, FontType type, const char *FontName, u16 FontSize, const char *text, UiElement *parent)
-: UiElement((MString&&)name, parent), colour(FVec4::One()), geometry(), text(text), data(FontSystem::Acquire(FontName, FontSize, type)), type(type)
+: UiElement((MString&&)name, parent), size(), colour(FVec4::One()), 
+VertexBufferOffset(INVALID::U64ID), IndexBufferOffset(INVALID::U64ID), VertexBufferSize(INVALID::U64ID), IndexBufferSize(INVALID::U64ID),
+text(), data(FontSystem::Acquire(FontName, FontSize, type)), type(type), MaxTextLength()
 {
-    LabelCreate(data, text, InstanceID);
+    LabelCreate(data, this->text, InstanceID);
+    SetText(text);
 }
 
 bool Label::Create(const char *name, FontType type, const char *FontName, u16 FontSize, const char* text, UiElement *parent)
 {
     this->name = name;
-    SetParent(parent);
+    if (parent) parent->AddChild(this);
     colour = FVec4::One();
-    this->text = text;
     data = FontSystem::Acquire(FontName, FontSize, type);
+    SetText(text);
     this->type = type;
-    return LabelCreate(data, text, InstanceID);
+    return LabelCreate(data, this->text, InstanceID);
 }
 
-bool Label::Load()
+bool Label::Create(MString &name, FontType type, const char *FontName, u16 FontSize, const char *text, UiElement *parent)
 {
-    if (text) {
-        static const u64 QuadVertexSize = (sizeof(Vertex2D) * 4);
-        static const u64 QuadIndexSize = (sizeof(u32) * 6);
-        u64 TextLength = text.Length();
-
-        // Выделите место в буферах.
-        auto renderer = SystemsManager::GetRenderingSystem();
-        auto buffer = renderer->GetRenderbuffer(RenderBufferType::Vertex);
-        if (!buffer->Allocate(QuadVertexSize * TextLength, geometry.VertexBufferOffset)) {
-            MERROR("Label::Load не удалось выделить память из буфера вершин рендерера!");
-            return false;
-        }
-
-        buffer = renderer->GetRenderbuffer(RenderBufferType::Index);
-        if (!buffer->Allocate(QuadIndexSize * TextLength, geometry.IndexBufferOffset)) {
-            MERROR("Label::Load не удалось выделить память из буфера индексов рендерера!");
-            return false;
-        }
-    }
-    // Генерация геометрии.
-    RegenerateGeometry();
-
-    return true;
+    this->name = (MString&&)name;
+    if (parent) parent->AddChild(this);
+    colour = FVec4::One();
+    data = FontSystem::Acquire(FontName, FontSize, type);
+    SetText(text);
+    this->type = type;
+    return LabelCreate(data, this->text, InstanceID);
 }
 
 void Label::Unload()
@@ -102,58 +88,156 @@ void Label::Unload()
     auto buffer = renderer->GetRenderbuffer(RenderBufferType::Vertex);
     // Освободить ресурсы из буфера вершин.
     if (MaxTextLength > 0) {
-       buffer->Free(sizeof(Vertex2D) * 4 * MaxTextLength, geometry.VertexBufferOffset);
+       buffer->Free(sizeof(Vertex2D) * 4 * MaxTextLength, VertexBufferOffset);
     }
 
     // Освободить ресурсы из буфера индексов.
-    if (geometry.VertexBufferOffset != INVALID::U64ID) {
+    if (VertexBufferOffset != INVALID::U64ID) {
         static const u64 QuadIndexSize = (sizeof(u32) * 6);
         auto buffer = renderer->GetRenderbuffer(RenderBufferType::Index);
         if (MaxTextLength > 0) {
-            buffer->Free(QuadIndexSize * MaxTextLength, geometry.IndexBufferOffset);
+            buffer->Free(QuadIndexSize * MaxTextLength, IndexBufferOffset);
         }
-        geometry.VertexBufferOffset = INVALID::U64ID;
+        VertexBufferOffset = INVALID::U64ID;
     }
 
     // Освободить ресурсы для карты текстуры шрифта.
-    if (geometry.IndexBufferOffset != INVALID::U64ID) {
+    if (IndexBufferOffset != INVALID::U64ID) {
         auto UiShader = ShaderSystem::GetShader("Shader.StandardUI");  // ЗАДАЧА: шейдер текста.
         if (!renderer->ShaderReleaseInstanceResources(UiShader, InstanceID)) {
             MFATAL("Невозможно освободить ресурсы шейдера для карты текстуры шрифта.");
         }
-        geometry.IndexBufferOffset = INVALID::U64ID;
+        IndexBufferOffset = INVALID::U64ID;
+    }
+
+    // Освободить ресурсы, используемые для текстурной карты шрифта.
+    Shader* UI_Shader = ShaderSystem::GetShader("Shader.StandardUI");  // ЗАДАЧА: шейдер текста.
+    if (!renderer->ShaderReleaseInstanceResources(UI_Shader, InstanceID)) {
+        MFATAL("Не удалось освободить шейдерные ресурсы для текстурной карты шрифта.");
+    }
+    InstanceID = INVALID::ID;
+}
+
+void Label::RenderPrepare(const FrameData &rFrameData)
+{
+    if (IsDirty) {
+        RegenerateGeometry();
+        
+        u64 OldVertexSize = VertexBufferSize;
+        u64 OldVertexOffset = VertexBufferOffset;
+        u64 OldIndexSize = IndexBufferSize;
+        u64 OldIndexOffset = IndexBufferOffset;
+        
+        // Используйте новые смещения, если только не требуется перераспределение памяти.
+        u64 NewVertexSize = pendingData.VertexBufferSize;
+        u64 NewVertexOffset = OldVertexOffset;
+        u64 NewIndexSize = pendingData.IndexBufferSize;
+        u64 NewIndexOffset = OldIndexOffset;
+        
+        // Перераспределение памяти необходимо, если текст стал длиннее, чем был прежде.
+        auto renderer = SystemsManager::GetRenderingSystem();
+        RenderBuffer* VertexBuffer = renderer->GetRenderbuffer(RenderBufferType::Vertex);
+        RenderBuffer* IndexBuffer  = renderer->GetRenderbuffer(RenderBufferType::Index);
+        bool NeedsRealloc = pendingData.NewUTF8Length > MaxTextLength;
+        if (NeedsRealloc) {
+            if (!VertexBuffer->Allocate(NewVertexSize, pendingData.VertexBufferOffset)) {
+                MERROR("Label::RenderPrepare: не удалось выделить память из вершинного буфера визуализатора: размер=%u, смещение=%u",
+                    NewVertexSize,
+                    pendingData.VertexBufferOffset);
+                return;
+            }
+            NewVertexOffset = pendingData.VertexBufferOffset;
+
+            if (!IndexBuffer->Allocate(NewIndexSize, pendingData.IndexBufferOffset)) {
+                MERROR("Label::RenderPrepare: не удалось выделить память из индексного буфера рендерера: size=%u, offset=%u",
+                    NewIndexSize,
+                    pendingData.IndexBufferOffset);
+                return;
+            }
+            NewIndexOffset = pendingData.IndexBufferOffset;
+        }
+
+        // Загрузите данные, если есть что загружать.
+        if (pendingData.VertexBufferData) {
+            if (!renderer->RenderBufferLoadRange(*VertexBuffer, NewVertexOffset, NewVertexSize, pendingData.VertexBufferData, true)) {
+                MERROR("Label::RenderPrepare: не удалось загрузить данные в диапазон вершинного буфера: размер=%u, смещение=%u", NewVertexSize, NewVertexOffset);
+            }
+        }
+
+        if (pendingData.IndexBufferData) {
+            if (!renderer->RenderBufferLoadRange(*IndexBuffer, NewIndexOffset, NewIndexSize, pendingData.IndexBufferData, true)) {
+                MERROR("Label::RenderPrepare: не удалось загрузить данные в диапазон индексного буфера: size=%u, offset=%u", NewIndexSize, NewIndexOffset);
+            }
+        }
+
+        if (NeedsRealloc) {
+            // Освободите старые данные вершин/индексов из буферов и обновите размеры/смещения.
+            if (OldVertexOffset != INVALID::U64ID && OldVertexSize != INVALID::U64ID) {
+                if (!VertexBuffer->Free(OldVertexSize, OldVertexOffset)) {
+                    MERROR("Не удалось освободить память в вершинном буфере рендерера: размер=%u, смещение=%u", OldVertexSize, OldVertexOffset);
+                }
+            }
+
+            // Удалите старые данные из буфера индексов.
+            if (OldIndexOffset != INVALID::U64ID && OldIndexSize != INVALID::U64ID) {
+                if (!IndexBuffer->Free(OldIndexSize, OldIndexOffset)) {
+                    MERROR("Не удалось освободить память в индексном буфере рендерера: размер=%u, смещение=%u", OldIndexSize, OldIndexOffset);
+                }
+            }
+
+            // Обновите смещения буфера, используя ожидающие применения значения.
+            VertexBufferOffset = NewVertexOffset;
+            VertexBufferSize = NewVertexSize;
+            IndexBufferOffset = NewIndexOffset;
+            IndexBufferSize = NewIndexSize;
+        }
+
+        // Обновите максимальную длину, если строка теперь стала длиннее.
+        if (pendingData.NewUTF8Length > MaxTextLength) {
+            MaxTextLength = pendingData.NewUTF8Length;
+        }
+
+        pendingData.Reset();
+
+        IsDirty = false;
     }
 }
 
 bool Label::Render(FrameData &rFrameData, UiRenderData &RenderData)
 {
     const u32 tLength = text.Length();
-    if (tLength) {
-        UiRenderable renderable{};
-        renderable.RenderData.UniqueID = id.UniqueID;
-        geometry.VertexCount = tLength * 4;
-        //geometry.VertexElementSize = sizeof(Vertex2D);
-        geometry.IndexCount = tLength * 6;
-        //geometry.IndexElementSize = sizeof(u32);
-        renderable.RenderData.UiData = &geometry;
-
+    if (tLength && VertexBufferOffset != INVALID::U64ID) {
+        UiRenderable* renderable = RenderData.renderables.PushBack();
+        MemorySystem::ZeroMem(renderable, sizeof(UiRenderable));
+        renderable->InstanceID = &InstanceID;
+        renderable->FrameNumber = &FrameNumber;
+        renderable->DrawIndex = &DrawIndex;
         // ПРИМЕЧАНИЕ: Переопределите атлас пользовательского интерфейса по умолчанию и используйте вместо него загруженный шрифт.
-        renderable.AtlasOverride = &data->atlas;
+        renderable->AtlasOverride = &data->atlas;
 
-        renderable.RenderData.model = xform.GetWorld();
-        renderable.RenderData.DiffuseColour = colour;
+        GeometryRenderData& grd = renderable->RenderData;
+        grd.UniqueID            = id.UniqueID;
+        grd.VertexCount         = tLength * 4;
+        grd.VertexBufferOffset  = VertexBufferOffset;
+        grd.VertexElementSize   = sizeof(Vertex2D);
+        grd.IndexCount          = tLength * 6;
+        grd.IndexBufferOffset   = IndexBufferOffset;
+        grd.IndexElementSize    = sizeof(u32);
 
-        renderable.InstanceID = &InstanceID;
-        renderable.FrameNumber = &FrameNumber;
-        renderable.DrawIndex = &DrawIndex;
-
-        RenderData.renderables.PushBack(renderable);
+        grd.model = xform.GetWorld();
+        grd.DiffuseColour = colour;
     }
 
     return true;
 }
 
-void Label::SetText(const char *text)
+void Label::RemovePart(u32 position, u32 length)
+{
+    text.RemovePart(position, length);
+    RegenerateGeometry();
+}
+
+void Label::SetText(const char *text, u32 size)
 {
     // Если строки уже равны, ничего не делайте.
     if (this->text == text) {
@@ -163,25 +247,23 @@ void Label::SetText(const char *text)
     this->text = text;
 
     // Убедитесь, что в атласе есть необходимые глифы.
-    if (!FontSystem::VerifyAtlas(data, text)) {
+    if (!FontSystem::VerifyAtlas(data, this->text)) {
         MERROR("Проверка атласа шрифтов не удалась.");
     }
 
-    RegenerateGeometry();
+    IsDirty = true;
 }
 
 void Label::SetText(MString &text, bool copy)
 {
     // Если строки уже равны, ничего не делайте.
     if (this->text == text) {
-        return;
-    }
 
-    if (copy) {
+    } else if (copy) {
         this->text = text;
     } else {
         this->text = (MString&&)text;
-    }    
+    }
 
     // Убедитесь, что в атласе есть необходимые глифы.
     if (!FontSystem::VerifyAtlas(data, this->text.c_str())) {
@@ -194,11 +276,10 @@ void Label::SetText(MString &text, bool copy)
 void Label::RegenerateGeometry()
 {
     // Получите длину строки UTF-8.
-    const u32& TextLengthUTF8 = text.Length();
+    u32 TextLengthUTF8 = text.Length();
     // Также получите длину в символах.
-    const u32& CharLength = text.Size();
-
-    bool NeedsRealloc = TextLengthUTF8 > MaxTextLength;
+    u32 CharLength = text.Size();
+    CharLength = CharLength > 0 ? CharLength - 1 : CharLength;
 
     // Не пытайтесь перегенерировать геометрию для объекта, в котором нет текста.
     if (TextLengthUTF8 < 1) {
@@ -208,55 +289,25 @@ void Label::RegenerateGeometry()
     // Рассчитайте размеры буферов.
     static const u64 VertsPerQuad = 4;
     static const u8 IndicesPerQuad = 6;
-    u64 vsize = sizeof(Vertex2D);
-    u64 u32size = sizeof(u32);
-    u64 PrevVertexBufferSize = vsize * VertsPerQuad * MaxTextLength;
-    u64 PrevIndexBufferSize = u32size * IndicesPerQuad * MaxTextLength;
-    u64 VertexBufferSize = vsize * VertsPerQuad * TextLengthUTF8;
-    u64 IndexBufferSize = u32size * IndicesPerQuad * TextLengthUTF8;
 
-    auto renderer = SystemsManager::GetRenderingSystem();
-    auto VertexBuffer = renderer->GetRenderbuffer(RenderBufferType::Vertex);
-    auto IndexBuffer  = renderer->GetRenderbuffer(RenderBufferType::Index);
-
-    if (NeedsRealloc) {
-        // Перераспределите память из буфера вершин.
-        if (MaxTextLength > 0) {
-            if (!VertexBuffer->Free(PrevVertexBufferSize, geometry.VertexBufferOffset)) {
-                MERROR("Не удалось освободить память из буфера вершин рендерера: размер=%u, смещение=%u", VertexBufferSize, geometry.VertexBufferOffset);
-            }
-        }
-        if (!VertexBuffer->Allocate(VertexBufferSize, geometry.VertexBufferOffset)) {
-            MERROR("Функции Label::RegenerateGeometry не удалось выделить память из буфера вершин рендерера!");
-            return;
-        }
-
-        // Перераспределите память из буфера индексов.
-        if (MaxTextLength > 0) {
-            if (!IndexBuffer->Free(PrevIndexBufferSize, geometry.IndexBufferOffset)) {
-                MERROR("Не удалось освободить память из буфера индексов рендерера: размер=%u, смещение=%u", IndexBufferSize, geometry.IndexBufferOffset);
-            }
-        }
-        if (!IndexBuffer->Allocate(IndexBufferSize, geometry.IndexBufferOffset)) {
-            MERROR("Функции Label::RegenerateGeometry не удалось выделить память из буфера индексов рендерера!");
-            return;
-        }
-    }
-
-    // Обновите максимальную длину, если строка стала длиннее.
-    if (TextLengthUTF8 > MaxTextLength) {
-        MaxTextLength = TextLengthUTF8;
-    }
+    // Сохраните данные в промежуточную структуру.
+    // pendingData.PrevVertexBufferSize = sizeof(Vertex2D) * VertsPerQuad * MaxTextLength;
+    // pendingData.PrevIndexBufferSize = sizeof(u32) * IndicesPerQuad * MaxTextLength;
+    pendingData.NewLength = CharLength;
+    pendingData.NewUTF8Length = TextLengthUTF8;
+    pendingData.VertexBufferSize = sizeof(Vertex2D) * VertsPerQuad * TextLengthUTF8;
+    pendingData.IndexBufferSize = sizeof(u32) * IndicesPerQuad * TextLengthUTF8;
+    // Временные массивы для хранения данных вершин/индексов.
+    CreateArray(pendingData.VertexBufferData, pendingData.VertexBufferSize, true);
+    CreateArray(pendingData.IndexBufferData, pendingData.IndexBufferSize, true);
 
     // Сгенерировать новую геометрию для каждого символа.
     f32 x = 0;
     f32 y = 0;
-    // Временные массивы для хранения данных вершин/индексов.
-    auto VertexBufferData = (Vertex2D*)MemorySystem::Allocate(VertexBufferSize, Memory::Array);
-    u32* IndexBufferData = (u32*)MemorySystem::Allocate(IndexBufferSize, Memory::Array);
 
+    const char* text = this->text.c_str();
     // Извлечь длину в символах и получить из неё правильный код.
-    for (u32 c = 0, uc = 0; c < CharLength; ++c) {
+    for (u32 c = 0, uc = 0; c < CharLength && text[c]; ++c) {
         i32 codepoint = text[c];
 
         // Перейти на следующую строку для перевода строки.
@@ -276,7 +327,7 @@ void Label::RegenerateGeometry()
 
         // ПРИМЕЧАНИЕ: Обработка кодовых точек UTF-8.
         u8 advance = 0;
-        if (!MString::BytesToCodepoint(text.c_str(), c, codepoint, advance)) {
+        if (!MString::BytesToCodepoint(text, c, codepoint, advance)) {
             MWARN("В строке обнаружен недопустимый UTF-8, использующий неизвестный код -1.");
             codepoint = -1;
         }
@@ -316,15 +367,15 @@ void Label::RegenerateGeometry()
                 tmaxy = 1.f - tmaxy;
             }
 
-                auto p0 = Vertex2D(FVec2(minx, miny), FVec2(tminx, tminy));
-                auto p1 = Vertex2D(FVec2(maxx, miny), FVec2(tmaxx, tminy));
-                auto p2 = Vertex2D(FVec2(maxx, maxy), FVec2(tmaxx, tmaxy));
-                auto p3 = Vertex2D(FVec2(minx, maxy), FVec2(tminx, tmaxy));
+            auto p0 = Vertex2D(FVec2(minx, miny), FVec2(tminx, tminy));
+            auto p1 = Vertex2D(FVec2(maxx, miny), FVec2(tmaxx, tminy));
+            auto p2 = Vertex2D(FVec2(maxx, maxy), FVec2(tmaxx, tmaxy));
+            auto p3 = Vertex2D(FVec2(minx, maxy), FVec2(tminx, tmaxy));
 
-            VertexBufferData[(uc * 4) + 0] = p0;  // 0    3
-            VertexBufferData[(uc * 4) + 1] = p2;  //
-            VertexBufferData[(uc * 4) + 2] = p3;  //
-            VertexBufferData[(uc * 4) + 3] = p1;  // 2    1
+            pendingData.VertexBufferData[(uc * 4) + 0] = p0;  // 0    3
+            pendingData.VertexBufferData[(uc * 4) + 1] = p2;  //
+            pendingData.VertexBufferData[(uc * 4) + 2] = p3;  //
+            pendingData.VertexBufferData[(uc * 4) + 3] = p1;  // 2    1
 
             // Попробовать найти кернинг.
             i32 kerning = 0;
@@ -336,7 +387,7 @@ void Label::RegenerateGeometry()
                 i32 NextCodepoint = 0;
                 u8 AdvanceNext = 0;
 
-                if (!MString::BytesToCodepoint(text.c_str(), offset, NextCodepoint, AdvanceNext)) {
+                if (!MString::BytesToCodepoint(text, offset, NextCodepoint, AdvanceNext)) {
                     MWARN("В строке обнаружен недопустимый UTF-8, используется неизвестный код -1.");
                     codepoint = -1;
                 } else {
@@ -358,12 +409,12 @@ void Label::RegenerateGeometry()
         }
 
         // Индекс данных 210301
-        IndexBufferData[(uc * 6) + 0] = (uc * 4) + 2;
-        IndexBufferData[(uc * 6) + 1] = (uc * 4) + 1;
-        IndexBufferData[(uc * 6) + 2] = (uc * 4) + 0;
-        IndexBufferData[(uc * 6) + 3] = (uc * 4) + 3;
-        IndexBufferData[(uc * 6) + 4] = (uc * 4) + 0;
-        IndexBufferData[(uc * 6) + 5] = (uc * 4) + 1;
+        pendingData.IndexBufferData[(uc * 6) + 0] = (uc * 4) + 2;
+        pendingData.IndexBufferData[(uc * 6) + 1] = (uc * 4) + 1;
+        pendingData.IndexBufferData[(uc * 6) + 2] = (uc * 4) + 0;
+        pendingData.IndexBufferData[(uc * 6) + 3] = (uc * 4) + 3;
+        pendingData.IndexBufferData[(uc * 6) + 4] = (uc * 4) + 0;
+        pendingData.IndexBufferData[(uc * 6) + 5] = (uc * 4) + 1;
 
         // Теперь переходим к c
         c += advance - 1;  // Вычитаем 1, поскольку цикл всегда увеличивается на один символ для однобайтовых данных.
@@ -371,19 +422,27 @@ void Label::RegenerateGeometry()
         uc++;
     }
 
-    // Загружаем данные.
-    bool VertexLoadResult = renderer->RenderBufferLoadRange(*VertexBuffer, geometry.VertexBufferOffset, VertexBufferSize, VertexBufferData);
-    bool IndexLoadResult = renderer->RenderBufferLoadRange(*IndexBuffer, geometry.IndexBufferOffset, IndexBufferSize, IndexBufferData);
+    // Отметьте метку как «грязную». Эту работу следует перенести на следующий этап подготовки.
+    IsDirty = true;
+}
 
-    // Очищаем.
-    MemorySystem::Free(VertexBufferData, VertexBufferSize, Memory::Array);
-    MemorySystem::Free(IndexBufferData, IndexBufferSize, Memory::Array);
+void Label::PendingData::Reset()
+{
+    // Удалите ожидающие данные, если они есть.
+    if (VertexBufferData) {
+        MASSERT_MSG(VertexBufferSize, "Предпринята попытка освободить ожидающие обработки вершинные данные, размер которых равен 0. Указатель на данные существует, но размер является недопустимым.");
+        MASSERT_MSG(VertexBufferSize != INVALID::U64ID, "Предпринята попытка освободить ожидающие обработки вершинные данные, размер которых равен INVALID::U64ID. Указатель на данные существует, но размер является недопустимым.");
 
-    // Проверяем результаты.
-    if (!VertexLoadResult) {
-        MERROR("Функции Label::RegenerateGeometry не удалось загрузить данные в диапазон буфера вершин.");
+        DestroyArray(VertexBufferData, VertexBufferSize);
+        VertexBufferData = nullptr;
     }
-    if (!IndexLoadResult) {
-        MERROR("Функции Label::RegenerateGeometry не удалось загрузить данные в диапазон буфера индексов.");
+    if (IndexBufferData) {
+        MASSERT_MSG(IndexBufferSize, "Предпринята попытка освободить ожидающие обработки индексные данные размером 0. Указатель на данные существует, но размер является недопустимым.");
+        MASSERT_MSG(IndexBufferSize != INVALID::U64ID, "Предпринята попытка освободить ожидающие индексации данные, размер которых равен INVALID::U64ID. Указатель на данные существует, но значение размера является недопустимым.");
+
+        DestroyArray(IndexBufferData, IndexBufferSize);
+        IndexBufferData = nullptr;
     }
+    VertexBufferOffset = VertexBufferSize = IndexBufferOffset = IndexBufferSize = INVALID::U64ID;
+    NewLength = NewUTF8Length = 0;
 }
