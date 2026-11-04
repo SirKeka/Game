@@ -35,7 +35,7 @@ struct MAPI DebugGrid {
     };
     
 
-    u32 UniqueID;
+    Identifier id;
     MString name;
     Orientation orientation;
     /// @brief Количество пространства в первом измерении ориентации с обоих направлений наружу от начала координат.
@@ -56,11 +56,11 @@ struct MAPI DebugGrid {
 
     Geometry geometry;
 
-    constexpr DebugGrid() : UniqueID(), name(), orientation(), TileCountDim0(), TileCountDim1(), TileScale(), UseThirdAxis(), extents(), origin(), VertexCount(), vertices(nullptr) {}
-    constexpr DebugGrid(Config& config)
+    constexpr DebugGrid() = default;
+    DebugGrid(Config& config)
     :
-    UniqueID(Identifier::AquireNewID(this)),
-    name((MString &&)config.name),
+    id(),
+    name((MString&&)config.name),
     orientation(config.orientation),
     TileCountDim0(config.TileCountDim0),
     TileCountDim1(config.TileCountDim1),
