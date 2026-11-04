@@ -2,25 +2,27 @@
 
 #include "vulkan_device.h"
 #include "vulkan_utils.h"
-#include "vulkan_renderpass.hpp"
-#include "vulkan_command_buffer.hpp"
+#include "vulkan_renderpass.h"
+#include "vulkan_command_buffer.h"
 
 #include "resources/shader.h"
 
 bool VulkanPipeline::Create(VulkanAPI* VkAPI, const Config& config)
 {
     // Состояние видового экрана
-    VkPipelineViewportStateCreateInfo ViewportState = {VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO};
-    ViewportState.viewportCount = 1;
-    ViewportState.pViewports = &config.viewport;
-    ViewportState.scissorCount = 1;
-    ViewportState.pScissors = &config.scissor;
+    VkPipelineViewportStateCreateInfo ViewportState {
+        .sType         = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+        .viewportCount = 1,
+        .pViewports    = &config.viewport,
+        .scissorCount  = 1,
+        .pScissors     = &config.scissor
+    };
 
     // Растеризатор
     VkPipelineRasterizationStateCreateInfo RasterizerCreateInfo = {VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO};
     RasterizerCreateInfo.depthClampEnable = VK_FALSE;
     RasterizerCreateInfo.rasterizerDiscardEnable = VK_FALSE;
-    RasterizerCreateInfo.polygonMode = (config.ShaderFlags & Shader::WireframeFlag) ? VK_POLYGON_MODE_LINE : VK_POLYGON_MODE_FILL;
+    RasterizerCreateInfo.polygonMode = (config.ShaderFlags & Shader::Wireframe) ? VK_POLYGON_MODE_LINE : VK_POLYGON_MODE_FILL;
     RasterizerCreateInfo.lineWidth = 1.F;
     switch (config.CullMode) {
         case FaceCullMode::None:
@@ -53,81 +55,113 @@ bool VulkanPipeline::Create(VulkanAPI* VkAPI, const Config& config)
 
     // Плавная растеризация линий, если поддерживается.
     VkPipelineRasterizationLineStateCreateInfoEXT LineRasterizationExt{};
-    if (VkAPI->Device.supportFlags & VulkanDevice::LineSmoothRasterisationBit) {
+    if (VkAPI->device.supportFlags & VulkanDevice::LineSmoothRasterisationBit) {
         LineRasterizationExt.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_LINE_STATE_CREATE_INFO_EXT;
         LineRasterizationExt.lineRasterizationMode = VK_LINE_RASTERIZATION_MODE_RECTANGULAR_SMOOTH_EXT;
         RasterizerCreateInfo.pNext = &LineRasterizationExt;
     }
 
     // Мультисэмплинг.
-    VkPipelineMultisampleStateCreateInfo MultisamplingCreateInfo = {VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO};
-    MultisamplingCreateInfo.sampleShadingEnable = VK_FALSE;
-    MultisamplingCreateInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-    MultisamplingCreateInfo.minSampleShading = 1.F;
-    MultisamplingCreateInfo.pSampleMask = 0;
-    MultisamplingCreateInfo.alphaToCoverageEnable = VK_FALSE;
-    MultisamplingCreateInfo.alphaToOneEnable = VK_FALSE;
+    VkPipelineMultisampleStateCreateInfo MultisamplingCreateInfo {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+        .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
+        .sampleShadingEnable = VK_FALSE,
+        .minSampleShading = 1.F,
+        .pSampleMask = nullptr,
+        .alphaToCoverageEnable = VK_FALSE,
+        .alphaToOneEnable = VK_FALSE
+    };
 
     // Проверка глубины и трафарета.
     VkPipelineDepthStencilStateCreateInfo DepthStencil = {VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO};
-    if (config.ShaderFlags & Shader::DepthTestFlag) {
+    if (config.ShaderFlags & Shader::DepthTest) {
         DepthStencil.depthTestEnable = VK_TRUE;
-        if (config.ShaderFlags & Shader::DepthWriteFlag) {
+        if (config.ShaderFlags & Shader::DepthWrite) {
            DepthStencil.depthWriteEnable = VK_TRUE;
         }
         DepthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
         DepthStencil.depthBoundsTestEnable = VK_FALSE;
-        DepthStencil.stencilTestEnable = VK_FALSE;
+    }
+    
+    DepthStencil.stencilTestEnable =  (config.ShaderFlags & Shader::StencilTest) ? VK_TRUE : VK_FALSE;
+    if (config.ShaderFlags & Shader::StencilTest) {
+        // Эквивалент glStencilFunc(func, ref, mask)
+        DepthStencil.back.compareOp = VK_COMPARE_OP_ALWAYS;
+        DepthStencil.back.reference = 1;
+        DepthStencil.back.compareMask = 0xFF;
+
+        // Эквивалент glStencilOp(stencilFail, deepFail, deepPass)pipelin
+        DepthStencil.back.failOp = VK_STENCIL_OP_ZERO;
+        DepthStencil.back.depthFailOp = VK_STENCIL_OP_ZERO;
+        DepthStencil.back.passOp = VK_STENCIL_OP_REPLACE;
+        // Эквивалент glStencilMask(mask)
+
+        // Задняя поверхность
+        DepthStencil.back.writeMask = (config.ShaderFlags & Shader::StencilWrite) ? 0xFF : 0x00;
+
+        // Передняя поверхность. Просто используйте те же настройки для передней/задней поверхности.
+        DepthStencil.front = DepthStencil.back;
     }
 
-    VkPipelineColorBlendAttachmentState ColorBlendAttachmentState;
-    MemorySystem::ZeroMem(&ColorBlendAttachmentState, sizeof(VkPipelineColorBlendAttachmentState));
-    ColorBlendAttachmentState.blendEnable = VK_TRUE;
-    ColorBlendAttachmentState.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-    ColorBlendAttachmentState.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-    ColorBlendAttachmentState.colorBlendOp = VK_BLEND_OP_ADD;
-    ColorBlendAttachmentState.srcAlphaBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-    ColorBlendAttachmentState.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-    ColorBlendAttachmentState.alphaBlendOp = VK_BLEND_OP_ADD;
+    VkPipelineColorBlendAttachmentState ColorBlendAttachmentState {
+        .blendEnable         = VK_TRUE,
+        .srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA,
+        .dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+        .colorBlendOp        = VK_BLEND_OP_ADD,
+        .srcAlphaBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA,
+        .dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+        .alphaBlendOp        = VK_BLEND_OP_ADD,
+        .colorWriteMask      = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+                               VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT
+    };
 
-    ColorBlendAttachmentState.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-                                               VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-
-    VkPipelineColorBlendStateCreateInfo ColorBlendStateCreateInfo = {VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO};
-    ColorBlendStateCreateInfo.logicOpEnable = VK_FALSE;
-    ColorBlendStateCreateInfo.logicOp = VK_LOGIC_OP_COPY;
-    ColorBlendStateCreateInfo.attachmentCount = 1;
-    ColorBlendStateCreateInfo.pAttachments = &ColorBlendAttachmentState;
+    VkPipelineColorBlendStateCreateInfo ColorBlendStateCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+        .logicOpEnable = VK_FALSE,
+        .logicOp = VK_LOGIC_OP_COPY,
+        .attachmentCount = 1,
+        .pAttachments = &ColorBlendAttachmentState
+    };
 
     // Динамическое состояние
-    DArray<VkDynamicState> DynamicStates;
+    DArray<VkDynamicState> DynamicStates {10, AllocatorType::Temp};
     DynamicStates.PushBack(VK_DYNAMIC_STATE_VIEWPORT);
     DynamicStates.PushBack(VK_DYNAMIC_STATE_SCISSOR);
-    // Примитивная топология, если поддерживается.
-    if ((VkAPI->Device.supportFlags & VulkanDevice::NativeDynamicTopologyBit) || (VkAPI->Device.supportFlags & VulkanDevice::DynamicTopologyBit)) {
+    // Динамическое состояние, если поддерживается.
+    if ((VkAPI->device.supportFlags & VulkanDevice::NativeDynamicStateBit) || (VkAPI->device.supportFlags & VulkanDevice::DynamicStateBit)) {
         DynamicStates.PushBack(VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY);
-    }
-    // Лицевая, если поддерживается.
-    if ((VkAPI->Device.supportFlags & VulkanDevice::NativeDynamicFrontFaceBit) || (VkAPI->Device.supportFlags & VulkanDevice::DynamicFrontFaceBit)) {
         DynamicStates.PushBack(VK_DYNAMIC_STATE_FRONT_FACE);
+        DynamicStates.PushBack(VK_DYNAMIC_STATE_STENCIL_OP);
+        DynamicStates.PushBack(VK_DYNAMIC_STATE_STENCIL_TEST_ENABLE_EXT);
+        DynamicStates.PushBack(VK_DYNAMIC_STATE_STENCIL_WRITE_MASK);
+        DynamicStates.PushBack(VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK);
+        DynamicStates.PushBack(VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE);
+        DynamicStates.PushBack(VK_DYNAMIC_STATE_STENCIL_REFERENCE);
+        // DynamicStates.PushBack(VK_DYNAMIC_STATE_COLOR_WRITE_ENABLE_EXT);
+        // DynamicStates.PushBack(VK_DYNAMIC_STATE_COLOR_WRITE_MASK_EXT);
     }
 
-    VkPipelineDynamicStateCreateInfo DynamicStateCreateInfo = {VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO};
-    DynamicStateCreateInfo.dynamicStateCount = DynamicStates.Length();
-    DynamicStateCreateInfo.pDynamicStates = DynamicStates.Data();
+    VkPipelineDynamicStateCreateInfo DynamicStateCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+        .dynamicStateCount = DynamicStates.Length(),
+        .pDynamicStates = DynamicStates.Data()
+    };
 
     // Вершинный ввод
-    VkVertexInputBindingDescription BindingDescription;
-    BindingDescription.binding = 0;  // Индекс привязки
-    BindingDescription.stride = config.stride;
-    BindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;  // Переходите к следующему вводу данных для каждой вершины.
+    VkVertexInputBindingDescription BindingDescription {
+        .binding = 0, // Индекс привязки
+        .stride = config.stride,
+        .inputRate = VK_VERTEX_INPUT_RATE_VERTEX  // Переходите к следующему вводу данных для каждой вершины.
+    };
 
     // Атрибуты
-    VkPipelineVertexInputStateCreateInfo VertexInputInfo = {VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO};
-    VertexInputInfo.vertexBindingDescriptionCount = 1;
-    VertexInputInfo.pVertexBindingDescriptions = &BindingDescription;
-    VertexInputInfo.vertexAttributeDescriptionCount = config.AttributeCount;
-    VertexInputInfo.pVertexAttributeDescriptions = config.attributes;
+    VkPipelineVertexInputStateCreateInfo VertexInputInfo = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+        .vertexBindingDescriptionCount = 1,
+        .pVertexBindingDescriptions = &BindingDescription,
+        .vertexAttributeDescriptionCount = config.AttributeCount,
+        .pVertexAttributeDescriptions = config.attributes
+    };
 
     // Входной узел
     VkPipelineInputAssemblyStateCreateInfo InputAssembly = {VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO};
@@ -194,7 +228,7 @@ bool VulkanPipeline::Create(VulkanAPI* VkAPI, const Config& config)
 
     // Создание макета конвейера.
     VK_CHECK(vkCreatePipelineLayout(
-        VkAPI->Device.LogicalDevice,
+        VkAPI->device.LogicalDevice,
         &PipelineLayoutCreateInfo,
         VkAPI->allocator,
         &PipelineLayout)
@@ -205,29 +239,28 @@ bool VulkanPipeline::Create(VulkanAPI* VkAPI, const Config& config)
     VulkanSetDebugObjectName(VkAPI, VK_OBJECT_TYPE_PIPELINE_LAYOUT, PipelineLayout, PipelineLayoutNameBuf);
 
     // Создание конвейера
-    VkGraphicsPipelineCreateInfo PipelineCreateInfo = {VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO};
-    PipelineCreateInfo.stageCount = config.StageCount;
-    PipelineCreateInfo.pStages = config.stages;
-    PipelineCreateInfo.pVertexInputState = &VertexInputInfo;
-    PipelineCreateInfo.pInputAssemblyState = &InputAssembly;
-
-    PipelineCreateInfo.pViewportState = &ViewportState;
-    PipelineCreateInfo.pRasterizationState = &RasterizerCreateInfo;
-    PipelineCreateInfo.pMultisampleState = &MultisamplingCreateInfo;
-    PipelineCreateInfo.pDepthStencilState = (config.ShaderFlags & Shader::DepthTestFlag) ? &DepthStencil : nullptr;
-    PipelineCreateInfo.pColorBlendState = &ColorBlendStateCreateInfo;
-    PipelineCreateInfo.pDynamicState = &DynamicStateCreateInfo;
-    PipelineCreateInfo.pTessellationState = nullptr;
-
-    PipelineCreateInfo.layout = PipelineLayout;
-
-    PipelineCreateInfo.renderPass = config.renderpass->handle;
-    PipelineCreateInfo.subpass = 0;
-    PipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
-    PipelineCreateInfo.basePipelineIndex = -1;
+    VkGraphicsPipelineCreateInfo PipelineCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+        .stageCount = config.StageCount,
+        .pStages = config.stages,
+        .pVertexInputState = &VertexInputInfo,
+        .pInputAssemblyState = &InputAssembly,
+        .pTessellationState = nullptr,
+        .pViewportState = &ViewportState,
+        .pRasterizationState = &RasterizerCreateInfo,
+        .pMultisampleState = &MultisamplingCreateInfo,
+        .pDepthStencilState = ((config.ShaderFlags & Shader::DepthTest) || (config.ShaderFlags & Shader::StencilTest)) ? &DepthStencil : nullptr,
+        .pColorBlendState = &ColorBlendStateCreateInfo,
+        .pDynamicState = &DynamicStateCreateInfo,
+        .layout = PipelineLayout,
+        .renderPass = config.renderpass->handle,
+        .subpass = 0,
+        .basePipelineHandle = VK_NULL_HANDLE,
+        .basePipelineIndex = -1
+    };
 
     VkResult result = vkCreateGraphicsPipelines(
-        VkAPI->Device.LogicalDevice,
+        VkAPI->device.LogicalDevice,
         VK_NULL_HANDLE,
         1,
         &PipelineCreateInfo,
@@ -253,12 +286,12 @@ void VulkanPipeline::Destroy(VulkanAPI *VkAPI)
 {
     // Уничтожить конвейер
     if (handle) {
-        vkDestroyPipeline(VkAPI->Device.LogicalDevice, handle, VkAPI->allocator);
+        vkDestroyPipeline(VkAPI->device.LogicalDevice, handle, VkAPI->allocator);
         handle = 0;
     }
     // Уничтожить макет
     if (PipelineLayout) {
-        vkDestroyPipelineLayout(VkAPI->Device.LogicalDevice, PipelineLayout, VkAPI->allocator);
+        vkDestroyPipelineLayout(VkAPI->device.LogicalDevice, PipelineLayout, VkAPI->allocator);
         PipelineLayout = 0;
     }
 }
