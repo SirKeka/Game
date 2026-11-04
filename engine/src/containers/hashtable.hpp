@@ -1,6 +1,6 @@
 #pragma once
 
-#include <containers/mstring.hpp>
+#include <containers/mstring.h>
 #include <core/memory_system.h>
 
 /// @brief Представляет простую хеш-таблицу. Члены этой структуры не должны изменяться за пределами связанных с ней функций.
@@ -9,13 +9,6 @@
 template <typename T>
 class HashTable
 {
-public:
-    T* memory{nullptr};
-    u32 ElementCount{};
-    bool IsPointerType{false};
-    
-private:
-    static const u64 multiplier;
 public:
     constexpr HashTable() : memory(nullptr), ElementCount(), IsPointerType(false) {}
     /// @brief Создает хештаблицу и заполняет её
@@ -127,13 +120,17 @@ public:
             }
         }
 
-        u64 hash = Name(name, this->ElementCount);
+        u64 hash = Name(name, ElementCount);
         if(IsPointerType) {
             *OutValue = this->memory[hash];
             return *((void**)(OutValue)) != 0;
-            }
+        }
         else *OutValue = memory[hash]; // MMemory::CopyMem(OutValue, this->memory + hash, sizeof(T));
         return true;
+    }
+
+    auto GetData() {
+        return memory;
     }
 
     /// @brief Заполняет все записи в хэш-таблице заданным значением.
@@ -155,7 +152,12 @@ public:
         return true;
     }
 
-private:
+// private:
+    T* memory{nullptr};
+    u32 ElementCount{};
+    bool IsPointerType{false};
+    static constexpr u64 multiplier = 97; // Множитель для использования при генерации хэша. Простое число, чтобы, как мы надеемся, избежать коллизий.
+
     u64 Name(const char* name, u32 ElementCount) {
         unsigned const char* us;
         u64 hash = 0;
@@ -170,7 +172,3 @@ private:
         return hash;
     }
 };
-
-// Множитель для использования при генерации хэша. Простое число, чтобы, как мы надеемся, избежать коллизий.
-template<typename T>
-const u64 HashTable<T>::multiplier = 97;
