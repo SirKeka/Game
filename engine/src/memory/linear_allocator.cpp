@@ -39,7 +39,7 @@ void *LinearAllocator::Allocate(u64 size)
             MERROR("LinearAllocator::AllocateConstruct - Попытка выделить %llu байт, только %llu байт осталось.", size, remaining);
             return nullptr;
         }
-        void* block = reinterpret_cast<u8*>(memory) + allocated;
+        void* block = (u8*)memory + allocated;
         allocated += size;
         return block;
     }
