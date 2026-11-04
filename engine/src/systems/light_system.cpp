@@ -1,38 +1,15 @@
 #include "light_system.h"
 
-#include "core/systems_manager.hpp"
+#include "core/systems_manager.h"
 #include "core/memory_system.h"
-
-#define MAX_POINT_LIGHTS 10U
-
-struct LightSystemState {
-    DirectionalLight* DirLight;
-    PointLight* PointLights[MAX_POINT_LIGHTS];
-};
-
-bool LightSystem::Initialize(u64 &MemoryRequirement, void *memory, void *config)
-{
-    MemoryRequirement = sizeof(LightSystemState);
-    if (!memory) {
-        return true;
-    }
-
-    // ПРИМЕЧАНИЕ: выполните здесь настройку/инициализацию.
-    return true;
-}
-
-void LightSystem::Shutdown()
-{
-
-}
 
 bool LightSystem::AddDirectional(DirectionalLight *light)
 {
     if (!light) {
         return false;
     }
-    auto state = reinterpret_cast<LightSystemState*>(SystemsManager::GetState(MSystem::Light));
-    state->DirLight = light;
+
+    DirLight = light;
     return true;
 }
 
@@ -41,10 +18,10 @@ bool LightSystem::AddPoint(PointLight *light)
     if (!light) {
         return false;
     }
-    auto state = reinterpret_cast<LightSystemState*>(SystemsManager::GetState(MSystem::Light));
+
     for (u32 i = 0; i < MAX_POINT_LIGHTS; ++i) {
-        if (!state->PointLights[i]) {
-            state->PointLights[i] = light;
+        if (!PointLights[i]) {
+            PointLights[i] = light;
             return true;
         }
     }
@@ -58,9 +35,9 @@ bool LightSystem::RemoveDirectional(DirectionalLight *light)
     if (!light) {
         return false;
     }
-    auto state = reinterpret_cast<LightSystemState*>(SystemsManager::GetState(MSystem::Light));
-    if (state->DirLight == light) {
-        state->DirLight = nullptr;
+
+    if (DirLight == light) {
+        DirLight = nullptr;
         return true;
     }
 
@@ -72,10 +49,10 @@ bool LightSystem::RemovePoint(PointLight *light)
     if (!light) {
         return false;
     }
-    auto state = reinterpret_cast<LightSystemState*>(SystemsManager::GetState(MSystem::Light));
+
     for (u32 i = 0; i < MAX_POINT_LIGHTS; ++i) {
-        if (state->PointLights[i] == light) {
-            state->PointLights[i] = nullptr;
+        if (PointLights[i] == light) {
+            PointLights[i] = nullptr;
             return true;
         }
     }
@@ -86,16 +63,15 @@ bool LightSystem::RemovePoint(PointLight *light)
 
 DirectionalLight *LightSystem::GetDirectionalLight()
 {
-    auto state = reinterpret_cast<LightSystemState*>(SystemsManager::GetState(MSystem::Light));
-    return state->DirLight;
+
+    return DirLight;
 }
 
 u32 LightSystem::PointLightCount()
 {
-    auto state = reinterpret_cast<LightSystemState*>(SystemsManager::GetState(MSystem::Light));
     u32 count = 0;
     for (u32 i = 0; i < MAX_POINT_LIGHTS; ++i) {
-        if (state->PointLights[i]) {
+        if (PointLights[i]) {
             count++;
         }
     }
@@ -109,10 +85,8 @@ bool LightSystem::GetPointLights(PointLight **PointLights)
         return false;
     }
 
-    auto state = reinterpret_cast<LightSystemState*>(SystemsManager::GetState(MSystem::Light));
-
     for (u32 i = 0, j = 0; i < MAX_POINT_LIGHTS; ++i) {
-        auto PointLight = state->PointLights[i];
+        auto PointLight = this->PointLights[i];
         if (PointLight) {
             PointLights[j] = PointLight;
             j++;
@@ -127,10 +101,10 @@ bool LightSystem::GetPointLights(PointLight *PointLights)
     if (!PointLights) {
         return false;
     }
-    auto state = reinterpret_cast<LightSystemState*>(SystemsManager::GetState(MSystem::Light));
+
     for (u32 i = 0, j = 0; i < MAX_POINT_LIGHTS; ++i) {
-        if (state->PointLights[i]) {
-            PointLights[j] = *(state->PointLights[i]);
+        if (this->PointLights[i]) {
+            PointLights[j] = *(this->PointLights[i]);
             j++;
         }
     }
