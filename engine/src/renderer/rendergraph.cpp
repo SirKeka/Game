@@ -27,11 +27,13 @@ bool Rendergraph::Create(const char *name, Application &app)
 
 void Rendergraph::Destroy()
 {
+    auto renderer = SystemsManager::GetRenderingSystem();
+    renderer->WaitForIdle();
+
     app = nullptr;
     name.Destroy();
     
     if (passes) {
-        auto renderer = SystemsManager::GetRenderingSystem();
         const u32 PassCount = passes.Length();
         for (u32 i = 0; i < PassCount; i++) {
             auto pass = passes[i];
@@ -370,10 +372,11 @@ bool Rendergraph::ExecuteFrame(FrameData &rFrameData)
     // Пропуска будут выполняться в порядке их добавления.
     const u32 PassCount = passes.Length();
     for (u32 i = 0; i < PassCount; ++i) {
-        if (!passes[i]->PassData.DoExecute) {
+        RendergraphNode* pass = passes[i];
+        if (!pass->PassData.DoExecute) {
             continue;
         }
-        if (!passes[i]->Render(rFrameData)) {
+        if (!pass->Render(rFrameData)) {
             MERROR("Ошибка выполнения прохода. Проверьте журналы для получения дополнительной информации.");
             return false;
         }
@@ -407,7 +410,7 @@ bool RegenerateRenderTargets(Rendergraph *graph, RendergraphNode *pass, u16 widt
             if (attachment.source == RenderTargetAttachmentSource::Default) {
                 if (attachment.type == RenderTargetAttachmentType::Colour) {
                     attachment.texture = renderer->GetWindowAttachment(i);
-                } else if (attachment.type == RenderTargetAttachmentType::Depth) {
+                } else if (attachment.type & RenderTargetAttachmentType::Depth || attachment.type & RenderTargetAttachmentType::Stencil) {
                     attachment.texture = renderer->GetDepthAttachment(i);
                 } else {
                     MERROR("Неподдерживаемый тип вложения: 0x%x", attachment.type);
@@ -434,7 +437,7 @@ bool RegenerateRenderTargets(Rendergraph *graph, RendergraphNode *pass, u16 widt
         bool UseCustomSize = target.attachments[0].source == RenderTargetAttachmentSource::Self;
 
         // Создайте базовую цель рендеринга.
-        renderer->RenderTargetCreate(target.AttachmentCount, target.attachments, &pass->pass, 
+        renderer->RenderTargetCreate(target.AttachmentCount, nullptr, &pass->pass, 
             UseCustomSize ? target.attachments[0].texture->width : width,
             UseCustomSize ? target.attachments[0].texture->height : height,
             0, target);
