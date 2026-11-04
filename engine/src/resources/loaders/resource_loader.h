@@ -1,37 +1,13 @@
 #pragma once
-#include "resources/texture.hpp"
+#include "resources/texture.h"
 #include "resources/material.h"
 #include "resources/font_resource.hpp"
 #include "resources/geometry.h"
-#include "resources/shader.h"
 #include "resources/simple_scene_config.h"
 #include "resources/terrain.h"
 
 struct SimpleSceneConfig;
-
-/// @brief Общая структура ресурса. Все загрузчики ресурсов загружают в них данные.
-/// @tparam T 
-template<typename T>
-struct Resource {
-    u32 LoaderID;       // Идентификатор загрузчика, обрабатывающего этот ресурс.
-    const char* name;   // Название ресурса.
-    MString FullPath;   // Полный путь к файлу ресурса.
-    //u64 DataSize {};    // Размер данных ресурса в байтах.
-    T data;             // Данные ресурса.
-    constexpr Resource() : LoaderID(), name(nullptr), FullPath(),/* DataSize(), */data() {}
-};
-
-using TextResource        = Resource<MString>;
-using BinaryResource      = Resource<DArray<u8>>;
-using ImageResource       = Resource<ImageResourceData>;
-using MaterialResource    = Resource<Material::Config>;
-using MeshResource        = Resource<DArray<GeometryConfig>>;
-using ShaderResource      = Resource<ShaderConfig>;
-using BitmapFontResource  = Resource<BitmapFontResourceData>;
-using SystemFontResource  = Resource<SystemFontResourceData>;
-using SimpleSceneResource = Resource<SimpleSceneConfig>;
-using TerrainResource     = Resource<Terrain::Config>;
-//using CustomResource = Resource<>;
+struct ShaderConfig;
 
 namespace eResource
 {
@@ -52,6 +28,29 @@ namespace eResource
     };
 } // namespace Resource
 
+/// @brief Общая структура ресурса. Все загрузчики ресурсов загружают в них данные.
+/// @tparam T 
+template<typename T, eResource::Type rt>
+struct Resource {
+    eResource::Type type{rt}; // Тип ресурса
+    u32 LoaderID;             // Идентификатор загрузчика, обрабатывающего этот ресурс.
+    const char* name;         // Название ресурса.
+    MString FullPath;         // Полный путь к файлу ресурса.
+    T data;                   // Данные ресурса.
+};
+
+using TextResource        = Resource<MString, eResource::Type::Text>;
+using BinaryResource      = Resource<DArray<u8>, eResource::Type::Binary>;
+using ImageResource       = Resource<ImageResourceData, eResource::Type::Image>;
+using MaterialResource    = Resource<MaterialConfig, eResource::Type::Material>;
+using MeshResource        = Resource<DArray<GeometryConfig>, eResource::Type::Mesh>;
+using ShaderResource      = Resource<ShaderConfig, eResource::Type::Shader>;
+using BitmapFontResource  = Resource<BitmapFontResourceData, eResource::Type::BitmapFont>;
+using SystemFontResource  = Resource<SystemFontResourceData, eResource::Type::SystemFont>;
+using SimpleSceneResource = Resource<SimpleSceneConfig, eResource::Type::SimpleScene>;
+using TerrainResource     = Resource<Terrain::Config, eResource::Type::Terrain>;
+//using CustomResource = Resource<>;
+
 /// @brief Магическое число, указывающее на файл как двоичный файл.
 constexpr u32 RESOURCE_MAGIC = 0xcafebabe;
 
@@ -63,7 +62,7 @@ struct ResourceHeader {
     u16 reserved;       // Зарезервировано для будущих данных заголовка.
 };
 
-struct ResourceLoader
+struct MAPI ResourceLoader
 {
     u32 id;
     eResource::Type type;
@@ -78,34 +77,36 @@ struct ResourceLoader
 
     MINLINE void Destroy() { this->~ResourceLoader(); }
 
-         bool Load(const char* name, void* params,        TextResource& OutResource);
-    MAPI bool Load(const char* name, void* params,      BinaryResource& OutResource);
-         bool Load(const char* name, void* params,       ImageResource& OutResource);
-         bool Load(const char* name, void* params,    MaterialResource& OutResource);
-         bool Load(const char* name, void* params,        MeshResource& OutResource);
-         bool Load(const char* name, void* params,      ShaderResource& OutResource);
-         bool Load(const char* name, void* params,  BitmapFontResource& OutResource);
-         bool Load(const char* name, void* params,  SystemFontResource& OutResource);
-    MAPI bool Load(const char* name, void* params, SimpleSceneResource& OutResource);
-         bool Load(const char* name, void* params,     TerrainResource& OutResource);
+    static bool ImageQueryProperties(const char* ImageName, i32& OutWidth, i32& OutHeight, i32& OutChannels, u32& OutMipLevels);
+
+    bool Load(const char* name, void* params,        TextResource& OutResource);
+    bool Load(const char* name, void* params,      BinaryResource& OutResource);
+    bool Load(const char* name, void* params,       ImageResource& OutResource);
+    bool Load(const char* name, void* params,    MaterialResource& OutResource);
+    bool Load(const char* name, void* params,        MeshResource& OutResource);
+    bool Load(const char* name, void* params,      ShaderResource& OutResource);
+    bool Load(const char* name, void* params,  BitmapFontResource& OutResource);
+    bool Load(const char* name, void* params,  SystemFontResource& OutResource);
+    bool Load(const char* name, void* params, SimpleSceneResource& OutResource);
+    bool Load(const char* name, void* params,     TerrainResource& OutResource);
     //bool Load(const char* name, void* params, CustomResource& OutResource);
     
-         void Unload(TextResource&        resource);
-    MAPI void Unload(BinaryResource&      resource);
-         void Unload(ImageResource&       resource);
-         void Unload(MaterialResource&    resource);
-         void Unload(MeshResource&        resource);
-         void Unload(ShaderResource&      resource);
-         void Unload(BitmapFontResource&  resource);
-         void Unload(SystemFontResource&  resource);
-         void Unload(SimpleSceneResource& resource);
-         void Unload(TerrainResource&     resource);
+    void Unload(TextResource&        resource);
+    void Unload(BinaryResource&      resource);
+    void Unload(ImageResource&       resource);
+    void Unload(MaterialResource&    resource);
+    void Unload(MeshResource&        resource);
+    void Unload(ShaderResource&      resource);
+    void Unload(BitmapFontResource&  resource);
+    void Unload(SystemFontResource&  resource);
+    void Unload(SimpleSceneResource& resource);
+    void Unload(TerrainResource&     resource);
 
     template<typename T>
-    bool ResourceUnload(Resource<T> &resource, Memory::Tag tag)
+    bool ResourceUnload(T &resource, Memory::Tag tag)
     {
         if (resource.FullPath) {
-            resource.FullPath.Clear();
+            resource.FullPath.Destroy();
         }
 
         //if (resource.data) {
