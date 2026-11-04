@@ -1,7 +1,7 @@
 #include "mesh.h"
 #include "systems/resource_system.h"
 #include "systems/geometry_system.h"
-#include "systems/job_systems.hpp"
+#include "systems/job_systems.h"
 #include "core/identifier.h"
 
 // Также используется как ResultData из задания.
@@ -14,18 +14,20 @@ struct MeshLoadParams {
 /// @brief Вызывается при успешном завершении задания.
 /// @param params Параметры, переданные из задания после завершения.
 void MeshLoadJobSuccess(void* params) {
-    auto MeshParams = reinterpret_cast<MeshLoadParams*>(params);
+    auto MeshParams = (MeshLoadParams*)params;
 
     // Это также обрабатывает загрузку GPU. Не может быть джобифицировано, пока рендерер не станет многопоточным.
-    auto configs = MeshParams->MeshRes.data.Data();
+    GeometryConfig* configs = MeshParams->MeshRes.data.Data();
     MeshParams->OutMesh->GeometryCount = MeshParams->MeshRes.data.Length();
-    MeshParams->OutMesh->geometries = reinterpret_cast<Geometry**>(MemorySystem::Allocate(sizeof(Geometry*) * MeshParams->OutMesh->GeometryCount, Memory::Array, true));
+    CreateArray(MeshParams->OutMesh->geometries, sizeof(Geometry*) * MeshParams->OutMesh->GeometryCount, true);
+    auto geosys = GeometrySystem::Instance();
     for (u32 i = 0; i < MeshParams->OutMesh->GeometryCount; ++i) {
-        MeshParams->OutMesh->geometries[i] = GeometrySystem::Instance()->Acquire(configs[i], true);
+        Geometry* geometry = MeshParams->OutMesh->geometries[i] = geosys->Acquire(configs[i], true);
+        geosys->CreateGeometry(geometry);
 
         // Рассчитайте геометрические размеры.
-        auto& LocalExtents = MeshParams->OutMesh->geometries[i]->extents;
-        auto verts = reinterpret_cast<Vertex3D*>(configs[i].vertices);
+        Extents3D& LocalExtents = MeshParams->OutMesh->geometries[i]->extents;
+        auto verts = (Vertex3D*)configs[i].vertices;
         for (u32 v = 0; v < configs[i].VertexCount; ++v) {
             // Мин
             if (verts[v].position.x < LocalExtents.min.x) {
@@ -51,7 +53,7 @@ void MeshLoadJobSuccess(void* params) {
         }
 
         // Рассчитайте общие размеры для сетки, получив размеры для каждой подсетки.
-        auto& GlobalExtents = MeshParams->OutMesh->extents;
+        Extents3D& GlobalExtents = MeshParams->OutMesh->extents;
 
         // Мин.
         if (LocalExtents.min.x < GlobalExtents.min.x) {
@@ -85,7 +87,7 @@ void MeshLoadJobSuccess(void* params) {
 /// @brief Вызывается при сбое задания.
 /// @param params Параметры, передаваемые при сбое задания.
 void MeshLoadJobFail(void* params) {
-    auto MeshParams = reinterpret_cast<MeshLoadParams*>(params);
+    auto MeshParams = (MeshLoadParams*)params;
 
     MERROR("Не удалось загрузить сетку '%s'.", MeshParams->ResourceName);
 
@@ -97,8 +99,8 @@ void MeshLoadJobFail(void* params) {
 /// @param ResultData Результирующие данные передаются в обратный вызов завершения.
 /// @return Истина при успешном выполнении задания; в противном случае ложь.
 bool MeshLoadJobStart(void* params, void* ResultData) {
-    auto LoadParams = reinterpret_cast<MeshLoadParams*>(params);
-    bool result = ResourceSystem::Load(LoadParams->ResourceName, eResource::Type::Mesh, nullptr, LoadParams->MeshRes);
+    auto LoadParams = (MeshLoadParams*)params;
+    bool result = ResourceSystem::Load(LoadParams->ResourceName, nullptr, LoadParams->MeshRes);
 
     // ПРИМЕЧАНИЕ: Параметры нагрузки также используются здесь в качестве результирующих данных, теперь заполняется только поле mesh_resource.
     MemorySystem::CopyMem(ResultData, LoadParams, sizeof(MeshLoadParams));
@@ -109,9 +111,10 @@ bool MeshLoadJobStart(void* params, void* ResultData) {
 static bool Load(const char *ResourceName, Mesh* OutMesh)
 {
     OutMesh->generation = INVALID::U8ID;
-    MeshLoadParams params;
-    params.ResourceName = ResourceName;
-    params.OutMesh = OutMesh;
+    MeshLoadParams params {
+        .ResourceName = ResourceName,
+        .OutMesh = OutMesh
+    };
 
     Job::Info job { MeshLoadJobStart, MeshLoadJobSuccess, MeshLoadJobFail, &params, sizeof(MeshLoadParams), sizeof(MeshLoadParams) };
     JobSystem::Submit(job);
@@ -119,48 +122,58 @@ static bool Load(const char *ResourceName, Mesh* OutMesh)
     return true;
 }
 
-bool Mesh::Create(Config& config)
+constexpr Mesh::Mesh(MeshConfig &config)
+ : name((MString&&)config.name), 
+ ParentName((MString&&)config.ParentName), 
+ ResourceName((MString&&)config.ResourceName), 
+ id(INVALID::ID), 
+ generation(), 
+ GeometryCount(), 
+ geometries(nullptr), 
+ transform() {}
+
+constexpr Mesh::Mesh(const Mesh &mesh) : name(mesh.name), ParentName(mesh.ParentName), ResourceName(mesh.ResourceName), id(mesh.id), generation(mesh.generation), GeometryCount(mesh.GeometryCount), geometries(), transform(mesh.transform)
 {
-    this->config = static_cast<Config&&>(config);
-    this->generation = INVALID::U8ID;
+    CreateArray(geometries, sizeof(void*) * GeometryCount);
+    for (u64 i = 0; i < GeometryCount; i++) {
+        geometries[i] = mesh.geometries[i];
+    }
+}
+
+bool Mesh::Create(MeshConfig &config)
+{
+    name          = (MString&&)config.name;
+    ParentName    = (MString&&)config.ParentName;
+    ResourceName  = (MString&&)config.ResourceName;
+    transform     = config.transform;
+    GeometryCount = config.GeometryCount;
+    CreateArray(geometries, sizeof(void*) * GeometryCount);
+
+    for (size_t i = 0; i < GeometryCount; i++) {
+        geometries[i] = GeometrySystem::Acquire(config.GConfigs[i], true);
+    }
 
     return true;
 }
 
 bool Mesh::Initialize()
 {
-    if (config.ResourceName) {
+    if (ResourceName) {
         return true;
-    } else {
-        // Просто проверяю конфигурацию.
-        if (!config.GConfigs) {
-            return false;
-        }
-
-        GeometryCount = config.GeometryCount;
-        geometries = reinterpret_cast<Geometry**>(MemorySystem::Allocate(sizeof(Geometry*), Memory::Array));
     }
-    return true;
+    return false;
 }
 
 bool Mesh::Load()
 {
-    UniqueID = Identifier::AquireNewID(this);
+    id.Generate();
 
-    if (config.ResourceName) {
-        return ::Load(config.ResourceName.c_str(), this);
+    if (ResourceName) {
+        return ::Load(ResourceName.c_str(), this);
     } else {
-        if (!config.GConfigs) {
-            return false;
-        }
-
-        for (u32 i = 0; i < config.GeometryCount; ++i) {
-            geometries[i] = GeometrySystem::Acquire(config.GConfigs[i], true);
+        for (u32 i = 0; i < GeometryCount; ++i) {
+            GeometrySystem::CreateGeometry(geometries[i]);
             generation = 0;
-
-            // Очистите выделения для конфигурации геометрии.
-            // ЗАДАЧА: Сделайте это во время выгрузки/уничтожения
-            config.GConfigs[i].Dispose();
         }
     }
 
@@ -173,7 +186,7 @@ bool Mesh::Unload()
         GeometrySystem::Instance()->Release(geometries[i]);
     }
 
-    MemorySystem::Free(geometries, sizeof(Geometry*) * GeometryCount, Memory::Array);
+    DestroyArray(geometries, sizeof(Geometry*) * GeometryCount);
     geometries = nullptr;
     generation = INVALID::U8ID; // Для верности сделайте геометрию недействительной, чтобы она не пыталась визуализироваться.
     GeometryCount = 0;
@@ -194,14 +207,14 @@ bool Mesh::Destroy()
     //     name.Clear();
     // }
 
-    if (config.name) {
-        config.name.Clear();
+    if (name) {
+        name.Destroy();
     }
-    if (config.ResourceName) {
-        config.ResourceName.Clear();
+    if (ResourceName) {
+        ResourceName.Destroy();
     }
-    if (config.ParentName) {
-        config.ParentName.Clear();
+    if (ParentName) {
+        ParentName.Destroy();
     }
 
     return true;
