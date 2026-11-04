@@ -8,9 +8,26 @@
 
 #include "containers/darray.h"
 #include "containers/hashtable.hpp"
-#include "resources/texture.hpp"
 
 struct ShaderConfig;
+
+/// @brief Отображает uniform на текстурную карту/карты при получении ресурсов экземпляра.  
+struct ShaderInstanceUniformTextureConfig {
+    /// @brief Местоположение uniform для отображения.  
+    u16 UniformLocation;
+    /// @brief Количество текстурных карт, привязанных к uniform.  
+    u32 TextureMapCount;
+    /// @brief Массив указателей на текстурные карты, которые должны быть отображены на uniform.  
+    struct TextureMap** TextureMaps;
+};
+
+/// @brief Представляет конфигурацию ресурсов текстурных карт и отображений на uniform, необходимых для данных шейдера на уровне экземпляра.  
+struct ShaderInstanceResourceConfig {
+    /// @brief Количество конфигураций uniform.  
+    u32 UniformConfigCount;
+    /// @brief Массив конфигураций uniform.
+    ShaderInstanceUniformTextureConfig* UniformConfigs;
+};
 
 namespace PrimitiveTopology
 {
@@ -27,177 +44,165 @@ namespace PrimitiveTopology
         MAX = PointList << 1
     };
 } // namespace e
+
+/// @brief Определяет режим отсечения граней во время рендеринга.
+enum class FaceCullMode : u8 
+{
+    None = 0x0,         // Грани не отсеиваются.
+    Front = 0x1,        // Отсеиваются только передние грани.
+    Back = 0x2,         // Отсеиваются только задние грани.
+    FrontAndBack = 0x3  // Отсеиваются как передние, так и задние грани.
+};
+
+using ShaderFlagBits = u32;
+
+/// @brief Стадии шейдера, доступные в системе.
+enum class ShaderStage : u8 
+{
+    Vertex   = 0x00000001,
+    Geometry = 0x00000002,
+    Fragment = 0x00000004,
+    Compute  = 0x00000008
+};
+
+/// @brief Конфигурация этапа шейдера, например вершина или фрагмент.
+struct ShaderStageConfig
+{
+    MString name;
+    MString filename;
+    MString source;
+    ShaderStage stage;
+};
+
+/// @brief Доступные виды униформы.
+enum class ShaderUniformType : u8 
+{
+    Float32, Float32_2, Float32_3, Float32_4,
+    Int8, UInt8, Int16, UInt16, Int32, UInt32,
+    Matrix4,
+    Sampler1D, Sampler2D, Sampler3D, SamplerCube, Sampler1DArray, Sampler2DArray, SamplerCubeArray,
+    Custom = 255
+};
+
+/// @brief Определяет область шейдера, которая указывает, как часто он обновляется.
+enum class ShaderScope : u8 
+{
+    Global,   // Глобальная область шейдера, обычно обновляется один раз для каждого кадра.
+    Instance, // Область действия шейдера экземпляра, обычно обновляемая «для каждого экземпляра» шейдера.
+    Local     // Область действия локального шейдера, обычно обновляется для каждого объекта.
+};
+
+/// @brief Представляет один атрибут вершины шейдера.
+struct ShaderAttribute {
+    MString name;               // Имя атрибута.
+    u32 size;                   // Размер атрибута в байтах.
     
+    /// @brief Доступные типы атрибутов.
+    enum Type : u8 {
+        Float32, Float32_2, Float32_3, Float32_4, Matrix4, Int8, UInt8, Int16, UInt16, Int32, UInt32
+    } type;   // Тип атрибута.
+    constexpr ShaderAttribute(MString& name, u32 size, Type type) : name((MString&&)name), size(size), type(type) {}
+};
+
+/// @brief Конфигурация атрибута.
+struct ShaderAttributeConfig {
+    MString name;               // Имя атрибута.
+    u8 size;                    // Размер атрибута.
+    ShaderAttribute::Type type; // Тип атрибута.
+
+    constexpr ShaderAttributeConfig() : name(), size(), type() {}
+};
+
+/// @brief Конфигурация униформы.
+struct ShaderUniformConfig 
+{
+    MString name;           // Название униформы.
+    u32 location;           // Расположение униформы.
+    u32 ArrayLength;        // Длина массива, если параметр uniform является массивом.
+    u16 size;               // Размер униформы. Если используется массив, это размер для каждого элемента.
+    ShaderUniformType type; // Тип униформы.
+    ShaderScope scope;      // Область применения униформы.
+    constexpr ShaderUniformConfig() : name(), location(), ArrayLength(), size(), type(), scope() {}
+};
+
+/// @brief Представляет текущее состояние данного шейдера.
+enum class ShaderState {
+    NotCreated,     // Шейдер еще не прошел процесс создания и непригоден для использования.
+    Uninitialized,  // Шейдер прошел процесс создания, но не инициализации. Это непригодно для использования.
+    Initialized     // Шейдер создан, инициализирован и готов к использованию.
+};
+
+///@brief Представляет одну запись во внутреннем универсальном массиве.
+struct ShaderUniform {
+    u64 offset;             // Смещение в байтах от начала универсального набора (глобальное/экземплярное/локальное).
+    u32 ArrayLength;        // Длина массива, если он равен единице; в противном случае — 0.
+    u16 index;              // Индекс во внутренний универсальный массив.
+    u16 location;           // Местоположение, которое будет использоваться для поиска. Обычно совпадает с индексом, за исключением сэмплеров, которые используются для поиска индекса текстуры во внутреннем массиве в заданной области (глобальный/экземпляр).
+    u16 size;               // Размер униформы или 0 для сэмплеров.
+    u8  SetIndex;           // Индекс набора дескрипторов, которому принадлежит униформа (0 = глобальный, 1 = экземпляр, INVALID::ID = локальный).
+    ShaderScope scope;      // Область применения униформы.
+    ShaderUniformType type; // Тип униформы.
+};
+     
 /// @brief Представляет шейдер во внешнем интерфейсе.
 struct MAPI Shader {
     enum Flags {
-        NoneFlag       = 0x0,
-        DepthTestFlag  = 0x1,
-        DepthWriteFlag = 0x2,
-        WireframeFlag  = 0x4
+        None         = 0x0,
+        DepthTest    = 0x1,
+        DepthWrite   = 0x2,
+        Wireframe    = 0x4,
+        StencilTest  = 0x8,
+        StencilWrite = 0x10,
+        
     };
 
-    using FlagBits = u32;
+    u32 id;                                       // Идентификатор шейдера
+    ShaderFlagBits flags;                         // 
+    MString name;                                 // Имя шейдера
+    DArray<struct TextureMap*> GlobalTextureMaps; // Массив глобальных указателей текстурных карт.
+    DArray<ShaderUniform> uniforms;               // Массив униформы в этом шейдере.
+    DArray<ShaderAttribute> attributes;           // Массив атрибутов.
+    struct VulkanShader* ShaderData;              // Указатель для хранения конкретных данных API средства рендеринга. Рендерер несет ответственность за создание и уничтожение этого.
+    void* HashtableBlock;                         // Блок памяти, используемый единой хеш-таблицей.
+    HashTable<u16> UniformLookup;                 // Хэш-таблица для хранения единого индекса/местоположений по имени.
 
-    /// @brief Стадии шейдера, доступные в системе.
-    enum class Stage {
-        Vertex   = 0x00000001,
-        Geometry = 0x00000002,
-        Fragment = 0x00000004,
-        Compute  = 0x00000008
-    };
+    u64 RequiredUboAlignment;                     // Количество байтов, необходимое для выравнивания UBO. Это используется вместе с размером UBO для определения конечного шага, то есть того, насколько UBO располагаются в буфере. Например, требуемое выравнивание 256 означает, что шаг должен быть кратен 256 (верно для некоторых карт nVidia).
+    u64 GlobalUboSize;                            // Фактический размер объекта глобального универсального буфера.
+    u64 GlobalUboStride;                          // Шаг объекта глобального универсального буфера.
+    u64 GlobalUboOffset;                          // Смещение в байтах для глобального UBO от начала универсального буфера.
+    u64 UboSize;                                  // Фактический размер объекта универсального буфера экземпляра.
+    u64 UboStride;                                // Шаг объекта универсального буфера экземпляра.
+    u64 LocalUboOffset;;                          //
+    u64 LocalUboSize;                             // 
+    u64 LocalUboStride;                           // 
+    u64 RenderFrameNumber;                        // Используется для обеспечения того, чтобы глобальные переменные шейдера обновлялись только один раз за кадр.
+    u32 TopologyTypes;                            // Типы топологий, используемые шейдером и его конвейером. См. PrimitiveTopologyType.
+    u32 BoundInstanceID;                          // Идентификатор привязанного в данный момент экземпляра.
+    u32 BoundUboOffset;                           // Смещение ubo текущего привязанного экземпляра.
+    u8 InstanceTextureCount;                      // Количество экземпляров текстур.
+    ShaderScope BoundScope;                       //       
+    ShaderState state;                            // Внутреннее состояние шейдера.
+    u16 AttributeStride;                          // Размер всех атрибутов вместе взятых, то есть размер вершины.
 
-    /// @brief Доступные типы атрибутов.
-    enum AttributeType {
-        Float32   =  0U,
-        Float32_2 =  1U,
-        Float32_3 =  2U,
-        Float32_4 =  3U,
-        Matrix4   =  4U,
-        Int8      =  5U,
-        UInt8     =  6U,
-        Int16     =  7U,
-        UInt16    =  8U,
-        Int32     =  9U,
-        UInt32    = 10U
-    };
-
-    /// @brief Доступные виды униформы.
-    enum class UniformType {
-        Float32   =   0U,
-        Float32_2 =   1U,
-        Float32_3 =   2U,
-        Float32_4 =   3U,
-        Int8      =   4U,
-        UInt8     =   5U,
-        Int16     =   6U,
-        UInt16    =   7U,
-        Int32     =   8U,
-        UInt32    =   9U,
-        Matrix4   =  10U,
-        Sampler   =  11U,
-        Custom    = 255U
-    };
-
-    /// @brief Определяет область шейдера, которая указывает, как часто он обновляется.
-    enum class Scope {
-        Global   = 0,    // Глобальная область шейдера, обычно обновляется один раз для каждого кадра.
-        Instance = 1,    // Область действия шейдера экземпляра, обычно обновляемая «для каждого экземпляра» шейдера.
-        Local    = 2     // Область действия локального шейдера, обычно обновляется для каждого объекта.
-    };
-
-    /// @brief Конфигурация атрибута.
-    struct AttributeConfig {
-        MString name;         // Имя атрибута.
-        u8 size;              // Размер атрибута.
-        AttributeType type;   // Тип атрибута.
-
-        constexpr AttributeConfig() : name(), size(), type() {}
-        constexpr AttributeConfig(AttributeConfig&& sac) : name(static_cast<MString&&>(sac.name)), size(sac.size), type(sac.type) {
-            size = 0;
-        }
-        AttributeConfig& operator =(const AttributeConfig& sac) {
-            name = sac.name;
-            size = sac.size;
-            type = sac.type;
-            return *this;
-        }
-        AttributeConfig& operator =(AttributeConfig&& sac) {
-            name = static_cast<MString&&>(sac.name);
-            size = sac.size;
-            type = sac.type;
-            return *this;
-        }
-    };
-
-    /// @brief Конфигурация униформы.
-    struct UniformConfig {
-        MString name;       // Название униформы.
-        u16 size;            // Размер униформы.
-        u32 location;       // Расположение униформы.
-        UniformType type;   // Тип униформы.
-        Scope scope;        // Область применения униформы.
-        constexpr UniformConfig() : name(), size(), location(), type(), scope() {}
-        constexpr UniformConfig(UniformConfig&& suc) : name(static_cast<MString&&>(suc.name)), size(suc.size), location(suc.location), type(suc.type), scope(suc.scope) {
-            suc.size = 0;
-            suc.location = 0;
-        }
-        UniformConfig& operator =(const UniformConfig& suc) {
-            name = suc.name;
-            size = suc.size;
-            location = suc.location;
-            type = suc.type;
-            scope = suc.scope;
-            return *this;
-        }
-        UniformConfig& operator =(UniformConfig&& suc) {
-            name = static_cast<MString&&>(suc.name);
-            size = suc.size;
-            location = suc.location;
-            type = suc.type;
-            scope = suc.scope;
-            return *this;
-        }
-    };
-
-    /// @brief Представляет текущее состояние данного шейдера.
-    enum class State {
-        NotCreated,                            // Шейдер еще не прошел процесс создания и непригоден для использования.
-        Uninitialized,                         // Шейдер прошел процесс создания, но не инициализации. Это непригодно для использования.
-        Initialized                            // Шейдер создан, инициализирован и готов к использованию.
-    };
-
-    ///@brief Представляет одну запись во внутреннем универсальном массиве.
-    struct Uniform {
-        u64 offset;         // Смещение в байтах от начала универсального набора (глобальное/экземплярное/локальное).
-        u16 index;          // Индекс во внутренний универсальный массив.
-        u16 location;       // Местоположение, которое будет использоваться для поиска. Обычно совпадает с индексом, за исключением сэмплеров, которые используются для поиска индекса текстуры во внутреннем массиве в заданной области (глобальный/экземпляр).
-        u16 size;           // Размер униформы или 0 для сэмплеров.
-        u8  SetIndex;       // Индекс набора дескрипторов, которому принадлежит униформа (0 = глобальный, 1 = экземпляр, INVALID::ID = локальный).
-        Scope scope;        // Область применения униформы.
-        UniformType type;   // Тип униформы.
-    };
+    u8 GlobalUniformCount;                        // Количество униформ, не относящихся к выборке, в глобальном масштабе.
+    u8 GlobalUniformSamplerCount;                 // Количество глобальных униформ с сэмплерами.
+    DArray<u32> GlobalSamplerIndices;             // Сохраняет единообразные индексы глобальных сэмплеров для быстрого поиска.
     
-    /// @brief Представляет один атрибут вершины шейдера.
-    struct Attribute {
-        MString name;                      // Имя атрибута.
-        AttributeType type;                // Тип атрибута.
-        u32 size;                          // Размер атрибута в байтах.
-        constexpr Attribute(MString& name, AttributeType type, u32 size) : name(static_cast<MString&&>(name)), type(type), size(size) {}
-    };
+    u8 InstanceUniformCount;                      // Количество экземпляров, не являющихся образцами, в униформе.
+    u8 InstanceUniformSamplerCount;               // Количество униформ сэмплера экземпляров.
+    DArray<u32> InstanceSamplerIndices;           // Сохраняет единообразные индексы экземпляров сэмплеров для быстрого поиска.
 
-    u32 id                                      {}; // Идентификатор шейдера
-    MString name                                {}; // Имя шейдера
-    FlagBits flags                              {}; // 
-    u32 TopologyTypes                           {}; // Типы топологий, используемые шейдером и его конвейером. См. PrimitiveTopologyType.
-    u64 RequiredUboAlignment                    {}; // Количество байтов, необходимое для выравнивания UBO. Это используется вместе с размером UBO для определения конечного шага, то есть того, насколько UBO располагаются в буфере. Например, требуемое выравнивание 256 означает, что шаг должен быть кратен 256 (верно для некоторых карт nVidia).
-    u64 GlobalUboSize                           {}; // Фактический размер объекта глобального универсального буфера.
-    u64 GlobalUboStride                         {}; // Шаг объекта глобального универсального буфера.
-    u64 GlobalUboOffset                         {}; // Смещение в байтах для глобального UBO от начала универсального буфера.
-    u64 UboSize                                 {}; // Фактический размер объекта универсального буфера экземпляра.
-    u64 UboStride                               {}; // Шаг объекта универсального буфера экземпляра.
-    u64 PushConstantSize                        {}; // Общий размер всех диапазонов констант push вместе взятых.
-    u64 PushConstantStride                      {}; // Шаг константы нажатия, выровненный по 4 байтам, как того требует Vulkan.
-    DArray<struct TextureMap*> GlobalTextureMaps{}; // Массив глобальных указателей текстурных карт.
-    u8 InstanceTextureCount                     {}; // Количество экземпляров текстур.
-    Scope BoundScope                            {};       
-    u32 BoundInstanceID                         {}; // Идентификатор привязанного в данный момент экземпляра.
-    u32 BoundUboOffset                          {}; // Смещение ubo текущего привязанного экземпляра.
-    void* HashtableBlock                        {}; // Блок памяти, используемый единой хеш-таблицей.
-    HashTable<u16> UniformLookup                {}; // Хэш-таблица для хранения единого индекса/местоположений по имени.
-    DArray<Uniform> uniforms                    {}; // Массив униформы в этом шейдере.
-    DArray<Attribute> attributes                {}; // Массив атрибутов.
-    State state                                 {}; // Внутреннее состояние шейдера.
-    u8 PushConstantRangeCount                   {}; // Число диапазонов push-констант.
-    Range PushConstantRanges[32]                {}; // Массив диапазонов push-констант.
-    u16 AttributeStride                         {}; // Размер всех атрибутов вместе взятых, то есть размер вершины.
-    u64 RenderFrameNumber                       {}; // Используется для обеспечения того, чтобы глобальные переменные шейдера обновлялись только один раз за кадр.
-    u8 DrawIndex                                {}; // Используется для обеспечения обновления глобальных переменных шейдера только один раз за отрисовку.
+    u8 LocalUniformCount;                         // Количество местных лиц, не участвовавших в отборе проб, в униформе.
+    u8 ShaderStageCount;
+    ShaderStageConfig* StageConfigs;
+    u8 DrawIndex;                                 // Используется для обеспечения обновления глобальных переменных шейдера только один раз за отрисовку.
+    bool IsWireframe;                             // Указывает, помечен ли шейдер в данный момент для использования каркасного режима.
 
-    // ЗАДАЧА: Пока нет реализации DirectX храним указатель шейдера Vulkan.
-    struct VulkanShader* ShaderData   {};        // Непрозрачный указатель для хранения конкретных данных API средства рендеринга. Рендерер несет ответственность за создание и уничтожение этого.
-public:
-    constexpr Shader();
+#ifdef _DEBUG
+    u32* ModuleWatchIDs;
+#endif
+
+    constexpr Shader() { MemorySystem::ZeroMem(this, sizeof(Shader)); }
     Shader(u32 id, ShaderConfig& config);
     ~Shader();
 
@@ -206,43 +211,65 @@ public:
     /// @param config конфигурация на основе которой будет создан шейдер.
     /// @return true в случае успеха, иначе false.
     bool Create(u32 id, ShaderConfig& config);
+    
     /// @brief Добавляет новый атрибут вершины. Должно быть сделано после инициализации шейдера.
     /// @param config конфигурация атрибута.
     /// @return True в случае успеха; в противном случае ложь.
-    bool AddAttribute(AttributeConfig& config);
+    bool AddAttribute(ShaderAttributeConfig& config);
+    
     /// @brief Добавляет в шейдер новую униформу.
     /// @param config конфигурация униформы.
     /// @return True в случае успеха; в противном случае ложь.
-    bool AddUniform(const UniformConfig& config);
+    bool AddUniform(const ShaderUniformConfig& config);
+    
     /// @brief Связывает глобальные ресурсы для использования и обновления.
     /// @return true в случае успеха, иначе false.
     bool BindGlobals();
+
+    ShaderUniform& GetUniform(u16 location) { return uniforms[location]; }
+    ShaderUniform* GetUniform(const char* name);
+
+    /// @brief Перезагружает указанный шейдер.
+    /// @return Возвращает true при успешном выполнении, иначе — false.
+    bool Reload();
+
+    /// @brief 
+    /// @param WireframeEnabled 
+    /// @return 
+    bool SetWireframe(bool WireframeEnabled);
     
-    bool UniformAdd(const MString& UniformName, u32 size, UniformType type, Scope scope, u32 SetLocation, bool IsSampler);
-    bool UniformNameValid(const MString& UniformName);
-    bool UniformAddStateValid();
-    u16  UniformIndex(const char* UniformName);
+    /// @brief Возвращает местоположение униформы с заданным именем, если она найдена.
+    /// @param UniformName название формы, которую нужно найти.
+    /// @return Если найдено, укажите местоположение в формате Uniform; в противном случае — INVALID::U16ID.
+    u16  UniformLocation(const char* UniformName);
     void Destroy();
+private:
+    /// @brief Добавляет образец текстуры в шейдер. Должно быть сделано после инициализации шейдера.
+    /// @param config конфигурация униформы.
+    /// @return True в случае успеха; в противном случае ложь.
+    bool AddSampler(const ShaderUniformConfig& config);
+    bool UniformAdd(const ShaderUniformConfig& config, u32 location);
+    bool UniformNameValid(const MString& UniformName);
+
+    friend class ShaderSystem;
 };
 
-/// @brief Конфигурация шейдера. Обычно создается и уничтожается загрузчиком
-    /// ресурсов шейдера и задается свойствами, найденными в файле ресурсов .shadercfg.
-    struct ShaderConfig {
-        MString name;                       // Имя создаваемого шейдера.
-        FaceCullMode CullMode;              // Режим отбраковки лица, который будет использоваться. По умолчанию BACK, если не указано иное.
-        u32 TopologyTypes;                  // Типы топологии для конвейера шейдера. См. PrimitiveTopologyType. По умолчанию "triangle list", если не указано иное.
-        // u8 AttributeCount;                  // Количество атрибутов.
-        DArray<Shader::AttributeConfig> attributes; // Коллекция атрибутов.
-        // u8 UniformCount;                    // Учёт униформы.
-        DArray<Shader::UniformConfig> uniforms;     // Коллекция униформы.
-        // u8 StageCount;                      // Количество этапов, присутствующих в шейдере.
-        DArray<Shader::Stage> stages;               // Сборник этапов.
-        DArray<MString> StageNames;         // Коллекция сценических имен. Должно соответствовать массиву этапов.
-        DArray<MString> StageFilenames;     // Коллекция имен файлов этапов, которые необходимо загрузить (по одному на этап). Должно соответствовать массиву этапов.
-        Shader::FlagBits flags;             // Флаги, установленные для этого шейдера.
+constexpr int sh = sizeof(Shader); // 352
 
-        ShaderConfig() : name(), CullMode(FaceCullMode::Back), TopologyTypes(PrimitiveTopology::Type::TriangleList), /*AttributeCount(),*/ attributes(), /*UniformCount(),*/ uniforms(), /*StageCount(),*/ stages(), StageNames(), StageFilenames(), flags() {}
-        void Clear();
-        void* operator new(u64 size) { return MemorySystem::Allocate(size, Memory::Resource); }
-        void operator delete(void* ptr, u64 size) { MemorySystem::Free(ptr, size, Memory::Resource); }
-    };
+/// @brief Конфигурация шейдера. Обычно создается и уничтожается загрузчиком
+/// ресурсов шейдера и задается свойствами, найденными в файле ресурсов .shadercfg.
+struct ShaderConfig 
+{
+    MString name;                              // Имя создаваемого шейдера.
+    DArray<ShaderAttributeConfig> attributes;  // Коллекция атрибутов.
+    DArray<ShaderUniformConfig> uniforms;      // Коллекция униформы.
+    DArray<ShaderStageConfig> StageConfigs;    // Набор конфигураций этапов. ПРИМЕЧАНИЕ: инициализируется, как только известен счет.
+    u32 TopologyTypes{1};                      // Типы топологии для конвейера шейдера. См. PrimitiveTopologyType. По умолчанию "triangle list", если не указано иное.
+    ShaderFlagBits flags{};                    // Флаги, установленные для этого шейдера.
+    u32 MaxInstances{1};                       // Максимально допустимое количество экземпляров. ПРИМЕЧАНИЕ: Это напрямую влияет на количество доступных ресурсов.
+    FaceCullMode CullMode = FaceCullMode::Back;// Режим отбраковки лица, который будет использоваться. По умолчанию BACK, если не указано иное.
+
+    void Clear();
+    void* operator new(u64 size) { return MemorySystem::Allocate(size, Memory::Resource); }
+    void operator delete(void* ptr, u64 size) { MemorySystem::Free(ptr, size, Memory::Resource); }
+};
