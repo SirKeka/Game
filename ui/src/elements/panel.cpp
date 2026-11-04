@@ -14,6 +14,17 @@
 //     return true;
 // }
 
+constexpr bool Panel::Create(MString &name, FVec2 size, FVec4 colour, UiElement *parent)
+{
+    this->name = (MString&&)name;
+    SetParent(parent);
+    rect.width  = size.width;
+    rect.height = size.height;
+    this->colour = colour;
+
+    return true;
+}
+
 bool Panel::Load()
 {
     // Сгенерировать UV-развертку.
@@ -22,10 +33,10 @@ bool Panel::Load()
     GenerateUvsFromImageCoords(512, 512, 73, 36, xmax, ymax);
 
     // Создать простую плоскость.
-    GeometryConfig UiConfig{};
-    Math::Geometry::GenerateQuad2D(name.c_str(), rect.width, rect.height, xmin, xmax, ymin, ymax, UiConfig);
+    GeometryConfig UiConfig = Math::Geometry::GenerateQuad2D(name.c_str(), rect.width, rect.height, xmin, xmax, ymin, ymax);
     // Получить геометрию пользовательского интерфейса из конфигурации. ПРИМЕЧАНИЕ: эта загрузка в графический процессор
     geometry = GeometrySystem::Acquire(UiConfig, true);
+    GeometrySystem::CreateGeometry(geometry);
 
     auto pState = (UiSystem*)SystemsManager::GetState(128);  // HACK: требует стандартного способа получения типов расширения.
 
@@ -45,20 +56,27 @@ bool Panel::Load()
     return true;
 }
 
+void Panel::RenderPrepare(const FrameData &rFrameData)
+{
+    SystemsManager::GetRenderingSystem()->GeometryVertexUpdate(geometry, 0);
+    IsDirty = false;
+}
+
 bool Panel::Render(FrameData &rFrameData, UiRenderData &RenderData)
 {
     if (geometry) {
-        UiRenderable renderable {};
-        renderable.RenderData.UniqueID = id.UniqueID;
-        renderable.RenderData.geometry = geometry;
-        renderable.RenderData.model = xform.GetWorld();
-        renderable.RenderData.DiffuseColour = colour;
+        UiRenderable* renderable = RenderData.renderables.PushBack();
+        MemorySystem::ZeroMem(renderable, sizeof(UiRenderable));
+        renderable->InstanceID = &InstanceID;
+        renderable->FrameNumber = &FrameNumber;
+        renderable->DrawIndex = &DrawIndex;
+        renderable->AtlasOverride = nullptr;
 
-        renderable.InstanceID = &InstanceID;
-        renderable.FrameNumber = &FrameNumber;
-        renderable.DrawIndex = &DrawIndex;
-
-        RenderData.renderables.PushBack(renderable);
+        GeometryRenderData& grd = renderable->RenderData;
+        grd.UniqueID           = id.UniqueID;
+        grd.model              = xform.GetWorld();
+        grd.DiffuseColour      = colour;
+        grd.CopyData(geometry);
     }
 
     return true;
@@ -78,7 +96,6 @@ bool Panel::Resize(FVec2 NewSize)
     vertices[1].position.x = NewSize.x;
     vertices[2].position.y = NewSize.y;
     vertices[3].position.x = NewSize.x;
-    SystemsManager::GetRenderingSystem()->GeometryVertexUpdate(geometry, 0, geometry->VertexCount, vertices);
 
-    return true;
+    return (IsDirty = true);
 }
