@@ -12,14 +12,15 @@ struct MAPI Viewport
     RendererProjectionMatrixType ProjectionMatrixType;
     Matrix4D projection;
 
-    constexpr Viewport() = default;
+    constexpr Viewport() : rect(), FOV(), NearClip(), FarClip(), ProjectionMatrixType(), projection() {}
     constexpr Viewport(const Rect2D& rect, f32 FOV, f32 NearClip, f32 FarClip, RendererProjectionMatrixType ProjectionMatrixType); 
     ~Viewport();
 
+    bool Create();
     bool Create(const Rect2D& rect, f32 FOV, f32 NearClip, f32 FarClip, RendererProjectionMatrixType ProjectionMatrixType);
     void Destroy();
 
     void Resize(const Rect2D& rect);
 private:
-    constexpr Matrix4D RegenerateProjectionMatrix();
+    constexpr Matrix4D& RegenerateProjectionMatrix();
 };
