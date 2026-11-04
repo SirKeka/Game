@@ -3,21 +3,21 @@
 // Уровень платформы Linux.
 #if MPLATFORM_LINUX
 
-#include "core/logger.hpp"
-#include "core/event.hpp"
-#include "core/input.hpp"
+#include <X11/XKBlib.h>    // sudo apt-get install libx11-dev
+#include <X11/Xlib-xcb.h>  // sudo apt-get install libxkbcommon-x11-dev libx11-xcb-dev
+#include <X11/Xlib.h>
+#include <X11/keysym.h>
+#include <sys/time.h>
+#include <xcb/xcb.h>
+
+#include "core/logger.h"
+#include "core/event.h"
+#include "core/input.h"
 #include "core/mthread.hpp"
 #include "core/mmutex.hpp"
-#include "core/mmemory.hpp"
+#include "core/memory_system.h"
 
-#include "containers/darray.hpp"
-
-#include <xcb/xcb.h>
-#include <X11/keysym.h>
-#include <X11/XKBlib.h>  // sudo apt-get install libx11-dev
-#include <X11/Xlib.h>
-#include <X11/Xlib-xcb.h>  // sudo apt-get install libxkbcommon-x11-dev
-#include <sys/time.h>
+#include "containers/darray.h"
 
 #if _POSIX_C_SOURCE >= 199309L
 #include <time.h>  // наносон
@@ -477,6 +477,9 @@ u64 MThread::GetThreadID()
 constexpr MMutex::MMutex()
 {
     // Инициализация
+    pthread_mutexattr_t mutex_attr;
+    pthread_mutexattr_init(&mutex_attr);
+    pthread_mutexattr_settype(&mutex_attr, PTHREAD_MUTEX_RECURSIVE);
     pthread_mutex_t mutex;
     i32 result = pthread_mutex_init(&mutex, 0);
     if (result != 0) {
