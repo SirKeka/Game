@@ -13,6 +13,9 @@ struct FrameData {
     /// @brief Количество сеток, отрисованных в последнем кадре.
     u32 DrawnMeshCount;
 
+    /// @brief Количество элементов сетки, отрисованных в теневом проходе в последнем кадре.
+    u32 DrawnShadowMeshCount;
+
     /// @brief Указатель на распределитель кадров движка.
     struct LinearAllocator* FrameAllocator;
 
