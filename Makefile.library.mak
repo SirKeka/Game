@@ -13,7 +13,7 @@ ifeq ($(OS),Windows_NT)
 	EXTENSION := .dll
 	COMPILER_FLAGS := -std=c++20 -Wall -Wextra  -Werror -Wvla -Wgnu-folding-constant -Wno-missing-braces -fdeclspec -Wstrict-prototypes -Wno-unused-parameter -Wno-missing-field-initializers
 	INCLUDE_FLAGS := -I$(ASSEMBLY)\src $(ADDL_INC_FLAGS)
-	LINKER_FLAGS := -shared -luser32 -lgdi32 -L$(OBJ_DIR)\$(ASSEMBLY) -L.\$(BUILD_DIR) $(ADDL_LINK_FLAGS)
+	LINKER_FLAGS := -shared -L$(OBJ_DIR)\$(ASSEMBLY) -L.\$(BUILD_DIR) $(ADDL_LINK_FLAGS)
 	DEFINES += -D_CRT_SECURE_NO_WARNINGS
 
 # Make не предлагает рекурсивную функцию подстановочных знаков, а Windows она нужна, поэтому вот она:
@@ -41,9 +41,15 @@ else
         # LINUX
 		BUILD_PLATFORM := linux
 		EXTENSION := .so
-		COMPILER_FLAGS := -Wall -Werror -Wvla -Wgnu-folding-constant -Wno-missing-braces -fdeclspec -fPIC
-		INCLUDE_FLAGS := -I$(ASSEMBLY)/src -I$(VULKAN_SDK)/include $(ADDL_INC_FLAGS)
-		LINKER_FLAGS := -shared -lvulkan -lxcb -lX11 -lX11-xcb -lxkbcommon -L$(VULKAN_SDK)/lib -L/usr/X11R6/lib -L./$(BUILD_DIR) $(ADDL_LINK_FLAGS)
+		# NOTE: -fvisibility=hidden hides all symbols by default, and only those that explicitly say
+		# otherwise are exported (i.e. via KAPI).
+		COMPILER_FLAGS :=-fvisibility=hidden -fpic -Wall -Werror -Wvla -Wno-missing-braces -fdeclspec 
+		INCLUDE_FLAGS := -I./$(ASSEMBLY)/src -I$(VULKAN_SDK)/include $(ADDL_INC_FLAGS)
+		# NOTE: --no-undefined and --no-allow-shlib-undefined ensure that symbols linking against are resolved.
+		# These are linux-specific, as the default behaviour is the opposite of this, allowing code to compile 
+		# here that would not on other platforms from not being exported (i.e. Windows)
+		# Discovered the solution here for this: https://github.com/ziglang/zig/issues/8180
+		LINKER_FLAGS :=-Wl,--no-undefined,--no-allow-shlib-undefined -shared -lvulkan -lxcb -lX11 -lXrandr -lX11-xcb -lxkbcommon -lm -L$(VULKAN_SDK)/lib -L/usr/X11R6/lib -L./$(BUILD_DIR) $(ADDL_LINK_FLAGS)
 		# .cpp files
 		SRC_FILES := $(shell find $(ASSEMBLY) -name *.cpp)
 		# directories with .hpp files
@@ -86,11 +92,13 @@ endif
 # По умолчанию используется режим отладки, если не указана версия.
 ifeq ($(TARGET),release)
 # release
+DEFINES += -DMRELEASE
+COMPILER_FLAGS += -MD -O2
 else
 # debug
 DEFINES += -D_DEBUG
-COMPILER_FLAGS += -g -MD
-LINKER_FLAGS += -g
+COMPILER_FLAGS += -g -MD -O0
+LINKER_FLAGS += -g 
 endif
 
 all: scaffold compile link
@@ -123,7 +131,7 @@ endif
 link: scaffold $(OBJ_FILES) # ссылка
 	@echo Linking "$(ASSEMBLY)"...
 ifeq ($(BUILD_PLATFORM),windows)
-	@clang++ $(OBJ_FILES) -o $(BUILD_DIR)\$(ASSEMBLY)$(EXTENSION) $(LINKER_FLAGS) -Xlinker /PDB:$(BUILD_DIR)\$(ASSEMBLY)_$(MNUMERIC_VERSION).pdb 
+	@clang++ $(OBJ_FILES) -o $(BUILD_DIR)\$(ASSEMBLY)$(EXTENSION) $(LINKER_FLAGS) -Xlinker /INCREMENTAL  
 else
 	@clang++ $(OBJ_FILES) -o $(BUILD_DIR)/lib$(ASSEMBLY)$(EXTENSION) $(LINKER_FLAGS)
 endif
