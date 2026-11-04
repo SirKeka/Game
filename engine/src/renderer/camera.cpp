@@ -7,26 +7,16 @@ void Camera::Reset()
     ViewMatrix = Matrix4D::MakeIdentity();
 }
 
-const FVec3& Camera::GetPosition()
-{
-    return position;
-}
-
 void Camera::SetPosition(const FVec3& position)
 {
     this->position = position;
     IsDirty = true;
 }
 
-const FVec3& Camera::GetRotationEuler()
-{
-    return EulerRotation;
-}
-
 void Camera::SetRotationEuler(const FVec3& rotation)
 {
-    this->EulerRotation = rotation;
-    this->EulerRotation *= Math::DegToRad();
+    EulerRotation = rotation;
+    EulerRotation *= Math::DegToRad();
     IsDirty = true;
 }
 
@@ -44,34 +34,11 @@ const Matrix4D& Camera::GetView()
     return ViewMatrix;
 }
 
-FVec3 Camera::Forward()
-{
-    return Matrix4D::Forward(GetView());
-}
-
-FVec3 Camera::Backward()
-{
-    return Matrix4D::Backward(GetView());
-}
-
-FVec3 Camera::Left()
-{
-    return Matrix4D::Left(GetView());
-}
-
-FVec3 Camera::Right()
-{
-    return Matrix4D::Right(GetView());
-}
-
-FVec3 Camera::Up()
-{
-    return Matrix4D::Up(GetView());
-}
-
 void Camera::MoveForward(f32 amount)
 {
-    position += (Forward() * amount);
+    FVec3 dir = Forward();
+    dir *= amount;
+    position += dir;
     IsDirty = true;
 }
 
