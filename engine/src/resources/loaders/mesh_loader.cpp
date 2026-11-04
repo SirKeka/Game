@@ -6,21 +6,18 @@
 
 #include <stdio.h>
 
-enum class MeshFileType 
-{
-    NotFound,
-    MSM,
-    OBJ
-};
+enum class MeshFileType { NotFound, MSM, OBJ };
 
-struct SupportedMeshFiletype {
+struct SupportedMeshFiletype 
+{
     MString extension;
     MeshFileType type;
     bool IsBinary;
     constexpr SupportedMeshFiletype(const char* extension, MeshFileType type, bool IsBinary) : extension(extension), type(type), IsBinary(IsBinary) {}
 };
 
-struct MeshVertexIndexData {
+struct MeshVertexIndexData 
+{
     u32 PositionIndex;
     u32 NormalIndex;
     u32 TexcoordIndex;
@@ -28,15 +25,17 @@ struct MeshVertexIndexData {
 };
 
 /// @brief Грань геометрии(обычно треугольник)
-struct Face {
+struct Face 
+{
     MeshVertexIndexData vertices[3];
 };
 
-struct MeshGroupData {
+struct MeshGroupData 
+{
     DArray<Face> faces;
 
     constexpr MeshGroupData() : faces() {}
-    constexpr MeshGroupData(u64 size) : faces(size) {}
+    constexpr MeshGroupData(u32 size) : faces(size) {}
     constexpr MeshGroupData(const MeshGroupData& mgd) : faces(mgd.faces) {}
     constexpr MeshGroupData(MeshGroupData&& mgd) : faces(std::move(mgd.faces)) {}
     constexpr MeshGroupData& operator=(const MeshGroupData& mgd) { 
@@ -55,7 +54,7 @@ bool ImportObjMaterialLibraryFile(const char* MtlFilePath);
 
 bool LoadMsmFile(FileHandle& MsmFile, DArray<GeometryConfig>& OutGeometries);
 bool WriteMsmFile(const char* path, const char* name, u32 GeometryCount, DArray<GeometryConfig>& geometries);
-bool WriteMmtFile(const char* MtlFilePath, Material::Config& config);
+bool WriteMmtFile(const char* MtlFilePath, MaterialConfig& config);
 
 bool ResourceLoader::Load(const char *name, void* params, MeshResource &OutResource)
 {
@@ -122,7 +121,7 @@ bool ResourceLoader::Load(const char *name, void* params, MeshResource &OutResou
 
     if (!result) {
         MERROR("Не удалось обработать файл сетки «%s».", FullFilePath);
-        OutResource.data.Clear();
+        OutResource.data.Destroy();
         //OutResource.DataSize = 0;
         return false;
     }
@@ -143,7 +142,7 @@ void ResourceLoader::Unload(MeshResource &resource)
     }*/
     resource.data.Clear();
     if(resource.FullPath) {
-        resource.FullPath.Clear();
+        resource.FullPath.Destroy();
     }
     //MMemory::Free(resource.data, resource.DataSize * sizeof(GeometryConfig), Memory::DArray);
     //resource.data = nullptr;
@@ -158,11 +157,11 @@ void ResourceLoader::Unload(MeshResource &resource)
 /// @return true в случае успеха; в противном случае false.
 bool ImportObjFile(FileHandle &ObjFile, const char *OutMsmFilename, DArray<GeometryConfig> &OutGeometries)
 {
-    DArray<FVec3> positions { 16384 };
-    DArray<FVec3> normals { 16384 };
-    DArray<FVec2> TexCoords { 16384 };
+    DArray<FVec3> positions { (u32)16384 };
+    DArray<FVec3> normals { (u32)16384 };
+    DArray<FVec2> TexCoords { (u32)16384 };
     //DArray<Vertex3D> vertices { 16384 , Vertex3D() };
-    DArray<MeshGroupData> groups { 4 };
+    DArray<MeshGroupData> groups { (u32)4 };
     u32* ind[500]{};
     char MaterialFileName[512] = "";
 
@@ -199,25 +198,23 @@ bool ImportObjFile(FileHandle &ObjFile, const char *OutMsmFilename, DArray<Geome
                 switch (SecondChar) {
                 case ' ': {
                     // Позиция вершины
-                    FVec3 pos;
-                    MString::ToFVector(LineBuf, pos);
+                    FVec3* pos = positions.PushBack();
+                    MString::ToFVector(LineBuf, *pos);
                     //iv++;
-                    positions.PushBack(pos);
                 } break;
                 case 'n': {
                     // Нормали вершины
-                    FVec3 norm;
-                    MString::ToFVector(LineBuf, norm);
+                    FVec3* norm = normals.PushBack();
+                    MString::ToFVector(LineBuf, *norm);
                     //in++;
-                    normals.PushBack(norm);
                 } break;
                 case 't': {
                         // Текстурные координаты вершины.
-                        FVec2 TexCoord;
+                        FVec2* TexCoord = TexCoords.PushBack();
                         // ПРИМЕЧАНИЕ: Игнорирование Z координаты, если она присутствует.
-                        MString::ToFVector(LineBuf, TexCoord);
+                        MString::ToFVector(LineBuf, *TexCoord);
                         //it++;
-                        TexCoords.PushBack(TexCoord);
+                        
                 } break; 
             } 
             } break;
@@ -230,8 +227,8 @@ bool ImportObjFile(FileHandle &ObjFile, const char *OutMsmFilename, DArray<Geome
                 Face face;
                 char t[2];
 
-                const u64& NormalCount = normals.Length();
-                const u64& TexCoordCount = TexCoords.Length();
+                const u32 NormalCount = normals.Length();
+                const u32 TexCoordCount = TexCoords.Length();
 
                 if (NormalCount == 0 || TexCoordCount == 0) {
                     sscanf(
@@ -260,7 +257,7 @@ bool ImportObjFile(FileHandle &ObjFile, const char *OutMsmFilename, DArray<Geome
                 }
                 const u64 GroupIndex = groups.Length() - 1;
                 groups[GroupIndex].faces.PushBack(face);
-            }break;
+            } break;
             case 'm': {
                 // Фаил библиотеки материалов.
                 char substr[7];
@@ -268,7 +265,7 @@ bool ImportObjFile(FileHandle &ObjFile, const char *OutMsmFilename, DArray<Geome
                 sscanf(LineBuf, "%s %s", substr, MaterialFileName);
 
                 // Если он найден, сохраните имя файла материала.
-                if (MString::nComparei(substr, "mtllib", 6)) {
+                if (MString::Comparei(substr, "mtllib", 6)) {
                     // ЗАДАЧА: проверка
                 }
             } break;
@@ -285,7 +282,7 @@ bool ImportObjFile(FileHandle &ObjFile, const char *OutMsmFilename, DArray<Geome
                 CurrentMatNameCount++;
             } break;
             case 'g': {
-                const u64& GroupCount = groups.Length();
+                const u32 GroupCount = groups.Length();
 
                 // Обрабатывайте каждую группу как подобъект.
                 for (u64 i = 0; i < GroupCount; ++i) {
@@ -329,7 +326,7 @@ bool ImportObjFile(FileHandle &ObjFile, const char *OutMsmFilename, DArray<Geome
 
     // Обработайте оставшуюся группу, поскольку последняя не будет активирована при обнаружении нового имени.
     // Обрабатываем каждую группу как подобъект.
-    const u64& GroupCount = groups.Length();
+    const u32 GroupCount = groups.Length();
     for (u64 i = 0; i < GroupCount; ++i) {
         GeometryConfig NewData = {};
         MString::Copy(NewData.name, name, 255);
@@ -355,6 +352,7 @@ bool ImportObjFile(FileHandle &ObjFile, const char *OutMsmFilename, DArray<Geome
         // Загрузите файл материала
         char FullMtlPath[512]{};
         MString::DirectoryFromPath(FullMtlPath, OutMsmFilename);
+        MString::Trim(FullMtlPath);
         MString::Append(FullMtlPath, MaterialFileName);
 
         // Файл библиотеки обрабатываемых материалов.
@@ -363,7 +361,8 @@ bool ImportObjFile(FileHandle &ObjFile, const char *OutMsmFilename, DArray<Geome
         }
     }
 
-    for (u64 i = 0; i < OutGeometries.Length(); i++) {
+    const u32 GeometryCount = OutGeometries.Length();
+    for (u32 i = 0; i < GeometryCount; i++) {
         auto& g = OutGeometries[i];
         u32 ind = *g.indices;
         if (ind > 0) {
@@ -371,10 +370,9 @@ bool ImportObjFile(FileHandle &ObjFile, const char *OutMsmFilename, DArray<Geome
         }
 
     }
-    
 
     // Удаление дибликатов вершин
-    for (u64 i = 0; i < OutGeometries.Length(); i++) {
+    for (u32 i = 0; i < GeometryCount; i++) {
         auto& g = OutGeometries[i];
         MDEBUG("Процесс дедупликации геометрии начинается с геометрического объекта с именем «%s»...", g.name);
 
@@ -385,14 +383,14 @@ bool ImportObjFile(FileHandle &ObjFile, const char *OutMsmFilename, DArray<Geome
     }
     
     // Выведите файл msm, который будет загружен в дальнейшем.
-    return WriteMsmFile(OutMsmFilename, name, OutGeometries.Length(), OutGeometries);
+    return WriteMsmFile(OutMsmFilename, name, GeometryCount, OutGeometries);
 }
 
 void ProcessSubobject(DArray<FVec3>& positions, DArray<FVec3>& normals, DArray<FVec2>& TexCoords, DArray<Face>& faces, GeometryConfig& OutData, u32*(&ptri)[500])
 {
-    const u32& FaceCount = faces.Length();
-    const u32& NormalCount = normals.Length();
-    const u32& TexCoordCount = TexCoords.Length();
+    const u32 FaceCount = faces.Length();
+    const u32 NormalCount = normals.Length();
+    const u32 TexCoordCount = TexCoords.Length();
 
     DArray<u32> indices{FaceCount * 3};
     DArray<Vertex3D> vertices{FaceCount * 3};
@@ -478,10 +476,8 @@ void ProcessSubobject(DArray<FVec3>& positions, DArray<FVec3>& normals, DArray<F
     }
 
     OutData.VertexCount = vertices.Length();
-    OutData.VertexSize = vertices.ElementSize();
     OutData.vertices = vertices.MovePtr();
     OutData.IndexCount = indices.Length();
-    OutData.IndexSize = indices.ElementSize();
     OutData.indices = indices.MovePtr();
 }
 
@@ -502,7 +498,7 @@ bool ImportObjMaterialLibraryFile(const char *MtlFilePath)
         return false;
     }
 
-    Material::Config CurrentConfig{};
+    MaterialConfig CurrentConfig{};
 
     bool HitName = false;
 
@@ -535,15 +531,14 @@ bool ImportObjMaterialLibraryFile(const char *MtlFilePath)
                     case 'd': {
                         // Цвет Ambient/Diffuse на этом уровне обрабатывается одинаково. Окружающий цвет определяется уровнем.
                         char t[2];
-                        Material::ConfigProp prop{};
-                        prop.name = "diffuse_colour";
-                        prop.type = Shader::UniformType::Float32_4;
-                        sscanf(line.c_str(), "%s %f %f %f", t, &prop.ValueV4.r, &prop.ValueV4.g, &prop.ValueV4.b);
+                        Material::ConfigProp* prop = CurrentConfig.properties.PushBack();
+                        prop->name = "diffuse_colour";
+                        prop->type = ShaderUniformType::Float32_4;
+                        sscanf(line.c_str(), "%s %f %f %f", t, &prop->ValueV4.r, &prop->ValueV4.g, &prop->ValueV4.b);
 
                         // ПРИМЕЧАНИЕ: Это используется только цветовым шейдером и по умолчанию установлено на max_norm.
                         // Прозрачность можно будет добавить как отдельное свойство материала позже.
-                        prop.ValueV4.a = 1.F;
-                        CurrentConfig.properties.PushBack(prop);
+                        prop->ValueV4.a = 1.F;
                     } break;
                     case 's': {
                         // Зеркальный цвет
@@ -561,14 +556,13 @@ bool ImportObjMaterialLibraryFile(const char *MtlFilePath)
                     case 's': {
                         // Зеркальный показатель
                         char t[2];
-                        Material::ConfigProp prop{};
-                        prop.name = "specular";
-                        prop.type = Shader::UniformType::Float32;
-                        sscanf(line.c_str(), "%s %f", t, &prop.ValueF32);
+                        Material::ConfigProp* prop = CurrentConfig.properties.PushBack();
+                        prop->name = "specular";
+                        prop->type = ShaderUniformType::Float32;
+                        sscanf(line.c_str(), "%s %f", t, &prop->ValueF32);
                         // ПРИМЕЧАНИЕ: Необходимо убедиться, что это значение не равно нулю, так как это приведет к появлению артефактов при рендеринге объектов.
-                        if (prop.ValueF32 == 0)
-                            prop.ValueF32 = 8.F;
-                        CurrentConfig.properties.PushBack(prop);
+                        if (prop->ValueF32 == 0)
+                            prop->ValueF32 = 8.F;
                     } break;
                 }
             } break;
@@ -580,7 +574,7 @@ bool ImportObjMaterialLibraryFile(const char *MtlFilePath)
                 sscanf(line.c_str(), "%s %s", substr, TextureFileName);
                 // ПРИМЕЧАНИЕ: делаем некоторые предположения о режимах фильтрации и повторения.
                 Material::Map map{};
-                map.FilterMin = map.FilterMag = TextureFilter::ModeLinear;
+                map.FilterMin = map.FilterMag = TextureFilterMode::Linear;
                 map.RepeatU = map.RepeatV = map.RepeatW = TextureRepeat::Repeat;
 
                 // Название текстуры
@@ -589,15 +583,22 @@ bool ImportObjMaterialLibraryFile(const char *MtlFilePath)
                 map.TextureName = TexNameBuf;
 
                 // map название/тип
-                if (MString::nComparei(substr, "map_Kd", 6)) {
+                if (MString::Comparei(substr, "map_Kd", 6)) {
                     // Это диффузная текстурная карта.
-                    map.name = "diffuse";
-                } else if (MString::nComparei(substr, "map_Ks", 6)) {
-                    // Это зеркальная текстурная карта.
-                    map.name = "specular";
-                } else if (MString::nComparei(substr, "map_bump", 8)) {
+                    map.name = "albedo";
+                } else if (MString::Comparei(substr, "map_Pm", 6)) {
+                    // ЗАДАЧА: Объедините эти карты при импорте.
+                    // Это карта металлической текстуры
+                    map.name = "metallic";
+                } else if (MString::Comparei(substr, "map_Pr", 6)) {
+                    // Это карта шероховатости
+                    map.name = "roughness";
+                } else if (MString::Comparei(substr, "map_Ke", 6)) {
+                    // Это карта свечения
+                    map.name = "emissive";
+                } else if (MString::Comparei(substr, "map_bump", 8)) {
                     // Это карта текстуры рельефа.
-                    map.name = "narmal";
+                    map.name = "normal";
                 }
                 CurrentConfig.maps.PushBack((Material::Map&&)map);
             } break;
@@ -609,14 +610,14 @@ bool ImportObjMaterialLibraryFile(const char *MtlFilePath)
                 sscanf(line.c_str(), "%s %s", substr, TextureFileName);
                 // ПРИМЕЧАНИЕ: делаем некоторые предположения о режимах фильтрации и повторения.
                 Material::Map map{};
-                map.FilterMin = map.FilterMag = TextureFilter::ModeLinear;
+                map.FilterMin = map.FilterMag = TextureFilterMode::Linear;
                 map.RepeatU = map.RepeatV = map.RepeatW = TextureRepeat::Repeat;
                 // Название текстуры
                 char TexNameBuf[512]{};
                 MString::FilenameNoExtensionFromPath(TexNameBuf, TextureFileName);
                 map.TextureName = TexNameBuf;
 
-                if (MString::nComparei(substr, "bump", 4)) {
+                if (MString::Comparei(substr, "bump", 4)) {
                     // Это рельефная (нормальная) текстурная карта.
                     map.name = "bump";
                 }
@@ -628,12 +629,12 @@ bool ImportObjMaterialLibraryFile(const char *MtlFilePath)
                 char MaterialName[512];
 
                 sscanf(line.c_str(), "%s %s", substr, MaterialName);
-                if (MString::nComparei(substr, "newmtl", 6)) {
+                if (MString::Comparei(substr, "newmtl", 6)) {
                     // Это материальное имя.
 
                     // ПРИМЕЧАНИЕ: Имя шейдера материала по умолчанию жестко закодировано, поскольку все объекты, 
                     // импортированные таким образом, будут обрабатываться одинаково.
-                    CurrentConfig.ShaderName = "Shader.Builtin.Material";
+                    CurrentConfig.ShaderName = "Shader.PBRMaterial";
                     if (HitName) {
                         //  Запишите файл kmt и идите дальше.
                         if (!WriteMmtFile(MtlFilePath, CurrentConfig)) {
@@ -642,7 +643,8 @@ bool ImportObjMaterialLibraryFile(const char *MtlFilePath)
                         }
 
                         // Сброс материала для следующего раунда.
-                        MemorySystem::ZeroMem(&CurrentConfig, sizeof(CurrentConfig));
+                        CurrentConfig.Clear();
+                        // MemorySystem::ZeroMem(&CurrentConfig, sizeof(CurrentConfig));
                     }
 
                     HitName = true;
@@ -655,7 +657,7 @@ bool ImportObjMaterialLibraryFile(const char *MtlFilePath)
 
     // Запишите оставшийся файл mmt.
     // ПРИМЕЧАНИЕ: Имя шейдера материала по умолчанию жестко запрограммировано, поскольку все объекты, импортированные таким образом, будут обрабатываться одинаково.
-    CurrentConfig.ShaderName = "Shader.Builtin.Material";
+    CurrentConfig.ShaderName = "Shader.PBRMaterial";
     if (!WriteMmtFile(MtlFilePath, CurrentConfig)) {
         MERROR("Невозможно записать файл mmt.");
         return false;
@@ -692,13 +694,13 @@ bool LoadMsmFile(FileHandle &MsmFile, DArray<GeometryConfig> &OutGeometries)
         // Вершины (размер/количество/массив)
         Filesystem::Read(MsmFile, sizeof(u32), &g.VertexSize, BytesRead);
         Filesystem::Read(MsmFile, sizeof(u32), &g.VertexCount, BytesRead);
-        g.vertices = MemorySystem::Allocate(g.VertexSize * g.VertexCount, Memory::Array);
+        CreateArray(g.vertices, g.VertexSize * g.VertexCount);
         Filesystem::Read(MsmFile, g.VertexSize * g.VertexCount, g.vertices, BytesRead);
 
         // Индексы (размер/количество/массив)
         Filesystem::Read(MsmFile, sizeof(u32), &g.IndexSize, BytesRead);
         Filesystem::Read(MsmFile, sizeof(u32), &g.IndexCount, BytesRead);
-        g.indices = reinterpret_cast<u32*>(MemorySystem::Allocate(g.IndexSize * g.IndexCount, Memory::Array));
+        CreateArray(g.indices, g.IndexSize * g.IndexCount);
         Filesystem::Read(MsmFile, g.IndexSize * g.IndexCount, g.indices, BytesRead);
 
         // Имя
@@ -796,7 +798,7 @@ bool WriteMsmFile(const char *path, const char *name, u32 GeometryCount, DArray<
     return true;
 }
 
-static const char *StringFromRepeat(TextureRepeat repeat) {
+static constexpr const char *StringFromRepeat(TextureRepeat repeat) {
     switch (repeat) {
         default:
         case TextureRepeat::Repeat:
@@ -810,29 +812,29 @@ static const char *StringFromRepeat(TextureRepeat repeat) {
     }
 }
 
-static const char *StringFromType(Shader::UniformType type) {
+static constexpr const char *StringFromType(ShaderUniformType type) {
     switch (type) {
-        case Shader::UniformType::Float32:
+        case ShaderUniformType::Float32:
             return "f32";
-        case Shader::UniformType::Float32_2:
+        case ShaderUniformType::Float32_2:
             return "vec2";
-        case Shader::UniformType::Float32_3:
+        case ShaderUniformType::Float32_3:
             return "vec3";
-        case Shader::UniformType::Float32_4:
+        case ShaderUniformType::Float32_4:
             return "vec4";
-        case Shader::UniformType::Int8:
+        case ShaderUniformType::Int8:
             return "i8";
-        case Shader::UniformType::Int16:
+        case ShaderUniformType::Int16:
             return "i16";
-        case Shader::UniformType::Int32:
+        case ShaderUniformType::Int32:
             return "i32";
-        case Shader::UniformType::UInt8:
+        case ShaderUniformType::UInt8:
             return "u8";
-        case Shader::UniformType::UInt16:
+        case ShaderUniformType::UInt16:
             return "u16";
-        case Shader::UniformType::UInt32:
+        case ShaderUniformType::UInt32:
             return "u32";
-        case Shader::UniformType::Matrix4:
+        case ShaderUniformType::Matrix4:
             return "mat4";
         default:
             MERROR("Нераспознанный унифицированный тип %d, по умолчанию i32.", type);
@@ -844,18 +846,16 @@ static const char *StringFromType(Shader::UniformType type) {
 /// @param directory путь к файлу библиотеки материалов, который изначально содержал определение материала.
 /// @param config ссылка на конфигурацию, которую нужно преобразовать в mmt.
 /// @return true в случае успеха иначе false.
-bool WriteMmtFile(const char *MtlFilePath, Material::Config &config)
+bool WriteMmtFile(const char *MtlFilePath, MaterialConfig &config)
 {
     // ПРИМЕЧАНИЕ: Файл .obj, из которого он получен (и полученный файл .mtl), находится в каталоге моделей. 
     // Это переместит вас на уровень выше и вернется в папку материалов.
     // ЗАДАЧА: прочитать конфигурацию и получить абсолютный путь для вывода.
-    const char* FormatStr = "%s../materials/%s%s";
+    const char* FormatStr = "%s%s%s";
     FileHandle f;
-    char directory[320];
-    MString::DirectoryFromPath(directory, MtlFilePath);
     char FullFilePath[512];
 
-    MString::Format(FullFilePath, FormatStr, directory, config.name.c_str(), ".mmt");
+    MString::Format(FullFilePath, FormatStr, ResourceSystem::TypePath(eResource::Material).c_str(), config.name.c_str(), ".mmt");
     if (!Filesystem::Open(FullFilePath, FileModes::Write, false, f)) {
         MERROR("Ошибка открытия файла материала для записи: '%s'", FullFilePath);
         return false;
@@ -868,7 +868,7 @@ bool WriteMmtFile(const char *MtlFilePath, Material::Config &config)
     Filesystem::WriteLine(f, "");
     Filesystem::WriteLine(f, "version=2");
     Filesystem::WriteLine(f, "# Типы могут быть phong,pbr,custom");
-    Filesystem::WriteLine(f, "type=phong");  // ЗАДАЧА: Другие типы материалов
+    Filesystem::WriteLine(f, "type=pbr");  // ЗАДАЧА: Другие типы материалов
     MString::Format(LineBuffer, "name=%s", config.name.c_str());
     Filesystem::WriteLine(f, LineBuffer);
     Filesystem::WriteLine(f, "# Если пользовательский, требуется шейдер.");
@@ -876,15 +876,15 @@ bool WriteMmtFile(const char *MtlFilePath, Material::Config &config)
     Filesystem::WriteLine(f, LineBuffer);
 
     // Запись карт
-    const u32& MapCount = config.maps.Length();
+    const u32 MapCount = config.maps.Length();
     for (u32 i = 0; i < MapCount; ++i) {
         Filesystem::WriteLine(f, "[map]");
         MString::Format(LineBuffer, "name=%s", config.maps[i].name.c_str());
         Filesystem::WriteLine(f, LineBuffer);
 
-        MString::Format(LineBuffer, "filter_min=%s", config.maps[i].FilterMin == TextureFilter::ModeLinear ? "linear" : "nearest");
+        MString::Format(LineBuffer, "filter_min=%s", config.maps[i].FilterMin == TextureFilterMode::Linear ? "linear" : "nearest");
         Filesystem::WriteLine(f, LineBuffer);
-        MString::Format(LineBuffer, "filter_mag=%s", config.maps[i].FilterMag == TextureFilter::ModeLinear ? "linear" : "nearest");
+        MString::Format(LineBuffer, "filter_mag=%s", config.maps[i].FilterMag == TextureFilterMode::Linear ? "linear" : "nearest");
         Filesystem::WriteLine(f, LineBuffer);
 
         MString::Format(LineBuffer, "repeat_u=%s", StringFromRepeat(config.maps[i].RepeatU));
@@ -900,7 +900,7 @@ bool WriteMmtFile(const char *MtlFilePath, Material::Config &config)
     }
 
     // Запись свойств.
-    const u32& PropCount = config.properties.Length();
+    const u32 PropCount = config.properties.Length();
     for (u32 i = 0; i < PropCount; ++i) {
         Filesystem::WriteLine(f, "[prop]");
         MString::Format(LineBuffer, "name=%s", config.properties[i].name.c_str());
@@ -911,37 +911,37 @@ bool WriteMmtFile(const char *MtlFilePath, Material::Config &config)
         Filesystem::WriteLine(f, LineBuffer);
         // значение
         switch (config.properties[i].type) {
-            case Shader::UniformType::Float32:
+            case ShaderUniformType::Float32:
                 MString::Format(LineBuffer, "value=%f", config.properties[i].ValueF32);
                 break;
-            case Shader::UniformType::Float32_2:
+            case ShaderUniformType::Float32_2:
                 MString::Format(LineBuffer, "value=%f %f", config.properties[i].ValueV2);
                 break;
-            case Shader::UniformType::Float32_3:
+            case ShaderUniformType::Float32_3:
                 MString::Format(LineBuffer, "value=%f %f %f", config.properties[i].ValueV3);
                 break;
-            case Shader::UniformType::Float32_4:
+            case ShaderUniformType::Float32_4:
                 MString::Format(LineBuffer, "value=%f %f %f %f", config.properties[i].ValueV4.elements);
                 break;
-            case Shader::UniformType::Int8:
+            case ShaderUniformType::Int8:
                 MString::Format(LineBuffer, "value=%d", config.properties[i].ValueI8);
                 break;
-            case Shader::UniformType::Int16:
+            case ShaderUniformType::Int16:
                 MString::Format(LineBuffer, "value=%d", config.properties[i].ValueI16);
                 break;
-            case Shader::UniformType::Int32:
+            case ShaderUniformType::Int32:
                 MString::Format(LineBuffer, "value=%d", config.properties[i].ValueI32);
                 break;
-            case Shader::UniformType::UInt8:
+            case ShaderUniformType::UInt8:
                 MString::Format(LineBuffer, "value=%u", config.properties[i].ValueU8);
                 break;
-            case Shader::UniformType::UInt16:
+            case ShaderUniformType::UInt16:
                 MString::Format(LineBuffer, "value=%u", config.properties[i].ValueU16);
                 break;
-            case Shader::UniformType::UInt32:
+            case ShaderUniformType::UInt32:
                 MString::Format(LineBuffer, "value=%u", config.properties[i].ValueU32);
                 break;
-            case Shader::UniformType::Matrix4:
+            case ShaderUniformType::Matrix4:
                 MString::Format(LineBuffer, "value=%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f ",
                               config.properties[i].ValueMatrix4D.data[0],
                               config.properties[i].ValueMatrix4D.data[1],
@@ -960,9 +960,9 @@ bool WriteMmtFile(const char *MtlFilePath, Material::Config &config)
                               config.properties[i].ValueMatrix4D.data[14],
                               config.properties[i].ValueMatrix4D.data[15]);
                 break;
-            case Shader::UniformType::Sampler:
-            case Shader::UniformType::Custom:
+            case ShaderUniformType::Custom:
             default:
+                // ПРИМЕЧАНИЕ: Все типы семплеров включены в это.
                 MERROR("Неподдерживаемый тип свойства материала.");
                 break;
         }
