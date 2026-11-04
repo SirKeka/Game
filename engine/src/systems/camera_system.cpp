@@ -2,61 +2,38 @@
 #include "memory/linear_allocator.h"
 #include <new>
 
-CameraSystem* CameraSystem::state = nullptr;
-
 struct CameraLookup {
     u16 id{INVALID::U16ID};
     u16 ReferenceCount{};
     Camera c{};
 };
 
-CameraSystem::CameraSystem(u16 MaxCameraCount, void* HashtableBlock, CameraLookup* cameras)
-:
-    MaxCameraCount(MaxCameraCount),
-    lookup(MaxCameraCount, false, reinterpret_cast<u16*>(HashtableBlock), true, INVALID::U16ID),
-    HashtableBlock(HashtableBlock),
-    cameras(cameras),
-    DefaultCamera()
-{}
-
-CameraSystem *CameraSystem::Instance()
+CameraSystem* CameraSystem::Initialize(u64 &MemoryRequirement, void *memory, CameraSystemConfig &config)
 {
-    return state;
-}
-
-bool CameraSystem::Initialize(u64 &MemoryRequirement, void *memory, void *config)
-{
-    auto pConfig = reinterpret_cast<CameraSystemConfig*>(config);
-
-    if (pConfig->MaxCameraCount == 0) {
+    if (config.MaxCameraCount == 0) {
         MFATAL("CameraSystem::Initialize - максимальное количество камер должно быть > 0.");
-        return false;
+        return nullptr;
     }
 
     // Блок памяти будет содержать структуру состояния, затем блок для массива, затем блок для хеш-таблицы.
     u64 StructRequirement = sizeof(CameraSystem);
-    u64 ArrayRequirement = sizeof(CameraLookup) * pConfig->MaxCameraCount;
-    u64 HashtableRequirement = sizeof(u16) * pConfig->MaxCameraCount;
+    u64 ArrayRequirement = sizeof(CameraLookup) * config.MaxCameraCount;
+    u64 HashtableRequirement = sizeof(u16) * config.MaxCameraCount;
     MemoryRequirement = StructRequirement + ArrayRequirement + HashtableRequirement;
 
     if (!memory) {
-        return true;
+        return nullptr;
     }
 
     u8* CSPointer = reinterpret_cast<u8*>(memory); // выделяем память под систему камер
     u8* HashtableBlock = CSPointer + StructRequirement;
-    auto CamerasBlock = new(HashtableBlock + HashtableRequirement) CameraLookup[pConfig->MaxCameraCount]();
+    auto CamerasBlock = new(HashtableBlock + HashtableRequirement) CameraLookup[config.MaxCameraCount]();
 
-    if (!(state = new(CSPointer) CameraSystem(pConfig->MaxCameraCount, HashtableBlock, CamerasBlock))) {
-        return false;
+    if (!(state = new(CSPointer) CameraSystem(config.MaxCameraCount, HashtableBlock, CamerasBlock))) {
+        return nullptr;
     }
 
-    return true;
-}
-
-void CameraSystem::Shutdown()
-{
-    state = nullptr;
+    return state;
 }
 
 Camera *CameraSystem::Acquire(const char *name)
