@@ -1,6 +1,5 @@
-#include "dynamic_allocator.hpp"
-#include "core/asserts.hpp"
-#include "core/logger.hpp"
+#include "dynamic_allocator.h"
+#include "core/asserts.h"
 #include "core/memory_system.h"
 
 struct AllocInfo {
@@ -13,11 +12,7 @@ constexpr auto SIZE_STORAGE = sizeof(u32);
 
 DynamicAllocator::~DynamicAllocator()
 {
-    //if (state) {
-    //    MMemory::ZeroMem(state->MemoryBlock, state->TotalSize);
-    //    state->TotalSize = 0;
-    //    state = nullptr;
-    //}
+    // Destroy();
 }
 
 bool DynamicAllocator::MemoryRequirement(u64 TotalSize, u64 &MemoryRequirement)
@@ -68,10 +63,10 @@ bool DynamicAllocator::Create(u64 MemoryRequirement, void *memory)
         // state
         // freelist block
         // memory block
-        state = reinterpret_cast<DynamicAllocatorState*>(memory);
+        state = (DynamicAllocatorState*)memory;
         state->TotalSize = MemoryRequirement;
-        state->FreelistBlock = reinterpret_cast<u8*>(memory) + sizeof(DynamicAllocatorState);
-        state->MemoryBlock = reinterpret_cast<u8*>(state->FreelistBlock) + GetFreeListRequirement(MemoryRequirement);
+        state->FreelistBlock = (u8*)memory + sizeof(DynamicAllocatorState);
+        state->MemoryBlock = (u8*)state->FreelistBlock + GetFreeListRequirement(MemoryRequirement);
 
         //MMemory::ZeroMem(state->MemoryBlock, state->TotalSize);
 
@@ -84,16 +79,17 @@ bool DynamicAllocator::Create(u64 MemoryRequirement, void *memory)
     return false;
 }
 
-bool DynamicAllocator::Destroy()
-{
-    if (state) {
-        this->~DynamicAllocator();
-        return true;
-    }
-    
-    MWARN("DynamicAllocator::Destroy блок памяти не распределен. Уничтожить не удалось.");
-    return false;
-}
+// bool DynamicAllocator::Destroy()
+// {
+//     if (state) {
+//         MMemory::ZeroMem(state->MemoryBlock, state->TotalSize);
+//         state->TotalSize = 0;
+//         state = nullptr;
+//     }
+//     
+//     MWARN("DynamicAllocator::Destroy блок памяти не распределен. Уничтожить не удалось.");
+//     return false;
+// }
 
 void *DynamicAllocator::Allocate(u64 size)
 {
@@ -137,7 +133,7 @@ void *DynamicAllocator::AllocateAligned(u64& size, u16 alignment)
             */
 
             // Получить базовый указатель или невыровненный блок памяти.
-            u8* ptr = reinterpret_cast<u8*>(state->MemoryBlock) + BaseOffset;
+            u8* ptr = (u8*)state->MemoryBlock + BaseOffset;
             u8* ptrBlock = ptr + StorageSize; // Указатель на блок который нужно выровнять
 
             // Начните выравнивание после достаточного пространства для хранения размера всего
@@ -155,14 +151,14 @@ void *DynamicAllocator::AllocateAligned(u64& size, u16 alignment)
             // (Это работает для выравнивания до 256 байт.)
             u64 shift = AlignedBlock - ptrBlock;
             MASSERT(shift > 0 && shift <= 256);
-            AlignedBlock[-1] = static_cast<u8>(shift & 0xFF);
+            AlignedBlock[-1] = (u8)(shift & 0xFF);
 
             // Общий размер выравненного блока памяти
-            u32* BlockSize = reinterpret_cast<u32*>(ptr);
-            *BlockSize = static_cast<u32>(size);
+            u32* BlockSize = (u32*)ptr;
+            *BlockSize = (u32)size;
 
             // Размер выравнивания
-            ptr[SIZE_STORAGE] = alignment;
+            ptr[SIZE_STORAGE] = (u8)alignment;
 
             return AlignedBlock;
         } else {
@@ -180,18 +176,18 @@ void *DynamicAllocator::AllocateAligned(u64& size, u16 alignment)
 void *DynamicAllocator::Realloc(void *block, u64 size, u64 NewSize)
 {
     if (state->MemoryBlock && block && size && NewSize) {
-        if (block < state->MemoryBlock || block > reinterpret_cast<u8*>(state->MemoryBlock) + state->TotalSize) {
-            void* EndOfBlock = reinterpret_cast<u8*>(state->MemoryBlock) + state->TotalSize;
+        if (block < state->MemoryBlock || block > (u8*)state->MemoryBlock + state->TotalSize) {
+            void* EndOfBlock = (u8*)state->MemoryBlock + state->TotalSize;
             MERROR("DynamicAllocator::Realloc попытка перераспределить блок (0x%p) за пределами диапазона распределителя (0x%p)-(0x%p).", block, state->MemoryBlock, EndOfBlock);
             return nullptr;
         }
 
         // Смещение блока памяти, который нужно увеличить
         u64 MemOffset = reinterpret_cast<u64>(block);
-        u64 offset = MemOffset - reinterpret_cast<u64>(state->MemoryBlock);
+        u64 offset = MemOffset - (u64)state->MemoryBlock;
 
         if (state->list.ReallocateBlock(size, NewSize, offset)) {
-            u8* ptr = reinterpret_cast<u8*>(state->MemoryBlock) + offset;
+            u8* ptr = (u8*)state->MemoryBlock + offset;
             return ptr;
         } else {
             MERROR("DynamicAllocator::Realloc нет блоков памяти, достаточно больших для выделения.");
@@ -213,13 +209,13 @@ bool DynamicAllocator::Free(void *block, u64 size, bool aligned)
     }
 
     // DynamicAllocatorState* state = allocator->memory;
-    if (block < state->MemoryBlock || block > reinterpret_cast<u8*>(state->MemoryBlock) + state->TotalSize) {
-        void* EndOfBlock = reinterpret_cast<u8*>(state->MemoryBlock) + state->TotalSize;
+    if (block < state->MemoryBlock || block > (u8*)state->MemoryBlock + state->TotalSize) {
+        void* EndOfBlock = (u8*)state->MemoryBlock + state->TotalSize;
         MERROR("DynamicAllocator::FreeAligned попытка освободить блок (0x%p) за пределами диапазона распределителя (0x%p)-(0x%p).", block, state->MemoryBlock, EndOfBlock);
         return false;
     }
 
-    u8* MemBlock = reinterpret_cast<u8*>(block);
+    u8* MemBlock = (u8*)block;
     u32 BlockSize = size;
     if (aligned) {
         // Извлекаем размер смещения
@@ -240,22 +236,12 @@ bool DynamicAllocator::Free(void *block, u64 size, bool aligned)
 
 bool DynamicAllocator::GetSizeAlignment(void *block, u64 &OutSize, u16 &OutAlignment)
 {
-    u8* MemBlock = reinterpret_cast<u8*>(block);
+    u8* MemBlock = (u8*)block;
     u16 shift = MemBlock[-1] ? MemBlock[-1] : 256;
     MemBlock = MemBlock - shift - SIZE_STORAGE - 1;
-    OutSize = *reinterpret_cast<u32*>(MemBlock);
-    OutAlignment = *reinterpret_cast<u8*>(MemBlock + SIZE_STORAGE);
+    OutAlignment = *(MemBlock + SIZE_STORAGE);
+    OutSize = *(u32*)MemBlock - (u32)OutAlignment - (SIZE_STORAGE + 1);
     return true;
-}
-
-u64 DynamicAllocator::FreeSpace()
-{
-    return state->list.FreeSpace();
-}
-
-u64 DynamicAllocator::TotalSpace()
-{
-    return state->TotalSize;
 }
 
 u64 DynamicAllocator::HeaderSize()
