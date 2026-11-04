@@ -29,7 +29,7 @@ bool PlatformCreateVulkanSurface(VulkanAPI *VkAPI) {
     void *block = MemorySystem::Allocate(size, Memory::Renderer);
     PlatformGetHandleInfo(size, block);
 
-    auto handle = reinterpret_cast<Win32HandleInfo*>(block);
+    auto handle = (Win32HandleInfo*)block;
 
     if (!handle) {
         return false;
