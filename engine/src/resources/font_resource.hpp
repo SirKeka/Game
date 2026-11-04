@@ -1,5 +1,5 @@
 #pragma once
-#include "resources/texture_map.hpp"
+#include "resources/texture.h"
 #include "containers/darray.h"
 
 struct FontGlyph {
@@ -130,7 +130,7 @@ struct BitmapFontResourceData {
     BitmapFontPage* pages;
 
     constexpr BitmapFontResourceData() : data(), PageCount(), pages(nullptr) {}
-    constexpr BitmapFontResourceData(BitmapFontResourceData&& d) : data(static_cast<FontData&&>(d.data)), PageCount(d.PageCount), pages(d.pages) {
+    constexpr BitmapFontResourceData(BitmapFontResourceData&& d) : data((FontData&&)d.data), PageCount(d.PageCount), pages(d.pages) {
         d.PageCount = 0;
         d.pages = nullptr;
     }
