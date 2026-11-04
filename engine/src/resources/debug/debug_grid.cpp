@@ -1,19 +1,16 @@
 #include "debug_grid.h"
+#include "core/systems_manager.h"
 #include "renderer/rendering_system.h"
-
-// DebugGrid::~DebugGrid()
-// {
-//     Destroy();
-// }
 
 void DebugGrid::Destroy()
 {
-    if(UniqueID != INVALID::ID) Identifier::ReleaseID(UniqueID);
+    DestroyArray(vertices, sizeof(ColourVertex3D) * VertexCount);
+    id = INVALID::ID;
 }
 
 bool DebugGrid::Initialize()
 {
-    vertices = reinterpret_cast<ColourVertex3D*>(MemorySystem::Allocate(sizeof(ColourVertex3D) * VertexCount, Memory::Array, true));
+    CreateArray(vertices, sizeof(ColourVertex3D) * VertexCount, true);
 
     // Длины линий сетки — это количество пробелов в противоположном направлении.
     i32 LineLength0 = TileCountDim1 * TileScale;
@@ -127,13 +124,21 @@ bool DebugGrid::Initialize()
 
 bool DebugGrid::Load()
 {
+    id.Generate();
+
+    auto rsys = SystemsManager::GetRenderingSystem();
+
     // Отправьте геометрию в рендерер для загрузки в графический процессор.
-    if (!RenderingSystem::CreateGeometry(&geometry, sizeof(ColourVertex3D), VertexCount, vertices)) {
+    geometry.VertexElementSize = sizeof(ColourVertex3D);
+    geometry.VertexCount = VertexCount;
+    geometry.vertices = vertices;
+    
+    if (!rsys->CreateGeometry(&geometry)) {
         return false;
     }
 
     // Отправляем геометрию в рендерер для загрузки в графический процессор.
-    if (!RenderingSystem::Load(&geometry)) {
+    if (!rsys->Load(&geometry)) {
         return false;
     }
     
@@ -142,9 +147,8 @@ bool DebugGrid::Load()
 
 bool DebugGrid::Unload()
 {
-    RenderingSystem::Unload(&geometry);
-
-    Identifier::ReleaseID(UniqueID);
+    SystemsManager::GetRenderingSystem()->Unload(&geometry);
+    id = INVALID::ID;
 
     return true;
 }
