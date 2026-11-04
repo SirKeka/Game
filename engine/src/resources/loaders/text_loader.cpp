@@ -1,7 +1,7 @@
 #include "resource_loader.h"
 #include "systems/resource_system.h"
 
-bool ResourceLoader::Load(const char *name, void* params, TextResource &OutResource)
+bool ResourceLoader::Load(const char *name, void *params, TextResource &OutResource)
 {
     if (!name) {
         return false;
@@ -28,7 +28,7 @@ bool ResourceLoader::Load(const char *name, void* params, TextResource &OutResou
     }
 
     // ЗАДАЧА: Здесь следует использовать распределитель.
-    char* ResourceData = MemorySystem::TAllocate<char>(Memory::String, FileSize);
+    char* ResourceData = (char*)MemorySystem::Allocate(FileSize, Memory::String, true);
     u64 ReadSize = 0;
     if (!Filesystem::ReadAllText(f, ResourceData, ReadSize)) {
         MERROR("Невозможно прочитать текст файла: %s.", FullFilePath);
