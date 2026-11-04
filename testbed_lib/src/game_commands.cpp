@@ -1,8 +1,9 @@
 #include "game.h"
 
-#include <core/console.hpp>
+#include <core/console.h>
+#include <core/event.h>
 
-void GameCommandExit(ConsoleCommandContext context) {
+void GameCommandExit(ConsoleCommandContext& context) {
     MDEBUG("Команда выход из игры вызвана!");
     EventSystem::Fire(EventSystem::ApplicationQuit, nullptr, (EventContext){});
 }
