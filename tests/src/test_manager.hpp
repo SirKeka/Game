@@ -6,7 +6,7 @@
 
 typedef u8 (*PFN_Test)();
 
-void TestManagerInit();
+// void TestManagerInit();
 
 void TestManagerRegisterTest(u8 (*PFN_Test)(), const char* desc);
 
