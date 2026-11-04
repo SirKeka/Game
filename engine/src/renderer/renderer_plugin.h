@@ -3,15 +3,16 @@
 #include "renderer_types.h"
 
 // struct RenderingConfig;
-// struct Renderpass;
+struct FrameData;
+struct Shader;
+struct ShaderConfig;
+struct ShaderInstanceResourceConfig;
+struct Renderpass;
 struct RenderTarget;
-// struct Texture;
-// struct GeometryRenderData;
-// #include "resources/shader.h"
-// #include "renderbuffer.h"
-// struct RenderTargetAttachment;
+struct Texture;
+struct TextureMap;
+struct RenderTargetAttachment;
 struct RenderpassConfig;
-
 
 /// @brief Общий «интерфейс» для плагина рендеринга. Бэкенд рендеринга — это то, что отвечает за вызовы графического API, такого как Vulkan, OpenGL или DirectX. 
 /// Каждый из них должен реализовывать этот интерфейс. Фронтенд взаимодействует только через эту структуру и не имеет никаких знаний о том, как на самом деле все работает на бэкенде.
@@ -25,8 +26,11 @@ public:
     virtual ~RendererPlugin() = default;
 
     virtual bool Initialize(const RenderingConfig& config, u8& OutWindowRenderTargetCount) = 0;
-    virtual void ShutDown() = 0;
+    virtual void Shutdown() = 0;
     virtual void Resized(u16 width, u16 height) = 0;
+
+    virtual void BeginDebugLabel(const char* LabelText, FVec3 colour) = 0;
+    virtual void EndDebugLabel() = 0;
 
     /// @brief Выполняет процедуры настройки, требуемые в начале кадра. 
     /// @note Ложный результат не обязательно означает сбой. 
@@ -67,6 +71,33 @@ public:
     /// @brief Сбрасывает ножницы на значение по умолчанию, которое соответствует окну приложения.
     /// Должно быть сделано в проходе рендеринга.
     virtual void ScissorReset() = 0;
+
+    /// @brief Включение/отключение тестирования трафарета.
+    /// @param enabled Указывает, следует ли включить/отключить тестирование трафарета для последующих отрисовок.
+    virtual void SetStencilTestEnabled(bool enabled) = 0;
+
+    /// @brief Включение/отключение тестирования глубины.
+    /// @param enabled Указывает, следует ли включить/отключить тестирование глубины для последующих отрисовок.
+    virtual void SetDepthTestEnabled(bool enabled) = 0;
+
+    /// @brief Установка ссылки на трафарет для тестирования.
+    /// @param reference Ссылка, используемая при тестировании/записи трафарета.
+    virtual void SetStencilReference(u32 reference) = 0;
+
+    /// @brief Установить операцию трафарета.
+    /// @param FailOp Указывает действие, выполняемое над образцами, не прошедшими тест трафарета.
+    /// @param PassOp Указывает действие, выполняемое над образцами, прошедшими тест глубины и тест трафарета.
+    /// @param DepthFailOp Указывает действие, выполняемое над образцами, прошедшими тест трафарета, но не прошедшими тест глубины.
+    /// @param CompareOp Указывает оператор сравнения, используемый в тесте трафарета.
+    virtual void SetStencilOp(RendererStencilOp FailOp, RendererStencilOp PassOp, RendererStencilOp DepthFailOp, RendererCompareOp CompareOp) = 0;
+
+    /// @brief Установить маску сравнения трафарета.
+    /// @param CompareMask Новое значение для использования в качестве маски сравнения трафарета.
+    virtual void SetStencilCompareMask(u32 CompareMask) = 0;
+
+    /// @brief Установить маску записи трафарета.
+    /// @param WriteMask Новое значение для использования в качестве маски записи трафарета.
+    virtual void SetStencilWriteMask(u32 WriteMask) = 0;
 
     /// @brief Настройте рендерер на использование указанного направления поворота.
     /// @param winding Направление поворота.
@@ -112,7 +143,7 @@ public:
     /// @param offset смещение в байтах от начала записываемых данных.
     /// @param size количество байтов, которые необходимо записать.
     /// @param pixels необработанные данные изображения, которые необходимо записать.
-    virtual void TextureWriteData(Texture* texture, u32 offset, u32 size, const u8* pixels) = 0;
+    virtual void TextureWriteData(Texture* texture, u32 offset, u32 size, const u8* pixels, bool IncludeInFrameWorkload) = 0;
 
     /// @brief Считывает указанные данные из предоставленной текстуры.
     /// @param texture Указатель на текстуру для чтения.
@@ -130,37 +161,15 @@ public:
 
     virtual void* TextureCopyData(const Texture* texture) = 0;
 
-    //////////////////////////////////////////////////////////////////////
-    //                            Geometry                              //
-    //////////////////////////////////////////////////////////////////////
-
     /// @brief Выгружает данные текстуры из графического процессора.
     /// @param texture указатель на текстуру которую нужно выгрузить.
     virtual void Unload(Texture* texture) = 0;
 
+    //////////////////////////////////////////////////////////////////////
+    //                            Geometry                              //
+    //////////////////////////////////////////////////////////////////////
+
     virtual bool CreateGeometry(Geometry* geometry) = 0;
-
-    /// @brief Получает внутренние ресурсы, специфичные для API рендерера, для заданной геометрии и загружает данные в графический процессор.
-    /// @param geometry указатель на геометрию, которую нужно инициализировать.
-    /// @param VertexOffset смещение в байтах от начала данных вершин геометрии.
-    /// @param VertexSize количество загружаемых данных вершин в байтах.
-    /// @param IndexOffset смещение в байтах от начала данных индекса геометрии.
-    /// @param IndexSize количество загружаемых данных индекса в байтах.
-    /// @return True в случае успешного выполнения; в противном случае false.
-    virtual bool Load(Geometry* geometry, u32 VertexOffset, u32 VertexSize, u32 IndexOffset, u32 IndexSize) = 0;
-    
-    virtual void Unload(Geometry* gid) = 0;
-
-    /// @brief Обновляет данные вершин в заданной геометрии предоставленными данными в заданном диапазоне.
-    /// @param geometry Указатель на геометрию, которую нужно создать.
-    /// @param offset Смещение в байтах для обновления. 0, если обновление с начала.
-    /// @param VertexCount Количество вершин, которые будут обновлены.
-    /// @param vertices Данные вершин.
-    virtual void GeometryVertexUpdate(Geometry* geometry, u32 offset, u32 VertexCount, void* vertices) = 0;
-
-    /// @brief Рисует заданную геометрию. Должен вызываться только внутри прохода рендеринга, внутри кадра.
-    /// @param data данные рендеринга геометрии, которая должна быть нарисована.
-    virtual void DrawGeometry(const GeometryRenderData& data) = 0;
 
     //////////////////////////////////////////////////////////////////////
     //                              Shader                              //
@@ -174,17 +183,27 @@ public:
     /// @param StageFilenames массив имен файлов этапов шейдера, которые будут загружены. Должно соответствовать массиву этапов.
     /// @param stages массив этапов шейдера(ShaderStage), указывающий, какие этапы рендеринга (вершина, фрагмент и т. д.) используются в этом шейдере.
     /// @return true в случае успеха, иначе false.
-    virtual bool Load(Shader *shader, const ShaderConfig& config, Renderpass* renderpass, const DArray<Shader::Stage>& stages, const DArray<MString>& StageFilenames) = 0;
+    virtual bool ShaderCreate(Shader* shader, const ShaderConfig& config, Renderpass* renderpass) = 0;
 
     /// @brief Уничтожает данный шейдер и освобождает все имеющиеся в нем ресурсы.--------------------------------------------------------------------
     /// @param shader указатель на шейдер, который нужно уничтожить.
-    virtual void Unload(Shader* shader) = 0;
+    virtual void ShaderDestroy(Shader* shader) = 0;
 
     /// @brief Инициализирует настроенный шейдер. Будет автоматически уничтожен, если этот шаг не удастся.--------------------------------------------
     /// Должен быть вызван после Shader::Create().
     /// @param shader указатель на шейдер, который необходимо инициализировать.
     /// @return true в случае успеха, иначе false.
     virtual bool ShaderInitialize(Shader* shader) = 0;
+
+    /// @brief Перезагружает внутренние компоненты указанного шейдера.
+    /// @param shader Указатель на шейдер, который необходимо перезагрузить.
+    /// @return true в случае успеха, иначе false.
+    virtual bool ShaderReload(Shader* shader) = 0;
+
+    /// @brief Указывает, поддерживает ли данный шейдер режим каркасного отображения.
+    /// @param shader Константный указатель на используемый шейдер.
+    /// @return true в случае успеха, иначе false.
+    virtual bool ShaderSupportsWireframe(Shader* shader) = 0;
 
     /// @brief Использует заданный шейдер, активируя его для обновления атрибутов, униформы и т. д., а также для использования в вызовах отрисовки.---
     /// @param shader указатель на используемый шейдер.
@@ -193,19 +212,36 @@ public:
 
     /// @brief Применяет глобальные данные к универсальному буферу.-----------------------------------------------------------------------------------
     /// @param shader указатель на шейдер, к которому нужно применить глобальные данные.
+    /// @param NeedsUpdate Указывает, нужно ли обновить шейдерные униформы или достаточно просто привязать их.
     /// @return true в случае успеха, иначе false.
-    virtual bool ShaderApplyGlobals(Shader* shader, bool NeedsUpdate) = 0;
+    virtual bool ShaderApplyGlobals(Shader* shader, bool NeedsUpdate, const FrameData& rFrameData) = 0;
 
     /// @brief Применяет данные для текущего привязанного экземпляра.---------------------------------------------------------------------------------
     /// @param shader указатель на шейдер, глобальные значения которого должны быть связаны.
     /// @param NeedsUpdate указывает на то что нужно обновить униформу шейдера или только привязать.
     /// @return true в случае успеха, иначе false.
-    virtual bool ShaderApplyInstance(Shader* shader, bool NeedsUpdate) = 0;
+    virtual bool ShaderApplyInstance(Shader* shader, bool NeedsUpdate, const FrameData& rFrameData) = 0;
+
+    /// @brief Запускает загрузку локальных данных униформы на графический процессор.
+    /// @param shader указатель на шейдер.
+    /// @param rFrameData 
+    /// @return true в случае успеха, иначе false.
+    virtual bool ShaderApplyLocal(Shader* shader, const FrameData& rFrameData) = 0;
 
     /// @brief Связывает ресурсы экземпляра для использования и обновления.
     /// @param InstanceID идентификатор экземпляра, который необходимо привязать.
     /// @return true в случае успеха, иначе false.
     virtual bool ShaderBindInstance(Shader* shader, u32 InstanceID) = 0;
+
+    /// @brief Объединяет глобальные ресурсы для использования и обновления.
+    /// @param shader указатель на шейдер.
+    /// @return true в случае успеха, иначе false.
+    virtual bool ShaderBindGlobals(Shader* shader) = 0;
+
+    /// @brief Привязывает локальные ресурсы для использования и обновления.
+    /// @param shader указатель на шейдер, чьи локальные ресурсы необходимо привязать.
+    /// @return Возвращает True при успешном выполнении; в противном случае False.
+    virtual bool ShaderBindLocal(Shader* shader) = 0;
 
     /// @brief Получает внутренние ресурсы уровня экземпляра и предоставляет идентификатор экземпляра.------------------------------------------------
     /// @param shader указатель на шейдер, к которому нужно применить данные экземпляра.
@@ -213,7 +249,7 @@ public:
     /// @param maps массив указателей текстурных карт. Должен быть один на текстуру в экземпляре.
     /// @param OutInstanceID ссылка для хранения нового идентификатора экземпляра.
     /// @return true в случае успеха, иначе false.
-    virtual bool ShaderAcquireInstanceResources(Shader* shader, u32 TextureMapCount, struct TextureMap** maps, u32& OutInstanceID) = 0;
+    virtual bool ShaderAcquireInstanceResources(Shader* shader, const ShaderInstanceResourceConfig& config, u32& OutInstanceID) = 0;
 
     /// @brief Освобождает внутренние ресурсы уровня экземпляра для данного идентификатора экземпляра.------------------------------------------------
     /// @param shader указатель на шейдер, из которого необходимо освободить ресурсы.
@@ -224,46 +260,44 @@ public:
     /// @brief Получает внутренние ресурсы для данной карты текстур.
     /// @param map указатель на карту текстуры, для которой нужно получить ресурсы.
     /// @return true в случае успеха; в противном случае false.
-    virtual bool TextureMapAcquireResources(TextureMap* map) = 0;
+    virtual bool TextureMapResourceAcquire(TextureMap* map) = 0;
 
     /// @brief Освобождает внутренние ресурсы для данной карты текстур.
     /// @param map указатель на карту текстур, из которой необходимо освободить ресурсы.
-    virtual void TextureMapReleaseResources(TextureMap* map) = 0;
+    virtual void TextureMapDestroy(TextureMap* map) = 0;
+
+    /// @brief 
+    /// @param map указатель на карту текстур, из которой необходимо освободить ресурсы.
+    /// @return true в случае успеха; в противном случае false.
+    virtual bool TextureMapRefresh(TextureMap* map) = 0;
     
     /// @brief Устанавливает униформу данного шейдера на указанное значение.--------------------------------------------------------------------------
     /// @param shader указатель на шейдер.
     /// @param uniform постоянный указатель на униформу.
+    /// @param ArrayIndex Индекс массива, который необходимо установить, если униформа является массивом. В противном случае игнорируется.
     /// @param value указатель на значение, которое необходимо установить.
     /// @return true в случае успеха, иначе false.
-    virtual bool SetUniform(Shader* shader, struct Shader::Uniform* uniform, const void* value) = 0;
+    virtual bool ShaderSetUniform(Shader* shader, struct ShaderUniform* uniform, u32 ArrayIndex, const void* value) = 0;
 
-    //////////////////////////////////////////////////////////////////////
-    //                           RenderBuffer                           //
+      //////////////////////////////////////////////////////////////////////
+     //                           RenderBuffer                           //
     //////////////////////////////////////////////////////////////////////
 
     /// @brief Создает и назначает буфер, специфичный для бэкэнда рендерера.
     /// @param buffer Указатель для создания внутреннего буфера.
     /// @returns True в случае успеха; в противном случае false.
-    virtual bool RenderBufferCreateInternal(RenderBuffer& buffer) = 0;
-
-    /// @brief Создает новый буфер рендеринга для хранения данных для заданной цели/использования. Подкрепленный ресурсом буфера, специфичным для бэкэнда рендеринга.
-    /// @param name имя буфера рендеринга, используемого для целей отладки.
-    /// @param type тип буфера, указывающий его использование (т. е. данные вершин/индексов, униформы и т. д.)
-    /// @param TotalSize общий размер буфера в байтах.
-    /// @param UseFreelist указывает, должен ли буфер использовать список свободных страниц для отслеживания выделений.
-    /// @param buffer указатель для хранения вновь созданного буфера.
-    /// @return true в случае успеха, иначе false.
-    virtual bool RenderBufferCreate(const char* name, RenderBufferType type, u64 TotalSize, bool UseFreelist, RenderBuffer &buffer) = 0;
+    virtual bool RenderBufferCreate(RenderBuffer& buffer) = 0;
 
     /// @brief Уничтожает указанный буфер.
     /// @param buffer Указатель на буфер, который необходимо уничтожить.
-    virtual void RenderBufferDestroyInternal(RenderBuffer& buffer) = 0;
+    virtual void RenderBufferDestroy(RenderBuffer& buffer) = 0;
 
     /// @brief Связывает заданный буфер с указанным смещением.
     /// @param buffer Указатель на буфер для привязки.
     /// @param offset Смещение в байтах от начала буфера.
     /// @returns True в случае успеха; в противном случае false.
     virtual bool RenderBufferBind(RenderBuffer& buffer, u64 offset) = 0;
+    
     /// @brief Отменяет привязку указанного буфера.
     /// @param buffer Указатель на буфер, который необходимо отменить.
     /// @returns True в случае успеха; в противном случае false.
@@ -288,7 +322,7 @@ public:
     /// @param buffer Указатель на буфер для отмены отображения.
     /// @param offset Количество байтов от начала буфера для очистки.
     /// @param size Объем памяти в буфере для очистки.
-    /// @returns True в случае успеха; в противном случае false.
+    /// @returns true в случае успеха; в противном случае false.
     virtual bool RenderBufferFlush(RenderBuffer& buffer, u64 offset, u64 size) = 0;
 
     /// @brief Считывает память из предоставленного буфера в указанном диапазоне в выходную переменную.
@@ -296,24 +330,22 @@ public:
     /// @param offset количество байтов от начала буфера для чтения.
     /// @param size объем памяти в буфере для чтения.
     /// @param out_memory указатель на блок памяти для чтения. Должен быть соответствующего размера.
-    /// @returns True в случае успеха; в противном случае false.
+    /// @returns true в случае успеха; в противном случае false.
     virtual bool RenderBufferRead(RenderBuffer& buffer, u64 offset, u64 size, void** OutMemory) = 0;
 
     /// @brief Изменяет размер указанного буфера на NewTotalSize. NewTotalSize должен быть больше текущего размера буфера. Данные из старого внутреннего буфера копируются.
-    ///
     /// @param buffer указатель на буфер, размер которого необходимо изменить.
     /// @param NewTotalSize новый размер в байтах. Должен быть больше текущего размера.
-    /// @returns True в случае успеха; в противном случае false.
+    /// @returns true в случае успеха; в противном случае false.
     virtual bool RenderBufferResize(RenderBuffer& buffer, u64 NewTotalSize) = 0;
 
     /// @brief Загружает предоставленные данные в указанный диапазон указанного буфера.
-    ///
     /// @param buffer указатель на буфер, в который нужно загрузить данные.
     /// @param offset смещение в байтах от начала буфера.
     /// @param size размер данных в байтах для загрузки.
     /// @param data данные для загрузки.
-    /// @returns True в случае успеха; в противном случае false.
-    virtual bool RenderBufferLoadRange(RenderBuffer& buffer, u64 offset, u64 size, const void* data) = 0;
+    /// @returns true в случае успеха; в противном случае false.
+    virtual bool RenderBufferLoadRange(RenderBuffer& buffer, u64 offset, u64 size, const void* data, bool IncludeInFrameWorkload) = 0;
 
     /// @brief Копирует данные в указанном диапазоне из исходного буфера в целевой буфер.
     ///
@@ -322,8 +354,8 @@ public:
     /// @param dest указатель на целевой буфер, в который копируются данные.
     /// @param DestOffset смещение в байтах от начала целевого буфера.
     /// @param size размер копируемых данных в байтах.
-    /// @returns True в случае успеха; в противном случае false.
-    virtual bool RenderBufferCopyRange(RenderBuffer& source, u64 SourceOffset, RenderBuffer& dest, u64 DestOffset, u64 size) = 0;
+    /// @returns true в случае успеха; в противном случае false.
+    virtual bool RenderBufferCopyRange(RenderBuffer& source, u64 SourceOffset, RenderBuffer& dest, u64 DestOffset, u64 size, bool IncludeInFrameWorkload) = 0;
 
     /// @brief Пытается нарисовать содержимое предоставленного буфера с указанным смещением и количеством элементов. 
     /// Предназначено только для использования с буферами вершин и индексов.
@@ -332,7 +364,7 @@ public:
     /// @param offset смещение в байтах от начала буфера.
     /// @param ElementCount количество элементов для рисования.
     /// @param BindOnly только связывает буфер, но не вызывает draw.
-    /// @return True в случае успеха; в противном случае false.
+    /// @return true в случае успеха; в противном случае false.
     virtual bool RenderBufferDraw(RenderBuffer& buffer, u64 offset, u32 ElementCount, bool BindOnly) = 0;
     
     /// @brief Создает новую цель рендеринга, используя предоставленные данные.
@@ -341,8 +373,9 @@ public:
     /// @param pass указатель на проход рендеринга, с которым связана цель рендеринга.
     /// @param width ширина цели рендеринга в пикселях.
     /// @param height высота цели рендеринга в пикселях.
+    /// @param LayerIndex индекс слоя, используемого для прикрепления изображения, если изображение представляет собой текстурный массив.
     /// @param OutTarget указатель для хранения новой созданной цели рендеринга.
-    virtual void RenderTargetCreate(u8 AttachmentCount, RenderTargetAttachment* attachments, Renderpass* pass, u32 width, u32 height, RenderTarget& OutTarget) = 0;
+    virtual void RenderTargetCreate(u8 AttachmentCount, RenderTargetAttachment* attachments, Renderpass* pass, u32 width, u32 height, u32 LayerIndex, RenderTarget& OutTarget) = 0;
     
     /// @brief Уничтожает предоставленную цель рендеринга.
     /// @param target указатель на цель рендеринга, которую нужно уничтожить.
@@ -362,18 +395,18 @@ public:
     /// @brief Пытается получить цель визуализации окна по указанному индексу.
     /// @param index индекс вложения для получения. Должен быть в пределах диапазона количества целей визуализации окна.
     /// @return указатель на вложение текстуры в случае успеха; в противном случае 0.
-    virtual Texture* WindowAttachmentGet(u8 index) = 0;
+    virtual Texture* GetWindowAttachment(u8 index) = 0;
     
     /// @return Возвращает указатель на основную цель текстуры глубины.
     /// @param index Индекс вложения для получения. Должен быть в пределах диапазона количества целевых объектов визуализации окна.
     /// @return Указатель на вложение текстуры в случае успеха; в противном случае nullptr.
-    virtual Texture* DepthAttachmentGet(u8 index) = 0;
+    virtual Texture* GetDepthAttachment(u8 index) = 0;
     
     /// @return Возвращает текущий индекс прикрепления окна.
-    virtual u8 WindowAttachmentIndexGet() = 0;
+    virtual u8 GetWindowAttachmentIndex() = 0;
 
     /// @brief Возвращает количество вложений, необходимых для целей визуализации на основе окна.
-    virtual u8 WindowAttachmentCountGet() = 0;
+    virtual u8 GetWindowAttachmentCount() = 0;
     
     /// @brief Указывает, поддерживает ли рендерер многопоточность.
     virtual const bool& IsMultithreaded() = 0;
@@ -387,4 +420,8 @@ public:
     /// @param flag проверяемый флаг.
     /// @param enabled указывает, следует ли включать флаг(и).
     virtual void FlagSetEnabled(RendererConfigFlags flag, bool enabled) = 0;
-    };
+
+    /// @brief Ожидает, пока бэкенд рендерера полностью завершит всю работу, прежде чем вернуть управление. 
+    /// ПРИМЕЧАНИЕ: Это влечет за собой значительные накладные расходы и требует ожидания, поэтому использовать данный механизм следует с осторожностью.
+    virtual void WaitForIdle() = 0;
+};
