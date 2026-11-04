@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/logger.hpp"
+#include "defines.h"
 
 struct MAPI LinearAllocator
 {
