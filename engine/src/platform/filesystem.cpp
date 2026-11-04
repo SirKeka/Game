@@ -1,6 +1,5 @@
 #include "filesystem.hpp"
 
-#include "core/logger.hpp"
 #include "core/memory_system.h"
 
 #include <iostream>
@@ -125,14 +124,14 @@ bool Filesystem::ReadAllBytes(FileHandle &handle, u8 *OutBytes, u64 &OutBytesRea
 
 bool Filesystem::ReadAllText(FileHandle &handle, char *OutText, u64 &OutBytesRead)
 {
-    if (handle.handle && OutText && OutBytesRead) {
+    if (handle.handle && OutText) {
         // Размер файла
         u64 size = 0;
         if(!Filesystem::Size(handle, size)) {
             return false;
         }
         OutBytesRead = fread(OutText, 1, size, reinterpret_cast<FILE*>(handle.handle));
-        return OutBytesRead == size;
+        return true; // return OutBytesRead == size;
     }
     return false;
 }
