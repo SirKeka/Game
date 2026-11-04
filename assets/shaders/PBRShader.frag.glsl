@@ -5,6 +5,10 @@ layout(location = 0) out vec4 out_colour;
 struct directional_light {
     vec4 colour;
     vec4 direction;
+    float shadow_distance;
+    float shadow_fade_distance;
+    float shadow_split_mult;
+    float padding;
 };
 
 struct point_light {
@@ -166,10 +170,23 @@ void main() {
             break;
         }
     }
+
     if(cascade_index == -1) {
         cascade_index = MAX_SHADOW_CASCADES;
     }
     float shadow = calculate_shadow(in_dto.light_space_frag_pos[cascade_index], normal, instance_ubo.dir_light, cascade_index);
+
+    // Постепенно убирать карту теней после определённого расстояния.
+    float fade_start = instance_ubo.dir_light.shadow_distance;
+    float fade_distance = instance_ubo.dir_light.shadow_fade_distance;
+
+    // Конец диапазона, в котором происходит постепенное исчезновение.
+    float fade_end = fade_start + fade_distance;
+
+    float zclamp = clamp(length(in_dto.view_position - in_dto.frag_position), fade_start, fade_end);
+    float fade_factor = (fade_end - zclamp) / (fade_end - fade_start + 0.00001); // Avoid divide by 0
+
+    shadow = clamp(shadow + (1.0 - fade_factor), 0.0, 1.0);
 
     // Рассчитайте коэффициент отражения при нормальном падении; 
     // если это диэлектрик (например, пластик), используйте базовый коэффициент отражения 0,04, 
@@ -245,6 +262,9 @@ void main() {
         out_colour = vec4(colour, albedo_samp.a);
     } else if(in_mode == 2) {
         out_colour = vec4(abs(normal), 1.0);
+    } else if(in_mode == 4) {
+        // каркасный режим — просто отрисовать сплошным цветом.
+        out_colour = vec4(0.0, 1.0, 1.0, 1.0); // циан
     }
 }
 
