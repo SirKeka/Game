@@ -44,7 +44,7 @@ bool UiPass::Initialize()
     pass.name                     = "Renderpass.Bultin.UI";
     pass.ClearFlags               = RenderpassClearFlag::DepthBuffer | RenderpassClearFlag::StencilBuffer;
     pass.RenderTargetCount        = rSystem->GetWindowAttachmentCount();
-    pass.targets                  = nul_alloc(RenderTarget, pass.RenderTargetCount, Memory::Array);
+    CreateArray(pass.targets, sizeof(RenderTarget) * pass.RenderTargetCount, true); 
     pass.ClearColour.z = 0.2F; pass.ClearColour.w = 1.F;
 
     if (!rSystem->RenderpassCreate(UiPass, pass, false)) {
@@ -105,14 +105,14 @@ bool UiPass::Render(FrameData &rFrameData)
     // Отрисовка геометрий.
     const u32 rCount = RenderData.renderables.Length();
     for (u32 i = 0; i < rCount; ++i) {
-        const auto& renderable = RenderData.renderables[i];
+        const UiRenderable& renderable = RenderData.renderables[i];
 
         // Отобразить геометрию маски отсечения, если она существует.
         if (renderable.ClipMaskRenderData) {
             // Включить запись, отключить проверку.
+            rSystem->SetStencilTestEnabled(true);
             rSystem->SetDepthTestEnabled(false);
             rSystem->SetStencilReference((u32)renderable.ClipMaskRenderData->UniqueID);
-            rSystem->SetStencilTestEnabled(true);
             rSystem->SetStencilWriteMask(0xFF);
             rSystem->SetStencilOp(RendererStencilOp::Replace, RendererStencilOp::Replace, RendererStencilOp::Replace, RendererCompareOp::Always);
 
@@ -133,11 +133,11 @@ bool UiPass::Render(FrameData &rFrameData)
         }
 
         // Применить экземпляр
-        bool NeedsUpdate = *renderable.FrameNumber != rFrameData.RendererFrameNumber;
+        bool NeedsUpdate = *renderable.FrameNumber != rFrameData.RendererFrameNumber || *renderable.DrawIndex != rFrameData.DrawIndex;
         ShaderSystem::BindInstance(*renderable.InstanceID);
         // ПРИМЕЧАНИЕ: При необходимости расширьте это до структуры.
         ShaderSystem::UniformSet(properties, &renderable.RenderData.DiffuseColour);
-        auto atlas = renderable.AtlasOverride ? renderable.AtlasOverride : RenderData.UiAtlas;
+        TextureMap* atlas = renderable.AtlasOverride ? renderable.AtlasOverride : RenderData.UiAtlas;
         ShaderSystem::UniformSet(DiffuseMap, atlas);
         ShaderSystem::ApplyInstance(NeedsUpdate, rFrameData);
 
