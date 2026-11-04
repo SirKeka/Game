@@ -1,0 +1,25 @@
+# файл конфигурации шейдера
+version=1
+name=Shader.ShadowmapTerrain
+stages=vertex,fragment
+stagefiles=shaders/Shader.ShadowmapTerrain.vert.glsl,shaders/Shader.ShadowmapTerrain.frag.glsl
+depth_test=1
+depth_write=1
+cull_mode=none
+max_instances=256
+
+# Атрибуты: тип, имя
+attribute=vec3,in_position
+attribute=vec3,in_normal
+attribute=vec2,in_texcoord
+attribute=vec4,in_colour
+attribute=vec4,in_tangent
+attribute=vec4,in_mat_weights
+
+# Униформы: тип, область видимости, имя
+# ПРИМЕЧАНИЕ: Для области видимости: 0 = глобальная, 1 = экземпляр, 2 = локальная
+uniform=mat4[4],0,projections
+uniform=mat4[4],0,views
+uniform=mat4,2,model
+uniform=u32,2,cascade_index
+uniform=sampler2D,1,colour_map
