@@ -146,7 +146,7 @@ void VulkanSetDebugObjectName(VulkanAPI *VkAPI, VkObjectType ObjectType, void *O
     };
 
     if (VkAPI->pfnSetDebugUtilsObjectNameEXT) {
-        VK_CHECK(VkAPI->pfnSetDebugUtilsObjectNameEXT(VkAPI->Device.LogicalDevice, &NameInfo));
+        VK_CHECK(VkAPI->pfnSetDebugUtilsObjectNameEXT(VkAPI->device.LogicalDevice, &NameInfo));
     }
 }
 
@@ -162,7 +162,7 @@ void VulkanSetDebugObjectTag(VulkanAPI *VkAPI, VkObjectType ObjectType, void *Ob
         TagData};
 
     if (VkAPI->pfnSetDebugUtilsObjectTagEXT) {
-        VK_CHECK(VkAPI->pfnSetDebugUtilsObjectTagEXT(VkAPI->Device.LogicalDevice, &TagInfo));
+        VK_CHECK(VkAPI->pfnSetDebugUtilsObjectTagEXT(VkAPI->device.LogicalDevice, &TagInfo));
     }
 }
 
