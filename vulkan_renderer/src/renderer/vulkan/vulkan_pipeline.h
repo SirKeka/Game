@@ -2,7 +2,8 @@
 
 #include "vulkan/vulkan.h"
 #include "renderer/renderer_types.h"
-#include "resources/texture.hpp"
+#include "resources/shader.h"
+#include "resources/texture.h"
 
 class VulkanAPI;
 struct VulkanRenderpass;
@@ -22,49 +23,30 @@ class VulkanPipeline
 public:
     /// @brief Структура конфигурации конвеера Vulkan.
     struct Config {
-        MString name;                                  // Имя конвейера. Используется в основном для отладки.
-        VulkanRenderpass* renderpass;                  // Указатель на проход рендеринга для связывания с конвейером.
-        u32 stride;                                    // Шаг данных вершин, которые будут использоваться (например: sizeof(Vertex3D))
-        u32 AttributeCount;                            // Количество атрибутов.
-        VkVertexInputAttributeDescription* attributes; // Массив атрибутов. attributes;
-        u32 DescriptorSetLayoutCount;                  // Количество макетов набора дескрипторов.
-        VkDescriptorSetLayout* DescriptorSetLayouts;   // Массив макетов набора дескрипторов.
-        u32 StageCount;                                // Количество стадий (вершина, фрагмент и т.д.).
-        VkPipelineShaderStageCreateInfo* stages;       // Массив стадий VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BITarray.
-        VkViewport viewport;                           // Начальная конфигурация области просмотра.
-        VkRect2D scissor;                              // Начальная конфигурация ножниц.
-        FaceCullMode CullMode;                         // Режим отбраковки граней.
-        u32 ShaderFlags;                               // Флаги шейдера, используемые для создания конвейера.
-        u32 PushConstantRangeCount;                    // Количество диапазонов данных констант push.
-        Range* PushConstantRanges;                     // Массив диапазонов данных констант push.
-        u32 TopologyTypes;                             // Коллекция типов топологий, которые будут поддерживаться на этом конвейере.
-        RendererWinding winding;                       // Порядок обхода вершин, используемый для определения передней грани треугольников.
-
-        constexpr Config(const MString& name, VulkanRenderpass* renderpass, u32 stride, u32 AttributeCount, VkVertexInputAttributeDescription* attributes, u32 DescriptorSetLayoutCount, VkDescriptorSetLayout* DescriptorSetLayouts, u32 StageCount, VkPipelineShaderStageCreateInfo* stages, VkViewport viewport, VkRect2D scissor, FaceCullMode CullMode, u32 ShaderFlags, u32 PushConstantRangeCount, Range* PushConstantRanges, u32 TopologyTypes) 
-        : 
-        name(name),
-        renderpass(renderpass), 
-        stride(stride), 
-        AttributeCount(AttributeCount), 
-        attributes(attributes), 
-        DescriptorSetLayoutCount(DescriptorSetLayoutCount), 
-        DescriptorSetLayouts(DescriptorSetLayouts), 
-        StageCount(StageCount), 
-        stages(stages), 
-        viewport(viewport), 
-        scissor(scissor), 
-        CullMode(CullMode), 
-        ShaderFlags(ShaderFlags),
-        PushConstantRangeCount(PushConstantRangeCount),
-        PushConstantRanges(PushConstantRanges),
-        TopologyTypes(TopologyTypes) {}
+        const MString& name;                            // Имя конвейера. Используется в основном для отладки.
+        VulkanRenderpass* renderpass{};                 // Указатель на проход рендеринга для связывания с конвейером.
+        u32 stride;                                     // Шаг данных вершин, которые будут использоваться (например: sizeof(Vertex3D))
+        u32 AttributeCount;                             // Количество атрибутов.
+        VkVertexInputAttributeDescription* attributes{};// Массив атрибутов. attributes;
+        u32 DescriptorSetLayoutCount;                   // Количество макетов набора дескрипторов.
+        VkDescriptorSetLayout* DescriptorSetLayouts{};  // Массив макетов набора дескрипторов.
+        u32 StageCount;                                 // Количество стадий (вершина, фрагмент и т.д.).
+        VkPipelineShaderStageCreateInfo* stages{};      // Массив стадий VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BITarray.
+        VkViewport viewport;                            // Начальная конфигурация области просмотра.
+        VkRect2D scissor;                               // Начальная конфигурация ножниц.
+        FaceCullMode CullMode;                          // Режим отбраковки граней.
+        u32 ShaderFlags;                                // Флаги шейдера, используемые для создания конвейера.
+        u32 PushConstantRangeCount;                     // Количество диапазонов данных констант push.
+        Range* PushConstantRanges;                      // Массив диапазонов данных констант push.
+        u32 TopologyTypes;                              // Коллекция типов топологий, которые будут поддерживаться на этом конвейере.
+        RendererWinding winding;                        // Порядок обхода вершин, используемый для определения передней грани треугольников.
     };
 
-    VkPipeline handle{};            // Внутренний дескриптор конвейера.
+    VkPipeline handle;              // Внутренний дескриптор конвейера.
     VkPipelineLayout PipelineLayout;// Макет конвейера.
     u32 SupportedTopologyTypes;     // Указывает типы топологии, используемые этим конвейером. См. PrimitiveTopologyType.
 public:
-    constexpr VulkanPipeline() : handle(), PipelineLayout() {}
+    constexpr VulkanPipeline() : handle(), PipelineLayout(), SupportedTopologyTypes() {}
     ~VulkanPipeline() = default;
 
     /// @brief Создает новый конвейер Vulkan.
