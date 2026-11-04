@@ -1,10 +1,9 @@
 #include "engine.h"
-#include "version.hpp"
 
 #include "application_types.h"
 #include "renderer/rendering_system.h"
 
-#include "console.hpp"
+#include "event.h"
 #include "mvar.h"
 #include "input.h"
 #include "metrics.h"
@@ -14,10 +13,8 @@
 #include "systems/material_system.h"
 #include "systems/geometry_system.h"
 #include "systems/resource_system.h"
-#include "systems/shader_system.h"
 #include "systems/camera_system.hpp"
-#include "systems/render_view_system.h"
-#include "systems/job_systems.hpp"
+#include "systems/job_systems.h"
 #include "systems/font_system.h"
 #include "platform/platform.hpp"
 
@@ -33,12 +30,14 @@ constexpr Engine::Engine(const ApplicationConfig& config)
 SystemAllocator(),
 IsRunning(),
 IsSuspended(),
-GameInst(),
+GameInst(nullptr),
 SysManager(),
 width(),
 height(),
 clock(),
 LastTime(),
+resizing(),
+FramesSinceResize(),
 FrameAllocator(config.FrameAllocatorSize),
 frameData() {}
 
@@ -84,19 +83,12 @@ bool Engine::Create(Application& GameInst)
         return false;
     }
 
-    // Сообщить о версии движка
-    MINFO("Moon Engine v. %s", MVERSION);
-
     // Инициализируйте игру.
     GameInst.stage = Application::Stage::Initializing;
     if (!GameInst.Initialize(GameInst)) {
         MFATAL("Не удалось инициализировать игру.");
         return false;
     } GameInst.stage = Application::Stage::Initialized;
-
-    // Вызовите resize один раз, чтобы убедиться, что установлен правильный размер.
-    RenderingSystem::OnResized(pEngine->width, pEngine->height);
-    GameInst.OnResize(GameInst, pEngine->width, pEngine->height);
 
     return true;
 }
@@ -136,7 +128,45 @@ bool Engine::Run() {
             SysManager.Update(frameData);
 
             //Обновление метрик(статистики)
-            Metrics::Update(FrameElapsedTime);
+            Metrics::GetInstance()->Update(FrameElapsedTime);
+            auto renderer = SysManager.GetRenderingSystem();
+
+            // Убедитесь, что размер окна в данный момент не изменяется, подождав указанное количество кадров после последней операции изменения размера, прежде чем выполнять внутренние обновления.
+            if (pEngine->resizing) {
+                pEngine->FramesSinceResize++;
+
+                // Если с момента изменения размера прошло необходимое количество кадров, выполните сами обновления.
+                if (pEngine->FramesSinceResize >= 30) {
+                    renderer->OnResized(pEngine->width, pEngine->height);
+
+                    // ПРИМЕЧАНИЕ: Не проверяйте результат, так как это, скорее всего, приведёт к пересозданию цепочки обмена и загрузке следующего кадра.
+                    renderer->PrepareFrame(pEngine->frameData);
+
+                    // Уведомите приложение об изменении размера.
+                    pEngine->GameInst->OnResize(*pEngine->GameInst, pEngine->width, pEngine->height);
+
+                    pEngine->FramesSinceResize = 0;
+                    pEngine->resizing = false;
+                } else {
+                    // Пропустите рендеринг кадра и повторите попытку в следующий раз.
+                    // ПРИМЕЧАНИЕ: Имитируйте «отрисовку» кадра с частотой 60 кадров в секунду.
+                    PlatformSleep(16);
+                }
+
+                // В любом случае, не обрабатывайте этот кадр дальше при изменении размера.
+                // Попробуйте снова на следующем кадре.
+                continue;
+            }
+            if (!renderer->PrepareFrame(pEngine->frameData)) {
+                /* Это может произойти не только из-за изменения размера, 
+                 * описанного выше, но и при изменении флага рендерера (например, VSync), 
+                 * что также может потребовать перераспределения ресурсов. 
+                 * Для обработки этой ситуации уведомите приложение о событии изменения размера, 
+                 * которое оно затем сможет передать своим рендер-графам по мере необходимости.
+                */
+                pEngine->GameInst->OnResize(*pEngine->GameInst, pEngine->width, pEngine->height);
+                continue;
+            }
 
             if (!GameInst->Update(*GameInst, frameData)) {
                 MFATAL("Ошибка обновления игры, выключение.");
@@ -144,23 +174,41 @@ bool Engine::Run() {
                 break;
             }
 
-            RenderPacket packet = {};
+            if (!renderer->Begin(frameData)) {
+                MFATAL("Не удалось запустить модуль отрисовки. Завершение работы.");
+                IsRunning = false;
+                break;
+            }
+
+            // Начать группировку событий рендеринга «PrepareFrame».
+            renderer->BeginDebugLabel("prepare_frame", FVec3(1.F, 1.F, 0.F));
+
+            SysManager.RendererFramePrepare(frameData);
 
             // Позвольте приложению сгенерировать пакет рендеринга.
-            bool PrepareResult = pEngine->GameInst->PrepareRenderPacket(pEngine->GameInst, packet, pEngine->frameData);
+            bool PrepareResult = pEngine->GameInst->PrepareFrame(pEngine->GameInst, pEngine->frameData);
+            // Завершить группировку событий рендеринга «PrepareFrame».
+            renderer->EndDebugLabel();
             if (!PrepareResult) {
-                MERROR("Приложению не удалось подготовить пакет рендеринга. Пропускаем этот кадр.");
                 continue;
             }
 
             // Вызовите процедуру рендеринга игры.
-            if (!GameInst->Render(*GameInst, packet, frameData)) {
+            if (!GameInst->RenderFrame(*GameInst, frameData)) {
                 MFATAL("Ошибка рендеринга игры, выключение.");
                 IsRunning = false;
                 break;
             }
-            
-            packet.Destroy();
+
+            // Завершите кадр.
+            renderer->End(frameData);
+
+            // Представьте кадр.
+            if (!renderer->Present(frameData)) {
+                MERROR("Вызов renderer_present завершился с ошибкой. Вероятно, это неустранимая ошибка. Завершение работы.");
+                IsRunning = false;
+                break;
+            }
 
             // Выясните, сколько времени занял кадр и, если ниже
             f64 FrameEndTime = WindowSystem::PlatformGetAbsoluteTime();
@@ -215,7 +263,7 @@ void Engine::operator delete(void *ptr, u64 size)
     return MemorySystem::Free(ptr, size, Memory::Engine);
 }
 
-bool Engine::OnEvent(u16 code, void *sender, void *ListenerInst, EventContext context)
+bool Engine::OnEvent(u16 code, void *sender, void *ListenerInst, const EventContext& context)
 {
     switch (code) {
         case EventSystem::ApplicationQuit: {
@@ -228,9 +276,14 @@ bool Engine::OnEvent(u16 code, void *sender, void *ListenerInst, EventContext co
     return false;
 }
 
-bool Engine::OnResized(u16 code, void *sender, void *ListenerInst, EventContext context)
+bool Engine::OnResized(u16 code, void *sender, void *ListenerInst, const EventContext& context)
 {
     if (code == EventSystem::Resized) {
+        // Отметить как изменение размера и сохранить изменение, но дождаться регенерации.
+        pEngine->resizing = true;
+        // Также сбросить количество кадров с момента последней операции изменения размера.
+        pEngine->FramesSinceResize = 0;
+
         u16 width = context.data.u16[0];
         u16 height = context.data.u16[1];
 
@@ -251,8 +304,6 @@ bool Engine::OnResized(u16 code, void *sender, void *ListenerInst, EventContext 
                     MINFO("Окно восстановлено, возобновляется приложение.");
                     pEngine->IsSuspended = false;
                 }
-                pEngine->GameInst->OnResize(*pEngine->GameInst, width, height);
-                RenderingSystem::OnResized(width, height);
             }
         }
     }
