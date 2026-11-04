@@ -3,11 +3,11 @@
 // Уровень платформы Windows.
 #if MPLATFORM_WINDOWS
 
-#include "core/logger.hpp"
+#include "core/event.h"
 #include "core/engine.h"
 #include "core/input.h"
-#include "core/mthread.hpp"
-#include "core/mmutex.hpp"
+#include "core/mmutex.h"
+#include "core/mthread.h"
 
 #define WIN32_LEAN_AND_MEAN
 #include <windowsx.h>  // извлечение входных параметров
@@ -26,20 +26,23 @@ struct Win32FileWatch {
 
     Win32FileWatch& operator=(Win32FileWatch&& v) {
         id = v.id;
-        FilePath = static_cast<MString&&>(v.FilePath);
+        FilePath = (MString&&)v.FilePath;
         LastWriteTime = v.LastWriteTime;
 
         return *this;
     }
 };
 
-struct PlatformState
+struct WinPlatform : public PlatformState
 {
     Win32HandleInfo handle;
     DArray<Win32FileWatch> watches;
+    f32 DevicePixelRatio;
+
+    void Shutdown() override;
 };
 
-static PlatformState* state = nullptr;
+static WinPlatform* state = nullptr;
 
 // Прототип функции обратного вызова для обработки сообщений
 LRESULT CALLBACK Win32MessageProcessor(HWND, u32, WPARAM, LPARAM);
@@ -49,17 +52,22 @@ void PlatformUpdateWatches();
 static f64 ClockFrequency;
 static LARGE_INTEGER StartTime;
 
-bool WindowSystem::Initialize(u64& MemoryRequirement, void* memory, void* config)
+PlatformState* WindowSystem::Initialize(u64& MemoryRequirement, void* memory, ApplicationConfig& config)
 {
-    MemoryRequirement = sizeof(PlatformState);
+    MemoryRequirement = sizeof(WinPlatform);
 
     if (!memory) {
-        return true;
+        return nullptr;
     }
-
-    auto pConfig = reinterpret_cast<ApplicationConfig*>(config);
-    state = reinterpret_cast<PlatformState*>(memory);
+ 
+    state = new(memory) WinPlatform();
     state->handle.HInstance = GetModuleHandleA(0);
+
+    // Доступно только в обновлении Creators Update для Windows 10+.
+    SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+    // ПРИМЕЧАНИЕ: В более старых версиях Windows может потребоваться следующее:
+    // SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE);
+    state->DevicePixelRatio = 1.F;
 
     // Настройка и регистрация класса окна.
     HICON icon = LoadIcon(state->handle.HInstance, IDI_APPLICATION);
@@ -72,13 +80,13 @@ bool WindowSystem::Initialize(u64& MemoryRequirement, void* memory, void* config
     wc.hInstance = state->handle.HInstance;
     wc.hIcon = icon;
     wc.hCursor = LoadCursor(NULL, IDC_ARROW);  // NULL; // Управление курсором вручную
-    wc.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH);           // Прозрачный
+    wc.hbrBackground = NULL;           // Прозрачный
     wc.lpszClassName = "Moon Window Class";    // Имя класса
 
     // Регистрация класса окна
     if (!RegisterClassA(&wc)) {
         MessageBoxA(0, "Регистрация окна не удалась", "Ошибка", MB_ICONEXCLAMATION | MB_OK);
-        return FALSE;
+        return nullptr;
     }
 
     u32 WinStyle = WS_OVERLAPPED | WS_SYSMENU | WS_CAPTION | COLOR_WINDOW; // Стиль окна
@@ -92,10 +100,10 @@ bool WindowSystem::Initialize(u64& MemoryRequirement, void* memory, void* config
     RECT BorderRect = {0, 0, 0, 0};
     AdjustWindowRectEx(&BorderRect, WinStyle, 0, WinExStyle);
 
-    u32 x = pConfig->StartPosX;
-    u32 y = pConfig->StartPosY;
-    u32 width  = pConfig->StartWidth;
-    u32 height = pConfig->StartHeight;
+    u32 x = config.StartPosX;
+    u32 y = config.StartPosY;
+    u32 width  = config.StartWidth;
+    u32 height = config.StartHeight;
     // В этом случае прямоугольник рамки имеет отрицательное значение.
     x += BorderRect.left;
     y += BorderRect.top;
@@ -107,7 +115,7 @@ bool WindowSystem::Initialize(u64& MemoryRequirement, void* memory, void* config
     HWND handle = CreateWindowExA(
         WinExStyle, 
         "Moon Window Class", // Имя класса
-        pConfig->name,       // Текст заголовка
+        config.name,         // Текст заголовка
         WinStyle,            // Стиль окна
         x,                   // Инициализация позиции х окна
         y,                   // Инициализация позиции y окна
@@ -120,12 +128,12 @@ bool WindowSystem::Initialize(u64& MemoryRequirement, void* memory, void* config
     );
 
     if (handle == 0) {
-    MessageBoxA(NULL, "Не удалось создать окно!", "Ошибка!", MB_ICONEXCLAMATION | MB_OK);
+        MessageBoxA(NULL, "Не удалось создать окно!", "Ошибка!", MB_ICONEXCLAMATION | MB_OK);
 
-    MFATAL("Не удалось создать окно!");
-    return false;
+        MFATAL("Не удалось создать окно!");
+        return nullptr;
     } else {
-    state->handle.hwnd = handle;
+        state->handle.hwnd = handle;
     }
 
     // Показывает окно
@@ -138,16 +146,15 @@ bool WindowSystem::Initialize(u64& MemoryRequirement, void* memory, void* config
 
     ClockSetup();
 
-    return true;
+    return state;
 }
 
-void WindowSystem::Shutdown()
+void WinPlatform::Shutdown()
 {
-    if (state->handle.hwnd) {
-        DestroyWindow(state->handle.hwnd);
-        state->handle.hwnd = 0;
+    if (handle.hwnd) {
+        DestroyWindow(handle.hwnd);
+        handle.hwnd = 0;
     }
-
 }
 
 bool WindowSystem::Messages()
@@ -176,7 +183,7 @@ void WindowSystem::ClockSetup()
 {
     LARGE_INTEGER Frequency;
     QueryPerformanceFrequency(&Frequency);          // Тактовая чистота процессора
-    ClockFrequency = 1.0 / (f64)Frequency.QuadPart;
+    ClockFrequency = 1.F / (f64)Frequency.QuadPart;
     QueryPerformanceCounter(&StartTime);
 }
 
@@ -220,6 +227,11 @@ void PlatformConsoleWriteError(const char *message, u8 colour) {
     u64 length = strlen(message);
     DWORD NumberWritten = 0;
     WriteConsoleA(GetStdHandle(STD_ERROR_HANDLE), message, (DWORD)length, &NumberWritten, 0);
+}
+
+f32 PlatformDevicePixelRatio(void)
+{
+    return state->DevicePixelRatio;
 }
 
 void PlatformSleep(u64 ms) {
@@ -280,11 +292,11 @@ bool PlatformDynamicLibraryUnload(DynamicLibrary& library)
     }
 
     if (library.name) {
-        library.name.Clear();
+        library.name.Destroy();
     }
 
     if (library.filename) {
-        library.filename.Clear();
+        library.filename.Destroy();
     }
 
     if (library.functions) {
@@ -311,10 +323,9 @@ bool PlatformDynamicLibraryLoadFunction(const char* name, DynamicLibrary& librar
         return false;
     }
 
-    DynamicLibraryFunction f = {0};
-    f.pfn = reinterpret_cast<void*>(fAddr);
-    f.name = name;
-    library.functions.PushBack(static_cast<DynamicLibraryFunction&&>(f));
+    auto f = library.functions.PushBack();
+    f->pfn = reinterpret_cast<void*>(fAddr);
+    f->name = name;
 
     return true;
 }
@@ -353,10 +364,6 @@ static bool RegisterWatch(const char *FilePath, u32 &OutWatchID)
     }
     OutWatchID = INVALID::ID;
 
-    // if (!state->watches) {
-    //     state->watches = darray_create(Win32File_watch);
-    // }
-
     WIN32_FIND_DATAA data;
     HANDLE FileHandle = FindFirstFileA(FilePath, &data);
     if (FileHandle == INVALID_HANDLE_VALUE) {
@@ -367,7 +374,7 @@ static bool RegisterWatch(const char *FilePath, u32 &OutWatchID)
         return false;
     }
 
-    auto& count = state->watches.Length();
+    const u32 count = state->watches.Length();
     for (u32 i = 0; i < count; ++i) {
         auto& w = state->watches[i];
         if (w.id == INVALID::ID) {
@@ -381,12 +388,13 @@ static bool RegisterWatch(const char *FilePath, u32 &OutWatchID)
     }
 
     // Если свободного места нет, создайте и отправьте новую запись.
-    Win32FileWatch w = {0};
-    w.id = count;
-    w.FilePath = FilePath;
-    w.LastWriteTime = data.ftLastWriteTime;
+    Win32FileWatch w {
+        .id = count,
+        .FilePath = FilePath,
+        .LastWriteTime = data.ftLastWriteTime
+    };
     OutWatchID = count;
-    state->watches.PushBack(static_cast<Win32FileWatch&&>(w));
+    state->watches.PushBack((Win32FileWatch&&)w);
 
     return true;
 }
@@ -397,14 +405,14 @@ static bool UnregisterWatch(u32 WatchID)
         return false;
     }
 
-    auto& count = state->watches.Length();
+    const u32 count = state->watches.Length();
     if (count == 0 || WatchID > (count - 1)) {
         return false;
     }
 
     auto& w = state->watches[WatchID];
     w.id = INVALID::ID;
-    w.FilePath.Clear();
+    w.FilePath.Destroy();
     MemorySystem::ZeroMem(&w.LastWriteTime, sizeof(FILETIME));
 
     return true;
@@ -425,7 +433,7 @@ void PlatformUpdateWatches() {
         return;
     }
 
-    auto& count = state->watches.Length();
+    const u32 count = state->watches.Length();
     for (u32 i = 0; i < count; ++i) {
         auto& f = state->watches[i];
         if (f.id != INVALID::ID) {
@@ -473,8 +481,20 @@ bool MThread::Create(PFN_ThreadStart StartFunctionPtr, void *params, bool AutoDe
     if (!StartFunctionPtr) {
         return false;
     }
+    /* Функция из Windows API (заголовок processthreadsapi.h), которая создаёт новый поток внутри текущего процесса.
+     *  lpThreadAttributes (опционально). Указатель на структуру SECURITY_ATTRIBUTES. Она определяет дескриптор безопасности и то, 
+        может ли дескриптор потока унаследоваться дочерними процессами. Если NULL, поток получит дескриптор безопасности по умолчанию, 
+        а дескриптор не будет унаследован.
+     *  dwStackSize (опционально). Начальный размер стека в байтах. Система округляет это значение до ближайшей страницы. 
+        Если передать 0, новый поток возьмёт размер стека по умолчанию у создающего потока. 
+     *  lpStartAddress (обязательно). Указатель на функцию, с которой начнётся выполнение потока. Она должна иметь 
+        тип LPTHREAD_START_ROUTINE — это указатель на функцию, которая принимает LPVOID и возвращает DWORD.
+     *  lpParameter (опционально). Параметр, который будет передан в функцию потока.
+     *  dwCreationFlags. Управляет режимом создания. Часто используют флаг CREATE_SUSPENDED (0x00000004): поток создаётся в приостановленном 
+        состоянии и не начинает работу, пока извне не вызовут ResumeThread. Если флаг не указан (или равен 0), поток стартует сразу.
+     *  lpThreadId (опционально). Указатель на переменную, в которую функция запишет идентификатор созданного потока. */
     data = CreateThread(
-        0,
+        nullptr,
         0,                                          // Размер стека по умолчанию
         (LPTHREAD_START_ROUTINE)StartFunctionPtr,   // указатель на функцию
         params,                                     // параметр для передачи потоку
@@ -547,7 +567,15 @@ u64 GetThreadID()
 
 void *MMutex::Create()
 {
-    data = CreateMutex(0, 0, 0);
+    /*  Функция, которая создаёт именованный или безымянный объект mutex.
+     *  lpMutexAttributes — указывает на структуру SECURITY_ATTRIBUTES, которая определяет, 
+        может ли возвращённый дескриптор быть унаследован дочерними процессами. 
+        Если lpMutexAttributes равен NULL, то дескриптор не может быть унаследован.
+     *  bInitialOwner — определяет начального владельца объекта mutex. Если это значение равно TRUE 
+        и вызывающий создал mutex, то вызывающий поток получает владение объектом. 
+     *  lpName — если равен NULL, то объект mutex создаётся без имени. Если lpName совпадает с именем существующего события, 
+        семафора, ожидаемого таймера, задания или объекта сопоставления файлов, то функция завершается с ошибкой. */
+    data = CreateMutex(nullptr, 0, nullptr);
     if (!data) {
         MERROR("Создать мьютекс не удалось.");
         return nullptr;
@@ -567,6 +595,11 @@ MMutex::~MMutex()
 
 bool MMutex::Lock()
 {
+    /*  Функция из Windows API (заголовок synchapi.h), которая позволяет потоку приостановиться и ждать, 
+        пока какой-то объект перейдёт в сигнальное состояние. Проще говоря: она заставляет поток «замереть» 
+        и не продолжать выполнение, пока не случится определённое событие.
+     *  HANDLE hHandle,         -   Дескриптор объекта
+     *  DWORD dwMilliseconds    -   Интервал ожидания в миллисекундах */
     DWORD result = WaitForSingleObject(data, INFINITE);
     switch (result) {
         // Поток получил право собственности на мьютекс
@@ -609,12 +642,34 @@ LRESULT CALLBACK Win32MessageProcessor(HWND hwnd, u32 msg, WPARAM w_param, LPARA
         case WM_DESTROY:
             PostQuitMessage(0);
             return 0;
+        case WM_DPICHANGED: {
+            // Разрешение по осям X и Y всегда одинаковое, поэтому просто выберите один из них.
+            i32 xDpi = GET_X_LPARAM(w_param);
+
+            // Сохраните соотношение пикселей устройства.
+            state->DevicePixelRatio = (f32)xDpi / USER_DEFAULT_SCREEN_DPI;
+            MINFO("Соотношение пикселей устройства отображения: %.2f", state->DevicePixelRatio);
+
+            return 0;
+        }
         case WM_SIZE: {
             // Получаем обновленный размер.
             RECT r;
             GetClientRect(hwnd, &r);
             u32 width = r.right - r.left;
             u32 height = r.bottom - r.top;
+
+            {
+                HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+
+                MONITORINFO MonitorInfo = {0};
+                MonitorInfo.cbSize = sizeof(MONITORINFO);
+                if (!GetMonitorInfoA(monitor, &MonitorInfo)) {
+                    MWARN("Failed to get monitor info. ");
+                }
+
+                MINFO("monitor: %u", MonitorInfo.rcMonitor.left);
+            }
 
             // Запускаем событие. Уровень приложения должен уловить это, но не обрабатывать, 
             // поскольку это должно быть видно другим частям приложения.
@@ -642,6 +697,11 @@ LRESULT CALLBACK Win32MessageProcessor(HWND hwnd, u32 msg, WPARAM w_param, LPARA
                 key = scancode == LeftShift ? Keys::LSHIFT : Keys::RSHIFT;
             } else if (w_param == VK_CONTROL) {
                 key = IsExtended ? Keys::RCONTROL : Keys::LCONTROL;
+            }
+
+            // HACK: Это отвратительная дрянь, связанная с сочетаниями клавиш в Windows.
+            if (key == VK_OEM_1) {
+                key = Keys::SEMICOLON;
             }
 
             // Перейдите к подсистеме ввода для обработки.
