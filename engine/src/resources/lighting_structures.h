@@ -1,7 +1,7 @@
 #pragma once
 
 
-#include "containers/mstring.hpp"
+#include "containers/mstring.h"
 #include "math/vector4d_fwd.h"
 
 /// @brief Направленный свет, обычно используемый для имитации солнечного/лунного света.
@@ -14,6 +14,10 @@ struct DirectionalLight {
         FVec4 colour;
         /// @brief Направление света. Компонент w игнорируется.
         FVec4 direction;
+
+        f32 ShadowDistance;
+        f32 ShadowFadeDistance;
+        f32 ShadowSplitMult;
     } data;
     /// @brief Отладочные данные, назначенные источнику света.
     void* DebugData;
