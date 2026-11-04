@@ -5,6 +5,10 @@ layout(location = 0) out vec4 out_colour;
 struct directional_light {
     vec4 colour;
     vec4 direction;
+    float shadow_distance;
+    float shadow_fade_distance;
+    float shadow_split_mult;
+    float padding;
 };
 
 struct point_light {
@@ -21,14 +25,20 @@ struct point_light {
 
 const int POINT_LIGHT_MAX = 10;
 const int MAX_TERRAIN_MATERIALS = 4;
+const int MAX_SHADOW_CASCADES = 4;
+const int TERRAIN_PER_MATERIAL_SAMP_COUNT = 3;
 
 layout(set = 0, binding = 0) uniform global_uniform_object {
     mat4 projection;
 	mat4 view;
+    mat4 light_space[MAX_SHADOW_CASCADES];
 	vec4 ambient_colour;
+    directional_light dir_light;
 	vec3 view_position;
 	int mode;
-    directional_light dir_light;
+    int use_pcf;
+    float bias;
+    vec2 padding;
 } global_ubo;
 
 struct material_phong_properties {
@@ -52,18 +62,26 @@ layout(set = 1, binding = 0) uniform instance_uniform_object {
 } instance_ubo;
 
 
-// Сэмплеры, диффузный, спек
-const int SAMP_DIFFUSE_OFFSET = 0;
-const int SAMP_SPECULAR_OFFSET = 1;
-const int SAMP_NORMAL_OFFSET = 2;
+// Индексы текстуры материала.
+const int SAMP_ALBEDO_OFFSET = 0;
+const int SAMP_NORMAL_OFFSET = 1;
+const int SAMP_COMBINED_OFFSET = 2;
 
-// дифф, спек, нормаль, дифф, спек, нормаль и т. д.
-layout(set = 1, binding = 1) uniform sampler2D samplers[3 * MAX_TERRAIN_MATERIALS];
+const float PI = 3.14159265359;
+
+// Текстуры материалов: альбедо, нормали, комбинированные (металличность, шероховатость, AO)
+layout(set = 1, binding = 1) uniform sampler2DArray material_textures;
+// Карты теней
+layout(set = 1, binding = 2) uniform sampler2DArray shadow_texture;
+// Импульсная освещенность IBL
+layout(set = 1, binding = 3) uniform samplerCube irradiance_texture;
 
 layout(location = 0) flat in int in_mode;
+layout(location = 1) flat in int use_pcf;
 // Объект передачи данных
-layout(location = 1) in struct dto {
-    vec4 ambient;
+layout(location = 2) in struct dto {
+    vec4 light_space_frag_pos[MAX_SHADOW_CASCADES];
+    vec4 cascade_splits;
 	vec2 tex_coord;
 	vec3 normal;
 	vec3 view_position;
@@ -71,12 +89,62 @@ layout(location = 1) in struct dto {
     vec4 colour;
 	vec3 tangent;
     vec4 mat_weights;
+    float bias;
+    vec3 padding;
 } in_dto;
 
 mat3 TBN;
 
-vec4 calculate_directional_light(directional_light light, vec3 normal, vec3 view_direction, vec4 diff_samp, vec4 spec_samp, material_phong_properties mat_info);
-vec4 calculate_point_light(point_light light, vec3 normal, vec3 frag_position, vec3 view_direction, vec4 diff_samp, vec4 spec_samp, material_phong_properties mat_info);
+// Фильтрация по проценту приближения
+float calculate_pcf(vec3 projected, int cascade_index) {
+    float shadow = 0.0;
+    vec2 texel_size = 1.0 / textureSize(shadow_texture, 0).xy;
+    for(int x = -1; x <= 1; ++x) {
+        for(int y = -1; y <= 1; ++y) {
+            float pcf_depth = texture(shadow_texture, vec3(projected.xy + vec2(x, y) * texel_size, cascade_index)).r;
+            shadow += projected.z - in_dto.bias > pcf_depth ? 1.0 : 0.0;
+        }
+    }
+    shadow /= 9;
+    return 1.0 - shadow;
+}
+
+float calculate_unfiltered(vec3 projected, int cascade_index) {
+    // Выборка карты теней.
+    float map_depth = texture(shadow_texture, vec3(projected.xy, cascade_index)).r;
+
+    // ЗАДАЧА: Отбросить/удалить ветку.
+    float shadow = projected.z - in_dto.bias > map_depth ? 0.0 : 1.0;
+    return shadow;
+}
+
+// Сравните положение фрагмента с буфером глубины, и если он находится дальше, чем карта теней, значит, он в тени. 0,0 = в тени, 1,0 = нет.
+float calculate_shadow(vec4 light_space_frag_pos, vec3 normal, directional_light light, int cascade_index) {
+    // Перспективное деление — обратите внимание, что хотя для ортопроекции это бессмысленно, для перспективной проекции это потребуется.
+    vec3 projected = light_space_frag_pos.xyz / light_space_frag_pos.w;
+    // Необходимо инвертировать y
+    projected.y = 1.0-projected.y;
+
+    // ПРИМЕЧАНИЕ: Преобразование в NDC не требуется для Vulkan, но потребуется для OpenGL.
+    // projected.xy = projected.xy * 0.5 + 0.5;
+
+    if(use_pcf == 1) {
+        return calculate_pcf(projected, cascade_index);
+    } 
+
+    return calculate_unfiltered(projected, cascade_index);
+}
+
+// На основе комбинации GGX и приближения Шлика-Бекмана для расчета вероятности затенения микрограней.
+float geometry_schlick_ggx(float normal_dot_direction, float roughness) {
+    roughness += 1.0;
+    float k = (roughness * roughness) / 8.0;
+    return normal_dot_direction / (normal_dot_direction * (1.0 - k) + k);
+}
+
+vec3 calculate_point_light_radiance(point_light light, vec3 view_direction, vec3 frag_position_xyz);
+vec3 calculate_directional_light_radiance(directional_light light, vec3 view_direction);
+vec3 calculate_reflectance(vec3 albedo, vec3 normal, vec3 view_direction, vec3 light_direction, float metallic, float roughness, vec3 base_reflectivity, vec3 radiance);
 
 void main() {
     vec3 normal = in_dto.normal;
@@ -87,88 +155,235 @@ void main() {
 
     // Обновите нормаль, чтобы использовать образец из карты нормалей.
     vec3 normals[MAX_TERRAIN_MATERIALS];
-    vec4 diffuses[MAX_TERRAIN_MATERIALS];
-    vec4 specs[MAX_TERRAIN_MATERIALS];
+    vec4 albedos[MAX_TERRAIN_MATERIALS];
+    float metallics[MAX_TERRAIN_MATERIALS];
+    float roughnesses[MAX_TERRAIN_MATERIALS];
+    float aos[MAX_TERRAIN_MATERIALS];
 
     material_phong_properties mat;
     mat.diffuse_colour = vec4(0);
     mat.shininess = 1.0;
 
-    // Вручную сделайте образец первого материала.
-    // ЗАДАЧА: Этот микс не совсем правильный.
-    vec4 diff = vec4(1);
-    vec4 spec = vec4(0.5);
-    vec3 norm = vec3(0, 0, 1);
+    // Проведите пробный отбор каждого материала.
     for(int m = 0; m < instance_ubo.properties.num_materials; ++m) {
-        normals[m] = normalize(TBN * (2.0 * texture(samplers[(m * 3) + SAMP_NORMAL_OFFSET], in_dto.tex_coord).rgb - 1.0));
-        diffuses[m] = texture(samplers[(m * 3) + SAMP_DIFFUSE_OFFSET], in_dto.tex_coord);
-        specs[m] = texture(samplers[(m * 3) + SAMP_SPECULAR_OFFSET], in_dto.tex_coord);
+        int m_element = (m * TERRAIN_PER_MATERIAL_SAMP_COUNT);
+        albedos[m] = texture(material_textures, vec3(in_dto.tex_coord, m_element + SAMP_ALBEDO_OFFSET));
+        albedos[m] = vec4(pow(albedos[m].rgb, vec3(2.2)), albedos[m].a);
+        // Пока просто примерьте их, позже смешаю и нанесу нормали поверхности.
+        normals[m] = texture(material_textures, vec3(in_dto.tex_coord, m_element + SAMP_NORMAL_OFFSET)).rgb;
 
-        norm = mix(norm, normals[m], in_dto.mat_weights[m]);
-        diff = mix(diff, diffuses[m], in_dto.mat_weights[m]);
-        spec = mix(spec, specs[m], in_dto.mat_weights[m]);
-
-        mat.diffuse_colour = mix(mat.diffuse_colour, instance_ubo.properties.materials[m].diffuse_colour, in_dto.mat_weights[m]);
-        mat.shininess = mix(mat.shininess, instance_ubo.properties.materials[m].shininess, in_dto.mat_weights[m]);
+        vec4 combined = texture(material_textures, vec3(in_dto.tex_coord, m_element + SAMP_COMBINED_OFFSET));
+        metallics[m] = combined.r;
+        roughnesses[m] = combined.g;
+        aos[m] = combined.b;
     }
 
+    // Смешивайте материалы по формуле samp[0] * w[0] + samp[1] * w[1]...
+    vec4 albedo = 
+        albedos[0] * in_dto.mat_weights[0] +
+        albedos[1] * in_dto.mat_weights[1] +
+        albedos[2] * in_dto.mat_weights[2] +
+        albedos[3] * in_dto.mat_weights[3];
 
-    if(in_mode == 0 || in_mode == 1) {
+    // Убедитесь, что альбедо полностью непрозрачно. Прозрачные ландшафты не имеют смысла.
+    albedo.a = 1.0;
+
+    // vec3 n0 = (normals[0] * 2 - 1) * in_dto.mat_weights[0];
+    // vec3 n1 = (normals[1] * 2 - 1) * in_dto.mat_weights[1];
+    // vec3 n2 = (normals[2] * 2 - 1) * in_dto.mat_weights[2];
+    // vec3 n3 = (normals[3] * 2 - 1) * in_dto.mat_weights[3];
+    // normal = normalize(vec3(n0.xy + n1.xy + n2.xy + n3.xy, n0.z));
+    // normal = normal * 0.25 + 0.5;
+
+    normal = 
+        normals[0] * in_dto.mat_weights[0] +
+        normals[1] * in_dto.mat_weights[1] +
+        normals[2] * in_dto.mat_weights[2] +
+        normals[3] * in_dto.mat_weights[3];
+    normal = normalize(normal);
+
+    vec3 local_normal = 2.0 * normal - 1.0;
+    normal = normalize(TBN * local_normal);
+
+    float metallic = metallics[0] * in_dto.mat_weights[0] +
+        metallics[1] * in_dto.mat_weights[1] +
+        metallics[2] * in_dto.mat_weights[2] +
+        metallics[3] * in_dto.mat_weights[3];
+
+    float roughness = roughnesses[0] * in_dto.mat_weights[0] +
+        roughnesses[1] * in_dto.mat_weights[1] +
+        roughnesses[2] * in_dto.mat_weights[2] +
+        roughnesses[3] * in_dto.mat_weights[3];
+    
+    float ao = aos[0] * in_dto.mat_weights[0] +
+        aos[1] * in_dto.mat_weights[1] +
+        aos[2] * in_dto.mat_weights[2] +
+        aos[3] * in_dto.mat_weights[3];
+
+
+    // Генерация значения тени на основе текущей позиции фрагмента относительно карты теней.
+    // В случае использования смещения также учитываются свет и нормаль.
+    vec4 frag_position_view_space = global_ubo.view * vec4(in_dto.frag_position, 1.0f);
+    float depth = abs(frag_position_view_space).z;
+    // Получение индекса каскада из текущей позиции фрагмента.
+    int cascade_index = -1;
+    for(int i = 0; i < MAX_SHADOW_CASCADES; ++i) {
+        if(depth < in_dto.cascade_splits[i]) {
+            cascade_index = i;
+            break;
+        }
+    }
+
+    if(cascade_index == -1) {
+        cascade_index = MAX_SHADOW_CASCADES;
+    }
+
+    float shadow = calculate_shadow(in_dto.light_space_frag_pos[cascade_index], normal, global_ubo.dir_light, cascade_index);
+
+    // Постепенно убирайте карту теней по достижении определённого расстояния.
+    float fade_start = global_ubo.dir_light.shadow_distance;
+    float fade_distance = global_ubo.dir_light.shadow_fade_distance;
+
+    // Конец диапазона затухания.
+    float fade_end = fade_start + fade_distance;
+
+    float zclamp = clamp(length(in_dto.view_position - in_dto.frag_position), fade_start, fade_end);
+    float fade_factor = (fade_end - zclamp) / (fade_end - fade_start + 0.00001); // Avoid divide by 0
+
+    shadow = clamp(shadow + (1.0 - fade_factor), 0.0, 1.0);
+
+    // Рассчитайте коэффициент отражения при нормальном падении; если это диэлектрик (например, пластик), 
+    // используйте базовый коэффициент отражения 0,04, а если это металл, 
+    // используйте цвет альбедо в качестве базового коэффициента отражения (для металлов).
+    vec3 base_reflectivity = vec3(0.04); 
+    base_reflectivity = mix(base_reflectivity, albedo.xyz, metallic);
+
+    if(in_mode == 0 || in_mode == 1 || in_mode == 3) {
         vec3 view_direction = normalize(in_dto.view_position - in_dto.frag_position);
 
-        out_colour = calculate_directional_light(global_ubo.dir_light, norm, view_direction, diff, spec, mat);
+        // Не включайте альбедо в режим 1 (только освещение). Для этого используйте белый цвет, 
+        // умноженный на режим (режим 1 даст белый цвет, режим 0 — черный), 
+        // затем добавьте этот цвет к альбедо и ограничьте его. 
+        // В результате альбедо в режиме 1 будет чистым белым, а в режиме 0 — обычным альбедо, без каких-либо ветвлений.
+        albedo.xyz += (vec3(1.0) * in_mode);         
+        albedo.xyz = clamp(albedo.xyz, vec3(0.0), vec3(1.0));
 
-        for(int i = 0; i < instance_ubo.num_p_lights; ++i) {
-            out_colour += calculate_point_light(instance_ubo.p_lights[i], norm, in_dto.frag_position, view_direction, diff, spec, mat);
+        // Это основано на двунаправленной функции распределения отражательной способности Кука-Торранса (BRDF).
+        // Здесь используется модель микрограней для учета шероховатости и металлических свойств материалов с целью получения физически точного представления отражательной способности материала.
+
+        // Общая отражательная способность.
+        vec3 total_reflectance = vec3(0.0);
+
+        // Яркость направленного света.
+        {
+            directional_light light = global_ubo.dir_light;
+            vec3 light_direction = normalize(-light.direction.xyz);
+            vec3 radiance = calculate_directional_light_radiance(light, view_direction);
+
+            // Только направленный свет должен подвергаться воздействию теней.
+            total_reflectance += (shadow * calculate_reflectance(albedo.xyz, normal, view_direction, light_direction, metallic, roughness, base_reflectivity, radiance));
         }
-        // out_colour += calculate_point_light(global_ubo.p_light_1, normal, in_dto.frag_position, view_direction);
+
+        // Яркость точечного источника света.
+        for(int i = 0; i < instance_ubo.num_p_lights; ++i) {
+            point_light light = instance_ubo.p_lights[i];
+            vec3 light_direction = normalize(light.position.xyz - in_dto.frag_position.xyz);
+            vec3 radiance = calculate_point_light_radiance(light, view_direction, in_dto.frag_position.xyz);
+
+            total_reflectance += calculate_reflectance(albedo.xyz, normal, view_direction, light_direction, metallic, roughness, base_reflectivity, radiance);
+        }
+
+        // Импульс освещенности включает весь рассеянный непрямой свет сцены. Используйте нормаль поверхности для выборки из него.
+        vec3 irradiance = texture(irradiance_texture, normal).rgb;
+
+        // Сочетайте освещенность с альбедо и затенением окружающей среды.
+        // Также добавьте общее накопленное отражение.
+        vec3 ambient = irradiance * albedo.xyz * ao;
+        // Измените общее отражение в соответствии с цветом окружающей среды.
+        vec3 colour = ambient + total_reflectance;
+
+        // Тональное отображение HDR
+        colour = colour / (colour + vec3(1.0));
+        // Гамма-коррекция
+        colour = pow(colour, vec3(1.0 / 2.2));
+
+        if(in_mode == 3) {
+            switch(cascade_index) {
+                case 0:
+                    colour *= vec3(1.0, 0.25, 0.25);
+                    break;
+                case 1:
+                    colour *= vec3(0.25, 1.0, 0.25);
+                    break;
+                case 2:
+                    colour *= vec3(0.25, 0.25, 1.0);
+                    break;
+                case 3:
+                    colour *= vec3(1.0, 1.0, 0.25);
+                    break;
+            }
+        }
+
+        // Убедитесь, что альфа-канал основан на исходном значении альфа-канала альбедо.
+        out_colour = vec4(colour, 1.0);
     } else if(in_mode == 2) {
         out_colour = vec4(abs(normal), 1.0);
     }
 }
 
-vec4 calculate_directional_light(directional_light light, vec3 normal, vec3 view_direction, vec4 diff_samp, vec4 spec_samp, material_phong_properties mat_info) {
-    float diffuse_factor = max(dot(normal, -light.direction.xyz), 0.0);
+vec3 calculate_reflectance(vec3 albedo, vec3 normal, vec3 view_direction, vec3 light_direction, float metallic, float roughness, vec3 base_reflectivity, vec3 radiance) {
+    vec3 halfway = normalize(view_direction + light_direction);
 
-    vec3 half_direction = normalize(view_direction - light.direction.xyz);
-    float specular_factor = pow(max(dot(half_direction, normal), 0.0), mat_info.shininess);
+    // Это основано на двунаправленной функции распределения отражения Кука-Торранса (BRDF).
 
-    vec4 ambient = vec4(vec3(in_dto.ambient * mat_info.diffuse_colour), diff_samp.a);
-    vec4 diffuse = vec4(vec3(light.colour * diffuse_factor), diff_samp.a);
-    vec4 specular = vec4(vec3(light.colour * specular_factor), diff_samp.a);
-    
-    if(in_mode == 0) {
-        diffuse *= diff_samp;
-        ambient *= diff_samp;
-        specular *= spec_samp;
-    }
+    // Нормальное распределение — приблизительно определяет количество микрограней поверхности, 
+    // выровненных по центральному вектору. На это напрямую влияет шероховатость поверхности. 
+    // Чем больше выровненных микрограней, тем блестящая поверхность, чем меньше — тем матовая поверхность/меньше отражения.
+    float roughness_sq = roughness*roughness;
+    float roughness_sq_sq = roughness_sq * roughness_sq;
+    float normal_dot_halfway = max(dot(normal, halfway), 0.0);
+    float normal_dot_halfway_squared = normal_dot_halfway * normal_dot_halfway;
+    float denom = (normal_dot_halfway_squared * (roughness_sq_sq - 1.0) + 1.0);
+    denom = PI * denom * denom;
+    float normal_distribution = (roughness_sq_sq / denom);
 
-    return (ambient + diffuse + specular);
+    // Функция геометрии, которая вычисляет самозатенение на микрогранях (более выраженное на шероховатых поверхностях).
+    float normal_dot_view_direction = max(dot(normal, view_direction), 0.0);
+    // Масштабирование света с помощью скалярного произведения нормали и направления света.
+    float normal_dot_light_direction = max(dot(normal, light_direction), 0.0);
+    float ggx_0 = geometry_schlick_ggx(normal_dot_view_direction, roughness);
+    float ggx_1 = geometry_schlick_ggx(normal_dot_light_direction, roughness);
+    float geometry = ggx_1 * ggx_0;
+
+    // Приближение Френеля-Шлика для эффекта Френеля. Это позволяет получить отношение отражения от поверхности при разных углах. 
+    // Во многих случаях отражательная способность может быть выше при более экстремальных углах.
+    float cos_theta = max(dot(halfway, view_direction), 0.0);
+    vec3 fresnel = base_reflectivity + (1.0 - base_reflectivity) * pow(clamp(1.0 - cos_theta, 0.0, 1.0), 5.0);
+
+    // Возьмите распределение нормалей * геометрию * френелевскую функцию и рассчитайте зеркальное отражение.
+    vec3 numerator = normal_distribution * geometry * fresnel;
+    float denominator = 4.0 * max(dot(normal, view_direction), 0.0) + 0.0001; // Предотвратите деление на ноль.
+    vec3 specular = numerator / denominator;
+
+    // Для сохранения энергии диффузный и зеркальный свет не могут быть больше 1,0 (если только поверхность не излучает свет); 
+    // чтобы сохранить это соотношение, диффузная составляющая должна равняться 1,0 - френелевской функции.
+    vec3 refraction_diffuse = vec3(1.0) - fresnel;
+    // Умножьте диффузное излучение на обратную величину металличности так, чтобы рассеянное освещение было только у неметаллов, 
+    // или линейное смешение, если металл частично присутствует (чистые металлы не имеют рассеянного света).
+    refraction_diffuse *= 1.0 - metallic;	  
+
+    // В итоге получается сияние, которое добавляется к общему изображению, и это отслеживается звонящим.
+    return (refraction_diffuse * albedo / PI + specular) * radiance * normal_dot_light_direction;  
 }
 
-vec4 calculate_point_light(point_light light, vec3 normal, vec3 frag_position, vec3 view_direction, vec4 diff_samp, vec4 spec_samp, material_phong_properties mat_info) {
-    vec3 light_direction =  normalize(light.position.xyz - frag_position);
-    float diff = max(dot(normal, light_direction), 0.0);
-
-    vec3 reflect_direction = reflect(-light_direction, normal);
-    float spec = pow(max(dot(view_direction, reflect_direction), 0.0), mat_info.shininess);
-
-    // Рассчитать затухание или падение света с расстоянием.
-    float distance = length(light.position.xyz - frag_position);
+vec3 calculate_point_light_radiance(point_light light, vec3 view_direction, vec3 frag_position_xyz) {
+    // Яркость каждого источника света определяется на основе затухания точечного источника света.
+    float distance = length(light.position.xyz - frag_position_xyz);
     float attenuation = 1.0 / (light.constant_f + light.linear * distance + light.quadratic * (distance * distance));
+    return light.colour.rgb * attenuation;
+}
 
-    vec4 ambient = in_dto.ambient;
-    vec4 diffuse = light.colour * diff;
-    vec4 specular = light.colour * spec;
-    
-    if(in_mode == 0) {
-        diffuse *= diff_samp;
-        ambient *= diff_samp;
-        specular *= spec_samp;
-    }
-
-    ambient *= attenuation;
-    diffuse *= attenuation;
-    specular *= attenuation;
-    return (ambient + diffuse + specular);
+vec3 calculate_directional_light_radiance(directional_light light, vec3 view_direction) {
+    // Для направленных источников света яркость совпадает с цветом самого источника света.
+    return light.colour.rgb;
 }
