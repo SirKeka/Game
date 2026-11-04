@@ -12,7 +12,7 @@ ifeq ($(OS),Windows_NT)
 	EXTENSION := .exe
 	COMPILER_FLAGS := -std=c++20 -Wall -Werror -Wvla -Werror=vla -Wgnu-folding-constant -Wno-missing-braces -fdeclspec -Wstrict-prototypes
 	INCLUDE_FLAGS := -I$(ASSEMBLY)\src $(ADDL_INC_FLAGS)
-	LINKER_FLAGS := -L$(BUILD_DIR) $(ADDL_LINK_FLAGS)
+	LINKER_FLAGS := -L$(BUILD_DIR) $(ADDL_LINK_FLAGS) -Xlinker /INCREMENTAL
 	DEFINES += -D_CRT_SECURE_NO_WARNINGS
 
 # Make не предлагает рекурсивную функцию подстановочных знаков, а Windows она нужна, поэтому вот она:
@@ -21,7 +21,7 @@ ifeq ($(OS),Windows_NT)
 	
 # .cpp files
 	SRC_FILES := $(call rwildcard,$(ASSEMBLY)/,*.cpp)
-# directories with .hpp files
+# directories with .h files
 	DIRECTORIES := \$(ASSEMBLY)\src $(subst $(DIR),,$(shell dir $(ASSEMBLY)\src /S /AD /B | findstr /i src)) 
 	OBJ_FILES := $(SRC_FILES:%=$(OBJ_DIR)/%.o)
     ifeq ($(PROCESSOR_ARCHITEW6432),AMD64)
@@ -40,12 +40,20 @@ else
         # LINUX
 		BUILD_PLATFORM := linux
 		EXTENSION := 
-		INCLUDE_FLAGS := -I$(ASSEMBLY)\src $(ADDL_INC_FLAGS)
+		# NOTE: -fvisibility=hidden hides all symbols by default, and only those that explicitly say
+		# otherwise are exported (i.e. via KAPI).
+		COMPILER_FLAGS :=-fvisibility=hidden -fpic -Wall -Werror -Wvla -Wno-missing-braces -fdeclspec
+		INCLUDE_FLAGS := -I./$(ASSEMBLY)/src $(ADDL_INC_FLAGS)
+		# NOTE: --no-undefined and --no-allow-shlib-undefined ensure that symbols linking against are resolved.
+		# These are linux-specific, as the default behaviour is the opposite of this, allowing code to compile 
+		# here that would not on other platforms from not being exported (i.e. Windows)
+		# Discovered the solution here for this: https://github.com/ziglang/zig/issues/8180
+		LINKER_FLAGS :=-Wl,--no-undefined,--no-allow-shlib-undefined -L./$(BUILD_DIR) $(ADDL_LINK_FLAGS) -Wl,-rpath,. -lm -ldl
 		LINKER_FLAGS := -L./$(BUILD_DIR) $(ADDL_LINK_FLAGS) -Wl,-rpath,.
 		LINKER_FLAGS := -L./$(BUILD_DIR) $(ENGINE_LINK) -Wl,-rpath,.
 # .cpp files
 		SRC_FILES := $(shell find $(ASSEMBLY) -name *.cpp)
-# directories with .hpp files
+# directories with .h files
 		DIRECTORIES := $(shell find $(ASSEMBLY) -type d)
 		OBJ_FILES := $(SRC_FILES:%=$(OBJ_DIR)/%.o)
     endif
@@ -64,14 +72,16 @@ endif
 # По умолчанию отладка, если не указан релиз.
 ifeq ($(TARGET),release)
 # release
+DEFINES += -DMRELEASE
+COMPILER_FLAGS += -MD -O2
 else
 # debug
 DEFINES += -D_DEBUG
-COMPILER_FLAGS += -g -MD
-LINKER_FLAGS += -g
+COMPILER_FLAGS +=  -g -MD -O0
+LINKER_FLAGS += -g 
 endif
 
-all: scaffold compile link
+all: scaffold compile link gen_compile_flags
 
 .PHONY: scaffold
 scaffold: # создать каталог сборки
