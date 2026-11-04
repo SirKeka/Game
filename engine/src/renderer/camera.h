@@ -32,7 +32,7 @@ public:
 
     /// @brief Получает ссылку положения камеры.
     /// @return Константная ссылка на положение камеры.
-    const FVec3& GetPosition();
+    FVec3 GetPosition() { return position; }
 
     /// @brief Устанавливает указанное положение камеры.
     /// @param position Положение, которое необходимо установить.
@@ -40,7 +40,7 @@ public:
 
     /// @brief Получает ссылку на вращение камеры в углах Эйлера.
     /// @return Константная ссылка на вращение камеры в углах Эйлера.
-    const FVec3& GetRotationEuler();
+    FVec3 GetRotationEuler() { return EulerRotation; }
 
     /// @brief Устанавливает поворот камеры в углах Эйлера.
     /// @param rotation Вращение в углах Эйлера, которое будет установлено.
@@ -52,23 +52,23 @@ public:
 
     /// @brief Возвращает копию прямого вектора камеры.
     /// @return Копия прямого вектора камеры.
-    FVec3 Forward();
+    FVec3 Forward() { return GetView().Forward(); }
 
     /// @brief Возвращает копию обратного вектора камеры.
     /// @return Копия обратного вектора камеры.
-    FVec3 Backward();
+    FVec3 Backward() { return GetView().Backward(); }
 
     /// @brief Возвращает копию левого вектора камеры.
     /// @return Копия левого вектора камеры.
-    FVec3 Left();
+    FVec3 Left() { return GetView().Left(); }
 
     /// @brief Возвращает копию правого вектора камеры.
     /// @return Копия правого вектора камеры.
-    FVec3 Right();
+    FVec3 Right() { return GetView().Right(); }
 
     /// @brief Возвращает копию верхнего вектора камеры
     /// @return Копия верхнего вектора камеры
-    FVec3 Up();
+    FVec3 Up() { return GetView().Up(); }
 
     /// @brief Перемещает камеру вперед на указанную величину.
     /// @param amount Величина перемещения.
