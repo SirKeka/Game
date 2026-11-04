@@ -19,7 +19,7 @@ namespace VulkanShadersUtil
 
         // Чтение ресурса.
         BinaryResource BinRes;
-        if (!ResourceSystem::Load(FileName, eResource::Type::Binary, nullptr, BinRes)) {
+        if (!ResourceSystem::Load(FileName, nullptr, BinRes)) {
             MERROR("Невозможно прочитать шейдерный модуль: %s.", FileName);
             return false;
         }
@@ -31,7 +31,7 @@ namespace VulkanShadersUtil
         ShaderStages[StageIndex].CreateInfo.pCode = reinterpret_cast<u32*>(BinRes.data.Data());
 
         VK_CHECK(vkCreateShaderModule(
-            VkAPI->Device.LogicalDevice,
+            VkAPI->device.LogicalDevice,
             &ShaderStages[StageIndex].CreateInfo,
             VkAPI->allocator,
             &ShaderStages[StageIndex].handle));
