@@ -124,9 +124,9 @@ namespace Math
     {
         // Создайте новые массивы для размещения коллекции.
         // auto vertices = reinterpret_cast<Vertex3D*>(geometry.vertices);
-        auto indices = reinterpret_cast<u32*>(geometry.indices);
+        auto indices = (u32*)geometry.indices;
         // u64 VertexSize = geometry.VertexCount * geometry.VertexSize;
-        DArray<Vertex3D> vertices { geometry.VertexCount, 0, false, reinterpret_cast<Vertex3D*>(geometry.vertices) };
+        DArray<Vertex3D> vertices { geometry.VertexCount, 0, (Vertex3D*)geometry.vertices };
         DArray<Vertex3D> UniqueVerts { geometry.VertexCount }; // auto UniqueVerts = reinterpret_cast<Vertex3D*>(MemorySystem::Allocate(VertexSize, Memory::Array, true));
         u64 UniqueVertexCount = 0;
 
@@ -217,7 +217,7 @@ namespace Math
             f32 deltaV2 = vertices[i2].texcoord.y - vertices[i0].texcoord.y;
     
             f32 dividend = (deltaU1 * deltaV2 - deltaU2 * deltaV1);
-            f32 fc = 1.0f / dividend;
+            f32 fc = 1.F / dividend;
     
             FVec3 tangent = FVec3((fc * (deltaV2 * edge1.x - deltaV1 * edge2.x)),
                                   (fc * (deltaV2 * edge1.y - deltaV1 * edge2.y)),
@@ -234,6 +234,41 @@ namespace Math
             vertices[i1].tangent = t4;
             vertices[i2].tangent = t4;
         }
+    }
+
+    GeometryConfig Geometry::GenerateQuad2D(const char *name, f32 width, f32 height, f32 TxMin, f32 TxMax, f32 TyMin, f32 TyMax)
+    {
+        GeometryConfig OutConfig {
+            .VertexSize = sizeof(Vertex2D),
+            .VertexCount = 4,
+            .vertices = MemorySystem::Allocate(OutConfig.VertexSize * OutConfig.VertexCount, Memory::Renderer, true),
+            .IndexSize = sizeof(u32),
+            .IndexCount = 6,
+            .indices = (u32*)MemorySystem::Allocate(OutConfig.IndexSize * OutConfig.IndexCount, Memory::Renderer)
+        };
+        MString::Copy(OutConfig.name, name, GEOMETRY_NAME_MAX_LENGTH);
+
+        auto uiverts = (Vertex2D*)OutConfig.vertices;
+        uiverts[0].texcoord.x = TxMin;  //
+        uiverts[0].texcoord.y = TyMin;  // 2    1
+
+        uiverts[1].position.y = height;
+        uiverts[1].position.x = width;
+        uiverts[1].texcoord.x = TxMax;
+        uiverts[1].texcoord.y = TyMax;
+
+        uiverts[2].position.y = height;
+        uiverts[2].texcoord.x = TxMin;
+        uiverts[2].texcoord.y = TyMax;
+
+        uiverts[3].position.x = width;
+        uiverts[3].texcoord.x = TxMax;
+        uiverts[3].texcoord.y = TyMin;
+
+        // Indices - counter-clockwise
+        u32 uiindices[6] = {2, 1, 0, 3, 0, 1};
+        MemorySystem::CopyMem(OutConfig.indices, uiindices, OutConfig.IndexSize * OutConfig.IndexCount);
+        return OutConfig;
     }
 
     bool RaycastAABB(Extents3D bbExtents, const Ray &ray, FVec3 &OutPoint)
@@ -282,7 +317,7 @@ namespace Math
         }
 
         // Проверить, действительно ли последний кандидат находится внутри прямоугольника.
-        if (max_t.elements[WhichPlane] < 0.0f) {
+        if (max_t.elements[WhichPlane] < 0.F) {
             return false;
         }
         for (u32 i = 0; i < 3; ++i) {
@@ -326,8 +361,8 @@ namespace Math
 
     bool RaycastPlane(const Ray &ray, const Plane &plane, FVec3 &OutPoint, f32 &OutDistance)
     {
-        f32 NormalDir = Dot(ray.direction, plane.GetNormal());
-        f32 PointNormal = Dot(ray.origin, plane.GetNormal());
+        f32 NormalDir = Dot(ray.direction, plane.Normal());
+        f32 PointNormal = Dot(ray.origin, plane.Normal());
 
         // Если луч и нормаль плоскости направлены в одну сторону, попадания быть не может.
         if (NormalDir >= 0.F) {
@@ -390,4 +425,10 @@ constexpr Ray::Ray(const FVec2 &ScreenPosition, const Rect2D &ViewportRect, cons
     // Преобразовать в мировые координаты;
     this->direction = FVec3(view * RayEye);
     direction.Normalize();
+}
+
+void GenerateUvsFromImageCoords(u32 ImgWidth, u32 ImgHeight, u32 px_x, u32 px_y, f32 &OutTx, f32 &OutTy)
+{
+    OutTx = (f32)px_x / ImgWidth;
+    OutTy = (f32)px_y / ImgHeight;
 }
