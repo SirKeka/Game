@@ -1,5 +1,6 @@
 #include "material_system.h"
-
+#include "core/event.h"
+#include "core/systems_manager.h"
 #include "systems/texture_system.h"
 #include "systems/resource_system.h"
 #include "systems/shader_system.h"
@@ -7,233 +8,163 @@
 #include "renderer/rendering_system.h"
 
 #include "memory/linear_allocator.h"
-#include <new>
 
-struct MaterialReference {
-    u64 ReferenceCount;
-    u32 handle;
-    bool AutoRelease;
-    constexpr MaterialReference() : ReferenceCount(), handle(), AutoRelease(false) {}
-    constexpr MaterialReference(u64 ReferenceCount, u32 handle, bool AutoRelease) 
-    : ReferenceCount(ReferenceCount), handle(handle), AutoRelease(AutoRelease) {}
-};
+#ifndef PBR_MAP_COUNT
+#define PBR_MAP_COUNT 5
+#endif
 
-struct MaterialShaderUniformLocations {
-    u16 projection      {INVALID::U16ID};
-    u16 view            {INVALID::U16ID};
-    u16 AmbientColour   {INVALID::U16ID};
-    u16 ViewPosition    {INVALID::U16ID};
-    u16 properties      {INVALID::U16ID};
-    u16 DiffuseTexture  {INVALID::U16ID};
-    u16 SpecularTexture {INVALID::U16ID};
-    u16 NormalTexture   {INVALID::U16ID};
-    u16 model           {INVALID::U16ID};
-    u16 RenderMode      {INVALID::U16ID};
-    u16 DirLight        {INVALID::U16ID};
-    u16 PointLights     {INVALID::U16ID};
-    u16 NumPointLights  {INVALID::U16ID};
-};
+// Сэмплеры
+constexpr u32 SAMP_ALBEDO         = 0;
+constexpr u32 SAMP_NORMAL         = 1;
+constexpr u32 SAMP_COMBINED       = 2;
+constexpr u32 SAMP_SHADOW_MAP     = 3;
+constexpr u32 SAMP_IRRADIANCE_MAP = 4;
 
-struct UiShaderUniformLocations {
-    u16 projection      {INVALID::U16ID};
-    u16 view            {INVALID::U16ID};
-    u16 properties      {INVALID::U16ID};
-    u16 DiffuseTexture  {INVALID::U16ID};
-    u16 model           {INVALID::U16ID};
-};
+// Количество текстур для PBR-материала
+#define PBR_MATERIAL_TEXTURE_COUNT 3
 
-struct TerrainShaderLocations {
-    bool loaded                  {false};
-    u16 projection      {INVALID::U16ID};
-    u16 view            {INVALID::U16ID};
-    u16 AmbientColour   {INVALID::U16ID};
-    u16 ViewPosition    {INVALID::U16ID};
-    u16 model           {INVALID::U16ID};
-    u16 RenderMode      {INVALID::U16ID};
-    u16 DirLight        {INVALID::U16ID};
-    u16 PointLights     {INVALID::U16ID};
-    u16 NumPointLights  {INVALID::U16ID};
+// Материалы местности теперь загружаются в один общий массив текстур.
+constexpr u32 SAMP_TERRAIN_MATERIAL_ARRAY_MAP = 0;
+constexpr u32 SAMP_TERRAIN_SHADOW_MAP = 1 + SAMP_TERRAIN_MATERIAL_ARRAY_MAP;
+constexpr u32 SAMP_TERRAIN_IRRADIANCE_MAP = 1 + SAMP_TERRAIN_SHADOW_MAP;
+// 1 массивная карта для материалов рельефа, 1 для карты теней, 1 для карты освещённости
+constexpr u32 TERRAIN_SAMP_COUNT = 3;
 
-    u16 properties      {INVALID::U16ID};
-    u16 samplers[TERRAIN_MAX_MATERIAL_COUNT * 3]{INVALID::U16ID, INVALID::U16ID, INVALID::U16ID};  // diffuse, spec, normal.
-};
+#define MAX_TERRAIN_MATERIAL_COUNT 4
 
-struct sMaterialSystem
-{
-    // Конфигурация материала---------------------------------------------------------------------------------
-    u32 MaxMaterialCount;                                   // Максимальное количество загружаемых материалов.
-    //--------------------------------------------------------------------------------------------------------
-    Material DefaultMaterial;                               // Стандартный материал.
-    Material DefaultUiMaterial;                             // Стандартный материал пользовательского интерфейса.
-    Material DefaultTerrainMaterial;                        // Стандартный материал ландшафта.
-    Material* RegisteredMaterials;                          // Массив зарегистрированных материалов.
-
-    HashTable<MaterialReference> RegisteredMaterialTable;   // Хэш-таблица для поиска материалов.
-
-    MaterialShaderUniformLocations MaterialLocations;       // Известные местоположения шейдера материала.
-    u32 MaterialShaderID;
-
-    UiShaderUniformLocations UiLocations;
-    u32 UiShaderID;
-
-    // Известные места для шейдера ландшафта.
-    TerrainShaderLocations TerrainLocations;
-    u32 TerrainShaderID;
-
-    /// @brief Инициализирует систему материалов при создании объекта.
-    constexpr sMaterialSystem() : MaxMaterialCount(), DefaultMaterial(), RegisteredMaterials(nullptr), RegisteredMaterialTable(), MaterialLocations(), MaterialShaderID(), UiLocations(), UiShaderID() {}
-    sMaterialSystem(u32 MaxMaterialCount, Material* RegisteredMaterials, MaterialReference* HashTableBlock);
-    ~sMaterialSystem();
-};
-
-static sMaterialSystem* state = nullptr;
-
-static bool CreateDefaultMaterial();
-static bool CreateDefaultUiMaterial();
-static bool CreateDefaultTerrainMaterial();
-static bool LoadMaterial(const Material::Config& config, Material* m);
 static void DestroyMaterial(Material* material);
 static bool AssignMap(TextureMap& map, const Material::Map& config, const char* MaterialName, Texture* DefaultTex);
 
-sMaterialSystem::sMaterialSystem(u32 MaxMaterialCount, Material* RegisteredMaterials, MaterialReference* HashTableBlock) 
+MaterialSystem::MaterialSystem(u32 MaxMaterialCount, Material* RegisteredMaterials, Reference* HashTableBlock) 
 : 
-MaxMaterialCount(MaxMaterialCount),
-// DefaultMaterial(), 
 RegisteredMaterials(new(RegisteredMaterials) Material[MaxMaterialCount]()),
-RegisteredMaterialTable(MaxMaterialCount, false, HashTableBlock, true, MaterialReference(0, INVALID::ID, true)), 
+IrradianceCubeTexture(TextureSystem::GetDefaultTexture(Texture::Cube)), // Возьмите текстуру кубической карты по умолчанию в качестве текстуры освещенности.
+ShadowTexture(), 
+MaterialShader(ShaderSystem::GetShader("Shader.PBRMaterial")),
+TerrainShader(ShaderSystem::GetShader("Shader.Builtin.Terrain")),
+RegisteredMaterialTable(MaxMaterialCount, false, HashTableBlock, true, Reference(0, INVALID::ID, true)), 
 MaterialLocations(),
-MaterialShaderID(INVALID::ID), 
-UiLocations(),
-UiShaderID(INVALID::ID)
+MaxMaterialCount(MaxMaterialCount),
+MaterialCount(),
+MaterialShaderID(INVALID::ID),
+TerrainShaderID(INVALID::ID), 
+DirectionalLightSpace(Matrix4D::MakeIdentity(), Matrix4D::MakeIdentity(), Matrix4D::MakeIdentity(), Matrix4D::MakeIdentity())
 {}
 
-sMaterialSystem::~sMaterialSystem()
+MaterialSystem* MaterialSystem::Initialize(u64& MemoryRequirement, void* memory, MaterialSystemConfig config)
 {
-    // Сделать недействительными все материалы в массиве.
-    for (u32 i = 0; i < MaxMaterialCount; ++i) { 
-        if (state->RegisteredMaterials[i].id != INVALID::ID) {
-            MTRACE("id%u, generation%u, InternalId%u, %u", RegisteredMaterials[i].id, RegisteredMaterials[i].generation, RegisteredMaterials[i].InternalId, i);
-            DestroyMaterial(&state->RegisteredMaterials[i]);
-        }
-    }
-
-    // Уничтожьте материал по умолчанию.
-    DestroyMaterial(&state->DefaultMaterial);
-    DestroyMaterial(&state->DefaultUiMaterial);
-    DestroyMaterial(&state->DefaultTerrainMaterial);
-}
-
-bool MaterialSystem::Initialize(u64& MemoryRequirement, void* memory, void* config)
-{
-    auto pConfig = reinterpret_cast<MaterialSystemConfig*>(config);
-    if (pConfig->MaxMaterialCount == 0) {
+    if (config.MaxMaterialCount == 0) {
         MFATAL("MaterialSystem::Initialize — MaxMaterialCount должен быть > 0.");
-        return false;
+        return nullptr;
     }
 
     // Блок памяти будет содержать структуру состояния, затем блок массива, затем блок хеш-таблицы.
-    u64 StructRequirement = sizeof(sMaterialSystem);
-    u64 ArrayRequirement = sizeof(Material) * pConfig->MaxMaterialCount;
-    u64 HashtableRequirement = sizeof(MaterialReference) * pConfig->MaxMaterialCount;
+    u64 StructRequirement = sizeof(MaterialSystem);
+    u64 ArrayRequirement = sizeof(Material) * config.MaxMaterialCount;
+    u64 HashtableRequirement = sizeof(Reference) * config.MaxMaterialCount;
     MemoryRequirement = StructRequirement + ArrayRequirement + HashtableRequirement;
 
     if (!memory) {
-        return true;
+        return nullptr;
     }
 
     if (!state) {
-        u8* ptrMatSys = reinterpret_cast<u8*>(memory);
-        Material* RegisteredMaterials = reinterpret_cast<Material*>(ptrMatSys + StructRequirement);
-        MaterialReference* HashTableBlock = reinterpret_cast<MaterialReference*>(RegisteredMaterials + pConfig->MaxMaterialCount);
-        state = new(ptrMatSys) sMaterialSystem(pConfig->MaxMaterialCount, RegisteredMaterials, HashTableBlock);
-    }
-
-    if (!CreateDefaultMaterial()) {
-        MFATAL("Не удалось создать материал по умолчанию. Приложение не может быть продолжено.");
-        return false;
-    } 
-
-    if (!CreateDefaultUiMaterial()) {
-        MFATAL("Не удалось создать материал пользовательского интерфейса по умолчанию. Приложение не может продолжать работу.");
-        return false;
-    }
-
-    if (!CreateDefaultTerrainMaterial()) {
-        MFATAL("Не удалось создать материал ландшафта по умолчанию. Приложение не может продолжать работу.");
-        return false;
+        u8* ptrMatSys = (u8*)memory;
+        Material* RegisteredMaterials = (Material*)(ptrMatSys + StructRequirement);
+        Reference* HashTableBlock = (Reference*)(RegisteredMaterials + config.MaxMaterialCount);
+        state = new(ptrMatSys) MaterialSystem(config.MaxMaterialCount, RegisteredMaterials, HashTableBlock);
     }
 
     // Получите единые индексы.
     // Сохраните местоположения известных типов для быстрого поиска.
-    auto shader = ShaderSystem::GetShader("Shader.Builtin.Material"); 
-    state->MaterialShaderID                  = shader->id;
-    state->MaterialLocations.projection      = ShaderSystem::UniformIndex(shader,       "projection");
-    state->MaterialLocations.view            = ShaderSystem::UniformIndex(shader,             "view");
-    state->MaterialLocations.AmbientColour   = ShaderSystem::UniformIndex(shader,   "ambient_colour");
-    state->MaterialLocations.ViewPosition    = ShaderSystem::UniformIndex(shader,    "view_position");
-    state->MaterialLocations.properties      = ShaderSystem::UniformIndex(shader,       "properties");
-    state->MaterialLocations.DiffuseTexture  = ShaderSystem::UniformIndex(shader,  "diffuse_texture");
-    state->MaterialLocations.SpecularTexture = ShaderSystem::UniformIndex(shader, "specular_texture");
-    state->MaterialLocations.NormalTexture   = ShaderSystem::UniformIndex(shader,   "normal_texture");
+    state->MaterialShaderID                  = state->MaterialShader->id;
+    state->MaterialLocations.projection      = state->MaterialShader->UniformLocation(       "projection");
+    state->MaterialLocations.view            = state->MaterialShader->UniformLocation(             "view");
+    state->MaterialLocations.CascadeSplits   = state->MaterialShader->UniformLocation(   "cascade_splits");
+    state->MaterialLocations.ViewPosition    = state->MaterialShader->UniformLocation(    "view_position");
+    state->MaterialLocations.properties      = state->MaterialShader->UniformLocation(       "properties");
+    state->MaterialLocations.IblCubeTexture  = state->MaterialShader->UniformLocation( "ibl_cube_texture");
+    state->MaterialLocations.MaterialTexures = state->MaterialShader->UniformLocation("material_textures");
+    state->MaterialLocations.ShadowTextures  = state->MaterialShader->UniformLocation(  "shadow_textures");
+    state->MaterialLocations.LightSpace0     = state->MaterialShader->UniformLocation(    "light_space_0");
+    state->MaterialLocations.LightSpace1     = state->MaterialShader->UniformLocation(    "light_space_1");
+    state->MaterialLocations.LightSpace2     = state->MaterialShader->UniformLocation(    "light_space_2");
+    state->MaterialLocations.LightSpace3     = state->MaterialShader->UniformLocation(    "light_space_3");
+    state->MaterialLocations.model           = state->MaterialShader->UniformLocation(            "model");
+    state->MaterialLocations.RenderMode      = state->MaterialShader->UniformLocation(             "mode");
+    state->MaterialLocations.UsPcf           = state->MaterialShader->UniformLocation(          "use_pcf");
+    state->MaterialLocations.bias            = state->MaterialShader->UniformLocation(             "bias");
+    state->MaterialLocations.DirLight        = state->MaterialShader->UniformLocation(        "dir_light");
+    state->MaterialLocations.PointLights     = state->MaterialShader->UniformLocation(         "p_lights");
+    state->MaterialLocations.NumPointLights  = state->MaterialShader->UniformLocation(     "num_p_lights");
 
-    state->MaterialLocations.model           = ShaderSystem::UniformIndex(shader,            "model");
-    state->MaterialLocations.RenderMode      = ShaderSystem::UniformIndex(shader,             "mode");
-    state->MaterialLocations.DirLight        = ShaderSystem::UniformIndex(shader,        "dir_light");
-    state->MaterialLocations.PointLights     = ShaderSystem::UniformIndex(shader,         "p_lights");
-    state->MaterialLocations.NumPointLights  = ShaderSystem::UniformIndex(shader,     "num_p_lights");
-
-    shader = ShaderSystem::GetShader("Shader.Builtin.UI");
-    state->UiShaderID = shader->id;
-    state->UiLocations.projection           = ShaderSystem::UniformIndex(shader,      "projection");
-    state->UiLocations.view                 = ShaderSystem::UniformIndex(shader,            "view");
-    state->UiLocations.properties           = ShaderSystem::UniformIndex(shader,      "properties");
-    state->UiLocations.DiffuseTexture       = ShaderSystem::UniformIndex(shader, "diffuse_texture");
-    state->UiLocations.model                = ShaderSystem::UniformIndex(shader,           "model");
+    // state->UiShaderID = shader->id;
+    // state->UiLocations.projection           = shader->UniformLocation(      "projection");
+    // state->UiLocations.view                 = shader->UniformLocation(            "view");
+    // state->UiLocations.properties           = shader->UniformLocation(      "properties");
+    // state->UiLocations.DiffuseTexture       = shader->UniformLocation( "diffuse_texture");
+    // state->UiLocations.model                = shader->UniformLocation(           "model");
     
-    shader = ShaderSystem::GetShader("Shader.Builtin.Terrain");
-    state->TerrainShaderID = shader->id;
-    state->TerrainLocations.projection      = ShaderSystem::UniformIndex(shader,     "projection");
-    state->TerrainLocations.view            = ShaderSystem::UniformIndex(shader,           "view");
-    state->TerrainLocations.AmbientColour   = ShaderSystem::UniformIndex(shader, "ambient_colour");
-    state->TerrainLocations.ViewPosition    = ShaderSystem::UniformIndex(shader,  "view_position");
-    state->TerrainLocations.model           = ShaderSystem::UniformIndex(shader,          "model");
-    state->TerrainLocations.RenderMode      = ShaderSystem::UniformIndex(shader,           "mode");
-    state->TerrainLocations.DirLight        = ShaderSystem::UniformIndex(shader,      "dir_light");
-    state->TerrainLocations.PointLights     = ShaderSystem::UniformIndex(shader,       "p_lights");
-    state->TerrainLocations.NumPointLights  = ShaderSystem::UniformIndex(shader,   "num_p_lights");
+    state->TerrainShaderID = state->TerrainShader->id;
+    // state->TerrainLocations.loaded          = ;
+    state->TerrainLocations.projection      = state->TerrainShader->UniformLocation(       "projection");
+    state->TerrainLocations.view            = state->TerrainShader->UniformLocation(             "view");
+    state->TerrainLocations.CascadeSplits   = state->TerrainShader->UniformLocation(   "cascade_splits");
+    state->TerrainLocations.ViewPosition    = state->TerrainShader->UniformLocation(    "view_position");
+    state->TerrainLocations.model           = state->TerrainShader->UniformLocation(            "model");
+    state->TerrainLocations.RenderMode      = state->TerrainShader->UniformLocation(             "mode");
+    state->TerrainLocations.DirLight        = state->TerrainShader->UniformLocation(        "dir_light");
+    state->TerrainLocations.PointLights     = state->TerrainShader->UniformLocation(         "p_lights");
+    state->TerrainLocations.NumPointLights  = state->TerrainShader->UniformLocation(     "num_p_lights");
+    state->TerrainLocations.properties      = state->TerrainShader->UniformLocation(       "properties");
+    state->TerrainLocations.IblCubeTexture  = state->TerrainShader->UniformLocation( "ibl_cube_texture");
+    state->TerrainLocations.ShadowTextures  = state->TerrainShader->UniformLocation(  "shadow_textures");
+    state->TerrainLocations.LightSpace0     = state->TerrainShader->UniformLocation(    "light_space_0");
+    state->TerrainLocations.LightSpace1     = state->TerrainShader->UniformLocation(    "light_space_1");
+    state->TerrainLocations.LightSpace2     = state->TerrainShader->UniformLocation(    "light_space_2");
+    state->TerrainLocations.LightSpace3     = state->TerrainShader->UniformLocation(    "light_space_3");
+    state->TerrainLocations.MaterialTexures = state->TerrainShader->UniformLocation("material_textures");
+    state->TerrainLocations.UsePcf          = state->TerrainShader->UniformLocation(          "use_pcf");
+    state->TerrainLocations.bias            = state->TerrainShader->UniformLocation(             "bias");
 
-    state->TerrainLocations.properties      = ShaderSystem::UniformIndex(shader,     "properties");
+    // Добавьте mvar для отслеживания включения/выключения фильтрации PCF.
+    MVar::CreateInt("use_pcf", 1);  // Включено по умолчанию.
+    MVar::GetInt("use_pcf", state->UsePCF);
 
-    state->TerrainLocations.samplers[0]     = ShaderSystem::UniformIndex(shader,  "diffuse_texture_0");
-    state->TerrainLocations.samplers[1]     = ShaderSystem::UniformIndex(shader, "specular_texture_0");
-    state->TerrainLocations.samplers[2]     = ShaderSystem::UniformIndex(shader,   "normal_texture_0");
+    EventSystem::Register(EventSystem::MVarChanged, nullptr, OnEvent);
 
-    state->TerrainLocations.samplers[3]     = ShaderSystem::UniformIndex(shader,  "diffuse_texture_1");
-    state->TerrainLocations.samplers[4]     = ShaderSystem::UniformIndex(shader, "specular_texture_1");
-    state->TerrainLocations.samplers[5]     = ShaderSystem::UniformIndex(shader,   "normal_texture_1");
+    if (!CreateDefaultMaterial()) {
+        MFATAL("Не удалось создать материал по умолчанию. Приложение не может быть продолжено.");
+        return nullptr;
+    } 
 
-    state->TerrainLocations.samplers[6]     = ShaderSystem::UniformIndex(shader,  "diffuse_texture_2");
-    state->TerrainLocations.samplers[7]     = ShaderSystem::UniformIndex(shader, "specular_texture_2");
-    state->TerrainLocations.samplers[8]     = ShaderSystem::UniformIndex(shader,   "normal_texture_2");
+    if (!CreateDefaultTerrainMaterial()) {
+        MFATAL("Не удалось создать материал ландшафта по умолчанию. Приложение не может продолжать работу.");
+        return nullptr;
+    }
 
-    state->TerrainLocations.samplers[9]     = ShaderSystem::UniformIndex(shader,  "diffuse_texture_3");
-    state->TerrainLocations.samplers[10]    = ShaderSystem::UniformIndex(shader, "specular_texture_3");
-    state->TerrainLocations.samplers[11]    = ShaderSystem::UniformIndex(shader,   "normal_texture_3");
-
-    return true;
+    return state;
 }
 
 void MaterialSystem::Shutdown()
 {
-    if (state) {
-        state->~sMaterialSystem(); // delete state;
-        state = nullptr;
-    }
+    // Отменить все материалы в массиве.
+        for (u32 i = 0; i < MaxMaterialCount; ++i) {
+            if (RegisteredMaterials[i].id != INVALID::ID) {
+                DestroyMaterial(&RegisteredMaterials[i]);
+            }
+        }
+
+        EventSystem::Unregister(EventSystem::MVarChanged, nullptr, OnEvent);
+
+        // Удалить материал по умолчанию.
+        DestroyMaterial(&DefaultMaterial);
+        DestroyMaterial(&DefaultTerrainMaterial);
 }
 
-static Material* AcquireReference(const char* name, bool AutoRelease, bool& NeedsCreation)
+Material* MaterialSystem::AcquireReference(const char* name, bool AutoRelease, bool& NeedsCreation)
 {
-    MaterialReference ref;
+    Reference ref;
     if (state && state->RegisteredMaterialTable.Get(name, &ref)) {
         // Это можно изменить только при первой загрузке материала.
         if (ref.ReferenceCount == 0) {
@@ -281,27 +212,40 @@ static Material* AcquireReference(const char* name, bool AutoRelease, bool& Need
 
 Material *MaterialSystem::Acquire(const char* name) 
 {
-    // Загрузить конфигурацию материала из ресурса;
-    MaterialResource materialResource;
-    if (!ResourceSystem::Load(name, eResource::Material, nullptr, materialResource)) {
-        MERROR("Не удалось загрузить материальный ресурс, возвращено nullptr.");
-        return nullptr;
+    bool condition = false;
+    Reference ref;
+    if (state->RegisteredMaterialTable.Get(name, &ref)) {
+        condition = ref.handle != INVALID::ID;
     }
 
+    // Загрузить конфигурацию материала из ресурса при условии, что такого материала еще не сушествует;
+    Material* material = nullptr;
+    MaterialResource materialResource;
+    if (condition) {
+        materialResource.data.name = name;
+    } else {
+        if (!ResourceSystem::Load(name, nullptr, materialResource)) {
+            MERROR("Не удалось загрузить материальный ресурс, возвращено nullptr.");
+            return nullptr;
+        }
+    }
+    
     // Теперь получите из загруженной конфигурации.
-    auto material = Acquire(materialResource.data);
+    material = Acquire(materialResource.data);
 
     // Очистить
     // ResourceSystem::Unload(materialResource);
 
     if (!material) {
         MERROR("Не удалось загрузить материальный ресурс, возвращено nullptr.");
+    } else {
+        state->MaterialCount++;
     }
 
     return material;
 }
 
-Material *MaterialSystem::Acquire(const Material::Config &config)
+Material *MaterialSystem::Acquire(const MaterialConfig &config)
 {
     // Верните материал по умолчанию.
     if (config.name.Comparei(DEFAULT_MATERIAL_NAME)) {
@@ -323,7 +267,7 @@ Material *MaterialSystem::Acquire(const Material::Config &config)
 
     if (NeedsCreation) {
         // Создайте новый материал.
-        if (!LoadMaterial(config, material)) {
+        if (!state->LoadMaterial(config, material)) {
             MERROR("Не удалось загрузить материал '%s'.", config.name.c_str());
             return nullptr;
         }
@@ -338,7 +282,7 @@ Material *MaterialSystem::Acquire(const Material::Config &config)
     return material;
 }
 
-Material* MaterialSystem::Acquire(const char* MaterialName, u32 MaterialCount, const char** MaterialNames, bool AutoRelease)
+Material* MaterialSystem::Acquire(const char* MaterialName, u32 MaterialCount, const MString* MaterialNames, bool AutoRelease)
 {
     // Верните материал ландшафта по умолчанию.
     if (MString::Equali(MaterialName, DEFAULT_TERRAIN_MATERIAL_NAME)) {
@@ -346,106 +290,149 @@ Material* MaterialSystem::Acquire(const char* MaterialName, u32 MaterialCount, c
     }
 
     bool NeedsCreation = false;
-    auto material = AcquireReference(MaterialName, AutoRelease, NeedsCreation);
+    Material* material = AcquireReference(MaterialName, AutoRelease, NeedsCreation);
     if (!material) {
         MERROR("Не удалось получить материал ландшафта '%s'", MaterialName);
         return nullptr;
     }
 
     if (NeedsCreation) {
-        // Получите все материалы по имени;
-        auto materials = reinterpret_cast<Material**>(MemorySystem::Allocate(sizeof(Material*) * MaterialCount, Memory::Array));
+        // Соберите названия материалов.
+        MString* TextureNames = AllocateTemp<MString>(sizeof(MString) * MaterialCount * PBR_MATERIAL_TEXTURE_COUNT);
+        MaterialResource mResource;
         for (u32 i = 0; i < MaterialCount; ++i) {
-            materials[i] = Acquire(MaterialNames[i]);
+            // Загрузить конфигурацию материала из ресурса;
+            if (!ResourceSystem::Load(MaterialNames[i].c_str(), nullptr, mResource)) {
+                MERROR("Не удалось загрузить ресурс материала, возвращается nullptr.");
+                return nullptr;
+            }
+
+            MaterialConfig& mConfig = mResource.data;
+            // ПРИМЕЧАНИЕ: Пока что для ландшафтов требуются материалы PBR.
+            if (mConfig.type != Material::PBR) {
+                MERROR("Материалы для ландшафта должны быть PBR-материалами.");
+                return nullptr;
+            }
+
+            // Извлеките названия карт.
+            for (u32 j = 0; j < PBR_MATERIAL_TEXTURE_COUNT; ++j) {
+                u32 index = (i * PBR_MATERIAL_TEXTURE_COUNT) + j;
+                TextureNames[index] = (MString&&)mConfig.maps[j].TextureName;
+            }
+
+            // Очистите ресурс.
+            mConfig.maps.Clear();
+            mConfig.properties.Clear();
         }
+        ResourceSystem::Unload(mResource);
 
         // Создайте новый материал.
-        // ПРИМЕЧАНИЕ: load_material, зависящий от ландшафта
+        #pragma region ПРИМЕЧАНИЕ: load_material, зависящий от ландшафта
         MemorySystem::ZeroMem(material, sizeof(Material));
         MString::Copy(material->name, MaterialName, MATERIAL_NAME_MAX_LENGTH);
 
-        auto shader = ShaderSystem::GetShader("Shader.Builtin.Terrain");
-        material->ShaderID = shader->id;
+        Shader* SelectedShader = state->TerrainShader;
+        material->ShaderID = SelectedShader->id;
         material->type = Material::Type::Terrain;
 
         // Выделите память для карт и свойств.
         material->PropertyStructSize = sizeof(Material::TerrainProperties);
-        auto properties = reinterpret_cast<Material::TerrainProperties*>(MemorySystem::Allocate(material->PropertyStructSize, Memory::MaterialInstance, true));
+        auto properties = (Material::TerrainProperties*)MemorySystem::Allocate(material->PropertyStructSize, Memory::MaterialInstance, true);
         material->properties = properties;
         properties->NumMaterials = MaterialCount;
 
-        // 3 карты на материал. Выделите достаточно слотов для всех материалов.
-        // u32 map_count = material_count * 3;
-        u32 MaxMapCount = TERRAIN_MAX_MATERIAL_COUNT * 3;
-        material->maps.Resize(MaxMapCount);
+        // 3 карты на материал для PBR. Выделите достаточно слотов для всех материалов. Еще одна карта для карты освещенности.
+        material->maps.Resize(TERRAIN_SAMP_COUNT);
 
-        // Имена карт и резервные текстуры по умолчанию.
-        const char* MapNames[3] = {"diffuse", "specular", "normal"};
-        Texture* DefaultTextures[3] = {
-            TextureSystem::GetDefaultTexture(Texture::Diffuse),
-            TextureSystem::GetDefaultTexture(Texture::Specular),
-            TextureSystem::GetDefaultTexture(Texture::Normal) };
-        // Используйте материал по умолчанию для неназначенных слотов.
-        auto DefaultMaterial = GetDefaultMaterial();
+        auto rSystem = SystemsManager::GetRenderingSystem();
 
-        // Свойства и карты Фонга для каждого материала.
-        for (u32 MaterialIdx = 0; MaterialIdx < TERRAIN_MAX_MATERIAL_COUNT; ++MaterialIdx) {
-            // Свойства.
-            auto& MatProps = properties->materials[MaterialIdx];
-            // Используйте материал по умолчанию, если он не находится в пределах количества материалов.
-            auto RefMat = DefaultMaterial;
-            if (MaterialIdx < MaterialCount) {
-                RefMat = materials[MaterialIdx];
+        // Для всего массива материалов нужна одна карта.
+        {
+            u32 LayerCount = PBR_MATERIAL_TEXTURE_COUNT * MAX_TERRAIN_MATERIAL_COUNT;
+            TextureMap& map = material->maps[SAMP_TERRAIN_MATERIAL_ARRAY_MAP];
+            // ЗАДАЧА: Прочитать это из конфигурации.
+            map.RepeatU = map.RepeatV = map.RepeatW = TextureRepeat::Repeat;
+            map.FilterMinify = map.FilterMagnify = TextureFilterMode::Linear;
+            map.texture = TextureSystem::AcquireTexturesAsArrayed(material->name, LayerCount, TextureNames, true);
+            if (!map.texture) {
+                // Настроено, но не найдено.
+                MWARN("Не удается загрузить массивную текстуру '%s' для материала '%s', используется значение по умолчанию.", material->name, MaterialName);
+                map.texture = TextureSystem::GetDefaultTexture(Texture::Terrain);
             }
-
-            auto props = (Material::PhongProperties*)RefMat->properties;
-            MatProps.DiffuseColour = props->DiffuseColour;
-            MatProps.specular = props->specular;
-            // MatProps.padding = FVec3();
-
-            // Карты, 3 для Фонга. Диффузный, спек, нормальный.
-            for (u32 MapIdx = 0; MapIdx < 3; ++MapIdx) {
-                Material::Map MapConfig = {0};
-                char buf[MATERIAL_NAME_MAX_LENGTH]{};
-                MapConfig.name = buf;
-                MapConfig.name = MapNames[MapIdx];
-                MapConfig.RepeatU = RefMat->maps[MapIdx].RepeatU;
-                MapConfig.RepeatV = RefMat->maps[MapIdx].RepeatV;
-                MapConfig.RepeatW = RefMat->maps[MapIdx].RepeatW;
-                MapConfig.FilterMin = RefMat->maps[MapIdx].FilterMinify;
-                MapConfig.FilterMag = RefMat->maps[MapIdx].FilterMagnify;
-                MapConfig.TextureName = RefMat->maps[MapIdx].texture->name;
-                if (!AssignMap(material->maps[(MaterialIdx * 3) + MapIdx], MapConfig, material->name, DefaultTextures[MapIdx])) {
-                    MERROR("Не удалось назначить текстурную карту '%s' для индекса материала ландшафта %u", MapNames[MapIdx], MaterialIdx);
-                    return nullptr;
-                }
+            if (!rSystem->TextureMapAcquireResources(&map)) {
+                MERROR("Не удалось получить ресурсы для текстурной карты.");
+                return nullptr;
             }
         }
 
-        // Выпустить справочные материалы.
-        for (u32 i = 0; i < MaterialCount; ++i) {
-            MaterialSystem::Release(MaterialNames[i]);
+        // Тени нельзя настроить, поэтому настройте их здесь.
+        {
+            Material::Map MapConfig{};
+            MapConfig.FilterMag = MapConfig.FilterMin = TextureFilterMode::Linear;
+            MapConfig.RepeatU = MapConfig.RepeatV = MapConfig.RepeatW = TextureRepeat::ClampToBorder;
+            MapConfig.name = "shadow_map";
+            MapConfig.TextureName = "";
+            if (!AssignMap(material->maps[SAMP_TERRAIN_SHADOW_MAP], MapConfig, material->name, TextureSystem::GetDefaultTexture(Texture::Diffuse))) {
+                MERROR("Не удалось назначить текстурную карту '%s' для карты теней местности.", MapConfig.name.c_str());
+                return nullptr;
+            }
         }
 
-        MemorySystem::Free(materials, sizeof(Material*) * MaterialCount, Memory::Array);
-
-        // Приобрести ресурсы экземпляров для всех карт.
-
-        auto maps = reinterpret_cast<TextureMap**>(MemorySystem::Allocate(sizeof(TextureMap*) * MaxMapCount, Memory::Array));
-        // Назначьте карты материалов.
-        for (u32 i = 0; i < MaxMapCount; ++i) {
-            maps[i] = &material->maps[i];
+        // IBL - кубическая карта для освещенности
+        {
+            Material::Map MapConfig {};
+            MapConfig.FilterMag = MapConfig.FilterMin = TextureFilterMode::Linear;
+            MapConfig.RepeatU = MapConfig.RepeatV = MapConfig.RepeatW = TextureRepeat::Repeat;
+            MapConfig.name = "ibl_cube";
+            //  Всегда назначается последнему индексу.
+            if (!AssignMap(material->maps[SAMP_TERRAIN_IRRADIANCE_MAP], MapConfig, material->name, TextureSystem::GetDefaultTexture(Texture::Cube))) {
+                MERROR("Не удалось назначить карту текстуры '%s' для карты освещенности местности.", MapConfig.name.c_str());
+                return nullptr;
+            }
         }
-        
-        bool result = RenderingSystem::ShaderAcquireInstanceResources(shader, MaxMapCount, maps, material->InternalId);
+
+        // ПРИМЕЧАНИЕ: 4 материала * 3 карты на каждый всё равно будут загружены по порядку (albedo/norm/combined (met/rough/ao) на материал)
+        // Следующая группа будет посвящена отображению теней
+        // Последняя карта освещённости
+
+        // Настройте конфигурацию, чтобы получить ресурсы экземпляра для этого материала.
+        ShaderInstanceResourceConfig InstanceResourceConfig{
+            .UniformConfigCount = 3, // Количество карт для этого типа известно. ПРИМЕЧАНИЕ: Это включает карты материалов, карты теней и карту освещенности.
+            .UniformConfigs = mem_alloc(ShaderInstanceUniformTextureConfig, 3, Memory::Array)
+        }; 
+
+        // Текстуры материала (одна массивная текстура)
+        u64 ptrSize = sizeof(void*);
+        ShaderInstanceUniformTextureConfig& MatTextures = InstanceResourceConfig.UniformConfigs[0];
+        MatTextures.UniformLocation = state->TerrainLocations.MaterialTexures;
+        MatTextures.TextureMapCount = 1;
+        CreateArray(MatTextures.TextureMaps, ptrSize * MatTextures.TextureMapCount);
+        MatTextures.TextureMaps[0] = &material->maps[SAMP_TERRAIN_MATERIAL_ARRAY_MAP];
+
+        // Тени текстур
+        ShaderInstanceUniformTextureConfig& ShadowTextures = InstanceResourceConfig.UniformConfigs[1];
+        ShadowTextures.UniformLocation = state->TerrainLocations.ShadowTextures;
+        ShadowTextures.TextureMapCount = 1;
+        CreateArray(ShadowTextures.TextureMaps, ptrSize * ShadowTextures.TextureMapCount);
+        ShadowTextures.TextureMaps[0] = &material->maps[SAMP_TERRAIN_SHADOW_MAP];
+
+        // Текстура куба IBL
+        ShaderInstanceUniformTextureConfig& IblCubeTexture = InstanceResourceConfig.UniformConfigs[2];
+        IblCubeTexture.UniformLocation = state->TerrainLocations.IblCubeTexture;
+        IblCubeTexture.TextureMapCount = 1;
+        CreateArray(IblCubeTexture.TextureMaps, ptrSize * IblCubeTexture.TextureMapCount);
+        IblCubeTexture.TextureMaps[0] = &material->maps[SAMP_TERRAIN_IRRADIANCE_MAP];
+
+        // Подготовьте ресурсы
+        bool result = rSystem->ShaderAcquireInstanceResources(SelectedShader, InstanceResourceConfig, material->InternalId);
         if (!result) {
-            MERROR("Не удалось получить ресурсы рендеринга для материала '%s'.", material->name);
+            MERROR("Не удалось получить ресурсы рендеринга для материала ландшафта '%s'.", material->name);
         }
 
-        if (maps) {
-            MemorySystem::Free(maps, sizeof(TextureMap*) * MaxMapCount, Memory::Array);
-        }
-        // ПРИМЕЧАНИЕ: конец load_material, специфичного для местности
+        // Очистите конфигурацию униформы.
+        // InstanceResourceConfig.Destroy();
+
+        #pragma endregion ПРИМЕЧАНИЕ: конец load_material, специфичного для местности
 
         if (material->generation == INVALID::ID) {
             material->generation = 0;
@@ -454,6 +441,7 @@ Material* MaterialSystem::Acquire(const char* MaterialName, u32 MaterialCount, c
         }
     }
 
+    state->MaterialCount++;
     return material;
 }
 
@@ -465,7 +453,7 @@ void MaterialSystem::Release(const char *name)
         MString::Equali(name, DEFAULT_UI_MATERIAL_NAME)) {
         return;
     }
-    MaterialReference ref;
+    Reference ref;
     if (state->RegisteredMaterialTable.Get(name, &ref)) {
         if (ref.ReferenceCount == 0) {
             MWARN("Пытался выпустить несуществующий материал: '%s'", name);
@@ -494,10 +482,10 @@ void MaterialSystem::Release(const char *name)
 
         // Обновите запись.
         state->RegisteredMaterialTable.Set(NameCopy, ref);
+        state->MaterialCount--;
     } else {
         MERROR("MaterialSystem::Release не удалось выпустить материал '%s'.", name);
     }
-    
 }
 
 #define MATERIAL_APPLY_OR_FAIL(expr)                        \
@@ -516,21 +504,52 @@ bool MaterialSystem::ApplyGlobal(u32 ShaderID, const FrameData& rFrameData, cons
     if (shader->RenderFrameNumber == rFrameData.RendererFrameNumber && shader->DrawIndex == rFrameData.DrawIndex) {
         return true;
     }
-    
-    if (ShaderID == state->MaterialShaderID || ShaderID == state->TerrainShaderID) {
+    if (ShaderID == state->MaterialShaderID) {
         MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->MaterialLocations.projection, &projection));
         MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->MaterialLocations.view, &view));
-        MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->MaterialLocations.AmbientColour, &AmbientColour));
+        // ЗАДАЧА: установить каскадные разделения, как у направленных источников света и карты теней и т.д.
+        MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->MaterialLocations.CascadeSplits, &AmbientColour));
         MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->MaterialLocations.ViewPosition, &ViewPosition));
         MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->MaterialLocations.RenderMode, &RenderMode));
-    } else if (ShaderID == state->UiShaderID) {
-        MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->UiLocations.projection, &projection));
-        MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->UiLocations.view, &view));
+        // Световое пространство для карт теней. На каждую каскаду
+        for (u32 i = 0; i < MAX_SHADOW_CASCADE_COUNT; ++i) {
+            MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->MaterialLocations.LightSpace0 + i, &state->DirectionalLightSpace[i]));
+        }
+        // Глобальные параметры шейдера.
+        MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->MaterialLocations.UsPcf, &state->UsePCF));
+
+        // HACK: Прочитайте это откуда-то (или используйте глобальный сеттер?);
+        f32 bias = 0.00005f;
+        MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->MaterialLocations.bias, &bias));
+    } else if (ShaderID == state->TerrainShaderID) {
+        MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->MaterialLocations.projection, &projection));
+        MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->MaterialLocations.view, &view));
+        // ЗАДАЧА: установить каскадные разделения, как у направленных источников света и карты теней и т.д.
+        MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->MaterialLocations.CascadeSplits, &AmbientColour));
+        MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->MaterialLocations.ViewPosition, &ViewPosition));
+        MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->MaterialLocations.RenderMode, &RenderMode));
+        // Световое пространство для карт теней. На каждый каскад
+        for (u32 i = 0; i < MAX_SHADOW_CASCADE_COUNT; ++i) {
+            MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->TerrainLocations.LightSpace0 + i, &state->DirectionalLightSpace[i]));
+        }
+        // Направленный свет - глобальный для этого шейдера.
+        DirectionalLight* DirLight = ((LightSystem*)SystemsManager::GetState(SystemsManager::Light))->GetDirectionalLight();
+        if (DirLight) {
+            MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->TerrainLocations.DirLight, &DirLight->data));
+        } else {
+            DirectionalLight::Data data {};
+            MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->TerrainLocations.DirLight, &data));
+        }
+        // Глобальные параметры шейдера.
+        MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->TerrainLocations.UsePcf, &state->UsePCF));
+        // HACK: Прочитайте это откуда-то (или используйте глобальный сеттер?);
+        f32 bias = 0.00005f;
+        MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->TerrainLocations.bias, &bias));
     } else {
         MERROR("MaterialSystem::ApplyGlobal(): Неизвестный идентификатор шейдера '%d' ", ShaderID);
         return false;
     }
-    MATERIAL_APPLY_OR_FAIL(ShaderSystem::ApplyGlobal(true));
+    MATERIAL_APPLY_OR_FAIL(ShaderSystem::ApplyGlobal(true, rFrameData));
     // Синхронизация номера кадра
     shader->RenderFrameNumber = rFrameData.RendererFrameNumber;
     return true;
@@ -541,15 +560,26 @@ bool MaterialSystem::ApplyInstance(Material *material, const FrameData& rFrameDa
     // Примените униформу на уровне экземпляра.
     MATERIAL_APPLY_OR_FAIL(ShaderSystem::BindInstance(material->InternalId));
     if(NeedsUpdate) {
+        auto pLightSystem = (LightSystem*)SystemsManager::GetState(SystemsManager::Light);
         if (material->ShaderID == state->MaterialShaderID) {
             // Шейдер материала
+            // Свойства
             MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->MaterialLocations.properties, material->properties));
-            MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->MaterialLocations.DiffuseTexture, &material->maps[0]));
-            MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->MaterialLocations.SpecularTexture, &material->maps[1]));
-            MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->MaterialLocations.NormalTexture, &material->maps[2]));
+            // Карты
+            MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSetArrayed(state->MaterialLocations.MaterialTexures, SAMP_ALBEDO,   &material->maps[SAMP_ALBEDO]));
+            MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSetArrayed(state->MaterialLocations.MaterialTexures, SAMP_NORMAL,   &material->maps[SAMP_NORMAL]));
+            MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSetArrayed(state->MaterialLocations.MaterialTexures, SAMP_COMBINED, &material->maps[SAMP_COMBINED]));
 
+            // Карты теней
+            material->maps[SAMP_SHADOW_MAP].texture = state->ShadowTexture ? state->ShadowTexture : TextureSystem::GetDefaultTexture(Texture::Diffuse);
+            MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->MaterialLocations.ShadowTextures, &material->maps[SAMP_SHADOW_MAP]));
+
+            // Карта освещённости
+            material->maps[SAMP_IRRADIANCE_MAP].texture = material->IrradianceTexture ? material->IrradianceTexture : state->IrradianceCubeTexture;
+            MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->MaterialLocations.IblCubeTexture, &material->maps[SAMP_IRRADIANCE_MAP]));
+            
             // Направленный свет
-            auto DirLight = LightSystem::GetDirectionalLight();
+            auto DirLight = pLightSystem->GetDirectionalLight();
             if (DirLight) {
                 MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->MaterialLocations.DirLight, &DirLight->data));
             } else {
@@ -558,15 +588,15 @@ bool MaterialSystem::ApplyInstance(Material *material, const FrameData& rFrameDa
             }
             
             // Точечный свет
-            u32 PointLightCount = LightSystem::PointLightCount();
+            u32 PointLightCount = pLightSystem->PointLightCount();
             if (PointLightCount) {
                 // ЗАДАЧА: frame allocator?
                 u64 PointLightsSize = sizeof(PointLight*) * PointLightCount;
-                const auto PointLights = reinterpret_cast<PointLight**>(rFrameData.FrameAllocator->Allocate(PointLightsSize));
-                LightSystem::GetPointLights(PointLights);
+                const auto PointLights = (PointLight**)rFrameData.FrameAllocator->Allocate(PointLightsSize);
+                pLightSystem->GetPointLights(PointLights);
 
                 u64 PointLightDatasSize = sizeof(PointLight::Data) * PointLightCount;
-                auto PointLightDatas = reinterpret_cast<PointLight::Data*>(rFrameData.FrameAllocator->Allocate(PointLightDatasSize));
+                auto PointLightDatas = (PointLight::Data*)rFrameData.FrameAllocator->Allocate(PointLightDatasSize);
                 for (u32 i = 0; i < PointLightCount; ++i) {
                     PointLightDatas[i] = PointLights[i]->data;
                 }
@@ -575,38 +605,33 @@ bool MaterialSystem::ApplyInstance(Material *material, const FrameData& rFrameDa
             }
 
             MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->MaterialLocations.NumPointLights, &PointLightCount)); 
-        } else if (material->ShaderID == state->UiShaderID) {
-            // шейдер пользовательского интерфейса
-            MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->UiLocations.properties, material->properties));
-            MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->UiLocations.DiffuseTexture, &material->maps[0]));
         } else if (material->ShaderID == state->TerrainShaderID) {
-            // Применить карты
-            const u32& MapCount = material->maps.Length();
-            for (u32 i = 0; i < MapCount; ++i) {
-                MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->TerrainLocations.samplers[i], &material->maps[i]));
-            }
+            // Примените карты материалов, все как одну многослойную текстуру.
+            // material->maps[SAMP_TERRAIN_MATERIAL_ARRAY_MAP].texture = state->ShadowTexture ? state->ShadowTexture : TextureSystem::GetDefaultTexture(Texture::Terrain);
+            MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->TerrainLocations.MaterialTexures, &material->maps[SAMP_TERRAIN_MATERIAL_ARRAY_MAP]));
+
+            // ПРИМЕЧАНИЕ: применяйте другие карты отдельно.
+
+            // Теневые карты
+            material->maps[SAMP_TERRAIN_SHADOW_MAP].texture = state->ShadowTexture ? state->ShadowTexture : TextureSystem::GetDefaultTexture(Texture::Diffuse);
+            MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->TerrainLocations.ShadowTextures, &material->maps[SAMP_TERRAIN_SHADOW_MAP]));
+
+            // Карта освещённости
+            material->maps[SAMP_TERRAIN_IRRADIANCE_MAP].texture = material->IrradianceTexture ? material->IrradianceTexture : state->IrradianceCubeTexture;
+            MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->TerrainLocations.IblCubeTexture, &material->maps[SAMP_TERRAIN_IRRADIANCE_MAP]));
 
             // Применить свойства.
             ShaderSystem::UniformSet(state->TerrainLocations.properties, material->properties);
 
-            // ЗАДАЧА: Дублирование выше... переместить это в отдельную функцию, возможно.
-            // Направленный свет.
-            auto DirLight = LightSystem::GetDirectionalLight();
-            if (DirLight) {
-                MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->TerrainLocations.DirLight, &DirLight->data));
-            } else {
-                DirectionalLight::Data data{};
-                MATERIAL_APPLY_OR_FAIL(ShaderSystem::UniformSet(state->TerrainLocations.DirLight, &data));
-            }
             // Точечные источники света.
-            u32 PointLightCount = LightSystem::PointLightCount();
+            u32 PointLightCount = pLightSystem->PointLightCount();
             if (PointLightCount) {
                 u64 PointLightsSize = sizeof(PointLight*) * PointLightCount;
-                const auto PointLights = reinterpret_cast<PointLight**>(rFrameData.FrameAllocator->Allocate(PointLightsSize));
-                LightSystem::GetPointLights(PointLights);
+                const auto PointLights = (PointLight**)rFrameData.FrameAllocator->Allocate(PointLightsSize);
+                pLightSystem->GetPointLights(PointLights);
 
                 u64 PointLightDatasSize = sizeof(PointLight::Data) * PointLightCount;
-                auto PointLightDatas = reinterpret_cast<PointLight::Data*>(rFrameData.FrameAllocator->Allocate(PointLightDatasSize));
+                auto PointLightDatas = (PointLight::Data*)rFrameData.FrameAllocator->Allocate(PointLightDatasSize);
                 for (u32 i = 0; i < PointLightCount; ++i) {
                     PointLightDatas[i] = PointLights[i]->data;
                 }
@@ -620,23 +645,28 @@ bool MaterialSystem::ApplyInstance(Material *material, const FrameData& rFrameDa
             return false;
         }
     }
-    MATERIAL_APPLY_OR_FAIL(ShaderSystem::ApplyInstance(NeedsUpdate));
+    MATERIAL_APPLY_OR_FAIL(ShaderSystem::ApplyInstance(NeedsUpdate, rFrameData));
 
     return true;
 }
 
-bool MaterialSystem::ApplyLocal(Material *material, const Matrix4D &model)
+bool MaterialSystem::ApplyLocal(Material *material, const Matrix4D &model, const FrameData& rFrameData)
 {
-    if (material->ShaderID == state->MaterialShaderID) {
-        return ShaderSystem::UniformSet(state->MaterialLocations.model, &model);
-    } else if (material->ShaderID == state->UiShaderID) {
-        return ShaderSystem::UniformSet(state->UiLocations.model, &model);
-    } else if (material->ShaderID == state->TerrainShaderID) {
-        return ShaderSystem::UniformSet(state->TerrainLocations.model, &model);
-    }
+    ShaderSystem::BindLocal();
+    bool result = false;
 
-    MERROR("Неизвестный идентификатор шейдера «%d»", material->ShaderID);
-    return false;
+    if (material->ShaderID == state->MaterialShaderID) {
+        result = ShaderSystem::UniformSet(state->MaterialLocations.model, &model);
+    } else if (material->ShaderID == state->TerrainShaderID) {
+        result = ShaderSystem::UniformSet(state->TerrainLocations.model, &model);
+    }
+    ShaderSystem::ApplyLocal(rFrameData);
+
+    if (!result) {
+        MERROR("Неизвестный идентификатор шейдера «%d»", material->ShaderID);
+        return false;
+    }
+    return result;
 }
 
 Material *MaterialSystem::GetDefaultMaterial()
@@ -683,6 +713,36 @@ void MaterialSystem::Dump()
     }
 }
 
+void MaterialSystem::SetDirectionalLightSpace(const Matrix4D &DirectionalLightSpace, u8 index)
+{
+    state->DirectionalLightSpace[index] = DirectionalLightSpace;
+}
+
+bool MaterialSystem::SetIrradiance(Texture *IrradianceCubeTexture)
+{
+    if (IrradianceCubeTexture) {
+        if (IrradianceCubeTexture->type != TextureType::Cube) {
+            MWARN("Для работы функции MaterialSystem::SetIrradiance требуется параметр IrradianceCubeTexture, указывающий на текстуру типа cubemap. Ничего не было сделано.");
+            return false;
+        }
+
+        state->IrradianceCubeTexture = IrradianceCubeTexture;
+    } else {
+        // Значение null возвращает нас в состояние по умолчанию.
+        state->IrradianceCubeTexture = TextureSystem::GetDefaultTexture(Texture::Cube);
+    }
+    return true;
+}
+
+bool MaterialSystem::SetShadowMap(Texture *ShadowTexture, u8 index)
+{
+    if (ShadowTexture) {
+        state->ShadowTexture = ShadowTexture;
+    }
+
+    return true;
+}
+
 static bool AssignMap(TextureMap& map, const Material::Map& config, const char* MaterialName, Texture* DefaultTex) {
     map.FilterMinify = config.FilterMin;
     map.FilterMagnify = config.FilterMag;
@@ -701,129 +761,187 @@ static bool AssignMap(TextureMap& map, const Material::Map& config, const char* 
         // Это делается, когда текстура не настроена, в отличие от случая, когда она настроена и не найдена (выше).
         map.texture = DefaultTex;
     }
-    if (!RenderingSystem::TextureMapAcquireResources(&map)) {
+    if (!SystemsManager::GetRenderingSystem()->TextureMapAcquireResources(&map)) {
         MERROR("Невозможно получить ресурсы для карты текстуры.");
         return false;
     }
     return true;
 }
 
-bool CreateDefaultMaterial()
+bool MaterialSystem::CreateDefaultMaterial()
 {
-    MString::Copy(state->DefaultMaterial.name, DEFAULT_MATERIAL_NAME, MATERIAL_NAME_MAX_LENGTH);
-    state->DefaultMaterial.id = INVALID::ID;
-    state->DefaultMaterial.type = Material::Type::Phong;
-    state->DefaultMaterial.generation = INVALID::ID;
-    state->DefaultMaterial.PropertyStructSize = sizeof(Material::PhongProperties);
-    state->DefaultMaterial.properties = MemorySystem::Allocate(state->DefaultMaterial.PropertyStructSize, Memory::MaterialInstance);
-    auto properties = (Material::PhongProperties*)state->DefaultMaterial.properties;
+    auto& dMaterial = state->DefaultMaterial;
+    MString::Copy(dMaterial.name, DEFAULT_MATERIAL_NAME, MATERIAL_NAME_MAX_LENGTH);
+    dMaterial.id = INVALID::ID;
+    dMaterial.type = Material::Type::PBR;
+    dMaterial.generation = INVALID::ID;
+    dMaterial.PropertyStructSize = sizeof(Material::PhongProperties);
+    dMaterial.properties = MemorySystem::Allocate(dMaterial.PropertyStructSize, Memory::MaterialInstance);
+    auto properties = (Material::PhongProperties*)dMaterial.properties;
     properties->DiffuseColour = FVec4::One();  // белый
     properties->specular = 8.F;
-    state->DefaultMaterial.maps.Resize(3);
-    for (u32 i = 0; i < 3; ++i) {
-        auto& map = state->DefaultMaterial.maps[i];
-        map.FilterMagnify = map.FilterMinify = TextureFilter::ModeLinear;
+    dMaterial.maps.Resize(PBR_MAP_COUNT);
+    for (u32 i = 0; i < PBR_MAP_COUNT; ++i) {
+        auto& map = dMaterial.maps[i];
+        if (i == 0) {
+            // ПРИМЕЧАНИЕ: установка режима «ближайший сосед» позволит избежать размытия шахматной доски.
+            map.FilterMagnify = map.FilterMinify = TextureFilterMode::Nearest;
+        }
+        map.FilterMagnify = map.FilterMinify = TextureFilterMode::Linear;
         map.RepeatU = map.RepeatV = map.RepeatW = TextureRepeat::Repeat;
     }
-    state->DefaultMaterial.maps[0].texture = TextureSystem::GetDefaultTexture(Texture::Default);
-    state->DefaultMaterial.maps[1].texture = TextureSystem::GetDefaultTexture(Texture::Specular);
-    state->DefaultMaterial.maps[2].texture = TextureSystem::GetDefaultTexture(Texture::Normal);
-    // ПРИМЕЧАНИЕ: материал Фонга используется по умолчанию.
-    TextureMap* maps[3] = {&state->DefaultMaterial.maps[0], &state->DefaultMaterial.maps[1], &state->DefaultMaterial.maps[2]};
+
+    // Измените режим ограничения для карты теней по умолчанию на «граница».
+    auto& ssm = state->DefaultMaterial.maps[SAMP_SHADOW_MAP];
+    ssm.RepeatU = ssm.RepeatV = ssm.RepeatW = TextureRepeat::ClampToBorder;
+
+    state->DefaultMaterial.maps[SAMP_ALBEDO].texture         = TextureSystem::GetDefaultTexture();
+    state->DefaultMaterial.maps[SAMP_NORMAL].texture         = TextureSystem::GetDefaultTexture(Texture::Normal);
+    state->DefaultMaterial.maps[SAMP_COMBINED].texture       = TextureSystem::GetDefaultTexture(Texture::Combined);
+    state->DefaultMaterial.maps[SAMP_SHADOW_MAP].texture     = TextureSystem::GetDefaultTexture(Texture::Diffuse);
+    state->DefaultMaterial.maps[SAMP_IRRADIANCE_MAP].texture = TextureSystem::GetDefaultTexture(Texture::Cube);
+
+    // Настройте конфигурацию для получения ресурсов экземпляра для этого материала.
+    auto& material = state->DefaultMaterial;
+    ShaderInstanceResourceConfig InstanceResourceConfig{3}; // Количество карт для этого типа известно. // ПРИМЕЧАНИЕ: Это включает карты материалов, карты теней и карту освещенности.
+    CreateArray(InstanceResourceConfig.UniformConfigs, sizeof(ShaderInstanceResourceConfig) * 3, true);
+
+    // Текстуры материалов
+    u32 ptrSize = sizeof(void*);
+    auto& MatTextures = InstanceResourceConfig.UniformConfigs[0];
+    MatTextures.UniformLocation = state->MaterialLocations.MaterialTexures;
+    MatTextures.TextureMapCount = PBR_MATERIAL_TEXTURE_COUNT;
+    CreateArray(MatTextures.TextureMaps, ptrSize * MatTextures.TextureMapCount);
+    MatTextures.TextureMaps[SAMP_ALBEDO]   = &material.maps[SAMP_ALBEDO];
+    MatTextures.TextureMaps[SAMP_NORMAL]   = &material.maps[SAMP_NORMAL];
+    MatTextures.TextureMaps[SAMP_COMBINED] = &material.maps[SAMP_COMBINED];
+
+    // Текстуры теней
+    auto& ShadowTextures = InstanceResourceConfig.UniformConfigs[1];
+    ShadowTextures.UniformLocation = state->MaterialLocations.ShadowTextures;
+    ShadowTextures.TextureMapCount = 1;
+    CreateArray(ShadowTextures.TextureMaps, ptrSize * ShadowTextures.TextureMapCount);
+    ShadowTextures.TextureMaps[0] = &material.maps[SAMP_SHADOW_MAP];
+
+    // Текстура куба IBL
+    auto& IblCubeTexture = InstanceResourceConfig.UniformConfigs[2];
+    IblCubeTexture.UniformLocation = state->MaterialLocations.IblCubeTexture;
+    IblCubeTexture.TextureMapCount = 1;
+    CreateArray(IblCubeTexture.TextureMaps, ptrSize * IblCubeTexture.TextureMapCount);
+    IblCubeTexture.TextureMaps[0] = &material.maps[SAMP_IRRADIANCE_MAP];
     
-    Shader* shader = ShaderSystem::GetShader("Shader.Builtin.Material");
-    if (!RenderingSystem::ShaderAcquireInstanceResources(shader, 3, maps, state->DefaultMaterial.InternalId)) {
+    auto shader = ShaderSystem::GetShader(state->MaterialShaderID);
+    if (!(SystemsManager::GetRenderingSystem())->ShaderAcquireInstanceResources(shader, InstanceResourceConfig, dMaterial.InternalId)) {
         MFATAL("Не удалось получить ресурсы средства рендеринга для материала по умолчанию. Приложение не может быть продолжено.");
         return false;
     }
+
+    // Упорядочить унифицированные конфигурации.
+    // InstanceResourceConfig.Destroy();
+
     // Обязательно укажите идентификатор шейдера.
-    state->DefaultMaterial.ShaderID = shader->id;
+    dMaterial.ShaderID = shader->id;
 
     return true;
 }
 
-bool CreateDefaultUiMaterial()
+bool MaterialSystem::CreateDefaultTerrainMaterial()
 {
-    MString::Copy(state->DefaultUiMaterial.name, DEFAULT_UI_MATERIAL_NAME, MATERIAL_NAME_MAX_LENGTH);
-    state->DefaultUiMaterial.id = INVALID::ID;
-    state->DefaultUiMaterial.type = Material::Type::UI;
-    state->DefaultUiMaterial.generation = INVALID::ID;
-    state->DefaultUiMaterial.PropertyStructSize = sizeof(Material::UiProperties);
-    state->DefaultUiMaterial.properties = MemorySystem::Allocate(state->DefaultUiMaterial.PropertyStructSize, Memory::MaterialInstance);
-    auto properties = (Material::UiProperties*)state->DefaultUiMaterial.properties;
-    properties->DiffuseColour = FVec4::One();  // белый
-    state->DefaultUiMaterial.maps.Resize(1);
-    state->DefaultUiMaterial.maps[0].texture = TextureSystem::GetDefaultTexture(Texture::Default);
-
-    TextureMap* maps[1] = {&state->DefaultUiMaterial.maps[0]};
-
-    Shader* shader = ShaderSystem::GetShader("Shader.Builtin.UI");
-    if (!RenderingSystem::ShaderAcquireInstanceResources(shader, 1, maps, state->DefaultUiMaterial.InternalId)) {
-        MFATAL("Не удалось получить ресурсы рендерера для материала пользовательского интерфейса по умолчанию. Приложение не может продолжать работу.");
-        return false;
-    }
-
-    // Обязательно назначьте идентификатор шейдера.
-    state->DefaultUiMaterial.ShaderID = shader->id;
-
-    return true;
-}
-
-bool CreateDefaultTerrainMaterial()
-{
-    state->DefaultTerrainMaterial.id = INVALID::ID;
-    state->DefaultTerrainMaterial.type = Material::Type::Terrain;
-    state->DefaultTerrainMaterial.generation = INVALID::ID;
-    MString::Copy(state->DefaultTerrainMaterial.name, DEFAULT_TERRAIN_MATERIAL_NAME, MATERIAL_NAME_MAX_LENGTH);
+    auto& dtm = state->DefaultTerrainMaterial;
+    dtm.id = INVALID::ID;
+    dtm.type = Material::Type::Terrain;
+    dtm.generation = INVALID::ID;
+    MString::Copy(dtm.name, DEFAULT_TERRAIN_MATERIAL_NAME, MATERIAL_NAME_MAX_LENGTH);
 
     // По сути, это должно быть то же самое, что и материал по умолчанию, просто сопоставленный с «массивом» одного материала.
-    state->DefaultTerrainMaterial.PropertyStructSize = sizeof(Material::TerrainProperties);
-    state->DefaultTerrainMaterial.properties = MemorySystem::Allocate(state->DefaultTerrainMaterial.PropertyStructSize, Memory::MaterialInstance);
-    auto properties = (Material::TerrainProperties*)state->DefaultTerrainMaterial.properties;
-    properties->NumMaterials = 1;
+    dtm.PropertyStructSize = sizeof(Material::TerrainProperties);
+    dtm.properties = MemorySystem::Allocate(dtm.PropertyStructSize, Memory::MaterialInstance);
+    auto properties = (Material::TerrainProperties*)dtm.properties;
+    properties->NumMaterials = MAX_TERRAIN_MATERIAL_COUNT;
     properties->materials[0].DiffuseColour = FVec4::One();  // белый
     properties->materials[0].specular = 8.F;
-    state->DefaultTerrainMaterial.maps.Resize(12);
-    state->DefaultTerrainMaterial.maps[0].texture = TextureSystem::GetDefaultTexture(Texture::Default);
-    state->DefaultTerrainMaterial.maps[1].texture = TextureSystem::GetDefaultTexture(Texture::Specular);
-    state->DefaultTerrainMaterial.maps[2].texture = TextureSystem::GetDefaultTexture(Texture::Normal);
+    dtm.maps.Resize(TERRAIN_SAMP_COUNT);
 
-    // ПРИМЕЧАНИЕ: материал Phong используется по умолчанию.
-    TextureMap* maps[3] = {
-        &state->DefaultTerrainMaterial.maps[0],
-        &state->DefaultTerrainMaterial.maps[1],
-        &state->DefaultTerrainMaterial.maps[2],
-    };
+    dtm.maps[0].texture = TextureSystem::GetDefaultTexture(Texture::Default);
+    dtm.maps[1].texture = TextureSystem::GetDefaultTexture(Texture::Specular);
+    dtm.maps[2].texture = TextureSystem::GetDefaultTexture(Texture::Normal);
 
-    Shader* shader = ShaderSystem::GetShader("Shader.Builtin.Terrain");
-    if (!RenderingSystem::ShaderAcquireInstanceResources(shader, 3, maps, state->DefaultTerrainMaterial.InternalId)) {
+    // Массив текстур материалов.
+    auto& map = dtm.maps[SAMP_TERRAIN_MATERIAL_ARRAY_MAP];
+    map.texture = TextureSystem::GetDefaultTexture(Texture::Terrain);
+    // ПРИМЕЧАНИЕ: установите режим «ближайший сосед», чтобы шахматная доска не была размытой.
+    map.FilterMagnify = map.FilterMinify = TextureFilterMode::Nearest;
+
+    dtm.maps[SAMP_TERRAIN_SHADOW_MAP].texture = TextureSystem::GetDefaultTexture(Texture::Diffuse);
+
+    // Измените режим ограничения для карты теней по умолчанию на «граница».
+    auto& ssm = dtm.maps[SAMP_TERRAIN_SHADOW_MAP];
+    ssm.RepeatU = ssm.RepeatV = ssm.RepeatW = TextureRepeat::ClampToBorder;
+
+    // ПРИМЕЧАНИЕ: Для ландшафтов требуются PBR-материалы.
+    // ПРИМЕЧАНИЕ: 4 материала * 3 карты на каждый будут загружены в указанном порядке (альбедо/норма/метеор/шероховатость/AO на каждый материал).
+    // Следующая группа — карты теней.
+    // Последняя — карта освещенности.
+
+    // Настройте конфигурацию для получения ресурсов экземпляра для этого материала.
+    ShaderInstanceResourceConfig InstanceResourceConfig{3}; // Количество карт этого типа известно.  ПРИМЕЧАНИЕ: Это включает карты материалов, карты теней и карту освещенности.
+    CreateArray(InstanceResourceConfig.UniformConfigs, sizeof(ShaderInstanceResourceConfig) * 3);
+
+    // Текстуры материалов
+    u32 ptrSize = sizeof(void*);
+    auto& MatTextures = InstanceResourceConfig.UniformConfigs[0];
+    MatTextures.UniformLocation = state->TerrainLocations.MaterialTexures;
+    MatTextures.TextureMapCount = 1;
+    CreateArray(MatTextures.TextureMaps, ptrSize * MatTextures.TextureMapCount);
+    MatTextures.TextureMaps[SAMP_TERRAIN_MATERIAL_ARRAY_MAP] = &dtm.maps[SAMP_TERRAIN_MATERIAL_ARRAY_MAP];
+
+    // Текстуры теней
+    auto& ShadowTextures = InstanceResourceConfig.UniformConfigs[1];
+    ShadowTextures.UniformLocation = state->TerrainLocations.ShadowTextures;
+    ShadowTextures.TextureMapCount = 1;
+    CreateArray(ShadowTextures.TextureMaps, ptrSize * ShadowTextures.TextureMapCount);
+    ShadowTextures.TextureMaps[0] = &dtm.maps[SAMP_TERRAIN_SHADOW_MAP];
+
+    // Текстура куба IBL
+    auto& IblCubeTexture = InstanceResourceConfig.UniformConfigs[2];
+    IblCubeTexture.UniformLocation = state->TerrainLocations.IblCubeTexture;
+    IblCubeTexture.TextureMapCount = 1;
+    CreateArray(IblCubeTexture.TextureMaps, ptrSize * IblCubeTexture.TextureMapCount);
+    IblCubeTexture.TextureMaps[0] = &dtm.maps[SAMP_TERRAIN_IRRADIANCE_MAP];
+
+    // Получить ресурсы
+    auto shader = ShaderSystem::GetShader(state->TerrainShaderID);
+    if (!(SystemsManager::GetRenderingSystem())->ShaderAcquireInstanceResources(shader, InstanceResourceConfig, dtm.InternalId)) {
         MFATAL("Не удалось получить ресурсы рендерера для материала ландшафта по умолчанию. Приложение не может продолжать работу.");
-        return false;
     }
 
     // Обязательно назначьте идентификатор шейдера.
-    state->DefaultTerrainMaterial.ShaderID = shader->id;
+    dtm.ShaderID = shader->id;
 
     return true;
 }
 
-static bool LoadMaterial(const Material::Config &config, Material *material)
+bool MaterialSystem::LoadMaterial(const MaterialConfig &config, Material *material)
 { 
     MemorySystem::ZeroMem(material, sizeof(Material));
 
     // Название
     MString::Copy(material->name, config.name.c_str(), MATERIAL_NAME_MAX_LENGTH);
 
-    material->ShaderID = ShaderSystem::GetID(config.ShaderName);
     material->type = config.type;
+    Shader* SelectedShader = nullptr;
+    ShaderInstanceResourceConfig InstanceResourceConfig {};
 
-    // Свойства и карты Фонга.
+    // Обработайте конфигурацию материала по типу.
     switch (config.type) {
-        case Material::Type::Phong: {
-            // Специфические свойства Фонга.
-            const u32& PropCount = config.properties.Length();
+        case Material::Type::PBR: {
+            SelectedShader = state->MaterialShader;
+            material->ShaderID = state->MaterialShaderID;
+            // Специфические свойства PBR.
+            const u32 PropCount = config.properties.Length();
 
             // Значения по умолчанию
+            // ЗАДАЧА: Свойства PBR
             material->PropertyStructSize = sizeof(Material::PhongProperties);
             auto properties = (Material::PhongProperties*)MemorySystem::Allocate(material->PropertyStructSize, Memory::MaterialInstance, true);
             material->properties = properties;
@@ -840,83 +958,139 @@ static bool LoadMaterial(const Material::Config &config, Material *material)
                 }
             }
 
-            // Карты. Фонг ожидает диффузный, зеркальный и нормальный.
-            material->maps.Resize(3);
-            const u32& MapCount = config.maps.Length();
-            bool DiffuseAssigned = false;
-            bool SpecAssigned = false;
-            bool NormAssigned = false;
-            for (u32 i = 0; i < MapCount; ++i) {
-                if (config.maps[i].name.Comparei("diffuse")) {
-                    if (!AssignMap(material->maps[0], config.maps[i], material->name, TextureSystem::GetDefaultTexture(Texture::Diffuse))) {
-                        return false;
-                    }
-                    DiffuseAssigned = true;
-                } else if (config.maps[i].name.Comparei("specular")) {
-                    if (!AssignMap(material->maps[1], config.maps[i], material->name, TextureSystem::GetDefaultTexture(Texture::Specular))) {
-                        return false;
-                    }
-                    SpecAssigned = true;
-                } else if (config.maps[i].name.Comparei("normal")) {
-                    if (!AssignMap(material->maps[2], config.maps[i], material->name, TextureSystem::GetDefaultTexture(Texture::Normal))) {
-                        return false;
-                    }
-                    NormAssigned = true;
-                }
-                // ЗАДАЧА: другие карты
-                // ПРИМЕЧАНИЕ: игнорируйте неожиданные карты.
+            // // Карты. PBR ожидает альбедо, нормали и комбинированные карты (металличность, шероховатость, AO).
+            material->maps.Resize(PBR_MAP_COUNT);
+            const u32 cMapCount = config.maps.Length();
+            
+            // Настройка отслеживания того, какие карты назначены, а какие нет.
+            bool MatMapsAssigned[PBR_MATERIAL_TEXTURE_COUNT];
+            for (u32 i = 0; i < PBR_MATERIAL_TEXTURE_COUNT; ++i) {
+                MatMapsAssigned[i] = false;
             }
-            if (!DiffuseAssigned) {
-                // Убедитесь, что диффузная карта всегда назначена.
-                Material::Map MapConfig{};
-                MapConfig.FilterMag = MapConfig.FilterMin = TextureFilter::ModeLinear;
-                MapConfig.RepeatU = MapConfig.RepeatV = MapConfig.RepeatW = TextureRepeat::Repeat;
-                MapConfig.name = "diffuse";
-                //MapConfig.TextureName = "";
-                if (!AssignMap(material->maps[0], MapConfig, material->name, TextureSystem::GetDefaultTexture(Texture::Diffuse))) {
-                    return false;
+            bool ibl_cube_assigned = false;
+            const char* map_names[PBR_MATERIAL_TEXTURE_COUNT] = {"albedo", "normal", "combined"};
+            Texture* default_textures[PBR_MATERIAL_TEXTURE_COUNT] = {
+                TextureSystem::GetDefaultTexture(),
+                TextureSystem::GetDefaultTexture(Texture::Normal),
+                TextureSystem::GetDefaultTexture(Texture::Combined)
+            };
+
+            // Постарайтесь сопоставить заданные имена с именами, требуемыми для PBR-материалов.
+            // Это также гарантирует правильное расположение карт.
+            for (u32 i = 0; i < cMapCount; ++i) {
+                bool found = false;
+                for (u32 TexSlot = 0; TexSlot < PBR_MATERIAL_TEXTURE_COUNT; ++TexSlot) {
+                    if (config.maps[i].name.Comparei(map_names[TexSlot])) {
+                        if (!AssignMap(material->maps[TexSlot], config.maps[i], material->name, default_textures[TexSlot])) {
+                            return false;
+                        }
+                        MatMapsAssigned[TexSlot] = true;
+                        found = true;
+                        break;
+                    }
+                }
+                if (found) {
+                    continue;
+                }
+                // Проверьте, является ли это настроенной кубической картой IBL.
+                // ЗАДАЧА: Возможно, не стоит делать это настраиваемой картой, а лучше использовать данные сцены, полученные с помощью отражательного зонда.
+                if (config.maps[i].name.Comparei("ibl_cube")) {
+                    // ЗАДАЧА: Пока загружается только стандартная карта куба. Необходимо получить её из зонда.
+                    if (!AssignMap(material->maps[SAMP_IRRADIANCE_MAP], config.maps[i], material->name, TextureSystem::GetDefaultTexture(Texture::Cube))) {
+                        return false;
+                    }
+                    ibl_cube_assigned = true;
+                } else {
+                    // ПРИМЕЧАНИЕ: Игнорировать неожиданные карты, но предупреждать о них.
+                    MWARN("Конфигурация для материала '%s' содержит карту с именем '%s', которая будет игнорироваться для PBR-материалов.", config.name.c_str(), config.maps[i].name.c_str());
                 }
             }
-            if (!SpecAssigned) {
-                // Убедитесь, что зеркальная карта всегда назначена.
-                Material::Map MapConfig{};
-                MapConfig.FilterMag = MapConfig.FilterMin = TextureFilter::ModeLinear;
+
+            // Убедитесь, что все карты всегда назначаются, даже если используются только настройки по умолчанию.
+            for (u32 i = 0; i < PBR_MATERIAL_TEXTURE_COUNT; ++i) {
+                if (!MatMapsAssigned[i]) {
+                    Material::Map MapConfig {};
+                    MapConfig.FilterMag = MapConfig.FilterMin = TextureFilterMode::Linear;
+                    MapConfig.RepeatU = MapConfig.RepeatV = MapConfig.RepeatW = TextureRepeat::Repeat;
+                    MapConfig.name = map_names[i];
+                    // MapConfig.TextureName = "";
+                    bool AssignResult = AssignMap(material->maps[i], MapConfig, material->name, default_textures[i]);
+                    if (!AssignResult) {
+                        return false;
+                    }
+                }
+            }
+
+            // Также убедитесь, что кубическая карта всегда назначена.
+            // ЗАДАЧА: Возможно, вам не захочется, чтобы это было настраиваемой картой, а чтобы она предоставлялась сценой с отражающего зонда.
+            if (!ibl_cube_assigned) {
+                Material::Map MapConfig {};
+                MapConfig.FilterMag = MapConfig.FilterMin = TextureFilterMode::Linear;
                 MapConfig.RepeatU = MapConfig.RepeatV = MapConfig.RepeatW = TextureRepeat::Repeat;
-                MapConfig.name = "specular";
+                MapConfig.name = "ibl_cube";
                 // MapConfig.TextureName = "";
-                if (!AssignMap(material->maps[1], MapConfig, material->name, TextureSystem::GetDefaultTexture(Texture::Specular))) {
+                if (!AssignMap(material->maps[SAMP_IRRADIANCE_MAP], MapConfig, material->name, TextureSystem::GetDefaultTexture(Texture::Cube))) {
                     return false;
                 }
             }
-            if (!NormAssigned) {
-                // Убедитесь, что нормальная карта всегда назначена.
-                Material::Map MapConfig{};
-                MapConfig.FilterMag = MapConfig.FilterMin = TextureFilter::ModeLinear;
-                MapConfig.RepeatU = MapConfig.RepeatV = MapConfig.RepeatW = TextureRepeat::Repeat;
-                MapConfig.name = "normal";
+
+            // Карты теней нельзя настроить, поэтому задайте их здесь.
+            {
+                Material::Map MapConfig {};
+                MapConfig.FilterMag = MapConfig.FilterMin = TextureFilterMode::Linear;
+                MapConfig.RepeatU = MapConfig.RepeatV = MapConfig.RepeatW = TextureRepeat::ClampToBorder;
+                MapConfig.name = "shadow_map";
                 // MapConfig.TextureName = "";
-                if (!AssignMap(material->maps[2], MapConfig, material->name, TextureSystem::GetDefaultTexture(Texture::Normal))) {
+                if (!AssignMap(material->maps[SAMP_SHADOW_MAP], MapConfig, material->name, TextureSystem::GetDefaultTexture(Texture::Diffuse))) {
                     return false;
                 }
             }
-        }
-            break;
-        case Material::Type::UI: {
-            // ПРИМЕЧАНИЕ: только одна карта и свойство, поэтому просто используйте первое.
-            // ЗАДАЧА: Если это изменится, обновите это, чтобы оно работало так, как указано выше.
-            material->maps.Resize(1);
-            material->PropertyStructSize = sizeof(Material::UiProperties);
-            material->properties = MemorySystem::Allocate(material->PropertyStructSize, Memory::MaterialInstance);
-            auto properties = reinterpret_cast<Material::UiProperties*>(material->properties);
-            properties->DiffuseColour = config.properties[0].ValueV4;
-            if (!AssignMap(material->maps[0], config.maps[0], material->name, TextureSystem::GetDefaultTexture(Texture::Diffuse))) {
+
+            // Соберите список указателей на текстурные карты;
+            // Отправьте его рендереру для получения ресурсов.
+            // Количество карт этого типа известно.
+            InstanceResourceConfig.UniformConfigCount = 3;  // ПРИМЕЧАНИЕ: Сюда входят карты материалов, карты теней и карта освещенности.
+            InstanceResourceConfig.UniformConfigs = (ShaderInstanceUniformTextureConfig*)MemorySystem::Allocate(sizeof(ShaderInstanceUniformTextureConfig) * InstanceResourceConfig.UniformConfigCount, Memory::Array);
+
+            // Текстуры материалов
+            u32 ptrSize = sizeof(void*);
+            ShaderInstanceUniformTextureConfig& MatTextures = InstanceResourceConfig.UniformConfigs[0];
+            MatTextures.UniformLocation = state->MaterialLocations.MaterialTexures;
+            MatTextures.TextureMapCount = PBR_MATERIAL_TEXTURE_COUNT;
+            CreateArray(MatTextures.TextureMaps, ptrSize * MatTextures.TextureMapCount);
+            MatTextures.TextureMaps[SAMP_ALBEDO]   = &material->maps[SAMP_ALBEDO];
+            MatTextures.TextureMaps[SAMP_NORMAL]   = &material->maps[SAMP_NORMAL];
+            MatTextures.TextureMaps[SAMP_COMBINED] = &material->maps[SAMP_COMBINED];
+
+            // Текстуры теней
+            ShaderInstanceUniformTextureConfig& ShadowTextures = InstanceResourceConfig.UniformConfigs[1];
+            ShadowTextures.UniformLocation = state->MaterialLocations.ShadowTextures;
+            ShadowTextures.TextureMapCount = 1;
+            CreateArray(ShadowTextures.TextureMaps, ptrSize * ShadowTextures.TextureMapCount);
+            ShadowTextures.TextureMaps[0] = &material->maps[SAMP_SHADOW_MAP];
+
+            // Текстура куба IBL
+            ShaderInstanceUniformTextureConfig& IblCubeTexture = InstanceResourceConfig.UniformConfigs[2];
+            IblCubeTexture.UniformLocation = state->MaterialLocations.IblCubeTexture;
+            IblCubeTexture.TextureMapCount = 1;
+            CreateArray(IblCubeTexture.TextureMaps, ptrSize * IblCubeTexture.TextureMapCount);
+            IblCubeTexture.TextureMaps[0] = &material->maps[SAMP_IRRADIANCE_MAP];
+                
+        } break;
+        case  Material::Type::Custom: {
+            // Составьте список указателей на текстурные карты;
+            // Отправить его в рендерер для получения ресурсов.
+            // Пользовательские материалы.
+            if (!config.ShaderName) {
+                MERROR("Для пользовательских типов материалов требуется указать имя шейдера. Материал '%s' не загрузился.", material->name);
                 return false;
             }
-        }
-            break;
-        case  Material::Type::Custom: {
+
+            SelectedShader = ShaderSystem::GetShader(config.ShaderName);
+            material->ShaderID = SelectedShader->id;
+
             // Свойства.
-            const u32& prop_count = config.properties.Length();
+            const u32 prop_count = config.properties.Length();
             // Начните с получения общего размера всех свойств.
             material->PropertyStructSize = 0;
             for (u32 i = 0; i < prop_count; ++i) {
@@ -933,37 +1107,37 @@ static bool LoadMaterial(const Material::Config &config, Material *material)
                 if (config.properties[i].size > 0) {
                     void* data = nullptr;
                     switch (config.properties[i].type) {
-                        case Shader::UniformType::Int8:
+                        case ShaderUniformType::Int8:
                             data = (void*)&config.properties[i].ValueI8;
                             break;
-                        case Shader::UniformType::UInt8:
+                        case ShaderUniformType::UInt8:
                             data = (void*)&config.properties[i].ValueU8;
                             break;
-                        case Shader::UniformType::Int16:
+                        case ShaderUniformType::Int16:
                             data = (void*)&config.properties[i].ValueI16;
                             break;
-                        case Shader::UniformType::UInt16:
+                        case ShaderUniformType::UInt16:
                             data = (void*)&config.properties[i].ValueU16;
                             break;
-                        case Shader::UniformType::Int32:
+                        case ShaderUniformType::Int32:
                             data = (void*)&config.properties[i].ValueI32;
                             break;
-                        case Shader::UniformType::UInt32:
+                        case ShaderUniformType::UInt32:
                             data = (void*)&config.properties[i].ValueU32;
                             break;
-                        case Shader::UniformType::Float32:
+                        case ShaderUniformType::Float32:
                             data = (void*)&config.properties[i].ValueF32;
                             break;
-                        case Shader::UniformType::Float32_2:
+                        case ShaderUniformType::Float32_2:
                             data = (void*)&config.properties[i].ValueV2;
                             break;
-                        case Shader::UniformType::Float32_3:
+                        case ShaderUniformType::Float32_3:
                             data = (void*)&config.properties[i].ValueV3;
                             break;
-                        case Shader::UniformType::Float32_4:
+                        case ShaderUniformType::Float32_4:
                             data = (void*)&config.properties[i].ValueV4;
                             break;
-                        case Shader::UniformType::Matrix4:
+                        case ShaderUniformType::Matrix4:
                             data = (void*)&config.properties[i].ValueMatrix4D;
                             break;
                         default:
@@ -979,7 +1153,7 @@ static bool LoadMaterial(const Material::Config &config, Material *material)
             }
 
             // Карты. Пользовательские материалы могут иметь любое количество карт.
-            const u32& MapCount = config.maps.Length();
+            const u32 MapCount = config.maps.Length();
             material->maps.Resize(MapCount);
             for (u32 i = 0; i < MapCount; ++i) {
                 // Нет известного сопоставления, поэтому просто сопоставляйте их по порядку.
@@ -988,70 +1162,46 @@ static bool LoadMaterial(const Material::Config &config, Material *material)
                     return false;
                 }
             }
-        }
-            break;
-        case Material::Type::PBR: case Material::Type::Terrain: case Material::Type::Unknown: break;
-    }
 
-    // Отправьте его в рендерер для получения ресурсов.
-    Shader* shader = nullptr;
-    switch (config.type) {
-        case Material::Type::Phong: shader = ShaderSystem::GetShader(config.ShaderName ? config.ShaderName : "Shader.Builtin.Material");
-            break;
-        case Material::Type::UI: shader = ShaderSystem::GetShader(config.ShaderName ? config.ShaderName : "Shader.Builtin.UI");
-            break;
-        case Material::Type::Terrain: shader = ShaderSystem::GetShader(config.ShaderName ? config.ShaderName : "Shader.Builtin.Terrain");
-            break;
-        case Material::Type::PBR: 
-            MFATAL("PBR пока не поддерживается.");
-            return false;
-        case Material::Type::Custom: 
-            if (!config.ShaderName) {
-                MERROR("Имя шейдера требуется для пользовательских типов материалов. Материал '%s' не удалось загрузить", material->name);
-                return false;
+            u32 GlobalSamplerCount   = SelectedShader->GlobalUniformSamplerCount;
+            u32 InstanceSamplerCount = SelectedShader->InstanceUniformSamplerCount;
+
+            // ПРИМЕЧАНИЕ: Порядок отображения для пользовательских материалов должен соответствовать порядку унифицированных сэмплеров, определенному в шейдере. 
+            // Обработка всегда начинается с глобального сэмплера, затем переходит к экземпляру.
+            InstanceResourceConfig.UniformConfigCount = GlobalSamplerCount + InstanceSamplerCount;
+            InstanceResourceConfig.UniformConfigs = (ShaderInstanceUniformTextureConfig*)MemorySystem::Allocate(sizeof(ShaderInstanceUniformTextureConfig) * InstanceResourceConfig.UniformConfigCount, Memory::Array);
+
+            // Сначала отследите количество карт, используемых глобальными униформами, а затем скорректируйте результаты с учетом этого количества.
+            u32 MapOffset = 0;
+            for (u32 i = 0; i < GlobalSamplerCount; ++i) {
+                MapOffset++;
             }
-            shader = ShaderSystem::GetShader(config.ShaderName);
-
-        default: MERROR("Неизвестный тип материала: %d. Материал '%s' не может быть загружен.", config.type, material->name);
+            u32 ptrSize = sizeof(void*);
+            for (u32 i = 0; i < InstanceSamplerCount; ++i) {
+                ShaderUniform& u = SelectedShader->uniforms[SelectedShader->InstanceSamplerIndices[i]];
+                ShaderInstanceUniformTextureConfig& UniformConfig = InstanceResourceConfig.UniformConfigs[i];
+                UniformConfig.UniformLocation = u.location;
+                UniformConfig.TextureMapCount = MMAX(u.ArrayLength, 1);
+                UniformConfig.TextureMaps = (TextureMap**)MemorySystem::Allocate(ptrSize * UniformConfig.TextureMapCount, Memory::Array);
+                for (u32 j = 0; j < UniformConfig.TextureMapCount; ++j) {
+                    UniformConfig.TextureMaps[j] = &material->maps[i + MapOffset];
+                }
+            }
+        } break;
+        default: {
+            MERROR("Неизвестный тип материала: %d. Материал '%s' не может быть загружен.", config.type, material->name);
             return false;
-            // break;
-    }
-    
-    if (!shader) {
-        MERROR("Не удалось загрузить материал, так как его шейдер не найден: '%s'. Вероятно, это проблема с материальным активом.", config.ShaderName.c_str());
-        return false;
+        }
     }
 
-    // Соберите список указателей на текстурные карты;
-    u32 MapCount = 0;
-    switch (config.type) {
-        case Material::Type::Phong: /* Количество карт для этого типа известно. */
-            MapCount = 3;
-            break;
-        case  Material::Type::UI: /* Количество карт для этого типа известно. */
-            MapCount = 1;
-            break;
-        case Material::Type::PBR: MFATAL("PBR пока не поддерживается.");
-            return false;
-        case Material::Type::Custom: /* Количество карт предоставлено конфигурацией. */
-            MapCount = config.maps.Length();
-            break;
-        case Material::Type::Terrain: case Material::Type::Unknown: break;
-    }
-
-    auto maps = reinterpret_cast<TextureMap**>(MemorySystem::Allocate(sizeof(TextureMap*) * MapCount, Memory::Array));
-    for (u32 i = 0; i < MapCount; ++i) {
-        maps[i] = &material->maps[i];
-    }
-
-    bool result = RenderingSystem::ShaderAcquireInstanceResources(shader, MapCount, maps, material->InternalId);
+    // Получить ресурсы экземпляра для этого материала.
+    bool result = (SystemsManager::GetRenderingSystem())->ShaderAcquireInstanceResources(SelectedShader, InstanceResourceConfig, material->InternalId);
     if (!result) {
-        MERROR("Не удалось получить ресурсы рендеринга для материала '%s'.", material->name);
+        MERROR("Не удалось получить ресурсы рендерера для материала '%s'.", material->name);
     }
 
-    if (maps) {
-        MemorySystem::Free(maps, sizeof(TextureMap*) * MapCount, Memory::Array);
-    }
+    // Очистить конфигурации униформ.
+    // InstanceResourceConfig.Destroy();
 
     return result;
 }
@@ -1059,20 +1209,20 @@ static bool LoadMaterial(const Material::Config &config, Material *material)
 void DestroyMaterial(Material *material)
 {
     // MTRACE("Уничтожение материала '%s'...", material->name);
-
-    const u32& length = material->maps.Length();
+    auto renderer = SystemsManager::GetRenderingSystem();
+    const u32 length = material->maps.Length();
     for (u32 i = 0; i < length; ++i) {
         // Освободить ссылки на текстуры.
         if (material->maps[i].texture) {
             TextureSystem::Release(material->maps[i].texture->name);
         }
         // Освободить ресурсы карты текстур.
-        RenderingSystem::TextureMapReleaseResources(&material->maps[i]);
+        renderer->TextureMapReleaseResources(&material->maps[i]);
     }
 
     // Освободить ресурсы рендерера.
     if (material->ShaderID != INVALID::ID && material->InternalId != INVALID::ID) {
-        RenderingSystem::ShaderReleaseInstanceResources(ShaderSystem::GetShader(material->ShaderID), material->InternalId);
+        renderer->ShaderReleaseInstanceResources(ShaderSystem::GetShader(material->ShaderID), material->InternalId);
         material->ShaderID = INVALID::ID;
     }
 
@@ -1087,4 +1237,16 @@ void DestroyMaterial(Material *material)
     material->generation = INVALID::ID;
     material->InternalId = INVALID::ID;
     material = nullptr;
+}
+
+bool MaterialSystem::OnEvent(u16 code, void *sender, void *ListenerInst, const EventContext &context)
+{
+    if (code == EventSystem::MVarChanged) {
+        if (MString::Comparei("use_pcf", context.data.c)) {
+            MVar::GetInt("use_pcf", state->UsePCF);
+            return true;
+        }
+    }
+
+    return false;
 }
