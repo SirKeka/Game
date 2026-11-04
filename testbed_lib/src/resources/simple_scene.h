@@ -1,16 +1,24 @@
 #pragma once
 
+#include "containers/array.h"
 #include "resources/debug/debug_grid.h"
 #include "resources/lighting_structures.h"
 #include "resources/mesh.h"
 #include "resources/terrain.h"
 
 #include "math/transform.h"
-#include "views/render_view_world.h"
 
 struct FrameData;
+struct Frustum;
 class Camera;
 struct RenderPacket;
+struct Viewport;
+struct GeometryRenderData;
+
+struct SimpleSceneGeometryRenderData {
+    u32& count;
+    GeometryRenderData*& data;
+};
 
 struct PendingMesh {
     Mesh* m;
@@ -54,16 +62,15 @@ struct MAPI SimpleScene {
     DArray<Terrain> terrains;
     DArray<PendingMesh> PendingMeshes;
 
-    struct Skybox* skybox;
+    struct Sky* skybox;
 
     // Сетка для сцены.
     DebugGrid grid;
 
     // Указатель на конфигурацию сцены, если она указана.
     struct SimpleSceneConfig* config;
-    RenderViewWorldData WorldData;
 
-    SimpleScene() : id(GlobalSceneID++), state(State::Uninitialized), enabled(false), name(), description(), SceneTransform(), DirLight(nullptr), PointLights(), meshes(), terrains(), PendingMeshes(), skybox(nullptr), grid(), config(nullptr), WorldData() {}
+    SimpleScene() : id(GlobalSceneID++), state(State::Uninitialized), enabled(false), name(), description(), SceneTransform(), DirLight(nullptr), PointLights(), meshes(), terrains(), PendingMeshes(), skybox(nullptr), grid(), config(nullptr) {}
 
     /// @brief Создает новую сцену с заданной конфигурацией со значениями по умолчанию. Ресурсы не выделены. Конфигурация еще не обработана.
     /// @param config Указатель на конфигурацию. Необязательно.
@@ -93,14 +100,14 @@ struct MAPI SimpleScene {
     /// @return True в случае успеха; в противном случае false.
     bool Update(const FrameData& rFrameData);
 
-    /// @brief Заполняет указанный пакет рендеринга данными из предоставленной сцены.
-    /// @param scene ссылка на сцену для обновления.
-    /// @param CurrentCamera текущая камера для использования при рендеринге сцены.
-    /// @param viewport указатель на область просмотра, которая будет использоваться при заполнении пакетов рендеринга.
+    void RenderFramePrepare(const struct FrameData& rFrameData);
+
+    /// @brief Обновляет уровни детализации (LOD) объектов на сцене на основе заданной позиции и дистанций отсечения.
+    /// @param ViewPosition позиция наблюдателя, используемая для расчета LOD.
+    /// @param NearClip расстояние до ближней плоскости отсечения от позиции наблюдателя.
+    /// @param FarClip расстояние до дальней плоскости отсечения от позиции наблюдателя.
     /// @param rFrameData константная ссылка на данные текущего кадра.
-    /// @param packet ссылка на пакет для заполнения.
-    /// @return True в случае успеха; в противном случае false.
-    bool PopulateRenderPacket(Camera* CurrentCamera, Viewport& viewport, FrameData& rFrameData, RenderPacket& packet);
+    void UpdateLODfromViewPosition(FVec3 ViewPosition, f32 NearClip, f32 FarClip, const FrameData& rFrameData);
 
     /// @brief Добавляет направленый источник освещения на сцену
     /// @param name название направленного источника света
@@ -124,7 +131,7 @@ struct MAPI SimpleScene {
     /// @param name название скайбокса
     /// @param sb скайбокс
     /// @return True в случае успеха; в противном случае false.
-    bool AddSkybox(const char* name, Skybox& sb);
+    bool AddSkybox(const char* name, Sky& sb);
 
     /// @brief Добавляет ландшафт на сцену
     /// @param name назване ландшафта
@@ -146,14 +153,14 @@ struct MAPI SimpleScene {
 
     /// @brief 
     /// @return Скайбокс
-    Skybox* GetSkybox(const char* name);
+    Sky* GetSkybox(const char* name);
 
     /// @brief 
     /// @param name название ландшафта, который нужно получить из сцены
     /// @return Ландшафт
     Terrain* GetTerrain(const char* name);
 
-    Transform* GetTransform(u32 UniqueID);
+    Transform* GetTransform(Identifier UniqueID);
 
     /// @brief Удаляет направленный источник освещения из сцены
     /// @param light направленный источник освещения
@@ -182,6 +189,12 @@ struct MAPI SimpleScene {
 
     bool Raycast(const struct Ray& ray, struct RaycastResult& OutResult);
 
+    bool DebugRenderDataQuery(/*u32& DataCount, */DArray<GeometryRenderData>* DebugGeometries);
+    bool MeshRenderDataQuery(const Frustum& f, FVec3 center, FrameData& rFrameData, DArray<GeometryRenderData>& OutGeometries);
+    bool MeshRenderDataQueryFromLine(FVec3 direction, FVec3 center, f32 radius, FrameData& rFrameData, DArray<GeometryRenderData>& OutGeometries);
+
+    bool TerrainRenderDataQuery(const Frustum& f, FVec3 center, FrameData& rFrameData, DArray<GeometryRenderData>& OutTerrainGeometries);
+    bool TerrainRenderDataQueryFromLine(FVec3 direction, FVec3 center, f32 radius, FrameData& rFrameData, DArray<GeometryRenderData>& OutTerrainGeometries);
 private:
     static inline u32 GlobalSceneID;
 
