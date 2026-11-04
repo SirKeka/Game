@@ -1,40 +1,55 @@
 #include "game.h"
 
-#include <core/logger.hpp>
-#include <core/input.h>
-#include <core/metrics.h>
+#include "core/input.h"
+#include "core/metrics.h"
 
-#include <systems/camera_system.hpp>
-#include <renderer/renderpass.h>
-#include <new>
+#include "systems/camera_system.hpp"
+#include "systems/material_system.h"
+#include "renderer/rendering_system.h"
+#include "renderer/renderpass.h"
+// #include <new>
 
 #include <math/geometry_utils.h>
 
+// Проходы отрисовки.
+#include "passes/editor_pass.h"
+#include "passes/scene_pass.h"
+#include "passes/skybox_pass.h"
+#include "passes/ui_pass.h"
+
+
 // ЗАДАЧА: Реедактор временно
 #include "editor/gizmo.h"
-#include "editor/render_view_editor_world.h"
-#include "editor/render_view_wireframe.h"
 
 // ЗАДАЧА: временный код
-#include <core/identifier.h>
-#include <systems/geometry_system.h>
-#include <systems/render_view_system.h>
-#include <systems/resource_system.h>
+#include "core/identifier.h"
+#include "systems/geometry_system.h"
+#include "systems/resource_system.h"
+#include "systems/shader_system.h"
 #include "views/render_view_pick.h"
-#include "views/render_view_ui.h"
-#include "views/render_view_world.h"
 #include "debug_console.h"
+#include "elements/panel.h"
+#include "elements/button.h"
 // ЗАДАЧА: конец временного кода
+
+/// @brief Закрытая структура, используемая для сортировки геометрии по расстоянию от камеры.
+struct GeometryDistance {
+    /// @brief Данные рендеринга геометрии.
+    GeometryRenderData geometry;
+    /// @brief Расстояние от камеры.
+    f32 distance;
+};
 
 bool GameConfigureRenderViews(ApplicationConfig& config);
 void ApplicationRegisterEvents(Application& app);
 void ApplicationUnregisterEvents(Application& app);
 static bool LoadMainScene(Application* app);
+static bool ConfigureRendergraph(Application& app);
 
 void Game::ClearDebugObjects() 
 {
     if (TestBoxes) {
-        const u32& BoxCount = TestBoxes.Length();
+        const u32 BoxCount = TestBoxes.Length();
         for (u32 i = 0; i < BoxCount; ++i) {
             auto& box = TestBoxes[i];
             box.Unload();
@@ -44,7 +59,7 @@ void Game::ClearDebugObjects()
     }
 
     if (TestLines) {
-        const u32& LineCount = TestLines.Length();
+        const u32 LineCount = TestLines.Length();
         for (u32 i = 0; i < LineCount; ++i) {
             auto line = TestLines[i];
             line.Unload();
@@ -54,13 +69,36 @@ void Game::ClearDebugObjects()
     }
 }
 
-static bool GameOnEvent(u16 code, void *sender, void *ListenerInst, EventContext context)
+static bool GameOnEvent(u16 code, void *sender, void *ListenerInst, const EventContext& context)
 {
-    auto GameInst = reinterpret_cast<Application*>(ListenerInst);
-    auto state = reinterpret_cast<Game*>(GameInst->state);
+    auto GameInst = (Application*)ListenerInst;
+    auto state = (Game*)GameInst->state;
     switch (code) {
         case EventSystem::OojectHoverIdChanged: {
             state->HoveredObjectID = context.data.u32[0];
+            return true;
+        }
+        case EventSystem::SetRenderMode: {
+            i32 mode = context.data.i32[0];
+            switch (mode) {
+                default:
+                case Render::DebugViewMode::Default:
+                    MDEBUG("Режим рендеринга установлен по умолчанию.");
+                    state->RenderMode = Render::DebugViewMode::Default;
+                    break;
+                case Render::DebugViewMode::Lighting:
+                    MDEBUG("Режим рендеринга установлен на освещение.");
+                    state->RenderMode = Render::DebugViewMode::Lighting;
+                    break;
+                case Render::DebugViewMode::Normals:
+                    MDEBUG("Режим рендеринга установлен на нормали.");
+                    state->RenderMode = Render::DebugViewMode::Normals;
+                    break;
+                case Render::DebugViewMode::Cascades:
+                    MDEBUG("Режим рендеринга установлен на каскадный.");
+                    state->RenderMode = Render::DebugViewMode::Cascades;
+                    break;
+            }
             return true;
         }
     }
@@ -69,12 +107,13 @@ static bool GameOnEvent(u16 code, void *sender, void *ListenerInst, EventContext
 }
 
 // ЗАДАЧА: временно
-static bool GameOnDebugEvent(u16 code, void *sender, void *ListenerInst, EventContext context)
+static bool GameOnDebugEvent(u16 code, void *sender, void *ListenerInst, const EventContext& context)
 {
-    auto GameInst = reinterpret_cast<Application*>(ListenerInst);
-    auto state = reinterpret_cast<Game*>(GameInst->state);
-    if (code == EventSystem::DEBUG0) {
-        const char* names[3] = {
+    auto GameInst = (Application*)ListenerInst;
+    auto state = (Game*)GameInst->state;
+    switch (code) {
+    case EventSystem::DEBUG0: {
+        static constexpr const char* names[3] = {
             "Ice",
             "Sand",
             "Rope"
@@ -93,7 +132,7 @@ static bool GameOnDebugEvent(u16 code, void *sender, void *ListenerInst, EventCo
             // Приобретите новый материал.
             g->material = MaterialSystem::Acquire(names[choice]);
 
-        if (!g->material) {
+            if (!g->material) {
                 MWARN("Application::OnDebugEvent: материал не найден! Использование материала по умолчанию.");
                 g->material = MaterialSystem::GetDefaultMaterial();
             }
@@ -102,7 +141,8 @@ static bool GameOnDebugEvent(u16 code, void *sender, void *ListenerInst, EventCo
             MaterialSystem::Release(OldName);
         }
         return true;
-    } else if (code == EventSystem::DEBUG1) {
+    }
+    case EventSystem::DEBUG1: {
         if (state->MainScene.state < SimpleScene::State::Loading) {
             MDEBUG("Загрузка основной сцены...");
             
@@ -111,41 +151,27 @@ static bool GameOnDebugEvent(u16 code, void *sender, void *ListenerInst, EventCo
             }
         }
         return true;
-    } else if (code == EventSystem::DEBUG2) {
+    }
+    case EventSystem::DEBUG2: {
         if (state->MainScene.state == SimpleScene::State::Loaded) {
             MDEBUG("Выгрузка сцены...");
             state->MainScene.Unload(false);
             state->ClearDebugObjects();
-            MDEBUG("Выполнено.")
+            MDEBUG("Выполнено.");
         }
+        
         return true;
     }
+    case EventSystem::DEBUG3: {
 
-    return true;
+    }
+    default:
+        return false;
+    }
 }
 //ЗАДАЧА: временно
 
-static bool GameOnKey(u16 code, void *sender, void *ListenerInst, EventContext context)
-{
-    auto GameInst = (Application*)ListenerInst;
-    auto state = (Game*)GameInst->state;
-    if (code == EventSystem::KeyReleased) {
-        Keys KeyCode = (Keys)context.data.u16[0];
-        // Измените ориентацию гизмо.
-        if (KeyCode == Keys::G) {
-            u16 orientation = state->gizmo.GetOrientation();
-            orientation++;
-            if (orientation > Gizmo::Orientation::Max) {
-                orientation = Gizmo::Orientation::Global;
-            }
-            state->gizmo.SetOrientation(static_cast<Gizmo::Orientation>(orientation));
-        }
-    }
-
-    return false;
-}
-
-static bool GameOnDrag(u16 code, void* sender, void* ListenerInst, EventContext context)
+static bool GameOnDrag(u16 code, void* sender, void* ListenerInst, const EventContext& context)
 {
     i16 x = context.data.i16[0];
     i16 y = context.data.i16[1];
@@ -182,7 +208,7 @@ static bool GameOnDrag(u16 code, void* sender, void* ListenerInst, EventContext 
     return false;  // Позвольте другим обработчикам обрабатывать.
 }
 
-static bool GameOnButton(u16 code, void* sender, void* ListenerInst, EventContext context) {
+static bool GameOnButton(u16 code, void* sender, void* ListenerInst, const EventContext& context) {
     if (code == EventSystem::ButtonPressed) {
         //
     } else if (code == EventSystem::ButtonReleased) {
@@ -219,7 +245,7 @@ static bool GameOnButton(u16 code, void* sender, void* ListenerInst, EventContex
 
                     RaycastResult RayResult;
                     if (state->MainScene.Raycast(ray, RayResult)) {
-                        const u32& HitCount = RayResult.hits.Length();
+                        const u32 HitCount = RayResult.hits.Length();
                         for (u32 i = 0; i < HitCount; ++i) {
                             auto& hit = RayResult.hits[i];
                             MINFO("Попадание! id: %u, дистанция: %f", hit.UniqueID, hit.distance);
@@ -291,7 +317,7 @@ static bool GameOnButton(u16 code, void* sender, void* ListenerInst, EventContex
     return false;
 }
 
-static bool GameOnMouseMove(u16 code, void* sender, void* ListenerInst, EventContext context) {
+static bool GameOnMouseMove(u16 code, void* sender, void* ListenerInst, const EventContext& context) {
     if (code == EventSystem::MouseMoved && !InputSystem::IsButtonDragging(Buttons::Left)) {
         i16 x = context.data.i16[0];
         i16 y = context.data.i16[1];
@@ -337,9 +363,13 @@ bool ApplicationBoot(Application& app)
 
     app.AppConfig.FontConfig.MaxBitmapFontCount = app.AppConfig.FontConfig.MaxSystemFontCount = 101;
 
-    // Настроить представления рендеринга. ЗАДАЧА: прочитать из файла?
-    if (!GameConfigureRenderViews(app.AppConfig)) {
-        MERROR("Не удалось настроить представления рендерера. Прерывание приложения.");
+    if (!ConfigureRendergraph(app)) {
+        MERROR("Не удалось настроить граф рендеринга. Скучное приложение.");
+        return false;
+    }
+
+    if (!((Game*)app.state)->FrameGraph.Finalize()) {
+        MERROR("Не удалось завершить рендеринг графа. Подробности см. в журнале.");
         return false;
     }
 
@@ -354,11 +384,28 @@ bool ApplicationBoot(Application& app)
 bool ApplicationInitialize(Application& app)
 {
     MDEBUG("Game::Initialize вызван!");
+    
+    auto state = (Game*)app.state;
+    if (!state->FrameGraph.LoadResource()) {
+        MERROR("Не удалось загрузить ресурсы графа рендеринга.");
+        return false;
+    }
+
+    #pragma region Инициализация системы пользовательского интерфейса
+    auto& sysManager = app.engine->GetSystemsManager();
+    UiSystem::Config uiCfg = { 1024 };
+    u64 size;
+    UiSystem::Initialize(size, nullptr, uiCfg);
+    auto uisys = (UiSystem*)sysManager.GetMem(size);
+    UiSystem::Initialize(size, uisys, uiCfg);
+    if (!sysManager.Register(M_SYSTEM_TYPE_STANDARD_UI_EXT, uisys, UiSystem::Update, UiSystem::Shutdown, UiSystem::RenderPrepareFrame)) {
+        MERROR("Не удалось зарегистрировать стандартную систему пользовательского интерфейса.");
+        return false;
+    }
+    #pragma endregion
 
     ApplicationRegisterEvents(app);
     ResourceSystem::RegisterLoader(eResource::Type::SimpleScene, MString(), "scenes");
-
-    auto state = reinterpret_cast<Game*>(app.state);
 
     state->selection.UniqueID = INVALID::ID;
     state->selection.xform = nullptr;
@@ -366,28 +413,25 @@ bool ApplicationInitialize(Application& app)
 
         // Настройка области просмотра.
         // Область просмотра мира
-        Rect2D WorldVieportRect {20, 20, 1280 - 40, 720 - 40};
-        if (!state->WorldViewport.Create(WorldVieportRect, Math::DegToRad(45.F), 0.1F, 4000.F, RendererProjectionMatrixType::Perspective)) {
+        if (!state->WorldViewport.Create(Rect2D(20, 20, 1280 - 40, 720 - 40), Math::DegToRad(45.F), 0.1F, 1000.F, RendererProjectionMatrixType::Perspective)) {
             MERROR("Не удалось создать область просмотра мира. Не удаётся запустить приложение.");
             return false;
         }
 
         // Область просмотра пользовательского интерфейса
-        Rect2D UiViewportRect {0, 0, 1280, 720};
-        if (!state->UiViewport.Create(UiViewportRect, 0.F, -100.F, 100.F, RendererProjectionMatrixType::Orthographic)) {
+        if (!state->UiViewport.Create(Rect2D(0, 0, 1280, 720), 0.F, -100.F, 100.F, RendererProjectionMatrixType::Orthographic)) {
             MERROR("Не удалось создать область просмотра пользовательского интерфейса. Не удаётся запустить приложение.");
             return false;
         }
 
         // ЗАДАЧА: тестирование
-        Rect2D WorldViewportRect2 {20, 20, 128, 72};
-        if (!state->WorldViewport2.Create(WorldViewportRect2, 0.015F, -4000.F, 4000.F, RendererProjectionMatrixType::OrthographicCentered)) {
-            MERROR("Не удалось создать область просмотра каркаса. Не удаётся запустить приложение.");
+        if (!state->WorldViewport2.Create(Rect2D(20, 20, 1280 - 40, 720 - 40), Math::DegToRad(45.F), 0.01F, 10.F, RendererProjectionMatrixType::OrthographicCentered)) {
+            MERROR("Не удалось создать область просмотра 2. Не удается запустить приложение.");
             return false;
         }
 
-    state->ForwardMoveSpeed  = 5.F;
-    state->BackwardMoveSpeed = 2.5F;
+    state->ForwardMoveSpeed  =  5.F * 5.F;
+    state->BackwardMoveSpeed = 2.5F * 5.F;
 
     if (!state->gizmo.Initialize()) {
         MERROR("Не удалось инициализировать редактор!");
@@ -406,72 +450,104 @@ bool ApplicationInitialize(Application& app)
         state->UiMeshes[i].generation = INVALID::U8ID;
     }
 
-    if (!state->TestText.Create("testbed_metrika_test_text", TextType::Bitmap, "Metrika 21px", 21, "Какой-то тестовый текст 123,\n\tyo!")) {
-        MERROR("Не удалось загрузить базовый растровый текст пользовательского интерфейса.");
-        return false;
+    state->TestText = Label("testbed_metrika_test_text", FontType::Bitmap, "Metrika 21px", 21, "Какой-то тестовый текст 123,\n\tyo!");
+    if (!state->TestText.Load()) {
+        MERROR("Не удалось загрузить текст тестовой системы.");
+    } else {
+        if (!uisys->RegisterControl(&state->TestText)) {
+            MERROR("Не удалось зарегистрировать элемент управления.");
+        } else {
+            if (!uisys->AddChild(&state->TestText)) {
+                MERROR("Не удалось установить родительский текст тестовой системы.");
+            } else {
+                state->TestText.IsActive = true;
+            }
+        }
     }
+
     // Переместить отладочный текст в новую нижнюю часть экрана.
     state->TestText.SetPosition(FVec3(20.F, state->height - 75.F, 0.F)); 
 
-    if(!state->TestSysText.Create("testbed_UTF_test_text", TextType::System, "Noto Sans CJK JP", 31, "Какой-то тестовый текст 123, \n\tyo!\n\n\tこんにちは 한")) {
-        MERROR("Не удалось загрузить базовый системный текст пользовательского интерфейса.");
-        return false;
+    #pragma region Стандартный интерфейс.
+    Panel* TestPanel = nullptr;
+    if (!(TestPanel = state->TestPanel = new Panel("test_panel", FVec2(300.F, 300.F), FVec4(0.F, 0.F, 0.F, 0.5F)))) {
+        MERROR("Не удалось создать тестовую панель.");
+    } else {
+        if (!TestPanel->Load()) {
+            MERROR("Не удалось загрузить тестовую панель.");
+        } else {
+            TestPanel->xform.Translate(FVec3(950.F, 350.F));
+            auto uiSystem = (UiSystem*)SystemsManager::GetState(M_SYSTEM_TYPE_STANDARD_UI_EXT);
+            if (!uiSystem->RegisterControl(TestPanel)) {
+                MERROR("Не удалось зарегистрировать элемент управления.");
+            } else {
+                if (!uiSystem->AddChild(TestPanel)) {
+                    MERROR("Не удалось создать родительскую тестовую панель.");
+                } else {
+                    TestPanel->IsActive = true;
+                }
+            }
+        }
     }
-    state->TestSysText.SetPosition(FVec3(500.F, 500.F, 0.F));
 
-    const f32 w = 128.F;
-    const f32 h = 49.F;
-    Vertex2D uiverts [4];
-    uiverts[0].position.x = 0.F;  // 0    3
-    uiverts[0].position.y = 0.F;  //
-    uiverts[0].texcoord.x = 0.F;  //
-    uiverts[0].texcoord.y = 0.F;  // 2    1
+    state->TestButton = Button("test_button");
+    // Назначаем обработчик щелчков.
+    state->TestButton.OnClick = [](UiElement *self, UiMouseEvent event) {
+        if (self) {
+            MDEBUG("Нажал '%s'!", (S_Arg(self->name)));
+        }
+    };
 
-    uiverts[1].position.y = h;
-    uiverts[1].position.x = w;
-    uiverts[1].texcoord.x = 1.F;
-    uiverts[1].texcoord.y = 1.F;
+    // Переместите и поверните его немного.
+    // Quaternion rotation {FVec3(0.F, 0.F, 1.F), Math::DegToRad(-45.F), false};
+    // state->TestButton->xform.TranslateRotate(FVec3(50.F, 50.F, 0.F), rotation);
 
-    uiverts[2].position.x = 0.F;
-    uiverts[2].position.y = h;
-    uiverts[2].texcoord.x = 0.F;
-    uiverts[2].texcoord.y = 1.F;
+    if (!state->TestButton.Load()) {
+        MERROR("Не удалось загрузить тестовую кнопку.");
+    } else {
+        if (!uisys->RegisterControl(&state->TestButton)) {
+            MERROR("Не удалось зарегистрировать элемент управления.");
+        } else {
+            if (!TestPanel->AddChild(&state->TestButton)) {
+                MERROR("Не удалось создать родительскую тестовую кнопку.");
+            } else {
+                state->TestButton.IsActive = true;
+            }
+        }
+    }
+    state->TestButton.SetPosition(5.F, 5.F);
 
-    uiverts[3].position.x = w;
-    uiverts[3].position.y = 0.F;
-    uiverts[3].texcoord.x = 1.F;
-    uiverts[3].texcoord.y = 0.F;
+    state->TestSysText = Label("testbed_UTF_test_text", FontType::System, "Noto Sans CJK JP", 31, "Нажмите 'L', чтобы загрузить \n\tсцену!\n\n\tyo!\n\n\tこんにちは 한");
+    if (!state->TestSysText.Load()) {
+        MERROR("Не удалось загрузить системный текст для тестирования.");
+    } else {
+        if (!uisys->RegisterControl(&state->TestSysText)) {
+            MERROR("Не удалось зарегистрировать элемент управления.");
+        } else {
+            if (!TestPanel->AddChild(&state->TestSysText)) {
+                MERROR("Не удалось установить родительский текст тестовой системы.");
+            } else {
+                state->TestSysText.IsActive = true;
+            }
+        }
+    }
 
-    // Индексы - против часовой стрелки
-    u32 uiindices[6] = {2, 1, 0, 3, 0, 1};
-    GeometryConfig UI_Config;
-    UI_Config.VertexSize = sizeof(Vertex2D);
-    UI_Config.VertexCount = 4;
-    UI_Config.vertices = uiverts;
-    UI_Config.IndexSize = sizeof(u32);
-    UI_Config.IndexCount = 6;
-    UI_Config.indices = uiindices;
-    UI_Config.CopyNames("test_ui_geometry", "test_ui_material");
+    state->TestSysText.SetPosition(5.F, 100.F);
+    #pragma endregion // Стандартный интерфейс
 
-    // Получите геометрию пользовательского интерфейса из конфигурации.
-    state->UiMeshes[0].UniqueID = Identifier::AquireNewID(&state->UiMeshes[0]);
-    state->UiMeshes[0].GeometryCount = 1;
-    state->UiMeshes[0].geometries = new Geometry*[1];
-    state->UiMeshes[0].geometries[0] = GeometrySystem::Acquire(UI_Config, true);
-    state->UiMeshes[0].transform = Transform();
-    state->UiMeshes[0].generation = 0;
-
-    state->UiMeshes[0].transform.Translate(FVec3(650, 5, 0));
+    FVec3 CamPos { 5.83F, 4.35F, 18.68F };
+    FVec3 CamRot { -29.43F, -42.41F, 0.F };
     
     state->WorldCamera = CameraSystem::Acquire("world");
-    state->WorldCamera->SetPosition(FVec3(16.07F, 4.5F, 25.F));
-    state->WorldCamera->SetRotationEuler(FVec3(-20.F, 51.F, 0.F));
+    state->WorldCamera->SetPosition(CamPos);
+    state->WorldCamera->SetRotationEuler(CamRot);
 
     state->WorldCamera2 = CameraSystem::Acquire("world2");
-    state->WorldCamera2->SetPosition(FVec3(8.F, 0.F, 10.F));
-    state->WorldCamera2->SetRotationEuler(FVec3(0.F, -90.F, 0.F));
+    state->WorldCamera2->SetPosition(CamPos);
+    state->WorldCamera2->SetRotationEuler(CamRot);
 
     state->UpdateClock.Zero();
+    state->PrepareClock.Zero();
     state->RenderClock.Zero();
     
     return state->running = true;
@@ -480,7 +556,7 @@ bool ApplicationInitialize(Application& app)
 bool ApplicationUpdate(Application& app, const FrameData& rFrameData)
 {
     // auto AppFrameData = reinterpret_cast<TestbedApplicationFrameData*>(rFrameData.ApplicationFrameData);
-    auto state = reinterpret_cast<Game*>(app.state);
+    auto state = (Game*)app.state;
 
     if (!state->running) {
         return true;
@@ -488,10 +564,27 @@ bool ApplicationUpdate(Application& app, const FrameData& rFrameData)
 
     state->UpdateClock.Start();
 
-    if (state->MainScene.state >= SimpleScene::State::Loaded) {
-        if (!state->MainScene.Update(rFrameData)) {
+    // ЗАДАЧА: тестирование изменения размера
+    static f32 ButtonHeight = 50.F;
+    ButtonHeight = 50.F + (Math::sin(rFrameData.TotalTime) * 20.F);
+    state->TestButton.SetHeight(ButtonHeight);
+
+    // Обновите растровый текст с учётом позиции камеры. ПРИМЕЧАНИЕ: пока используется только камера по умолчанию.
+    FVec3 pos = state->WorldCamera->GetPosition();
+    FVec3 rot = state->WorldCamera->GetRotationEuler();
+
+    Viewport& ViewViewport = state->WorldViewport;
+
+    f32 NearClip = ViewViewport.NearClip;
+    f32 FarClip = ViewViewport.FarClip;
+
+    SimpleScene& scene = state->MainScene;
+    if (scene.state >= SimpleScene::State::Loaded) {
+        if (!scene.Update(rFrameData)) {
             MWARN("Не удалось обновить основную сцену.");
         }
+        // Обновление уровней детализации (LOD) для сцены в зависимости от расстояния до камеры.
+        scene.UpdateLODfromViewPosition(pos, NearClip, FarClip, rFrameData);
 
         state->gizmo.Update();
         // Выполните небольшой поворот на первой сетке.
@@ -508,9 +601,9 @@ bool ApplicationUpdate(Application& app, const FrameData& rFrameData)
         
         if (state->PointLight1) {
             state->PointLight1->data.colour.Set(
-                MCLAMP(Math::sin(rFrameData.TotalTime) * 0.75F + 0.5F, 0.F, 1.F),
-                MCLAMP(Math::sin(rFrameData.TotalTime + (M_2PI / 3)) * 0.75 + 0.5F, 0.F, 1.F),
-                MCLAMP(Math::sin(rFrameData.TotalTime + (M_4PI / 3)) * 0.75 + 0.5F, 0.F, 1.F),
+                MCLAMP(Math::sin(rFrameData.TotalTime) * 75.F + 50.F, 0.F, 100.F),
+                MCLAMP(Math::sin(rFrameData.TotalTime + (M_2PI / 3)) * 75.F + 50.F, 0.F, 100.F),
+                MCLAMP(Math::sin(rFrameData.TotalTime + (M_4PI / 3)) * 75.F + 50.F, 0.F, 100.F),
                 1.F); 
             state->PointLight1->data.position.z = 20.F + Math::sin(rFrameData.TotalTime);
         }
@@ -519,10 +612,6 @@ bool ApplicationUpdate(Application& app, const FrameData& rFrameData)
     // Отслеживайте различия в распределении.
     state->PrevAllocCount = state->AllocCount;
     state->AllocCount = MemorySystem::GetMemoryAllocCount();
-
-    // Обновляем растровый текст с позицией камеры. ПРИМЕЧАНИЕ: пока используем камеру по умолчанию.
-    const auto& pos = state->WorldCamera->GetPosition();
-    const auto& rot = state->WorldCamera->GetRotationEuler();
 
     // Также прикрепите текущее состояние мыши.
     bool LeftDown = InputSystem::IsButtonDown(Buttons::Left);
@@ -535,23 +624,55 @@ bool ApplicationUpdate(Application& app, const FrameData& rFrameData)
     f32 MouseYNdc = Math::RangeConvertF32((f32)MouseY, 0.F, (f32)state->height, -1.F, 1.F);
 
     f64 fps, FrameTime;
-    Metrics::Frame(fps, FrameTime);
+    auto metrics = Metrics::GetInstance();
+    metrics->Frame(fps, FrameTime);
 
-    const char* VsyncText = RenderingSystem::FlagEnabled(RenderingConfigFlagBits::VsyncEnabledBit) ? "Вкл" : "Выкл";
+    // Сохраняйте скользящее среднее значение таймеров обновления и рендеринга за последнюю ~1 секунду.
+    static f64 AccumulatedMs = 0;
+    static f32 TotalUpdateSeconds = 0;
+    static f32 TotalPrepareSeconds = 0;
+    static f32 TotalRenderSeconds = 0;
+
+    static f32 TotalUpdateAvgUs = 0;
+    static f32 TotalPrepareAvgUs = 0;
+    static f32 TotalRenderAvgUs = 0;
+    static f32 TotalAvg = 0;  // Общее среднее значение по кадру
+
+    TotalUpdateSeconds += state->LastUpdateElapsed;
+    TotalPrepareSeconds += state->PrepareClock.elapsed;
+    TotalRenderSeconds += state->RenderClock.elapsed;
+    AccumulatedMs += FrameTime;
+
+    // По прошествии примерно 1 секунды вычислите среднее значение и очистите аккумуляторы.
+    if (AccumulatedMs >= 1000.F) {
+        TotalUpdateAvgUs = (TotalUpdateSeconds / AccumulatedMs) * M_SEC_TO_US_MULTIPLIER;
+        TotalPrepareAvgUs = (TotalPrepareSeconds / AccumulatedMs) * M_SEC_TO_US_MULTIPLIER;
+        TotalRenderAvgUs = (TotalRenderSeconds / AccumulatedMs) * M_SEC_TO_US_MULTIPLIER;
+        TotalAvg = TotalUpdateAvgUs + TotalPrepareAvgUs + TotalRenderAvgUs;
+        TotalRenderSeconds = 0;
+        TotalPrepareSeconds = 0;
+        TotalUpdateSeconds = 0;
+        AccumulatedMs = 0;
+    }
+
+    auto rSystem = SystemsManager::GetRenderingSystem();
+    const char* VsyncText = rSystem->FlagEnabled(RenderingConfigFlagBits::VsyncEnabledBit) ? "Вкл" : "Выкл";
     char TextBuffer[2048]{};
     MString::Format(
         TextBuffer,
         "\
         FPS: %5.1f(%4.1fмс) Позиция=[%7.3F, %7.3F, %7.3F] Вращение=[%7.3F, %7.3F, %7.3F]\n\
-        Upd: %8.3fмкс, Rend: %8.3fмкс Мышь: X=%-5d Y=%-5d   L=%s R=%s   NDC: X=%.6f, Y=%.6f\n\
-        Vsync: %s Draw: %-5u Hovered: %s%u\n\
-        Время выполнения функции RenderingSystem::PrepareFrame: %f мс",
+        Upd: %8.3fмкс, Подг: %8.3fмкс, Rend: %8.3fмкс, Tot: %8.3fмкс \n\
+        Мышь: X=%-5d Y=%-5d   L=%s R=%s   NDC: X=%.6f, Y=%.6f\n\
+        Vsync: %s Draw: %-5u (%-5u shadow pass) Hovered: %s%u",
         fps,
         FrameTime,
         pos.x, pos.y, pos.z,
         Math::RadToDeg(rot.x), Math::RadToDeg(rot.y), Math::RadToDeg(rot.z),
-        state->LastUpdateElapsed * M_SEC_TO_US_MULTIPLIER,
-        state->RenderClock.elapsed * M_SEC_TO_US_MULTIPLIER,
+        TotalUpdateAvgUs,
+        TotalPrepareAvgUs,
+        TotalRenderAvgUs,
+        TotalAvg,
         MouseX, MouseY,
         LeftDown ? "Y" : "N",
         RightDown ? "Y" : "N",
@@ -559,9 +680,9 @@ bool ApplicationUpdate(Application& app, const FrameData& rFrameData)
         MouseYNdc,
         VsyncText,
         rFrameData.DrawnMeshCount,
+        rFrameData.DrawnShadowMeshCount,
         state->HoveredObjectID == INVALID::ID ? "none" : "",
-        state->HoveredObjectID == INVALID::ID ? 0 : state->HoveredObjectID,
-        Metrics::GetFunctionExecutionTime("RenderingSystem::PrepareFrame")/1000
+        state->HoveredObjectID == INVALID::ID ? 0 : state->HoveredObjectID
     );
 
     if (state->running) {
@@ -576,135 +697,381 @@ bool ApplicationUpdate(Application& app, const FrameData& rFrameData)
     return true;
 }
 
-bool ApplicationPrepareRenderPacket(Application& app, RenderPacket& packet, FrameData& rFrameData) 
+bool ApplicationPrepareFrame(Application& app, FrameData& rFrameData) 
 {
-    auto state = reinterpret_cast<Game*>(app.state);
-    auto FrameAllocatttor = rFrameData.FrameAllocator;
+    auto state = (Game*)app.state;
 
     if (!state->running) {
-        return true;
+        return false;
     }
 
-    packet.ViewCount = 4;
-    packet.views = reinterpret_cast<RenderViewPacket*>(FrameAllocatttor->Allocate(sizeof(RenderViewPacket) * packet.ViewCount));
+    state->PrepareClock.Start();
 
-    // FIXME: Прочитать это из конфигурации
-    // packet.views[Testbed::PacketViews::Skybox].view      = RenderViewSystem::Get("skybox");
-    packet.views[Testbed::PacketViews::World].view       = RenderViewSystem::Get("world");
-    packet.views[Testbed::PacketViews::Wireframe].view   = RenderViewSystem::Get("wireframe");
-    packet.views[Testbed::PacketViews::EditorWorld].view = RenderViewSystem::Get("editor_world");
-    packet.views[Testbed::PacketViews::UI].view          = RenderViewSystem::Get("ui");
-    // packet.views[Testbed::PacketViews::Pick].view        = RenderViewSystem::Get("pick");
+    Camera* CurrentCamera = state->WorldCamera;
+    Viewport* WorldViewport = &state->WorldViewport;
+    const Matrix4D& CurrentCameraView = CurrentCamera->GetView();
+    const FVec3& CurrentCameraPosition = CurrentCamera->GetPosition();
+    const Matrix4D& WorldViewportProjection = WorldViewport->projection;
 
-    // Даем нашей сцене команду сгенерировать соответствующие пакетные данные. ПРИМЕЧАНИЕ: Генерирует пакеты скайбокса и мира.
-    
-    // Мир 
-    // ЗАДАЧА: выполняет поиск в каждом кадре.
-    if (state->MainScene.state == SimpleScene::State::Loaded) {
-        if (!state->MainScene.PopulateRenderPacket(state->WorldCamera, state->WorldViewport, rFrameData, packet)) {
-            MERROR("Не удалось выполнить общедоступный рендеринг пакета для основной сцены.");
-            return false;
+    // Проход скайбокса. Этот проход нужно использовать всегда, так как он очищает экран.
+    { RendergraphPassData& SkyboxPassData = state->skyboxPass.PassData;
+    SkyboxPassData.viewport = WorldViewport;
+    SkyboxPassData.ViewMatrix = CurrentCameraView;
+    SkyboxPassData.ViewPosition = CurrentCameraPosition;
+    SkyboxPassData.ProjectionMatrix = WorldViewportProjection;
+    SkyboxPassData.DoExecute = true; }
+
+    // Укажите нашей сцене сгенерировать соответствующие пакетные данные. ПРИМЕЧАНИЕ: Генерирует пакеты скайбокса и мира.
+    SimpleScene& scene = state->MainScene;
+    if (scene.state == SimpleScene::State::Loaded) {
+        state->gizmo.PrepareRenderFrame(rFrameData);
+        scene.RenderFramePrepare(rFrameData);
+        {
+            state->skyboxPass.skybox = scene.skybox;
+        }
+
+        Camera* ViewCamera = state->WorldCamera;
+
+        f32 near = WorldViewport->NearClip;
+        f32 far = scene.DirLight ? scene.DirLight->data.ShadowDistance + scene.DirLight->data.ShadowFadeDistance : 0;
+        f32 ClipRange = far - near;
+
+        f32 min_z = near;
+        f32 max_z = near + ClipRange;
+        f32 range = max_z - min_z;
+        f32 ratio = max_z / min_z;
+
+        f32 CascadeSplitMultiplier = scene.DirLight ? scene.DirLight->data.ShadowSplitMult : 0.95f;
+
+        // Рассчитать разбиение на основе области видимости камеры.
+        FVec4 splits;
+        for (u32 c = 0; c < MAX_SHADOW_CASCADE_COUNT; c++) {
+            f32 p = (c + 1) / (f32)MAX_SHADOW_CASCADE_COUNT;
+            f32 log = min_z * Math::pow(ratio, p);
+            f32 uniform = min_z + range * p;
+            f32 d = CascadeSplitMultiplier * (log - uniform) + uniform;
+            splits.elements[c] = (d - near) / ClipRange;
+        }
+
+        // Значения по умолчанию, используемые в случае отсутствия направленного освещения.
+        // Они необходимы, поскольку требуются для прохода сцены.
+        Matrix4D ShadowCameraLookats[MAX_SHADOW_CASCADE_COUNT];
+        Matrix4D ShadowCameraProjections[MAX_SHADOW_CASCADE_COUNT];
+        FVec3 ShadowCameraPositions[MAX_SHADOW_CASCADE_COUNT];
+
+        for (u32 i = 0; i < MAX_SHADOW_CASCADE_COUNT; ++i) {
+            ShadowCameraLookats[i].Identity();
+            ShadowCameraProjections[i].Identity();
+            ShadowCameraPositions[i] = FVec3();
+        }
+
+        #pragma region Карта теней (Shadowmap pass) — запускается только при наличии направленного источника света.
+        if (scene.DirLight) {
+            f32 LastSplitDist = 0.F;
+            ShadowmapPass& pass = state->shadowmapPass;
+            // Пометьте этот проход как исполняемый.
+            pass.PassData.DoExecute = true;
+
+            // Получите направление света.
+            FVec3 LightDir = FVec3(scene.DirLight->data.direction).Normalize();
+
+            // Настройте расширенные данные для прохода.
+            ShadowmapPass::Data* ExtData = pass.ExtendedData;
+            ExtData->light = scene.DirLight;
+
+            // Frustum CullingFrustum;
+            FVec3 CullingCenter;
+            f32 CullingRadius;
+
+            // Получить матрицу вида-проекции.
+            // ЗАДАЧА: получить из источника света максимальную дальность отбрасывания теней и дистанцию ​​затухания для дальней плоскости отсечения.
+            Matrix4D ShadowDistProjection = Matrix4D::MakeFrustumProjection(
+                WorldViewport->FOV,
+                WorldViewport->rect.width / WorldViewport->rect.height,
+                WorldViewport->NearClip,
+                200.0f + 25.0f);
+            Matrix4D CamViewProj = Matrix4D::MakeTransposed(ViewCamera->GetView() * ShadowDistProjection);
+
+            for (u32 c = 0; c < MAX_SHADOW_CASCADE_COUNT; c++) {
+                ShadowMapCascadeData& cascade = ExtData->cascades[c];
+                cascade.CascadeIndex = c;
+
+                // ПРИМЕЧАНИЕ: Каждый проход для каскадов должен выполнять следующий процесс.
+                // Единственное реальное различие будет заключаться в том, что ближние/дальние отсечения будут корректироваться для каждого из них.
+
+                // Получить углы пирамиды видимости в мировом пространстве.
+                FVec4 corners[8]{};
+                Frustum::CornerPointsWorldSpace(CamViewProj, corners);
+
+                // Отрегулируйте углы, перемещая ближний/дальний угол в соответствии с текущим разделением.
+                f32 SplitDist = splits.elements[c];
+                for (u32 i = 0; i < 4; ++i) {
+                    // далеко - близко
+                    FVec4 dist = corners[i + 4] - corners[i];
+                    corners[i + 4] = corners[i] + (dist * SplitDist);
+                    corners[i] += (dist * LastSplitDist);
+                }
+
+                // Вычислите центр усеченной пирамиды камеры, усредняя значения точек.
+                // Это также используется в качестве точки обзора для «камеры» теней.
+                FVec3 center {};
+                for (u32 i = 0; i < 8; ++i) {
+                    center += FVec3(corners[i]);
+                }
+                center /= 8.F;  // размер
+                if (c == MAX_CASCADE_COUNT - 1) {
+                    CullingCenter = center;
+                }
+
+                // Найдите самую дальнюю точку от центра и используйте её в качестве границ.v
+                f32 radius = 0.F;
+                for (u32 i = 0; i < 8; ++i) {
+                    f32 distance = Distance(FVec3(corners[i]), center);
+                    radius = MMAX(radius, distance);
+                }
+                if (c == MAX_CASCADE_COUNT - 1) {
+                    CullingRadius = radius;
+                }
+
+                // Рассчитайте границы, используя радиус, полученный выше.
+                Extents3D extents;
+                extents.max = FVec3(radius),
+                extents.min = extents.max * -1.F;
+
+                // «Стяните» минимум внутрь и «вытолкните» максимум наружу по оси Z, чтобы убедиться, что тени, 
+                // отбрасываемые объектами за пределами поля зрения, также будут учтены (например, деревья над игроком).
+                // ЗАДАЧА: Это должно быть настраиваемо/корректировано для каждой сцены.
+                f32 zMultiplier = 10.F;
+                if (extents.min.z < 0) {
+                    extents.min.z *= zMultiplier;
+                } else {
+                    extents.min.z /= zMultiplier;
+                }
+
+                if (extents.max.z < 0) {
+                    extents.max.z /= zMultiplier;
+                } else {
+                    extents.max.z *= zMultiplier;
+                }
+
+                // Для создания направленного взгляда необходимо перемещаться в направлении, 
+                // противоположном направлению направленного света, на минимальное расстояние. 
+                // Это невозможно, поскольку направленный свет направлен «вниз», а камера должна быть «вверх».
+                ShadowCameraPositions[c] = center - (LightDir * -extents.min.z);
+                ShadowCameraLookats[c] = Matrix4D::MakeLookAt(ShadowCameraPositions[c], center, FVec3::Up());
+
+                // Сгенерировать ортопроекцию на основе границ.
+                ShadowCameraProjections[c] = Matrix4D::MakeOrthographicProjection(extents.min.x, extents.max.x, extents.min.y, extents.max.y, extents.min.z, extents.max.z - extents.min.z);
+
+                // Сохранить эти данные в данные прохода.
+                cascade.view = ShadowCameraLookats[c];
+                cascade.projection = ShadowCameraProjections[c];
+
+                // Сохранить глубину разделения в данных прохода.
+                cascade.SplitDepth = (near + SplitDist * ClipRange) * 1.F;
+
+                LastSplitDist = SplitDist;
+            }
+
+            // Соберите геометрические объекты для рендеринга.
+            // Обратите внимание: это достаточно выполнить лишь один раз, 
+            // поскольку все геометрические объекты, видимые в самом дальнем каскаде, 
+            // должны быть отрисованы и в ближайшем каскаде — это необходимо для того, 
+            // чтобы объекты, находящиеся за пределами области обзора, 
+            // корректно отбрасывали тени внутрь этой области.
+
+            // Пройдите по сцене и получите список всех геометрических объектов, находящихся в поле зрения источника света.
+            if (!scene.MeshRenderDataQueryFromLine(
+                    LightDir,
+                    CullingCenter,
+                    CullingRadius,
+                    rFrameData,
+                    ExtData->geometries)) {
+                MERROR("Не удалось запросить сетки прохода карты теней.");
+            }
+
+            // Отслеживайте количество мешей, отрисованных в проходе теней.
+            rFrameData.DrawnShadowMeshCount = ExtData->geometries.Length();
+
+            // Добавить элементы ландшафта
+            if (!scene.TerrainRenderDataQueryFromLine(LightDir, CullingCenter, CullingRadius, rFrameData, ExtData->TerrainGeometries)) {
+                MERROR("Не удалось запросить геометрию местности на карте теней.");
+            }
+
+            // ЗАДАЧА: Счетчик для геометрии ландшафта.
+            rFrameData.DrawnShadowMeshCount += ExtData->TerrainGeometries.Length();
+
         } 
-    } else {
-        // Убедитесь, что у них хотя бы есть окно просмотра.
-        // packet.views[Testbed::PacketViews::Skybox].viewport = &state->WorldViewport;
-        packet.views[Testbed::PacketViews::World].viewport = &state->WorldViewport;
-    }
+        #pragma endregion // Карта теней (Shadowmap pass).
 
-    // HACK: Внедрение отладочной геометрии в пакет мира.
-    if (state->MainScene.state == SimpleScene::State::Loaded) {
-        const u32& LineCount = state->TestLines.Length();
-        for (u32 i = 0; i < LineCount; ++i) {
-            GeometryRenderData rdata;
-            rdata.model = state->TestLines[i].xform.GetWorld();
-            rdata.geometry = &state->TestLines[i].geometry;
-            rdata.UniqueID = INVALID::ID;
-            packet.views[Testbed::World].DebugGeometries.PushBack(rdata);
-        }
+        #pragma region Проход сцены
+        {
+            // Включите этот проход для данного кадра.
+            RendergraphPassData& PassData = state->scenePass.PassData;
+            PassData.DoExecute = true;
+            PassData.viewport = &state->WorldViewport;
 
-        const u32& BoxCount = state->TestBoxes.Length();
-        for (u32 i = 0; i < BoxCount; ++i) {
-            GeometryRenderData rData;
-            rData.model = state->TestBoxes[i].xform.GetWorld();
-            rData.geometry = &state->TestBoxes[i].geometry;
-            rData.UniqueID = INVALID::ID;
-            packet.views[Testbed::World].DebugGeometries.PushBack(rData);
-        }
-    }
+            PassData.ViewMatrix = CurrentCameraView;
+            PassData.ViewPosition = CurrentCameraPosition;
+            PassData.ProjectionMatrix = WorldViewportProjection;
 
-    // Редактор мира
-    {
-        auto& ViewPacket = packet.views[Testbed::PacketViews::EditorWorld];
-        const auto view = ViewPacket.view;
+            ScenePass& ScenePass = state->scenePass;
+            // Пройдитесь по матрицам вида и проекции карты теней «камеры» (по одной на каждый каскад).
+            for (u32 c = 0; c < MAX_SHADOW_CASCADE_COUNT; c++) {
+                ScenePass.DirectionalLightViews[c] = ShadowCameraLookats[c];
+                ScenePass.DirectionalLightProjections[c] = ShadowCameraProjections[c];
 
-        EditorWorldPacketData EditorWorldData{};
-        EditorWorldData.gizmo = &state->gizmo;
-        if (!RenderViewSystem::BuildPacket(view, rFrameData, state->WorldViewport, state->WorldCamera, &EditorWorldData, ViewPacket)) {
-            MERROR("Не удалось построить пакет для представления «editor_world».");
-            return false;
-        }
-    }
+                ShadowmapPass::Data* sp_ext_data = state->shadowmapPass.ExtendedData;
+                ScenePass.CascadeSplits.elements[c] = sp_ext_data->cascades[c].SplitDepth;
+            }
+            ScenePass.RenderMode = state->RenderMode;
+            // HACK: Пока используйте кубическую карту скайбокса в качестве текстуры освещенности.
+            ScenePass.IrradianceCubeTexture = scene.skybox->cubemap.texture;
 
-    // Wireframe
-    {
-        auto& ViewPacket = packet.views[Testbed::PacketViews::Wireframe];
-        const auto view = ViewPacket.view;
+            // Заполните данные прохода сцены.
 
-        RenderViewWireframeData WireframeData{};
-        // ЗАДАЧА: Получить список геометрий, не отобранных для текущей камеры.
-        WireframeData.SelectedID = state->selection.UniqueID;
-        WireframeData.WorldGeometries = &packet.views[Testbed::PacketViews::World].geometries;
-        WireframeData.TerrainGeometries = &packet.views[Testbed::PacketViews::World].TerrainGeometries;
-        if (!RenderViewSystem::BuildPacket(view, rFrameData, state->WorldViewport2, state->WorldCamera2, &WireframeData, ViewPacket)) {
-            MERROR("Не удалось построить пакет для представления «каркас»");
-            return false;
-        }
-    }
+            // Отсечение по пирамиде видимости камеры и подсчет
+            Viewport& v = state->WorldViewport;
+            // FVec3 forward = CurrentCamera->Forward();
+            // FVec3 right = CurrentCamera->Right();
+            // FVec3 up = CurrentCamera->Up();
+            Frustum CameraFrustum = Frustum::Create(CurrentCamera, &v);
 
-    // Пользовательский интерфейс
-    {
-        UiPacketData UiPacket{};
-        auto& ViewPacket = packet.views[Testbed::PacketViews::UI];
-        const auto view = ViewPacket.view;
+            rFrameData.DrawnMeshCount = 0;
 
-        u32 UIMeshCount = 0;
-        u32 MaxUiMeshes = 10;
-        auto UIMeshes = reinterpret_cast<Mesh**>(FrameAllocatttor->Allocate(sizeof(Mesh*) * MaxUiMeshes));
+            // Запрос к сцене для получения статических мешей с использованием пирамиды видимости камеры.
+            if (!scene.MeshRenderDataQuery(CameraFrustum, CurrentCamera->GetPosition(), rFrameData, ScenePass.geometries)) {
+                MERROR("Не удалось запросить сетки прохода сцены.");
+            }
 
-        // ЗАДАЧА: массив гибкого размера
-        for (u32 i = 0; i < 10; ++i) {
-            if (state->UiMeshes[i].generation != INVALID::U8ID) {
-                UIMeshes[UIMeshCount] = &state->UiMeshes[i];
-                UIMeshCount++;
+            // Отслеживание количества мешей, отрисованных в проходе теней.
+            rFrameData.DrawnMeshCount = ScenePass.geometries.Length();
+
+            // Добавление ландшафта(ов).
+            // Запрос к сцене для получения мешей ландшафта с использованием пирамиды видимости камеры.
+            if (!scene.TerrainRenderDataQuery(CameraFrustum, CurrentCamera->GetPosition(), rFrameData,  ScenePass.TerrainGeometries)) {
+                MERROR("Не удалось запросить геометрию местности прохода сцены.");
+            }
+
+            // ЗАДАЧА: Счётчик геометрий ландшафта.
+            rFrameData.DrawnMeshCount += ScenePass.TerrainGeometries.Length();
+
+            // Отладочная геометрия
+            // u32 DebugGeometriesCount = 0;
+            if (!scene.DebugRenderDataQuery(/*DebugGeometriesCount, */nullptr)) {
+                MERROR("Не удалось получить количество объектов отладочной визуализации.");
+                return false;
+            }
+
+            ScenePass.DebugGeometries = DArray<GeometryRenderData>(rFrameData.FrameAllocator);
+            
+            if (!scene.DebugRenderDataQuery(/*ScenePass.DebugGeometryCount, */&ScenePass.DebugGeometries)) {
+                MERROR("Не удалось получить объекты для отладочного рендеринга.");
+                return false;
+            }
+
+            // Убедитесь, что количество верно, прежде чем отправлять данные.
+            // HACK: Внедрение отладочной геометрии в пакет мира.
+            if (scene.state == SimpleScene::State::Loaded) {
+                const u32 LineCount = state->TestLines.Length();
+                for (u32 i = 0; i < LineCount; ++i) {
+                    DebugLine3D& tl = state->TestLines[i];
+                    GeometryRenderData* rd = ScenePass.DebugGeometries.PushBack();
+                    rd->model = tl.xform.GetWorld();
+                    rd->CopyData(&tl.geometry);
+                    rd->UniqueID = INVALID::ID;
+                }
+
+                const u32 BoxCount = state->TestBoxes.Length();
+                for (u32 i = 0; i < BoxCount; ++i) {
+                    DebugBox3D& TestBox = state->TestBoxes[i];
+                    GeometryRenderData* rd = ScenePass.DebugGeometries.PushBack();
+                    rd->model = TestBox.xform.GetWorld();
+                    
+                    rd->CopyData(&TestBox.geometry);
+                    rd->UniqueID = INVALID::ID;
+                }
             }
         }
+        #pragma endregion // Проход сцены.
 
-        UiPacket.MeshData.MeshCount = UIMeshCount;
-        UiPacket.MeshData.meshes = UIMeshes;
-        UiPacket.TextCount = 2;
-        auto& DebugConsoleText = state->console.GetText();
-        bool RenderDebugConsole = DebugConsoleText && state->console.Visible();
+        #pragma region Проход редактора
+        {
+            EditorPass& editorPass = state->editorPass;
+            // Включить этот проход для этого кадра.
+            editorPass.PassData.DoExecute = true;
+            editorPass.PassData.viewport = &state->WorldViewport;
+            editorPass.PassData.ViewMatrix = CurrentCameraView;
+            editorPass.PassData.ViewPosition = CurrentCameraPosition;
+            editorPass.PassData.ProjectionMatrix = state->WorldViewport.projection;
 
-        if (RenderDebugConsole) {
-            UiPacket.TextCount += 2;
+            Geometry* geometry = &state->gizmo.modeData[state->gizmo.mode].geometry;
+
+            // auto GizmoPos = packetData->gizmo->xform.GetPosition();
+            // ЗАДАЧА: Необходимо получить это из камеры/области просмотра.
+            // f32 fov = Math::DegToRad(45.F);
+            // f32 dist = Distance(CurrentCameraPosition, GizmoPos);
+
+            Matrix4D model = state->gizmo.xform.GetWorld();
+            // f32 FixedSize = 0.1F;                 // ЗАДАЧА: Сделайте этот параметр настраиваемым для размера гизмо.
+            f32 ScaleScalar = 1.F;                   // ((2.F * Math::tan(fov * 0.5F)) * dist) * FixedSize;
+            state->gizmo.ScaleScalar = ScaleScalar;  // Сохраните копию для обнаружения попаданий.
+            const Matrix4D& scale = Matrix4D::MakeScale(FVec3(ScaleScalar));
+            model = model * scale;
+            
+            GeometryRenderData* rd = editorPass.DebugGeometries.Create(2, false, rFrameData.FrameAllocator).PushBack();
+            rd->model = model;
+            rd->CopyData(geometry);
+            rd->UniqueID = INVALID::ID;
+
+#ifdef _DEBUG
+            rd = editorPass.DebugGeometries.PushBack();
+            rd->model = state->gizmo.PlaneNormalLine.xform.GetWorld();
+            rd->CopyData(&state->gizmo.PlaneNormalLine.geometry);
+            rd->UniqueID = INVALID::ID;
+#endif
+            // editorPass.DebugGeometryCount = editorPass.DebugGeometries.Length();
         }
+        #pragma endregion Проход редактора
+        // Wireframe
+        /*{
+            auto& ViewPacket = packet.views[Testbed::PacketViews::Wireframe];
+            const auto view = ViewPacket.view;
 
-        auto texts = reinterpret_cast<Text**>(FrameAllocatttor->Allocate(sizeof(Text*) * UiPacket.TextCount));
-        texts[0] = &state->TestText;
-        texts[1] = &state->TestSysText;
-
-        if (RenderDebugConsole) {
-            texts[2] = &DebugConsoleText;
-            texts[3] = &state->console.GetEntryText();
-        }
-
-        UiPacket.texts = texts;
-        if (!RenderViewSystem::BuildPacket(view, rFrameData, state->UiViewport, nullptr, &UiPacket, ViewPacket)) {
-            MERROR("Не удалось построить пакет для представления «ui».");
-            return false;
-        }
+            RenderViewWireframeData WireframeData{};
+            // ЗАДАЧА: Получить список геометрий, не отобранных для текущей камеры.
+            WireframeData.SelectedID = state->selection.UniqueID;
+            WireframeData.WorldGeometries = &packet.views[Testbed::PacketViews::World].geometries;
+            WireframeData.TerrainGeometries = &packet.views[Testbed::PacketViews::World].TerrainGeometries;
+            if (!RenderViewSystem::BuildPacket(view, rFrameData, state->WorldViewport2, state->WorldCamera2, &WireframeData, ViewPacket)) {
+                MERROR("Не удалось построить пакет для представления «каркас»");
+                return false;
+            }
+        }*/
+    } else {
+        // Не запускайте эти проходы, если сцена не загружена.
+        state->scenePass.PassData.DoExecute = false;
+        state->shadowmapPass.PassData.DoExecute = false;
+        state->editorPass.PassData.DoExecute = false;
     }
 
+    #pragma region Пользовательский интерфейс 
+    {
+        UiPass& UiPass = state->uiPass;
+        UiPass.PassData.viewport = &state->UiViewport;
+        UiPass.PassData.ViewMatrix = Matrix4D::MakeIdentity();
+        UiPass.PassData.ProjectionMatrix = state->UiViewport.projection;
+        UiPass.PassData.DoExecute = true;
+
+        auto uisys = (UiSystem*)SystemsManager::GetState(M_SYSTEM_TYPE_STANDARD_UI_EXT);
+        UiPass.RenderData.renderables.SetAllocator(rFrameData.FrameAllocator).Reserve(uisys->GetActiveControlCount());
+        if (!uisys->Render(nullptr, rFrameData, UiPass.RenderData)) {
+            MERROR("Стандартная система пользовательского интерфейса не смогла отобразить данные.");
+        }
+    }
+    #pragma endregion Пользовательский интерфейс 
+    
+    // Pick
     /*{
         auto& ViewPacket = packet.views[Testbed::PacketViews::Pick];
         const auto view = ViewPacket.view;
@@ -724,21 +1091,14 @@ bool ApplicationPrepareRenderPacket(Application& app, RenderPacket& packet, Fram
     }*/
 
     // ЗАДАЧА: конец временного кода
+
+    state->PrepareClock.Update();
     
     return true;
 }
 
-bool ApplicationRender(Application& app, RenderPacket& packet, FrameData& rFrameData)
+bool ApplicationRenderFrame(Application& app, FrameData& rFrameData)
 {
-    // Старт кадра
-    if (!RenderingSystem::PrepareFrame(rFrameData)) {
-        return true;
-    }
-
-    if (!RenderingSystem::Begin(rFrameData)) {
-        //
-    }
-
     auto state = (Game*)app.state;
     if (!state->running) {
         return true;
@@ -746,73 +1106,56 @@ bool ApplicationRender(Application& app, RenderPacket& packet, FrameData& rFrame
 
     state->RenderClock.Start();
 
-    // Мир
-    auto ViewPacket = &packet.views[Testbed::World];
-    ViewPacket->view->Render(ViewPacket->view, *ViewPacket, rFrameData);
-
-    // Редактор мира
-    ViewPacket = &packet.views[Testbed::EditorWorld];
-    ViewPacket->view->Render(ViewPacket->view, *ViewPacket, rFrameData);
-
-    // Снова визуализирует мир, но с новой областью просмотра и камерой.
-    ViewPacket = &packet.views[Testbed::Wireframe];
-    ViewPacket->view->Render(ViewPacket->view, *ViewPacket, rFrameData);
-
-    // UI
-    ViewPacket = &packet.views[Testbed::UI];
-    ViewPacket->view->Render(ViewPacket->view, *ViewPacket, rFrameData);
-
-    state->RenderClock.Update();
-
-    RenderingSystem::End(rFrameData);
-
-    if (!RenderingSystem::Present(rFrameData)) {
-        MERROR("Вызов RenderingSystem::Present не удался. Вероятно, это невозможно исправить. Завершаю работу.");
+    if (!state->FrameGraph.ExecuteFrame(rFrameData)) {
+        MERROR("Не удалось выполнить кадр рендерграфа.");
         return false;
     }
+    
+    state->RenderClock.Update();
 
     return true;
 }
 
 void ApplicationOnResize(Application& app, u32 width, u32 height) 
 {
-    if (!app.state) {
+    if (!app.state || !width || !height) {
         return;
     }
     
-    auto state = reinterpret_cast<Game*>(app.state);
+    auto state = (Game*)app.state;
 
     state->width = width;
     state->height = height;
 
-    if (!width || !height) {
-        return;
-    }
-
-    i32 HalfWidth = state->width * 0.5F;
+    // i32 HalfWidth = state->width * 0.5F;
 
     // Изменение размера областей просмотра.
     // Область просмотра мира — правая сторона
-    Rect2D WorldViewportRect {HalfWidth + 20, 20, HalfWidth - 40, state->height - 40};
-    state->WorldViewport.Resize(WorldViewportRect);
+    Rect2D vw { 0, 0, state->width, state->height };
+    state->WorldViewport.Resize(vw); // {HalfWidth + 20, 20, HalfWidth - 40, state->height - 40};
 
     // Область просмотра интерфейса
-    Rect2D UiViewportRect {0, 0, state->width, state->height};
-    state->UiViewport.Resize(UiViewportRect);
+    state->UiViewport.Resize(vw);
 
     // Область просмотра мира 2
-    Rect2D WorldViewportRect2{20, 20, HalfWidth - 40, state->height - 40};
-    state->WorldViewport2.Resize(WorldViewportRect2);
+    state->WorldViewport2.Resize(vw); // Rect2D(20, 20, HalfWidth - 40, state->height - 40)
 
     // ЗАДАЧА: временный блок кода
     // Переместить отладочный текст в новую нижнюю часть экрана.
-    state->TestText.SetPosition(FVec3(20, state->height - 100, 0));
+    state->TestText.SetPosition(FVec3(20, state->height - 105, 0));
+    FVec2 TestPanelSize = state->TestPanel->Size();
+    f32 x = state->width - TestPanelSize.x - 30;
+    f32 y = state->height - TestPanelSize.y - 30;
+    state->TestPanel->SetPosition(x, y);
     // ЗАДАЧА: конец временного блока кода
+
+    // Передать изменение размера на рендерграф.
+    state->FrameGraph.OnResize(state->width, state->height);
 }
 
 void ApplicationShutdown(Application& app)
 {
-    auto state = reinterpret_cast<Game*>(app.state);
+    auto state = (Game*)app.state;
     state->running = false;
 
     if (state->MainScene.state == SimpleScene::State::Loaded) {
@@ -829,12 +1172,13 @@ void ApplicationShutdown(Application& app)
     // Уничтожение текста пользовательского интерфейса
     // state->TestText.~Text();
     // state->TestSysText.~Text();
+    state->FrameGraph.Destroy();
 }
 
 void ApplicationLibOnLoad(Application& app)
 {
     ApplicationRegisterEvents(app);
-    reinterpret_cast<Game*>(app.state)->console.OnLibLoad(app.stage >= Application::Stage::BootComplete);
+    ((Game*)app.state)->console.OnLibLoad(app.stage >= Application::Stage::BootComplete);
     if (app.stage >= Application::Stage::BootComplete) {
         GameSetupCommands();
         GameSetupKeymaps(&app);
@@ -844,221 +1188,13 @@ void ApplicationLibOnLoad(Application& app)
 void ApplicationLibOnUnload(Application& app)
 {
     ApplicationUnregisterEvents(app);
-    reinterpret_cast<Game*>(app.state)->console.OnLibUnload();
+    ((Game*)app.state)->console.OnLibUnload();
     GameRemoveCommands();
     GameRemoveKeymaps(&app);
 }
 
 bool GameConfigureRenderViews(ApplicationConfig& config)
 {
-    config.RenderViews.Resize(4);
-
-    // World view
-    {
-        auto& WorldView = config.RenderViews[Testbed::World];
-        WorldView.name = "world";
-        WorldView.RenderpassCount = 2; 
-        WorldView.passes = (Renderpass*)MemorySystem::Allocate(sizeof(Renderpass) * WorldView.RenderpassCount, Memory::Array, true);
-
-        // Конфигурация подпрохода рендеринга
-        RenderpassConfig SkyboxPass;
-        SkyboxPass.name                   = "Renderpass.Bultin.Skybox";
-        SkyboxPass.depth                  = 1.F;
-        SkyboxPass.stencil                = 0;
-        SkyboxPass.ClearColour            = FVec4(0.F, 0.F, 0.2F, 1.F);
-        SkyboxPass.ClearFlags             = RenderpassClearFlag::ColourBuffer;
-        SkyboxPass.RenderTargetCount      = RenderingSystem::WindowAttachmentCountGet();
-        SkyboxPass.target.AttachmentCount = 1;
-        SkyboxPass.target.attachments     = (RenderTargetAttachmentConfig*)MemorySystem::Allocate(sizeof(RenderTargetAttachmentConfig) * SkyboxPass.target.AttachmentCount, Memory::Array);
-
-        // Цветовое вложение(Colour attachment)
-        auto& SkyboxTargetColour = SkyboxPass.target.attachments[0];
-        SkyboxTargetColour.type           = RenderTargetAttachmentType::Colour;
-        SkyboxTargetColour.source         = RenderTargetAttachmentSource::Default;
-        SkyboxTargetColour.LoadOperation  = RenderTargetAttachmentLoadOperation::DontCare;
-        SkyboxTargetColour.StoreOperation = RenderTargetAttachmentStoreOperation::Store;
-        SkyboxTargetColour.PresentAfter   = false;
-
-        if (!RenderingSystem::RenderpassCreate(SkyboxPass, WorldView.passes[0])) { // 
-            MERROR("Skybox view — Не удалось создать проход рендеринга «%s»",  config.RenderViews[0].passes[0].name.c_str());
-            return false;
-        }
-        
-        // Конфигурация подпрохода рендеринга
-        RenderpassConfig WorldPass;
-        WorldPass.name                   = "Renderpass.Bultin.World";
-        WorldPass.depth                  = 1.F;
-        WorldPass.stencil                = 0;
-        WorldPass.ClearColour            = FVec4(0.F, 0.F, 0.2F, 1.F); 
-        WorldPass.ClearFlags             = RenderpassClearFlag::DepthBuffer | RenderpassClearFlag::StencilBuffer;
-        WorldPass.RenderTargetCount      = RenderingSystem::WindowAttachmentCountGet();
-        WorldPass.target.AttachmentCount = 2;
-        WorldPass.target.attachments     = (RenderTargetAttachmentConfig*)MemorySystem::Allocate(sizeof(RenderTargetAttachmentConfig) * WorldPass.target.AttachmentCount, Memory::Array);
-
-        // Привязка цвета
-        auto& WorldTargetColour = WorldPass.target.attachments[0];
-        WorldTargetColour.type           = RenderTargetAttachmentType::Colour;
-        WorldTargetColour.source         = RenderTargetAttachmentSource::Default;
-        WorldTargetColour.LoadOperation  = RenderTargetAttachmentLoadOperation::Load;
-        WorldTargetColour.StoreOperation = RenderTargetAttachmentStoreOperation::Store;
-        WorldTargetColour.PresentAfter   = false;
-
-        // Привязка глубины
-        auto& WorldTargetDepth = WorldPass.target.attachments[1];
-        WorldTargetDepth.type            = RenderTargetAttachmentType::Depth;
-        WorldTargetDepth.source          = RenderTargetAttachmentSource::Default;
-        WorldTargetDepth.LoadOperation   = RenderTargetAttachmentLoadOperation::DontCare;
-        WorldTargetDepth.StoreOperation  = RenderTargetAttachmentStoreOperation::Store;
-        WorldTargetDepth.PresentAfter    = false;
-
-        if (!RenderingSystem::RenderpassCreate(WorldPass, WorldView.passes[1])) {
-            MERROR("World view — Не удалось создать проход рендеринга «%s»", WorldView.passes[0].name.c_str());
-            return false;
-        };
-
-        WorldView.OnRegistered = RenderViewWorld::OnRegistered;
-        WorldView.Destroy      = RenderViewWorld::Destroy;
-        WorldView.Resize       = RenderViewWorld::Resize;
-        WorldView.BuildPacket  = RenderViewWorld::BuildPacket;
-        WorldView.Render       = RenderViewWorld::Render;
-    }
-
-    // ЗАДАЧА: Редактор временно
-    // Editor World view.
-    {
-        auto& EditorWorldView = config.RenderViews[Testbed::EditorWorld];
-        EditorWorldView.name = "editor_world";
-        EditorWorldView.RenderpassCount = 1;
-        EditorWorldView.passes = (Renderpass*)MemorySystem::Allocate(sizeof(Renderpass) * EditorWorldView.RenderpassCount, Memory::Array, true);
-
-        // Конфигурация подпрохода рендеринга
-        RenderpassConfig EditorWorldPass;
-        EditorWorldPass.name = "Renderpass.Testbed.EditorWorld";
-        EditorWorldPass.depth = 1.F;
-        EditorWorldPass.stencil = 0;
-        EditorWorldPass.ClearColour = FVec4(0.F, 0.F, 0.F, 1.F);
-        EditorWorldPass.ClearFlags = RenderpassClearFlag::DepthBuffer | RenderpassClearFlag::StencilBuffer;
-        EditorWorldPass.RenderTargetCount = RenderingSystem::WindowAttachmentCountGet();
-        EditorWorldPass.target.AttachmentCount = 2;
-        EditorWorldPass.target.attachments = (RenderTargetAttachmentConfig*)MemorySystem::Allocate(sizeof(RenderTargetAttachmentConfig) * EditorWorldPass.target.AttachmentCount, Memory::Array);
-
-        // Привязка цвета
-        auto& EditorWorldTargetColour = EditorWorldPass.target.attachments[0];
-        EditorWorldTargetColour.type = RenderTargetAttachmentType::Colour;
-        EditorWorldTargetColour.source = RenderTargetAttachmentSource::Default;
-        EditorWorldTargetColour.LoadOperation = RenderTargetAttachmentLoadOperation::Load;
-        EditorWorldTargetColour.StoreOperation = RenderTargetAttachmentStoreOperation::Store;
-        EditorWorldTargetColour.PresentAfter = false;
-
-        // Привязка глубины
-        auto& EditorWorldTargetDepth = EditorWorldPass.target.attachments[1];
-        EditorWorldTargetDepth.type = RenderTargetAttachmentType::Depth;
-        EditorWorldTargetDepth.source = RenderTargetAttachmentSource::Default;;
-        EditorWorldTargetDepth.LoadOperation = RenderTargetAttachmentLoadOperation::DontCare;
-        EditorWorldTargetDepth.StoreOperation = RenderTargetAttachmentStoreOperation::Store;
-        EditorWorldTargetDepth.PresentAfter = false;
-
-        if (!RenderingSystem::RenderpassCreate(EditorWorldPass, EditorWorldView.passes[0])) {
-            MERROR("EditorWorldView — Не удалось создать проход рендеринга «%s»", EditorWorldView.passes[0].name.c_str());
-            return false;
-        }
-
-        // Назначьте указатели на функции.
-        EditorWorldView.OnRegistered = RenderViewEditorWorld::OnRegistered;
-        EditorWorldView.Destroy = RenderViewEditorWorld::Destroy;
-        EditorWorldView.Resize = RenderViewEditorWorld::Resize;
-        EditorWorldView.BuildPacket = RenderViewEditorWorld::BuildPacket;
-        EditorWorldView.Render = RenderViewEditorWorld::Render;
-    }
-
-    // Каркасное представление.
-    {
-        auto& WireframeView = config.RenderViews[Testbed::Wireframe];
-        WireframeView.name = "wireframe";
-        WireframeView.RenderpassCount = 1;
-        WireframeView.passes = (Renderpass*)MemorySystem::Allocate(sizeof(Renderpass) * WireframeView.RenderpassCount, Memory::Array, true);
-
-        // Конфигурация Renderpass.
-        RenderpassConfig WireframePass;
-        WireframePass.name = "Renderpass.Testbed.Wireframe";
-        WireframePass.depth = 1.F;
-        WireframePass.stencil = 0;
-        WireframePass.ClearColour = FVec4(0.2F, 0.2F, 0.2F, 1.F);
-        WireframePass.ClearFlags = RenderpassClearFlag::ColourBuffer | RenderpassClearFlag::DepthBuffer | RenderpassClearFlag::StencilBuffer;
-        WireframePass.target.AttachmentCount = 2;
-        WireframePass.target.attachments = (RenderTargetAttachmentConfig*)MemorySystem::Allocate(sizeof(RenderTargetAttachmentConfig) * WireframePass.target.AttachmentCount, Memory::Array);
-        WireframePass.RenderTargetCount = RenderingSystem::WindowAttachmentCountGet();
-
-        // Привязка цвета
-        auto& WireframeTargetColour = WireframePass.target.attachments[0];
-        WireframeTargetColour.type = RenderTargetAttachmentType::Colour;
-        WireframeTargetColour.source = RenderTargetAttachmentSource::Default;
-        WireframeTargetColour.LoadOperation = RenderTargetAttachmentLoadOperation::Load;
-        WireframeTargetColour.StoreOperation = RenderTargetAttachmentStoreOperation::Store;
-        WireframeTargetColour.PresentAfter = false;
-
-        // Привязка глубины
-        auto& WireframeTargetDepth = WireframePass.target.attachments[1];
-        WireframeTargetDepth.type = RenderTargetAttachmentType::Depth;
-        WireframeTargetDepth.source = RenderTargetAttachmentSource::Default;
-        WireframeTargetDepth.LoadOperation = RenderTargetAttachmentLoadOperation::DontCare;
-        WireframeTargetDepth.StoreOperation = RenderTargetAttachmentStoreOperation::Store;
-        WireframeTargetDepth.PresentAfter = false;
-
-        if (!RenderingSystem::RenderpassCreate(WireframePass, WireframeView.passes[0])) {
-            MERROR("Wireframe view — Не удалось создать проход рендеринга «%s»", WireframeView.passes[0].name.c_str());
-            return false;
-        }
-
-        // Назначьте указатели на функции.
-        WireframeView.OnRegistered = RenderViewWireframe::OnRegistered;
-        WireframeView.Destroy = RenderViewWireframe::Destroy;
-        WireframeView.Resize = RenderViewWireframe::Resize;
-        WireframeView.BuildPacket = RenderViewWireframe::BuildPacket;
-        WireframeView.Render = RenderViewWireframe::Render;
-        WireframeView.RegenerateAttachmentTarget = nullptr;
-    }
-
-    // UI view
-    {
-        auto& UiView = config.RenderViews[Testbed::UI];
-        UiView.name = "ui";
-        // UiView.width = 0;
-        // UiView.height = 0;
-        UiView.RenderpassCount = 1;
-        UiView.passes = (Renderpass*)MemorySystem::Allocate(sizeof(Renderpass) * UiView.RenderpassCount, Memory::Array, true);
-
-        // Конфигурация подпрохода рендеринга
-        RenderpassConfig UiPass {};
-        UiPass.name                   = "Renderpass.Bultin.UI";
-        UiPass.depth                  = 1.F;
-        // UiPass.stencil = 0;
-        UiPass.ClearColour            = FVec4(0.F, 0.F, 0.2F, 1.F);
-        UiPass.ClearFlags             = RenderpassClearFlag::None;
-        UiPass.RenderTargetCount      = RenderingSystem::WindowAttachmentCountGet();
-        UiPass.target.AttachmentCount = 1;
-        UiPass.target.attachments     = (RenderTargetAttachmentConfig*)MemorySystem::Allocate(sizeof(RenderTargetAttachmentConfig) * UiPass.target.AttachmentCount, Memory::Array);
-
-        // Привязка цвета
-        auto& UiTargetAttachment = UiPass.target.attachments[0];
-        UiTargetAttachment.type           = RenderTargetAttachmentType::Colour;
-        UiTargetAttachment.source         = RenderTargetAttachmentSource::Default;
-        UiTargetAttachment.LoadOperation  = RenderTargetAttachmentLoadOperation::Load;
-        UiTargetAttachment.StoreOperation = RenderTargetAttachmentStoreOperation::Store;
-        UiTargetAttachment.PresentAfter   = true;
-
-        if (!RenderingSystem::RenderpassCreate(UiPass, *UiView.passes)) {
-            MERROR("UI view — Не удалось создать проход рендеринга «%s»", UiView.passes[0].name.c_str());
-            return false;
-        };
-
-        UiView.OnRegistered = RenderViewUI::OnRegistered;
-        UiView.Destroy      = RenderViewUI::Destroy;
-        UiView.Resize       = RenderViewUI::Resize;
-        UiView.BuildPacket  = RenderViewUI::BuildPacket;
-        UiView.Render       = RenderViewUI::Render;
-    }
-
     // ЗАДАЧА: Разделить на 2 представления и снова включить.
     // Pick view
     /*{
@@ -1137,12 +1273,13 @@ bool GameConfigureRenderViews(ApplicationConfig& config)
 }
 
 static void ToggleVsync() {
-    bool VsyncEnabled = RenderingSystem::FlagEnabled(RenderingConfigFlagBits::VsyncEnabledBit);
+    auto renderer = SystemsManager::GetRenderingSystem();
+    bool VsyncEnabled = renderer->FlagEnabled(RenderingConfigFlagBits::VsyncEnabledBit);
     VsyncEnabled = !VsyncEnabled;
-    RenderingSystem::FlagSetEnabled(RenderingConfigFlagBits::VsyncEnabledBit, VsyncEnabled);
+    renderer->FlagSetEnabled(RenderingConfigFlagBits::VsyncEnabledBit, VsyncEnabled);
 }
 
-static bool GameOnMVarChanged(u16 code, void* sender, void* ListenerInst, EventContext data) {
+static bool GameOnMVarChanged(u16 code, void* sender, void* ListenerInst, const EventContext& data) {
     if (code == EventSystem::MVarChanged && MString::Equali(data.data.c, "vsync")) {
         ToggleVsync();
     }
@@ -1155,7 +1292,9 @@ void ApplicationRegisterEvents(Application &app)
     EventSystem::Register(EventSystem::DEBUG0,               &app, GameOnDebugEvent);
     EventSystem::Register(EventSystem::DEBUG1,               &app, GameOnDebugEvent);
     EventSystem::Register(EventSystem::DEBUG2,               &app, GameOnDebugEvent);
+    EventSystem::Register(EventSystem::DEBUG3,               &app, GameOnDebugEvent);
     EventSystem::Register(EventSystem::OojectHoverIdChanged, &app, GameOnEvent     );
+    EventSystem::Register(EventSystem::SetRenderMode,        &app, GameOnEvent     );
     EventSystem::Register(EventSystem::ButtonReleased,  app.state, GameOnButton    );
     EventSystem::Register(EventSystem::MouseMoved,      app.state, GameOnMouseMove );
     EventSystem::Register(EventSystem::MouseDragBegin,  app.state, GameOnDrag      );
@@ -1163,8 +1302,6 @@ void ApplicationRegisterEvents(Application &app)
     EventSystem::Register(EventSystem::MouseDragged,    app.state, GameOnDrag      );
     //ЗАДАЧА: временно
 
-    EventSystem::Register(EventSystem::KeyPressed,           &app, GameOnKey        );
-    EventSystem::Register(EventSystem::KeyReleased,          &app, GameOnKey        );
     EventSystem::Register(EventSystem::MVarChanged,       nullptr, GameOnMVarChanged);
 }
 
@@ -1173,7 +1310,9 @@ void ApplicationUnregisterEvents(Application &app)
     EventSystem::Unregister(EventSystem::DEBUG0,               &app, GameOnDebugEvent);
     EventSystem::Unregister(EventSystem::DEBUG1,               &app, GameOnDebugEvent);
     EventSystem::Unregister(EventSystem::DEBUG2,               &app, GameOnDebugEvent);
+    EventSystem::Unregister(EventSystem::DEBUG3,               &app, GameOnDebugEvent);
     EventSystem::Unregister(EventSystem::OojectHoverIdChanged, &app, GameOnEvent     );
+    EventSystem::Unregister(EventSystem::SetRenderMode,        &app, GameOnEvent     );
     EventSystem::Unregister(EventSystem::ButtonReleased,  app.state, GameOnButton    );
     EventSystem::Unregister(EventSystem::MouseMoved,      app.state, GameOnMouseMove );
     EventSystem::Unregister(EventSystem::MouseDragBegin,  app.state, GameOnDrag      );
@@ -1182,19 +1321,43 @@ void ApplicationUnregisterEvents(Application &app)
 
     // ЗАДАЧА: конец временного блока кода
 
-    EventSystem::Unregister(EventSystem::KeyPressed, &app, GameOnKey);
-    EventSystem::Unregister(EventSystem::KeyReleased, &app, GameOnKey);
     EventSystem::Unregister(EventSystem::MVarChanged, nullptr, GameOnMVarChanged);
+}
+
+#define RG_CHECK(expr)                             \
+    if (!expr) {                                   \
+        MERROR("Не удалось выполнить: '%s'.", #expr); \
+        return false;                              \
+    }
+
+static void RefreshRendergraphPfns(Application& app) {
+    // auto state = (Game*)app.state;
+
+    // state->SkyboxPass.Initialize = SkyboxPass::Initialize;
+    // state->SkyboxPass.Execute    = SkyboxPass::Execute;
+    // state->SkyboxPass.Destroy    = SkyboxPass::Destroy;
+
+    // state->ScenePass.Initialize  = ScenePass::Initialize;
+    // state->ScenePass.Execute     = ScenePass::Execute;
+    // state->ScenePass.Destroy     = ScenePass::Destroy;
+
+    // state->EditorPass.Initialize = EditorPass::Initialize;
+    // state->EditorPass.Execute    = EditorPass::Execute;
+    // state->EditorPass.Destroy    = EditorPass::Destroy;
+
+    // state->uiPass.Initialize     = UiPass::Initialize;
+    // state->uiPass.Execute        = UiPass::Execute;
+    // state->uiPass.Destroy        = UiPass::Destroy;
 }
 
 bool LoadMainScene(Application *app)
 {
-    auto state = reinterpret_cast<Game*>(app->state);
+    auto state = (Game*)app->state;
 
     // Загрузить файл конфигурации
     // ЗАДАЧА: очистить ресурс.
     SimpleSceneResource simpleSceneResource;
-    if (!ResourceSystem::Load("test_scene", eResource::SimpleScene, nullptr, simpleSceneResource)) {
+    if (!ResourceSystem::Load("test_scene", nullptr, simpleSceneResource)) {
         MERROR("Не удалось загрузить файл сцены, проверьте журналы выше.");
         return false;
     }
@@ -1259,4 +1422,75 @@ bool LoadMainScene(Application *app)
 
     // Фактически загрузить сцену.
     return state->MainScene.Load();
+}
+
+bool ConfigureRendergraph(Application &app)
+{
+    auto state = (Game*)app.state;
+
+    if (!state->FrameGraph.Create("testbed_frame_rendergraph", app)) {
+        MERROR("Не удалось создать рендерграф.");
+        return false;
+    }
+
+    // Добавить глобальные источники.
+    if (!state->FrameGraph.AddGlobalSource("colourbuffer", RendergraphSourceType::RenderTargetColour, RendergraphSourceOrigin::Global)) {
+        MERROR("Не удалось добавить глобальный источник буфера цвета.");
+        return false;
+    }
+    if (!state->FrameGraph.AddGlobalSource("depthbuffer", RendergraphSourceType::RenderTargetDepthStencil, RendergraphSourceOrigin::Global)) {
+        MERROR("Не удалось добавить глобальный источник буфера глубины.");
+        return false;
+    }
+
+    // Проход скайбокса
+    state->skyboxPass.name = "skybox";
+    RG_CHECK(state->FrameGraph.AddPass(state->skyboxPass));
+    RG_CHECK(state->FrameGraph.AddPassSink("skybox", "colourbuffer"));
+    RG_CHECK(state->FrameGraph.AddPassSource("skybox", "colourbuffer", RendergraphSourceType::RenderTargetColour, RendergraphSourceOrigin::Other));
+    RG_CHECK(state->FrameGraph.PassSetSinkLinkage("skybox", "colourbuffer", nullptr, "colourbuffer"));
+
+    // Проход карт теней
+    state->shadowmapPass.name = "shadowmap_pass";
+    state->shadowmapPass.Create(2048);
+    RG_CHECK(state->FrameGraph.AddPass(state->shadowmapPass));
+    RG_CHECK(state->FrameGraph.AddPassSource("shadowmap_pass", "depthbuffer", RendergraphSourceType::RenderTargetDepthStencil, RendergraphSourceOrigin::Self));
+    
+    // Проход сцены
+    state->scenePass.name = "scene";
+    RG_CHECK(state->FrameGraph.AddPass(state->scenePass));
+    RG_CHECK(state->FrameGraph.AddPassSink("scene", "colourbuffer"));
+    RG_CHECK(state->FrameGraph.AddPassSink("scene", "depthbuffer"));
+    RG_CHECK(state->FrameGraph.AddPassSink("scene", "shadowmap"));
+    RG_CHECK(state->FrameGraph.AddPassSource("scene", "colourbuffer", RendergraphSourceType::RenderTargetColour, RendergraphSourceOrigin::Other));
+    RG_CHECK(state->FrameGraph.AddPassSource("scene", "depthbuffer", RendergraphSourceType::RenderTargetDepthStencil, RendergraphSourceOrigin::Global));
+    RG_CHECK(state->FrameGraph.PassSetSinkLinkage("scene", "colourbuffer", "skybox", "colourbuffer"));
+    RG_CHECK(state->FrameGraph.PassSetSinkLinkage("scene", "depthbuffer", nullptr, "depthbuffer"));
+    RG_CHECK(state->FrameGraph.PassSetSinkLinkage("scene", "shadowmap", "shadowmap_pass", "depthbuffer"));
+
+    // Editor pass
+    state->editorPass.name = "editor";
+    RG_CHECK(state->FrameGraph.AddPass(state->editorPass));
+    RG_CHECK(state->FrameGraph.AddPassSink("editor", "colourbuffer"));
+    RG_CHECK(state->FrameGraph.AddPassSink("editor", "depthbuffer"));
+    RG_CHECK(state->FrameGraph.AddPassSource("editor", "colourbuffer", RendergraphSourceType::RenderTargetColour, RendergraphSourceOrigin::Other));
+    RG_CHECK(state->FrameGraph.AddPassSource("editor", "depthbuffer", RendergraphSourceType::RenderTargetDepthStencil, RendergraphSourceOrigin::Other));
+    RG_CHECK(state->FrameGraph.PassSetSinkLinkage("editor", "colourbuffer", "scene", "colourbuffer"));
+    RG_CHECK(state->FrameGraph.PassSetSinkLinkage("editor", "depthbuffer", "scene", "depthbuffer"));
+
+    // UI pass
+    state->uiPass.name = "ui";
+    RG_CHECK(state->FrameGraph.AddPass(state->uiPass));
+    RG_CHECK(state->FrameGraph.AddPassSink("ui", "colourbuffer"));
+    RG_CHECK(state->FrameGraph.AddPassSource("ui", "colourbuffer", RendergraphSourceType::RenderTargetColour, RendergraphSourceOrigin::Other));
+    RG_CHECK(state->FrameGraph.PassSetSinkLinkage("ui", "colourbuffer", "editor", "colourbuffer"));
+
+    RefreshRendergraphPfns(app);
+
+    // if (!state->FrameGraph.Finalize()) {
+    //     MERROR("Failed to finalize rendergraph. See log for details.");
+    //     return false;
+    // }
+
+    return true;
 }
