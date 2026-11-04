@@ -1,6 +1,6 @@
 #pragma once
 #include "renderer/render_view.h"
-#include "resources/texture.hpp"
+#include "resources/texture.h"
 #include "resources/mesh.h"
 
 class RenderViewPick
@@ -17,7 +17,7 @@ public:
 };
 private:
     struct ShaderInfo {
-        struct Shader* s;
+        struct Shader* shader;
         Renderpass* pass;
         u16 IdColourLocation;
         u16 ModelLocation;
@@ -37,7 +37,7 @@ private:
     // u32 RenderMode;
 
 public:
-    constexpr RenderViewPick() : ColoureTargetAttachmentTexture(), DepthTargetAttachmentTexture(), InstanceCount(), MouseX(), MouseY() {}
+    constexpr RenderViewPick() = default;
 
     static bool OnRegistered(RenderView* self);
     static void Destroy(RenderView* self);
@@ -52,7 +52,7 @@ public:
     void operator delete(void* ptr, u64 size);
 
 private:
-    static bool OnMouseMoved(u16 code, void* sender, void* ListenerInst, EventContext EventData);
+    static bool OnMouseMoved(u16 code, void* sender, void* ListenerInst, const EventContext& EventData);
     void AcquireShaderInstances();
     void ReleaseShaderInstances();
 };
