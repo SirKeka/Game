@@ -2,11 +2,13 @@
 
 #include "containers/darray.h"
 
+struct ApplicationConfig;
+
 struct DynamicLibraryFunction {
     MString name;
     void* pfn;
 
-    DynamicLibraryFunction& operator=(const DynamicLibraryFunction& dlf) {
+    /*DynamicLibraryFunction& operator=(const DynamicLibraryFunction& dlf) {
         name = dlf.name;
         pfn = dlf.pfn;
         return *this;
@@ -16,7 +18,7 @@ struct DynamicLibraryFunction {
         name = static_cast<MString&&>(dlf.name);
         pfn = dlf.pfn;
         return *this;
-    }
+    }*/
 };
 
 struct DynamicLibrary {
@@ -42,10 +44,15 @@ namespace PlatformError
     };
 }
 
+struct PlatformState
+{
+    virtual void Shutdown() = 0;
+};
+
+
 namespace WindowSystem
 {
-    bool Initialize(u64& MemoryRequirement, void* memory, void* config);
-    void Shutdown();
+    PlatformState* Initialize(u64& MemoryRequirement, void* memory, ApplicationConfig& config);
     bool Messages();
     // Получение времени
     f64 PlatformGetAbsoluteTime();
@@ -73,6 +80,9 @@ void* PlatformSetMemory(void* dest, i32 value, u64 size);
 void PlatformConsoleWrite(const char* message, u8 colour);
 // Цвет текста ошибки
 void PlatformConsoleWriteError(const char* message, u8 colour);
+
+/// @brief Возвращает соотношение пикселей устройства к главному окну.
+MAPI f32 PlatformDevicePixelRatio(void);
 
 // Сон на потоке в течение предоставленной мс. Это блокирует основной поток.
 // Следует использовать только для возврата времени ОС для неиспользованной мощности обновления.
