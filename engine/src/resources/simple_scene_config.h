@@ -14,6 +14,9 @@ struct DirectionalLightSimpleSceneConfig
     MString name;
     FVec4 colour;
     FVec4 direction;
+    f32 ShadowDistance;
+    f32 ShadowFadeDistance;
+    f32 ShadowSplitMult;
 };
 
 struct PointLightSimpleSceneConfig
@@ -26,35 +29,35 @@ struct PointLightSimpleSceneConfig
     f32 quadratic;
 };
 
-struct MeshSimpleSceneConfig
+struct MeshConfig
 {
     MString name;
     MString ResourceName;
-    Transform transform;
     MString ParentName;       // опционально
+    Transform transform;
+    u16 GeometryCount;
+    struct GeometryConfig* GConfigs;
 };
 
-struct TerrainSimpleSceneConfig {
+struct TerrainSimpleSceneConfig 
+{
     MString name;
     MString ResourceName;
     Transform xform;
 };
 
-struct SimpleSceneConfig {
+struct SimpleSceneConfig 
+{
     MString name;
     MString description;
     SkyboxSimpleSceneConfig SkyboxConfig;
     DirectionalLightSimpleSceneConfig DirectionalLightConfig;
 
     DArray<PointLightSimpleSceneConfig> PointLights;
-    DArray<MeshSimpleSceneConfig> meshes;
+    DArray<MeshConfig> meshes;
     DArray<TerrainSimpleSceneConfig> terrains;
 
-    void* operator new(u64 size) {
-        return MemorySystem::Allocate(size, Memory::Scene);
-    }
+    void* operator new(u64 size) { return MemorySystem::Allocate(size, Memory::Scene); }
 
-    void operator delete(void* ptr, u64 size) {
-        MemorySystem::Free(ptr, size, Memory::Scene);
-    }
+    void operator delete(void* ptr, u64 size) { MemorySystem::Free(ptr, size, Memory::Scene); }
 };
