@@ -1,19 +1,16 @@
 #include "geometry_system.h"
 #include "material_system.h"
-#include "renderer/rendering_system.h"
+#include "core/systems_manager.h"
 #include "math/geometry_utils.h"
 #include "memory/linear_allocator.h"
-#include <new>
+#include "renderer/rendering_system.h"
 #include "resources/geometry.h"
 
 struct GeometryReference {
     u64 ReferenceCount;
-    Geometry gid;
+    Geometry geometry;
     bool AutoRelease;
-    // GeometryReference() : ReferenceCount(), gid(), AutoRelease() {}
 };
-
-GeometrySystem* GeometrySystem::state = nullptr;
 
 GeometrySystem::GeometrySystem(u32 MaxGeometryCount, GeometryReference* RegisteredGeometries)
     : 
@@ -24,57 +21,49 @@ GeometrySystem::GeometrySystem(u32 MaxGeometryCount, GeometryReference* Register
 {   
     // Сделать недействительными все геометрии в массиве.
     for (u32 i = 0; i < MaxGeometryCount; ++i) {
-        RegisteredGeometries[i].gid.id = INVALID::ID;
-        RegisteredGeometries[i].gid.InternalID = INVALID::ID;
-        RegisteredGeometries[i].gid.generation = INVALID::U16ID;
+        RegisteredGeometries[i].geometry.id = INVALID::ID;
+        RegisteredGeometries[i].geometry.generation = INVALID::U16ID;
     }
 }
 
-bool GeometrySystem::Initialize(u64& MemoryRequirement, void* memory, void* config)
+GeometrySystem* GeometrySystem::Initialize(u64& MemoryRequirement, void* memory, GeometrySystemConfig config)
 {
-    auto pConfig = reinterpret_cast<GeometrySystemConfig*>(config);
-
-    if (pConfig->MaxGeometryCount == 0) {
+    if (config.MaxGeometryCount == 0) {
         MFATAL("«GeometrySystem::Initialize» — максимальное количество геометрии должно быть > 0.");
-        return false;
+        return nullptr;
     }
 
     // Блок памяти будет содержать структуру состояния, затем блок массива, затем блок хеш-таблицы.
-    u64 ArrayRequirement = sizeof(GeometryReference) * pConfig->MaxGeometryCount;
+    u64 ArrayRequirement = sizeof(GeometryReference) * config.MaxGeometryCount;
     MemoryRequirement = sizeof(GeometrySystem) + ArrayRequirement;
 
     if (!memory) {
-        return true;
+        return nullptr;
     }
 
     if (!state) {
         u8* PtrGeometrySystem = reinterpret_cast<u8*>(memory);
         auto ArrayBlock = reinterpret_cast<GeometryReference*>(PtrGeometrySystem + sizeof(GeometrySystem));
-        state = new(PtrGeometrySystem) GeometrySystem(pConfig->MaxGeometryCount, ArrayBlock);
+        state = new(PtrGeometrySystem) GeometrySystem(config.MaxGeometryCount, ArrayBlock);
     }
 
     if (!state->CreateDefaultGeometries()) {
         MFATAL("Не удалось создать геометрию по умолчанию. Приложение не может быть продолжено.");
-        return false;
+        return nullptr;
     }
 
-    return true;
-}
-
-void GeometrySystem::Shutdown()
-{
-    state = nullptr;
+    return state;
 }
 
 GeometryConfig GeometrySystem::GeneratePlaneConfig(f32 width, f32 height, u32 xSegmentCount, u32 ySegmentCount, f32 TileX, f32 TileY, const char *name, const char *MaterialName)
 {
     if (width == 0) {
         MWARN("Ширина(width) должна быть ненулевой. По умолчанию один.");
-        width = 1.0f;
+        width = 1.F;
     }
     if (height == 0) {
         MWARN("Высота(height) должна быть ненулевой. По умолчанию один.");
-        height = 1.0f;
+        height = 1.F;
     }
     if (xSegmentCount < 1) {
         MWARN("Число сегментов по оси x(xSegmentCount) должно быть положительным. По умолчанию один.");
@@ -87,11 +76,11 @@ GeometryConfig GeometrySystem::GeneratePlaneConfig(f32 width, f32 height, u32 xS
 
     if (TileX == 0) {
         MWARN("TileX не должен быть нулевым. По умолчанию один.");
-        TileX = 1.0f;
+        TileX = 1.F;
     }
     if (TileY == 0) {
         MWARN("TileY не должен быть нулевым. По умолчанию один.");
-        TileY = 1.0f;
+        TileY = 1.F;
     }
 
     u32 VertexCount = xSegmentCount * ySegmentCount * 4; // 4 вершины на сегмент
@@ -167,23 +156,23 @@ GeometryConfig GeometrySystem::GeneratePlaneConfig(f32 width, f32 height, u32 xS
 GeometryConfig GeometrySystem::GenerateCubeConfig(f32 width, f32 height, f32 depth, f32 TileX, f32 TileY, const char *name, const char *MaterialName)
 {
     if (width == 0) {
-        MWARN("Ширина должна быть ненулевой. По умолчанию один.");
+        MWARN("Ширина должна быть ненулевой. По умолчанию 1.");
         width = 1.F;
     }
     if (height == 0) {
-        MWARN("Высота должна быть ненулевой. По умолчанию один.");
+        MWARN("Высота должна быть ненулевой. По умолчанию 1.");
         height = 1.F;
     }
     if (depth == 0) {
-        MWARN("Глубина должна быть ненулевой. По умолчанию один.");
+        MWARN("Глубина должна быть ненулевой. По умолчанию 1.");
         depth = 1;
     }
     if (TileX == 0) {
-        MWARN("TileX не должен быть нулевым. По умолчанию один.");
+        MWARN("TileX не должен быть нулевым. По умолчанию 1.");
         TileX = 1.F;
     }
     if (TileY == 0) {
-        MWARN("TileY не должно быть нулевым. По умолчанию один.");
+        MWARN("TileY не должно быть нулевым. По умолчанию 1.");
         TileY = 1.F;
     }
 
@@ -197,7 +186,7 @@ GeometryConfig GeometrySystem::GenerateCubeConfig(f32 width, f32 height, f32 dep
     config.vertices = MemorySystem::Allocate(config.VertexCount * config.VertexSize, Memory::Array, true);
     config.IndexSize = sizeof(u32);
     config.IndexCount = 6 * 6; // 6 индексов на каждой стороне, 6 сторон
-    config.indices = reinterpret_cast<u32*>(MemorySystem::Allocate(config.IndexCount * config.IndexSize, Memory::Array, true));
+    config.indices = (u32*)MemorySystem::Allocate(config.IndexCount * config.IndexSize, Memory::Array, true);
     config.CopyNames(name, MaterialName);
     // config.center = FVec3();
     config.MinExtents = FVec3(-HalfWidth, -HalfHeight, -HalfDepth);
@@ -208,85 +197,85 @@ GeometryConfig GeometrySystem::GenerateCubeConfig(f32 width, f32 height, f32 dep
     f32 MaxUVx = TileX;
     f32 MaxUVy = TileY;
 
-    auto vertex  = reinterpret_cast<Vertex3D*>(config.vertices);
+    auto vertex  = (Vertex3D*)config.vertices;
     // Передняя поверхность
-    vertex[0].position.Set(-HalfWidth, -HalfHeight,  HalfDepth);
-    vertex[0].texcoord  = FVec2(MinUVx, MinUVy);
-    vertex[0].normal.Set(0.F,  0.F,  1.F);
-    vertex[1].position.Set(HalfWidth,  HalfHeight,  HalfDepth);
-    vertex[1].texcoord  = FVec2(MaxUVx, MaxUVy);
-    vertex[1].normal.Set(0.F,  0.F,  1.F);
-    vertex[2].position.Set(-HalfWidth,  HalfHeight,  HalfDepth);
-    vertex[2].texcoord  = FVec2(MinUVx, MaxUVy);
-    vertex[2].normal.Set(0.F,  0.F,  1.F);
-    vertex[3].position.Set(HalfWidth, -HalfHeight,  HalfDepth);
-    vertex[3].texcoord  = FVec2(MaxUVx, MinUVy);
-    vertex[3].normal.Set(0.F,  0.F,  1.F);
+    vertex[0].position.SetXYZ(-HalfWidth, -HalfHeight,  HalfDepth);
+    vertex[0].texcoord.Set(MinUVx, MinUVy);
+    vertex[0].normal.SetXYZ(0.F,  0.F,  1.F);
+    vertex[1].position.SetXYZ(HalfWidth,  HalfHeight,  HalfDepth);
+    vertex[1].texcoord.Set(MaxUVx, MaxUVy);
+    vertex[1].normal.SetXYZ(0.F,  0.F,  1.F);
+    vertex[2].position.SetXYZ(-HalfWidth,  HalfHeight,  HalfDepth);
+    vertex[2].texcoord.Set(MinUVx, MaxUVy);
+    vertex[2].normal.SetXYZ(0.F,  0.F,  1.F);
+    vertex[3].position.SetXYZ(HalfWidth, -HalfHeight,  HalfDepth);
+    vertex[3].texcoord.Set(MaxUVx, MinUVy);
+    vertex[3].normal.SetXYZ(0.F,  0.F,  1.F);
     // Задняя поверхность
-    vertex[4].position.Set(HalfWidth, -HalfHeight, -HalfDepth);
-    vertex[4].texcoord  = FVec2(MinUVx, MinUVy);
-    vertex[4].normal.Set(0.F,  0.F, -1.F);
-    vertex[5].position.Set(-HalfWidth,  HalfHeight, -HalfDepth);
-    vertex[5].texcoord  = FVec2(MaxUVx, MaxUVy);
-    vertex[5].normal.Set(0.F,  0.F, -1.F);
-    vertex[6].position.Set(HalfWidth,  HalfHeight, -HalfDepth);
-    vertex[6].texcoord  = FVec2(MinUVx, MaxUVy);
-    vertex[6].normal.Set(0.F,  0.F, -1.F);
-    vertex[7].position.Set(-HalfWidth, -HalfHeight, -HalfDepth);
-    vertex[7].texcoord  = FVec2(MaxUVx, MinUVy);
-    vertex[7].normal.Set(0.F,  0.F, -1.F);
+    vertex[4].position.SetXYZ(HalfWidth, -HalfHeight, -HalfDepth);
+    vertex[4].texcoord.Set(MinUVx, MinUVy);
+    vertex[4].normal.SetXYZ(0.F,  0.F, -1.F);
+    vertex[5].position.SetXYZ(-HalfWidth,  HalfHeight, -HalfDepth);
+    vertex[5].texcoord.Set(MaxUVx, MaxUVy);
+    vertex[5].normal.SetXYZ(0.F,  0.F, -1.F);
+    vertex[6].position.SetXYZ(HalfWidth,  HalfHeight, -HalfDepth);
+    vertex[6].texcoord.Set(MinUVx, MaxUVy);
+    vertex[6].normal.SetXYZ(0.F,  0.F, -1.F);
+    vertex[7].position.SetXYZ(-HalfWidth, -HalfHeight, -HalfDepth);
+    vertex[7].texcoord.Set(MaxUVx, MinUVy);
+    vertex[7].normal.SetXYZ(0.F,  0.F, -1.F);
     // Левая поверхность
-    vertex[8].position.Set(-HalfWidth, -HalfHeight, -HalfDepth);
-    vertex[8].texcoord  = FVec2(MinUVx, MinUVy);
-    vertex[8].normal.Set(-1.F,  0.F,  0.F);
-    vertex[9].position.Set(-HalfWidth,  HalfHeight,  HalfDepth);
-    vertex[9].texcoord  = FVec2(MaxUVx, MaxUVy);
-    vertex[9].normal.Set(-1.F,  0.F,  0.F);
-    vertex[10].position.Set(-HalfWidth,  HalfHeight, -HalfDepth);
-    vertex[10].texcoord = FVec2(MinUVx, MaxUVy);
-    vertex[10].normal.Set(-1.F,  0.F,  0.F);
-    vertex[11].position.Set(-HalfWidth, -HalfHeight,  HalfDepth);
-    vertex[11].texcoord = FVec2(MaxUVx, MinUVy);
-    vertex[11].normal.Set(-1.F,  0.F,  0.F);
+    vertex[8].position.SetXYZ(-HalfWidth, -HalfHeight, -HalfDepth);
+    vertex[8].texcoord.Set(MinUVx, MinUVy);
+    vertex[8].normal.SetXYZ(-1.F,  0.F,  0.F);
+    vertex[9].position.SetXYZ(-HalfWidth,  HalfHeight,  HalfDepth);
+    vertex[9].texcoord.Set(MaxUVx, MaxUVy);
+    vertex[9].normal.SetXYZ(-1.F,  0.F,  0.F);
+    vertex[10].position.SetXYZ(-HalfWidth,  HalfHeight, -HalfDepth);
+    vertex[10].texcoord.Set(MinUVx, MaxUVy);
+    vertex[10].normal.SetXYZ(-1.F,  0.F,  0.F);
+    vertex[11].position.SetXYZ(-HalfWidth, -HalfHeight,  HalfDepth);
+    vertex[11].texcoord.Set(MaxUVx, MinUVy);
+    vertex[11].normal.SetXYZ(-1.F,  0.F,  0.F);
     // Правая поверхность
-    vertex[12].position.Set(HalfWidth, -HalfHeight,  HalfDepth);
-    vertex[12].texcoord = FVec2(MinUVx, MinUVy);
-    vertex[12].normal.Set(1.F,  0.F,  0.F);
-    vertex[13].position.Set(HalfWidth,  HalfHeight, -HalfDepth);
-    vertex[13].texcoord = FVec2(MaxUVx, MaxUVy);
-    vertex[13].normal.Set(1.F,  0.F,  0.F);
-    vertex[14].position.Set(HalfWidth,  HalfHeight,  HalfDepth);
-    vertex[14].texcoord = FVec2(MinUVx, MaxUVy);
-    vertex[14].normal.Set(1.F,  0.F,  0.F);
-    vertex[15].position.Set(HalfWidth, -HalfHeight, -HalfDepth);
-    vertex[15].texcoord = FVec2(MaxUVx, MinUVy);
-    vertex[15].normal.Set(1.F,  0.F,  0.F);
+    vertex[12].position.SetXYZ(HalfWidth, -HalfHeight,  HalfDepth);
+    vertex[12].texcoord.Set(MinUVx, MinUVy);
+    vertex[12].normal.SetXYZ(1.F,  0.F,  0.F);
+    vertex[13].position.SetXYZ(HalfWidth,  HalfHeight, -HalfDepth);
+    vertex[13].texcoord.Set(MaxUVx, MaxUVy);
+    vertex[13].normal.SetXYZ(1.F,  0.F,  0.F);
+    vertex[14].position.SetXYZ(HalfWidth,  HalfHeight,  HalfDepth);
+    vertex[14].texcoord.Set(MinUVx, MaxUVy);
+    vertex[14].normal.SetXYZ(1.F,  0.F,  0.F);
+    vertex[15].position.SetXYZ(HalfWidth, -HalfHeight, -HalfDepth);
+    vertex[15].texcoord.Set(MaxUVx, MinUVy);
+    vertex[15].normal.SetXYZ(1.F,  0.F,  0.F);
     // Нижняя поверхность
-    vertex[16].position.Set(HalfWidth, -HalfHeight,  HalfDepth);
-    vertex[16].texcoord = FVec2(MinUVx, MinUVy);
-    vertex[16].normal.Set(0.F, -1.F,  0.F);
-    vertex[17].position.Set(-HalfWidth, -HalfHeight, -HalfDepth);
-    vertex[17].texcoord = FVec2(MaxUVx, MaxUVy);
-    vertex[17].normal.Set(0.F, -1.F,  0.F);
-    vertex[18].position.Set(HalfWidth, -HalfHeight, -HalfDepth);
-    vertex[18].texcoord = FVec2(MinUVx, MaxUVy);
-    vertex[18].normal.Set(0.F, -1.F,  0.F);
-    vertex[19].position.Set(-HalfWidth, -HalfHeight,  HalfDepth);
-    vertex[19].texcoord = FVec2(MaxUVx, MinUVy);
-    vertex[19].normal.Set(0.F, -1.F,  0.F);
+    vertex[16].position.SetXYZ(HalfWidth, -HalfHeight,  HalfDepth);
+    vertex[16].texcoord.Set(MinUVx, MinUVy);
+    vertex[16].normal.SetXYZ(0.F, -1.F,  0.F);
+    vertex[17].position.SetXYZ(-HalfWidth, -HalfHeight, -HalfDepth);
+    vertex[17].texcoord.Set(MaxUVx, MaxUVy);
+    vertex[17].normal.SetXYZ(0.F, -1.F,  0.F);
+    vertex[18].position.SetXYZ(HalfWidth, -HalfHeight, -HalfDepth);
+    vertex[18].texcoord.Set(MinUVx, MaxUVy);
+    vertex[18].normal.SetXYZ(0.F, -1.F,  0.F);
+    vertex[19].position.SetXYZ(-HalfWidth, -HalfHeight,  HalfDepth);
+    vertex[19].texcoord.Set(MaxUVx, MinUVy);
+    vertex[19].normal.SetXYZ(0.F, -1.F,  0.F);
     // Верхняя поверхность
-    vertex[20].position.Set(-HalfWidth,  HalfHeight,  HalfDepth);
-    vertex[20].texcoord = FVec2(MinUVx, MinUVy);
-    vertex[20].normal.Set(0.F,  1.F,  0.F);
-    vertex[21].position.Set(HalfWidth,  HalfHeight, -HalfDepth);
-    vertex[21].texcoord = FVec2(MaxUVx, MaxUVy);
-    vertex[21].normal.Set(0.F,  1.F,  0.F);
-    vertex[22].position.Set(-HalfWidth,  HalfHeight, -HalfDepth);
-    vertex[22].texcoord = FVec2(MinUVx, MaxUVy);
-    vertex[22].normal.Set(0.F,  1.F,  0.F);
-    vertex[23].position.Set(HalfWidth,  HalfHeight,  HalfDepth);
-    vertex[23].texcoord = FVec2(MaxUVx, MinUVy);
-    vertex[23].normal.Set(0.F,  1.F,  0.F);
+    vertex[20].position.SetXYZ(-HalfWidth,  HalfHeight,  HalfDepth);
+    vertex[20].texcoord.Set(MinUVx, MinUVy);
+    vertex[20].normal.SetXYZ(0.F,  1.F,  0.F);
+    vertex[21].position.SetXYZ(HalfWidth,  HalfHeight, -HalfDepth);
+    vertex[21].texcoord.Set(MaxUVx, MaxUVy);
+    vertex[21].normal.SetXYZ(0.F,  1.F,  0.F);
+    vertex[22].position.SetXYZ(-HalfWidth,  HalfHeight, -HalfDepth);
+    vertex[22].texcoord.Set(MinUVx, MaxUVy);
+    vertex[22].normal.SetXYZ(0.F,  1.F,  0.F);
+    vertex[23].position.SetXYZ(HalfWidth,  HalfHeight,  HalfDepth);
+    vertex[23].texcoord.Set(MaxUVx, MinUVy);
+    vertex[23].normal.SetXYZ(0.F,  1.F,  0.F);
 
     u32* indices = reinterpret_cast<u32*>(config.indices);
     for (u32 i = 0; i < 6; ++i) {
@@ -305,64 +294,110 @@ GeometryConfig GeometrySystem::GenerateCubeConfig(f32 width, f32 height, f32 dep
     return config;
 }
 
-bool GeometrySystem::CreateGeometry(GeometryConfig &config, Geometry *geometry)
+GeometryConfig GeometrySystem::GenerateSphereSmoothConfig(u16 rings, u16 segments, f32 radius)
 {
-    if (!geometry) {
-        MERROR("GeometrySystem::CreateGeometry требует действительного указателя на геометрию.");
-        return false;
+    if (!rings) {
+        rings = 16;
     }
-
-    // Отправьте геометрию в рендерер для загрузки в графический процессор.
-    if (!RenderingSystem::CreateGeometry(geometry, config.VertexSize, config.VertexCount, config.vertices, config.IndexSize, config.IndexCount, config.indices)) {
-        MERROR("GeometrySystem::CreateGeometry - не удалось создать геометрию.");
-        // Признать запись недействительной.
-        state->RegisteredGeometries[geometry->id].ReferenceCount = 0;
-        state->RegisteredGeometries[geometry->id].AutoRelease = false;
-        geometry->id = INVALID::ID;
-        geometry->generation = INVALID::U16ID;
-        geometry->InternalID = INVALID::ID;
-        return false;
+    if (!segments) {
+        segments = 32;
     }
-    if (!RenderingSystem::Load(geometry)) {
-        MERROR("GeometrySystem::CreateGeometry - не удалось создать геометрию.");
-        // Сделайте запись недействительной.
-        state->RegisteredGeometries[geometry->id].ReferenceCount = 0;
-        state->RegisteredGeometries[geometry->id].AutoRelease = false;
-        geometry->id = INVALID::ID;
-        geometry->generation = INVALID::U16ID;
-        geometry->InternalID = INVALID::ID;
-
-        return false;
+    if (!radius) {
+        radius = 1.F;
     }
+    
+    f32 x, y, z, xy;                            // позиция вершины
+    f32 nx, ny, nz, lengthInv = 1.F / radius;   // нормаль вершины
+    f32 s, t;                                   // текстурные координаты вершины
 
-    // Копирование экстентов, центра и т.д.
-    geometry->center = config.center;
-    geometry->extents.min = config.MinExtents;
-    geometry->extents.max = config.MaxExtents;
-    geometry->generation++;
+    f32 sectorStep = 2 * M_PI / segments;
+    f32 stackStep = M_PI / rings;
+    f32 sectorAngle, stackAngle;
+    
+    u32 k1, k2, m = 0;
 
-    // Получить материал
-    if (MString::Length(config.MaterialName) > 0) {
-        geometry->material = MaterialSystem::Acquire(config.MaterialName);
-        if (!geometry->material) {
-            geometry->material = MaterialSystem::GetDefaultMaterial();
+    GeometryConfig config;
+    config.VertexSize = sizeof(Vertex3D);
+    config.VertexCount = (rings - 1) * segments + 2; 
+    config.vertices = MemorySystem::Allocate(config.VertexCount * config.VertexSize, Memory::Array, true);
+    config.IndexSize = sizeof(u32);
+    config.IndexCount = ((rings - 2) * (segments << 1) + (segments << 1)) * 3; 
+    config.indices = (u32*)MemorySystem::Allocate(config.IndexCount * config.IndexSize, Memory::Array, true);
+    
+    auto vertices = (Vertex3D*)config.vertices;
+    // сгенерировать список индексов треугольников сферы против часовой стрелки
+    // k1--k1+1
+    // |  / |
+    // | /  |
+    // k2--k2+1
+    for(u64 i = 0; i <= segments; ++i) {
+        stackAngle = M_PI / 2 - i * stackStep;  // от π/2 до -π/2
+        xy = radius * Math::cos(stackAngle);    // r * cos(u)
+        z  = radius * Math::sin(stackAngle);    // r * sin(u)
+
+        k1 = i * (rings + 1);     // начало текущего сегмента
+        k2 = k1 + rings + 1;      // начало следующего сегмента
+
+        // добавьте (rings+1) вершин на каждый стек
+        // первые и последние вершины имеют одинаковое положение и нормаль, но разные текстурные координаты
+        for(u64 j = 0; j <= rings; ++j, ++k1, ++k2) {
+            auto& vertex = vertices[j];
+            sectorAngle = j * sectorStep;           // от 0 до 2π
+
+            // позиция вершины (x, y, z)
+            x = xy * Math::cos(sectorAngle);    // r * cos(u) * cos(v)
+            y = xy * Math::sin(sectorAngle);    // r * cos(u) * sin(v)
+            vertex.position.SetXYZ(x, y, z);
+
+            // нормализованная нормаль вершины (nx, ny, nz)
+            nx = x * lengthInv;
+            ny = y * lengthInv;
+            nz = z * lengthInv;
+            vertex.normal.SetXYZ(nx, ny, nz);
+
+            // координаты текстуры вершины (s, t) варьируются в пределах [0, 1]
+            s = (f32)j / rings;
+            t = (f32)i / segments;
+            vertex.texcoord.Set(s, t);
+
+            // 2 треугольника на сектор, исключая первый и последний стаканы
+            // k1 => k2 => k1+1
+            if(i != 0) {
+                config.indices[m++] = k1;
+                config.indices[m++] = k2;
+                config.indices[m++] = k1 + 1;
+            }
+
+            // k1+1 => k2 => k2+1
+            if(i != (segments - 1)) {
+                config.indices[m++] = k1 + 1;
+                config.indices[m++] = k2;
+                config.indices[m++] = k2 + 1;
+            }
+
+            // сохранять индексы для линий
+            // вертикальные линии для всех стаканов, k1 => k2
+            // lineIndices.push_back(k1);
+            // lineIndices.push_back(k2);
+            // if(i != 0) { // горизонтальные линии, кроме первого стакана, k1 => k+1
+            //     lineIndices.push_back(k1);
+            //     lineIndices.push_back(k1 + 1);
+            // }
         }
     }
-
-    return true;
+    return config;
 }
 
-void GeometrySystem::DestroyGeometry(Geometry *gid)
+void GeometrySystem::DestroyGeometry(Geometry *geometry)
 {
-    RenderingSystem::Unload(gid);
+    SystemsManager::GetRenderingSystem()->Unload(geometry);
 
-    gid->id = INVALID::ID; 
-    gid->InternalID = INVALID::ID;
-    gid->generation = INVALID::U16ID; 
-    MemorySystem::SetMemory(gid->name, 0, GEOMETRY_NAME_MAX_LENGTH);
-    if (gid->material && MString::Length(gid->material->name) > 0) {
-    MaterialSystem::Release(gid->material->name);
-    gid->material = nullptr;
+    geometry->id = INVALID::ID; 
+    geometry->generation = INVALID::U16ID; 
+    MemorySystem::ZeroMem(geometry->name, GEOMETRY_NAME_MAX_LENGTH);
+    if (geometry->material && MString::Length(geometry->material->name) > 0) {
+    MaterialSystem::Release(geometry->material->name);
+    geometry->material = nullptr;
     }
 }
 
@@ -373,8 +408,6 @@ bool GeometrySystem::CreateDefaultGeometries()
 
     verts[0].position.x = -0.5 * f;  // 0    3
     verts[0].position.y = -0.5 * f;  //
-    verts[0].texcoord.x =  0.F;      //
-    verts[0].texcoord.y =  0.F;      // 2    1
 
     verts[1].position.y = 0.5 * f;
     verts[1].position.x = 0.5 * f;
@@ -383,23 +416,30 @@ bool GeometrySystem::CreateDefaultGeometries()
 
     verts[2].position.x = -0.5 * f;
     verts[2].position.y =  0.5 * f;
-    verts[2].texcoord.x =  0.F;
     verts[2].texcoord.y =  1.F;
 
     verts[3].position.x =  0.5 * f;
     verts[3].position.y = -0.5 * f;
     verts[3].texcoord.x =  1.F;
-    verts[3].texcoord.y =  0.F;
 
     u32 indices[6] = {0, 1, 2, 0, 3, 1};
 
+    auto renderer = SystemsManager::GetRenderingSystem();
     // Отправьте геометрию в рендерер для загрузки в графический процессор.
-    if (!RenderingSystem::CreateGeometry(&state->DefaultGeometry, sizeof(Vertex3D), 4, verts, sizeof(u32), 6, indices)) {
+    Geometry& dg = state->DefaultGeometry;
+    dg.VertexElementSize = sizeof(Vertex3D);
+    dg.VertexCount = 4;
+    dg.vertices = verts;
+    dg.IndexElementSize = sizeof(u32);
+    dg.IndexCount = 6;
+    dg.indices = indices;
+
+    if (!renderer->CreateGeometry(&dg)) {
         MFATAL("Не удалось создать геометрию по умолчанию. Приложение не может быть продолжено.");
         return false;
     }
 
-    if (!RenderingSystem::Load(&state->DefaultGeometry)) {
+    if (!renderer->Load(&state->DefaultGeometry)) {
         MFATAL("Не удалось загрузить геометрию по умолчанию. Приложение не может быть продолжено.");
         return false;
     }
@@ -412,8 +452,6 @@ bool GeometrySystem::CreateDefaultGeometries()
     Vertex2D verts2d[4]{};
     verts2d[0].position.x = -0.5 * f;  // 0    3
     verts2d[0].position.y = -0.5 * f;  //
-    verts2d[0].texcoord.x = 0.F;      //
-    verts2d[0].texcoord.y = 0.F;      // 2    1
 
     verts2d[1].position.y = 0.5 * f;
     verts2d[1].position.x = 0.5 * f;
@@ -422,44 +460,49 @@ bool GeometrySystem::CreateDefaultGeometries()
 
     verts2d[2].position.x = -0.5 * f;
     verts2d[2].position.y = 0.5 * f;
-    verts2d[2].texcoord.x = 0.F;
     verts2d[2].texcoord.y = 1.F;
 
     verts2d[3].position.x = 0.5 * f;
     verts2d[3].position.y = -0.5 * f;
     verts2d[3].texcoord.x = 1.F;
-    verts2d[3].texcoord.y = 0.F;
 
     // Индексы (ПРИМЕЧАНИЕ: против часовой стрелки)
     u32 indices2d[6] = {2, 1, 0, 3, 0, 1};
 
-    state->Default2dGeometry.InternalID = 0;
     // Отправьте геометрию в рендерер для загрузки в графический процессор.
-    if (!RenderingSystem::CreateGeometry(&state->Default2dGeometry, sizeof(Vertex2D), 4, verts2d, sizeof(u32), 6, indices2d)) {
+    Geometry& d2dg = state->Default2dGeometry;
+    d2dg.VertexElementSize = sizeof(Vertex2D);
+    d2dg.VertexCount = 4;
+    d2dg.vertices = verts2d;
+    d2dg.IndexElementSize = sizeof(u32);
+    d2dg.IndexCount = 6;
+    d2dg.indices = indices2d;
+
+    if (!renderer->CreateGeometry(&d2dg)) {
         MFATAL("Не удалось создать 2D-геометрию по умолчанию. Приложение не может быть продолжено.");
         return false;
     }
 
-    if (!RenderingSystem::Load(&state->Default2dGeometry)) {
+    if (!renderer->Load(&d2dg)) {
         MFATAL("Не удалось загрузить 2D-геометрию по умолчанию. Приложение не может быть продолжено.");
         return false;
     }
     
 
     // Получите материал по умолчанию.
-    state->Default2dGeometry.material = MaterialSystem::GetDefaultUiMaterial();
+    d2dg.material = MaterialSystem::GetDefaultUiMaterial();
 
     return true;
 }
 
 Geometry *GeometrySystem::Acquire(u32 id)
 {
-    if (id != INVALID::ID && state->RegisteredGeometries[id].gid.id != INVALID::ID) {
+    if (id != INVALID::ID && state->RegisteredGeometries[id].geometry.id != INVALID::ID) {
         state->RegisteredGeometries[id].ReferenceCount++;
-        return &state->RegisteredGeometries[id].gid;
+        return &state->RegisteredGeometries[id].geometry;
     }
 
-    // ПРИМЕЧАНИЕ. Следует ли вместо этого возвращать геометрию по умолчанию?
+    // ПРИМЕЧАНИЕ: Следует ли вместо этого возвращать геометрию по умолчанию?
     MERROR("GeometrySystem::Acquire не может загрузить неверный идентификатор геометрии. Возвращение nullptr.");
     return nullptr;
 }
@@ -468,11 +511,11 @@ Geometry *GeometrySystem::Acquire(GeometryConfig& config, bool AutoRelease)
 {
     Geometry* g = nullptr;
     for (u32 i = 0; i < state->MaxGeometryCount; ++i) {
-        if (state->RegisteredGeometries[i].gid.id == INVALID::ID) {
+        if (state->RegisteredGeometries[i].geometry.id == INVALID::ID) {
             // Поиск пустого слота.
             state->RegisteredGeometries[i].AutoRelease = AutoRelease;
             state->RegisteredGeometries[i].ReferenceCount = 1;
-            g = &state->RegisteredGeometries[i].gid;
+            g = &state->RegisteredGeometries[i].geometry;
             g->id = i;
             break;
         }
@@ -483,12 +526,83 @@ Geometry *GeometrySystem::Acquire(GeometryConfig& config, bool AutoRelease)
         return nullptr;
     }
 
-    if (!CreateGeometry(config, g)) {
-        MERROR("Не удалось создать геометрию. Возвращение nullptr.");
-        return nullptr;
+    // if (!config.VertexCount || !config.vertices) {
+    //     MERROR("RenderingSystem::Load требуются данные о вершинах, но они не были предоставлены. VertexCount=%d, vertices=%p", VertexCount, vertices);
+    //     return false;
+    // }
+
+    // Сделайте идентификаторы недействительными. ПРИМЕЧАНИЕ: Не делайте идентификатор геометрии недействительным! На этом этапе у него должен быть действительный идентификатор, и его отмена может привести к хаосу.
+    g->generation = INVALID::U16ID;
+
+    // Сделайте копию данных вершин.
+    g->VertexCount = config.VertexCount;
+    g->VertexElementSize = config.VertexSize;
+    g->vertices = config.vertices ? config.vertices : MemorySystem::Allocate(g->VertexElementSize * g->VertexCount, Memory::Renderer);
+    // MemorySystem::CopyMem(this->vertices, vertices, VertexSize * VertexCount);
+
+    g->IndexCount = config.IndexCount;
+    g->IndexElementSize = config.IndexSize;
+    g->indices = nullptr;
+    // Если есть, сделайте копию данных индекса.
+    if (g->IndexElementSize && g->IndexCount) {
+        g->indices = config.indices ? config.indices : (u32*)MemorySystem::Allocate(g->IndexElementSize * g->IndexCount, Memory::Renderer);
+        // MemorySystem::CopyMem(this->indices, indices, IndexSize * IndexCount);
     }
-    //state->RegisteredGeometries = buf; // Возвращаем слетевший указатель присваивая ему значение сохраненного ранее адреса
+
+    // Копирование экстентов, центра и т.д.
+    g->center = config.center;
+    g->extents.min = config.MinExtents;
+    g->extents.max = config.MaxExtents;
+
+    // ЗАДАЧА: Сначала получить указатель на метриал и заполнить его имя, а при загрузке получить остальные данные
+    // Получить материал
+    if (MString::Length(config.MaterialName) > 0) {
+        g->material = MaterialSystem::Acquire(config.MaterialName);
+        if (!g->material) {
+            g->material = MaterialSystem::GetDefaultMaterial();
+        }
+    }
+
     return g;
+}
+
+bool GeometrySystem::CreateGeometry(Geometry *geometry)
+{
+    if (!geometry) {
+        MERROR("GeometrySystem::CreateGeometry требует действительного указателя на геометрию.");
+        return false;
+    }
+    auto renderer = SystemsManager::GetRenderingSystem();
+    // Отправьте геометрию в рендерер для загрузки в графический процессор.
+    if (!renderer->CreateGeometry(geometry)) {
+        MERROR("GeometrySystem::CreateGeometry - не удалось создать геометрию.");
+        // Признать запись недействительной.
+        state->RegisteredGeometries[geometry->id].ReferenceCount = 0;
+        state->RegisteredGeometries[geometry->id].AutoRelease = false;
+        geometry->id = INVALID::ID;
+        geometry->generation = INVALID::U16ID;
+        return false;
+    }
+
+    if (!renderer->Load(geometry)) {
+        MERROR("GeometrySystem::CreateGeometry - не удалось создать геометрию.");
+        // Сделайте запись недействительной.
+        state->RegisteredGeometries[geometry->id].ReferenceCount = 0;
+        state->RegisteredGeometries[geometry->id].AutoRelease = false;
+        geometry->id = INVALID::ID;
+        geometry->generation = INVALID::U16ID;
+
+        return false;
+    }
+
+    geometry->generation++;
+
+    return true;
+}
+
+bool GeometrySystem::CreateGeometry(u32 id)
+{
+    return CreateGeometry(&state->RegisteredGeometries[id].geometry);
 }
 
 void GeometrySystem::Release(Geometry *gid)
@@ -497,14 +611,14 @@ void GeometrySystem::Release(Geometry *gid)
         GeometryReference* ref = &state->RegisteredGeometries[gid->id];
 
         // Возьмите копию ID;
-        if (ref->gid.id == gid->id) {
+        if (ref->geometry.id == gid->id) {
             if (ref->ReferenceCount > 0) {
                 ref->ReferenceCount--;
             }
 
             // Также удаляем идентификатор геометрии.
             if (ref->ReferenceCount < 1 && ref->AutoRelease) {
-                DestroyGeometry(&ref->gid);
+                DestroyGeometry(&ref->geometry);
                 ref->ReferenceCount = 0;
                 ref->AutoRelease = false;
             }
