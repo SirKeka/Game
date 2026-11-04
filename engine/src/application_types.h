@@ -40,19 +40,19 @@ struct Application
     /// @return true в случае успеха; в противном случае false.
     bool (*Update)(Application& app, const FrameData& rFrameData) = nullptr;
 
-    /// @brief Указатель функции на функцию PrepareRenderPacket приложения.
+    /// @brief Указатель функции на функцию PrepareFrame приложения.
     /// @param app ссылка на экземпляр приложения.
     /// @param packet ссылка на пакет, который будет заполнен игрой.
     /// @param rFrameData ссылка на данные текущего кадра.
     /// @return true в случае успеха; в противном случае false.
-    bool (*PrepareRenderPacket)(Application* app, RenderPacket& packet, FrameData& rFrameData);
+    bool (*PrepareFrame)(Application* app, FrameData& rFrameData) = nullptr;
 
-    /// @brief Функция рендеринга игры
+    /// @brief Функция рендеринга кадра
     /// @param app ссылка на экземпляр приложения.
     /// @param packet ссылка на пакет, который будет заполнен игрой.
     /// @param rFrameData ссылка на данные текущего кадра.
     /// @return true в случае успеха; в противном случае false.
-    bool (*Render)(Application& app, RenderPacket& packet, FrameData& rFrameData) = nullptr;
+    bool (*RenderFrame)(Application& app, FrameData& rFrameData) = nullptr;
 
     /// @brief Функция изменения размера окна игры
     /// @param app ссылка на экземпляр приложения.
@@ -101,7 +101,7 @@ struct Application
     Boot(nullptr),
     Initialize(nullptr),
     Update(nullptr),
-    Render(nullptr),
+    RenderFrame(nullptr),
     OnResize(nullptr),
     Shutdown(nullptr),
     LibOnLoad(nullptr),
