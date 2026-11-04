@@ -13,16 +13,26 @@
 #define LOG_TRACE_ENABLED 0
 #endif
 
-namespace Log {
-    enum Level { Fatal, Error, Warn, Info, Debug, Trace };
-
-    bool Initialize(u64& MemoryRequirement, void* memory, void* config);
-    void Shutdown();
+class Log 
+{
+    FileHandle LogFileHandle;
     
-    MAPI void Output(Log::Level level, const char* message, ...);
+    static inline Log* logger;
 
-    void AppendToLogFile(const char* message);
-}; // namespace Log
+    constexpr Log() : LogFileHandle() {}
+    
+public:
+    enum Level { Fatal, Error, Warn, Info, Debug, Trace };
+    
+    Log(Log&)            = delete;
+    Log& operator=(Log&) = delete;
+
+    static Log* Initialize(u64& MemoryRequirement, void* memory);
+    
+    MAPI static void Output(Level level, const char* message, ...);
+
+    static void AppendToLogFile(const char* message);
+}; // class Log
 
 // Регистрирует сообщение критического уровня.
 #define MFATAL(message, ...) Log::Output(Log::Level::Fatal, message, ##__VA_ARGS__);
@@ -44,7 +54,7 @@ namespace Log {
 // Регистрирует сообщение информационного уровня.
 #define MINFO(message, ...) Log::Output(Log::Level::Info, message, ##__VA_ARGS__);
 #else
-// Does nothing when LOG_INFO_ENABLED != 1
+// Ничего не делает, если LOG_INFO_ENABLED != 1
 #define MINFO(message, ...)
 #endif
 

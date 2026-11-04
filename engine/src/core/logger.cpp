@@ -1,8 +1,8 @@
-#include "logger.hpp"
-#include "asserts.hpp"
+#include "logger.h"
+#include "asserts.h"
 #include "platform/platform.hpp"
-#include "console.hpp"
-#include "containers/mstring.hpp"
+#include "console.h"
+#include "containers/mstring.h"
 
 #include <new>
 
@@ -11,64 +11,55 @@
 #include <string.h>
 #include <stdarg.h>
 
-struct sLogger
+Log* Log::Initialize(u64& MemoryRequirement, void* memory)
 {
-    FileHandle LogFileHandle;
-
-    constexpr sLogger() : LogFileHandle() {}
-};
-
-static sLogger* pLogger = nullptr;
-
-bool Log::Initialize(u64& MemoryRequirement, void* memory, void* config)
-{
-    MemoryRequirement = sizeof(sLogger);
+    MemoryRequirement = sizeof(Log);
 
     if (!memory) {
-        return true;
+        return nullptr;
     }
     
-    pLogger = new(memory) sLogger();
+    logger = new(memory) Log();
 
-    if (!pLogger) {
-        return false;
+    if (!logger) {
+        return nullptr;
     }
     
 
     // Создайте новый/сотрите существующий файл журнала, затем откройте его.
-    if (!Filesystem::Open("console.log", FileModes::Write, false, pLogger->LogFileHandle)) {
+    if (!Filesystem::Open("console.log", FileModes::Write, false, logger->LogFileHandle)) {
         PlatformConsoleWriteError("ОШИБКА: Не удается открыть console.log для записи.", Log::Level::Error);
-        return false;
+        return nullptr;
     }
 
-    return true;
+    return logger;
 }
 
-void Log::Shutdown() 
+/*void Log::Shutdown() 
 {
     // ЗАДАЧА: очистка журнала/запись записей в очереди.
-    pLogger = nullptr;
-}
+    logger = nullptr;
+}*/
 
 void Log::AppendToLogFile(const char *message)
 {
-    if (pLogger && pLogger->LogFileHandle.IsValid) {
+    if (logger && logger->LogFileHandle.IsValid) {
         // Поскольку сообщение уже содержит '\n', просто запишите байты напрямую.
         u64 length = MString::Length(message);
         u64 written = 0;
-        if (!Filesystem::Write(pLogger->LogFileHandle, length, message, written)) {
+        if (!Filesystem::Write(logger->LogFileHandle, length, message, written)) {
             PlatformConsoleWriteError("ОШИБКА записи в console.log.", Log::Level::Error);
         }
     }
 }
 
-void Log::Output(Log::Level level, const char *message, ...)
+void Log::Output(Level level, const char *message, ...)
 {
     // ЗАДАЧА: Все эти строковые операции выполняются довольно медленно. В конечном 
     // итоге это необходимо переместить в другой поток вместе с записью файла, 
     // чтобы избежать замедления процесса во время попытки запуска движка.
-    const char* LevelStrings[6] = {"[FATAL]: ", "[ОШИБКА]: ", "[ПРЕДУПРЕЖДЕНИЕ]:  ", "[ИНФО]:  ", "[ОТЛАДКА]: ", "[TRACE]: "};
-    bool IsError = Log::Level::Warn;
+    const char* LevelStrings[6] = {"[FATAL]: ", "[ОШИБКА]: ", "[ПРЕДУПРЕЖДЕНИЕ]: ", "[ИНФО]: ", "[ОТЛАДКА]: ", "[TRACE]: "};
+    bool IsError = level < Level::Warn;
 
     // Технически накладывает ограничение на длину одной записи журнала в 32 тыс. символов, но...
     // НЕ ДЕЛАЙТЕ ЭТОГО!
