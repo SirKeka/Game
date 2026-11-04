@@ -1,4 +1,5 @@
 #include "font_system.h"
+#include "core/systems_manager.h"
 #include "systems/resource_system.h"
 #include "systems/texture_system.h"
 #include "resources/font_resource.hpp"
@@ -15,8 +16,7 @@
 struct BitmapFontInternalData {
     BitmapFontResource LoadedResource;
     // Для удобства приведен указатель на данные ресурса.
-    BitmapFontResourceData* ResourceData;
-    constexpr BitmapFontInternalData() : LoadedResource(), ResourceData(nullptr) {}
+    BitmapFontResourceData* ResourceData{};
 };
 
 struct SystemFontVariantData {
@@ -49,41 +49,38 @@ static bool SetupFontData(FontData& font);
 static void CleanupFontData(FontData& font);
 static bool CreateSystemFontVariant(SystemFontLookup& lookup, u16 size, const char* FontName, FontData& OutVariant);
 static bool RebuildSystemFontVariantAtlas(SystemFontLookup& lookup, FontData& variant);
-static bool VerifySystemFontSizeVariant(SystemFontLookup& lookup, FontData* variant, const char* text);
+static bool VerifySystemFontSizeVariant(SystemFontLookup& lookup, FontData* variant, const MString& text);
 
-FontSystem* FontSystem::state;
-
-bool FontSystem::Initialize(u64& MemoryRequirement, void* memory, void* config)
+FontSystem* FontSystem::Initialize(u64& MemoryRequirement, void* memory, Config& config)
 {
-    auto pConfig = reinterpret_cast<FontSystemConfig*>(config);
-    if (pConfig->MaxBitmapFontCount == 0 || pConfig->MaxSystemFontCount == 0) {
+    if (config.MaxBitmapFontCount == 0 || config.MaxSystemFontCount == 0) {
         MFATAL("FontSystems::Initialize - config.MaxBitmapFontCount и config.MaxSystemFontCount должны быть > 0.");
-        return false;
+        return nullptr;
     }
 
     // Блок памяти будет содержать структуру состояния, затем блоки для массивов, затем блоки для хэш-таблиц.
     u64 StructRequirement = sizeof(FontSystem);
-    u64 BmpArrayRequirement = sizeof(BitmapFontLookup) * pConfig->MaxBitmapFontCount;
-    u64 SysArrayRequirement = sizeof(SystemFontLookup) * pConfig->MaxSystemFontCount;
-    u64 BmpHashTableRequirement = sizeof(u16) * pConfig->MaxBitmapFontCount;
-    u64 SysHashTableRequirement = sizeof(u16) * pConfig->MaxSystemFontCount;
+    u64 BmpArrayRequirement = sizeof(BitmapFontLookup) * config.MaxBitmapFontCount;
+    u64 SysArrayRequirement = sizeof(SystemFontLookup) * config.MaxSystemFontCount;
+    u64 BmpHashTableRequirement = sizeof(u16) * config.MaxBitmapFontCount;
+    u64 SysHashTableRequirement = sizeof(u16) * config.MaxSystemFontCount;
     MemoryRequirement = StructRequirement + BmpArrayRequirement + SysArrayRequirement + BmpHashTableRequirement + SysHashTableRequirement;
 
     if (!memory) {
-        return true;
+        return nullptr;
     }
 
     u8* MemBlock = reinterpret_cast<u8*>(memory);
 
     // Блоки массивов находятся после состояния. Уже выделены, поэтому просто установите указатель.
-    auto BmpArrayBlock = new(MemBlock + StructRequirement) BitmapFontLookup[pConfig->MaxBitmapFontCount];
-    auto SysArrayBlock = new(BmpArrayBlock + pConfig->MaxBitmapFontCount) SystemFontLookup[pConfig->MaxSystemFontCount];
+    auto BmpArrayBlock = new(MemBlock + StructRequirement) BitmapFontLookup[config.MaxBitmapFontCount];
+    auto SysArrayBlock = new(BmpArrayBlock + config.MaxBitmapFontCount) SystemFontLookup[config.MaxSystemFontCount];
 
     // Блоки хэш-таблиц находятся после массивов.
-    u16* BmpHashtableBlock = reinterpret_cast<u16*>(SysArrayBlock + pConfig->MaxSystemFontCount);
-    u16* SysHashtableBlock = BmpHashtableBlock + pConfig->MaxBitmapFontCount;
+    u16* BmpHashtableBlock = reinterpret_cast<u16*>(SysArrayBlock + config.MaxSystemFontCount);
+    u16* SysHashtableBlock = BmpHashtableBlock + config.MaxBitmapFontCount;
 
-    state = new(MemBlock) FontSystem(*pConfig, BmpArrayBlock, SysArrayBlock, BmpHashtableBlock, SysHashtableBlock);
+    state = new(MemBlock) FontSystem(config, BmpArrayBlock, SysArrayBlock, BmpHashtableBlock, SysHashtableBlock);
 
     // Загрузите все шрифты по умолчанию.
     // Растровые шрифты.
@@ -99,34 +96,32 @@ bool FontSystem::Initialize(u64& MemoryRequirement, void* memory, void* config)
         }
     }
 
-    return true;
+    return state;
 }
 
 void FontSystem::Shutdown()
 {
-    if (state) {
-        // Очистка растровых шрифтов.
-        for (u16 i = 0; i < state->config.MaxBitmapFontCount; ++i) {
-            if (state->BitmapFonts[i].id != INVALID::U16ID) {
-                auto& data = state->BitmapFonts[i].font.ResourceData->data;
-                CleanupFontData(data);
-                state->BitmapFonts[i].id = INVALID::U16ID;
-            }
+    // Очистка растровых шрифтов.
+    for (u16 i = 0; i < config.MaxBitmapFontCount; ++i) {
+        if (BitmapFonts[i].id != INVALID::U16ID) {
+            auto& data = BitmapFonts[i].font.ResourceData->data;
+            CleanupFontData(data);
+            BitmapFonts[i].id = INVALID::U16ID;
         }
+    }
 
-        // Очистка системных шрифтов.
-        for (u16 i = 0; i < state->config.MaxSystemFontCount; ++i) {
-            if (state->SystemFonts[i].id != INVALID::U16ID) {
-                // Очистка каждого варианта.
-                const auto& VariantCount = state->SystemFonts[i].SizeVariants.Length();
-                for (u32 j = 0; j < VariantCount; ++j) {
-                    auto& data = state->SystemFonts[i].SizeVariants[j];
-                    CleanupFontData(data);
-                }
-                state->SystemFonts[i].id = INVALID::U16ID;
-
-                // state->SystemFonts[i].SizeVariants.Clear();
+    // Очистка системных шрифтов.
+    for (u16 i = 0; i < config.MaxSystemFontCount; ++i) {
+        if (SystemFonts[i].id != INVALID::U16ID) {
+            // Очистка каждого варианта.
+            const u32 VariantCount = SystemFonts[i].SizeVariants.Length();
+            for (u32 j = 0; j < VariantCount; ++j) {
+                auto& data = SystemFonts[i].SizeVariants[j];
+                CleanupFontData(data);
             }
+            SystemFonts[i].id = INVALID::U16ID;
+
+            // SystemFonts[i].SizeVariants.Clear();
         }
     }
 }
@@ -136,7 +131,7 @@ bool FontSystem::LoadFont(SystemFontConfig &config)
     // Для системных шрифтов они фактически могут содержать несколько шрифтов. 
     // По этой причине копия данных ресурса будет храниться в каждом результирующем варианте, а сам ресурс будет освобожден.
     SystemFontResource LoadedResource;
-    if (!ResourceSystem::Load(config.ResourceName.c_str(), eResource::Type::SystemFont, nullptr, LoadedResource)) {
+    if (!ResourceSystem::Load(config.ResourceName.c_str(), nullptr, LoadedResource)) {
         MERROR("Не удалось загрузить системный шрифт.");
         return false;
     }
@@ -181,8 +176,8 @@ bool FontSystem::LoadFont(SystemFontConfig &config)
         lookup.index = i;
 
         // Смещение
-        lookup.offset = stbtt_GetFontOffsetForIndex(reinterpret_cast<u8*>(lookup.FontBinary), i);
-        i32 result = stbtt_InitFont(&lookup.info, reinterpret_cast<u8*>(lookup.FontBinary), lookup.offset);
+        lookup.offset = stbtt_GetFontOffsetForIndex((u8*)lookup.FontBinary, i);
+        i32 result = stbtt_InitFont(&lookup.info, (u8*)lookup.FontBinary, lookup.offset);
         if (result == 0) {
             // Ноль указывает на сбой.
             MERROR("Не удалось инициализировать системный шрифт %s по индексу %i.", LoadedResource.FullPath.c_str(), i);
@@ -203,7 +198,7 @@ bool FontSystem::LoadFont(SystemFontConfig &config)
         }
 
         // Добавить к вариантам размера поиска.
-        lookup.SizeVariants.PushBack(static_cast<FontData&&>(variant));
+        lookup.SizeVariants.PushBack((FontData&&)variant);
 
         // Установите идентификатор записи здесь в последнюю очередь перед обновлением хеш-таблицы.
         lookup.id = id;
@@ -245,7 +240,7 @@ bool FontSystem::LoadFont(BitmapFontConfig &config)
     // Получить поиск.
    auto& lookup = state->BitmapFonts[id];
 
-    if (!ResourceSystem::Load(config.ResourceName.c_str(), eResource::Type::BitmapFont, nullptr, lookup.font.LoadedResource)) {
+    if (!ResourceSystem::Load(config.ResourceName.c_str(), nullptr, lookup.font.LoadedResource)) {
         MERROR("Не удалось загрузить растровый шрифт.");
         return false;
     }
@@ -270,51 +265,49 @@ bool FontSystem::LoadFont(BitmapFontConfig &config)
     return result;
 }
 
-bool FontSystem::Acquire(const char *FontName, u16 FontSize, Text &text)
+FontData* FontSystem::Acquire(const char *FontName, u16 FontSize, FontType type)
 {
-    if (text.type == TextType::Bitmap) {
+    if (type == FontType::Bitmap) {
         u16 id = INVALID::U16ID;
         if (!state->bitmapFontLookup.Get(FontName, &id)) {
             MERROR("Поиск растрового шрифта не удался при получении.");
-            return false;
+            return nullptr;
         }
 
         if (id == INVALID::U16ID) {
             MERROR("Не найден растровый шрифт с именем '%s'. Получение шрифта не удалось.", FontName);
-            return false;
+            return nullptr;
         }
 
         // Получить поиск.
        auto& lookup = state->BitmapFonts[id];
 
-        // Назначить данные, увеличить ссылку.
-        text.data = &lookup.font.ResourceData->data;
+        // Увеличить ссылку.
         lookup.ReferenceCount++;
 
-        return true;
-    } else if (text.type == TextType::System) {
+        return &lookup.font.ResourceData->data;
+    } else if (type == FontType::System) {
         u16 id = INVALID::U16ID;
         if (!state->systemFontLookup.Get(FontName, &id)) {
             MERROR("Поиск системного шрифта не удался при получении.");
-            return false;
+            return nullptr;
         }
 
         if (id == INVALID::U16ID) {
             MERROR("Системный шрифт с именем '%s' не найден. Получение шрифта не удалось.", FontName);
-            return false;
+            return nullptr;
         }
 
         // Получить поиск.
         auto& lookup = state->SystemFonts[id];
 
         // Поиск вариантов размера для правильного размера.
-        const auto& count = lookup.SizeVariants.Length();
+        const u32 count = lookup.SizeVariants.Length();
         for (u32 i = 0; i < count; ++i) {
             if (lookup.SizeVariants[i].size == FontSize) {
-                // Назначить данные, увеличить ссылку.
-                text.data = &lookup.SizeVariants[i];
+                // Увеличить ссылку.
                 lookup.ReferenceCount++;
-                return true;
+                return &lookup.SizeVariants[i];
             }
         }
 
@@ -322,7 +315,7 @@ bool FontSystem::Acquire(const char *FontName, u16 FontSize, Text &text)
         FontData variant;
         if (!CreateSystemFontVariant(lookup, FontSize, FontName, variant)) {
             MERROR("Не удалось создать вариант: %s, индекс %i, размер %i", lookup.face.c_str(), lookup.index, FontSize);
-            return false;
+            return nullptr;
         }
 
         // Также выполнить настройку для варианта
@@ -332,15 +325,14 @@ bool FontSystem::Acquire(const char *FontName, u16 FontSize, Text &text)
 
         // Добавить к вариантам размера поиска.
         lookup.SizeVariants.PushBack(static_cast<FontData&&>(variant));
-        const auto& length = lookup.SizeVariants.Length();
-        // Назначить данные, увеличить ссылку.
-        text.data = &lookup.SizeVariants[length - 1];
+        const u32 length = lookup.SizeVariants.Length();
+        // Увеличить ссылку.
         lookup.ReferenceCount++;
-        return true;
+        return &lookup.SizeVariants[length - 1];
     }
 
-    MERROR("Нераспознанный тип шрифта: %d", text.type);
-    return false;
+    MERROR("Нераспознанный тип шрифта: %d", type);
+    return nullptr;
 }
 
 bool FontSystem::Release(Text &text)
@@ -349,7 +341,7 @@ bool FontSystem::Release(Text &text)
     return true;
 }
 
-bool FontSystem::VerifyAtlas(FontData *font, const char *text)
+bool FontSystem::VerifyAtlas(FontData *font, const MString &text)
 {
     if (font->type == FontType::Bitmap) {
         // Растровые изображения не нуждаются в проверке, так как они уже сгенерированы.
@@ -377,12 +369,123 @@ bool FontSystem::VerifyAtlas(FontData *font, const char *text)
     return false;
 }
 
+FVec2 FontSystem::MeasureString(FontData *font, const char *text, u32 CharLength, u32 TextLengthUTF8)
+{
+     if (!CharLength) {
+        CharLength = MString::Length(text);
+    }
+    
+    if (!TextLengthUTF8) {
+        TextLengthUTF8 = MString::Length(text, true);
+    }
+    
+    FVec2 extents{};
+
+    f32 x = 0;
+    f32 y = 0;
+
+    // Возьмите длину в символах и получите из неё правильный код.
+    for (u32 c = 0; c < CharLength; ++c) {
+        i32 codepoint = text[c];
+
+        // Перейдите на следующую строку для перехода на новую строку.
+        if (codepoint == '\n') {
+            if (x > extents.x) {
+                extents.x = x;
+            }
+            x = 0;
+            y += font->LineHeight;
+            continue;
+        }
+
+        if (codepoint == '\t') {
+            x += font->TabXAdvance;
+            continue;
+        }
+
+        // ПРИМЕЧАНИЕ: Обработка кодовых точек UTF-8.
+        u8 advance = 0;
+        if (!MString::BytesToCodepoint(text, c, codepoint, advance)) {
+            MWARN("В строке обнаружен недопустимый UTF-8, использующий неизвестный код -1");
+            codepoint = -1;
+        }
+
+        FontGlyph* glyph = nullptr;
+        for (u32 i = 0; i < font->GlyphCount; ++i) {
+            if (font->glyphs[i].codepoint == codepoint) {
+                glyph = &font->glyphs[i];
+                break;
+            }
+        }
+
+        if (!glyph) {
+            // Если не найдено, используйте кодовую точку -1.
+            codepoint = -1;
+            for (u32 i = 0; i < font->GlyphCount; ++i) {
+                if (font->glyphs[i].codepoint == codepoint) {
+                    glyph = &font->glyphs[i];
+                    break;
+                }
+            }
+        }
+
+        if (glyph) {
+            // Попробуйте найти кернинг.
+            i32 kerning = 0;
+
+            // Получить смещение следующего символа. Если смещения нет, перейти на один символ вперёд, иначе использовать смещение как есть.
+            u32 offset = c + advance;  //(advance < 1 ? 1 : advance);
+            if (offset < TextLengthUTF8 - 1) {
+                // Получить следующую кодовую точку.
+                i32 NextCodepoint = 0;
+                u8 AdvanceNext = 0;
+
+                if (!MString::BytesToCodepoint(text, offset, NextCodepoint, AdvanceNext)) {
+                    MWARN("В строке обнаружен недопустимый UTF-8, использующий неизвестный код -1");
+                    codepoint = -1;
+                } else {
+                    for (u32 i = 0; i < font->KerningCount; ++i) {
+                        auto& kern = font->kernings[i];
+                        if (kern.Codepoint0 == codepoint && kern.Codepoint1 == NextCodepoint) {
+                            kerning = kern.amount;
+                        }
+                    }
+                }
+            }
+
+            x += glyph->xAdvance + kerning;
+        } else {
+            MERROR("Не удалось найти неизвестную кодовую точку. Пропуск.");
+            continue;
+        }
+
+        // Теперь переходим к c
+        c += advance - 1;  // Вычитаем 1, так как цикл всегда увеличивается на один символ для однобайтовых символов.
+    }
+
+    // Последняя проверка на отсутствие новых строк.
+    if (x > extents.x) {
+        extents.x = x;
+    }
+
+    // Поскольку y начинается с нуля, нам нужно добавить ещё один символ, чтобы сделать его с 1-й строкой.
+    y += font->LineHeight;
+    extents.y = y;
+
+    return extents;
+}
+
+MAPI FVec2 FontSystem::MeasureString(FontData *font, Substring text)
+{
+    return MeasureString(font, text.data, text.size, text.length);
+}
+
 static bool SetupFontData(FontData &font)
 {
     // Создать ресурсы карты
-    font.atlas.FilterMagnify = font.atlas.FilterMinify = TextureFilter::ModeLinear;
+    font.atlas.FilterMagnify = font.atlas.FilterMinify = TextureFilterMode::Linear;
     font.atlas.RepeatU = font.atlas.RepeatV = font.atlas.RepeatW = TextureRepeat::ClampToEdge;
-    if (!RenderingSystem::TextureMapAcquireResources(&font.atlas)) {
+    if (!SystemsManager::GetRenderingSystem()->TextureMapAcquireResources(&font.atlas)) {
         MERROR("Невозможно получить ресурсы для карты текстур атласа шрифтов.");
         return false;
     }
@@ -418,7 +521,7 @@ static bool SetupFontData(FontData &font)
 static void CleanupFontData(FontData &font)
 {
     // Освободите ресурсы карты текстуры.
-    RenderingSystem::TextureMapReleaseResources(&font.atlas);
+    SystemsManager::GetRenderingSystem()->TextureMapReleaseResources(&font.atlas);
 
     // Если это растровый шрифт, освободите ссылку на текстуру.
     if (font.type == FontType::Bitmap && font.atlas.texture) {
@@ -437,7 +540,7 @@ static bool CreateSystemFontVariant(SystemFontLookup &lookup, u16 size, const ch
     OutVariant.InternalDataSize = sizeof(SystemFontVariantData);
     OutVariant.InternalData = MemorySystem::Allocate(OutVariant.InternalDataSize, Memory::SystemFont, true);
 
-    auto InternalData = reinterpret_cast<SystemFontVariantData*>(OutVariant.InternalData);
+    auto InternalData = (SystemFontVariantData*)OutVariant.InternalData;
 
     // Всегда указывайте кодовые точки по умолчанию (ascii 32–127), плюс -1 для неизвестного.
     InternalData->codepoints.Reserve(96);
@@ -450,7 +553,15 @@ static bool CreateSystemFontVariant(SystemFontLookup &lookup, u16 size, const ch
     // Создать текстуру.
     char FontTexName[255];
     MString::Format(FontTexName, "__system_text_atlas_%s_i%i_sz%i__", FontName, lookup.index, size);
-    OutVariant.atlas.texture = TextureSystem::AquireWriteable(FontTexName, OutVariant.AtlasSizeX, OutVariant.AtlasSizeY, 4, true);
+
+    TextureConfig config {
+        .name            = FontTexName,
+        .width           = (u32)OutVariant.AtlasSizeX,
+        .height          = (u32)OutVariant.AtlasSizeY,
+        .ChannelCount    = 4, 
+        .HasTransparency = true
+    };
+    OutVariant.atlas.texture = TextureSystem::AquireWriteable(config);
 
     // Получить некоторые метрики
     InternalData->scale = stbtt_ScaleForPixelHeight(&lookup.info, (f32)size);
@@ -463,12 +574,12 @@ static bool CreateSystemFontVariant(SystemFontLookup &lookup, u16 size, const ch
 
 static bool RebuildSystemFontVariantAtlas(SystemFontLookup &lookup, FontData &variant)
 {
-    auto InternalData = reinterpret_cast<SystemFontVariantData*>(variant.InternalData);
+    auto InternalData = (SystemFontVariantData*)variant.InternalData;
 
     u32 PackImageSize = variant.AtlasSizeX * variant.AtlasSizeY * sizeof(u8);
-    u8* pixels = MemorySystem::TAllocate<u8>(Memory::Array, PackImageSize);
-    const auto& CodepointCount = InternalData->codepoints.Length();
-    auto PackedChars = MemorySystem::TAllocate<stbtt_packedchar>(Memory::Array, CodepointCount);
+    u8* pixels = AllocateTemp<u8>(PackImageSize, true);
+    const u32 CodepointCount = InternalData->codepoints.Length();
+    auto PackedChars = AllocateTemp<stbtt_packedchar>(sizeof(stbtt_packedchar) * CodepointCount, true);
 
     // Начните упаковывать все известные символы в атлас. 
     // Это создаст одноканальное изображение с визуализированными глифами заданного размера.
@@ -479,13 +590,14 @@ static bool RebuildSystemFontVariantAtlas(SystemFontLookup &lookup, FontData &va
     }
 
     // Поместите все кодовые точки в один диапазон для упаковки.
-    stbtt_pack_range range;
-    range.first_unicode_codepoint_in_range = 0;
-    range.font_size = variant.size;
-    range.num_chars = CodepointCount;
-    range.chardata_for_range = PackedChars;
-    range.array_of_unicode_codepoints = InternalData->codepoints.Data();
-    if (!stbtt_PackFontRanges(&context, reinterpret_cast<u8*>(lookup.FontBinary), lookup.index, &range, 1)) {
+    stbtt_pack_range range {
+        .font_size = (f32)variant.size,
+        .first_unicode_codepoint_in_range = 0,
+        .array_of_unicode_codepoints = InternalData->codepoints.Data(),
+        .num_chars = (i32)CodepointCount,
+        .chardata_for_range = PackedChars
+    };
+    if (!stbtt_PackFontRanges(&context, (u8*)lookup.FontBinary, lookup.index, &range, 1)) {
         MERROR("stbtt_PackFontRanges failed");
         return false;
     }
@@ -494,7 +606,7 @@ static bool RebuildSystemFontVariantAtlas(SystemFontLookup &lookup, FontData &va
     // Упаковка завершена.
 
     // Конвертируйте из одноканального в RGBA или pack_image_size * 4.
-    u8* RgbaPixels = MemorySystem::TAllocate<u8>(Memory::Array, PackImageSize * 4);
+    u8* RgbaPixels = AllocateTemp<u8>(PackImageSize * 4, true);
     for (u32 j = 0; j < PackImageSize; ++j) {
         RgbaPixels[(j * 4) + 0] = pixels[j];
         RgbaPixels[(j * 4) + 1] = pixels[j];
@@ -506,38 +618,39 @@ static bool RebuildSystemFontVariantAtlas(SystemFontLookup &lookup, FontData &va
     TextureSystem::WriteData(variant.atlas.texture, 0, PackImageSize * 4, RgbaPixels);
 
     // Освободите данные пикселей/rgba_pixel.
-    MemorySystem::Free(pixels, PackImageSize, Memory::Array);
-    MemorySystem::Free(RgbaPixels, PackImageSize * 4, Memory::Array);
+    // DestroyArray(pixels, PackImageSize);
+    // DestroyArray(RgbaPixels, PackImageSize * 4);
 
     // Регенерируйте глифы
     if (variant.glyphs && variant.GlyphCount) {
-        MemorySystem::Free(variant.glyphs, sizeof(FontGlyph) * variant.GlyphCount, Memory::Array);
+        DestroyArray(variant.glyphs, variant.GlyphCount);
     }
     variant.GlyphCount = CodepointCount;
-    variant.glyphs = MemorySystem::TAllocate<FontGlyph>(Memory::Array, CodepointCount);
+    CreateArray(variant.glyphs, sizeof(FontGlyph) * CodepointCount, true);
     for (u16 i = 0; i < variant.GlyphCount; ++i) {
-        stbtt_packedchar* pc = &PackedChars[i];
+        auto& pc = PackedChars[i];
         auto& g = variant.glyphs[i];
         g.codepoint = InternalData->codepoints[i];
         g.PageID = 0;
-        g.xOffset = pc->xoff;
-        g.yOffset = pc->yoff;
-        g.x = pc->x0;  // xmin;
-        g.y = pc->y0;
-        g.width = pc->x1 - pc->x0;
-        g.height = pc->y1 - pc->y0;
-        g.xAdvance = pc->xadvance;
+        g.xOffset = pc.xoff;
+        g.yOffset = pc.yoff;
+        g.x = pc.x0;  // xmin;
+        g.y = pc.y0;
+        g.width = pc.x1 - pc.x0;
+        g.height = pc.y1 - pc.y0;
+        g.xAdvance = pc.xadvance;
     }
 
     // Регенерируйте кернинги
     if (variant.kernings && variant.KerningCount) {
-        MemorySystem::Free(variant.kernings, sizeof(FontKerning) * variant.KerningCount, Memory::Array);
+        DestroyArray(variant.kernings, variant.KerningCount);
     }
     variant.KerningCount= stbtt_GetKerningTableLength(&lookup.info);
     if (variant.KerningCount) {
-        variant.kernings = MemorySystem::TAllocate<FontKerning>(Memory::Array, variant.KerningCount);
+        CreateArray(variant.kernings, sizeof(FontKerning) * variant.KerningCount, true);
         // Получите таблицу кернинга для текущего шрифта.
-        stbtt_kerningentry* KerningTable = MemorySystem::TAllocate<stbtt_kerningentry>(Memory::Array, variant.KerningCount);
+        u64 ktSize = sizeof(stbtt_kerningentry) * variant.KerningCount;
+        auto KerningTable = AllocateTemp<stbtt_kerningentry>(ktSize, true);
         u32 EntryCount = stbtt_GetKerningTable(&lookup.info, KerningTable, variant.KerningCount);
         if (EntryCount != variant.KerningCount) {
             MERROR("Несоответствие количества записей кернинга: %i->%i", EntryCount, variant.KerningCount);
@@ -550,6 +663,7 @@ static bool RebuildSystemFontVariantAtlas(SystemFontLookup &lookup, FontData &va
             k.Codepoint1 = KerningTable[i].glyph2;
             k.amount = KerningTable[i].advance;
         }
+        // DestroyArray(KerningTable, ktSize);
     } else {
         variant.kernings = nullptr;
     }
@@ -557,16 +671,18 @@ static bool RebuildSystemFontVariantAtlas(SystemFontLookup &lookup, FontData &va
     return true;
 }
 
-static bool VerifySystemFontSizeVariant(SystemFontLookup &lookup, FontData *variant, const char *text)
+static bool VerifySystemFontSizeVariant(SystemFontLookup &lookup, FontData *variant, const MString &text)
 {
-    auto InternalData = reinterpret_cast<SystemFontVariantData*>(variant->InternalData);
+    auto InternalData = (SystemFontVariantData*)variant->InternalData;
 
-    u32 CharLength = MString::Length(text);
+    u32 CharLength = text.Size();
     u32 AddedCodepointCount = 0;
-    for (u32 i = 0; i < CharLength;) {
+    const char* txt = text.c_str();
+    
+    for (u32 i = 0; i < CharLength && txt[i];) {
         i32 codepoint;
         u8 advance;
-        if (!MString::BytesToCodepoint(text, i, codepoint, advance)) {
+        if (!MString::BytesToCodepoint(txt, i, codepoint, advance)) {
             MERROR("MString::BytesToCodepoint не удалось получить кодовую точку.");
             ++i;
             continue;
@@ -577,7 +693,7 @@ static bool VerifySystemFontSizeVariant(SystemFontLookup &lookup, FontData *vari
             if (codepoint < 128) {
                 continue;
             }
-            const auto& CodepointCount = InternalData->codepoints.Length();
+            const u32 CodepointCount = InternalData->codepoints.Length();
             bool found = false;
             for (u32 j = 95; j < CodepointCount; ++j) {
                 if (InternalData->codepoints[j] == codepoint) {
