@@ -27,7 +27,7 @@ public:
     length(),
     stride(stride),
     capacity(capacity),
-    block(memory ? (u8*)memory : MemorySystem::TAllocate<u8>(Memory::RingQueue, capacity * stride)),
+    block(memory ? (u8*)memory : mem_alloc(u8, capacity * stride, Memory::RingQueue)),
     OwnsMemory(memory ? false : true),
     head(),
     tail(-1) {}
@@ -38,10 +38,12 @@ public:
     /// @param value значение, которое нужно добавить.
     /// @return true в случае успеха; в противном случае false.
     bool Enqueue(void* value);
+
     /// @brief Пытается извлечь следующее значение из предоставленной очереди.
     /// @param OutValue указатель для хранения извлеченного значения.
     /// @return true в случае успеха; в противном случае false.
     bool Dequeue(void* OutValue);
+    
     /// @brief Пытается извлечь, но не удалить, следующее значение в очереди, если оно не пустое.
     /// @param OutValue указатель для хранения извлеченного значения.
     /// @return true в случае успеха; в противном случае false.
