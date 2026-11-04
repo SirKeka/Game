@@ -6,13 +6,12 @@
 template<typename T>
 struct Vector4D
 {
-#if defined(MUSE_SIMD)
-    // Используется для операций SIMD.
-    alignas(16) __m128 data; // или __m256
-#endif
-
 	union {
-        // Массив x, y, z, w
+		#if defined(MUSE_SIMD)
+			// Используется для операций SIMD.
+			alignas(16) __m128 data; // или __m256
+		#endif
+		// Массив x, y, z, w
         T elements[4];
         struct {
             // Первый элемент.
@@ -26,15 +25,15 @@ struct Vector4D
         };
     };
 
-	constexpr Vector4D() noexcept : x(), y(), z(), w() {};
-	constexpr Vector4D(T x, T y, T z, T w) noexcept : x(x), y(y), z(z), w(w) {
+	constexpr Vector4D() : x(), y(), z(), w() {};
+	constexpr Vector4D(T x, T y, T z, T w) : x(x), y(y), z(z), w(w) {
 #if defined(MUSE_SIMD)
     	data = _mm_setr_ps(x, y, z, w);
 #endif
 	}
 
-	constexpr explicit Vector4D(const Vector2D<T>& v, f32 z = 0, f32 w = 0) noexcept : x(v.x), y(v.y), z(z), w(w) {}
-	constexpr explicit Vector4D(const Vector3D<T>& v, f32 w = 0) noexcept : x(v.x), y(v.y), z(v.z), w(w) {
+	constexpr Vector4D(Vector2D<T> v, f32 z = 0, f32 w = 0) : x(v.x), y(v.y), z(z), w(w) {}
+	constexpr Vector4D(Vector3D<T> v, f32 w = 0) : x(v.x), y(v.y), z(v.z), w(w) {
 #if defined(MUSE_SIMD)
     	Vector4D<T> OutVector;
     	OutVector.data = _mm_setr_ps(x, y, z, w);
@@ -42,7 +41,7 @@ struct Vector4D
 #endif
 	}
 
-	constexpr explicit Vector4D(const Vector4D& v) noexcept : x(v.x), y(v.y), z(v.z), w(v.w) {}
+	// constexpr Vector4D(const Vector4D& v) : x(v.x), y(v.y), z(v.z), w(v.w) {}
 
 	Vector4D& Set(T x, T y, T z, T w) {
 		this->x = x;
@@ -65,31 +64,23 @@ struct Vector4D
 
 	//T& operator [](int i);
 	//const T& operator [](int i) const;
-	Vector4D& operator +=(const Vector4D& v) {
-		for (u64 i = 0; i < 4; i++) {
-			elements[i] += v.elements[i];
-		}
+	Vector4D& operator +=(Vector4D v) {
+		x += v.x; y += v.y; z += v.z; w += v.w;
 		return *this;
 	}
 
-	Vector4D& operator -=(const Vector4D& v) {
-		for (u64 i = 0; i < 4; i++) {
-			elements[i] -= v.elements[i];
-		}
+	Vector4D& operator -=(Vector4D v) {
+		x -= v.x; y -= v.y; z -= v.z; w -= v.w;
 		return *this;
 	}
 
-	Vector4D& operator *=(const Vector4D& v) {
-		for (u64 i = 0; i < 4; i++) {
-			elements[i] *= v.elements[i];
-		}
+	Vector4D& operator *=(Vector4D v) {
+		x *= v.x; y *= v.y; z *= v.z; w *= v.w;
 		return *this;
 	}
 
-	Vector4D& operator /=(const Vector4D& v) {
-		for (u64 i = 0; i < 4; i++) {
-			elements[i] /= v.elements[i];
-		}
+	Vector4D& operator /=(Vector4D v) {
+		x /= v.x; y /= v.y; z /= v.z; w /= v.w;
 		return *this;
 	}
 
@@ -114,10 +105,10 @@ struct Vector4D
 		return true;
 	}
 
-	Vector4D& operator= (const Vector4D& v) {
-		x = v.x; y = v.y; z = v.z; w = v.w;
-		return *this;
-	}
+	// Vector4D& operator= (Vector4D v) {
+	// 	x = v.x; y = v.y; z = v.z; w = v.w;
+	// 	return *this;
+	// }
 	
 	Vector4D& Normalize() {
 		this /= VectorLenght(this);
@@ -126,13 +117,39 @@ struct Vector4D
 };
 
 template <typename T>
-MINLINE Vector4D<T> &operator +(const Vector4D<T> &a, const Vector4D<T> &b)
+MINLINE Vector4D<T> operator +(Vector4D<T> a, Vector4D<T> b)
 {
-	Vector4D<T> result;
-    for (u64 i = 0; i < 4; i++) {
-		result = a.elements[i] + b.elements[i];
-	}
-	return result;
+	return Vector4D<T>(a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w);
+}
+
+template<typename T>
+MINLINE Vector4D<T> operator +(Vector4D<T> v, T s)
+{
+	return Vector4D<T>(v.x + s, v.y + s, v.z + s, v.w + s);
+}
+
+template<typename T>
+MINLINE Vector4D<T> operator -(Vector4D<T> a, Vector4D<T> b)
+{
+	return Vector4D<T>(a.x - b.x, a.y - b.y, a.z - b.z, a.w - b.w);
+}
+
+template<typename T>
+MINLINE Vector4D<T> operator -(Vector4D<T> v, T s)
+{
+	return Vector4D<T>(v.x - s, v.y - s, v.z - s, v.w - s);
+}
+
+template<typename T>
+MINLINE Vector4D<T> operator /(Vector4D<T> v, T s)
+{
+	return Vector4D<T>(v.x / s, v.y / s, v.z / s, v.w / s);
+}
+
+template<typename T>
+MINLINE Vector4D<T> operator *(Vector4D<T> v, T s)
+{
+	return Vector4D<T>(v.x * s, v.y * s, v.z * s, v.w * s);
 }
 
 /// @brief Возвращает квадрат длины предоставленного вектора.
@@ -140,7 +157,7 @@ MINLINE Vector4D<T> &operator +(const Vector4D<T> &a, const Vector4D<T> &b)
 /// @param v вектор
 /// @return длина в квадрате.
 template<typename T>
-MINLINE T VectorLengthSquared(const Vector4D<T>& v)
+MINLINE T VectorLengthSquared(Vector4D<T> v)
 {
 	return v.x * v.x + v.y * v.y + v.z * v.z + v.w * v.w;
 }
@@ -150,13 +167,13 @@ MINLINE T VectorLengthSquared(const Vector4D<T>& v)
 /// @param v вектор
 /// @return длина вектора
 template<typename T>
-MINLINE T VectorLength(const Vector4D<T>& v)
+MINLINE T VectorLenght(Vector4D<T> v)
 {
-	Math::sqrt(VectorLengthSquared(v));
+	return Math::sqrt(VectorLengthSquared(v));
 }
 
 template<typename T>
-MINLINE Vector4D<T>& Normalize(const Vector4D<T>& v)
+MINLINE Vector4D<T> Normalize(Vector4D<T> v)
 {
 	return v / VectorLenght(v);
 }
@@ -167,7 +184,7 @@ MINLINE Vector4D<T>& Normalize(const Vector4D<T>& v)
 /// @param b второй вектор
 /// @return результат скалярного произведения векторов
 template<typename T>
-MINLINE T Dot(const Vector4D<T>& a, const Vector4D<T>& b)
+MINLINE T Dot(Vector4D<T> a, Vector4D<T> b)
 {
 	return a.x * b.x + a.y *b.y + a.z * b.z + a.w * b.w;
 }
