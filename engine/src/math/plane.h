@@ -1,6 +1,7 @@
 #pragma once
 
 #include "vector3d_fwd.h"
+#include "vector4d_fwd.h"
 
 struct MAPI Plane
 {
@@ -20,14 +21,22 @@ struct MAPI Plane
 	void Create(const FVec3& p1, const FVec3& norm);
 
 	/// @return нормаль плоскости.
-	const FVec3& GetNormal() const {
+	FVec3& Normal() {
+		return (reinterpret_cast<FVec3&>(x));
+	}
+
+	const FVec3& Normal() const {
 		return (reinterpret_cast<const FVec3&>(x));
+	}
+
+	FVec4& GetVec4() {
+		return (reinterpret_cast<FVec4&>(x));
 	}
 
 	/// @brief Получает знаковое расстояние между плоскостью p и предоставленной позицией.
 	/// @param position постоянная ссыллка на позицию.
 	/// @return Знаковое расстояние от точки до плоскости.
-	f32 SignedDistance(const FVec3& position);
+	f32 SignedDistance(const FVec3& position) const;
 
 	/// @brief Указывает, пересекает ли плоскость p сферу, построенную через центр и радиус.
 	/// @param center постоянная ссылка на позицию, представляющую центр сферы.
@@ -39,7 +48,7 @@ struct MAPI Plane
 	/// @param center постоянная ссылка на позицию, представляющую центр выровненного по оси ограничивающего прямоугольника.
 	/// @param extents Половинные экстенты выровненного по оси ограничивающего прямоугольника.
 	/// @return true, если выровненный по оси ограничивающий прямоугольник пересекает плоскость; в противном случае false.
-	bool IntersectsAABB(const FVec3& center, const FVec3& extents);
+	bool IntersectsAABB(const FVec3& center, const FVec3& extents) const;
 };
 
 MINLINE f32 Dot(const Plane& f, const FVec3& v)
