@@ -1,4 +1,5 @@
-#include "texture.hpp"
+#include "texture.h"
+#include "core/systems_manager.h"
 #include "renderer/rendering_system.h"
 
 Texture::~Texture()
@@ -11,27 +12,21 @@ Texture::~Texture()
 
 void Texture::Destroy()
 {
-    RenderingSystem::Unload(this);
+    SystemsManager::GetRenderingSystem()->Unload(this);
     MString::Zero(name);
     id           = 0;
     width        = 0;
     height       = 0;
+    MipLevels    = 0;
     ChannelCount = 0;
     flags        = 0;
     generation   = 0;
 }
 
 Texture::Texture(const Texture &t)
-    : 
-    id(t.id),
-    type(t.type), 
-    width(t.width), 
-    height(t.height), 
-    ChannelCount(t.ChannelCount), 
-    flags(t.flags), 
-    generation(t.generation), 
-    name(), 
-    data(t.data ? RenderingSystem::TextureCopyData(&t) : nullptr) { 
+    : name(), id(t.id), generation(t.generation), width(t.width), height(t.height), type(t.type),  
+    flags(t.flags), MipLevels(t.MipLevels), ChannelCount(t.ChannelCount), 
+    data(t.data ? SystemsManager::GetRenderingSystem()->TextureCopyData(&t) : nullptr) { 
     SetName(t.name); 
 }
 
@@ -55,19 +50,17 @@ Texture &Texture::operator=(Texture &&t)
     type = t.type;
     width = t.width;
     height = t.height;
+    MipLevels = t.MipLevels;
     ChannelCount = t.ChannelCount;
     flags = t.flags;
     generation = t.generation;
     SetName(t.name);
     data = t.data;
 
-    t.id = 0;
+    t.id = t.width = t.height = t.generation = 0;
     //t.type = 0;
-    t.width = 0;
-    t.height = 0;
-    t.ChannelCount = 0;
+    t.MipLevels = t.ChannelCount = 0;
     t.flags = 0;
-    t.generation = 0;
     MString::Zero(t.name);
     t.data = nullptr;
 
@@ -87,7 +80,17 @@ void Texture::Create(const char* name, i32 width, i32 height, i32 ChannelCount, 
 
 void Texture::Create(const TextureConfig &config)
 {
-    
+    SetName(config.name);
+    width = config.width;
+    height = config.height;
+    type = config.type;
+    flags |= config.HasTransparency ? Texture::HasTransparency : 0;
+    flags |= config.IsWriteable ? Texture::IsWriteable : 0;
+    // flags |= config.IsWriteable ? Texture::IsWrapped;
+    flags |= config.Depth ? Texture::Flag::Depth : 0;
+    MipLevels = config.MipLevels;
+    ChannelCount = config.ChannelCount;
+    data = config.data;
 }
 
 void Texture::Clear()
@@ -102,11 +105,12 @@ Texture& Texture::Copy(const Texture& texture)
     type = texture.type;
     width = texture.width;
     height = texture.height;
+    MipLevels = texture.MipLevels;
     ChannelCount = texture.ChannelCount;
     flags = texture.flags;
     generation = texture.generation;
     SetName(texture.name);
-    data = RenderingSystem::TextureCopyData(&texture);
+    data = SystemsManager::GetRenderingSystem()->TextureCopyData(&texture);
     return *this;
 }
 
