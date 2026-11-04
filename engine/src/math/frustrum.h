@@ -2,6 +2,9 @@
 
 #include "plane.h"
 
+class Camera;
+struct Viewport;
+
 struct MAPI Frustum
 {
 	enum Side {
@@ -22,7 +25,20 @@ struct MAPI Frustum
     /// @param fov вертикальное поле зрения.
     /// @param near расстояние ближней плоскости отсечения.
     /// @param far расстояние дальней плоскости отсечения.
-    void Create(const FVec3& position, const FVec3& forward, const FVec3& right, const FVec3& up, f32 aspect, f32 fov, f32 near, f32 far);
+    static constexpr Frustum Create(const FVec3& position, const FVec3& forward, const FVec3& right, const FVec3& up, f32 aspect, f32 fov, f32 near, f32 far);
+
+    /// @brief Создает и возвращает усеченную пирамиду на основе предоставленной камеры и области просмотра.
+    /// @param camera текущая камера
+    /// @param viewport текущая область просмотра
+    /// @return 
+    static constexpr Frustum Create(Camera* camera, const Viewport* viewport);
+
+    static Frustum Create(const Matrix4D& ViewProjection);
+
+    /// @brief 
+    /// @param ProjectionView матрица вида проекции
+    /// @param corners массив векторов
+    static void CornerPointsWorldSpace(const Matrix4D& ProjectionView, FVec4* corners);
 
     /// @brief Указывает, пересекает ли усеченная пирамида сферу, построенную через центр и радиус, (или содержит ее).
     /// @param center постоянная ссылка на позицию, представляющую центр сферы.
@@ -34,5 +50,5 @@ struct MAPI Frustum
     /// @param center постоянная ссылка на позицию, представляющую центр выровненного по оси ограничивающего прямоугольника.
     /// @param extents Половинные размеры выровненного по оси ограничивающего прямоугольника.
     /// @return true, если выровненный по оси ограничивающий прямоугольник пересекается или содержится в frustum; в противном случае false.
-    bool IntersectsAABB(const FVec3& center, const FVec3& extents);
+    bool IntersectsAABB(const FVec3& center, const FVec3& extents) const;
 };
