@@ -35,7 +35,7 @@ struct UiRenderData {
 };
 
 struct UiMouseEvent {
-    Buttons MouseButton{-1};
+    Buttons MouseButton;
     i16 x;
     i16 y;
 };
@@ -57,41 +57,32 @@ struct UiClipMask {
     GeometryRenderData RenderData;
 };
 
-struct UiGeometry
-{
-    u32 VertexCount{};
-    u32 IndexCount{};
-    u64 VertexBufferOffset{INVALID::U64ID};
-    u64 IndexBufferOffset {INVALID::U64ID};
-};
-
-
 class MAPI UiElement {
 public:
     Identifier id;
-    Transform xform;
+    Transform xform{};
     MString name;
-    Rect2D bounds;
+    Rect2D bounds{};
     
-    UiElement* parent;
+    UiElement* parent{};
     DArray<UiElement*> children;
 
-    void* UserData;
-    u64 UserDataSize;
+    void* UserData{};
+    u64 UserDataSize{};
     
-    u64 FrameNumber;
-    u32 InstanceID;
-    u8 DrawIndex;
+    u64 FrameNumber{};
+    u32 InstanceID{};
+    u8 DrawIndex{};
 
     // ЗАДАЧА: Преобразовать во флаги.
-    bool IsActive;
-    bool IsVisible;
-    bool IsHovered;
-    bool IsPressed;
+    bool IsActive{};
+    bool IsVisible{true};
+    bool IsHovered{};
+    bool IsPressed{};
 
-    constexpr UiElement() = default;
-    constexpr UiElement(const char* name, UiElement* parent = nullptr) : id(), xform(), name(name),            parent(parent) { id.Generate(); if (parent) xform.SetParent(&parent->xform); }
-    constexpr UiElement(MString&& name,   UiElement* parent = nullptr) : id(), xform(), name((MString&&)name), parent(parent) { id.Generate(); if (parent) xform.SetParent(&parent->xform); }
+    constexpr UiElement(UiElement* parent = nullptr)                   : name()                { id.Generate(); if (parent) parent->AddChild(this); }
+    constexpr UiElement(const char* name, UiElement* parent = nullptr) : name(name)            { id.Generate(); if (parent) parent->AddChild(this); }
+    constexpr UiElement(MString&& name,   UiElement* parent = nullptr) : name((MString&&)name) { id.Generate(); if (parent) parent->AddChild(this); }
     virtual ~UiElement() = default;
     
     bool AddChild(UiElement* child);
@@ -102,14 +93,18 @@ public:
     virtual void Unload() {}
 
     virtual bool Update(FrameData& rFrameData) { return false; }
-    virtual bool Render(FrameData& rFrameData, UiRenderData& RenederData) { return false; }
+    virtual void RenderPrepare(const FrameData& rFrameData) {}
+    virtual bool Render(FrameData& rFrameData, UiRenderData& RenederData) { return true; }
 
     void SetParent(UiElement* parent);
 
     /// @brief Устанавливает позицию заданного элемента управления.
-    /// @param self Указатель на элемент управления, позиция которого будет установлена.
     /// @param position Устанавливаемая позиция.
     void SetPosition(FVec3 position);
+
+    void SetPosition(f32 x, f32 y, f32 z = 0.F) {
+        xform.SetPosition(x, y, z);
+    }
 
     /// @brief Получает позицию заданного элемента управления.
     /// @return Позиция заданного элемента управления.
@@ -118,12 +113,13 @@ public:
     /// Обработчик щелчков для элемента управления.
     /// @param event Событие мыши.
     /// @returns True, если событие должно распространяться на другие элементы управления; в противном случае — false.
-    void (*OnClick    )(UiElement*, UiMouseEvent) = nullptr;
-    void (*OnMouseDown)(UiElement*, UiMouseEvent) = nullptr;
-    void (*OnMouseUp  )(UiElement*, UiMouseEvent) = nullptr;
-    void (*OnMouseOver)(UiElement*, UiMouseEvent) = nullptr;
-    void (*OnMouseOut )(UiElement*, UiMouseEvent) = nullptr;
-    void (*OnMouseMove)(UiElement*, UiMouseEvent) = nullptr;
+    void (*OnClick    )(UiElement*,    UiMouseEvent) = nullptr;
+    void (*OnMouseDown)(UiElement*,    UiMouseEvent) = nullptr;
+    void (*OnMouseUp  )(UiElement*,    UiMouseEvent) = nullptr;
+    void (*OnMouseOver)(UiElement*,    UiMouseEvent) = nullptr;
+    void (*OnMouseOut )(UiElement*,    UiMouseEvent) = nullptr;
+    void (*OnMouseMove)(UiElement*,    UiMouseEvent) = nullptr;
+    void (*OnKey      )(UiElement*, UiKeyboardEvent) = nullptr;
 
     // void InternalClick    (UiElement*, UiMouseEvent event);
     // void InternalMouseOver(UiElement*, UiMouseEvent event);
@@ -131,31 +127,18 @@ public:
     // void InternalMouseDown(UiElement*, UiMouseEvent event);
     // void InternalMouseUp  (UiElement*, UiMouseEvent event);
     // void InternalMouseMove(UiElement*, UiMouseEvent event);
-
-    virtual void OnKey(UiKeyboardEvent event) {}
+    
     void *operator new(u64 size) { return MemorySystem::Allocate(size, Memory::UI); }
     void operator delete(void *ptr, u64 size) { MemorySystem::Free(ptr, size, Memory::UI); }
 };
 
 class MAPI UiSystem {
-    friend class UiElement;
-    u64 MaxControlCount;
-    // Массив указателей на элементы управления. Система ими не владеет. Приложение владеет.
-    u32 TotalControlCount;
-    u32 ActiveControlCount;
-    UiElement** ActiveControls;
-    // void* mem; // указатель на область памяти где будут хранится элементы интерфейса
-    u32 InactiveControlCount;
-    UiElement** InactiveControls;
-    UiElement root;
-    TextureMap UiAtlas;
-
-    u64 focusedID;
-
 public:
     struct Config { u64 MaxControlCount; };
 
     constexpr UiSystem(const Config& config) : MaxControlCount(config.MaxControlCount), root("_ROOT_"), focusedID(INVALID::U64ID) {}
+
+    u32 GetActiveControlCount() { return ActiveControlCount; }
 
     /// @brief Инициализирует стандартную систему пользовательского интерфейса.
     /// Следует вызывать дважды: один раз для получения требуемого объёма памяти (передавая state=0), 
@@ -174,9 +157,8 @@ public:
 
     static bool Update(void* self, FrameData& rFrameData);
 
+    static void RenderPrepareFrame(void* self, const FrameData& rFrameData);
     bool Render(UiElement* root, FrameData& rFrameData, UiRenderData& RenderData);
-
-    bool UpdateActive(UiElement* control);
 
     bool RegisterControl(UiElement* control);
 
@@ -185,11 +167,28 @@ public:
     void FocusControl(UiElement* control);
 
 private:
-    static bool MouseDown(u16 code, void* sender, void* ListenerInst, EventContext& context);
-    static bool MouseUp(u16 code, void* sender, void* ListenerInst, EventContext& context);
-    static bool Click(u16 code, void *sender, void *ListenerInst, EventContext &context);
-    static bool Move(u16 code, void *sender, void *ListenerInst, EventContext &context);
+    void UpdateActive();
+    static bool MouseDown(u16 code, void* sender, void* ListenerInst, const EventContext& context);
+    static bool MouseUp(u16 code, void* sender, void* ListenerInst, const EventContext& context);
+    static bool Click(u16 code, void *sender, void *ListenerInst, const EventContext &context);
+    static bool Move(u16 code, void *sender, void *ListenerInst, const EventContext &context);
 
+    friend class UiElement;
+    u64 MaxControlCount;
+    // Массив указателей на элементы управления. Система ими не владеет. Приложение владеет.
+    u64 TotalControlCount;
+    UiElement** RegisteredControls;
+    u32 ActiveControlCount;
+    // UiElement** ActiveControls;
+    u32 InactiveControlCount;
+    // UiElement** InactiveControls;
+    // void* mem; // указатель на область памяти где будут хранится элементы интерфейса
+    UiElement root;
+    TextureMap UiAtlas;
+
+    u64 focusedID;
+
+    bool IsDirty;
 };
 
 
