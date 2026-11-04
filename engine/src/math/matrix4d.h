@@ -17,12 +17,12 @@ struct MAPI Matrix4D
 			 		   f32 n21, f32 n22, f32 n23, f32 n24,
 					   f32 n31, f32 n32, f32 n33, f32 n34,
 					   f32 n41, f32 n42, f32 n43, f32 n44);
-	constexpr Matrix4D(const FVec4& a, const FVec4& b, const FVec4& c, const FVec4& d);
+	constexpr Matrix4D(FVec4 a, FVec4 b, FVec4 c, FVec4 d) : data{a.x, a.y, a.z, a.w, b.x, b.y, b.z, b.w, c.x, c.y, c.z, c.w, d.x, d.y, d.z, d.w} {}
 	constexpr Matrix4D (const Quaternion& q);
 	/// @brief Вычисляет матрицу поворота на основе кватерниона и пройденной центральной точки.
 	/// @param q кватернион
 	/// @param v вектор
-	Matrix4D (const Quaternion &q, const FVec3 &center);
+	Matrix4D (Quaternion q, FVec3 center);
 	constexpr Matrix4D(const Matrix4D& m);
 
 	f32& operator ()(u8 i, u8 j);
@@ -222,13 +222,25 @@ struct MAPI Matrix4D
 	/// @param target позиция, на которую нужно "смотреть".
 	/// @param up восходящий вектор.
 	/// @return Матрица, рассматривающая цель с точки зрения позиции.
-	MINLINE static Matrix4D MakeLookAt(const FVec3& position, const FVec3& target, const FVec3& up);
+	MINLINE static Matrix4D MakeLookAt(const FVec3& position, const FVec3& target, const FVec3& up)
+	{
+		FVec3 Z_Axis { target - position };
+
+		Z_Axis.Normalize();
+		FVec3 X_Axis = Normalize(Cross(Z_Axis, up));
+		FVec3 Y_Axis = Cross(X_Axis, Z_Axis);
+
+		return Matrix4D(		X_Axis.x, 				Y_Axis.x, 			  -Z_Axis.x, 		0, 
+								X_Axis.y, 				Y_Axis.y, 			  -Z_Axis.y, 		0, 
+								X_Axis.z, 				Y_Axis.z, 			  -Z_Axis.z, 		0, 
+						-Dot(X_Axis, position), -Dot(Y_Axis, position), Dot(Z_Axis, position), 1.0f);
+	}
 
 	/// @brief Создает и возвращает значение, обратное предоставленной матрице.
 	/// @param m матрица, подлежащая инвертированию
 	/// @return перевернутая копия предоставленной матрицы.
-	MINLINE static Matrix4D MakeInverse(const Matrix4D& m) {
-		const FVec3& a = reinterpret_cast<const FVec3&>(m[0]);
+	MINLINE static Matrix4D MakeInverse(const Matrix4D& matrix) {
+	 /* const FVec3& a = reinterpret_cast<const FVec3&>(m[0]);
 		const FVec3& b = reinterpret_cast<const FVec3&>(m[1]);
 		const FVec3& c = reinterpret_cast<const FVec3&>(m[2]);
 		const FVec3& d = reinterpret_cast<const FVec3&>(m[3]);
@@ -257,37 +269,90 @@ struct MAPI Matrix4D
 		return Matrix4D(	r0.x, 	   r1.x, 	   r2.x,      r3.x,
 							r0.y, 	   r1.y, 	   r2.y,      r3.y,
 							r0.z, 	   r1.z, 	   r2.z,      r3.z,
-						-Dot(b, t), Dot(a, t), -Dot(d, s), Dot(c, s));
+						-Dot(b, t), Dot(a, t), -Dot(d, s), Dot(c, s)); */
+	
+		const f32 *m = matrix.data;
+
+		f32 t0  = m[10] * m[15]; 
+		f32 t1  = m[14] * m[11]; 
+		f32 t2  = m[6] * m[15]; 
+		f32 t3  = m[14] * m[7];
+		f32 t4  = m[6]  * m[11]; 
+		f32 t5  = m[10] * m[7];  
+		f32 t6  = m[2] * m[15]; 
+		f32 t7  = m[14] * m[3];
+		f32 t8  = m[2]  * m[11]; 
+		f32 t9  = m[10] * m[3]; 
+		f32 t10 = m[2] * m[7];  
+		f32 t11 = m[6]  * m[3];
+		f32 t12 = m[8] * m[13]; 
+		f32 t13 = m[12] * m[9];  
+		f32 t14 = m[4] * m[13]; 
+		f32 t15 = m[12] * m[5];
+		f32 t16 = m[4] * m[9];  
+		f32 t17 = m[8]  * m[5];  
+		f32 t18 = m[0] * m[13]; 
+		f32 t19 = m[12] * m[1];
+		f32 t20 = m[0] * m[9];  
+		f32 t21 = m[8]  * m[1];  
+		f32 t22 = m[0] * m[5];  
+		f32 t23 = m[4]  * m[1];
+
+		Matrix4D OutMatrix;
+		f32 *o = OutMatrix.data;
+
+		o[0] = (t0 * m[5] + t3 * m[9] + t4  * m[13]) - (t1 * m[5] + t2 * m[9] + t5  * m[13]);
+		o[1] = (t1 * m[1] + t6 * m[9] + t9  * m[13]) - (t0 * m[1] + t7 * m[9] + t8  * m[13]);
+		o[2] = (t2 * m[1] + t7 * m[5] + t10 * m[13]) - (t3 * m[1] + t6 * m[5] + t11 * m[13]);
+		o[3] = (t5 * m[1] + t8 * m[5] + t11 * m[9])  - (t4 * m[1] + t9 * m[5] + t10 * m[9]);
+
+			f32 d = 1.F / (m[0] * o[0] + m[4] * o[1] + m[8] * o[2] + m[12] * o[3]);
+
+		o[0]  = d * o[0]; o[1] = d * o[1]; o[2] = d * o[2]; o[3] = d * o[3];
+		o[4]  = d * ((t1  * m[4]  + t2  * m[8]  + t5 * m[12])  - (t0 * m[4]   + t3 * m[8]   + t4 * m[12]));
+		o[5]  = d * ((t0  * m[0]  + t7  * m[8]  + t8 * m[12])  - (t1 * m[0]   + t6 * m[8]   + t9 * m[12]));
+		o[6]  = d * ((t3  * m[0]  + t6  * m[4]  + t11 * m[12]) - (t2 * m[0]   + t7 * m[4]   + t10 * m[12]));
+		o[7]  = d * ((t4  * m[0]  + t9  * m[4]  + t10 * m[8])  - (t5 * m[0]   + t8 * m[4]   + t11 * m[8]));
+		o[8]  = d * ((t12 * m[7]  + t15 * m[11] + t16 * m[15]) - (t13 * m[7]  + t14 * m[11] + t17 * m[15]));
+		o[9]  = d * ((t13 * m[3]  + t18 * m[11] + t21 * m[15]) - (t12 * m[3]  + t19 * m[11] + t20 * m[15]));
+		o[10] = d * ((t14 * m[3]  + t19 * m[7]  + t22 * m[15]) - (t15 * m[3]  + t18 * m[7]  + t23 * m[15]));
+		o[11] = d * ((t17 * m[3]  + t20 * m[7]  + t23 * m[11]) - (t16 * m[3]  + t21 * m[7]  + t22 * m[11]));
+		o[12] = d * ((t14 * m[10] + t17 * m[14] + t13 * m[6])  - (t16 * m[14] + t12 * m[6]  + t15 * m[10]));
+		o[13] = d * ((t20 * m[14] + t12 * m[2]  + t19 * m[10]) - (t18 * m[10] + t21 * m[14] + t13 * m[2]));
+		o[14] = d * ((t18 * m[6]  + t23 * m[14] + t15 * m[2])  - (t22 * m[14] + t14 * m[2]  + t19 * m[6]));
+		o[15] = d * ((t22 * m[10] + t16 * m[2]  + t21 * m[6])  - (t20 * m[6]  + t23 * m[10] + t17 * m[2]));
+
+		return OutMatrix;
 	}
 
 	/// @brief Заменяет строки матрицы на столбцы.
 	/// @param m матрица, подлежащая транспонированию
 	/// @return копию транспонированной матрицы
 	MINLINE static Matrix4D MakeTransposed(const Matrix4D& m) {
-		return Matrix4D(m(0, 0), m(1, 0), m(2, 0), m(3, 0),
-						m(0, 1), m(1, 1), m(2, 1), m(3, 1),
-						m(0, 2), m(1, 2), m(2, 2), m(3, 2),
-						m(0, 3), m(1, 3), m(2, 3), m(3, 3));
+		return Matrix4D(m(1, 1), m(2, 1), m(3, 1), m(4, 1),
+						m(1, 2), m(2, 2), m(3, 2), m(4, 2),
+						m(1, 3), m(2, 3), m(3, 3), m(4, 3),
+						m(1, 4), m(2, 4), m(3, 4), m(4, 4));
 	}
 
 	/// @brief 
 	/// @param position 
 	/// @return 
 	MINLINE static constexpr Matrix4D MakeTranslation(const FVec3& position) {
-		return Matrix4D(	1.0f, 		0.0f, 	   0.0f,    0.0f,
-							0.0f, 		1.0f, 	   0.0f,    0.0f,
-							0.0f, 		0.0f, 	   1.0f,    0.0f,
-	   					position.x, position.y, position.z, 1.0f);
+		return Matrix4D(	1.F, 		0.F, 	   0.F,    0.F,
+							0.F, 		1.F, 	   0.F,    0.F,
+							0.F, 		0.F, 	   1.F,    0.F,
+	   					position.x, position.y, position.z, 1.F);
 	}
 
 	/// @brief Возвращает матрицу масштаба, используя предоставленный масштаб.
 	/// @param scale 
 	/// @return 
 	MINLINE static constexpr Matrix4D MakeScale(const FVec3& scale) {
-		return Matrix4D (scale.x,  0.f,     0.f,   0.f,
-						   0.f,  scale.y,   0.f,   0.f,
-						   0.f,    0.f,   scale.z, 0.f,
-						   0.f,    0.f,     0.f,   1.f);
+		return Matrix4D (scale.x,  0.F,     0.F,   0.F,
+						   0.F,  scale.y,   0.F,   0.F,
+						   0.F,    0.F,   scale.z, 0.F,
+						   0.F,    0.F,     0.F,   1.F);
 	}
 
 	MINLINE static Matrix4D MakeEulerX(f32 AngleRadians) {
@@ -354,61 +419,68 @@ struct MAPI Matrix4D
 	/// @brief Возвращает вектор направленный вперед относительно предоставленной матрицы.
 	/// @param m матрица 4х4, на основе которой строится вектор.
 	/// @return трехкомпонентный вектор направления.
-	MINLINE static FVec3 Forward(const Matrix4D& m) {
-		return -Normalize(FVec3(m(2), m(6), m(10)));
+	MINLINE FVec3 Forward() const {
+		return -(FVec3(data[2], data[6], data[10]).Normalize());
 	}
 
 	/// @brief Возвращает вектор направленный назад относительно предоставленной матрицы.
 	/// @param m матрица 4х4, на основе которой строится вектор.
 	/// @return трехкомпонентный вектор направления.
-	MINLINE static FVec3 Backward(const Matrix4D& m) {
-		return Normalize(FVec3(m(2), m(6), m(10)));
+	MINLINE FVec3 Backward() const {
+		return FVec3(data[2], data[6], data[10]).Normalize();
 	}
 
 	/// @brief Возвращает вектор направленный вверх относительно предоставленной матрицы.
 	/// @param m матрица 4х4, на основе которой строится вектор.
 	/// @return трехкомпонентный вектор направления.
-	MINLINE static FVec3 Up(const Matrix4D& m) {
-		return Normalize(FVec3(m(1), m(5), m(9)));
+	MINLINE FVec3 Up() const {
+		return Normalize(FVec3(data[1], data[5], data[9]).Normalize());
 	}
 
 	/// @brief Возвращает вектор направленный вниз относительно предоставленной матрицы.
 	/// @param m матрица 4х4, на основе которой строится вектор.
 	/// @return трехкомпонентный вектор направления.
-	MINLINE static FVec3 Down(const Matrix4D& m) {
-		return -Normalize(FVec3(m(1), m(5), m(9)));
+	MINLINE FVec3 Down() const {
+		return -(FVec3(data[1], data[5], data[9]).Normalize());
 	}
 
 	/// @brief Возвращает вектор направленный влево относительно предоставленной матрицы.
 	/// @param m матрица 4х4, на основе которой строится вектор.
 	/// @return трехкомпонентный вектор направления.
-	MINLINE static FVec3 Left(const Matrix4D& m) {
-		return -Normalize(FVec3(m(0), m(4), m(8)));
+	MINLINE FVec3 Left() const {
+		return -(FVec3(data[0], data[4], data[8]).Normalize());
 	}
 
 	/// @brief Возвращает вектор направленный вправо относительно предоставленной матрицы.
 	/// @param m матрица 4х4, на основе которой строится вектор.
 	/// @return трехкомпонентный вектор направления.
-	MINLINE static FVec3 Right(const Matrix4D& m) {
-		return Normalize(FVec3(m(0), m(4), m(8)));
+	MINLINE FVec3 Right() const {
+		return FVec3(data[0], data[4], data[8]).Normalize();
+	}
+
+	/// @brief Возвращает позицию относительно предоставленной матрицы.
+	/// @return Трехкомпонентный позиционный вектор.
+	MINLINE FVec3 Position() {
+		FVec3 pos { data[12], data[13], data[14] };
+		return pos.Normalize();
 	}
 };
 
-MINLINE FVec3 operator *(const Matrix4D& m, const FVec3& v)
+MINLINE FVec3 operator *(const Matrix4D& m, FVec3 v)
 {
 	return FVec3(v.x * m.data[0] + v.y * m.data[1] + v.z * m.data[2]  + m.data[3],
         		 v.x * m.data[4] + v.y * m.data[5] + v.z * m.data[6]  + m.data[7],
         		 v.x * m.data[8] + v.y * m.data[9] + v.z * m.data[10] + m.data[11]);
 }
 
-MINLINE FVec3 operator *(const FVec3& v, const Matrix4D& m)
+MINLINE FVec3 operator *(FVec3 v, const Matrix4D& m)
 {
 	return FVec3(v.x * m.data[0] + v.y * m.data[4] + v.z * m.data[8]  + m.data[12],
         		 v.x * m.data[1] + v.y * m.data[5] + v.z * m.data[9]  + m.data[13],
         		 v.x * m.data[2] + v.y * m.data[6] + v.z * m.data[10] + m.data[14]);
 }
 
-MINLINE FVec4 operator *(const Matrix4D& m, const FVec4& v) 
+MINLINE FVec4 operator *(const Matrix4D& m, FVec4 v) 
 {
 	return FVec4(v.x * m.data[0]  + v.y * m.data[1]  + v.z * m.data[2]  + v.w * m.data[3],
         		 v.x * m.data[4]  + v.y * m.data[5]  + v.z * m.data[6]  + v.w * m.data[7],
@@ -417,7 +489,7 @@ MINLINE FVec4 operator *(const Matrix4D& m, const FVec4& v)
 }
 
 // template<typename T>
-MINLINE FVec4 operator *(const FVec4& v, const Matrix4D& m) 
+MINLINE FVec4 operator *(FVec4 v, const Matrix4D& m) 
 {
 	return FVec4(v.x * m.data[0] + v.y * m.data[4] + v.z * m.data[8]  + v.w * m.data[12],
         		 v.x * m.data[1] + v.y * m.data[5] + v.z * m.data[9]  + v.w * m.data[13],
@@ -429,14 +501,14 @@ MINLINE FVec4 operator *(const FVec4& v, const Matrix4D& m)
 /// @param a матрица 4x4
 /// @param b матрица 4x4
 /// @return результат умножения матрицы а на матрицу b
-MAPI Matrix4D operator*(Matrix4D a, const Matrix4D& b);
+MAPI MINLINE Matrix4D operator*(Matrix4D a, const Matrix4D& b) { return a *= b; }
 
 /// @brief Преобразовать вектор по матрице.
 /// @param vector вектор для преобразования.
 /// @param w передайте 1.F для точки или 0.F для направления.
 /// @param matrix матрица для преобразования.
 /// @return Преобразованная копия вектора.
-MINLINE FVec3 VectorTransform(const FVec3& v, f32 w, const Matrix4D& m) {
+MINLINE FVec3 VectorTransform(FVec3 v, f32 w, const Matrix4D& m) {
 	return FVec3(v.x * m.data[0 + 0] + v.y * m.data[4 + 0] + v.z * m.data[8 + 0] + w * m.data[12 + 0],
                  v.x * m.data[0 + 1] + v.y * m.data[4 + 1] + v.z * m.data[8 + 1] + w * m.data[12 + 1],
                  v.x * m.data[0 + 2] + v.y * m.data[4 + 2] + v.z * m.data[8 + 2] + w * m.data[12 + 2]
