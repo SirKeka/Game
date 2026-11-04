@@ -21,16 +21,15 @@ public:
     enum SupportFlagBits {
         NoneBit = 0x00,
 
-        /// @brief Указывает, поддерживает ли устройство собственную динамическую топологию (т. е. * при использовании Vulkan API >= 1.3).
-        NativeDynamicTopologyBit = 0x01,
-
-        /// @brief Указывает, поддерживает ли устройство динамическую топологию. В противном случае рендереру потребуется сгенерировать отдельный конвейер для каждого типа топологии.
-        DynamicTopologyBit = 0x02,
+        /// @brief Указывает, поддерживает ли устройство собственное динамическое состояние (т. е. * при использовании Vulkan API >= 1.3).
+        NativeDynamicStateBit = 0x01,
+        /// @brief Указывает, поддерживает ли устройство динамическое состояние. В противном случае рендереру потребуется сгенерировать отдельный конвейер для каждого типа состояний.
+        DynamicStateBit = 0x02,
         LineSmoothRasterisationBit = 0x04,
         /// @brief Указывает, поддерживает ли устройство динамическую замену лицевой плоскости(face) (т.е. с использованием API Vulkan версии ≥ 1.3).
-        NativeDynamicFrontFaceBit = 0x08,
+        // NativeDynamicFrontFaceBit = 0x08,
         /// @brief Указывает, поддерживает ли устройство динамическую замену лицевой плоскости(face) на основе расширений.
-        DynamicFrontFaceBit = 0x10,
+        // DynamicFrontFaceBit = 0x10,
     };
 
     /// @brief Побитовые флаги поддержки устройств. @see VulkanDevice::SupportFlagBits.
@@ -43,9 +42,10 @@ public:
     VkPhysicalDevice PhysicalDevice;             // Физическое устройство. Это представление самого графического процессора.
     VkDevice LogicalDevice;                      // Логическое устройство. Это представление устройства приложением, используемое для большинства операций Vulkan.
     VulkanSwapchainSupportInfo SwapchainSupport; // Информация о поддержке swapchain.
-    i32 GraphicsQueueIndex;                      // Индекс графической очереди.
-    i32 PresentQueueIndex;                       // Индекс текущей очереди.
-    i32 TransferQueueIndex;                      // Индекс очереди передачи.
+    u32 MainQueueIndex;                          // Индекс общей очереди.
+    u32 GraphicsQueueIndex;                      // Индекс графической очереди.
+    u32 PresentQueueIndex;                       // Индекс текущей очереди.
+    u32 TransferQueueIndex;                      // Индекс очереди передачи.
     bool SupportsDeviceLocalHostVisible;         // Указывает, поддерживает ли устройство тип памяти, который является как видимым для хоста, так и локальным для устройства.
 
     VkQueue GraphicsQueue;                       // Дескриптор очереди графики.
@@ -80,6 +80,7 @@ private:
         i32 GraphicsFamilyIndex;
         i32 PresentFamilyIndex;
         i32 ComputeFamilyIndex;
+        i32 MainFamilyIndex;
         i32 TransferFamilyIndex;
     };
 
@@ -87,10 +88,10 @@ private:
     bool PhysicalDeviceMeetsRequirements(
         VkPhysicalDevice device,
         VkSurfaceKHR surface,
-        const VkPhysicalDeviceProperties* properties,
-        const VkPhysicalDeviceFeatures* features,
-        const VulkanPhysicalDeviceRequirements* requirements,
-        VulkanPhysicalDeviceQueueFamilyInfo* OutQueueFamilyInfo,
-        VulkanSwapchainSupportInfo* OutSwapchainSupport
+        const VkPhysicalDeviceProperties& properties,
+        const VkPhysicalDeviceFeatures& features,
+        const VulkanPhysicalDeviceRequirements& requirements,
+        VulkanPhysicalDeviceQueueFamilyInfo& OutQueueFamilyInfo,
+        VulkanSwapchainSupportInfo& OutSwapchainSupport
     );
 };
