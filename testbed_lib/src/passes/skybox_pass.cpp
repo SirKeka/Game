@@ -28,9 +28,10 @@ bool SkyboxPass::Initialize()
     };
 
     // Конфигурация подпрохода рендеринга
-    RenderpassConfig SkyboxPass;
-    SkyboxPass.depth                  = 1.F;
-    SkyboxPass.stencil                = 0;
+    RenderpassConfig SkyboxPass {
+        .depth   = 1.F,
+        .stencil = 0,
+    };
     SkyboxPass.target.AttachmentCount = 1;
     SkyboxPass.target.attachments     = &SkyboxTargetColour;
     
@@ -38,10 +39,10 @@ bool SkyboxPass::Initialize()
     pass.ClearFlags = RenderpassClearFlag::ColourBuffer;
     pass.name = "Renderpass.Bultin.Skybox";
     pass.RenderTargetCount = renderer->GetWindowAttachmentCount();
-    pass.targets = nul_alloc(RenderTarget, pass.RenderTargetCount, Memory::Array);
+    CreateArray(pass.targets, sizeof(RenderTarget) * pass.RenderTargetCount, true);
 
     if (!SystemsManager::GetRenderingSystem()->RenderpassCreate(SkyboxPass, pass, false)) { // 
-        MERROR("SkyboxPass::Initialize — Не удалось создать проход рендеринга «%.*s»",  pass.name.Length(), pass.name.Data());
+        MERROR("SkyboxPass::Initialize — Не удалось создать проход рендеринга «%.s»", pass.name.Data());
         return false;
     }
 
@@ -114,7 +115,7 @@ bool SkyboxPass::Render(FrameData &rFrameData)
 
         // Нарисовать его.
         GeometryRenderData RenderData{};
-        RenderData.geometry = skybox->geometry;
+        RenderData.CopyData(skybox->geometry);
         renderer->DrawGeometry(RenderData);
     }
 
