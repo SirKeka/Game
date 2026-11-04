@@ -105,7 +105,8 @@ struct VulkanRenderpass
                 ColourAttachmentDescs.PushBack(AttachmentDesc);
             } else if (AttachmentConfig.type == RenderTargetAttachmentType::Depth) {
                 // Глубина вложения.
-                bool DoClearDepth = (ClearFlags & RenderpassClearFlag::DepthBuffer) != 0;
+                bool DoClearDepth   = (ClearFlags & RenderpassClearFlag::DepthBuffer)   != 0;
+                bool DoClearStencil = (ClearFlags & RenderpassClearFlag::StencilBuffer) != 0;
 
                 if (AttachmentConfig.source == RenderTargetAttachmentSource::Default) {
                     AttachmentDesc.format = VkAPI->Device.DepthFormat;
@@ -118,15 +119,24 @@ struct VulkanRenderpass
                 // Определите, какую операцию загрузки использовать.
                 if (AttachmentConfig.LoadOperation == RenderTargetAttachmentLoadOperation::DontCare) {
                     // Если нам все равно, единственное, что нужно проверить, — это очищается ли вложение.
-                    AttachmentDesc.loadOp = DoClearDepth ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+                    AttachmentDesc.loadOp        = DoClearDepth   ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+                    AttachmentDesc.stencilLoadOp = DoClearStencil ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_DONT_CARE;
                 } else {
                     // Если мы загружаем, проверьте, очищаемся ли мы также. Эта комбинация не имеет смысла и должна быть предупреждена.
                     if (AttachmentConfig.LoadOperation == RenderTargetAttachmentLoadOperation::Load) {
+                        // Глубина
                         if (DoClearDepth) {
                             MWARN("Операция загрузки прикрепления глубины установлена ​​на загрузку, но также установлена ​​на очистку. Эта комбинация недопустима и приведет к ошибке очистки. Проверьте конфигурацию прикрепления.");
                             AttachmentDesc.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
                         } else {
                             AttachmentDesc.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+                        }
+                        // Stencil(Трафарет)
+                        if (DoClearStencil) {
+                            MWARN("Операция загрузки трафарета установлена ​​на загрузку, но также установлена ​​на очистку. Эта комбинация недопустима и приведет к ошибке очистки. Проверьте конфигурацию прикрепления.");
+                            AttachmentDesc.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+                        } else {
+                            AttachmentDesc.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
                         }
                     } else {
                         MFATAL("Недопустимая и неподдерживаемая комбинация операции загрузки (0x%x) и флагов очистки (0x%x) для прикрепления глубины.", AttachmentDesc.loadOp, ClearFlags);
@@ -137,8 +147,10 @@ struct VulkanRenderpass
                 // Определите, какую операцию хранения использовать.
                 if (AttachmentConfig.StoreOperation == RenderTargetAttachmentStoreOperation::DontCare) {
                     AttachmentDesc.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+                    AttachmentDesc.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
                 } else if (AttachmentConfig.StoreOperation == RenderTargetAttachmentStoreOperation::Store) {
                     AttachmentDesc.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+                    AttachmentDesc.stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
                 } else {
                     MFATAL("Неверная операция сохранения (0x%x) установлена ​​для присоединения глубины. Проверьте конфигурацию.", AttachmentConfig.StoreOperation);
                     return;
