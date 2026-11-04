@@ -8,9 +8,6 @@ struct Vertex2D
 {
     FVec2 position; // Позиция вершины
     FVec2 texcoord; // Текстурные коорднаты
-
-    constexpr Vertex2D() : position(), texcoord() {}
-    constexpr Vertex2D(FVec2 position, FVec2 texcoord) : position(position), texcoord(texcoord) {}
 };
 
 /// @brief Структура вершины геометрии/сетки(меша) содержит:
@@ -27,14 +24,16 @@ struct Vertex3D
     FVec4 colour;   // Цвет вершины
     FVec3 tangent;  // Касательная вершины.
 
-    constexpr Vertex3D() : position(), normal(), texcoord(), colour(), tangent() {}
-
     bool operator==(const Vertex3D& v3d) const {
         if (position == v3d.position && normal == v3d.normal && texcoord == v3d.texcoord && colour == v3d.colour && tangent == v3d.tangent) {
             return true;
         }
         return false;
     }
+
+    // void* operator new(u64 size)  { return MemorySystem::Allocate(size, Memory::Resource); }
+    // void* operator new[](u64 size) { return MemorySystem::Allocate(size, Memory::Array); }
+    // void operator delete[](u64 size) { MemorySystem::Free(size, Memory::Array); }
 };
 
 /// @brief Представляет одну вершину в трехмерном пространстве только с данными о положении и цвете.
