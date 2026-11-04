@@ -1,91 +1,34 @@
 #pragma once
 
 #include "core/memory_system.h"
+#include "memory/linear_allocator.h"
 
 #include <utility>
 
-template<typename T>
-void Swap(T& a, T& b) {
-    auto temp = static_cast<T&&>(a);
-    a = static_cast<T&&>(b);
-    b = static_cast<T&&>(temp);
-}
-
-template<typename T>
-i32 Partition(T arr[], i32 LowIndex, i32 HighIndex, bool ascending) {
-    auto pivot = arr[HighIndex];
-    i32 i = (LowIndex - 1);
-
-    for (i32 j = LowIndex; j <= HighIndex - 1; ++j) {
-        if (ascending) {
-            if (arr[j].distance < pivot.distance) {
-                ++i;
-                Swap(arr[i], arr[j]);
-            }
-        } else {
-            if (arr[j].distance > pivot.distance) {
-                ++i;
-                Swap(arr[i], arr[j]);
-            }
-        }
-    }
-    Swap(arr[i + 1], arr[HighIndex]);
-    return i + 1;
-}
-
-/// @brief Частная, рекурсивная, функция сортировки на месте для структур GeometryDistance.
-/// @tparam T тип объектов(переменных), которые находятся в массиве
-/// @param arr Массив структур GeometryDistance, которые нужно отсортировать.
-/// @param LowIndex Низкий индекс, с которого нужно начать сортировку (обычно 0)
-/// @param HighIndex Высокий индекс, которым нужно закончить (обычно длина массива - 1)
-/// @param ascending true для сортировки в порядке возрастания; в противном случае - по убыванию.
-template<typename T>
-void QuickSort(T arr[], i32 LowIndex, i32 HighIndex, bool ascending)
-{
-    if (LowIndex < HighIndex) {
-        i32 partitionIndex = Partition(arr, LowIndex, HighIndex, ascending);
-
-        // Независимая сортировка элементов до и после индекса раздела.
-        QuickSort(arr, LowIndex, partitionIndex - 1, ascending);
-        QuickSort(arr, partitionIndex + 1, HighIndex, ascending);
-    }
-}
+enum class AllocatorType : u8 {
+    Standart, Temp, Frame
+};
 
 template<typename T>
 class MAPI DArray
 {
-    // Переменные
-    /// @brief Количество элементов в массиве
-    u32 size;
-    /// @brief Выделенная память под данное количество элементов
-    u32 capacity;
-    /// @brief Размер одного элемента в байтах
-    u32 elementSize;
-    /// @brief Указывает использовался ли линейный распределитель для выделения памяти.
-    bool LinearAllocation;
-    /// @brief Указатель на область памяти где хранятся элементы
-    T* data;
-
 // Функции
 public:
-    constexpr DArray() : size(), capacity(), elementSize(sizeof(T)), LinearAllocation(false), data(nullptr) {}
-    // constexpr DArray(T&& value) : size(), capacity(), elementSize(sizeof(T)), data(nullptr) { PushBack(value); }
-    constexpr DArray(u32 capacity) : size(), capacity(capacity), elementSize(sizeof(T)), LinearAllocation(false), data(reinterpret_cast<T*>(MemorySystem::Allocate(capacity * elementSize, Memory::DArray, true))){}
-    constexpr DArray(u32 size, u32 capacity, bool LinearAllocation, void* array) : size(size), capacity(capacity ? capacity : size), elementSize(sizeof(T)), LinearAllocation(LinearAllocation), data((T*)array) {}
+    class Iterator;
+
+    constexpr DArray(AllocatorType type = AllocatorType::Standart) : size(), capacity(), allocator(), data(), type(type) {}
+    constexpr explicit DArray(u32 capacity, AllocatorType type = AllocatorType::Standart, LinearAllocator* allocator = nullptr) : size(), capacity(), allocator(), data(), type(type) { Reserve(capacity); }
+    constexpr explicit DArray(LinearAllocator* allocator) : size(), capacity(), allocator(allocator),  data(), type(allocator ? AllocatorType::Frame : AllocatorType::Standart) {}
+    constexpr DArray(u32 size, u32 capacity, void* array) : size(size), capacity(capacity ? capacity : size), allocator(), data((T*)array), type(AllocatorType::Standart) {}
 
     /// @brief Конструктор копирования
     /// @param other динамический массив из которого нужно копировать данные
-    constexpr DArray(const DArray& other) : size(other.size), capacity(other.capacity), elementSize(other.elementSize), LinearAllocation(other.LinearAllocation), data() {
+    constexpr DArray(const DArray& other) : size(other.size), capacity(other.capacity), allocator(other.allocator), data(), type(other.type) {
         if (!capacity) {
             return;
         }
 
-        if (LinearAllocation) {
-            MWARN("На данный момент динамический массив не поддерживает копирование, если память была распределена линейным распределителем");
-            return;
-        } else {
-            data = reinterpret_cast<T*>(MemorySystem::Allocate(capacity * elementSize, Memory::DArray));
-        }
+        data = (T*)(MemorySystem::Allocate(capacity * sizeof(T), Memory::DArray));
         
         for (u32 i = 0; i < size; i++) {
             data[i] = other.data[i];
@@ -93,9 +36,8 @@ public:
     }
     /// @brief Конструктор перемещения
     /// @param other динамический массив из которого нужно переместить данные
-    constexpr DArray(DArray&& other) : size(other.size), capacity(other.capacity), elementSize(other.elementSize), LinearAllocation(other.LinearAllocation), data(other.data) {
-        other.size = other.capacity = other.elementSize = 0;
-        other.data = nullptr;
+    constexpr DArray(DArray&& other) : size(other.size), capacity(other.capacity), allocator(other.allocator), data(other.data), type(other.type) {
+        other.size = other.capacity = 0; other.data = nullptr; other.allocator = nullptr;
     }
 
     ~DArray() {
@@ -123,23 +65,22 @@ public:
             data[i] = da.data[i];
         }
         size = da.size;
+        allocator = da.allocator;
         
         return *this;
     }
 
     DArray& operator=(DArray&& darr) {
-        if (data) {
+        if (data && type == AllocatorType::Standart) {
             Clear();
-            MemorySystem::Free(data, capacity * elementSize, Memory::DArray);
+            MemorySystem::Free(data, capacity * sizeof(T), Memory::DArray);
         }
         data = darr.data;
         size = darr.size;
         capacity = darr.capacity;
-        elementSize = darr.elementSize;
-        LinearAllocation = darr.LinearAllocation;
-        darr.data = nullptr;
+        allocator = darr.allocator;
+        darr.data = nullptr; darr.allocator = nullptr;
         darr.size = darr.capacity = 0;
-        darr.LinearAllocation = false;
         return *this;
     }
 
@@ -150,15 +91,25 @@ public:
     // Доступ к элементу------------------------------------------------------------------------
 
     constexpr T& operator [] (u32 index) {
+#if defined(_DEBUG)
+        if (index > size) {
+            MFATAL("Индекс получаемого элемента данных больше чем размер массива");
+        }
+#endif
         return data[index];
     }
 
     // Доступ к элементу
-    const T& operator [] (u32 index) const {
+    constexpr const T& operator [] (u32 index) const {
+#if defined(_DEBUG)
+        if (index > size) {
+            MFATAL("Индекс получаемого элемента данных больше чем размер массива");
+        }
+#endif
         return data[index];
     }
 
-    void Create(T* data, u32 size) {
+    void Create(T* data, u32 size, AllocatorType type = AllocatorType::Standart) {
         if (this->data) {
             MERROR("Динамический массив уже был создан!");
             return;
@@ -166,7 +117,24 @@ public:
         
         this->data = data;
         this->size = capacity = size;
-        this->elementSize = sizeof(T);
+        this->type = type;
+    }
+
+    /// @brief Находит самый левый узел в дереве (минимальный ключ) и возвращает итератор на него.
+    Iterator begin() {
+        return Iterator(data);
+    }
+
+    const Iterator begin() const {
+        return Iterator(data);
+    }
+
+    Iterator end() {
+        return Iterator(data + size);
+    }
+
+    const Iterator end() const {
+        return Iterator(data + size);
     }
 
     // ------------------------------------------------------------------------Доступ к элементу
@@ -190,72 +158,85 @@ public:
     /// @param NewCap величина памяти которой нужно зарезервировать. 
     /// ПРИМЕЧАНИЕ: если ничего не указано или указан 0, то резервируется 2 при capacity = 2 или х2 при capacity > 0
     void Reserve(u32 NewCap = 0) {
-        if (!elementSize) {
-            elementSize = sizeof(T);
+        if (capacity && capacity == NewCap) {
+            return;
         }
 
-        u64 CurrentSize = capacity * elementSize;
-        // u64 NewSize = 0;
-        if (capacity == 0) {
-            capacity = NewCap ? NewCap : 1;
-
-            data = reinterpret_cast<T*>(MemorySystem::Allocate(capacity * elementSize, Memory::DArray, true));
+        u64 CurrentSize = capacity * sizeof(T);
+        
+        if (NewCap == 0) {
+            capacity = capacity ? capacity * 2 : 2;
         } else {
-            if (NewCap == 0) {
-                capacity *= 2;
-                // NewSize = capacity * elementSize;
-            } else {
-                // NewSize = NewCap * elementSize;
-                capacity = NewCap;
-            }
-
-            T* NewData = reinterpret_cast<T*>(MemorySystem::Allocate(capacity * elementSize, Memory::DArray, true)); // reinterpret_cast<T*>(MemorySystem::Realloc(data, CurrentSize, NewSize, Memory::DArray));
-            MemorySystem::CopyMem(NewData, data, CurrentSize);
-
-            if (!NewData) {
-                // size = capacity = 0;
-                MERROR("DArray::Reserve: Не удалось выделить память");
-                return;
-            }
-            data = NewData;
-            // MemorySystem::ZeroMem(data + size, NewSize - CurrentSize);
+            capacity = NewCap;
         }
+
+        u64 NewSize = capacity * sizeof(T); 
+        T* NewData = nullptr;
+        using enum AllocatorType;
+        switch (type) {
+        case Temp:
+            NewData = AllocateTemp<T>(NewSize, true);
+            break;
+        case Frame:
+            if (CurrentSize == 0) {
+                data = (T*)allocator->Allocate(NewSize);
+            } else {
+                allocator->Allocate(NewSize - CurrentSize);
+            }
+            return;
+        
+        default:
+            NewData = (T*)MemorySystem::Allocate(NewSize, Memory::DArray, true);
+            break;
+        }
+
+        if (!NewData) {
+            // size = capacity = 0;
+            MERROR("DArray::Reserve: Не удалось выделить память");
+            return;
+        }
+        MemorySystem::CopyMem(NewData, data, CurrentSize);
+        data = NewData;
     }
 
     /// @brief Уменьшает емкость(capacity) массива до размера(size)
     void ShrinkToFit() {
-        if (capacity > size) {
-            MemorySystem::Free(data + size, (capacity - size) * elementSize, Memory::DArray);
+        if (capacity > size && type == AllocatorType::Standart) {
+            MemorySystem::Free(data + size, (capacity - size) * sizeof(T), Memory::DArray);
             capacity = size;
         }
     }
 
     /// @return количество элементов контейнера
-    constexpr const u32& Length() const noexcept {
+    constexpr u32 Length() const {
         return size;
     }
     /// @return количество зарезервированных ячеек памяти типа Т
-    constexpr const u32& Capacity() const noexcept {
+    constexpr u32 Capacity() const {
         return capacity;
     }
-    constexpr u32& ElementSize() noexcept {
-        return elementSize;
-    }
-    constexpr const u32& ElementSize() const noexcept {
-        return elementSize;
-    }
+
     //-----------------------------------------------------------------------------------Емкость
     // Модифицирующие методы--------------------------------------------------------------------
 
     void Destroy() {
-        if(!LinearAllocation) {
-            Clear();
-            MemorySystem::Free(data, elementSize * capacity, Memory::DArray);
-            size = capacity = elementSize = 0;
-            data = nullptr;
-        } else {
-            MemorySystem::ZeroMem(this, sizeof(*this));
+        if (!data) {
+            return;
         }
+        
+        Clear();
+
+        switch (type) {
+        case AllocatorType::Temp: case AllocatorType::Frame:
+            break;
+        
+        default:
+            MemorySystem::Free(data, sizeof(T) * capacity, Memory::DArray);
+            break;
+        }
+        
+        size = capacity = 0;
+        data = nullptr;
     }
 
     /// @brief Очищает массив. Емкость остается прежней.
@@ -268,6 +249,31 @@ public:
             size = 0;
         }
     }
+
+    /// @return Возвращает указатель на новый элемент в конце списка, для его последующего заполнения
+    T* PushBack() {
+        if(size == capacity) {
+            Reserve();
+        }
+
+        T* ptr = &data[size];
+        size++;
+
+        return ptr;
+    }
+ 
+    /// @return Возвращает ссылку на новый элемент в конце списка, для его последующего заполнения
+    /*T& PushBack() {
+        if(size == capacity) {
+            Reserve();
+        }
+
+        T& ref = data[size];
+        size++;
+
+        return ref;
+    }*/
+
     /// @brief Добавляет заданное значение элемента в конец контейнера.
     /// @param value элемент который нужно поместить в конец контейнера.
     void PushBack(const T& value) {
@@ -278,12 +284,14 @@ public:
         size++;
     }
 
+    /// @brief Перемещает заданное значение элемента в конец контейнера.
+    /// @param value элемент который нужно переместить в конец контейнера.
     void PushBack(T&& value)
     {
         if(size == capacity) {
             Reserve();
         }
-        data[size] = static_cast<T&&>(value);
+        data[size] = (T&&)value;
         size++;
     }
 
@@ -330,10 +338,12 @@ public:
         // if (value) {
         //     *value = data[index];
         // }
+
+        data[index].~T();
         
         // Если не последний элемент, вырезаем запись и копируем остальное внутрь. ЗАДАЧА: оптимизироваать
         if (index != size - 1) {
-            MemorySystem::CopyMem(data + index, data + index + 1, (size - index) * elementSize);
+            MemorySystem::CopyMem(data + index, data + index + 1, (size - index - 1) * sizeof(T));
         }
         size--;
     }
@@ -370,4 +380,124 @@ public:
         size = capacity = 0;
         return ptr;
     }
+
+    DArray& SetAllocator(LinearAllocator* allocator) {
+        Destroy();
+        this->allocator = allocator;
+        return *this;
+    }
+
+    // Итератор
+    class Iterator {
+    public:
+        constexpr Iterator(T* ptr) : data(ptr) {}
+
+        // Разыменование
+        T& operator*() const { return *data; }
+        T* operator->() const { return data; }
+
+        // Префиксный инкремент
+        Iterator& operator++() {
+            ++data;
+            return *this;
+        }
+
+        // Постфиксный инкремент
+        Iterator operator++(int) {
+            Iterator tmp = *this;
+            ++(*this);
+            return tmp;
+        }
+
+        // Декремент (для полноты, можно убрать, если не нужен)
+        Iterator& operator--() {
+            --data;
+            return *this;
+        }
+
+        Iterator operator--(int) {
+            Iterator tmp = *this;
+            --(*this);
+            return tmp;
+        }
+
+        // Арифметика итераторов
+        Iterator operator+(u64 n) const {
+            return Iterator(data + n);
+        }
+
+        Iterator operator-(u64 n) const {
+            return Iterator(data - n);
+        }
+
+        Iterator& operator+=(u64 n) {
+            data += n;
+            return *this;
+        }
+
+        Iterator& operator-=(u64 n) {
+            data -= n;
+            return *this;
+        }
+
+        // Вычитание итераторов: даёт расстояние
+        u64 operator-(const Iterator& other) const {
+            return data - other.data;
+        }
+
+        // Сравнение
+        bool operator==(const Iterator& other) const {
+            return data == other.data;
+        }
+
+        bool operator!=(const Iterator& other) const {
+            return !(*this == other);
+        }
+
+        bool operator<(const Iterator& other) const {
+            return data < other.data;
+        }
+
+        bool operator<=(const Iterator& other) const {
+            return data <= other.data;
+        }
+
+        bool operator>(const Iterator& other) const {
+            return data > other.data;
+        }
+        
+        bool operator>=(const Iterator& other) const {
+            return data >= other.data;
+        }
+
+    private:
+        T* data = nullptr;
+    };
+
+// private:
+    // Переменные
+    /// @brief Количество элементов в массиве
+    u32 size;
+    /// @brief Выделенная память под данное количество элементов
+    u32 capacity;
+    /// @brief Размер одного элемента в байтах
+    // u32 elementSize;
+    /// @brief Указатель на линейный(кадровый) аллокатор
+    LinearAllocator* allocator;
+    /// @brief Указатель на область памяти где хранятся элементы
+    T* data;
+    AllocatorType type;
+
+    constexpr T* Alloc(u64 size) {
+        using enum AllocatorType;
+        switch (type) {
+        case Temp:
+            return AllocateTemp<T>(size, true);
+        case Frame: 
+            return (T*)allocator->Allocate(size);
+        default:
+            type = Standart;
+            return (T*)MemorySystem::Allocate(size, Memory::DArray, true);
+        }
+    };
 };
