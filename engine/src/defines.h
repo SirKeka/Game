@@ -13,7 +13,7 @@ typedef signed int i32;         // 32-битное целое число со з
 typedef signed long long i64;   // 64-битное целое число со знаком
 
 // Типы с плавающей запятой
-typedef float f32;              // 32-битное число с плавающей запятой
+typedef float  f32;             // 32-битное число с плавающей запятой
 typedef double f64;             // 64-битное число с плавающей запятой
 
 // Логические типы
@@ -26,13 +26,19 @@ typedef int b32;                // 32-битный логический тип, 
 #define STATIC_ASSERT static_assert
 #endif
 
+#if defined(__clang__)
+#define RESTRICT __restrict__
+#else
+#define RESTRICT __restrict
+#endif
+
 // Убедитесь, что все типы имеют правильный размер..
-STATIC_ASSERT(sizeof(u8) == 1, "Ожидается u8 будет 1 байт.");                       // Утверждение, что  u8 имеет размер 1 байт.
+STATIC_ASSERT(sizeof(u8)  == 1, "Ожидается u8 будет 1 байт.");                      // Утверждение, что  u8 имеет размер 1 байт.
 STATIC_ASSERT(sizeof(u16) == 2, "Ожидается размер u16 составит 2 байта.");          // Утверждение, что u16 имеет размер 2 байта.
 STATIC_ASSERT(sizeof(u32) == 4, "Ожидается размер u32 составит 4 байта.");          // Утверждение, что u32 имеет размер 4 байта.
 STATIC_ASSERT(sizeof(u64) == 8, "Ожидается размер u64 составит 8 байт.");           // Утверждение, что u64 имеет размер 8 байт.
 
-STATIC_ASSERT(sizeof(i8) == 1, "Ожидается i8 будет 1 байт.");                       // Утверждение, что i8  имеет размер 1 байт.
+STATIC_ASSERT(sizeof(i8)  == 1, "Ожидается i8 будет 1 байт.");                      // Утверждение, что i8  имеет размер 1 байт.
 STATIC_ASSERT(sizeof(i16) == 2, "Ожидается размер i16 составит 2 байта.");          // Утверждение, что i16 имеет размер 2 байта.
 STATIC_ASSERT(sizeof(i32) == 4, "Ожидается i32 будет 4 байта.");                    // Утверждение, что i32 имеет размер 4 байта.
 STATIC_ASSERT(sizeof(i64) == 8, "Ожидается i64 будет 8 байт.");                     // Утверждение, что i64 имеет размер 8 байт.
@@ -47,7 +53,7 @@ namespace INVALID
     constexpr u8  U8ID  = 255U;
     constexpr u16 U16ID = 65535U;
     constexpr u32 ID    = 4294967295U;
-    constexpr u64 U64ID = 18446744073709551615UL;
+    constexpr u64 U64ID = 18446744073709551615ULL;
 } // namespace INVALID
 
 //#define INVALID_ID_U64 18446744073709551615UL
@@ -133,22 +139,34 @@ constexpr u64 KILOBYTES(u64 amount) { return amount * 1000;               } // �
 
 //ЗАДАЧА: возможно здесь этому не место
 /// @brief Диапазон, обычной памяти
-struct Range {
-    u64 offset; // Смещение в байтах
-    u64 size;   // Размер в байтах.
+template<typename T>
+struct sRange {
+    T offset; // Смещение в байтах
+    T size;   // Размер в байтах.
 
-    constexpr Range() : offset(), size() {}
-    constexpr Range(u64 offset, u64 size) : offset(offset), size(size) {}
-    constexpr Range(u64 offset, u64 size, u64 granularity) : offset(GetAligned(offset, granularity)), size(GetAligned(size, granularity)) {}
+    constexpr sRange() : offset(), size() {}
+    constexpr sRange(T offset, T size) : offset(offset), size(size) {}
+    constexpr sRange(T offset, T size, T granularity) : offset(GetAligned(offset, granularity)), size(GetAligned(size, granularity)) {}
 
-    static MINLINE u64 GetAligned(u64 operand, u64 granularity) {
+    static MINLINE T GetAligned(T operand, T granularity) {
         return ((operand + (granularity - 1)) & ~(granularity - 1));
     }
 
-    static MINLINE Range GetAlignedRange(u64 offset, u64 size, u64 granularity) {
-        return Range{GetAligned(offset, granularity), GetAligned(size, granularity)};
+    static MINLINE sRange GetAlignedRange(T offset, T size, T granularity) {
+        return sRange{GetAligned(offset, granularity), GetAligned(size, granularity)};
     }
 };
 
+using Range   = sRange<u64>;
+using Range32 = sRange<i32>;
+
 #define MMIN(x, y) (x < y ? x : y)
 #define MMAX(x, y) (x > y ? x : y)
+
+#define NON_COPYABLE(ClassName)                \
+    ClassName(ClassName&)            = delete; \
+    ClassName& operator=(ClassName&) = delete
+
+#define NON_MOVABLE(ClassName)                  \
+    ClassName(ClassName&&)            = delete; \
+    ClassName& operator=(ClassName&&) = delete;
