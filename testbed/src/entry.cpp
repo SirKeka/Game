@@ -1,12 +1,14 @@
 #include <entry.h>
 
+#include <core/event.h>
 #include "platform/platform.hpp"
 
-using PFN_PluginCreate = RendererPlugin*(*)();
 // using PFN_CreateGame = void(*)(ApplicationConfig&);
 
 bool LoadGameLib(Application& app) 
 {
+    app.GameLibrary.functions.Reserve(9);
+
     // Динамическая загрузка бмблиотеки игры
     if (!PlatformDynamicLibraryLoad("testbed_lib_loaded", app.GameLibrary)) {
         return false;
@@ -24,11 +26,11 @@ bool LoadGameLib(Application& app)
         return false;
     }
 
-    if (!PlatformDynamicLibraryLoadFunction("ApplicationPrepareRenderPacket", app.GameLibrary)) {
+    if (!PlatformDynamicLibraryLoadFunction("ApplicationPrepareFrame", app.GameLibrary)) {
         return false;
     }
 
-    if (!PlatformDynamicLibraryLoadFunction("ApplicationRender", app.GameLibrary)) {
+    if (!PlatformDynamicLibraryLoadFunction("ApplicationRenderFrame", app.GameLibrary)) {
         return false;
     }
 
@@ -52,8 +54,8 @@ bool LoadGameLib(Application& app)
     app.Boot = (bool(*)(Application&))app.GameLibrary.functions[0].pfn;
     app.Initialize = (bool(*)(Application&))app.GameLibrary.functions[1].pfn;
     app.Update = (bool(*)(Application&, const FrameData&))app.GameLibrary.functions[2].pfn;
-    app.PrepareRenderPacket = (bool(*)(Application*, RenderPacket&, FrameData&))app.GameLibrary.functions[3].pfn;
-    app.Render = (bool(*)(Application&, RenderPacket&, FrameData&))app.GameLibrary.functions[4].pfn;
+    app.PrepareFrame = (bool(*)(Application*, FrameData&))app.GameLibrary.functions[3].pfn;
+    app.RenderFrame = (bool(*)(Application&, FrameData&))app.GameLibrary.functions[4].pfn;
     app.OnResize = (void(*)(Application&, u32, u32))app.GameLibrary.functions[5].pfn;
     app.Shutdown = (void(*)(Application&))app.GameLibrary.functions[6].pfn;
     app.LibOnLoad = (void(*)(Application&))app.GameLibrary.functions[7].pfn;
@@ -65,48 +67,48 @@ bool LoadGameLib(Application& app)
     return true;
 }
 
-bool WatchedFileUpdated(u16 code, void* sender, void* ListenerInst, EventContext context)
+bool WatchedFileUpdated(u16 code, void* sender, void* ListenerInst, const EventContext& context)
 {
     if (code == EventSystem::WatchedFileWritten) {
         auto app = reinterpret_cast<Application*>(ListenerInst);
         if (context.data.u32[0] == app->GameLibrary.WatchID) {
             MINFO("Горячая перезагрузка библиотеки игры.");
-        }
 
-        // Сообщите приложению, что оно будет выгружено.
-        app->LibOnUnload(*app);
+            // Сообщите приложению, что оно будет выгружено.
+            app->LibOnUnload(*app);
 
-        // Фактически выгрузите библиотеку приложения.
-        if (!PlatformDynamicLibraryUnload(app->GameLibrary)) {
-            MERROR("Не удалось выгрузить библиотеку игры.");
-            return false;
-        }
-
-        // Подождите немного, прежде чем пытаться скопировать файл.
-        PlatformSleep(100);
-
-        const char* prefix = PlatformDynamicLibraryPrefix();
-        const char* extension = PlatformDynamicLibraryExtension();
-        char SourceFile[260]{};
-        char TargetFile[260]{};
-        MString::Format(SourceFile, "%stestbed_lib%s", prefix, extension);
-        MString::Format(TargetFile, "%stestbed_lib_loaded%s", prefix, extension);
-
-        PlatformError::Code ErrorCode = PlatformError::FileLocked;
-        while (ErrorCode == PlatformError::FileLocked) {
-            ErrorCode = PlatformCopyFile(SourceFile, TargetFile, true);
-            if (ErrorCode == PlatformError::FileLocked) {
-                PlatformSleep(100);
+            // Фактически выгрузите библиотеку приложения.
+            if (!PlatformDynamicLibraryUnload(app->GameLibrary)) {
+                MERROR("Не удалось выгрузить библиотеку игры.");
+                return false;
             }
-        }
-        if (ErrorCode != PlatformError::Success) {
-            MERROR("Копирование файла не удалось!");
-            return false;
-        }
 
-        if (!LoadGameLib(*app)) {
-            MERROR("Перезагрузка библиотеки игры не удалась.");
-            return false;
+            // Подождите немного, прежде чем пытаться скопировать файл.
+            PlatformSleep(100);
+
+            const char* prefix = PlatformDynamicLibraryPrefix();
+            const char* extension = PlatformDynamicLibraryExtension();
+            char SourceFile[260]{};
+            char TargetFile[260]{};
+            MString::Format(SourceFile, "%stestbed_lib%s", prefix, extension);
+            MString::Format(TargetFile, "%stestbed_lib_loaded%s", prefix, extension);
+
+            PlatformError::Code ErrorCode = PlatformError::FileLocked;
+            while (ErrorCode == PlatformError::FileLocked) {
+                ErrorCode = PlatformCopyFile(SourceFile, TargetFile, true);
+                if (ErrorCode == PlatformError::FileLocked) {
+                    PlatformSleep(100);
+                }
+            }
+            if (ErrorCode != PlatformError::Success) {
+                MERROR("Копирование файла не удалось!");
+                return false;
+            }
+
+            if (!LoadGameLib(*app)) {
+                MERROR("Перезагрузка библиотеки игры не удалась.");
+                return false;
+            }
         }
     }
     return false;
@@ -158,8 +160,7 @@ bool CreateApplication(Application& OutApplication)
     if (!PlatformDynamicLibraryLoadFunction("PluginCreate", OutApplication.RendererLibrary)) {
         return false;
     } 
-    auto PlaginCreate = reinterpret_cast<PFN_PluginCreate>(OutApplication.RendererLibrary.functions[0].pfn);
-    OutApplication.AppConfig.plugin = PlaginCreate(); 
+    OutApplication.AppConfig.PluginCreate = reinterpret_cast<PFN_PluginCreate>(OutApplication.RendererLibrary.functions[0].pfn);
 
     return true;
 }
