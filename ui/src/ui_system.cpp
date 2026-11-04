@@ -13,15 +13,20 @@ bool UiElement::AddChild(UiElement *child)
     }
     
     if (child->parent) {
-        if (!RemoveChild(child->parent)) {
+        // Проверка добавлен ли уже данный ребенок
+        if (child->parent == this) {
+            return true;
+        }
+
+        if (!child->parent->RemoveChild(child)) {
             MERROR("Не удалось удалить дочерний элемент из родительского элемента перед сменой родительского элемента.");
             return false;
         }
     }
 
-    parent->children.PushBack(child);
-
-    child->xform.SetParent(&xform);
+    children.PushBack(child);
+    child->parent = this; // 
+    child->xform.SetParent(&this->xform);
 
     return true;
 }
@@ -54,8 +59,7 @@ bool UiElement::RemoveChild(UiElement *child)
 void UiElement::SetParent(UiElement *parent)
 {
     if (parent) {
-        this->parent = parent;
-        xform.SetParent(&parent->xform);
+        parent->AddChild(this);
     }
 }
 
@@ -82,20 +86,19 @@ bool UiSystem::Initialize(u64 &MemoryRequirement, void *state, const Config &con
 
     // Раздел памяти: структура + массив активных элементов управления + массив неактивных элементов управления
     u64 StructRequirement = sizeof(UiSystem);
-    u64 ActiveArrayRequirement = sizeof(UiElement*) * config.MaxControlCount;
-    u64 InactiveArrayRequirement = sizeof(UiElement*) * config.MaxControlCount;
-    MemoryRequirement = StructRequirement + ActiveArrayRequirement + InactiveArrayRequirement;
+    u64 RegisteredArrayRequirement = sizeof(UiElement*) * config.MaxControlCount;
+    // u64 ActiveInactiveArrayRequirement = sizeof(UiElement*) * config.MaxControlCount;
+    MemoryRequirement = StructRequirement + RegisteredArrayRequirement;
 
     if (!state) {
         return true;
     }
 
-    auto pState = (UiSystem*)state;
-    pState->MaxControlCount = config.MaxControlCount;
-    pState->ActiveControls = (UiElement**)((u8*)state + StructRequirement);
-    MemorySystem::ZeroMem(pState->ActiveControls, sizeof(UiElement) * config.MaxControlCount);
-    pState->InactiveControls = (UiElement**)((u8*)pState->ActiveControls + ActiveArrayRequirement);
-    MemorySystem::ZeroMem(pState->InactiveControls, sizeof(UiElement) * config.MaxControlCount);
+    auto uisys = new (state) UiSystem(config);
+    uisys->MaxControlCount = config.MaxControlCount;
+    uisys->RegisteredControls = (UiElement**)((u8*)state + StructRequirement);
+    // uisys->ActiveControls = (UiElement**)((u8*)uisys->Registeredontrlos + RegisteredArrayRequirement);
+    // uisys->InactiveControls = &uisys->ActiveControls[config.MaxControlCount - 1]; // идет в обратную сторону
 
     Texture* atlas = TextureSystem::Acquire("StandardUIAtlas", true);
     if (!atlas) {
@@ -104,7 +107,7 @@ bool UiSystem::Initialize(u64 &MemoryRequirement, void *state, const Config &con
     }
 
     // Настроить текстурную карту.
-    TextureMap* map = &pState->UiAtlas;
+    TextureMap* map = &uisys->UiAtlas;
     map->RepeatU = map->RepeatV = map->RepeatW = TextureRepeat::ClampToEdge;
     map->FilterMinify = map->FilterMagnify = TextureFilterMode::Nearest;
     map->texture = atlas;
@@ -126,41 +129,87 @@ bool UiSystem::Initialize(u64 &MemoryRequirement, void *state, const Config &con
 
 void UiSystem::Shutdown(void *self)
 {
-    auto state = (UiSystem*)self;
+    auto uisys = (UiSystem*)self;
     EventSystem::Unregister(EventSystem::ButtonClicked,  self, Click);
     EventSystem::Unregister(EventSystem::MouseMoved,     self, Move);
     EventSystem::Unregister(EventSystem::ButtonPressed,  self, MouseDown);
     EventSystem::Unregister(EventSystem::ButtonReleased, self, MouseUp);
 
     // Выгрузить и уничтожить неактивные элементы управления.
-    for (u32 i = 0; i < state->InactiveControlCount; ++i) {
-        auto control = state->InactiveControls[i];
+    for (u32 i = 0; i < uisys->TotalControlCount; ++i) {
+        auto control = uisys->RegisteredControls[i];
         control->Unload();
         control->Destroy();
     }
     // Выгрузить и уничтожить активные элементы управления.
-    for (u32 i = 0; i < state->ActiveControlCount; ++i) {
-        auto control = state->ActiveControls[i];
-        control->Unload();
-        control->Destroy();
+    // for (u32 i = 0; i < rControls.ActiveControlCount; ++i) {
+    //     auto control = rControls.ActiveControls[i];
+    //     control->Unload();
+    //     control->Destroy();
+    // }
+
+    if (uisys->UiAtlas.texture) {
+        TextureSystem::Release(uisys->UiAtlas.texture->name);
+        uisys->UiAtlas.texture = nullptr;
     }
 
-    if (state->UiAtlas.texture) {
-        TextureSystem::Release(state->UiAtlas.texture->name);
-        state->UiAtlas.texture = nullptr;
-    }
+    SystemsManager::GetRenderingSystem()->TextureMapReleaseResources(&uisys->UiAtlas);
+}
 
-    SystemsManager::GetRenderingSystem()->TextureMapReleaseResources(&state->UiAtlas);
+void UiSystem::UpdateActive()
+{
+    auto swap = [](UiElement* a, UiElement* b) {
+        UiElement* temp = a;
+        a = b;
+        b = temp;
+    };
+
+    ActiveControlCount = 0;
+
+    UiElement* buf = nullptr;
+    UiElement* NextControl = nullptr;
+    for (u32 i = 0; i < TotalControlCount - 1; ++i) {
+        UiElement* control = RegisteredControls[i];
+        NextControl = RegisteredControls[i + 1];
+        if (control->IsActive == false && control->IsActive != NextControl->IsActive) {
+            swap(buf ? buf : control, NextControl);
+            InactiveControlCount++;
+        } else if (control->IsActive == false && control->IsActive == NextControl->IsActive) {
+            buf = control;
+        } else {
+            ActiveControlCount++;
+        }
+    }
+    
+    if (NextControl->IsActive == true) {
+        ActiveControlCount++;
+    }
+    
 }
 
 bool UiSystem::Update(void* self, FrameData &rFrameData)
 {
     auto uisys = (UiSystem*)self;
+    // Обновляем количество активных объектов
+
+    if (uisys->IsDirty) {
+        uisys->UpdateActive();
+        uisys->IsDirty = false;
+    }
+
     for (u32 i = 0; i < uisys->ActiveControlCount; ++i) {
-        auto control = uisys->ActiveControls[i];
+        auto control = uisys->RegisteredControls[i];
         control->Update(rFrameData);
     }
     return true;
+}
+
+void UiSystem::RenderPrepareFrame(void* self, const FrameData &rFrameData)
+{
+    auto uisys = (UiSystem*)self;
+    for (u32 i = 0; i < uisys->ActiveControlCount; ++i) {
+        uisys->RegisteredControls[i]->RenderPrepare(rFrameData);
+    }
 }
 
 bool UiSystem::Render(UiElement *root, FrameData &rFrameData, UiRenderData &RenderData)
@@ -171,55 +220,40 @@ bool UiSystem::Render(UiElement *root, FrameData &rFrameData, UiRenderData &Rend
         root = &this->root;
     }
 
-    if (!root->Render(rFrameData, RenderData)) {
-        MERROR("Не удалось отобразить корневой элемент. Подробнее см. в журналах.");
-        return false;
-    }
-
-    if (root->children) {
-        const u32 length = root->children.Length();
-        for (u32 i = 0; i < length; ++i) {
-            auto control = root->children[i];
-            if (!control->IsVisible) {
-                continue;
-            }
-            if (!Render(control, rFrameData, RenderData)) {
-                MERROR("Не удалось отобразить дочерний элемент. Подробнее см. в журналах.");
+    for (u64 i = 0; i < ActiveControlCount; i++) {
+        auto element = RegisteredControls[i];
+        if (element->IsVisible) {
+            if (!element->Render(rFrameData, RenderData)) {
+                MERROR("Не удалось отобразить корневой элемент. Подробнее см. в журналах.");
                 return false;
             }
         }
     }
 
+    // if (!root->Render(rFrameData, RenderData)) {
+    //     MERROR("Не удалось отобразить корневой элемент. Подробнее см. в журналах.");
+    //     return false;
+    // }
+// 
+    // if (root->children) {
+    //     const u32 length = root->children.Length();
+    //     for (u32 i = 0; i < length; ++i) {
+    //         UiElement* control = root->children[i];
+    //         if (!control->IsVisible) {
+    //             continue;
+    //         }
+// 
+    //         if (!Render(control, rFrameData, RenderData)) {
+    //             MERROR("Не удалось отобразить дочерний элемент. Подробнее см. в журналах.");
+    //             return false;
+    //         }
+    //     }
+    // }
+
     return true;
 }
 
-bool UiSystem::UpdateActive(UiElement *control)
-{
-    u32& SrcLimit = control->IsActive ? InactiveControlCount : ActiveControlCount;
-    u32& DstLimit = control->IsActive ? ActiveControlCount : InactiveControlCount;
-    UiElement** SrcArray = control->IsActive ? InactiveControls : ActiveControls;
-    UiElement** DstArray = control->IsActive ? ActiveControls : InactiveControls;
-
-    u64 pSize = sizeof(UiElement*);
-    for (u32 i = 0; i < SrcLimit; ++i) {
-        if (SrcArray[i] == control) {
-            auto control = SrcArray[i];
-            DstArray[DstLimit] = control;
-            DstLimit++;
-
-            // Скопируйте оставшуюся часть массива внутрь.
-            MemorySystem::CopyMem(((u8*)SrcArray) + (i * pSize), ((u8*)SrcArray) + ((i + 1) * pSize), pSize * (SrcLimit - i));
-            SrcArray[SrcLimit] = 0;
-            SrcLimit--;
-            return true;
-        }
-    }
-
-    MERROR("Не удалось найти элемент управления для обновления. Возможно, элемент управления не зарегистрирован?");
-    return false;
-}
-
-bool UiSystem::MouseDown(u16 code, void *sender, void *ListenerInst, EventContext &context)
+bool UiSystem::MouseDown(u16 code, void *sender, void *ListenerInst, const EventContext &context)
 {
     auto pState = (UiSystem*)ListenerInst;
 
@@ -228,7 +262,7 @@ bool UiSystem::MouseDown(u16 code, void *sender, void *ListenerInst, EventContex
     event.x = context.data.i16[1];
     event.y = context.data.i16[2];
     for (u32 i = 0; i < pState->ActiveControlCount; ++i) {
-        auto control = pState->ActiveControls[i];
+        auto control = pState->RegisteredControls[i];
         if (control->OnMouseDown) {
             auto inv = Matrix4D::MakeInverse(control->xform.GetWorld());
             auto TransformedEvent = VectorTransform(FVec3(event.x, event.y, 0.F), 1.F, inv);
@@ -241,7 +275,7 @@ bool UiSystem::MouseDown(u16 code, void *sender, void *ListenerInst, EventContex
     return false;
 }
 
-bool UiSystem::MouseUp(u16 code, void *sender, void *ListenerInst, EventContext &context)
+bool UiSystem::MouseUp(u16 code, void *sender, void *ListenerInst, const EventContext &context)
 {
     auto pState = (UiSystem*)ListenerInst;
 
@@ -250,7 +284,7 @@ bool UiSystem::MouseUp(u16 code, void *sender, void *ListenerInst, EventContext 
     event.x = context.data.i16[1];
     event.y = context.data.i16[2];
     for (u32 i = 0; i < pState->ActiveControlCount; ++i) {
-        auto control = pState->ActiveControls[i];
+        auto control = pState->RegisteredControls[i];
         control->IsPressed = false;
 
         if (control->OnMouseUp) {
@@ -264,7 +298,7 @@ bool UiSystem::MouseUp(u16 code, void *sender, void *ListenerInst, EventContext 
     return false;
 }
 
-bool UiSystem::Click(u16 code, void *sender, void *ListenerInst, EventContext &context)
+bool UiSystem::Click(u16 code, void *sender, void *ListenerInst, const EventContext &context)
 {
     auto pState = (UiSystem*)ListenerInst;
 
@@ -273,7 +307,7 @@ bool UiSystem::Click(u16 code, void *sender, void *ListenerInst, EventContext &c
     event.x = context.data.i16[1];
     event.y = context.data.i16[2];
     for (u32 i = 0; i < pState->ActiveControlCount; ++i) {
-        auto control = pState->ActiveControls[i];
+        auto control = pState->RegisteredControls[i];
         if (control->OnClick) {
             auto inv = Matrix4D::MakeInverse(control->xform.GetWorld());
             auto TransformedEvent = VectorTransform(FVec3(event.x, event.y, 0.F), 1.F, inv);
@@ -285,7 +319,7 @@ bool UiSystem::Click(u16 code, void *sender, void *ListenerInst, EventContext &c
     return false;
 }
 
-bool UiSystem::Move(u16 code, void *sender, void *ListenerInst, EventContext &context)
+bool UiSystem::Move(u16 code, void *sender, void *ListenerInst, const EventContext &context)
 {
     auto pState = (UiSystem*)ListenerInst;
 
@@ -293,24 +327,24 @@ bool UiSystem::Move(u16 code, void *sender, void *ListenerInst, EventContext &co
     event.x = context.data.i16[0];
     event.y = context.data.i16[1];
     for (u32 i = 0; i < pState->ActiveControlCount; ++i) {
-        auto control = pState->ActiveControls[i];
+        UiElement* control = pState->RegisteredControls[i];
         if (control->OnMouseOver || control->OnMouseOut) {
             auto inv = Matrix4D::MakeInverse(control->xform.GetWorld());
-            auto TransformedEvent = VectorTransform(FVec3(event.x, event.y, 0.F), 1.F, inv);
+            FVec3 TransformedEvent = VectorTransform(FVec3(event.x, event.y, 0.F), 1.F, inv);
             Point TransformedPoint {(i32)TransformedEvent.x, (i32)TransformedEvent.y};
             if (Math::PointInRect2d(TransformedPoint, control->bounds)) {
                 MTRACE("Курсор под кнопкой: %s", control->name.c_str());
                 if (!control->IsHovered) {
                     control->IsHovered = true;
-                    control->OnMouseOver(control, event);
+                    if (control->OnMouseOver) control->OnMouseOver(control, event);
                 }
 
                 // События перемещения запускаются только тогда, когда элемент управления фактически находится над ним.
-                control->OnMouseMove(control, event);
+                if (control->OnMouseMove) control->OnMouseMove(control, event);
             } else {
                 if (control->IsHovered) {
                     control->IsHovered = false;
-                    control->OnMouseOut(control, event);
+                    if (control->OnMouseOut) control->OnMouseOut(control, event);
                 }
             }
         }
@@ -321,15 +355,15 @@ bool UiSystem::Move(u16 code, void *sender, void *ListenerInst, EventContext &co
 bool UiSystem::RegisterControl(UiElement *control)
 {
     if (TotalControlCount >= MaxControlCount) {
-        MERROR("Не удалось найти свободное место для регистрации элемента управления sui. Регистрация не удалась.");
+        MERROR("Не удалось найти свободное место для регистрации элемента управления UiSystem. Регистрация не удалась.");
         return false;
     }
 
-    TotalControlCount++;
     // Нашёл свободное место, разместил там.
-    InactiveControls[InactiveControlCount] = control;
-    InactiveControlCount++;
-    return true;
+    RegisteredControls[TotalControlCount] = control;
+    TotalControlCount++;
+    
+    return (IsDirty = true);
 }
 
 bool UiSystem::AddChild(UiElement *child)
