@@ -17,6 +17,8 @@ struct MAPI NineSlice
     Point AtlasPxSize;
     struct Geometry* geometry{};
 
+    bool IsDirty;
+
     constexpr NineSlice() = default;
     NineSlice(const char *name, Point size, Point AtlasPxSize, Point AtlasPxMin, Point AtlasPxMax, Point CornerPxSize, Point CornerSize);
 
@@ -24,6 +26,7 @@ struct MAPI NineSlice
     void Generate(const char* name, NineSlice& nslice);
 
     bool Update(struct Vertex2D* vertices = nullptr);
+    void RenderFramePrepare(const struct FrameData& rFrameData);
 
     // void* operator new(u64 size) { return MemorySystem::Allocate(size, Memory::UI); }
     // void operator delete(void* ptr, u64 size) { MemorySystem::Free(ptr, size, Memory::UI); }
