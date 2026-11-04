@@ -5,13 +5,14 @@
 
 static void Gen(const char* name, NineSlice* nslice) 
 {
-    GeometryConfig OutConfig;
-    OutConfig.VertexSize = sizeof(FVec2);
-    OutConfig.VertexCount = 4 * 9;
-    OutConfig.vertices = MemorySystem::Allocate(OutConfig.VertexSize * OutConfig.VertexCount, Memory::Array);
-    OutConfig.IndexSize = sizeof(u32);
-    OutConfig.IndexCount = 6 * 9;
-    OutConfig.indices = (u32*)MemorySystem::Allocate(OutConfig.IndexSize * OutConfig.IndexCount, Memory::Array);
+    GeometryConfig OutConfig {
+        .VertexSize = sizeof(Vertex2D),
+        .VertexCount = 4 * 9,
+        .IndexSize = sizeof(u32),
+        .IndexCount = 6 * 9
+    };
+    OutConfig.vertices = MemorySystem::Allocate(OutConfig.VertexSize * OutConfig.VertexCount, Memory::Renderer, true);
+    OutConfig.indices = (u32*)MemorySystem::Allocate(OutConfig.IndexSize * OutConfig.IndexCount, Memory::Renderer);
     MString::Copy(OutConfig.name, name, GEOMETRY_NAME_MAX_LENGTH);
 
     // Сгенерировать индексные данные для 9 квадратов.
@@ -35,15 +36,8 @@ static void Gen(const char* name, NineSlice* nslice)
 
     
     // Получите геометрию пользовательского интерфейса из конфигурации. ПРИМЕЧАНИЕ: данные загружаются в графический процессор.
-    auto geometry = nslice->geometry = GeometrySystem::Acquire(OutConfig, true);
-
-    // Используйте те же массивы, что и для конфигурации.
-    geometry->vertices = OutConfig.vertices;
-    geometry->indices = OutConfig.indices;
-    geometry->VertexElementSize = OutConfig.VertexSize;
-    geometry->VertexCount = OutConfig.VertexCount;
-    geometry->IndexElementSize = OutConfig.IndexSize;
-    geometry->IndexCount = OutConfig.IndexCount;
+    nslice->geometry = GeometrySystem::Acquire(OutConfig, true);
+    GeometrySystem::CreateGeometry(nslice->geometry);
 }
 
 NineSlice::NineSlice(const char *name, Point CornerSize, Point CornerPxSize, Point size, Point AtlasPxMin, Point AtlasPxMax, Point AtlasPxSize)
@@ -194,9 +188,15 @@ bool NineSlice::Update(Vertex2D *vertices)
     }
 
     if (UsingGeoVerts) {
-        // Загрузите новые данные вершин.
-        SystemsManager::GetRenderingSystem()->GeometryVertexUpdate(geometry, 0, geometry->VertexCount, geometry->vertices);
+        IsDirty = true;
     }
 
     return true;
+}
+
+void NineSlice::RenderFramePrepare(const FrameData &rFrameData)
+{
+    // Загрузите новые данные вершин.
+    SystemsManager::GetRenderingSystem()->GeometryVertexUpdate(geometry, 0, false);
+    IsDirty = false;
 }
