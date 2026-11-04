@@ -1,11 +1,12 @@
 #include "freelist.hpp"
-#include "core/logger.hpp"
 #include "core/memory_system.h"
 
 struct FreelistNode {
     u64 offset{};
     u64 size{};
     FreelistNode* next{nullptr};
+
+    operator bool() { return offset || size; }
 };
 /*
 constexpr FreeList::FreeList(u64 TotalSize, void *memory)
@@ -346,7 +347,15 @@ void FreeList::Clear()
 
     // Сделайте недействительным смещение для всех узлов, кроме первого. 
     // Недопустимое значение будет проверяться при поиске нового узла из списка.
-    MemorySystem::ZeroMem(state->nodes, sizeof(FreelistNode) * state->MaxNodes);
+    // MemorySystem::ZeroMem(state->nodes, sizeof(FreelistNode) * state->MaxNodes);
+    FreelistNode* node = state->head->next;
+    while (node) {
+        if (node) {
+            node->offset = node->size = 0;
+        }
+        node = node->next;
+    }
+
 
     // Сбросьте настройки заголовка, чтобы занять всю вещь.
     state->head->offset = 0;
