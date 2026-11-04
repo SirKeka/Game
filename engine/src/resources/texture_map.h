@@ -1,0 +1,63 @@
+#pragma once
+#include "texture.h"
+
+/// @brief Структура, которая отображает текстуру, использование и другие свойства.
+struct TextureMap {
+    u32 generation;                         // Кэшированное поколение назначенной текстуры. Используется для определения того, когда следует повторно генерировать ресурсы этой текстурной карты при изменении поколения текстуры (например, это может потребоваться при изменении MIP-уровней текстуры).
+    u8 MipLevels;                           // Кэшированные уровни MIP-карт. Должны соответствовать назначенной текстуре. Всегда должны быть не меньше 1.
+    Texture* texture;                       // Указатель на текстуру.
+    TextureFilter FilterMinify;             // Режим фильтрации текстур для минимизации.
+    TextureFilter FilterMagnify;            // Режим фильтрации текстур для увеличения.
+    TextureRepeat RepeatU;                  // Режим повтора по оси U (или X, или S)
+    TextureRepeat RepeatV;                  // Режим повтора по оси V (или Y, или T)
+    TextureRepeat RepeatW;                  // Режим повтора по оси W (или Z, или U)
+
+    void* sampler;                          // Указатель на внутренние данные, специфичные для API. Обычно внутренний сэмплер.
+
+    constexpr TextureMap() : generation(), MipLevels(), texture(), FilterMinify(), FilterMagnify(), RepeatU(), RepeatV(), RepeatW(), sampler(nullptr) {}
+    constexpr TextureMap(Texture* texture) : generation(texture->generation), MipLevels(texture->MipLevels), texture(texture), FilterMinify(), FilterMagnify(), RepeatU(), RepeatV(), RepeatW(), sampler(nullptr) {}
+    
+    constexpr TextureMap(const TextureMap& tm) 
+    : generation(tm.generation), MipLevels(tm.MipLevels), texture(), FilterMinify(tm.FilterMinify), FilterMagnify(tm.FilterMagnify), 
+    RepeatU(tm.RepeatU), 
+    RepeatV(tm.RepeatV), 
+    RepeatW(tm.RepeatW), 
+    sampler(tm.sampler) {
+        texture = new Texture(*tm.texture);
+    }
+    constexpr TextureMap(TextureMap&& tm) 
+    : generation(tm.generation), MipLevels(tm.MipLevels), 
+    texture(tm.texture), 
+    FilterMinify(tm.FilterMinify), 
+    FilterMagnify(tm.FilterMagnify), 
+    RepeatU(tm.RepeatU), 
+    RepeatV(tm.RepeatV), 
+    RepeatW(tm.RepeatW), 
+    sampler(tm.sampler) {
+        tm.texture = nullptr;
+        tm.sampler = nullptr;
+    }
+
+    TextureMap& operator= (TextureMap&& tm) {
+        generation = tm.generation;
+        MipLevels = tm.MipLevels; 
+        texture = tm.texture;
+        FilterMinify = tm.FilterMinify;
+        FilterMagnify = tm.FilterMagnify;
+        RepeatU = tm.RepeatU;
+        RepeatV = tm.RepeatV;
+        RepeatW = tm.RepeatW;
+        sampler = tm.sampler;
+
+        tm.texture = nullptr;
+        tm.sampler = nullptr;
+        return *this;
+    }
+
+    void* operator new(u64 size) {
+        return MemorySystem::Allocate(size, Memory::Renderer);
+    }
+    void operator delete(void* ptr, u64 size) {
+        MemorySystem::Free(ptr, size, Memory::Renderer);
+    }
+};
