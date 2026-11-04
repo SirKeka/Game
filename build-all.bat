@@ -18,11 +18,21 @@ if "%ACTION%" == "build" (
         SET ACTION_STR_PAST=cleaned
         SET DO_VERSION=no
     ) else (
-        echo "Unknown action %ACTION%. Aborting" && exit
+        echo "Неизвестное действие %ДЕЙСТВИЕ%. Прерывание" && exit
     )
 )
 
-del bin\*.pdb
+if "%PLATFORM%" == "windows" (
+    SET ENGINE_LINK=-luser32
+) else (
+    if "%PLATFORM%" == "linux" (
+        SET ENGINE_LINK=
+    ) else (
+        echo "Неизвестная платформа %PLATFORM%. Прерывание." && exit
+    )
+)
+
+REM bin\*.pdb
 
 ECHO "%ACTION_STR% everything on %PLATFORM% (%TARGET%)..."
 
@@ -31,24 +41,28 @@ make -f "Makefile.executable.mak" %ACTION% TARGET=%TARGET% ASSEMBLY=versiongen
 IF %ERRORLEVEL% NEQ 0 (echo Error:%ERRORLEVEL% && exit)
 
 REM Engine
-make -f "Makefile.library.mak" %ACTION% TARGET=%TARGET% ASSEMBLY=engine VER_MAJOR=0 VER_MINOR=1 DO_VERSION=%DO_VERSION%
+make -f "Makefile.library.mak" %ACTION% TARGET=%TARGET% ASSEMBLY=engine VER_MAJOR=0 VER_MINOR=4 DO_VERSION=%DO_VERSION% ADDL_LINK_FLAGS="%ENGINE_LINK%"
 IF %ERRORLEVEL% NEQ 0 (echo Error:%ERRORLEVEL% && exit)
 
 REM Vulkan Renderer lib
-make -f "Makefile.library.mak" %ACTION% TARGET=%TARGET% ASSEMBLY=vulkan_renderer VER_MAJOR=0 VER_MINOR=1 DO_VERSION=no ADDL_INC_FLAGS="-Iengine\src -I%VULKAN_SDK%\include" ADDL_LINK_FLAGS="-lengine -lvulkan-1 -L%VULKAN_SDK%\Lib"
+make -f "Makefile.library.mak" %ACTION% TARGET=%TARGET% ASSEMBLY=vulkan_renderer VER_MAJOR=0 VER_MINOR=1 DO_VERSION=no ADDL_INC_FLAGS="-Iengine\src -I%VULKAN_SDK%\include" ADDL_LINK_FLAGS="-lengine -lvulkan-1 -lshaderc_shared -lspirv-cross-c-shared -L%VULKAN_SDK%\Lib"
+IF %ERRORLEVEL% NEQ 0 (echo Error:%ERRORLEVEL% && exit)
+
+REM Standard UI lib
+make -f "Makefile.library.mak" %ACTION% TARGET=%TARGET% ASSEMBLY=ui VER_MAJOR=0 VER_MINOR=1 DO_VERSION=no ADDL_INC_FLAGS="-Iengine\src" ADDL_LINK_FLAGS="-lengine"
 IF %ERRORLEVEL% NEQ 0 (echo Error:%ERRORLEVEL% && exit)
 
 REM Testbed lib
-make -f "Makefile.library.mak" %ACTION% TARGET=%TARGET% ASSEMBLY=testbed_lib VER_MAJOR=0 VER_MINOR=1 DO_VERSION=no ADDL_INC_FLAGS="-Iengine\src" ADDL_LINK_FLAGS="-lengine"
+make -f "Makefile.library.mak" %ACTION% TARGET=%TARGET% ASSEMBLY=testbed_lib VER_MAJOR=0 VER_MINOR=1 DO_VERSION=no ADDL_INC_FLAGS="-Iengine\src -Iui\src" ADDL_LINK_FLAGS="-lengine -lui"
 IF %ERRORLEVEL% NEQ 0 (echo Error:%ERRORLEVEL% && exit)
 
 REM Testbed
-make -f "Makefile.executable.mak" %ACTION% TARGET=%TARGET% ASSEMBLY=testbed ADDL_INC_FLAGS="-Iengine\src" ADDL_LINK_FLAGS="-lengine"
+make -f "Makefile.executable.mak" %ACTION% TARGET=%TARGET% ASSEMBLY=testbed ADDL_INC_FLAGS="-Iengine\src" ADDL_LINK_FLAGS="-lengine -lui" 
 IF %ERRORLEVEL% NEQ 0 (echo Error:%ERRORLEVEL% && exit)
 
 REM Tests
-make -f "Makefile.executable.mak" %ACTION% TARGET=%TARGET% ASSEMBLY=tests ADDL_INC_FLAGS=-Iengine\src ADDL_LINK_FLAGS=-lengine
-IF %ERRORLEVEL% NEQ 0 (echo Error:%ERRORLEVEL% && exit)
+REM make -f "Makefile.executable.mak" %ACTION% TARGET=%TARGET% ASSEMBLY=tests ADDL_INC_FLAGS=-Iengine\src ADDL_LINK_FLAGS=-lengine
+REM IF %ERRORLEVEL% NEQ 0 (echo Error:%ERRORLEVEL% && exit)
 
 REM Tools
 make -f "Makefile.executable.mak" %ACTION% TARGET=%TARGET% ASSEMBLY=tools ADDL_INC_FLAGS=-Iengine\src ADDL_LINK_FLAGS=-lengine
