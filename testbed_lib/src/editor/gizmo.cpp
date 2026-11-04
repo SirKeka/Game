@@ -1,4 +1,5 @@
 #include "gizmo.h"
+#include <core/systems_manager.h>
 #include "math/geometry_utils.h"
 #include "math/quaternion.h"
 #include "renderer/rendering_system.h"
@@ -55,19 +56,27 @@ bool Gizmo::Initialize()
 
 bool Gizmo::Load()
 {
+    auto renderer = SystemsManager::GetRenderingSystem();
     for (u32 i = 0; i < MAX + 1; ++i) {
-        if (!RenderingSystem::CreateGeometry(&modeData[i].geometry, sizeof(ColourVertex3D), modeData[i].VertexCount, modeData[i].vertices)) {
+        auto& data = modeData[i];
+        
+        auto& geometry = data.geometry;
+        geometry.VertexElementSize = sizeof(ColourVertex3D);
+        geometry.VertexCount = data.VertexCount;
+        geometry.vertices = data.vertices;
+
+        if (!renderer->CreateGeometry(&geometry)) {
             MERROR("Не удалось создать тип геометрии гизмо: '%u'", i);
             return false;
         }
-        if (!RenderingSystem::Load(&modeData[i].geometry)) {
+        if (!renderer->Load(&geometry)) {
             MERROR("Не удалось загрузить тип геометрии гизмо: '%u'", i);
             return false;
         }
-        if (modeData[i].geometry.generation == INVALID::U16ID) {
-            modeData[i].geometry.generation = 0;
+        if (geometry.generation == INVALID::U16ID) {
+            geometry.generation = 0;
         } else {
-            modeData[i].geometry.generation++;
+            geometry.generation++;
         }
     }
 
@@ -89,6 +98,15 @@ bool Gizmo::Unload()
         PlaneNormalLine.Destroy();
 #endif
     return true;
+}
+
+void Gizmo::PrepareRenderFrame(const FrameData &rFrameData)
+{
+    if (IsDirty) {
+        ModeData& data = modeData[mode];
+        SystemsManager::GetRenderingSystem()->GeometryVertexUpdate(&data.geometry, 0/*, data.VertexCount, data.vertices*/);
+        IsDirty = false;
+    }
 }
 
 void Gizmo::Refresh()
@@ -405,8 +423,8 @@ void Gizmo::HandleInteraction(Camera *camera, Ray &ray, InteractionType iType)
                         data.vertices[14].colour = b;
                         data.vertices[15].colour = b;
                     }
-                }
-                RenderingSystem::GeometryVertexUpdate(&data.geometry, 0, data.VertexCount, data.vertices);
+                } 
+                IsDirty = true;
             }
         }
     } else if (mode == SCALE) {
@@ -585,7 +603,7 @@ void Gizmo::HandleInteraction(Camera *camera, Ray &ray, InteractionType iType)
                         data.vertices[9].colour = g;
                     }
                 }
-                RenderingSystem::GeometryVertexUpdate(&data.geometry, 0, data.VertexCount, data.vertices);
+                IsDirty = true;
             }
         }
     } else if (mode == ROTATE) {
@@ -617,7 +635,7 @@ void Gizmo::HandleInteraction(Camera *camera, Ray &ray, InteractionType iType)
                 return;
             }
             FVec3 cross = Cross(v_0, v_1);
-            if (Dot(data.InteractionPlane.GetNormal(), cross) < 0) {
+            if (Dot(data.InteractionPlane.Normal(), cross) < 0) {
                 angle = -angle;
             }
 
@@ -700,17 +718,17 @@ void Gizmo::HandleInteraction(Camera *camera, Ray &ray, InteractionType iType)
                 }
             }
 
-            RenderingSystem::GeometryVertexUpdate(&data.geometry, 0, data.VertexCount, data.vertices);
+            IsDirty = true;
         }
     }
 }
 
 void Gizmo::CreateGizmoModeNone()
 {
-    auto& data = modeData[NONE];
+    ModeData& data = modeData[NONE];
     
     data.VertexCount = 6;  // 2 в строке, 3 строки
-    data.vertices = (ColourVertex3D*)MemorySystem::Allocate(sizeof(ColourVertex3D) * data.VertexCount, Memory::Array, true);
+    CreateArray(data.vertices, sizeof(ColourVertex3D) * data.VertexCount, true);
     FVec4 grey = FVec4(0.5F, 0.5F, 0.5F, 1.F);
 
     // x
@@ -731,11 +749,11 @@ void Gizmo::CreateGizmoModeNone()
 
 void Gizmo::CreateGizmoModeMove()
 {
-    auto& data = modeData[MOVE];
+    ModeData& data = modeData[MOVE];
 
     data.CurrentAxisIndex = INVALID::U8ID;
     data.VertexCount = 18;  // 2 в строке, 3 строки + 6 строк
-    data.vertices = (ColourVertex3D*)MemorySystem::Allocate(sizeof(ColourVertex3D) * data.VertexCount, Memory::Array, true);
+    CreateArray(data.vertices, sizeof(ColourVertex3D) * data.VertexCount, true);
 
     FVec4 r = FVec4(1.F, 0.F, 0.F, 1.F);
     FVec4 g = FVec4(0.F, 1.F, 0.F, 1.F);
@@ -798,11 +816,11 @@ void Gizmo::CreateGizmoModeMove()
     data.vertices[17].position.x = 0.4F;
 
     data.ExtentsCount = 7;
-    data.ModeExtents = (Extents3D*)MemorySystem::Allocate(sizeof(Extents3D) * data.ExtentsCount, Memory::Array, true);
+    CreateArray(data.ModeExtents, sizeof(Extents3D) * data.ExtentsCount, true);
 
     // Создайте поля для каждой оси.
     // x
-    auto ex = &data.ModeExtents[0];
+    Extents3D* ex = &data.ModeExtents[0];
     ex->min = FVec3(0.4F, -0.2F, -0.2F);
     ex->max = FVec3(2.1F, 0.2F, 0.2F);
 
@@ -840,11 +858,11 @@ void Gizmo::CreateGizmoModeMove()
 
 void Gizmo::CreateGizmoModeScale()
 {
-    auto& data = modeData[SCALE];
+    ModeData& data = modeData[SCALE];
 
     data.CurrentAxisIndex = INVALID::U8ID;
     data.VertexCount = 12;  // 2 в строке, 3 строки + 3 строки
-    data.vertices = (ColourVertex3D*)MemorySystem::Allocate(sizeof(ColourVertex3D) * data.VertexCount, Memory::Array, true);
+    CreateArray(data.vertices, sizeof(ColourVertex3D) * data.VertexCount,true);
 
     FVec4 r = FVec4(1.F, 0.F, 0.F, 1.F);
     FVec4 g = FVec4(0.F, 1.F, 0.F, 1.F);
@@ -884,11 +902,11 @@ void Gizmo::CreateGizmoModeScale()
     data.vertices[11].colour    = b;
 
     data.ExtentsCount = 7;
-    data.ModeExtents = (Extents3D*)MemorySystem::Allocate(sizeof(Extents3D) * data.ExtentsCount, Memory::Array, true);
+    CreateArray(data.ModeExtents, sizeof(Extents3D) * data.ExtentsCount, true);
 
     // Создайте поля для каждой оси.
     // x
-    auto ex = &data.ModeExtents[0];
+    Extents3D* ex = &data.ModeExtents[0];
     ex->min = FVec3(0.4F, -0.2F, -0.2F);
     ex->max = FVec3(2.1F, 0.2F, 0.2F);
 
@@ -926,7 +944,7 @@ void Gizmo::CreateGizmoModeScale()
 
 void Gizmo::CreateGizmoModeRotate()
 {
-    auto& data = modeData[ROTATE];
+    ModeData& data = modeData[ROTATE];
 
     data.VertexCount = 12 + (segments * 2 * 3);  // 2 в строке, 3 строки + 3 строки
     data.vertices = (ColourVertex3D*)MemorySystem::Allocate(sizeof(ColourVertex3D) * data.VertexCount, Memory::Array, true);
