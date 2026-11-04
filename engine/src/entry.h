@@ -1,4 +1,4 @@
-﻿/// @file entry.hpp
+﻿/// @file entry.h
 /// @author 
 /// @brief Этот файл содержит основную точку входа в приложение.
 /// Он также содержит ссылку на внешне определенный метод CreateApplication(), 
@@ -13,11 +13,11 @@
 #pragma once
 
 #include "core/engine.h"
-#include "core/logger.hpp"
 #include "application_types.h"
 
 #include <stdlib.h>
-#include <locale.h>
+
+#include "containers/map.h"
 
 /// @brief Определенная извне функция для создания приложения, предоставленная потребителем этой библиотеки.
 /// @return True при успешном создании; в противном случае false.
@@ -30,18 +30,24 @@ int main(void) {
     system("chcp 65001 > nul"); // для отображения русских символов в консоли
     // setlocale(LC_ALL, "en_US.UTF-8");
 
-    // Запросите экземпляр игры из приложения.
-    Application ApplicationInst;
-
     // Система памяти должна быть установлена в первую очередь. 
     if (!MemorySystem::Initialize(GIBIBYTES(1))) {
         MERROR("Не удалось инициализировать систему памяти!");
         return -1;
     }
+
+    // Запросите экземпляр игры из приложения.
+    Application ApplicationInst;
     
     if (!CreateApplication(ApplicationInst)) {
         MFATAL("Не удалось создать конфигурацию игры!");
         return -2;
+    }
+
+    // Убедитесь, что указатели на функции существуют.
+    if (!ApplicationInst.RenderFrame || !ApplicationInst.PrepareFrame || !ApplicationInst.Update || !ApplicationInst.Initialize || !ApplicationInst.OnResize) {
+        MFATAL("The application's function pointers must be assigned!");
+        return -3;
     }
     
     // Инициализация.
