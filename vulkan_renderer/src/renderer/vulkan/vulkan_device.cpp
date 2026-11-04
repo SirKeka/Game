@@ -1,22 +1,17 @@
 #include "vulkan_device.h"
 #include "vulkan_utils.h"
 #include "vulkan_api.h"
-#include "containers/mstring.hpp"
+#include "containers/mstring.h"
 
 struct VulkanPhysicalDeviceRequirements {
         bool graphics;
         bool present;
         bool compute;
+        bool main;
         bool transfer;
         DArray<const char*> DeviceExtensionNames;
         bool SamplerAnisotropy;
         bool DiscreteGPU;
-        constexpr VulkanPhysicalDeviceRequirements()
-        : graphics(), present(), compute(), transfer(), DeviceExtensionNames(), SamplerAnisotropy(), DiscreteGPU() {}
-        constexpr VulkanPhysicalDeviceRequirements(bool graphics, bool present, bool transfer, const char* DeviceExtensionNames, bool SamplerAnisotropy, bool DiscreteGPU)
-        : graphics(graphics), present(present), compute(), transfer(transfer), DeviceExtensionNames(), SamplerAnisotropy(SamplerAnisotropy), DiscreteGPU(DiscreteGPU) { this->DeviceExtensionNames.PushBack(DeviceExtensionNames); }
-        constexpr VulkanPhysicalDeviceRequirements(bool graphics, bool present, bool compute, bool transfer, const char* DeviceExtensionNames, bool SamplerAnisotropy, bool DiscreteGPU)
-        : graphics(graphics), present(present), compute(compute), transfer(transfer), DeviceExtensionNames(), SamplerAnisotropy(SamplerAnisotropy), DiscreteGPU(DiscreteGPU) { this->DeviceExtensionNames.PushBack(DeviceExtensionNames); }
     };
 
 bool VulkanDevice::Create(VulkanAPI* VkAPI)
@@ -26,9 +21,10 @@ bool VulkanDevice::Create(VulkanAPI* VkAPI)
     }
 
     MINFO("Создание логического устройства...");
-    // ПРИМЕЧАНИЕ. Не создавайте дополнительные очереди для общих индексов.
-    bool PresentSharesGraphicsQueue = this->GraphicsQueueIndex == this->PresentQueueIndex;
-    bool TransferSharesGraphicsQueue = this->GraphicsQueueIndex == this->TransferQueueIndex;
+    // ПРИМЕЧАНИЕ: Не создавайте дополнительные очереди для общих индексов.
+    bool PresentSharesGraphicsQueue = GraphicsQueueIndex == PresentQueueIndex;
+    bool TransferSharesGraphicsQueue = GraphicsQueueIndex == TransferQueueIndex;
+    bool PresentMustShareGraphics = false;
     u32 IndexCount = 1;
     if (!PresentSharesGraphicsQueue) {
         IndexCount++;
@@ -38,70 +34,76 @@ bool VulkanDevice::Create(VulkanAPI* VkAPI)
     }
     u32 indices[32];
     u8 index = 0;
-    indices[index++] = this->GraphicsQueueIndex;
+    indices[index++] = GraphicsQueueIndex;
     if (!PresentSharesGraphicsQueue) {
-        indices[index++] = this->PresentQueueIndex;
+        indices[index++] = PresentQueueIndex;
     }
     if (!TransferSharesGraphicsQueue) {
-        indices[index++] = this->TransferQueueIndex;
+        indices[index++] = TransferQueueIndex;
     }
 
     VkDeviceQueueCreateInfo QueueCreateInfos[32];
-    f32 QueuePriority = 1.F;
+    f32 QueuePriorities[2] {0.9F, 1.F};
     for (u32 i = 0; i < IndexCount; ++i) {
         QueueCreateInfos[i].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
         QueueCreateInfos[i].queueFamilyIndex = indices[i];
         QueueCreateInfos[i].queueCount = 1;
+
+        if (PresentSharesGraphicsQueue && indices[i] == PresentQueueIndex) {
+            // Если одно и то же семейство используется и графикой, и текущей, извлеките данные из второго индекса вместо первого для создания уникальной очереди.
+            QueueCreateInfos[i].queueCount = 2;
+        }  else {
+            // Не имейте свободных очередей, просто поделитесь ими.
+            PresentMustShareGraphics = true;
+        }
+
         // ЗАДАЧА: Включите это для дальнейшего улучшения.
         // if (indices[i] == this->GraphicsQueueIndex) {
         //    QueueCreateInfos[i].queueCount = 2;
         // }
+
         QueueCreateInfos[i].flags = 0;
         QueueCreateInfos[i].pNext = 0;
-        QueueCreateInfos[i].pQueuePriorities = &QueuePriority;
+        QueueCreateInfos[i].pQueuePriorities = QueuePriorities;
     }
-
-    // Запросите характеристики устройства.
-    // ЗАДАЧА: должно управляться конфигурацией
-    VkPhysicalDeviceFeatures DeviceFeatures = {};
-    DeviceFeatures.samplerAnisotropy = VK_TRUE;  // Запросить анизотропию
-    DeviceFeatures.fillModeNonSolid = VK_TRUE;   // ЗАДАЧА: Проверить, поддерживается ли?
 
     bool PortabilityRequired = false;
     u32 AvailableExtensionCount = 0;
-    VkExtensionProperties* AvailableExtensions = 0;
-    VK_CHECK(vkEnumerateDeviceExtensionProperties(PhysicalDevice, 0, &AvailableExtensionCount, 0));
+    VkExtensionProperties* AvailableExtensions = nullptr;
+    VK_CHECK(vkEnumerateDeviceExtensionProperties(PhysicalDevice, nullptr, &AvailableExtensionCount, nullptr));
     if (AvailableExtensionCount != 0) {
-        AvailableExtensions = MemorySystem::TAllocate<VkExtensionProperties>(Memory::Renderer, AvailableExtensionCount);
+        AvailableExtensions = AllocateTemp<VkExtensionProperties>(sizeof(VkExtensionProperties) * AvailableExtensionCount);
         VK_CHECK(vkEnumerateDeviceExtensionProperties(PhysicalDevice, 0, &AvailableExtensionCount, AvailableExtensions));
         for (u32 i = 0; i < AvailableExtensionCount; ++i) {
-            if (MString::Equal(AvailableExtensions[i].extensionName, "VK_KHR_portability_subset")) {
+            if (MString::Compare(AvailableExtensions[i].extensionName, "VK_KHR_portability_subset")) {
                 MINFO("Добавляем необходимое расширение VK_KHR_portability_subset.");
                 PortabilityRequired = true;
                 break;
             }
         }
     }
-    MemorySystem::Free(AvailableExtensions, sizeof(VkExtensionProperties) * AvailableExtensionCount, Memory::Renderer);
 
-    // Создайте массив из 3 элементов, даже если мы не будем использовать их все.
-    const char* ExtensionNames[4];
+    // Создаем массив достаточного размера, чтобы вместить все элементы, даже если мы не будем использовать их все.
+    const char* ExtensionNames[5];
     u32 ExtIndex = 0;
     ExtensionNames[ExtIndex] = VK_KHR_SWAPCHAIN_EXTENSION_NAME;
     ExtIndex++;
+    
+    // Динамическое индексирование. ПРИМЕЧАНИЕ: не требуется для версий 1.2 и выше.
+    // ExtensionNames[ExtIndex] = VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME;
+    // ExtIndex++;
+
     // Если требуется переносимость (например, для Mac), добавьте её.
     if (PortabilityRequired) {
         ExtensionNames[ExtIndex] = "VK_KHR_portability_subset";
         ExtIndex++;
     }
 
-    bool DynamicStateExtensionIncluded = false;
-    // Если динамическая топология не поддерживается изначально, но *поддерживается* через расширение, включите расширение. В случае Mac OS X оба этих условия могут быть ложными.
-    if (((supportFlags & NativeDynamicTopologyBit) == 0) &&
-        ((supportFlags & DynamicTopologyBit) != 0)) {
+    // Если динамическая топология не поддерживается изначально, но *поддерживается* через расширение, включите расширение.
+    if (((supportFlags & NativeDynamicStateBit) == 0) &&
+        ((supportFlags & DynamicStateBit) != 0)) {
         ExtensionNames[ExtIndex] = VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME;
         ExtIndex++;
-        DynamicStateExtensionIncluded = true;
     }
 
     // Если поддерживаются плавные линии, загрузите расширение.
@@ -110,30 +112,21 @@ bool VulkanDevice::Create(VulkanAPI* VkAPI)
         ExtIndex++;
     }
 
-    if (!DynamicStateExtensionIncluded) {
-        // Если динамическая передняя сторона не поддерживается изначально, но *поддерживается* через расширение, включите это расширение. В случае Mac OS X оба этих значения могут быть неверными.
-        if (((supportFlags & NativeDynamicFrontFaceBit) == 0) &&
-            ((supportFlags & DynamicFrontFaceBit) != 0)) {
-            ExtensionNames[ExtIndex] = VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME;
-            ExtIndex++;
-            DynamicStateExtensionIncluded = true;
-        }
-    }
-    VkDeviceCreateInfo DeviceCreateInfo = {VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO};
-    DeviceCreateInfo.queueCreateInfoCount = IndexCount;
-    DeviceCreateInfo.pQueueCreateInfos = QueueCreateInfos;
-    DeviceCreateInfo.pEnabledFeatures = &DeviceFeatures;
-    DeviceCreateInfo.enabledExtensionCount = ExtIndex;
-    DeviceCreateInfo.ppEnabledExtensionNames = ExtensionNames;
+    // Запросить поддерживаемые функции устройства.
+    VkPhysicalDeviceFeatures DeviceFeatures{
+        .fillModeNonSolid = features.fillModeNonSolid,
+        .samplerAnisotropy = features.samplerAnisotropy  // Запрос анизотропии.
+    };
 
-    // Устарел и игнорируется, так что ничего не передавайте.
-    DeviceCreateInfo.enabledLayerCount = 0;
-    DeviceCreateInfo.ppEnabledLayerNames = 0;
+    // VK_EXT_descriptor_indexing
+    VkPhysicalDeviceDescriptorIndexingFeatures DescriptorIndexingFeatures = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT};
+    // Частичная привязка необходима для псевдонимизации дескрипторов.
+    DescriptorIndexingFeatures.descriptorBindingPartiallyBound = VK_TRUE;  // ЗАДАЧА: Проверить, поддерживается ли?
 
     // VK_EXT_extended_dynamic_state
     VkPhysicalDeviceExtendedDynamicStateFeaturesEXT ExtendedDynamicState = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT};
     ExtendedDynamicState.extendedDynamicState = VK_TRUE;
-    DeviceCreateInfo.pNext = &ExtendedDynamicState;
+    DescriptorIndexingFeatures.pNext = &ExtendedDynamicState;
 
     // Плавная растеризация линий, если поддерживается.
     VkPhysicalDeviceLineRasterizationFeaturesEXT LineRasterizationExt{};
@@ -142,6 +135,18 @@ bool VulkanDevice::Create(VulkanAPI* VkAPI)
         LineRasterizationExt.smoothLines = VK_TRUE;
         ExtendedDynamicState.pNext = &LineRasterizationExt;
     }
+
+    VkDeviceCreateInfo DeviceCreateInfo = {VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO};
+    DeviceCreateInfo.queueCreateInfoCount = IndexCount;
+    DeviceCreateInfo.pQueueCreateInfos = QueueCreateInfos;
+    DeviceCreateInfo.pEnabledFeatures = &DeviceFeatures;
+    DeviceCreateInfo.enabledExtensionCount = ExtIndex;
+    DeviceCreateInfo.ppEnabledExtensionNames = ExtensionNames;
+
+    // Устарело и игнорируется, поэтому ничего не передавайте.
+    DeviceCreateInfo.enabledLayerCount = 0;
+    DeviceCreateInfo.ppEnabledLayerNames = 0;
+    DeviceCreateInfo.pNext = &DescriptorIndexingFeatures;
 
     // Создайте устройство.
     VK_CHECK(vkCreateDevice(
@@ -155,61 +160,67 @@ bool VulkanDevice::Create(VulkanAPI* VkAPI)
 
     MINFO("Логическое устройство создано.");
 
-    // Проверить поддержку динамической топологии и загрузить указатель функции, если необходимо.
-    if (!(supportFlags & NativeDynamicTopologyBit) &&
-        (supportFlags & DynamicTopologyBit)) {
-        MINFO("Устройство Vulkan не поддерживает собственную динамическую топологию, но поддерживает её через расширение. Использование расширения.");
+    // Проверить поддержку динамического состояния и загрузить указатель функции, если необходимо.
+    if (!(supportFlags & NativeDynamicStateBit) &&
+         (supportFlags & DynamicStateBit)) {
+        MINFO("Устройство Vulkan не поддерживает собственное динамическое состояние, но поддерживает её через расширение. Использование расширения.");
+        // Динамическая примитивная топология.
         VkAPI->vkCmdSetPrimitiveTopologyEXT = (PFN_vkCmdSetPrimitiveTopologyEXT)vkGetInstanceProcAddr(VkAPI->instance, "vkCmdSetPrimitiveTopologyEXT");
-    } else {
-        if (supportFlags & NativeDynamicTopologyBit) {
-            MINFO("Устройство Vulkan поддерживает собственную динамическую топологию.");
-        } else {
-            MINFO("Устройство Vulkan не поддерживает собственную или расширенную динамическую топологию.");
-        }
-    }
-
-    // Проверьте поддержку динамического интерфейса и загрузите указатель на функцию при необходимости.
-    if (!(supportFlags & NativeDynamicFrontFaceBit) &&
-        (supportFlags & DynamicFrontFaceBit)) {
-        MINFO("Устройство Vulkan не поддерживает встроенный динамический интерфейс, но поддерживает его через расширение. Использование расширения.");
+        
+        // Динамическая передняя панель
         VkAPI->vkCmdSetFrontFaceEXT = (PFN_vkCmdSetFrontFaceEXT)vkGetInstanceProcAddr(VkAPI->instance, "vkCmdSetFrontFaceEXT");
+        // Динамическое состояние глубины/трафарета
+        VkAPI->vkCmdSetStencilOpEXT = (PFN_vkCmdSetStencilOpEXT)vkGetInstanceProcAddr(VkAPI->instance, "vkCmdSetStencilOpEXT");
+        VkAPI->vkCmdSetStencilTestEnableEXT = (PFN_vkCmdSetStencilTestEnableEXT)vkGetInstanceProcAddr(VkAPI->instance, "vkCmdSetStencilTestEnableEXT");
+        VkAPI->vkCmdSetDepthTestEnableEXT = (PFN_vkCmdSetDepthTestEnableEXT)vkGetInstanceProcAddr(VkAPI->instance, "vkCmdSetDepthTestEnableEXT");
     } else {
-        if (supportFlags & NativeDynamicFrontFaceBit) {
-            MINFO("Устройство Vulkan поддерживает встроенный динамический интерфейс.");
+        if (supportFlags & NativeDynamicStateBit) {
+            MINFO("Устройство Vulkan поддерживает встроенное динамическое состояние.");
         } else {
-            MINFO("Устройство Vulkan не поддерживает встроенный или расширенный динамический интерфейс.");
+            MINFO("Устройство Vulkan не поддерживает собственное или расширенное динамическое состояние. Это может вызвать проблемы с рендерером.");
         }
     }
 
     // Получите очереди.
     vkGetDeviceQueue(
-        this->LogicalDevice,
-        this->GraphicsQueueIndex,
+        LogicalDevice,
+        GraphicsQueueIndex,
         0,
-        &this->GraphicsQueue);
+        &GraphicsQueue
+    );
+    
+    vkGetDeviceQueue(
+        LogicalDevice,
+        PresentQueueIndex,
+        // Если одно и то же семейство используется и графикой, и презентацией, извлеките данные из второго индекса вместо первого для создания уникальной очереди.
+        PresentMustShareGraphics ? 0 : (GraphicsQueueIndex == PresentQueueIndex) ? 1 : 0,
+        &PresentQueue
+    );
+
+    // vkGetDeviceQueue(
+    //     LogicalDevice,
+    //     MainQueueIndex,
+    //     0,
+    //     MainQueue;
+    // );
 
     vkGetDeviceQueue(
-        this->LogicalDevice,
-        this->PresentQueueIndex,
+        LogicalDevice,
+        TransferQueueIndex,
         0,
-        &this->PresentQueue);
-
-    vkGetDeviceQueue(
-        this->LogicalDevice,
-        this->TransferQueueIndex,
-        0,
-        &this->TransferQueue);
+        &TransferQueue
+    );
     MINFO("Получены очереди.");
 
     // Создайте пул команд для графической очереди.
     VkCommandPoolCreateInfo PoolCreateInfo = {VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO};
-    PoolCreateInfo.queueFamilyIndex = this->GraphicsQueueIndex;
+    PoolCreateInfo.queueFamilyIndex = GraphicsQueueIndex;
     PoolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
     VK_CHECK(vkCreateCommandPool(
-        this->LogicalDevice,
+        LogicalDevice,
         &PoolCreateInfo,
         VkAPI->allocator,
-        &this->GraphicsCommandPool));
+        &GraphicsCommandPool));
     MINFO("Пул графических команд создан.");
 
     return true;
@@ -219,15 +230,15 @@ void VulkanDevice::Destroy(VulkanAPI *VkAPI)
 {
     MINFO("Уничтожение командных пулов...");
     vkDestroyCommandPool(
-        VkAPI->Device.LogicalDevice,
-        VkAPI->Device.GraphicsCommandPool,
+        VkAPI->device.LogicalDevice,
+        VkAPI->device.GraphicsCommandPool,
         VkAPI->allocator);
 
     // Уничтожить логическое устройство
     MINFO("Уничтожение логического устройства...");
-    if (VkAPI->Device.LogicalDevice) {
-        vkDestroyDevice(VkAPI->Device.LogicalDevice, VkAPI->allocator);
-        VkAPI->Device.LogicalDevice = 0;
+    if (VkAPI->device.LogicalDevice) {
+        vkDestroyDevice(VkAPI->device.LogicalDevice, VkAPI->allocator);
+        VkAPI->device.LogicalDevice = 0;
     }
 
     // Неустановленные очереди
@@ -277,7 +288,7 @@ void VulkanDevice::QuerySwapchainSupport(VkPhysicalDevice PhysicalDevice, VkSurf
 
     if (OutSupportInfo->FormatCount != 0) {
         if (!OutSupportInfo->formats) { // раскоментировать или закоментировать знак ! если будет ошибка
-            OutSupportInfo->formats = MemorySystem::TAllocate<VkSurfaceFormatKHR>(Memory::Renderer, OutSupportInfo->FormatCount);
+            OutSupportInfo->formats = mem_alloc(VkSurfaceFormatKHR, OutSupportInfo->FormatCount, Memory::Renderer);
         }
         VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(
             PhysicalDevice,
@@ -294,7 +305,7 @@ void VulkanDevice::QuerySwapchainSupport(VkPhysicalDevice PhysicalDevice, VkSurf
         0));
     if (OutSupportInfo->PresentModeCount != 0) {
         if (!OutSupportInfo->PresentModes) { // раскоментировать или закоментировать знак ! если будет ошибка
-            OutSupportInfo->PresentModes = MemorySystem::TAllocate<VkPresentModeKHR>(Memory::Renderer, OutSupportInfo->PresentModeCount);
+            OutSupportInfo->PresentModes = mem_alloc(VkPresentModeKHR, OutSupportInfo->PresentModeCount, Memory::Renderer);
         }
         VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(
             PhysicalDevice,
@@ -307,13 +318,12 @@ void VulkanDevice::QuerySwapchainSupport(VkPhysicalDevice PhysicalDevice, VkSurf
 bool VulkanDevice::DetectDepthFormat()
 {
     // Формат кандидатов
-    const u64 CandidateCount = 3;
-    VkFormat candidates[3] = {
-        VK_FORMAT_D32_SFLOAT,
+    const u64 CandidateCount = 2;
+    VkFormat candidates[2] = {
         VK_FORMAT_D32_SFLOAT_S8_UINT,
         VK_FORMAT_D24_UNORM_S8_UINT};
 
-        u8 sizes[3] = { 4, 4, 3 };
+        u8 sizes[2] = { 4, 3 };
 
     u32 flags = VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
     for (u64 i = 0; i < CandidateCount; ++i) {
@@ -346,15 +356,17 @@ bool VulkanDevice::SelectPhysicalDevice(VulkanAPI *VkAPI)
     // ЗАДАЧА: Эти требования, вероятно, должны определяться движком
     // конфигурация.
     VulkanPhysicalDeviceRequirements requirements{
-        true, // graphics
-        true, // present
+        .graphics = true,
+        .present  = true,
         // ПРИМЕЧАНИЕ: Включите это, если потребуются вычисления.
-        // true, // compute
-        true, // transfer
-        VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-        true, // SamplerAnisotropy
-        true  // DiscreteGPU
+        // .compute = true,
+        .main = true,
+        .transfer = true,
+        .DeviceExtensionNames = DArray<const char*>(1, AllocatorType::Temp),
+        .SamplerAnisotropy = true,
+        .DiscreteGPU = true
     };
+    requirements.DeviceExtensionNames.PushBack(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
     // Переберите физические устройства, чтобы найти то, которое подходит под ваши требования.
     VkPhysicalDevice PhysicalDevices[32];
@@ -400,11 +412,11 @@ bool VulkanDevice::SelectPhysicalDevice(VulkanAPI *VkAPI)
         bool result = PhysicalDeviceMeetsRequirements(
             device,
             VkAPI->surface,
-            &properties,
-            &features,
-            &requirements,
-            &QueueInfo,
-            &SwapchainSupport);
+            properties,
+            features,
+            requirements,
+            QueueInfo,
+            SwapchainSupport);
 
         if (result) {
             MINFO("Выбранное устройство: '%s'.", properties.deviceName);
@@ -448,10 +460,11 @@ bool VulkanDevice::SelectPhysicalDevice(VulkanAPI *VkAPI)
                 }
             }
 
-            this->PhysicalDevice = device;
-            this->GraphicsQueueIndex = QueueInfo.GraphicsFamilyIndex;
-            this->PresentQueueIndex = QueueInfo.PresentFamilyIndex;
-            this->TransferQueueIndex = QueueInfo.TransferFamilyIndex;
+            PhysicalDevice = device;
+            GraphicsQueueIndex = QueueInfo.GraphicsFamilyIndex;
+            PresentQueueIndex = QueueInfo.PresentFamilyIndex;
+            MainQueueIndex = QueueInfo.MainFamilyIndex;
+            TransferQueueIndex = QueueInfo.TransferFamilyIndex;
             // ПРИМЕЧАНИЕ: при необходимости установите здесь вычислительный индекс.
 
             // Сохраните копию свойств, функций и информации о памяти для последующего использования.
@@ -460,15 +473,15 @@ bool VulkanDevice::SelectPhysicalDevice(VulkanAPI *VkAPI)
             this->memory = memory;
             this->SupportsDeviceLocalHostVisible = SupportsDeviceLocalHostVisible;
 
-            // Устройство может поддерживать или не поддерживать эту функцию, поэтому сохраните ее здесь.
+            // Устройство может поддерживать динамическое состояние, а может и не поддерживать, поэтому сохраните эту информацию здесь.
+            if (ApiMaijor >= 1 && ApiMinor > 2) {
+                supportFlags |= NativeDynamicStateBit;
+            }
+            // Если оно не поддерживается изначально, оно может поддерживаться через расширение.
             if (DynamicStateNext.extendedDynamicState) {
-                supportFlags |= DynamicTopologyBit;
-                supportFlags |= DynamicFrontFaceBit;
+                supportFlags |= DynamicStateBit;
             }
-            if (ApiMaijor > 1 || ApiMinor > 2) {
-                supportFlags |= NativeDynamicTopologyBit;
-                supportFlags |= NativeDynamicFrontFaceBit;
-            }
+            // Проверка поддержки растеризации плавных линий.
             if (SmoothLineNext.smoothLines) {
                 supportFlags |= LineSmoothRasterisationBit;
             }
@@ -477,7 +490,7 @@ bool VulkanDevice::SelectPhysicalDevice(VulkanAPI *VkAPI)
     }
 
     // Убедитесь, что было выбрано устройство
-    if (!this->PhysicalDevice) {
+    if (!PhysicalDevice) {
         MERROR("Не было найдено никаких физических устройств, отвечающих этим требованиям.");
         return false;
     }
@@ -489,21 +502,22 @@ bool VulkanDevice::SelectPhysicalDevice(VulkanAPI *VkAPI)
 bool VulkanDevice::PhysicalDeviceMeetsRequirements(
     VkPhysicalDevice device, 
     VkSurfaceKHR surface, 
-    const VkPhysicalDeviceProperties *properties, 
-    const VkPhysicalDeviceFeatures *features, 
-    const VulkanPhysicalDeviceRequirements *requirements, // ЗАДАЧА: передавать сюда массив DArray
-    VulkanPhysicalDeviceQueueFamilyInfo *OutQueueFamilyInfo, 
-    VulkanSwapchainSupportInfo *OutSwapchainSupport)
+    const VkPhysicalDeviceProperties &properties, 
+    const VkPhysicalDeviceFeatures &features, 
+    const VulkanPhysicalDeviceRequirements &requirements, // ЗАДАЧА: передавать сюда массив DArray
+    VulkanPhysicalDeviceQueueFamilyInfo &OutQueueFamilyInfo, 
+    VulkanSwapchainSupportInfo &OutSwapchainSupport)
 {
     // Оцените свойства устройства, чтобы определить, соответствует ли оно потребностям нашего приложения.
-    OutQueueFamilyInfo->ComputeFamilyIndex = -1;
-    OutQueueFamilyInfo->GraphicsFamilyIndex = -1;
-    OutQueueFamilyInfo->PresentFamilyIndex = -1;
-    OutQueueFamilyInfo->TransferFamilyIndex = -1;
+    OutQueueFamilyInfo.ComputeFamilyIndex = -1;
+    OutQueueFamilyInfo.GraphicsFamilyIndex = -1;
+    OutQueueFamilyInfo.PresentFamilyIndex = -1;
+    OutQueueFamilyInfo.MainFamilyIndex = -1;
+    OutQueueFamilyInfo.TransferFamilyIndex = -1;
 
     // Дескретная GPU?
-    if (requirements->DiscreteGPU) {
-        if (properties->deviceType != VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
+    if (requirements.DiscreteGPU) {
+        if (properties.deviceType != VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
             MINFO("Устройство не является дискретным графическим процессором, а он необходим. Пропускаем.");
             return false;
         }
@@ -515,52 +529,61 @@ bool VulkanDevice::PhysicalDeviceMeetsRequirements(
     vkGetPhysicalDeviceQueueFamilyProperties(device, &QueueFamilyCount, QueueFamilies);
 
     // Посмотрите на каждую очередь и посмотрите, какие очереди она поддерживает
-    MINFO("Графика | Настоящее | Вычисление | Передача | Название");
+    MINFO("Графика | Текущая | Вычисление | Главная | Передача | Название");
     u8 MinTransferScore = 255;
     for (u32 i = 0; i < QueueFamilyCount; ++i) {
         u8 CurrentTransferScore = 0;
 
         // Графическая очередь?
-        if (OutQueueFamilyInfo->GraphicsFamilyIndex == -1 && QueueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
-            OutQueueFamilyInfo->GraphicsFamilyIndex = i;
+        if (OutQueueFamilyInfo.GraphicsFamilyIndex == -1 && QueueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+            OutQueueFamilyInfo.GraphicsFamilyIndex = i;
             ++CurrentTransferScore;
 
             // Если также имеется очередь, приоритет отдается группировке из 2.
             VkBool32 SupportsPresent = VK_FALSE;
             VK_CHECK(vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &SupportsPresent));
             if (SupportsPresent) {
-                OutQueueFamilyInfo->PresentFamilyIndex = i;
+                OutQueueFamilyInfo.PresentFamilyIndex = i;
                 ++CurrentTransferScore;
             }
         }
 
         // Очередь вычислений?
         if (QueueFamilies[i].queueFlags & VK_QUEUE_COMPUTE_BIT) {
-            OutQueueFamilyInfo->ComputeFamilyIndex = i;
+            OutQueueFamilyInfo.ComputeFamilyIndex = i;
             ++CurrentTransferScore;
         }
 
-        // Transfer queue?
+        // Найдите основную очередь, которая должна выполнять всю работу (графику, вычисления и передачу).
+        if ( (QueueFamilies[i].queueFlags & (
+              VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT |
+              VK_QUEUE_TRANSFER_BIT )) == (
+              VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT |
+              VK_QUEUE_TRANSFER_BIT ) ) {
+                OutQueueFamilyInfo.MainFamilyIndex = i;
+        }
+
+        // Очередь передачи?
         if (QueueFamilies[i].queueFlags & VK_QUEUE_TRANSFER_BIT) {
             // Возьмите индекс, если он является текущим самым низким. 
             // Это увеличивает вероятность того, что это выделенная очередь передачи.
             if (CurrentTransferScore <= MinTransferScore) {
                 MinTransferScore = CurrentTransferScore;
-                OutQueueFamilyInfo->TransferFamilyIndex = i;
+                OutQueueFamilyInfo.TransferFamilyIndex = i;
             }
         }
 
         // Если текущая очередь не найдена, повторите итерацию и выберите первую. 
         // Это должно произойти только в том случае, если существует очередь, 
         // которая поддерживает графику, но НЕ присутствует.
-        if (OutQueueFamilyInfo->PresentFamilyIndex == -1) {
+        if (OutQueueFamilyInfo.PresentFamilyIndex == -1) {
             for (u32 i = 0; i < QueueFamilyCount; ++i) {
                 VkBool32 SupportsPresent = VK_FALSE;
                 VK_CHECK(vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &SupportsPresent));
                 if (SupportsPresent) {
-                    OutQueueFamilyInfo->PresentFamilyIndex = i;
+                    OutQueueFamilyInfo.PresentFamilyIndex = i;
                     // Если они расходятся, сообщайте об этом и идите дальше. Это здесь только для устранения неполадок.
-                    if (OutQueueFamilyInfo->PresentFamilyIndex != OutQueueFamilyInfo->GraphicsFamilyIndex) {
+                    if (OutQueueFamilyInfo.PresentFamilyIndex != OutQueueFamilyInfo.GraphicsFamilyIndex) {
                         MWARN("Предупреждение: для текущей и графической используется другой индекс очереди: %u.", i);
                     }
                     break;
@@ -570,40 +593,43 @@ bool VulkanDevice::PhysicalDeviceMeetsRequirements(
     }
 
     // Распечатайте некоторую информацию об устройстве
-    MINFO("      %d |         %d |          %d |        %d | %s",
-          OutQueueFamilyInfo->GraphicsFamilyIndex != -1,
-          OutQueueFamilyInfo->PresentFamilyIndex != -1,
-          OutQueueFamilyInfo->ComputeFamilyIndex != -1,
-          OutQueueFamilyInfo->TransferFamilyIndex != -1,
-          properties->deviceName);
+    MINFO("      %d |       %d |          %d |       %d |        %d | %s",
+          OutQueueFamilyInfo.GraphicsFamilyIndex != -1,
+          OutQueueFamilyInfo.PresentFamilyIndex  != -1,
+          OutQueueFamilyInfo.ComputeFamilyIndex  != -1,
+          OutQueueFamilyInfo.MainFamilyIndex     != -1,
+          OutQueueFamilyInfo.TransferFamilyIndex != -1,
+          properties.deviceName);
 
     if (
-        (!requirements->graphics || (requirements->graphics && OutQueueFamilyInfo->GraphicsFamilyIndex != -1)) &&
-        (!requirements->present || (requirements->present && OutQueueFamilyInfo->PresentFamilyIndex != -1)) &&
-        (!requirements->compute || (requirements->compute && OutQueueFamilyInfo->ComputeFamilyIndex != -1)) &&
-        (!requirements->transfer || (requirements->transfer && OutQueueFamilyInfo->TransferFamilyIndex != -1))) {
+        (!requirements.graphics || (requirements.graphics && OutQueueFamilyInfo.GraphicsFamilyIndex != -1)) &&
+        (!requirements.present  || (requirements.present  && OutQueueFamilyInfo.PresentFamilyIndex  != -1)) &&
+        (!requirements.compute  || (requirements.compute  && OutQueueFamilyInfo.ComputeFamilyIndex  != -1)) &&
+        (!requirements.main     || (requirements.main     && OutQueueFamilyInfo.MainFamilyIndex     != -1)) &&
+        (!requirements.transfer || (requirements.transfer && OutQueueFamilyInfo.TransferFamilyIndex != -1))) {
         MINFO("Устройство соответствует требованиям к очереди.");
-        MTRACE("Индекс семейства графических изображений: %i", OutQueueFamilyInfo->GraphicsFamilyIndex);
-        MTRACE("Текущий семейный индекс:  %i", OutQueueFamilyInfo->PresentFamilyIndex);
-        MTRACE("Transfer Family Index: %i", OutQueueFamilyInfo->TransferFamilyIndex);
-        MTRACE("Compute Family Index:  %i", OutQueueFamilyInfo->ComputeFamilyIndex);
+        MTRACE("Индекс семейства графических изображений: %u", OutQueueFamilyInfo.GraphicsFamilyIndex);
+        MTRACE("Текущий семейный индекс:  %u",                 OutQueueFamilyInfo.PresentFamilyIndex);
+        MTRACE("Текущий индекс главной очереди: %u",           OutQueueFamilyInfo.MainFamilyIndex)
+        MTRACE("Transfer Family Index: %u",                    OutQueueFamilyInfo.TransferFamilyIndex);
+        MTRACE("индекс вычислительного семейства:  %u",        OutQueueFamilyInfo.ComputeFamilyIndex);
 
         // Запросите поддержку цепочки подкачки(swapchain).
-        QuerySwapchainSupport(device, surface, OutSwapchainSupport);
+        QuerySwapchainSupport(device, surface, &OutSwapchainSupport);
         
-        if (OutSwapchainSupport->FormatCount < 1 || OutSwapchainSupport->PresentModeCount < 1) {
-            if (OutSwapchainSupport->formats) {
-                MemorySystem::Free(OutSwapchainSupport->formats, OutSwapchainSupport->FormatCount * sizeof(VkSurfaceFormatKHR), Memory::Renderer);
+        if (OutSwapchainSupport.FormatCount < 1 || OutSwapchainSupport.PresentModeCount < 1) {
+            if (OutSwapchainSupport.formats) {
+                MemorySystem::Free(OutSwapchainSupport.formats, OutSwapchainSupport.FormatCount * sizeof(VkSurfaceFormatKHR), Memory::Renderer);
             }
-            if (OutSwapchainSupport->PresentModes) {
-                MemorySystem::Free(OutSwapchainSupport->PresentModes, OutSwapchainSupport->PresentModeCount * sizeof(VkPresentModeKHR), Memory::Renderer);
+            if (OutSwapchainSupport.PresentModes) {
+                MemorySystem::Free(OutSwapchainSupport.PresentModes, OutSwapchainSupport.PresentModeCount * sizeof(VkPresentModeKHR), Memory::Renderer);
             }
             MINFO("Требуемая поддержка swapchain отсутствует, устройство пропускается.");
             return false;
         }
         
-        // Device extensions.
-        if (requirements->DeviceExtensionNames.Data()) {
+        // Расширения устройства.
+        if (requirements.DeviceExtensionNames.Data()) {
             u32 AvailableExtensionCount = 0;
             VkExtensionProperties* AvailableExtensions = nullptr;
             VK_CHECK(vkEnumerateDeviceExtensionProperties(
@@ -612,36 +638,36 @@ bool VulkanDevice::PhysicalDeviceMeetsRequirements(
                 &AvailableExtensionCount,
                 0));
             if (AvailableExtensionCount != 0) {
-                AvailableExtensions = MemorySystem::TAllocate<VkExtensionProperties>(Memory::Renderer, AvailableExtensionCount);
+                AvailableExtensions = AllocateTemp<VkExtensionProperties>(sizeof(VkExtensionProperties) * AvailableExtensionCount);
                 VK_CHECK(vkEnumerateDeviceExtensionProperties(
                     device,
                     0,
                     &AvailableExtensionCount,
                     AvailableExtensions));
 
-                u32 RequiredExtensionCount = requirements->DeviceExtensionNames.Length();
+                u32 RequiredExtensionCount = requirements.DeviceExtensionNames.Length();
                 for (u32 i = 0; i < RequiredExtensionCount; ++i) {
                     bool found = false;
                     for (u32 j = 0; j < AvailableExtensionCount; ++j) {
-                        if (MString::Equal(requirements->DeviceExtensionNames[i], AvailableExtensions[j].extensionName)) {
+                        if (MString::Compare(requirements.DeviceExtensionNames[i], AvailableExtensions[j].extensionName)) {
                             found = true;
                             break;
                         }
                     }
 
                     if (!found) {
-                        MINFO("Требуемое расширение не найдено: '%s', устройство пропускается.", requirements->DeviceExtensionNames[i]);
+                        MINFO("Требуемое расширение не найдено: '%s', устройство пропускается.", requirements.DeviceExtensionNames[i]);
                         MemorySystem::Free(AvailableExtensions, AvailableExtensionCount * sizeof(VkExtensionProperties), Memory::Renderer);
                         return false;
                     }
                 }
             }
-            MemorySystem::Free(AvailableExtensions, AvailableExtensionCount * sizeof(VkExtensionProperties), Memory::Renderer);
+            // MemorySystem::Free(AvailableExtensions, AvailableExtensionCount * sizeof(VkExtensionProperties), Memory::Renderer);
         }
 
         // Sampler anisotropy
-        if (requirements->SamplerAnisotropy && !features->samplerAnisotropy) {
-            MINFO("Device does not support samplerAnisotropy, skipping.");
+        if (requirements.SamplerAnisotropy && !features.samplerAnisotropy) {
+            MINFO("Устройство не поддерживает samplerAnisotropy, пропуск.");
             return false;
         }
 
