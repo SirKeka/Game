@@ -1,5 +1,4 @@
 #include "resource_system.h"
-#include "core/logger.hpp"
 #include "memory/linear_allocator.h"
 
 #include "core/memory_system.h"
@@ -7,54 +6,35 @@
 
 void RegisterLoaders();
 
-struct sResourceSystem
-{
-    u32 MaxLoaderCount;
-    const char* AssetBasePath;              // Относительный базовый путь для активов.
-
-    ResourceLoader* RegisteredLoaders;
-
-    constexpr sResourceSystem(ResourceSystemConfig* config, ResourceLoader* RegisteredLoaders) 
-    : MaxLoaderCount(config->MaxLoaderCount), AssetBasePath(config->AssetBasePath), RegisteredLoaders(RegisteredLoaders) {
-        for (u64 i = 0; i < config->MaxLoaderCount; i++) {
-            this->RegisteredLoaders[i].id = INVALID::ID;
-        }
+constexpr ResourceSystem::ResourceSystem(ResourceSystemConfig& config, ResourceLoader* RegisteredLoaders) 
+: MaxLoaderCount(config.MaxLoaderCount), AssetBasePath(config.AssetBasePath), RegisteredLoaders(RegisteredLoaders) {
+    for (u64 i = 0; i < config.MaxLoaderCount; i++) {
+        this->RegisteredLoaders[i].id = INVALID::ID;
     }
-};
+}
 
-static sResourceSystem* state;
-
-bool ResourceSystem::Initialize(u64& MemoryRequirement, void* memory, void* config)
+ResourceSystem* ResourceSystem::Initialize(u64& MemoryRequirement, void* memory, ResourceSystemConfig& config)
 {
-    auto pConfig = reinterpret_cast<ResourceSystemConfig*>(config);
-    if (pConfig->MaxLoaderCount == 0) {
-    MFATAL("ResourceSystem::Initialize е удалось, поскольку максимальное количество загрузчиков (MaxLoaderCount) = 0.");
-    return false;
+    if (config.MaxLoaderCount == 0) {
+        MFATAL("ResourceSystem::Initialize е удалось, поскольку максимальное количество загрузчиков (MaxLoaderCount) = 0.");
+        return nullptr;
     }
 
-    MemoryRequirement = sizeof(sResourceSystem) + (sizeof(ResourceLoader) * pConfig->MaxLoaderCount);
+    MemoryRequirement = sizeof(ResourceSystem) + (sizeof(ResourceLoader) * config.MaxLoaderCount);
 
     if (!memory) {
-        return true;
+        return nullptr;
     }
 
     if (!state) {
-        ResourceLoader* ResourceLoaderPtr = reinterpret_cast<ResourceLoader*> (reinterpret_cast<u8*>(memory) + sizeof(sResourceSystem));
-        state = new(memory) sResourceSystem(pConfig, ResourceLoaderPtr);
+        ResourceLoader* ResourceLoaderPtr = reinterpret_cast<ResourceLoader*> (reinterpret_cast<u8*>(memory) + sizeof(ResourceSystem));
+        state = new(memory) ResourceSystem(config, ResourceLoaderPtr);
         RegisterLoaders();
     }
 
     MINFO("Система ресурсов инициализируется с использованием базового пути '%s'.", state->AssetBasePath);
 
-    return true;
-}
-
-void ResourceSystem::Shutdown()
-{
-    if (state) {
-        // state->~ResourceSystem(); // delete state;
-        state = nullptr;
-    }
+    return state;
 }
 
 bool ResourceSystem::RegisterLoader(eResource::Type type, MString && CustomType, const char *TypePath)
@@ -90,17 +70,17 @@ bool ResourceSystem::RegisterLoader(eResource::Type type, MString && CustomType,
 }
 
 template <typename T>
-bool ResourceSystem::Load(const char *name, eResource::Type type, void *params, T &OutResource)
+bool ResourceSystem::Load(const char *name, void *params, T &OutResource)
 {
-    auto& l = state->RegisteredLoaders[type];
-    if (type != eResource::Type::Custom) {
-        if (l.id != INVALID::ID && l.type == type) {
+    auto& l = state->RegisteredLoaders[OutResource.type];
+    if (OutResource.type != eResource::Type::Custom) {
+        if (l.id != INVALID::ID && l.type == OutResource.type) {
             return l.Load(name, params, OutResource);
         }
     }
 
     OutResource.LoaderID = INVALID::ID;
-    MERROR("ResourceSystem::Load — загрузчик для типа %d не найден.", type);
+    MERROR("ResourceSystem::Load — загрузчик для типа %d не найден.", OutResource.type);
     return false;
 
 }
@@ -134,14 +114,32 @@ void ResourceSystem::Unload(T &resource)
     }
 }
 
-const char *ResourceSystem::BasePath()
+const char* ResourceSystem::BasePath()
 {
-    if (state->AssetBasePath) {
+    if (state && state->AssetBasePath) {
         return state->AssetBasePath;
-    }
-
+    }     
+    
     MERROR("ResourceSystem::BasePath вызывается перед инициализацией и возвращает пустую строку.");
     return "";
+}
+
+MString ResourceSystem::TypePath(u16 ResourceType)
+{
+    if (ResourceType != eResource::Custom) {
+        // Выбор загрузчика.
+        ResourceLoader& loader = state->RegisteredLoaders[ResourceType];
+        if (loader.id != INVALID::ID && loader.type == ResourceType) {
+            u32 size = loader.TypePath.Length() + MString::Length(state->AssetBasePath) + 3;
+            char *CombinedPath = (char*)MemorySystem::Allocate(sizeof(char) * size, Memory::String);
+            MString::Format(CombinedPath, "%s/%s/", state->AssetBasePath, loader.TypePath.c_str());
+            // ЗАДАЧА: Возвращать временную строку
+            return MString(size, CombinedPath);
+        }
+    }
+        
+    MERROR("Попытка запроса базового пути ресурса для неопознанного типа. Будет возвращено значение пустой строки.");
+    return MString();
 }
 
 void RegisterLoaders()
@@ -160,21 +158,21 @@ void RegisterLoaders()
     ResourceSystem::RegisterLoader(eResource::Type::Terrain,     MString(),  "terrains");
 }
 
-// template bool ResourceSystem::Load<TextResource>       (const char *name, eResource::Type type, void *params, TextResource        &OutResource);
-template bool ResourceSystem::Load<BinaryResource>     (const char *name, eResource::Type type, void *params, BinaryResource      &OutResource);
-template bool ResourceSystem::Load<ImageResource>      (const char *name, eResource::Type type, void *params, ImageResource       &OutResource);
-template bool ResourceSystem::Load<MaterialResource>   (const char *name, eResource::Type type, void *params, MaterialResource    &OutResource);
-template bool ResourceSystem::Load<MeshResource>       (const char *name, eResource::Type type, void *params, MeshResource        &OutResource);
-template bool ResourceSystem::Load<ShaderResource>     (const char *name, eResource::Type type, void *params, ShaderResource      &OutResource);
-template bool ResourceSystem::Load<BitmapFontResource> (const char *name, eResource::Type type, void *params, BitmapFontResource  &OutResource);
-template bool ResourceSystem::Load<SystemFontResource> (const char *name, eResource::Type type, void *params, SystemFontResource  &OutResource);
-template bool ResourceSystem::Load<SimpleSceneResource>(const char *name, eResource::Type type, void *params, SimpleSceneResource &OutResource);
-template bool ResourceSystem::Load<TerrainResource>    (const char *name, eResource::Type type, void *params, TerrainResource     &OutResource);
+template bool ResourceSystem::Load<TextResource>       (const char *name, void *params, TextResource        &OutResource);
+template bool ResourceSystem::Load<BinaryResource>     (const char *name, void *params, BinaryResource      &OutResource);
+template bool ResourceSystem::Load<ImageResource>      (const char *name, void *params, ImageResource       &OutResource);
+template bool ResourceSystem::Load<MaterialResource>   (const char *name, void *params, MaterialResource    &OutResource);
+template bool ResourceSystem::Load<MeshResource>       (const char *name, void *params, MeshResource        &OutResource);
+template bool ResourceSystem::Load<ShaderResource>     (const char *name, void *params, ShaderResource      &OutResource);
+template bool ResourceSystem::Load<BitmapFontResource> (const char *name, void *params, BitmapFontResource  &OutResource);
+template bool ResourceSystem::Load<SystemFontResource> (const char *name, void *params, SystemFontResource  &OutResource);
+template bool ResourceSystem::Load<SimpleSceneResource>(const char *name, void *params, SimpleSceneResource &OutResource);
+template bool ResourceSystem::Load<TerrainResource>    (const char *name, void *params, TerrainResource     &OutResource);
 // 
 // template void ResourceSystem::Unload<TextResource>       (TextResource        &resource);
 template void ResourceSystem::Unload<BinaryResource>     (BinaryResource      &resource);
 template void ResourceSystem::Unload<ImageResource>      (ImageResource       &resource);
-// template void ResourceSystem::Unload<MaterialResource>   (MaterialResource    &resource);
+template void ResourceSystem::Unload<MaterialResource>   (MaterialResource    &resource);
 template void ResourceSystem::Unload<MeshResource>       (MeshResource        &resource);
 template void ResourceSystem::Unload<ShaderResource>     (ShaderResource      &resource);
 // template void ResourceSystem::Unload<BitmapFontResource> (BitmapFontResource  &resource);
