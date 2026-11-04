@@ -44,6 +44,9 @@ constexpr f32 M_INFINITY = 1e30f * 1e30f;
 // Наименьшее положительное число, где 1.0 + FLOAT_EPSILON != 0
 constexpr f32 M_FLOAT_EPSILON = 1.192092896e-07f;
 
+constexpr f32 M_FLOAT_MIN = -3.40282e+38F;
+constexpr f32 M_FLOAT_MAX = 3.40282e+38F;
+
 namespace Math
 {
     // ------------------------------------------
@@ -54,7 +57,7 @@ namespace Math
     /// @param a ссылка на первый элемент с плавающей точкой.
     /// @param b ссылка на второй элемент с плавающей точкой.
     /// @return 
-    MINLINE void Swapf(f32& a, f32& b) {
+    MINLINE constexpr void Swapf(f32& a, f32& b) {
         f32 temp = a;
         a = b;
         b = temp;
@@ -68,28 +71,71 @@ namespace Math
         }
 
     /// @brief Возвращает 0.F, если x == 0.F, -1.F, если значение отрицательное, в противном случае 1.F.
-    MINLINE f32 Sign(f32 x) {
+    MINLINE constexpr f32 Sign(f32 x) {
         return x == 0.F ? 0.F : x < 0.F ? -1.F : 1.F;
     }
 
     /// @brief Сравнивает x с ребром, возвращая 0, если x < ребра; в противном случае 1.F.
-    MINLINE f32 Step(f32 edge, f32 x) {
+    MINLINE constexpr f32 Step(f32 edge, f32 x) {
         return x < edge ? 0.F : 1.F;
     }
 
+    /// @brief Вычисляет синус х.
+    /// @param x число, для которого нужно вычислить синус
+    /// @return Синус х.
     MAPI f32 sin(f32 x);
+
+    /// @brief Вычисляет косинус х.
+    /// @param x число, для которого нужно вычислить косинус х
+    /// @return Косинус х.
     MAPI f32 cos(f32 x);
+
+    /// @brief Вычисляет тангенс x.
+    /// @param x число, для которого нужно вычислить тангенс.
+    /// @return Тангенс x.
     MAPI f32 tan(f32 x);
+
+    /// @brief Вычисляет арктангенс x.
+    /// @param x Число, для которого нужно вычислить арктангенс.
+    /// @return Арктангенс x.
+    MAPI f32 atan(f32 x);
+
+    /// @brief Вычисляет арккосинус.
+    /// @param x число, для которого нужно вычислить арккосинус
+    /// @return Арккосинус х
     MAPI f32 acos(f32 x);
+
+    /// @brief Вычисляет квадратный.
+    /// @param x число, из которого нужно вычислить квадратный корень.
+    /// @return Квадратный корень из x.
     MAPI f32 sqrt(f32 x);
+
+    /// @brief Вычисляет абсолютное значение.
+    /// @param x число, абсолютное значение которого нужно получить.
+    /// @return Абсолютное значение x.
     MAPI f32 abs(f32 x);
 
-    /**
-     * Указывает, является ли значение степенью 2. 0 считается _не_ степенью 2.
-     * @param value Значение, подлежащее интерпретации.
-     * @returns Истинно, если степень равна 2, в противном случае ложно.
-     */
-    MINLINE bool IsPowerOf2(u64 value) {
+    /// @brief Возвращает наибольшее целое значение, меньшее или равное x.
+    /// @param x Проверяемое значение.
+    /// @return Наибольшее целое значение, меньшее или равное x.
+    MAPI f32 floor(f32 x);
+
+    /// @brief Возвращает наименьшее целое число, большее или равное x.
+    /// @param x значение для проверки.
+    /// @return Наименьшее целое число, большее или равное x.
+    MAPI f32 ceil(f32 x);
+
+    /// @brief Вычисляет двоичный логарифм x (т.е. сколько раз x можно разделить на 2).
+    /// @param x Проверяемое значение.
+    /// @return Двоичный логарифм x.
+    MAPI f32 log2(f32 x);
+
+    MAPI f32 pow(f32 x, f32 y);
+
+    /// @brief Указывает, является ли значение степенью 2. 0 считается _не_ степенью 2.
+    /// @param value Значение, подлежащее интерпретации.
+    /// @returns Истинно, если степень равна 2, в противном случае ложно.
+    MINLINE constexpr bool IsPowerOf2(u64 value) {
         return (value != 0) && ((value & (value - 1)) == 0);
     }
 
@@ -104,10 +150,17 @@ namespace Math
     /// @param edge_1 Верхний край функции Эрмита.
     /// @param x Значение для интерполяции.
     /// @return Интерполированное значение.
-    MINLINE f32 Smoothstep(f32 Edge0, f32 Edge1, f32 x) {
+    MINLINE constexpr f32 Smoothstep(f32 Edge0, f32 Edge1, f32 x) {
         f32 t = MCLAMP((x - Edge0) / (Edge1 - Edge0), 0.F, 1.F);
         return t * t * (3.F - 2.F * t);
     }
+
+    /// @brief Возвращает степень ослабления x в зависимости от расстояния до середины интервалов min и max.
+    /// @param min минимальное значение.
+    /// @param max Максимальное значение.
+    /// @param x значение для ослабления.
+    /// @return Степень ослабления x в зависимости от расстояния до середины интервалов min и max.
+    MAPI f32 AttenuationMinMax(f32 min, f32 max, f32 x);
 
     MINLINE bool FloatCompare(f32 f0, f32 f1) {
         return abs(f0 - f1) < M_FLOAT_EPSILON;
@@ -123,7 +176,7 @@ namespace Math
     /// @brief Преобразует указанные радианы в градусы.
     /// @param radians радианы, подлежащие преобразованию.
     /// @return величина в градусах.
-    MINLINE f32 RadToDeg(f32 radians)  {
+    MINLINE constexpr f32 RadToDeg(f32 radians)  {
         return radians * M_RAD2DEG_MULTIPLIER;
     }
 
@@ -143,8 +196,8 @@ namespace Math
     /// @param g Значение зеленого [0-255].
     /// @param b Значение синего [0-255].
     /// @param OutU32 Указатель для хранения полученного целого числа.
-    MINLINE void RgbuToU32(u32 r, u32 g, u32 b, u32& OutU32) {
-        OutU32 = (((r & 0x0FF) << 16) | ((g & 0x0FF) << 8) | (b & 0x0FF));
+    MINLINE u32 RgbuToU32(u32 r, u32 g, u32 b) {
+        return (((r & 0x0FF) << 16) | ((g & 0x0FF) << 8) | (b & 0x0FF));
     }
 
     /// @brief Преобразует заданное 32-битное целое число в значения RGB [0-255].
