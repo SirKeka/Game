@@ -22,29 +22,17 @@ struct CameraSystemConfig
 
 class CameraSystem
 {
-private:
-    u16 MaxCameraCount;             // ПРИМЕЧАНИЕ: Максимальное количество камер, которыми может управлять система.
-    HashTable<u16> lookup;
-    [[maybe_unused]]void* HashtableBlock;
-    CameraLookup* cameras;
-
-    Camera DefaultCamera;           // Незарегистрированная камера по умолчанию, которая всегда существует в качестве запасного варианта.
-
-    static CameraSystem* state;
-    CameraSystem(u16 MaxCameraCount, void* HashtableBlock, CameraLookup* cameras);
 public:
     CameraSystem(const CameraSystem&) = delete;
     CameraSystem& operator= (const CameraSystem&) = delete;
     ~CameraSystem() {}
 
-    MAPI static CameraSystem* Instance();
+    // MAPI static CameraSystem* Instance() { return state; }
 
     /// @brief Инициализирует систему камеры.
     /// 
     /// @return True в случае успеха, иначе false.
-    static bool Initialize(u64& MemoryRequirement, void* memory, void* config);
-    /// @brief Выключает систему камер.
-    static void Shutdown();
+    static CameraSystem* Initialize(u64& MemoryRequirement, void* memory, CameraSystemConfig& config);
 
     /// @brief Получает указатель на камеру по имени. Если камера не найдена, создается новая и перенастраивается. Внутренний счетчик ссылок увеличивается.
     /// @param name имя камеры для получения.
@@ -56,4 +44,21 @@ public:
     /// @brief Получает указатель на камеру по умолчанию.
     /// @return Указатель на камеру по умолчанию.
     static MAPI Camera* GetDefault();
+
+private:
+    u16 MaxCameraCount;             // ПРИМЕЧАНИЕ: Максимальное количество камер, которыми может управлять система.
+    HashTable<u16> lookup;
+    [[maybe_unused]]void* HashtableBlock;
+    CameraLookup* cameras;
+
+    Camera DefaultCamera;           // Незарегистрированная камера по умолчанию, которая всегда существует в качестве запасного варианта.
+
+    static inline CameraSystem* state;
+    
+    CameraSystem(u16 MaxCameraCount, void* HashtableBlock, CameraLookup* cameras) :
+    MaxCameraCount(MaxCameraCount),
+    lookup(MaxCameraCount, false, reinterpret_cast<u16*>(HashtableBlock), true, INVALID::U16ID),
+    HashtableBlock(HashtableBlock),
+    cameras(cameras),
+    DefaultCamera() {}
 };
