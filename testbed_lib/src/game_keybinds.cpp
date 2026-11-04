@@ -1,20 +1,20 @@
 #include "game.h"
 
-#include <core/logger.hpp>
+#include <core/event.h>
 #include <core/input.h>
-#include <core/console.hpp>
+#include <core/console.h>
 #include <renderer/camera.h>
 #include <renderer/rendering_system.h>
 #include "debug_console.h"
 
 void GameOnEscapeCallback(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) {
     MDEBUG("GameOnEscapeCallback");
-    EventSystem::Fire(EventSystem::ApplicationQuit, nullptr, (EventContext){});
+    EventSystem::Fire(EventSystem::ApplicationQuit, nullptr, EventContext());
 }
 
 void GameOnYaw(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) {
-    auto GameInst = reinterpret_cast<Application*>(UserData);
-    auto state = reinterpret_cast<Game*>(GameInst->state); 
+    auto GameInst = (Application*)UserData;
+    auto state = (Game*)GameInst->state; 
 
     f32 f = 0.F;
     if (key == Keys::LEFT || key == Keys::A) {
@@ -27,8 +27,8 @@ void GameOnYaw(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers,
 }
 
 void GameOnPitch(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) {
-    auto GameInst = reinterpret_cast<Application*>(UserData);
-    auto state = reinterpret_cast<Game*>(GameInst->state);
+    auto GameInst = (Application*)UserData;
+    auto state = (Game*)GameInst->state;
 
     f32 f = 0.F;
     if (key == Keys::UP) {
@@ -41,51 +41,51 @@ void GameOnPitch(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifier
 }
 
 void GameOnMoveForward(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) {
-    auto GameInst = reinterpret_cast<Application*>(UserData);
-    auto state = reinterpret_cast<Game*>(GameInst->state);
+    auto GameInst = (Application*)UserData;
+    auto state = (Game*)GameInst->state;
     auto DeltaTime = GameInst->engine->GetFrameData().DeltaTime;
     state->WorldCamera->MoveForward(state->ForwardMoveSpeed * DeltaTime);
 }
 
 void GameOnMoveBackward(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) {
-    auto GameInst = reinterpret_cast<Application*>(UserData);
-    auto state = reinterpret_cast<Game*>(GameInst->state);
+    auto GameInst = (Application*)UserData;
+    auto state = (Game*)GameInst->state;
     auto DeltaTime = GameInst->engine->GetFrameData().DeltaTime;
     state->WorldCamera->MoveBackward(state->BackwardMoveSpeed * DeltaTime);
 }
 
 void GameOnMoveLeft(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) {
-    auto GameInst = reinterpret_cast<Application*>(UserData);
-    auto state = reinterpret_cast<Game*>(GameInst->state);
+    auto GameInst = (Application*)UserData;
+    auto state = (Game*)GameInst->state;
     auto DeltaTime = GameInst->engine->GetFrameData().DeltaTime;
     state->WorldCamera->MoveLeft(state->ForwardMoveSpeed * DeltaTime);
 }
 
 void GameOnMoveRight(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) {
-    auto GameInst = reinterpret_cast<Application*>(UserData);
-    auto state = reinterpret_cast<Game*>(GameInst->state);
+    auto GameInst = (Application*)UserData;
+    auto state = (Game*)GameInst->state;
     auto DeltaTime = GameInst->engine->GetFrameData().DeltaTime;
     state->WorldCamera->MoveRight(state->ForwardMoveSpeed * DeltaTime);
 }
 
 void GameOnMoveUp(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) {
-    auto GameInst = reinterpret_cast<Application*>(UserData);
-    auto state = reinterpret_cast<Game*>(GameInst->state);
+    auto GameInst = (Application*)UserData;
+    auto state = (Game*)GameInst->state;
     auto DeltaTime = GameInst->engine->GetFrameData().DeltaTime;
     state->WorldCamera->MoveUp(state->ForwardMoveSpeed * DeltaTime);
 }
 
 void GameOnMoveDown(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) 
 {
-    auto GameInst = reinterpret_cast<Application*>(UserData);
-    auto state = reinterpret_cast<Game*>(GameInst->state);
+    auto GameInst = (Application*)UserData;
+    auto state = (Game*)GameInst->state;
     auto DeltaTime = GameInst->engine->GetFrameData().DeltaTime;
     state->WorldCamera->MoveDown(state->ForwardMoveSpeed * DeltaTime);
 }
 
 void GameOnConsoleChangeVisibility(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) 
 {
-    auto state = reinterpret_cast<Game*>(UserData);
+    auto state = (Game*)UserData;
 
     bool ConsoleVisible = state->console.Visible();
     ConsoleVisible = !ConsoleVisible;
@@ -100,23 +100,35 @@ void GameOnConsoleChangeVisibility(Keys key, Keymap::EntryBindType type, Keymap:
 
 void GameOnSetRenderModeDefault(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) 
 {
-    EventContext data = {};
+    EventContext data {};
     data.data.i32[0] = Render::Default;
-    EventSystem::Fire(EventSystem::SetRenderMode, /*(Game*)*/UserData, data);
+    EventSystem::Fire(EventSystem::SetRenderMode, UserData, data);
 }
 
 void GameOnSetRenderModeLighting(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) 
 {
-    EventContext data = {};
+    EventContext data {};
     data.data.i32[0] = Render::Lighting;
-    EventSystem::Fire(EventSystem::SetRenderMode, /*(Game*)*/UserData, data);
+    EventSystem::Fire(EventSystem::SetRenderMode, UserData, data);
 }
 
 void GameOnSetRenderModeNormals(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) 
 {
-    EventContext data = {};
+    EventContext data {};
     data.data.i32[0] = Render::Normals;
-    EventSystem::Fire(EventSystem::SetRenderMode, /*(Game*)*/UserData, data);
+    EventSystem::Fire(EventSystem::SetRenderMode, UserData, data);
+}
+
+void GameOnSetRenderModeCascades(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) {
+    EventContext data {};
+    data.data.i32[0] = Render::Cascades;
+    EventSystem::Fire(EventSystem::SetRenderMode, UserData, data);
+}
+
+void GameOnSetRenderModeWireframe(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) {
+    EventContext data {};
+    data.data.i32[0] = Render::Wireframe;
+    EventSystem::Fire(EventSystem::SetRenderMode, UserData, data);
 }
 
 void GameOnSetGizmoMode(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) 
@@ -142,6 +154,18 @@ void GameOnSetGizmoMode(Keys key, Keymap::EntryBindType type, Keymap::Modifier m
     }
 }
 
+void GameOnGizmoOrientationSet(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) {
+    auto GameInst = (Application*)UserData;
+    auto state = (Game*)GameInst->state;
+    
+    i32 orientation = (i32)state->gizmo.GetOrientation();
+    orientation++;
+    if (orientation > Gizmo::Orientation::Max) {
+        orientation = Gizmo::Orientation::Global;
+    }
+    state->gizmo.SetOrientation((Gizmo::Orientation)orientation);
+}
+
 void GameOnLoadScene(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) 
 {
     EventSystem::Fire(EventSystem::DEBUG1, /*(Game*)*/UserData, (EventContext){});
@@ -154,7 +178,7 @@ void GameOnUnloadScene(Keys key, Keymap::EntryBindType type, Keymap::Modifier mo
 
 void GameOnConsoleScroll(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) 
 {
-    auto console = reinterpret_cast<DebugConsole*>(UserData);
+    auto console = (DebugConsole*)UserData;
     if (key == Keys::PAGEUP) {
         console->MoveUp();
     } else if (key == Keys::PAGEDOWN) {
@@ -164,8 +188,8 @@ void GameOnConsoleScroll(Keys key, Keymap::EntryBindType type, Keymap::Modifier 
 
 void GameOnConsoleScrollHold(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) 
 {
-    auto GameInst = reinterpret_cast<Application*>(UserData);
-    auto state = reinterpret_cast<Game*>(GameInst->state);
+    auto GameInst = (Application*)UserData;
+    auto state = (Game*)GameInst->state;
     auto DeltaTime = GameInst->engine->GetFrameData().DeltaTime;
 
     static f32 AccumulatedTime = 0.F;
@@ -182,7 +206,7 @@ void GameOnConsoleScrollHold(Keys key, Keymap::EntryBindType type, Keymap::Modif
 
 void GameOnConsoleChangeHistory(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData)
 {
-    auto console = reinterpret_cast<DebugConsole*>(UserData);
+    auto console = (DebugConsole*)UserData;
     if (key == Keys::UP) {
         console->HistoryBack();
     } else if (key == Keys::DOWN) {
@@ -197,95 +221,98 @@ void GameOnDebugTextureSwap(Keys key, Keymap::EntryBindType type, Keymap::Modifi
 }
 
 void GameOnDebugCamPosition(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) {
-    auto GameInst = reinterpret_cast<Application*>(UserData);
-    auto state = reinterpret_cast<Game*>(GameInst->state);
+    auto GameInst = (Application*)UserData;
+    auto state = (Game*)GameInst->state;
 
-    MDEBUG(
-        "Позиция:[%.2F, %.2F, %.2F",
+    MINFO("Позиция:[%.2F, %.2F, %.2F",
         state->WorldCamera->GetPosition().x,
         state->WorldCamera->GetPosition().y,
-        state->WorldCamera->GetPosition().z);
+        state->WorldCamera->GetPosition().z
+    );
 }
 
 void GameOnDebugVsyncToggle(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) {
     char cmd[30];
     MString::Copy(cmd, "mvar_set_int vsync 0", 29);
-    bool VsyncEnabled = RenderingSystem::FlagEnabled(VsyncEnabledBit);
+    bool VsyncEnabled = SystemsManager::GetRenderingSystem()->FlagEnabled(RenderingConfigFlagBits::VsyncEnabledBit);
     u32 length = MString::Length(cmd);
     cmd[length - 1] = VsyncEnabled ? '1' : '0';
     Console::ExecuteCommand(cmd);
 }
 
 void GamePrintMemoryMetrics(Keys key, Keymap::EntryBindType type, Keymap::Modifier modifiers, void* UserData) {
-    auto GameInst = reinterpret_cast<Application*>(UserData);
-    auto state = reinterpret_cast<Game*>(GameInst->state);
+    auto GameInst = (Application*)UserData;
+    auto state = (Game*)GameInst->state;
 
-    auto usage = MemorySystem::GetMemoryUsageStr();
-    MINFO(usage.c_str());
+    MINFO(MemorySystem::GetMemoryUsageStr().c_str());
 
-    MDEBUG("Распределения: %llu (%llu в этом кадре)", state->AllocCount, state->AllocCount - state->PrevAllocCount);
+    MINFO("Распределения: %llu (%llu в этом кадре)", state->AllocCount, state->AllocCount - state->PrevAllocCount);
 }
 
 void GameSetupKeymaps(Application* app) {
+    using enum Keys;
     // Глобальная раскладка клавиатуры
     Keymap GlobalKeymap;
-    GlobalKeymap.BindingAdd(Keys::ESCAPE, Keymap::BindTypePress, Keymap::ModifierNoneBit, app, GameOnEscapeCallback);
+    GlobalKeymap.BindingAdd(ESCAPE, Keymap::Press, Keymap::NoneBit, app, GameOnEscapeCallback);
 
     InputSystem::KeymapPush(GlobalKeymap);
 
     // Тестовая раскладка клавиатуры
     Keymap TestbedKeymap;
-    TestbedKeymap.BindingAdd(Keys::A,     Keymap::BindTypeHold,  Keymap::ModifierNoneBit, app, GameOnYaw);
-    TestbedKeymap.BindingAdd(Keys::LEFT,  Keymap::BindTypeHold,  Keymap::ModifierNoneBit, app, GameOnYaw);
+    TestbedKeymap.BindingAdd(A,     Keymap::Hold,  Keymap::NoneBit, app, GameOnYaw);
+    TestbedKeymap.BindingAdd(LEFT,  Keymap::Hold,  Keymap::NoneBit, app, GameOnYaw);
 
-    TestbedKeymap.BindingAdd(Keys::D,     Keymap::BindTypeHold,  Keymap::ModifierNoneBit, app, GameOnYaw);
-    TestbedKeymap.BindingAdd(Keys::RIGHT, Keymap::BindTypeHold,  Keymap::ModifierNoneBit, app, GameOnYaw);
+    TestbedKeymap.BindingAdd(D,     Keymap::Hold,  Keymap::NoneBit, app, GameOnYaw);
+    TestbedKeymap.BindingAdd(RIGHT, Keymap::Hold,  Keymap::NoneBit, app, GameOnYaw);
 
-    TestbedKeymap.BindingAdd(Keys::UP,    Keymap::BindTypeHold,  Keymap::ModifierNoneBit, app, GameOnPitch);
-    TestbedKeymap.BindingAdd(Keys::DOWN,  Keymap::BindTypeHold,  Keymap::ModifierNoneBit, app, GameOnPitch);
+    TestbedKeymap.BindingAdd(UP,    Keymap::Hold,  Keymap::NoneBit, app, GameOnPitch);
+    TestbedKeymap.BindingAdd(DOWN,  Keymap::Hold,  Keymap::NoneBit, app, GameOnPitch);
 
-    TestbedKeymap.BindingAdd(Keys::GRAVE, Keymap::BindTypePress, Keymap::ModifierNoneBit, app->state, GameOnConsoleChangeVisibility);
+    TestbedKeymap.BindingAdd(GRAVE, Keymap::Press, Keymap::NoneBit, app->state, GameOnConsoleChangeVisibility);
 
-    TestbedKeymap.BindingAdd(Keys::W,     Keymap::BindTypeHold,  Keymap::ModifierNoneBit, app, GameOnMoveForward);
-    TestbedKeymap.BindingAdd(Keys::S,     Keymap::BindTypeHold,  Keymap::ModifierNoneBit, app, GameOnMoveBackward);
-    TestbedKeymap.BindingAdd(Keys::Q,     Keymap::BindTypeHold,  Keymap::ModifierNoneBit, app, GameOnMoveLeft);
-    TestbedKeymap.BindingAdd(Keys::E,     Keymap::BindTypeHold,  Keymap::ModifierNoneBit, app, GameOnMoveRight);
-    TestbedKeymap.BindingAdd(Keys::SPACE, Keymap::BindTypeHold,  Keymap::ModifierNoneBit, app, GameOnMoveUp);
-    TestbedKeymap.BindingAdd(Keys::X,     Keymap::BindTypeHold,  Keymap::ModifierNoneBit, app, GameOnMoveDown);
+    TestbedKeymap.BindingAdd(W,     Keymap::Hold,  Keymap::NoneBit, app, GameOnMoveForward);
+    TestbedKeymap.BindingAdd(S,     Keymap::Hold,  Keymap::NoneBit, app, GameOnMoveBackward);
+    TestbedKeymap.BindingAdd(Q,     Keymap::Hold,  Keymap::NoneBit, app, GameOnMoveLeft);
+    TestbedKeymap.BindingAdd(E,     Keymap::Hold,  Keymap::NoneBit, app, GameOnMoveRight);
+    TestbedKeymap.BindingAdd(SPACE, Keymap::Hold,  Keymap::NoneBit, app, GameOnMoveUp);
+    TestbedKeymap.BindingAdd(X,     Keymap::Hold,  Keymap::NoneBit, app, GameOnMoveDown);
 
-    TestbedKeymap.BindingAdd(Keys::KEY_0, Keymap::BindTypePress, Keymap::ModifierControlBit, app, GameOnSetRenderModeDefault);
-    TestbedKeymap.BindingAdd(Keys::KEY_1, Keymap::BindTypePress, Keymap::ModifierControlBit, app, GameOnSetRenderModeLighting);
-    TestbedKeymap.BindingAdd(Keys::KEY_2, Keymap::BindTypePress, Keymap::ModifierControlBit, app, GameOnSetRenderModeNormals);
+    TestbedKeymap.BindingAdd(KEY_0, Keymap::Press, Keymap::ControlBit, app, GameOnSetRenderModeDefault);
+    TestbedKeymap.BindingAdd(KEY_1, Keymap::Press, Keymap::ControlBit, app, GameOnSetRenderModeLighting);
+    TestbedKeymap.BindingAdd(KEY_2, Keymap::Press, Keymap::ControlBit, app, GameOnSetRenderModeNormals);
+    TestbedKeymap.BindingAdd(KEY_3, Keymap::Press, Keymap::ControlBit, app, GameOnSetRenderModeCascades);
+    TestbedKeymap.BindingAdd(KEY_4, Keymap::Press, Keymap::ControlBit, app, GameOnSetRenderModeWireframe);
 
-    TestbedKeymap.BindingAdd(Keys::KEY_1, Keymap::BindTypePress, Keymap::ModifierNoneBit, app, GameOnSetGizmoMode);
-    TestbedKeymap.BindingAdd(Keys::KEY_2, Keymap::BindTypePress, Keymap::ModifierNoneBit, app, GameOnSetGizmoMode);
-    TestbedKeymap.BindingAdd(Keys::KEY_3, Keymap::BindTypePress, Keymap::ModifierNoneBit, app, GameOnSetGizmoMode);
-    TestbedKeymap.BindingAdd(Keys::KEY_4, Keymap::BindTypePress, Keymap::ModifierNoneBit, app, GameOnSetGizmoMode);
+    TestbedKeymap.BindingAdd(KEY_1, Keymap::Press, Keymap::NoneBit, app, GameOnSetGizmoMode);
+    TestbedKeymap.BindingAdd(KEY_2, Keymap::Press, Keymap::NoneBit, app, GameOnSetGizmoMode);
+    TestbedKeymap.BindingAdd(KEY_3, Keymap::Press, Keymap::NoneBit, app, GameOnSetGizmoMode);
+    TestbedKeymap.BindingAdd(KEY_4, Keymap::Press, Keymap::NoneBit, app, GameOnSetGizmoMode);
+    TestbedKeymap.BindingAdd(G,     Keymap::Press, Keymap::NoneBit, app, GameOnGizmoOrientationSet);
 
-    TestbedKeymap.BindingAdd(Keys::L,     Keymap::BindTypePress, Keymap::ModifierNoneBit, app, GameOnLoadScene);
-    TestbedKeymap.BindingAdd(Keys::U,     Keymap::BindTypePress, Keymap::ModifierNoneBit, app, GameOnUnloadScene);
+    TestbedKeymap.BindingAdd(L,     Keymap::Press, Keymap::NoneBit, app, GameOnLoadScene);
+    TestbedKeymap.BindingAdd(U,     Keymap::Press, Keymap::NoneBit, app, GameOnUnloadScene);
 
-    TestbedKeymap.BindingAdd(Keys::T,     Keymap::BindTypePress, Keymap::ModifierNoneBit, app, GameOnDebugTextureSwap);
-    TestbedKeymap.BindingAdd(Keys::P,     Keymap::BindTypePress, Keymap::ModifierNoneBit, app, GameOnDebugCamPosition);
-    TestbedKeymap.BindingAdd(Keys::V,     Keymap::BindTypePress, Keymap::ModifierNoneBit, app, GameOnDebugVsyncToggle);
-    TestbedKeymap.BindingAdd(Keys::M,     Keymap::BindTypePress, Keymap::ModifierNoneBit, app, GamePrintMemoryMetrics);
+    TestbedKeymap.BindingAdd(T,     Keymap::Press, Keymap::NoneBit, app, GameOnDebugTextureSwap);
+    TestbedKeymap.BindingAdd(P,     Keymap::Press, Keymap::NoneBit, app, GameOnDebugCamPosition);
+    TestbedKeymap.BindingAdd(V,     Keymap::Press, Keymap::NoneBit, app, GameOnDebugVsyncToggle);
+    TestbedKeymap.BindingAdd(M,     Keymap::Press, Keymap::NoneBit, app, GamePrintMemoryMetrics);
 
     InputSystem::KeymapPush(TestbedKeymap);
 
     // Консольная раскладка клавиатуры. По умолчанию не активируется.
-    auto state = reinterpret_cast<Game*>(app->state);
+    auto state = (Game*)app->state;
 
     state->ConsoleKeymap.OverridesAll = true;
-    state->ConsoleKeymap.BindingAdd(Keys::GRAVE,    Keymap::BindTypePress, Keymap::ModifierNoneBit, state, GameOnConsoleChangeVisibility);
-    state->ConsoleKeymap.BindingAdd(Keys::ESCAPE,   Keymap::BindTypePress, Keymap::ModifierNoneBit, state, GameOnConsoleChangeVisibility);
+    state->ConsoleKeymap.BindingAdd(GRAVE,    Keymap::Press, Keymap::NoneBit, state, GameOnConsoleChangeVisibility);
+    state->ConsoleKeymap.BindingAdd(ESCAPE,   Keymap::Press, Keymap::NoneBit, state, GameOnConsoleChangeVisibility);
 
-    state->ConsoleKeymap.BindingAdd(Keys::PAGEUP,   Keymap::BindTypePress, Keymap::ModifierNoneBit, &state->console, GameOnConsoleScroll);
-    state->ConsoleKeymap.BindingAdd(Keys::PAGEDOWN, Keymap::BindTypePress, Keymap::ModifierNoneBit, &state->console, GameOnConsoleScroll);
-    state->ConsoleKeymap.BindingAdd(Keys::PAGEUP,   Keymap::BindTypeHold,  Keymap::ModifierNoneBit, app, GameOnConsoleScrollHold);
-    state->ConsoleKeymap.BindingAdd(Keys::PAGEDOWN, Keymap::BindTypeHold,  Keymap::ModifierNoneBit, app, GameOnConsoleScrollHold);
+    state->ConsoleKeymap.BindingAdd(PAGEUP,   Keymap::Press, Keymap::NoneBit, &state->console, GameOnConsoleScroll);
+    state->ConsoleKeymap.BindingAdd(PAGEDOWN, Keymap::Press, Keymap::NoneBit, &state->console, GameOnConsoleScroll);
+    state->ConsoleKeymap.BindingAdd(PAGEUP,   Keymap::Hold,  Keymap::NoneBit, app, GameOnConsoleScrollHold);
+    state->ConsoleKeymap.BindingAdd(PAGEDOWN, Keymap::Hold,  Keymap::NoneBit, app, GameOnConsoleScrollHold);
 
-    state->ConsoleKeymap.BindingAdd(Keys::UP,       Keymap::BindTypePress, Keymap::ModifierNoneBit, &state->console, GameOnConsoleChangeHistory);
-    state->ConsoleKeymap.BindingAdd(Keys::DOWN,     Keymap::BindTypePress, Keymap::ModifierNoneBit, &state->console, GameOnConsoleChangeHistory);
+    state->ConsoleKeymap.BindingAdd(UP,       Keymap::Press, Keymap::NoneBit, &state->console, GameOnConsoleChangeHistory);
+    state->ConsoleKeymap.BindingAdd(DOWN,     Keymap::Press, Keymap::NoneBit, &state->console, GameOnConsoleChangeHistory);
 
     // Если это было сделано при открытой консоли, нажмите ее раскладку.
     bool ConsoleVisible = state->console.Visible();
@@ -300,7 +327,7 @@ void GameRemoveKeymaps(Application *app)
     while (InputSystem::KeymapPop()) {
     }
 
-    auto state = reinterpret_cast<Game*>(app->state);
+    auto state = (Game*)app->state;
 
     // Удаляем все привязки для раскладки клавиатуры консоли, так как это единственное, что у нас есть.
     state->ConsoleKeymap.Clear();
