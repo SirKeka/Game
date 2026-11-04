@@ -1,6 +1,6 @@
 // #define _CRT_SECURE_NO_WARNINGS
-#include <core/logger.hpp>
-#include <containers/mstring.hpp>
+#include "core/logger.h"
+#include "containers/mstring.h"
 
 // Для выполнения команд оболочки.
 #include <stdlib.h>

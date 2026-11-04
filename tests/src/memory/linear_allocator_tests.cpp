@@ -3,7 +3,8 @@
 #include "../test_manager.hpp"
 #include "../expect.hpp"
 
-#include <memory/linear_allocator.h>
+#include "core/logger.h"
+#include "memory/linear_allocator.h"
 
 u8 LinearAllocatorShouldCreateAndDestroy() {
     LinearAllocator alloc{ sizeof(u64) };

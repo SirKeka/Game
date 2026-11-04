@@ -1,8 +1,7 @@
 #include "test_manager.hpp"
 
-#include "containers/arr.hpp"
-#include <core/logger.hpp>
-#include <core/clock.h>
+#include "containers/arr.h"
+#include "core/clock.h"
 
 struct TestEntry {
     PFN_Test func;
@@ -11,10 +10,10 @@ struct TestEntry {
 
 static DArray<TestEntry> tests;
 
-void TestManagerInit()
-{
-    static DArray<TestEntry> tests;
-}
+// void TestManagerInit()
+// {
+//     static DArray<TestEntry> tests;
+// }
 
 void TestManagerRegisterTest(u8 (*PFN_Test)(), const char *desc)
 {
