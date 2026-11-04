@@ -26,7 +26,7 @@ struct RendergraphSource {
 
 struct RendergraphSink {
     MString name;
-    RendergraphSource* BoundSource;
+    RendergraphSource* BoundSource{};
 };
 
 struct RendergraphPassData {
