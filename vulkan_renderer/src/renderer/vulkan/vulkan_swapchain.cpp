@@ -1,67 +1,12 @@
-#include "vulkan_swapchain.hpp"
+#include "vulkan_swapchain.h"
 
 #include "vulkan_api.h"
-#include "vulkan_image.hpp"
+#include "vulkan_image.h"
 #include <systems/texture_system.h>
-
-bool VulkanSwapchain::AcquireNextImageIndex(
-    VulkanAPI *VkAPI,  
-    u64 TimeoutNs, 
-    VkSemaphore ImageAvailableSemaphore, 
-    VkFence fence, 
-    u32 *OutImageIndex)
-{
-    VkResult result = vkAcquireNextImageKHR(
-        VkAPI->Device.LogicalDevice,
-        handle,
-        TimeoutNs,
-        ImageAvailableSemaphore,
-        fence,
-        OutImageIndex);
-
-    if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-        // Запустите восстановление цепочки подкачки, затем загрузитесь из цикла рендеринга.
-        Recreate(VkAPI, VkAPI->FramebufferWidth, VkAPI->FramebufferHeight);
-        return false;
-    } else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
-        MFATAL("Не удалось получить изображение swapchain!");
-        return false;
-    }
-
-    return true;
-}
-
-void VulkanSwapchain::Present(
-    VulkanAPI *VkAPI, 
-    VkQueue PresentQueue, 
-    VkSemaphore RenderCompleteSemaphore, 
-    u32 PresentImageIndex)
-{
-    // Верните изображение в swapchain для презентации.
-    VkPresentInfoKHR PresentInfo = {VK_STRUCTURE_TYPE_PRESENT_INFO_KHR};
-    PresentInfo.waitSemaphoreCount = 1;
-    PresentInfo.pWaitSemaphores = &RenderCompleteSemaphore;
-    PresentInfo.swapchainCount = 1;
-    PresentInfo.pSwapchains = &handle;
-    PresentInfo.pImageIndices = &PresentImageIndex;
-    PresentInfo.pResults = 0;
-
-    VkResult result = vkQueuePresentKHR(PresentQueue, &PresentInfo);
-    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
-        // Swapchain устарел, неоптимален или произошло изменение размера фреймбуфера. Запустите восстановление swapchain.
-        Recreate(VkAPI, VkAPI->FramebufferWidth, VkAPI->FramebufferHeight);
-        MDEBUG("Цепочка обмена воссоздана, поскольку цепочка обмена вернулась устаревшая или неоптимальная.")
-    } else if (result != VK_SUCCESS) {
-        MFATAL("Не удалось представить изображение цепочки подкачки!");
-    }
-
-     // Увеличьте (и зациклите) индекс.
-    VkAPI->CurrentFrame = (VkAPI->CurrentFrame + 1) % MaxFramesInFlight;
-}
 
 void VulkanSwapchain::Destroy(VulkanAPI *VkAPI)
 {   
-    vkDeviceWaitIdle(VkAPI->Device.LogicalDevice);
+    vkDeviceWaitIdle(VkAPI->device.LogicalDevice);
     for (u32 i = 0; i < VkAPI->swapchain.ImageCount; ++i) {
         reinterpret_cast<VulkanImage*>(DepthTextures[i].data)->Destroy(VkAPI);
         //delete DepthTextures->Data;
@@ -72,10 +17,10 @@ void VulkanSwapchain::Destroy(VulkanAPI *VkAPI)
     // Уничтожайте только представления, а не изображения, поскольку они принадлежат цепочке обмена и, следовательно, уничтожаются, когда это происходит.
     for (u32 i = 0; i < ImageCount; ++i) {
         auto& image = *reinterpret_cast<VulkanImage*>(RenderTextures[i].data);
-        vkDestroyImageView(VkAPI->Device.LogicalDevice, image.view, VkAPI->allocator);
+        vkDestroyImageView(VkAPI->device.LogicalDevice, image.view, VkAPI->allocator);
     }
 
-    vkDestroySwapchainKHR(VkAPI->Device.LogicalDevice, handle, VkAPI->allocator);
+    vkDestroySwapchainKHR(VkAPI->device.LogicalDevice, handle, VkAPI->allocator);
 
     /*for (u32 i = 0; i < ImageCount; i++) {
         delete RenderTextures[i]->Data;
@@ -98,8 +43,8 @@ void VulkanSwapchain::Create(VulkanAPI *VkAPI, u32 width, u32 height, RendererCo
 
     // Выберите формат поверхности подкачки.
     bool found = false;
-    for (u32 i = 0; i < VkAPI->Device.SwapchainSupport.FormatCount; ++i) {
-        VkSurfaceFormatKHR format = VkAPI->Device.SwapchainSupport.formats[i];
+    for (u32 i = 0; i < VkAPI->device.SwapchainSupport.FormatCount; ++i) {
+        VkSurfaceFormatKHR format = VkAPI->device.SwapchainSupport.formats[i];
         // Предпочтительные форматы
         if (format.format == VK_FORMAT_B8G8R8A8_UNORM &&
             format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
@@ -110,7 +55,7 @@ void VulkanSwapchain::Create(VulkanAPI *VkAPI, u32 width, u32 height, RendererCo
     }
 
     if (!found) {
-        ImageFormat = VkAPI->Device.SwapchainSupport.formats[0];
+        ImageFormat = VkAPI->device.SwapchainSupport.formats[0];
     }
 
     // FIFO и MAILBOX поддерживают vsync, IMMEDIATE — нет.
@@ -122,8 +67,8 @@ void VulkanSwapchain::Create(VulkanAPI *VkAPI, u32 width, u32 height, RendererCo
         PresentMode = VK_PRESENT_MODE_FIFO_KHR;
         // Пробуйте режим почтового ящика только в том случае, если не включен режим энергосбережения.
         if ((flags & RenderingConfigFlagBits::PowerSavingBit) == 0) {
-            for (u32 i = 0; i < VkAPI->Device.SwapchainSupport.PresentModeCount; ++i) {
-                VkPresentModeKHR mode = VkAPI->Device.SwapchainSupport.PresentModes[i];
+            for (u32 i = 0; i < VkAPI->device.SwapchainSupport.PresentModeCount; ++i) {
+                VkPresentModeKHR mode = VkAPI->device.SwapchainSupport.PresentModes[i];
                 if (mode == VK_PRESENT_MODE_MAILBOX_KHR) {
                     PresentMode = mode;
                     break;
@@ -136,22 +81,22 @@ void VulkanSwapchain::Create(VulkanAPI *VkAPI, u32 width, u32 height, RendererCo
     }  
 
     // Запросить поддержку цепочки обмена. ЗАДАЧА: переделать
-    VkAPI->Device.QuerySwapchainSupport(VkAPI->Device.PhysicalDevice, VkAPI->surface, &VkAPI->Device.SwapchainSupport);
+    VkAPI->device.QuerySwapchainSupport(VkAPI->device.PhysicalDevice, VkAPI->surface, &VkAPI->device.SwapchainSupport);
 
     // Объем цепочки обмена
-    if (VkAPI->Device.SwapchainSupport.capabilities.currentExtent.width != UINT32_MAX) {
-        SwapchainExtent = VkAPI->Device.SwapchainSupport.capabilities.currentExtent;
+    if (VkAPI->device.SwapchainSupport.capabilities.currentExtent.width != UINT32_MAX) {
+        SwapchainExtent = VkAPI->device.SwapchainSupport.capabilities.currentExtent;
     }
 
     // Ограничьте значение, разрешенное графическим процессором.
-    VkExtent2D min = VkAPI->Device.SwapchainSupport.capabilities.minImageExtent;
-    VkExtent2D max = VkAPI->Device.SwapchainSupport.capabilities.maxImageExtent;
+    VkExtent2D min = VkAPI->device.SwapchainSupport.capabilities.minImageExtent;
+    VkExtent2D max = VkAPI->device.SwapchainSupport.capabilities.maxImageExtent;
     SwapchainExtent.width = MCLAMP(SwapchainExtent.width, min.width, max.width);
     SwapchainExtent.height = MCLAMP(SwapchainExtent.height, min.height, max.height);
 
-    u32 ImageCount = VkAPI->Device.SwapchainSupport.capabilities.minImageCount + 1;
-    if (VkAPI->Device.SwapchainSupport.capabilities.maxImageCount > 0 && ImageCount > VkAPI->Device.SwapchainSupport.capabilities.maxImageCount) {
-        ImageCount = VkAPI->Device.SwapchainSupport.capabilities.maxImageCount;
+    u32 ImageCount = VkAPI->device.SwapchainSupport.capabilities.minImageCount + 1;
+    if (VkAPI->device.SwapchainSupport.capabilities.maxImageCount > 0 && ImageCount > VkAPI->device.SwapchainSupport.capabilities.maxImageCount) {
+        ImageCount = VkAPI->device.SwapchainSupport.capabilities.maxImageCount;
     }
 
     MaxFramesInFlight = ImageCount - 1;  // Тройная буферизация
@@ -167,10 +112,10 @@ void VulkanSwapchain::Create(VulkanAPI *VkAPI, u32 width, u32 height, RendererCo
     SwapchainCreateInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
     // Настройте индексы семейства очередей.
-    if (VkAPI->Device.GraphicsQueueIndex != VkAPI->Device.PresentQueueIndex) {
+    if (VkAPI->device.GraphicsQueueIndex != VkAPI->device.PresentQueueIndex) {
         u32 queueFamilyIndices[] = {
-            (u32)VkAPI->Device.GraphicsQueueIndex,
-            (u32)VkAPI->Device.PresentQueueIndex};
+            (u32)VkAPI->device.GraphicsQueueIndex,
+            (u32)VkAPI->device.PresentQueueIndex};
         SwapchainCreateInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
         SwapchainCreateInfo.queueFamilyIndexCount = 2;
         SwapchainCreateInfo.pQueueFamilyIndices = queueFamilyIndices;
@@ -180,23 +125,23 @@ void VulkanSwapchain::Create(VulkanAPI *VkAPI, u32 width, u32 height, RendererCo
         SwapchainCreateInfo.pQueueFamilyIndices = 0;
     }
 
-    SwapchainCreateInfo.preTransform = VkAPI->Device.SwapchainSupport.capabilities.currentTransform;
+    SwapchainCreateInfo.preTransform = VkAPI->device.SwapchainSupport.capabilities.currentTransform;
     SwapchainCreateInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
     SwapchainCreateInfo.presentMode = PresentMode;
     SwapchainCreateInfo.clipped = VK_TRUE;
     SwapchainCreateInfo.oldSwapchain = 0;
 
-    VK_CHECK(vkCreateSwapchainKHR(VkAPI->Device.LogicalDevice, &SwapchainCreateInfo, VkAPI->allocator, &handle));
+    VK_CHECK(vkCreateSwapchainKHR(VkAPI->device.LogicalDevice, &SwapchainCreateInfo, VkAPI->allocator, &handle));
 
     // Начните с нулевого индекса кадра.
     VkAPI->CurrentFrame = 0;
 
     // Изображения
     //ImageCount = 0;
-    VK_CHECK(vkGetSwapchainImagesKHR(VkAPI->Device.LogicalDevice, handle, &this->ImageCount, nullptr));
+    VK_CHECK(vkGetSwapchainImagesKHR(VkAPI->device.LogicalDevice, handle, &this->ImageCount, nullptr));
 
     if (!RenderTextures) {
-        RenderTextures = MemorySystem::TAllocate<Texture>(Memory::Renderer, this->ImageCount);
+        RenderTextures = mem_alloc(Texture, this->ImageCount, Memory::Renderer);
         // При создании массива внутренние объекты текстуры также еще не созданы.
         for (u32 i = 0; i < this->ImageCount; ++i) {
             auto data = new VulkanImage();
@@ -232,7 +177,7 @@ void VulkanSwapchain::Create(VulkanAPI *VkAPI, u32 width, u32 height, RendererCo
         }
     }
     VkImage SwapchainImages[32];
-    VK_CHECK(vkGetSwapchainImagesKHR(VkAPI->Device.LogicalDevice, handle, &ImageCount, SwapchainImages));
+    VK_CHECK(vkGetSwapchainImagesKHR(VkAPI->device.LogicalDevice, handle, &ImageCount, SwapchainImages));
     for (u32 i = 0; i < this->ImageCount; ++i) {
         // Обновите внутренний образ для каждого.
         auto& image = *reinterpret_cast<VulkanImage*>(RenderTextures[i].data);
@@ -243,7 +188,7 @@ void VulkanSwapchain::Create(VulkanAPI *VkAPI, u32 width, u32 height, RendererCo
 
     // Views
     for (u32 i = 0; i < ImageCount; ++i) {
-        auto& image = *reinterpret_cast<VulkanImage*>(RenderTextures[i].data);
+        auto& image = *(VulkanImage*)RenderTextures[i].data;
         VkImageViewCreateInfo ViewInfo = {VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
         ViewInfo.image = image.handle;
         ViewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
@@ -254,42 +199,43 @@ void VulkanSwapchain::Create(VulkanAPI *VkAPI, u32 width, u32 height, RendererCo
         ViewInfo.subresourceRange.baseArrayLayer = 0;
         ViewInfo.subresourceRange.layerCount = 1;
 
-        VK_CHECK(vkCreateImageView(VkAPI->Device.LogicalDevice, &ViewInfo, VkAPI->allocator, &image.view));
+        VK_CHECK(vkCreateImageView(VkAPI->device.LogicalDevice, &ViewInfo, VkAPI->allocator, &image.view));
     }
 
     if (!DepthTextures) {
-        DepthTextures = MemorySystem::TAllocate<Texture>(Memory::Renderer, ImageCount);
+        DepthTextures = mem_alloc(Texture, ImageCount, Memory::Renderer);
     }
 
     // Ресурсы глубины
-    if (!VkAPI->Device.DetectDepthFormat()) {
-        VkAPI->Device.DepthFormat = VK_FORMAT_UNDEFINED;
+    if (!VkAPI->device.DetectDepthFormat()) {
+        VkAPI->device.DepthFormat = VK_FORMAT_UNDEFINED;
         MFATAL("Не удалось найти поддерживаемый формат!");
     }
 
+    // Создать изображения глубины/трафарета и их вид.
     for (u32 i = 0; i < VkAPI->swapchain.ImageCount; ++i) {
-        // Создайте изображение глубины и его вид.
         char FormattedName[TEXTURE_NAME_MAX_LENGTH]{};
-        MString::Format(FormattedName, "swapchain_image_%u", i);
+        MString::Format(FormattedName, "_moon_default_depth_stencil_texture_%u", i);
         VulkanImage::Config config = { VkAPI };
         config.type            = TextureType::_2D;
         config.width           = SwapchainExtent.width;
         config.height          = SwapchainExtent.height;
-        config.format          = VkAPI->Device.DepthFormat;
+        config.format          = VkAPI->device.DepthFormat;
         config.tiling          = VK_IMAGE_TILING_OPTIMAL;
         config.usage           = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
         config.MemoryFlags     = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
         config.CreateView      = true;
-        config.ViewAspectFlags = VK_IMAGE_ASPECT_DEPTH_BIT;
+        config.ViewAspectFlags = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,
         config.name            = FormattedName;
 
         auto image = new VulkanImage(config);
 
         auto& DepthTexture = VkAPI->swapchain.DepthTextures[i];
-        DepthTexture.SetName ("__moon_default_depth_texture__");
+        DepthTexture.SetName(FormattedName);
         DepthTexture.width = SwapchainExtent.width;
         DepthTexture.height = SwapchainExtent.height;
-        DepthTexture.ChannelCount = VkAPI->Device.DepthChannelCount;
+        DepthTexture.MipLevels = 1;
+        DepthTexture.ChannelCount = VkAPI->device.DepthChannelCount;
         DepthTexture.flags |= Texture::Flag::IsWriteable;
         DepthTexture.data = image;
     
