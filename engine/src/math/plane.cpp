@@ -9,9 +9,9 @@ void Plane::Create(const FVec3 &p1, const FVec3 &norm)
     distance = Dot(n, p1);
 }
 
-f32 Plane::SignedDistance(const FVec3& position)
+f32 Plane::SignedDistance(const FVec3& position) const
 {
-    return Dot(GetNormal(), position) - distance;
+    return Dot(Normal(), position) - distance;
 }
 
 bool Plane::IntersectsSphere(const FVec3 &center, f32 radius)
@@ -20,7 +20,7 @@ bool Plane::IntersectsSphere(const FVec3 &center, f32 radius)
     return SignedDistance(center) > -radius;
 }
 
-bool Plane::IntersectsAABB(const FVec3 &center, const FVec3 &extents)
+bool Plane::IntersectsAABB(const FVec3 &center, const FVec3 &extents) const
 {
     // ЗАДАЧА: добавить SIMD
     f32 r = extents.x * Math::abs(x) +
