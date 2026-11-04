@@ -1,6 +1,8 @@
 #include "render_view_pick.h"
-#include "memory/linear_allocator.h"
+#include "core/systems_manager.h"
 #include "core/uuid.hpp"
+#include "memory/linear_allocator.h"
+#include "renderer/rendering_system.h"
 #include "renderer/renderpass.h"
 #include "renderer/viewport.h"
 #include "resources/ui_text.h"
@@ -26,30 +28,29 @@ bool RenderViewPick::OnRegistered(RenderView* self)
         // Встроенный шейдер UI Pick.
         const char* UiShaderName = "Shader.Builtin.UIPick";
         ShaderResource ConfigResource;
-        if (!ResourceSystem::Load(UiShaderName, eResource::Shader, nullptr, ConfigResource)) {
+        if (!ResourceSystem::Load(UiShaderName, nullptr, ConfigResource)) {
             MERROR("Не удалось загрузить встроенный шейдер UI Pick.");
             return false;
         }
 
-        if (!ShaderSystem::CreateShader(*UiShaderInfo.pass, ConfigResource.data)) {
+        if (!(UiShaderInfo.shader = ShaderSystem::CreateShader(*UiShaderInfo.pass, ConfigResource.data))) {
             MERROR("Не удалось загрузить встроенный шейдер UI Pick.");
             return false;
         }
         ResourceSystem::Unload(ConfigResource);
-        UiShaderInfo.s = ShaderSystem::GetShader(UiShaderName);
 
         // Извлечь однородные местоположения
-        UiShaderInfo.IdColourLocation   = ShaderSystem::UniformIndex(UiShaderInfo.s, "id_colour");
-        UiShaderInfo.ModelLocation      = ShaderSystem::UniformIndex(UiShaderInfo.s, "model");
-        UiShaderInfo.ProjectionLocation = ShaderSystem::UniformIndex(UiShaderInfo.s, "projection");
-        UiShaderInfo.ViewLocation       = ShaderSystem::UniformIndex(UiShaderInfo.s, "view");
+        UiShaderInfo.IdColourLocation   = UiShaderInfo.shader->UniformLocation("id_colour");
+        UiShaderInfo.ModelLocation      = UiShaderInfo.shader->UniformLocation("model");
+        UiShaderInfo.ProjectionLocation = UiShaderInfo.shader->UniformLocation("projection");
+        UiShaderInfo.ViewLocation       = UiShaderInfo.shader->UniformLocation("view");
 
         // Свойства UI по умолчанию
         UiShaderInfo.view = Matrix4D::MakeIdentity();
 
         // Встроенный шейдер World Pick.
         const char* WorldShaderName = "Shader.Builtin.WorldPick";
-        if (!ResourceSystem::Load(WorldShaderName, eResource::Shader, nullptr, ConfigResource)) {
+        if (!ResourceSystem::Load(WorldShaderName, nullptr, ConfigResource)) {
             MERROR("Не удалось загрузить встроенный шейдер World Pick.");
             return false;
         }
@@ -59,20 +60,20 @@ bool RenderViewPick::OnRegistered(RenderView* self)
             return false;
         }
         ResourceSystem::Unload(ConfigResource);
-        WorldShaderInfo.s = ShaderSystem::GetShader(WorldShaderName);
+        WorldShaderInfo.shader = ShaderSystem::GetShader(WorldShaderName);
 
         // Извлечь однородные местоположения.
-        WorldShaderInfo.IdColourLocation   = ShaderSystem::UniformIndex(WorldShaderInfo.s, "id_colour");
-        WorldShaderInfo.ModelLocation      = ShaderSystem::UniformIndex(WorldShaderInfo.s, "model");
-        WorldShaderInfo.ProjectionLocation = ShaderSystem::UniformIndex(WorldShaderInfo.s, "projection");
-        WorldShaderInfo.ViewLocation       = ShaderSystem::UniformIndex(WorldShaderInfo.s, "view");
+        WorldShaderInfo.IdColourLocation   = WorldShaderInfo.shader->UniformLocation("id_colour");
+        WorldShaderInfo.ModelLocation      = WorldShaderInfo.shader->UniformLocation("model");
+        WorldShaderInfo.ProjectionLocation = WorldShaderInfo.shader->UniformLocation("projection");
+        WorldShaderInfo.ViewLocation       = WorldShaderInfo.shader->UniformLocation("view");
 
         // Свойства мира по умолчанию
         WorldShaderInfo.view = Matrix4D::MakeIdentity();
 
         // Встроенный шейдер Terrain Pick.
         const char* TerrainShaderName = "Shader.Builtin.TerrainPick";
-        if (!ResourceSystem::Load(TerrainShaderName, eResource::Shader, nullptr, ConfigResource)) {
+        if (!ResourceSystem::Load(TerrainShaderName, nullptr, ConfigResource)) {
             MERROR("Не удалось загрузить встроенный шейдер Terrain Pick.");
             return false;
         }
@@ -82,13 +83,13 @@ bool RenderViewPick::OnRegistered(RenderView* self)
             return false;
         }
         ResourceSystem::Unload(ConfigResource);
-        TerrainShaderInfo.s = ShaderSystem::GetShader(TerrainShaderName);
+        TerrainShaderInfo.shader = ShaderSystem::GetShader(TerrainShaderName);
 
         // Извлечь однородные местоположения.
-        TerrainShaderInfo.IdColourLocation   = ShaderSystem::UniformIndex(TerrainShaderInfo.s, "id_colour");
-        TerrainShaderInfo.ModelLocation      = ShaderSystem::UniformIndex(TerrainShaderInfo.s, "model");
-        TerrainShaderInfo.ProjectionLocation = ShaderSystem::UniformIndex(TerrainShaderInfo.s, "projection");
-        TerrainShaderInfo.ViewLocation       = ShaderSystem::UniformIndex(TerrainShaderInfo.s, "view");
+        TerrainShaderInfo.IdColourLocation   = TerrainShaderInfo.shader->UniformLocation("id_colour");
+        TerrainShaderInfo.ModelLocation      = TerrainShaderInfo.shader->UniformLocation("model");
+        TerrainShaderInfo.ProjectionLocation = TerrainShaderInfo.shader->UniformLocation("projection");
+        TerrainShaderInfo.ViewLocation       = TerrainShaderInfo.shader->UniformLocation("view");
 
         // Свойства ландшафта по умолчанию.
         TerrainShaderInfo.view = Matrix4D::MakeIdentity();
@@ -99,10 +100,10 @@ bool RenderViewPick::OnRegistered(RenderView* self)
             return false;
         }
 
-        if (!EventSystem::Register(EventSystem::DefaultRendertargetRefreshRequired, self->data, EditorWorldOnEvent)) {
-            MERROR("Не удалось прослушать требуемое событие обновления, создание не удалось.");
-            return false;
-        }
+        // if (!EventSystem::Register(EventSystem::DefaultRendertargetRefreshRequired, self->data, EditorWorldOnEvent)) {
+        //     MERROR("Не удалось прослушать требуемое событие обновления, создание не удалось.");
+        //     return false;
+        // }
 
         return true;
     }
@@ -114,12 +115,13 @@ void RenderViewPick::Destroy(RenderView *self)
 {
     auto data = (RenderViewPick*)self->data;
     EventSystem::Unregister(EventSystem::MouseMoved, self->data, OnMouseMoved);
-    EventSystem::Unregister(EventSystem::DefaultRendertargetRefreshRequired, self->data, EditorWorldOnEvent);
+    //EventSystem::Unregister(EventSystem::DefaultRendertargetRefreshRequired, self->data, EditorWorldOnEvent);
 
     data->ReleaseShaderInstances();
 
-    RenderingSystem::Unload(&data->ColoureTargetAttachmentTexture);
-    RenderingSystem::Unload(&data->DepthTargetAttachmentTexture);
+    auto rsys = SystemsManager::GetRenderingSystem();
+    rsys->Unload(&data->ColoureTargetAttachmentTexture);
+    rsys->Unload(&data->DepthTargetAttachmentTexture);
 
     MemorySystem::Free(self->data, sizeof(RenderViewPick), Memory::Renderer);
     self->data = nullptr;
@@ -148,7 +150,7 @@ bool RenderViewPick::BuildPacket(RenderView* self, FrameData& rFrameData, Viewpo
     OutPacket.viewport = &viewport;
 
     // ЗАДАЧА: Получить активную камеру.
-    auto WorldCamera = CameraSystem::Instance()->GetDefault();
+    auto WorldCamera = CameraSystem::GetDefault();
     ViewData->WorldShaderInfo.view = WorldCamera->GetView();
     ViewData->TerrainShaderInfo.view = WorldCamera->GetView();
 
@@ -157,9 +159,9 @@ bool RenderViewPick::BuildPacket(RenderView* self, FrameData& rFrameData, Viewpo
     OutPacket.ExtendedData = rFrameData.FrameAllocator->Allocate(sizeof(RenderViewPick::PacketData));
 
     auto& WorldMeshData = *PacketData->WorldMeshData;
-    const u64& WorldGeometryCount = WorldMeshData.Length();
+    const u32 WorldGeometryCount = WorldMeshData.Length();
 
-    u32 HighestInstanceID = 0;
+    u64 HighestInstanceID = 0;
     // Итерировать все сетки в мировых данных.
     for (u32 i = 0; i < WorldGeometryCount; ++i) {
         // Подсчитать все геометрии как один идентификатор.
@@ -187,23 +189,22 @@ bool RenderViewPick::BuildPacket(RenderView* self, FrameData& rFrameData, Viewpo
     for (u32 i = 0; i < PacketData->UiMeshData.MeshCount; ++i) {
         auto m = PacketData->UiMeshData.meshes[i];
         for (u32 j = 0; j < m->GeometryCount; ++j) {
-            GeometryRenderData RenderData;
-            RenderData.geometry = m->geometries[j];
-            RenderData.model = m->transform.GetWorld();
-            RenderData.UniqueID = m->UniqueID;
-            OutPacket.geometries.PushBack(RenderData);
+            GeometryRenderData* RenderData = OutPacket.geometries.PushBack();
+            RenderData->CopyData(m->geometries[j]);
+            RenderData->model = m->transform.GetWorld();
+            RenderData->UniqueID = m->id.UniqueID;
             // OutPacket.GeometryCount++;
         }
         // Подсчитать все геометрии как один идентификатор.
-        if (m->UniqueID > HighestInstanceID) {
-            HighestInstanceID = m->UniqueID;
+        if (m->id > HighestInstanceID) {
+            HighestInstanceID = m->id.UniqueID;
         }
     }
 
     // Также подсчитать тексты.
     for (u32 i = 0; i < PacketData->TextCount; ++i) {
-        if (PacketData->texts[i]->UniqueID > HighestInstanceID) {
-            HighestInstanceID = PacketData->texts[i]->UniqueID;
+        if (PacketData->texts[i]->id > HighestInstanceID) {
+            HighestInstanceID = PacketData->texts[i]->id.UniqueID;
         }
     }
 
@@ -226,9 +227,9 @@ bool RenderViewPick::BuildPacket(RenderView* self, FrameData& rFrameData, Viewpo
 
 bool RenderViewPick::Render(const RenderView* self, RenderViewPacket &packet, const FrameData& rFrameData)
 {
-    auto PickData = reinterpret_cast<RenderViewPick*>(self->data);
-
-    RenderingSystem::SetActiveViewport(packet.viewport);
+    auto PickData = (RenderViewPick*)self->data;
+    auto rsys = SystemsManager::GetRenderingSystem();
+    rsys->SetActiveViewport(packet.viewport);
     
     u32 p = 0;
     auto* pass = &self->passes[p];  // Первый проход отрисовщика
@@ -240,21 +241,21 @@ bool RenderViewPick::Render(const RenderView* self, RenderViewPacket &packet, co
         }
 
         // Reset.
-        const u64& count = PickData->InstanceUpdate.Length();
+        const u32 count = PickData->InstanceUpdate.Length();
         for (u64 i = 0; i < count; ++i) {
             PickData->InstanceUpdate[i] = false;
         }
 
-        if (!RenderingSystem::RenderpassBegin(pass, pass->targets[rFrameData.RenderTargetIndex])) {
+        if (!rsys->RenderpassBegin(pass, pass->targets[rFrameData.RenderTargetIndex])) {
             MERROR("RenderViewPick::Render Не удалось запустить индекс прохода рендеринга %u.", p);
             return false;
         }
 
-        i32 CurrentInstanceID = 0;
+        u64 CurrentInstanceID = 0;
 
         // Мир
         auto& WorldShaderInfo = PickData->WorldShaderInfo;
-        if (!ShaderSystem::Use(WorldShaderInfo.s->id)) {
+        if (!ShaderSystem::Use(WorldShaderInfo.shader->id)) {
             MERROR("Не удалось использовать шейдер выбора мира. Не удалось выполнить рендеринг кадра.");
             return false;
         }
@@ -269,9 +270,9 @@ bool RenderViewPick::Render(const RenderView* self, RenderViewPacket &packet, co
             MERROR("Не удалось применить матрицу вида");
         }
 
-        ShaderSystem::ApplyGlobal(true);
+        ShaderSystem::ApplyGlobal(true, rFrameData);
 
-        const u64& WorldGeometryCount = pData->WorldMeshData->Length();
+        const u32 WorldGeometryCount = pData->WorldMeshData->Length();
         // Нарисовать геометрию. Начните с 0, так как геометрия мира добавляется первой, и остановитесь на количестве геометрий мира.
         for (u32 i = 0; i < WorldGeometryCount; ++i) {
             const auto& geo = packet.geometries[i];
@@ -290,7 +291,7 @@ bool RenderViewPick::Render(const RenderView* self, RenderViewPacket &packet, co
             }
 
             bool NeedsUpdate = !PickData->InstanceUpdate[CurrentInstanceID];
-            ShaderSystem::ApplyInstance(NeedsUpdate);
+            ShaderSystem::ApplyInstance(NeedsUpdate, rFrameData);
             PickData->InstanceUpdate[CurrentInstanceID] = true;
 
             // Применить локальные переменные
@@ -299,13 +300,13 @@ bool RenderViewPick::Render(const RenderView* self, RenderViewPacket &packet, co
             }
 
             // Нарисовать ее.
-            RenderingSystem::DrawGeometry(packet.geometries[i]);
+            rsys->DrawGeometry(packet.geometries[i]);
         }
         // Геометрии конечного мира
 
         //Геометрии ландшафта
         auto& TerrainShaderInfo = PickData->TerrainShaderInfo;
-        if (!ShaderSystem::Use(TerrainShaderInfo.s->id)) {
+        if (!ShaderSystem::Use(TerrainShaderInfo.shader->id)) {
             MERROR("Не удалось использовать шейдер выбора ландшафта. Не удалось отрисовать кадр.");
             return false;
         }
@@ -317,7 +318,7 @@ bool RenderViewPick::Render(const RenderView* self, RenderViewPacket &packet, co
         if (!ShaderSystem::UniformSet(TerrainShaderInfo.ViewLocation, &TerrainShaderInfo.view)) {
             MERROR("Не удалось применить матрицу вида");
         }
-        ShaderSystem::ApplyGlobal(true);
+        ShaderSystem::ApplyGlobal(true, rFrameData);
 
         // Нарисовать геометрию. Начните с 0, так как геометрия ландшафта добавляется первой, и остановитесь на количестве геометрий ландшафта.
         u32 TerrainGeometryCount = pData->TerrainMeshData->Length();
@@ -338,7 +339,7 @@ bool RenderViewPick::Render(const RenderView* self, RenderViewPacket &packet, co
             }
 
             bool NeedsUpdate = !PickData->InstanceUpdate[CurrentInstanceID];
-            ShaderSystem::ApplyInstance(NeedsUpdate);
+            ShaderSystem::ApplyInstance(NeedsUpdate, rFrameData);
             PickData->InstanceUpdate[CurrentInstanceID] = true;
 
             // Применить локальные переменные
@@ -347,10 +348,10 @@ bool RenderViewPick::Render(const RenderView* self, RenderViewPacket &packet, co
             }
 
             // Нарисовать ее.
-            RenderingSystem::DrawGeometry(packet.TerrainGeometries[i]);
+            rsys->DrawGeometry(packet.TerrainGeometries[i]);
         }
 
-        if (!RenderingSystem::RenderpassEnd(pass)) {
+        if (!rsys->RenderpassEnd(pass)) {
             MERROR("RenderViewPick::Render Индекс прохода рендеринга %u не удалось завершить.", p);
             return false;
         }
@@ -358,14 +359,14 @@ bool RenderViewPick::Render(const RenderView* self, RenderViewPacket &packet, co
         p++;
         pass = &self->passes[p];  // Второй проход
 
-        if (!RenderingSystem::RenderpassBegin(pass, pass->targets[rFrameData.RenderTargetIndex])) {
+        if (!rsys->RenderpassBegin(pass, pass->targets[rFrameData.RenderTargetIndex])) {
             MERROR("RenderViewPick::Render индекс прохода %u не удалось запустить.", p);
             return false;
         }
 
         // пользовательский интерфейс
         auto& UiShaderInfo = PickData->UiShaderInfo;
-        if (!ShaderSystem::Use(UiShaderInfo.s->id)) {
+        if (!ShaderSystem::Use(UiShaderInfo.shader->id)) {
             MERROR("Не удалось использовать шейдер материала. Не удалось выполнить рендеринг кадра.");
             return false;
         }
@@ -383,10 +384,11 @@ bool RenderViewPick::Render(const RenderView* self, RenderViewPacket &packet, co
         if (!ShaderSystem::UniformSet(UiShaderInfo.ViewLocation, &UiShaderInfo.view)) {
             MERROR("Не удалось применить матрицу вида");
         }
-        ShaderSystem::ApplyGlobal(true);
+        ShaderSystem::ApplyGlobal(true, rFrameData);
 
         // Нарисовать геометрию. Начните с того места, где остановились мировые геометрии.
-        for (u32 i = WorldGeometryCount; i < packet.geometries.Length(); ++i) {
+        const u32 GeometryCount = packet.geometries.Length();
+        for (u32 i = WorldGeometryCount; i < GeometryCount; ++i) {
             auto& geo = packet.geometries[i];
             CurrentInstanceID = geo.UniqueID;
 
@@ -403,7 +405,7 @@ bool RenderViewPick::Render(const RenderView* self, RenderViewPacket &packet, co
             }
 
             bool NeedsUpdate = !PickData->InstanceUpdate[CurrentInstanceID];
-            ShaderSystem::ApplyInstance(NeedsUpdate);
+            ShaderSystem::ApplyInstance(NeedsUpdate, rFrameData);
             PickData->InstanceUpdate[CurrentInstanceID] = true;
 
             // Применить локальные переменные
@@ -412,19 +414,19 @@ bool RenderViewPick::Render(const RenderView* self, RenderViewPacket &packet, co
             }
 
             // Нарисовать ее.
-            RenderingSystem::DrawGeometry(packet.geometries[i]);
+            rsys->DrawGeometry(packet.geometries[i]);
         }
 
         // Нарисовать растровый текст
         for (u32 i = 0; i < pData->TextCount; ++i) {
             auto text = pData->texts[i];
-            CurrentInstanceID = text->UniqueID;
+            CurrentInstanceID = text->id.UniqueID;
             ShaderSystem::BindInstance(CurrentInstanceID);
 
             // Получить цвет на основе идентификатора
             
             u32 r, g, b;
-            Math::u32ToRGB(text->UniqueID, r, g, b);
+            Math::u32ToRGB(text->id.UniqueID, r, g, b);
             FVec3 IdColour(r, g, b);
             IdColour /= 255.F;
             if (!ShaderSystem::UniformSet(UiShaderInfo.IdColourLocation, &IdColour)) {
@@ -432,7 +434,7 @@ bool RenderViewPick::Render(const RenderView* self, RenderViewPacket &packet, co
                 return false;
             }
 
-            ShaderSystem::ApplyInstance(true);
+            ShaderSystem::ApplyInstance(true, rFrameData);
 
             // Применить локальные переменные
             auto model = text->transform.GetWorld();
@@ -443,7 +445,7 @@ bool RenderViewPick::Render(const RenderView* self, RenderViewPacket &packet, co
             text->Draw();
         }
 
-        if (!RenderingSystem::RenderpassEnd(pass)) {
+        if (!rsys->RenderpassEnd(pass)) {
             MERROR("RenderViewPick::Render индекс прохода %u не завершился.", p);
             return false;
         }
@@ -456,11 +458,10 @@ bool RenderViewPick::Render(const RenderView* self, RenderViewPacket &packet, co
     // Прижать к размеру изображения
     // u16 xCoord = MCLAMP(MouseX, 0, width - 1);
     // u16 yCoord = MCLAMP(MouseY, 0, height - 1);
-    RenderingSystem::TextureReadPixel(&PickData->ColoureTargetAttachmentTexture, PickData->MouseX, PickData->MouseY, &pixel);
+    rsys->TextureReadPixel(&PickData->ColoureTargetAttachmentTexture, PickData->MouseX, PickData->MouseY, &pixel);
 
     // Извлечь идентификатор из выбранного цвета.
-    u32 id = INVALID::ID;
-    Math::RgbuToU32(pixel[0], pixel[1], pixel[2], id);
+    u32 id = Math::RgbuToU32(pixel[0], pixel[1], pixel[2]);
     if (id == 0x00FFFFFF) {
         // Это чистый белый.
         id = INVALID::ID;
@@ -496,9 +497,10 @@ bool RenderViewPick::RegenerateAttachmentTarget(RenderView* self, u32 PassIndex,
         return true;
     }
 
+    auto rsys = SystemsManager::GetRenderingSystem();
     // Уничтожьте текущее прикрепленное приложение, если оно существует.
     if (attachment->texture->data) {
-        RenderingSystem::Unload(attachment->texture);
+        rsys->Unload(attachment->texture);
         MemorySystem::ZeroMem(attachment->texture, sizeof(Texture));
     }
 
@@ -524,7 +526,7 @@ bool RenderViewPick::RegenerateAttachmentTarget(RenderView* self, u32 PassIndex,
     }
     attachment->texture->data = nullptr;
 
-    RenderingSystem::LoadTextureWriteable(attachment->texture);
+    rsys->LoadTextureWriteable(attachment->texture);
 
     return true;
 }
@@ -544,10 +546,10 @@ void RenderViewPick::operator delete(void *ptr, u64 size)
     MemorySystem::Free(ptr, size, Memory::Renderer);
 }
 
-bool RenderViewPick::OnMouseMoved(u16 code, void *sender, void *ListenerInst, EventContext EventData)
+bool RenderViewPick::OnMouseMoved(u16 code, void *sender, void *ListenerInst, const EventContext& EventData)
 {
     if (code == EventSystem::MouseMoved) {
-        auto self = reinterpret_cast<RenderViewPick*>(ListenerInst);
+        auto self = (RenderViewPick*)ListenerInst;
 
         // Обновите положение и регенерируйте матрицу проекции.
         const u16& y = EventData.data.u16[1];
@@ -563,18 +565,21 @@ void RenderViewPick::AcquireShaderInstances()
 {
     // Не сохраняем идентификатор экземпляра, так как это не имеет значения.
     u32 instance;
+
+    auto rsys = SystemsManager::GetRenderingSystem();
     // Шейдер пользовательского интерфейса
-    if (!RenderingSystem::ShaderAcquireInstanceResources(UiShaderInfo.s, 0, nullptr, instance)) {
+    ShaderInstanceResourceConfig config{};
+    if (!rsys->ShaderAcquireInstanceResources(UiShaderInfo.shader, config, instance)) {
         MFATAL("RenderViewPick не удалось получить ресурсы шейдера пользовательского интерфейса.");
         return;
     }
     // Шейдер мира
-    if (!RenderingSystem::ShaderAcquireInstanceResources(WorldShaderInfo.s, 0, nullptr, instance)) {
+    if (!rsys->ShaderAcquireInstanceResources(WorldShaderInfo.shader, config, instance)) {
         MFATAL("RenderViewPick не удалось получить ресурсы шейдера мира.");
         return;
     }
     // Шейдер ландшафта
-    if (!RenderingSystem::ShaderAcquireInstanceResources(TerrainShaderInfo.s, 0, nullptr, instance)) {
+    if (!rsys->ShaderAcquireInstanceResources(TerrainShaderInfo.shader, config, instance)) {
         MFATAL("RenderViewPick не удалось получить ресурсы шейдера ландшафта.");
         return;
     }
@@ -584,19 +589,20 @@ void RenderViewPick::AcquireShaderInstances()
 
 void RenderViewPick::ReleaseShaderInstances()
 {
+    auto rsys = SystemsManager::GetRenderingSystem();
     for (u32 i = 0; i < InstanceCount; ++i) {
         // Шейдер пользовательского интерфейса
-        if (!RenderingSystem::ShaderReleaseInstanceResources(UiShaderInfo.s, i)) {
+        if (!rsys->ShaderReleaseInstanceResources(UiShaderInfo.shader, i)) {
             MWARN("Не удалось освободить ресурсы шейдера пользовательского интерфейса.");
         }
 
         // Шейдер мира
-        if (!RenderingSystem::ShaderReleaseInstanceResources(WorldShaderInfo.s, i)) {
+        if (!rsys->ShaderReleaseInstanceResources(WorldShaderInfo.shader, i)) {
             MWARN("Не удалось освободить ресурсы шейдера мира.");
         }
 
         // Terrain shader
-        if (!RenderingSystem::ShaderReleaseInstanceResources(TerrainShaderInfo.s, i)) {
+        if (!rsys->ShaderReleaseInstanceResources(TerrainShaderInfo.shader, i)) {
             MWARN("Не удалось освободить ресурсы шейдера ландшафта.");
         }
     }
