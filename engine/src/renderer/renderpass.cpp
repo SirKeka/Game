@@ -1,5 +1,7 @@
 #include "renderpass.h"
 #include "core/memory_system.h"
+#include "core/systems_manager.h"
+#include "rendering_system.h"
 
 /*
 RenderTarget::~RenderTarget()
@@ -11,6 +13,17 @@ RenderTarget::~RenderTarget()
     }
 }
 */
+
+constexpr Renderpass::Renderpass(RenderpassConfig &config)
+: 
+id(INVALID::U16ID), 
+name(config.name),
+RenderArea(config.RenderArea), 
+ClearColour(config.ClearColour), 
+ClearFlags(config.ClearFlags), 
+RenderTargetCount(config.RenderTargetCount), 
+targets(nul_alloc(RenderTarget, RenderTargetCount, Memory::Array)), 
+InternalData(nullptr) { SystemsManager::GetRenderingSystem()->RenderpassCreate(config, *this, false); }
 
 Renderpass::~Renderpass()
 {
