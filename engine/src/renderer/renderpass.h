@@ -1,26 +1,37 @@
 #pragma once
 #include "math/vector4d_fwd.h"
-#include "rendering_system.h"
+#include "containers/mstring.h"
+#include "containers/darray.h"
 
 struct Texture;
 
-enum class RenderTargetAttachmentType {
+enum class RenderTargetAttachmentType : u8 {
     Colour = 0x1,
     Depth = 0x2,
     Stencil = 0x4
 };
 
-enum class RenderTargetAttachmentSource {
+MINLINE RenderTargetAttachmentType operator|(RenderTargetAttachmentType l, RenderTargetAttachmentType r) 
+{
+    return RenderTargetAttachmentType((i32)l | (i32)r);
+}
+
+MINLINE bool operator&(RenderTargetAttachmentType l, RenderTargetAttachmentType r) 
+{
+    return (i32)l & (i32)r;
+}
+
+enum class RenderTargetAttachmentSource : u8 {
     Default = 0x1,
-    View = 0x2
+    Self = 0x2
 };
 
-enum class RenderTargetAttachmentLoadOperation {
+enum class RenderTargetAttachmentLoadOperation : u8 {
     DontCare = 0x0,
     Load = 0x1
 };
 
-enum RenderTargetAttachmentStoreOperation {
+enum RenderTargetAttachmentStoreOperation : u8 {
     DontCare = 0x0,
     Store = 0x1
 };
@@ -39,12 +50,12 @@ struct RenderTargetConfig {
 };
 
 struct RenderTargetAttachment {
+    Texture* texture;
     RenderTargetAttachmentType type;
     RenderTargetAttachmentSource source;
     RenderTargetAttachmentLoadOperation LoadOperation;
     RenderTargetAttachmentStoreOperation StoreOperation;
     bool PresentAfter;
-    Texture* texture;
 };
 
 /// @brief Представляет цель рендеринга, которая используется для рендеринга в текстуру или набор текстур.
@@ -52,19 +63,17 @@ struct RenderTarget {
     u8 AttachmentCount                        {};   // Количество вложений.
     RenderTargetAttachment* attachments{nullptr};   // Массив вложений.
     void* InternalFramebuffer          {nullptr};   // Внутренний объект буфера кадра API рендеринга.
-
-    constexpr RenderTarget() : AttachmentCount(), attachments(nullptr), InternalFramebuffer(nullptr) {}
 };
 
 /// @brief Типы очистки, которые необходимо выполнить на этапе рендеринга. 
 /// Могут быть объединены вместе для нескольких функций очистки.
 namespace RenderpassClearFlag {
     enum {
-    None = 0x0,
-    ColourBuffer = 0x1,
-    DepthBuffer = 0x2,
-    StencilBuffer = 0x4
-};
+        None = 0x0,
+        ColourBuffer = 0x1,
+        DepthBuffer = 0x2,
+        StencilBuffer = 0x4
+    };
 } // namespace RenderpassClear
 
 struct RenderpassConfig {
@@ -95,16 +104,8 @@ struct MAPI Renderpass
     void* InternalData;     // Внутренние данные прохода рендеринга.
 
     constexpr Renderpass() : id(INVALID::U16ID), name(), RenderArea(), ClearColour(), ClearFlags(), RenderTargetCount(), targets(nullptr), InternalData(nullptr) {}
-    constexpr Renderpass(RenderpassConfig& config)
-    : 
-    id(INVALID::U16ID), 
-    name(config.name),
-    RenderArea(config.RenderArea), 
-    ClearColour(config.ClearColour), 
-    ClearFlags(config.ClearFlags), 
-    RenderTargetCount(config.RenderTargetCount), 
-    targets((RenderTarget*)(MemorySystem::Allocate(sizeof(RenderTarget) * RenderTargetCount, Memory::Array, true))), 
-    InternalData(nullptr) { RenderingSystem::RenderpassCreate(config, *this, false); }
+    constexpr Renderpass(RenderpassConfig& config);
+
     
     ~Renderpass();
 
