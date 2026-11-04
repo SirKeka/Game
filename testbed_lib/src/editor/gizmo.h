@@ -10,6 +10,7 @@
 
 class Camera;
 struct Ray;
+struct FrameData;
 
 struct MAPI Gizmo {
     enum Mode {
@@ -60,11 +61,13 @@ struct MAPI Gizmo {
     ModeData modeData[MAX + 1]; // Данные для каждого режима гизмо.
     InteractionType interaction;
 
+    bool IsDirty;               // Указывает нужно ли обновлять гизмо
+
 #ifdef _DEBUG
     DebugLine3D PlaneNormalLine;
 #endif
 
-    constexpr Gizmo() : xform(), SelectedXform(nullptr), mode(), ScaleScalar(), orientation(Local), modeData(), interaction() {}
+    Gizmo() : xform(), SelectedXform(nullptr), mode(), ScaleScalar(), orientation(Local), modeData(), interaction() {}
 
     bool Create();
     void Destroy();
@@ -73,6 +76,7 @@ struct MAPI Gizmo {
     bool Load();
     bool Unload();
 
+    void PrepareRenderFrame(const FrameData& rFrameData);
     void Refresh();
     Orientation GetOrientation();
     void SetOrientation(Orientation orientation);
