@@ -14,30 +14,13 @@ struct GeometrySystemConfig {
 
 class GeometrySystem
 {
-private:
-    // Максимальное количество геометрий, которые можно загрузить одновременно.
-    // ПРИМЕЧАНИЕ. Должно быть значительно больше, чем количество статических сеток, 
-    // потому что их может и будет больше одного на сетку.
-    // Принимаем во внимание и другие системы
-    u32 MaxGeometryCount{};
-    Geometry DefaultGeometry{};
-    Geometry Default2dGeometry{};
-
-    // Массив зарегистрированных сеток.
-    struct GeometryReference* RegisteredGeometries{nullptr};
-
-    MAPI static GeometrySystem* state;
-
-    GeometrySystem(u32 MaxGeometryCount, GeometryReference* RegisteredGeometries);
-    ~GeometrySystem() {}
 public:
     GeometrySystem(const GeometrySystem&) = delete;
     GeometrySystem& operator= (const GeometrySystem&) = delete;
 
     static MINLINE GeometrySystem* Instance() { return state; }
 
-    static bool Initialize(u64& MemoryRequirement, void* memory, void* config);
-    static void Shutdown();
+    static GeometrySystem* Initialize(u64& MemoryRequirement, void* memory, GeometrySystemConfig config);
 
     /// @brief Получает существующую геометрию по идентификатору.
     /// @param id Идентификатор геометрии, по которому необходимо получить данные.
@@ -49,9 +32,12 @@ public:
     /// @return Указатель на полученную геометрию или nullptr в случае неудачи. 
     MAPI static Geometry* Acquire(GeometryConfig& config, bool AutoRelease);
 
+    MAPI static bool CreateGeometry(Geometry* geometry);
+    MAPI static bool CreateGeometry(u32 id);
+
     /// @brief Освобождает ссылку на предоставленную геометрию.
     /// @param Geometry Геометрия, которую нужно освободить.
-    static void Release(Geometry *gid);
+    static void Release(Geometry *geometry);
     /// @brief Получает указатель на геометрию по умолчанию.
     /// @return Указатель на геометрию по умолчанию.
     static Geometry* GetDefault();
@@ -88,10 +74,26 @@ public:
     /// @param MaterialName 
     /// @return 
     MAPI static GeometryConfig GenerateCubeConfig(f32 width, f32 height, f32 depth, f32 TileX, f32 TileY, const char* name, const char* MaterialName);
+
+    MAPI static GeometryConfig GenerateSphereSmoothConfig(u16 rings, u16 segments, f32 radius);
 private:
-    static bool CreateGeometry(GeometryConfig& config, Geometry* geometry);
-    static void DestroyGeometry(Geometry* gid);
+    // Максимальное количество геометрий, которые можно загрузить одновременно.
+    // ПРИМЕЧАНИЕ. Должно быть значительно больше, чем количество статических сеток, 
+    // потому что их может и будет больше одного на сетку.
+    // Принимаем во внимание и другие системы
+    u32 MaxGeometryCount;
+    Geometry DefaultGeometry;
+    Geometry Default2dGeometry;
+
+    // Массив зарегистрированных сеток.
+    struct GeometryReference* RegisteredGeometries{nullptr};
+
+    static inline GeometrySystem* state;
+
+    GeometrySystem(u32 MaxGeometryCount, GeometryReference* RegisteredGeometries);
+    ~GeometrySystem() {}
+
+    static void DestroyGeometry(Geometry* geometry);
     static bool CreateDefaultGeometries();
-public:
-    // void* operator new(u64 size);
+
 };
