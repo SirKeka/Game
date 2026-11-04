@@ -1,15 +1,17 @@
 #include "debug_line3d.h"
 #include "core/identifier.h"
+#include "core/systems_manager.h"
 #include "renderer/rendering_system.h"
 
-constexpr DebugLine3D::DebugLine3D(const FVec3& Point0, const FVec3& Point1, Transform *parent) 
+DebugLine3D::DebugLine3D(FVec3 Point0, FVec3 Point1, Transform *parent) 
 :
-UniqueID(Identifier::AquireNewID(this)),
+id(),
 name(),
 Point0(Point0),
 Point1(Point1),
 colour(FVec4::One()), // Поумолчаню белый цвет
 xform(),
+IsDirty(true),
 VertexCount(),
 vertices(nullptr),
 geometry()
@@ -31,16 +33,17 @@ geometry()
 
 void DebugLine3D::Destroy()
 {
-    Identifier::ReleaseID(UniqueID);
+    id = INVALID::ID;
 }
 
-bool DebugLine3D::Create(const FVec3 &Point0, const FVec3 &Point1, Transform *parent)
+bool DebugLine3D::Create(FVec3 Point0, FVec3 Point1, Transform *parent)
 {
-    UniqueID = Identifier::AquireNewID(this);
+    id.Generate();
     this->Point0 = Point0;
     this->Point1 = Point1;
     colour = FVec4::One();
     xform = Transform();
+    IsDirty = true;
     geometry = Geometry();
     if (parent) {
         xform.SetParent(parent);
@@ -48,12 +51,13 @@ bool DebugLine3D::Create(const FVec3 &Point0, const FVec3 &Point1, Transform *pa
     return true;
 }
 
+
 void DebugLine3D::SetParent(Transform *parent)
 {
     xform.SetParent(parent);
 }
 
-void DebugLine3D::SetColour(const FVec4 &colour)
+void DebugLine3D::SetColour(FVec4 colour)
 {
     this->colour = colour;
 
@@ -61,43 +65,25 @@ void DebugLine3D::SetColour(const FVec4 &colour)
 
     if (geometry.generation != INVALID::U16ID && VertexCount && vertices) {
         UpdateVertColour();
-
-        // Загрузите новые данные вершин.
-        RenderingSystem::GeometryVertexUpdate(&geometry, 0, VertexCount, vertices);
-
-        geometry.generation++;
-
-        // Установите это на ноль, чтобы мы не заблокировали себя от обновления.
-        if (geometry.generation == INVALID::U16ID) {
-            geometry.generation = 0;
-        }
+        IsDirty = true;
     }
     
 }
 
-void DebugLine3D::SetPoints(const FVec3 &Point0, const FVec3 &Point1)
+void DebugLine3D::SetPoints(FVec3 Point0, FVec3 Point1)
 {
     if (geometry.generation != INVALID::U16ID && VertexCount && vertices) {
         this->Point0 = Point0;
         this->Point1 = Point1;
         RecalculatePoints();
-
-        // Загрузите новые данные вершин.
-        RenderingSystem::GeometryVertexUpdate(&geometry, 0, VertexCount, vertices);
-
-        geometry.generation++;
-
-        // Установите это на ноль, чтобы мы не заблокировали себя от обновления.
-        if (geometry.generation == INVALID::U16ID) {
-            geometry.generation = 0;
-        }
+        IsDirty = true;
     }
 }
 
 bool DebugLine3D::Initialize()
 {
     VertexCount = 2;  // Всего 2 очка за линию.
-    vertices = reinterpret_cast<ColourVertex3D*>(MemorySystem::Allocate(sizeof(ColourVertex3D) * VertexCount, Memory::Array));
+    CreateArray(vertices, sizeof(ColourVertex3D) * VertexCount);
 
     RecalculatePoints();
     UpdateVertColour();
@@ -107,13 +93,20 @@ bool DebugLine3D::Initialize()
 
 bool DebugLine3D::Load()
 {
+    id.Generate();
     // Отправьте геометрию в рендерер для загрузки в графический процессор.
-    if (!RenderingSystem::CreateGeometry(&geometry, sizeof(ColourVertex3D), VertexCount, vertices)) {
+    auto rsys = SystemsManager::GetRenderingSystem();
+
+    geometry.VertexElementSize = sizeof(ColourVertex3D);
+    geometry.VertexCount = VertexCount;
+    geometry.vertices = vertices;
+
+    if (!rsys->CreateGeometry(&geometry)) {
         return false;
     }
 
     // Отправляем геометрию в рендерер для загрузки в графический процессор.
-    if (!RenderingSystem::Load(&geometry)) {
+    if (!rsys->Load(&geometry)) {
         return false;
     }
     
@@ -125,9 +118,28 @@ bool DebugLine3D::Load()
     return true;
 }
 
+void DebugLine3D::RenderFramePrepare(const FrameData &rFrameData)
+{
+    if (!IsDirty) {
+        return;
+    }
+    
+    // Загрузите новые данные вершин.
+    SystemsManager::GetRenderingSystem()->GeometryVertexUpdate(&geometry, 0, false);
+
+    geometry.generation++;
+
+    // Установите это на ноль, чтобы мы не заблокировали себя от обновления.
+    if (geometry.generation == INVALID::U16ID) {
+        geometry.generation = 0;
+    }
+
+    IsDirty = false;
+}
+
 bool DebugLine3D::Unload()
 {
-    RenderingSystem::Unload(&geometry);
+    SystemsManager::GetRenderingSystem()->Unload(&geometry);
 
     return true;
 }
