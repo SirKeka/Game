@@ -1,61 +1,42 @@
 #include "transform.h"
 
-MINLINE Transform *Transform::GetParent()
-{
-    return parent;
-}
-
-void Transform::SetParent(Transform *parent)
-{
-    this->parent = parent;
-}
-
-constexpr FVec3 &Transform::GetPosition()
-{
-    return position;
-}
-
-void Transform::SetPosition(const FVec3& position)
+void Transform::SetPosition(FVec3 position)
 {
     this->position = position;
     IsDirty = true;
 }
 
-void Transform::Translate(const FVec3& translation)
+void Transform::SetPosition(f32 x, f32 y, f32 z)
+{
+    position.x = x; position.y = y; position.z = z;
+    IsDirty = true;
+}
+
+void Transform::Translate(FVec3 translation)
 {
     this->position += translation;
     IsDirty = true;
 }
 
-constexpr Quaternion &Transform::GetRotation()
-{
-    return rotation;
-}
-
-void Transform::SetRotation(const Quaternion &rotation)
+void Transform::SetRotation(Quaternion rotation)
 {
     this->rotation = rotation;
     IsDirty = true;
 }
 
-void Transform::Rotate(const Quaternion &rotation)
+void Transform::Rotate(Quaternion rotation)
 {
     this->rotation *= rotation;
     IsDirty = true;
 }
 
-constexpr FVec3 &Transform::GetScale()
-{
-    return scale;
-}
-
-void Transform::SetScale(const FVec3 &scale)
+void Transform::SetScale(FVec3 scale)
 {
     this->scale = scale;
     IsDirty = true;
 }
 
-void Transform::Scale(const FVec3 &scale)
+void Transform::Scale(FVec3 scale)
 {
     this->scale *= scale;
     IsDirty = true;
