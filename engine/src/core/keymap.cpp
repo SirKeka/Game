@@ -15,7 +15,7 @@ void Keymap::BindingAdd(Keys key, EntryBindType type, Modifier modifiers, void *
         node = node->next;
     }
 
-    auto NewEntry = reinterpret_cast<Binding*>(MemorySystem::Allocate(sizeof(Binding), Memory::Keymap));
+    auto NewEntry = (Binding*)MemorySystem::Allocate(sizeof(Binding), Memory::Keymap);
     NewEntry->callback = callback;
     NewEntry->modifiers = static_cast<ModifierBits>(modifiers);
     NewEntry->type = type;
@@ -48,7 +48,7 @@ void Keymap::BindingRemove(Keys key, EntryBindType type, Modifier modifiers, Cal
 
 void Keymap::Clear()
 {
-    for (u32 i = 0; i < static_cast<u32>(Keys::MaxKeys); ++i) {
+    for (u32 i = 0; i < (u32)Keys::MaxKeys; ++i) {
         auto& entry = entries[i];
         auto node = entry.bindings;
         [[maybe_unused]]auto previous = entry.bindings;

@@ -2,7 +2,7 @@
 
 #include "defines.h"
 
-enum class Buttons { Left, Right, Middle, Max };
+enum class Buttons : u8 { Left, Right, Middle, Max, };
 
 //#define DEFINE_KEY(name, code) KEY_##name = code
 
@@ -175,25 +175,25 @@ class MAPI Keymap
 {
 public:
     enum ModifierBits {
-        ModifierNoneBit    = 0x0,
-        ModifierShiftBit   = 0x1,
-        ModifierControlBit = 0x2,
-        ModifierAltBit     = 0x4,
+        NoneBit    = 0x0,
+        ShiftBit   = 0x1,
+        ControlBit = 0x2,
+        AltBit     = 0x4,
     };
 
     using Modifier = u32;
 
     enum EntryBindType {
         /// @brief Неопределенное сопоставление, которое можно переопределить.
-        BindTypeUndefined = 0x0,
+        Undefined = 0x0,
         /// @brief Обратный вызов выполняется при первоначальном нажатии клавиши.
-        BindTypePress     = 0x1,
+        Press     = 0x1,
         /// @brief Обратный вызов выполняется при отпускании клавиши.
-        BindTypeRelease   = 0x2,
+        Release   = 0x2,
         /// @brief Обратный вызов выполняется непрерывно, пока клавиша удерживается.
-        BindTypeHold      = 0x4,
+        Hold      = 0x4,
         /// @brief Используется для отключения привязки клавиш на карте более низкого уровня.
-        BindTypeUnset     = 0x8
+        Unset     = 0x8
     };
 
     using Callback = void(*)(Keys, EntryBindType, Modifier, void*);
@@ -213,11 +213,11 @@ public:
     };
 
     bool OverridesAll;
-    Entry entries[static_cast<u16>(Keys::MaxKeys)];
+    Entry entries[(u16)Keys::MaxKeys];
 
     constexpr Keymap() : OverridesAll(false), entries() {
-        for (u16 i = 0; i < static_cast<u16>(Keys::MaxKeys); i++) {
-            entries->key = static_cast<Keys>(i);
+        for (u16 i = 0; i < (u16)Keys::MaxKeys; i++) {
+            entries->key = (Keys)i;
         }
     } 
     ~Keymap();
