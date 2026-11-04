@@ -1,14 +1,10 @@
 #include "debug_box3d.h"
+#include "core/systems_manager.h"
 #include "renderer/rendering_system.h"
-
-// DebugBox3D::~DebugBox3D()
-// {
-//     Destroy();
-// }
 
 void DebugBox3D::Destroy()
 {
-    Identifier::ReleaseID(UniqueID);
+    id = INVALID::ID;
 }
 
 void DebugBox3D::SetParent(Transform *parent)
@@ -16,7 +12,83 @@ void DebugBox3D::SetParent(Transform *parent)
     xform.SetParent(parent);
 }
 
-void DebugBox3D::SetColour(const FVec4 &colour)
+void DebugBox3D::SetPoints(FVec4 *points)
+{
+    if (points) {
+        if (geometry.generation != INVALID::U16ID && VertexCount && vertices) {
+            // for (u32 i = 0; i < 8; ++i) {
+            //     vertices[i].position = points[i];
+            // }
+
+            // Линии фронта
+            {
+                // верхняя
+                vertices[0].position = points[2];
+                vertices[1].position = points[3];
+                // правая
+                vertices[2].position = points[1];
+                vertices[3].position = points[2];
+                // нижняя
+                vertices[4].position = points[0];
+                vertices[5].position = points[1];
+                // левая
+                vertices[6].position = points[3];
+                vertices[7].position = points[0];
+            }
+            // задние линии
+            {
+                // верхняя
+                vertices[8].position = points[6];
+                vertices[9].position = points[7];
+                // правая
+                vertices[10].position = points[5];
+                vertices[11].position = points[6];
+                // нижняя
+                vertices[12].position = points[4];
+                vertices[13].position = points[5];
+                // левая
+                vertices[14].position = points[7];
+                vertices[15].position = points[4];
+            }
+
+            // Верхние соединительные линии
+            {
+                // слева
+                vertices[16].position = points[3];
+                vertices[17].position = points[7];
+                // справа
+                vertices[18].position = points[2];
+                vertices[19].position = points[6];
+            }
+            // Нижние соединительные линии
+            {
+                // слева
+                vertices[20].position = points[0];
+                vertices[21].position = points[4];
+                // справа
+                vertices[22].position = points[1];
+                vertices[23].position = points[5];
+            }
+            IsDirty = true;
+        }
+    }
+}
+
+void DebugBox3D::RenderFramePrepare(const FrameData &rFrameData)
+{
+    // Загрузить новые данные вершин.
+    SystemsManager::GetRenderingSystem()->GeometryVertexUpdate(&geometry, 0);
+
+    geometry.generation++;
+
+    // Обнулить это значение, чтобы не заблокировать возможность обновления.
+    if (geometry.generation == INVALID::U16ID) {
+        geometry.generation = 0;
+    }
+    IsDirty = false;
+}
+
+void DebugBox3D::SetColour(FVec4 colour)
 {
     if (!this->colour.a) {
         this->colour.a = 1.F;
@@ -26,16 +98,7 @@ void DebugBox3D::SetColour(const FVec4 &colour)
     
     if (geometry.generation != INVALID::U16ID && VertexCount && vertices) {
         UpdateVertColour();
-
-        // Загрузите новые данные вершин.
-        RenderingSystem::GeometryVertexUpdate(&geometry, 0, VertexCount, vertices);
-
-        geometry.generation++;
-
-        // Установите это на ноль, чтобы мы не заблокировали себя от обновления.
-        if (geometry.generation == INVALID::U16ID) {
-            geometry.generation = 0;
-        }
+        IsDirty = true;
     }
 }
 
@@ -43,23 +106,14 @@ void DebugBox3D::SetExtents(const Extents3D &extents)
 {
     if (geometry.generation != INVALID::U16ID && VertexCount && vertices) {
         RecalculateExtents(extents);
-
-        // Загрузите новые данные вершин.
-        RenderingSystem::GeometryVertexUpdate(&geometry, 0, VertexCount, vertices);
-
-        geometry.generation++;
-
-        // Установите это на ноль, чтобы мы не заблокировали себя от обновления.
-        if (geometry.generation == INVALID::U16ID) {
-            geometry.generation = 0;
-        }
+        IsDirty = true;
     }
 }
 
 bool DebugBox3D::Initialize()
 {
     VertexCount = 2 * 12;  // 12 линий, чтобы сделать куб.
-    vertices = reinterpret_cast<ColourVertex3D*>(MemorySystem::Allocate(sizeof(ColourVertex3D) * VertexCount, Memory::Array));
+    vertices = (ColourVertex3D*)MemorySystem::Allocate(sizeof(ColourVertex3D) * VertexCount, Memory::Array);
 
     Extents3D extents;
     extents.min.x = -size.x * 0.5F;
@@ -77,13 +131,21 @@ bool DebugBox3D::Initialize()
 
 bool DebugBox3D::Load()
 {
+    id.Generate();
+
+    auto rsys = SystemsManager::GetRenderingSystem();
+
     // Отправьте геометрию в рендерер для загрузки в графический процессор.
-    if (!RenderingSystem::CreateGeometry(&geometry, sizeof(ColourVertex3D), VertexCount, vertices)) {
+    geometry.VertexElementSize = sizeof(ColourVertex3D);
+    geometry.VertexCount = VertexCount;
+    geometry.vertices = vertices;
+
+    if (!rsys->CreateGeometry(&geometry)) {
         return false;
     }
 
     // Отправляем геометрию в рендерер для загрузки в графический процессор.
-    if (!RenderingSystem::Load(&geometry)) {
+    if (!rsys->Load(&geometry)) {
         return false;
     }
 
@@ -97,7 +159,9 @@ bool DebugBox3D::Load()
 
 bool DebugBox3D::Unload()
 {
-    RenderingSystem::Unload(&geometry);
+    SystemsManager::GetRenderingSystem()->Unload(&geometry);
+
+    id = INVALID::ID;
 
     return true;
 }
