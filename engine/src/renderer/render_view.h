@@ -1,7 +1,8 @@
 #pragma once 
 #include "containers/darray.h"
 #include "core/event.h"
-#include "math/matrix4d.h"
+#include "core/identifier.h"
+#include "renderer_types.h"
 
 struct Viewport;
 struct RenderView;
@@ -12,20 +13,10 @@ struct FrameData;
 struct RenderTargetAttachment;
 class Camera;
 
-struct GeometryRenderData 
-{
-    Matrix4D model;
-    Geometry* geometry;
-    u32 UniqueID;
-    bool WindingInverted;
-};
-
-template class DArray<GeometryRenderData>;
-
 struct SkyboxPacketData {
-    struct Skybox* skybox;
+    struct Sky* skybox;
     constexpr SkyboxPacketData() = default;
-    constexpr SkyboxPacketData(Skybox* skybox) : skybox(skybox) {}
+    constexpr SkyboxPacketData(Sky* skybox) : skybox(skybox) {}
 };
 
 /// @brief Пакет для представления рендеринга, созданный им и содержащий данные о том, что должно быть визуализировано.
@@ -34,7 +25,6 @@ struct SkyboxPacketData {
     /// @param Matrix4D_ViewMatrix Текущая матрица представления.
     /// @param Matrix4D_ProjectionMatrix Текущая матрица проекции.
     /// @param FVec3_ViewPosition Текущая позиция представления, если применимо.
-    /// @param FVec4_AmbientColour Текущий окружающий цвет сцены, если применимо.
     /// @param u32_GeometryCount Количество геометрий для рисования.
     /// @param GeometryRenderData*_geometries Геометрии для рисования.
     /// @param const_char*_CustomShaderName Имя используемого пользовательского шейдера, если применимо. В противном случае 0.
@@ -50,8 +40,6 @@ struct SkyboxPacketData {
         Matrix4D ProjectionMatrix;
         /// @brief Текущая позиция просмотра, если применимо.
         FVec3 ViewPosition;
-        /// @brief Текущий окружающий цвет сцены, если применимо.
-        FVec4 AmbientColour;
         /// @brief Данные для текущего скайбокса.
         SkyboxPacketData SkyboxData;
         /// @brief Количество геометрических фигур, которые необходимо нарисовать.
@@ -135,5 +123,5 @@ struct MAPI RenderView
     bool (*RegenerateAttachmentTarget)(RenderView* self, u32 PassIndex, RenderTargetAttachment* attachment);
 };
 
-MAPI bool EditorWorldOnEvent(u16 code, void* sender, void* ListenerInst, EventContext context);
+MAPI bool EditorWorldOnEvent(u16 code, void* sender, void* ListenerInst, EventContext& context);
 
