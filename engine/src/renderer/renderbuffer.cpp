@@ -3,10 +3,12 @@
 
 RenderBuffer::~RenderBuffer()
 {
-    if (FreelistBlock && FreelistMemoryRequirement > 0) {
+    if (AllocType == AllocationType::FreeList) {
         MemorySystem::Free(FreelistBlock, FreelistMemoryRequirement, Memory::Renderer);
         FreelistMemoryRequirement = 0;
         FreelistBlock = nullptr;
+    } else {
+        offset = 0;
     }
 }
 
@@ -16,13 +18,36 @@ bool RenderBuffer::Allocate(u64 size, u64 &OutOffset)
         MERROR("RenderBuffer::Allocate требуется ненулевой размер.");
         return false;
     }
-    if (!FreelistMemoryRequirement) {
+    switch (AllocType)
+    {
+    case AllocationType::None:
         MWARN("RenderBuffer::Allocate вызывается для буфера, не использующего свободные списки. Смещение не будет действительным. Вместо этого вызовите RenderBuffer::LoadData.");
         OutOffset = 0;
         return true;
+    case AllocationType::Linear:
+        OutOffset = offset;
+        offset += size;
+        return true;
+    default:
+        return BufferFreelist.AllocateBlock(size, OutOffset);
+    }
+}
+
+bool RenderBuffer::Clear(bool ZeroMemory)
+{
+    if (AllocType == AllocationType::FreeList) {
+        BufferFreelist.Clear();
+    } else if (AllocType == AllocationType::Linear) {
+        offset = 0;
     }
 
-    return BufferFreelist.AllocateBlock(size, OutOffset);
+    if (ZeroMemory) {
+        // ЗАДАЧА: zero memory
+        MFATAL("ЗАДАЧА: Zero memory");
+        return false;
+    }
+
+    return true;
 }
 
 bool RenderBuffer::Free(u64 size, u64 offset)
@@ -31,10 +56,13 @@ bool RenderBuffer::Free(u64 size, u64 offset)
         MERROR("RenderBuffer::Free требуется ненулевой размер.");
         return false;
     }
-    if (!FreelistMemoryRequirement) {
+    if (AllocType == AllocationType::None) {
         MWARN("RenderBuffer::Free вызывается в буфере, не использующем свободные списки. Ничего не было сделано.");
         return true;
+    } else if (AllocType == AllocationType::Linear) {
+        return true;
     }
+    
 
     return BufferFreelist.FreeBlock(size, offset);
 }
