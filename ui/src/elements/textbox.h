@@ -20,6 +20,10 @@ struct MAPI Textbox : public UiElement {
     UiClipMask ClipMask;
 
     constexpr Textbox(UiElement* parent = nullptr);
+    /// @brief Конструктор
+    /// @param BufferSize размер буфера строки
+    /// @param parent указатель на родителя
+    constexpr Textbox(u32 BufferSize, UiElement* parent = nullptr);
     Textbox(const char* name, FontType type, const char* FontName, u16 FontSize, const char* text, UiElement* parent = nullptr);
 
     bool Create(const char* name, FontType type, const char* FontName, u16 FontSize, const char* text, UiElement* parent = nullptr);
@@ -33,7 +37,7 @@ struct MAPI Textbox : public UiElement {
     void Unload() override;
 
     bool Update(FrameData& rFrameData) override { return true; }
-
+    void RenderPrepare(const FrameData& rFrameData) override;
     bool Render(FrameData& rFrameData, UiRenderData& RenderData) override;
 
     const MString& GetText() { return ContentLabel.GetText(); }
@@ -41,13 +45,4 @@ struct MAPI Textbox : public UiElement {
     void SetText(MString& text, bool copy = true);
     static void OnMouseDown(UiElement* self, UiMouseEvent event);
     static void OnMouseUp  (UiElement* self, UiMouseEvent event);
-    void OnKey(UiKeyboardEvent event) override;
-
-private:
-    static bool OnKey(u16 code, void* sender, void* ListenerInst, EventContext& context);
-    f32 CalculateCursorOffset(u32 StringPosition, MString& FullString, FontData* font);
-    void UpdateCursorPosition();
-    void UpdateHighlightBox();
 };
-
-constexpr int bkhad = sizeof(Textbox);
