@@ -45,7 +45,7 @@ echo "Ошибка:"$errorlevel | sed -e "s/error/${txtred}error${txtrst}/g" && 
 fi
 
 # Vulkan Renderer Lib
-make -f Makefile.library.mak $ACTION TARGET=$TARGET ASSEMBLY=vulkan_renderer VER_MAJOR=0 VER_MINOR=1 DO_VERSION=no ADDL_INC_FLAGS="-Iengine/src -I$VULKAN_SDK/include" ADDL_LINK_FLAGS="-lengine -lvulkan-1 -L$VULKAN_SDK/Lib"
+make -f Makefile.library.mak $ACTION TARGET=$TARGET ASSEMBLY=vulkan_renderer VER_MAJOR=0 VER_MINOR=1 DO_VERSION=no ADDL_INC_FLAGS="-Iengine/src -I$VULKAN_SDK/include" ADDL_LINK_FLAGS="-lengine -lvulkan-1 -lshaderc_shared -lspirv-cross-c-shared  -L$VULKAN_SDK/Lib"
 ERRORLEVEL=$?
 if [ $ERRORLEVEL -ne 0 ]
 then
