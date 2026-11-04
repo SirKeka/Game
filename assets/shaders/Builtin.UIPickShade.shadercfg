@@ -1,0 +1,19 @@
+# Moon shader config file
+version=1.0
+name=Shader.Builtin.UIPick
+renderpass=Renderpass.Builtin.UIPick
+stages=vertex,fragment
+stagefiles=shaders/Shader.Builtin.UIPick.vert.spv,shaders/Shader.Builtin.UIPick.frag.spv
+depth_test=0
+depth_write=0
+
+#Атрибуты: тип,название
+attribute=vec2,in_position
+attribute=vec2,in_texcoord
+
+# Uniforms: тип, scope, название
+# ПРИМЕЧАНИЕ: Для scope: 0=глобальный, 1=экземпляр, 2=локальный
+uniform=mat4,0,projection
+uniform=mat4,0,view
+uniform=vec3,1,id_colour
+uniform=mat4,2,model
