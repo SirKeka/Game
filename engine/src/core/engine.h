@@ -2,7 +2,7 @@
 
 // Основные компоненты ядра
 #include "clock.h"
-#include "systems_manager.hpp"
+#include "systems_manager.h"
 
 #include "systems/font_system.h"
 
@@ -10,6 +10,9 @@
 #include "renderer/renderer_plugin.h"
 
 #include "frame_data.h"
+
+using PFN_PluginCreate = RendererPlugin*(*)(void*, u64*);
+struct EventContext;
 
 /// @brief Конфигурация приложения.
 /// @param i16_StartPosX начальное положение окна по оси X, если применимо.
@@ -27,9 +30,8 @@ struct ApplicationConfig {
     i16 StartWidth;
     i16 StartHeight;
     const char* name;
-    FontSystemConfig FontConfig;
-    DArray<RenderView> RenderViews;
-    RendererPlugin* plugin;
+    FontSystem::Config FontConfig;
+    PFN_PluginCreate PluginCreate;
     u64 FrameAllocatorSize;
     u64 AppFrameDataSize;
 };
@@ -52,6 +54,11 @@ class Engine
     Clock clock;
     f64 LastTime;
 
+    bool resizing; // Указывает, изменяется ли размер окна в данный момент.
+    // Текущее количество кадров с момента последней операции изменения размера.
+    // Устанавливается только если resizing = true. В противном случае — 0.
+    u8 FramesSinceResize;
+
     LinearAllocator FrameAllocator; // Распределитель, используемый для покадрового распределения, который сбрасывается каждый кадр.
 
     FrameData frameData;
@@ -61,8 +68,7 @@ class Engine
     constexpr Engine(const ApplicationConfig& config);
 public:
     ~Engine() {}
-    Engine(const Engine&) = delete;
-    Engine& operator= (const Engine&) = delete;
+    NON_COPYABLE(Engine);
 
     MAPI static bool Create(Application& GameInst);
 
@@ -73,9 +79,10 @@ public:
     static void OnEventSystemInitialized();
 
     MAPI const FrameData& GetFrameData() const;
+    MAPI SystemsManager& GetSystemsManager() { return SysManager; }
 
 private:
     // Обработчики событий
-    static bool OnEvent(u16 code, void* sender, void* ListenerInst, EventContext context);
-    static bool OnResized(u16 code, void* sender, void* ListenerInst, EventContext context);
+    static bool OnEvent(u16 code, void* sender, void* ListenerInst, const EventContext& context);
+    static bool OnResized(u16 code, void* sender, void* ListenerInst, const EventContext& context);
 };
