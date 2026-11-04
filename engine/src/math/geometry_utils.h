@@ -2,6 +2,7 @@
 
 #include "extents.h"
 #include "containers/darray.h"
+#include "core/identifier.h"
 
 struct GeometryConfig;
 struct Vertex3D;
@@ -22,7 +23,7 @@ struct MAPI Ray
 struct RaycastHit
 {
     enum Type { OBB, Surface } type;
-    u32 UniqueID;
+    Identifier UniqueID;
     FVec3 position;
     f32 distance;
 };
@@ -62,9 +63,9 @@ namespace Math
         void GenerateTerrainNormals(u32 VertexCount, struct TerrainVertex *vertices, u32 IndexCount, u32 *indices);
 
         void GenerateTerrainTangents(u32 VertexCount, struct TerrainVertex *vertices, u32 IndexCount, u32 *indices);
-    } // namespace Geometry
 
-    MAPI Ray RaycastFromScreen(const FVec2& ScreenPosition, const Rect2D& ViewportRect, const FVec3& origin, const Matrix4D& view, const Matrix4D projection);
+        MAPI GeometryConfig GenerateQuad2D(const char *name, f32 width, f32 height, f32 TxMin, f32 TxMax, f32 TyMin, f32 TyMax);
+    } // namespace Geometry
 
     MAPI bool RaycastAABB(Extents3D bbExtents, const Ray& ray, FVec3& OutPoint);
 
@@ -74,10 +75,11 @@ namespace Math
 
     MAPI bool RaycastDisc(const Ray& ray, const FVec3& center, const FVec3& normal, f32 OuterRadius, f32 InnerRadius, FVec3& OutPoint, f32& OutDistance);
 
-    MINLINE bool PointInRect2d(const Point& point, const Rect2D& rect) {
-    return point.x >= rect.x && point.x <= rect.x + rect.width && point.y >= rect.y && point.y <= rect.y + rect.height;
-}
+    template <typename T>
+    MINLINE bool PointInRect2d(const Vector2D<T>& point, const Rect2D& rect) {
+        return point.x >= rect.x && point.x <= rect.x + rect.width && point.y >= rect.y && point.y <= rect.y + rect.height;
+    }
     
 } // namespace Math
 
-
+MAPI void GenerateUvsFromImageCoords(u32 ImgWidth, u32 ImgHeight, u32 px_x, u32 px_y, f32& OutTx, f32& OutTy);
