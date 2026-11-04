@@ -1,6 +1,6 @@
 #pragma once
 
-#include "defines.h"
+#include "containers/darray.h"
 
 struct EventContext {
     // 128 байт
@@ -24,24 +24,25 @@ struct EventContext {
 };
 
 // Должен возвращать true, если обработано.
-using PFN_OnEvent = bool(*)(u16, void*, void*, EventContext);
+using PFN_OnEvent = bool(*)(u16, void*, void*, const EventContext&);
 
 /// @brief Реализация класса инициатора для синхронных действий
-class Executor
+// class Executor
+// {
+// public:
+//     void CallbackHandler(int eventID);
+//     void operator() (int eventID);
+// };
+
+//using ptrCallback = bool(*) (u16, void*, void*, EventContext&);
+// using PFN_OnEventMethod = bool(Executor::*)(u16, void*, void*, EventContext&, Executor*);
+
+class EventSystem
 {
 public:
-    void CallbackHandler(int eventID);
-    void operator() (int eventID);
-};
+    NON_COPYABLE(EventSystem);
 
-//using ptrCallback = bool(*) (u16, void*, void*, EventContext);
-using PFN_OnEventStatic = bool(*) (u16, void*, void*, EventContext);
-using PFN_OnEventMethod = bool(Executor::*)(u16, void*, void*, EventContext, Executor*);
-
-namespace EventSystem
-{
-    bool Initialize(u64& MemoryRequirement, void* memory, void* config);
-    void Shutdown();
+    static EventSystem* Initialize(u64& MemoryRequirement, void* memory);
 
     /// @brief Зарегистрируйте, следить за отправкой событий с предоставленным кодом. 
     /// События с повторяющимися комбинациями прослушивателя и обратного вызова не будут регистрироваться снова 
@@ -50,7 +51,7 @@ namespace EventSystem
     /// @param listener Указатель на экземпляр прослушивателя. Может быть 0/NULL.
     /// @param OnEvent Указатель функции обратного вызова, который будет вызываться при запуске кода события.
     /// @return true, если событие успешно зарегистрировано; в противном случае false.
-    MAPI bool Register(u16 code, void* listener, PFN_OnEvent OnEvent);
+    MAPI static bool Register(u16 code, void* listener, PFN_OnEvent OnEvent);
 
     /// @brief Отмените регистрацию от прослушивания событий, отправляемых с помощью предоставленного кода.
     /// Если соответствующая регистрация не найдена, эта функция возвращает false.
@@ -58,7 +59,7 @@ namespace EventSystem
     /// @param listener Указатель на экземпляр прослушивателя. Может быть 0/NULL.
     /// @param OnEvent Указатель функции обратного вызова, регистрацию которого необходимо отменить.
     /// @return true, если событие успешно отменено; в противном случае false.
-    MAPI bool Unregister(u16 code, void* listener, PFN_OnEvent OnEvent);
+    MAPI static bool Unregister(u16 code, void* listener, PFN_OnEvent OnEvent);
 
     /// @brief Вызывает событие для слушателей данного кода. Если обработчик событий возвращает true, 
     /// событие считается обработанным и больше не передается прослушивателям.
@@ -66,7 +67,7 @@ namespace EventSystem
     /// @param sender Указатель на отправителя. Может быть 0/NULL.
     /// @param data Данные о событии.
     /// @return true, если обработано, иначе false.
-    MAPI bool Fire(u16 code, void* sender, EventContext context);
+    MAPI static bool Fire(u16 code, void* sender, const EventContext& context);
 
     // Коды внутренних событий системы. Приложение должно использовать коды, превышающие 255.
     enum Code {
@@ -74,44 +75,57 @@ namespace EventSystem
         ApplicationQuit = 0x01,
 
         // Нажата клавиша клавиатуры.
-        /* Использование контекста:
-         * u16 key_code = data.data.u16[0]; */
+        /* Контекст использования:
+         * u16 KeyCode = data.data.u16[0]; 
+         * u16 RepeatCount = data.data.u16[1]; */
         KeyPressed = 0x02,
 
         // Клавиша клавиатуры отпущена.
-        /* Использование контекста:
-         * u16 key_code = data.data.u16[0]; */
+        /* Контекст использования:
+         * u16 KeyCode = data.data.u16[0]; 
+         * u16 RepeatCount = data.data.u16[1]; */
         KeyReleased = 0x03,
 
         // Кнопка мыши нажата.
-        /* Использование контекста:
-         * u16 button = data.data.u16[0]; */
+        /* Контекст использования:
+         * u16 button = data.data.u16[0]; 
+         * u16 x = data.data.i16[1];
+         * u16 y = data.data.i16[2]; */
         ButtonPressed = 0x04,
 
         // Кнопка мыши отпущена.
-        /* Использование контекста:
-         * u16 button = data.data.u16[0]; */
+        /* Контекст использования:
+         * u16 button = data.data.u16[0]; 
+         * u16 x = data.data.i16[1];
+         * u16 y = data.data.i16[2]; */
         ButtonReleased = 0x05,
 
+        // Кнопка мыши нажата и отпущена.
+        /* Контекст использования:
+         * u16 button = data.data.u16[0];
+         * u16 x = data.data.i16[1];
+         * u16 y = data.data.i16[2]; */
+        ButtonClicked = 0x06,
+
         // Мышь перемещена.
-        /* Использование контекста:
+        /* Контекст использования:
          * u16 x = data.data.u16[0];
          * u16 y = data.data.u16[1]; */
-        MouseMoved = 0x06,
+        MouseMoved = 0x07,
 
-        //Мышь перемещена.
-        /* Использование контекста:
+        // Мышь перемещена.
+        /* Контекст использования:
          * i8 z_delta = data.data.i8[0]; */
-        MouseWheel = 0x07,
+        MouseWheel = 0x08,
 
         // Изменен размер/разрешение из ОС.
-        /* Использование контекста:
+        /* Контекст использования:
          * u16 width = data.data.u16[0];
          * u16 height = data.data.u16[1];   */
-        Resized = 0x08,
+        Resized = 0x09,
 
         // Измените режим рендеринга в целях отладки.
-        /* Использование контекста:
+        /* Контекст использования:
          * i32 mode = context.data.i32[0];  */
         SetRenderMode = 0x0A,
 
@@ -122,7 +136,7 @@ namespace EventSystem
         DEBUG4 = 0x14,   // Специальное событие отладки. Контекст будет меняться со временем.
 
         /// @brief Идентификатор наведенного объекта, если он есть.
-        /// Использование контекста:
+        /// Контекст использования:
         /// i32 id = context.data.u32[0]; - будет НЕДЕЙСТВИТЕЛЬНЫМ ИДЕНТИФИКАТОРОМ, если ни на что не наведен курсор.
         OojectHoverIdChanged = 0x15,
     
@@ -166,6 +180,26 @@ namespace EventSystem
 
         MaxEventCode = 0xFF       // Максимальный код события, который можно использовать внутри.
     };
+private:
+    struct RegisteredEvent {
+        void* listener;
+        PFN_OnEvent callback;
+        constexpr RegisteredEvent(void* listener, PFN_OnEvent callback) : listener(listener), callback(callback) {}
+    };
+
+    struct CodeEntry {
+        DArray<RegisteredEvent> events;
+    };
+
+    // Кодов должно быть более чем достаточно...
+    static constexpr u16 MAX_MESSAGE_CODES = 16384;
+    // Таблица поиска кодов событий.
+    CodeEntry registered[MAX_MESSAGE_CODES];
+
+    static inline EventSystem* state;
+
+    constexpr EventSystem() : registered() {}
+
 };
 
 /*
