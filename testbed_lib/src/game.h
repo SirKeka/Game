@@ -3,24 +3,30 @@
 #include <application_types.h>
 #include <math/frustrum.h>
 #include "editor/gizmo.h"
+#include "passes/editor_pass.h"
+#include "passes/scene_pass.h"
+#include "passes/skybox_pass.h"
+#include "passes/ui_pass.h"
 #include "renderer/viewport.h"
 
 //ЗАДАЧА: Временно
 #include <core/keymap.h>
-#include <resources/skybox.h>
-
 #include <systems/light_system.h>
-#include "resources/simple_scene.h"
-
+#include <renderer/passes/shadow_map_pass.h>
 #include "resources/debug/debug_box3d.h"
 #include "resources/debug/debug_line3d.h"
+#include <resources/skybox.h>
+#include "resources/simple_scene.h"
+#include <elements/label.h>
+#include <elements/button.h>
 
 #include "debug_console.h"
 
 class Camera;
+class UiElement;
 
 struct SelectedObject {
-    u32 UniqueID;
+    Identifier UniqueID;
     Transform* xform;
 };
 
@@ -37,6 +43,7 @@ struct Game
 
     Clock UpdateClock;
     Clock RenderClock;
+    Clock PrepareClock;
     f64 LastUpdateElapsed;
 
     // ЗАДАЧА: временно
@@ -47,8 +54,8 @@ struct Game
     PointLight* PointLight1;
 
     Mesh UiMeshes[10];
-    Text TestText;
-    Text TestSysText;
+    Label TestText;
+    Label TestSysText;
 
     DebugConsole console;
 
@@ -74,8 +81,23 @@ struct Game
 
     Viewport WorldViewport2;
 
+    Rendergraph FrameGraph;
+    SkyboxPass skyboxPass;
+    ShadowmapPass shadowmapPass;
+    ScenePass scenePass;
+    EditorPass editorPass;
+    UiPass uiPass;
+
+    u16 ShadowmapResolution;
+
     SelectedObject selection;
     bool UsingGizmo;
+    u32 RenderMode;
+
+    Button TestButton;
+    Panel* TestPanel;
+    u32 ProjBoxIndex;
+    u32 CamProjLineIndices[24];
     // ЗАДАЧА: конец временно
     // constexpr Game(const ApplicationConfig& config) : Application(config, sizeof(State)) {}
 
@@ -100,13 +122,13 @@ extern "C" MAPI bool ApplicationUpdate(Application& app, const FrameData& rFrame
 /// @param packet 
 /// @param rFrameData ссылка на данные кадра
 /// @return 
-extern "C" MAPI bool ApplicationPrepareRenderPacket(Application& app, RenderPacket& packet, FrameData& rFrameData);
+extern "C" MAPI bool ApplicationPrepareFrame(Application& app, FrameData& rFrameData);
 /// @brief Функция рендеринга игры
 /// @param app ссылка на приложение
 /// @param packet
 /// @param rFrameData ссылка на данные кадра
 /// @return true в случае успеха; в противном случае false.
-extern "C" MAPI bool ApplicationRender(Application& app, RenderPacket& packet, FrameData& rFrameData);
+extern "C" MAPI bool ApplicationRenderFrame(Application& app, FrameData& rFrameData);
 
 /// @brief Функция изменения размера окна игры
 /// @param app ссылка на приложение
