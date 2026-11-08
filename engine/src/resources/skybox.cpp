@@ -5,14 +5,14 @@
 #include "systems/shader_system.h"
 #include "systems/texture_system.h"
 
-bool Sky::Create(Config& config)
+bool Skybox::Create(Config& config)
 {
     this->CubemapName = (MString&&)config.CubemapName;
 
     return true;
 }
 
-void Sky::Destroy()
+void Skybox::Destroy()
 {
     // Если скайбокс загружен, сначала выгрузите его, а затем уничтожьте.
     if (InstanceID != INVALID::ID) {
@@ -22,10 +22,10 @@ void Sky::Destroy()
         }
     }
 
-    MemorySystem::ZeroMem(this, sizeof(Sky));
+    MemorySystem::ZeroMem(this, sizeof(Skybox));
 }
 
-void Sky::GenerateHemisphere(u16 rings, u16 segments, f32 radius)
+void Skybox::GenerateHemisphere(u16 rings, u16 segments, f32 radius)
 {
     // Считаем общее количество вершин
     /*u32 NumVerticesTopStrip = 3 * segments;
@@ -59,13 +59,13 @@ void Sky::GenerateHemisphere(u16 rings, u16 segments, f32 radius)
     }*/
 }
 
-bool Sky::Initialize()
+bool Skybox::Initialize()
 {
     cubemap.FilterMagnify = cubemap.FilterMinify = TextureFilterMode::Linear;
     cubemap.RepeatU = cubemap.RepeatV = cubemap.RepeatW = TextureRepeat::ClampToEdge;
 
     InstanceID = INVALID::ID;
-    if (type == Skybox) {
+    if (type == Type::Skybox) {
         GeometryConfig config = GeometrySystem::GenerateCubeConfig(10.F, 10.F, 10.F, 1.F, 1.F, CubemapName.c_str(), nullptr);
         // Удалите название материала.
         config.MaterialName[0] = '\0';
@@ -77,7 +77,7 @@ bool Sky::Initialize()
     return true;
 }
 
-bool Sky::Load()
+bool Skybox::Load()
 {
     cubemap.texture = TextureSystem::AcquireCube(CubemapName.c_str(), true);
     auto renderer = SystemsManager::GetRenderingSystem();
@@ -106,7 +106,7 @@ bool Sky::Load()
     return true;
 }
 
-bool Sky::Unload()
+bool Skybox::Unload()
 {
     auto SkyboxShader = ShaderSystem::GetShader("Shader.Builtin.Skybox");  // ЗАДАЧА: разрешить настраиваемый шейдер.
     auto renderer = SystemsManager::GetRenderingSystem();

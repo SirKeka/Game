@@ -5,6 +5,7 @@
 struct ApplicationConfig;
 struct FrameData;
 class RenderingSystem;
+class UiSystem;
 
 /// @brief Определение типа для указателя на функцию инициализации системы.
 using PFN_SystemInitialize = bool(*)(u64&, void*, void*);
@@ -57,6 +58,7 @@ public:
 
         // ПРИМЕЧАНИЕ: Все значения от 127 до 254 являются пространством расширения.
         KnownMax = 127,
+        UI,
     
         // ПРИМЕЧАНИЕ: Все, что находится за пределами этого, находится в пользовательском пространстве.
         ExtensionMax = 255,
@@ -102,6 +104,7 @@ public:
     MAPI static void* GetState(u16 type);
 
     MAPI static auto GetRenderingSystem() { return (RenderingSystem*)GetState(Renderer); }
+    MAPI static auto GetUiSystem() { return (UiSystem*)GetState(UI); }
 
 private:
     static bool RegisterKnownSystemsPreBoot(ApplicationConfig& AppConfig);

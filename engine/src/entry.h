@@ -17,7 +17,7 @@
 
 #include <stdlib.h>
 
-#include "containers/map.h"
+// #include "containers/map.h"
 
 /// @brief Определенная извне функция для создания приложения, предоставленная потребителем этой библиотеки.
 /// @return True при успешном создании; в противном случае false.

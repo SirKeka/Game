@@ -1,14 +1,15 @@
 #pragma once
-#include "containers/array.h"
-#include "renderer/rendergraph.h"
 
-struct GeometryRenderData;
+#include "renderer/rendergraph.h"
+#include "renderer/renderer_types.h"
+
 struct Shader;
 
 struct EditorPass : RendergraphNode
 {
-    Array<GeometryRenderData> DebugGeometries;
+    DArray<GeometryRenderData> DebugGeometries;
 
+    constexpr EditorPass(const char* name) : RendergraphNode(name), DebugGeometries() {}
     ~EditorPass();
     void Destroy() override;
     bool Initialize() override;

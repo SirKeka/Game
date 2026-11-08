@@ -62,7 +62,7 @@ struct MAPI SimpleScene {
     DArray<Terrain> terrains;
     DArray<PendingMesh> PendingMeshes;
 
-    struct Sky* skybox;
+    struct Skybox* skybox;
 
     // Сетка для сцены.
     DebugGrid grid;
@@ -131,7 +131,7 @@ struct MAPI SimpleScene {
     /// @param name название скайбокса
     /// @param sb скайбокс
     /// @return True в случае успеха; в противном случае false.
-    bool AddSkybox(const char* name, Sky& sb);
+    bool AddSkybox(const char* name, Skybox& sb);
 
     /// @brief Добавляет ландшафт на сцену
     /// @param name назване ландшафта
@@ -153,7 +153,7 @@ struct MAPI SimpleScene {
 
     /// @brief 
     /// @return Скайбокс
-    Sky* GetSkybox(const char* name);
+    Skybox* GetSkybox(const char* name);
 
     /// @brief 
     /// @param name название ландшафта, который нужно получить из сцены

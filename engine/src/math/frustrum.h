@@ -38,7 +38,7 @@ struct MAPI Frustum
     /// @brief 
     /// @param ProjectionView матрица вида проекции
     /// @param corners массив векторов
-    static void CornerPointsWorldSpace(const Matrix4D& ProjectionView, FVec4* corners);
+    static void CornerPointsWorldSpace(const Matrix4D& ProjectionView, FVec4 (&corners)[8]);
 
     /// @brief Указывает, пересекает ли усеченная пирамида сферу, построенную через центр и радиус, (или содержит ее).
     /// @param center постоянная ссылка на позицию, представляющую центр сферы.

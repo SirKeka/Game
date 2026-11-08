@@ -57,7 +57,7 @@ Frustum Frustum::Create(const Matrix4D &ViewProjection)
     return f;
 }
 
-void Frustum::CornerPointsWorldSpace(const Matrix4D &ProjectionView, FVec4 *corners)
+void Frustum::CornerPointsWorldSpace(const Matrix4D &ProjectionView, FVec4 (&corners)[8])
 {
     auto InverseViewProj = Matrix4D::MakeInverse(ProjectionView);
 

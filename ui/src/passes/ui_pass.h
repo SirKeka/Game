@@ -4,11 +4,12 @@
 
 struct Shader;
 
-struct MAPI UiPass : RendergraphNode
+struct MAPI UiPass : public RendergraphNode
 {
     // pImpl?
     UiRenderData RenderData;
 
+    constexpr UiPass(const char* name) : RendergraphNode(name), RenderData() {}
     ~UiPass() { Destroy(); }
     void Destroy() override;
     bool Initialize() override;

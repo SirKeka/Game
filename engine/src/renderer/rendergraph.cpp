@@ -18,10 +18,9 @@ MINLINE static RendergraphNode* FindPass(const char *PassName, const DArray<Rend
 
 static bool RegenerateRenderTargets(Rendergraph* graph, RendergraphNode* pass, u16 width, u16 height);
 
-bool Rendergraph::Create(const char *name, Application &app)
+bool Rendergraph::Create(const char *name)
 {
     this->name = name;
-    this->app = &app;
     return true;
 }
 
@@ -29,8 +28,6 @@ void Rendergraph::Destroy()
 {
     auto renderer = SystemsManager::GetRenderingSystem();
     renderer->WaitForIdle();
-
-    app = nullptr;
     name.Destroy();
     
     if (passes) {
@@ -167,7 +164,7 @@ bool Rendergraph::LoadResource()
 bool Rendergraph::PassSetSinkLinkage(const char *PassName, const char *SinkName, const char *SourcePassName, const char *SourceName)
 {
     // Найти целевой проход.
-    auto pass = FindPass(PassName, passes);
+    RendergraphNode* pass = FindPass(PassName, passes);
 
     if (!pass) {
         MERROR("Не удалось найти целевой проход рендерграфа с именем «%s».", PassName);
@@ -201,7 +198,7 @@ bool Rendergraph::PassSetSinkLinkage(const char *PassName, const char *SinkName,
         }
     } else {
         // Источник прохода.
-        auto Sourcepass = FindPass(SourcePassName, passes);
+        RendergraphNode* Sourcepass = FindPass(SourcePassName, passes);
         
         if (!Sourcepass) {
             MERROR("Не удалось найти исходный проход с именем «%s».", SourcePassName);

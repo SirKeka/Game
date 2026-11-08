@@ -1,7 +1,7 @@
 #pragma once
 #include "geometry.h"
 
-struct MAPI Sky
+struct MAPI Skybox
 {
     /// @brief Конфигурация скайбокса
     /// @param const_char*_CubemapName имя кубической карты, которая будет использоваться для скайбокса.
@@ -19,7 +19,7 @@ struct MAPI Sky
     u8 DrawIndex;           // Синхронизируется с текущим индексом отрисовки рендерера, когда материал был применен к этому кадру.
 
     /// @brief Указывает на то на какую геометрию рисуется небо Skybox - куб, Skydome - сфера или полусфера
-    enum Type : u8 { Skybox, Skydome } type; 
+    enum class Type : u8 { Skybox, Skydome } type; 
 
     // constexpr Skybox() = default;
     // ~Skybox();

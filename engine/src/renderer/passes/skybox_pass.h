@@ -5,8 +5,9 @@ struct Shader;
 
 struct SkyboxPass : RendergraphNode
 {
-    struct Sky* skybox;
+    struct Skybox* skybox;
 
+    constexpr SkyboxPass(const char* name) : RendergraphNode(name), skybox() {}
     ~SkyboxPass();
     void Destroy() override;
     bool Initialize() override;

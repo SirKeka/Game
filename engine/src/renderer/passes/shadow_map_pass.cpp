@@ -66,20 +66,19 @@ struct ShadowmapPass::Impl {
     void operator delete(void *ptr, u64 size) { MemorySystem::Free(ptr, size, Memory::Renderer); }
 };
 
-bool ShadowmapPass::Create(u16 resolution)
+constexpr ShadowmapPass::ShadowmapPass(const char* name, u16 resolution) : RendergraphNode(name), ExtendedData(), pImpl()
 {
-    pImpl = new Impl();
+    void* mem = MemorySystem::Allocate(sizeof(Impl) + sizeof(Data), Memory::Renderer, true);
+    pImpl = (Impl*)mem;
     
     pImpl->resolution = resolution;
 
-    ExtendedData = (Data*)MemorySystem::Allocate(sizeof(Data), Memory::Renderer, true);
+    ExtendedData = (Data*)(pImpl + 1);
 
     // Указатели на пользовательские функции.
     RendergraphNode::AttachmentPopulate = ShadowmapPass::AttachmentPopulate;
     RendergraphNode::LoadResources      = ShadowmapPass::LoadResources;
     RendergraphNode::SourcePopulate     = ShadowmapPass::SourcePopulate;
-
-    return true;
 }
 
 void ShadowmapPass::Destroy()
@@ -114,14 +113,14 @@ void ShadowmapPass::Destroy()
         renderer->ShaderReleaseInstanceResources(pImpl->tShader, pImpl->TerrainInstanceID);
 
         // Уничтожить расширенные данные.
-        if (ExtendedData) {
-            MemorySystem::Free(ExtendedData, sizeof(Data), Memory::Renderer);
-            ExtendedData = nullptr;
-        }
+        // if (ExtendedData) {
+        //     MemorySystem::Free(ExtendedData, sizeof(Data), Memory::Renderer);
+        //     ExtendedData = nullptr;
+        // }
 
         // Destroy the pass.
         renderer->RenderpassDestroy(&pass);
-        delete pImpl;
+        MemorySystem::Free(pImpl, sizeof(Impl) + sizeof(Data), Memory::Renderer);
         pImpl = nullptr;
     }
 }

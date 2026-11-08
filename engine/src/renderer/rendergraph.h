@@ -2,6 +2,19 @@
 #include "renderpass.h"
 #include "math/matrix4d.h"
 
+#define RG_CHECK(expr)                                  \
+    if (!expr) {                                        \
+        MERROR("Не удалось выполнить: '%s'.", #expr);   \
+        return false;                                   \
+    }
+
+#define RG_CHECK_RET(expr, ret)                         \
+    if (!expr) {                                        \
+        MERROR("Не удалось выполнить: '%s'.", #expr);   \
+        ret = false;                                    \
+        return;                                         \
+    }
+
 struct Application;
 struct FrameData;
 
@@ -50,6 +63,7 @@ struct RendergraphNode {
 
     bool PresentsAfter;
 
+    constexpr RendergraphNode(const char* name) : name(name), PassData(), sources(), sinks(), pass(), PresentsAfter() {}
     virtual bool Initialize() = 0;
     virtual void Destroy() = 0;
     bool (*LoadResources)(RendergraphNode* self) = nullptr;
@@ -61,18 +75,15 @@ struct RendergraphNode {
 
 struct MAPI Rendergraph {
     MString name;
-    Application* app;
 
     DArray<RendergraphSource> GlobalSources;
-
     DArray<RendergraphNode*> passes;
-
     RendergraphSink BackbufferGlobalSink;
 
     constexpr Rendergraph() = default;
-    constexpr Rendergraph(const char* name, Application* app) : name(name), app(app), GlobalSources(), passes(), BackbufferGlobalSink() {}
+    constexpr Rendergraph(const char* name) : name(name), GlobalSources(), passes(), BackbufferGlobalSink() {}
 
-    bool Create(const char* name, Application& app);
+    bool Create(const char* name);
     void Destroy();
 
     bool AddGlobalSource(const char* name, RendergraphSourceType type, RendergraphSourceOrigin origin);

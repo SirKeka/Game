@@ -7,10 +7,10 @@
 #include "systems/light_system.h"
 #include "systems/resource_system.h"
 #include "core/frame_data.h"
+#include "core/systems_manager.h"
 #include "math/frustrum.h"
 #include "math/geometry_utils.h"
 #include "utils/sort.h"
-#include "game.h"
 
 struct SimpleSceneDebugData {
     DebugBox3D box;
@@ -95,8 +95,8 @@ bool SimpleScene::Initialize()
 
         // Скайбокс можно настроить только если указаны имя и имя кубической карты. В противном случае его нет.
         if (config->SkyboxConfig.name && config->SkyboxConfig.CubemapName) {
-            Sky::Config SbConfig{(MString&&)config->SkyboxConfig.CubemapName};
-            skybox = new Sky();
+            Skybox::Config SbConfig{(MString&&)config->SkyboxConfig.CubemapName};
+            skybox = new Skybox();
             if (!skybox->Create(SbConfig)) {
                 MWARN("Не удалось создать скайбокс.");
                 delete skybox;
@@ -649,7 +649,7 @@ bool SimpleScene::AddMesh(const char* name, Mesh &m)
     return true;
 }
 
-bool SimpleScene::AddSkybox(const char* name, Sky &sb)
+bool SimpleScene::AddSkybox(const char* name, Skybox &sb)
 {
     // ЗАДАЧА: если он уже существует, нужно ли что-то с ним делать?
     this->skybox = &sb;
@@ -725,7 +725,7 @@ Mesh *SimpleScene::GetMesh(const MString &name)
     return nullptr;
 }
 
-Sky *SimpleScene::GetSkybox(const char *name)
+Skybox *SimpleScene::GetSkybox(const char *name)
 {
     return skybox;
 }
@@ -962,30 +962,28 @@ bool SimpleScene::Raycast(const Ray &ray, RaycastResult &OutResult)
 
 bool SimpleScene::DebugRenderDataQuery(/*u32 &DataCount, */DArray<GeometryRenderData> *DebugGeometries)
 {
+    if (!DebugGeometries) {
+        return false;
+    }
+    
     // ЗАДАЧА: Проверьте наличие сетки.
     {
-        if (DebugGeometries) {
-            GeometryRenderData* dg = (*DebugGeometries).PushBack();
-            dg->model    = Matrix4D::MakeIdentity();
-            dg->CopyData(&grid.geometry);
-            dg->UniqueID = INVALID::ID;
-        }
-        //DataCount++;
+        GeometryRenderData* dg = (*DebugGeometries).PushBack();
+        dg->model    = Matrix4D::MakeIdentity();
+        dg->CopyData(&grid.geometry);
+        dg->UniqueID = INVALID::ID;
     }
 
     #pragma region Направленный свет.
     {
         if (DirLight && DirLight->DebugData) {
-            if (DebugGeometries) {
-                auto debug = (SimpleSceneDebugData*)DirLight->DebugData;
+            auto debug = (SimpleSceneDebugData*)DirLight->DebugData;
 
-                // Линия отладки 3D
-                GeometryRenderData* dg = (*DebugGeometries).PushBack();
-                dg->model    = debug->line.xform.GetWorld();
-                dg->CopyData(&debug->line.geometry);
-                dg->UniqueID = debug->line.id.UniqueID;
-            }
-            //DataCount++;
+            // Линия отладки 3D
+            GeometryRenderData* dg = (*DebugGeometries).PushBack();
+            dg->model    = debug->line.xform.GetWorld();
+            dg->CopyData(&debug->line.geometry);
+            dg->UniqueID = debug->line.id.UniqueID;
         }
     }
     #pragma endregion
@@ -995,16 +993,13 @@ bool SimpleScene::DebugRenderDataQuery(/*u32 &DataCount, */DArray<GeometryRender
         for (u32 i = 0; i < PointLightCount; ++i) {
             PointLight& PointLight = PointLights[i]; 
             if (PointLight.DebugData) {
-                if (DebugGeometries) {
-                    auto debug = (SimpleSceneDebugData*)PointLight.DebugData;
+                auto debug = (SimpleSceneDebugData*)PointLight.DebugData;
 
-                    // Поле отладки 3D
-                    GeometryRenderData* dg = (*DebugGeometries).PushBack();
-                    dg->model = debug->box.xform.GetWorld();
-                    dg->CopyData(&debug->box.geometry);
-                    dg->UniqueID = debug->box.id.UniqueID;
-                }
-                //DataCount++;
+                // Поле отладки 3D
+                GeometryRenderData* dg = (*DebugGeometries).PushBack();
+                dg->model = debug->box.xform.GetWorld();
+                dg->CopyData(&debug->box.geometry);
+                dg->UniqueID = debug->box.id.UniqueID;
             }
         }
     }
@@ -1015,16 +1010,13 @@ bool SimpleScene::DebugRenderDataQuery(/*u32 &DataCount, */DArray<GeometryRender
         for (u32 i = 0; i < MeshCount; ++i) {
             Mesh& mesh = meshes[i];
             if (mesh.DebugData) {
-                if (DebugGeometries) {
-                    auto debug = (SimpleSceneDebugData*)mesh.DebugData;
+                auto debug = (SimpleSceneDebugData*)mesh.DebugData;
 
-                    // Поле отладки 3D
-                    GeometryRenderData* dg = (*DebugGeometries).PushBack();
-                    dg->model = debug->box.xform.GetWorld();
-                    dg->CopyData(&debug->box.geometry);
-                    dg->UniqueID = debug->box.id.UniqueID;
-                }
-                //DataCount++;
+                // Поле отладки 3D
+                GeometryRenderData* dg = (*DebugGeometries).PushBack();
+                dg->model = debug->box.xform.GetWorld();
+                dg->CopyData(&debug->box.geometry);
+                dg->UniqueID = debug->box.id.UniqueID;
             }
         }
     }

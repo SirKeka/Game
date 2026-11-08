@@ -1,11 +1,9 @@
 #pragma once
-#include "renderer/rendergraph.h"
+#include "shadow_map_pass.h"
+#include "renderer/renderer_types.h"
 
-struct GeometryRenderData;
 struct Shader;
 struct TextureMap;
-
-#define MAX_SHADOW_CASCADE_COUNT 4
 
 struct ScenePass : RendergraphNode
 {
@@ -16,9 +14,10 @@ struct ScenePass : RendergraphNode
     DArray<GeometryRenderData> DebugGeometries;
     Texture* IrradianceCubeTexture;
 
-    Matrix4D DirectionalLightViews[MAX_SHADOW_CASCADE_COUNT];
-    Matrix4D DirectionalLightProjections[MAX_SHADOW_CASCADE_COUNT];
+    Matrix4D DirectionalLightViews[MAX_CASCADE_COUNT];
+    Matrix4D DirectionalLightProjections[MAX_CASCADE_COUNT];
 
+    constexpr ScenePass(const char* name) : RendergraphNode(name) {}
    ~ScenePass();
     void Destroy() override;
     bool Initialize() override;

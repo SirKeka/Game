@@ -14,9 +14,9 @@ struct RenderTargetAttachment;
 class Camera;
 
 struct SkyboxPacketData {
-    struct Sky* skybox;
+    struct Skybox* skybox;
     constexpr SkyboxPacketData() = default;
-    constexpr SkyboxPacketData(Sky* skybox) : skybox(skybox) {}
+    constexpr SkyboxPacketData(Skybox* skybox) : skybox(skybox) {}
 };
 
 /// @brief Пакет для представления рендеринга, созданный им и содержащий данные о том, что должно быть визуализировано.

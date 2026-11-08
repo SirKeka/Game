@@ -89,10 +89,10 @@ bool EditorPass::Render(FrameData& rFrameData)
     shader->RenderFrameNumber = rFrameData.RendererFrameNumber;
     shader->DrawIndex = rFrameData.DrawIndex;
 
-    const u32 DebugGeometryCount = DebugGeometries.Size();
+    const u32 DebugGeometryCount = DebugGeometries.Length();
     for (u32 i = 0; i < DebugGeometryCount; ++i) {
         // ПРИМЕЧАНИЕ: Нет униформных переменных уровня экземпляра, которые нужно задать.
-        auto& RenderData = DebugGeometries[i];
+        GeometryRenderData& RenderData = DebugGeometries[i];
 
         // Установить матрицу модели.
         ShaderSystem::BindLocal();

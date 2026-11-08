@@ -3,26 +3,24 @@
 #include <application_types.h>
 #include <math/frustrum.h>
 #include "editor/gizmo.h"
-#include "passes/editor_pass.h"
-#include "passes/scene_pass.h"
-#include "passes/skybox_pass.h"
-#include "passes/ui_pass.h"
 #include "renderer/viewport.h"
+#include "renderer/graphs/forward_rendergraph.h"
+#include "graphs/ui_rendergraph.h"
+#include "graphs/editor_rendergraph.h"
 
 //ЗАДАЧА: Временно
-#include <core/keymap.h>
-#include <systems/light_system.h>
-#include <renderer/passes/shadow_map_pass.h>
+#include "core/keymap.h"
+#include "systems/light_system.h"
+#include "renderer/passes/shadow_map_pass.h"
 #include "resources/debug/debug_box3d.h"
 #include "resources/debug/debug_line3d.h"
-#include <resources/skybox.h>
+#include "resources/skybox.h"
 #include "resources/simple_scene.h"
 #include <elements/label.h>
 #include <elements/button.h>
 
 #include "debug_console.h"
 
-class Camera;
 class UiElement;
 
 struct SelectedObject {
@@ -81,12 +79,12 @@ struct Game
 
     Viewport WorldViewport2;
 
-    Rendergraph FrameGraph;
-    SkyboxPass skyboxPass;
-    ShadowmapPass shadowmapPass;
-    ScenePass scenePass;
-    EditorPass editorPass;
-    UiPass uiPass;
+    // EditorPass editorPass;
+    // UiPass uiPass;
+
+    ForwardRendergraph ForwardGraph;
+    EditorRendergraph EditorGraph;
+    UiRendergraph UiGraph;
 
     u16 ShadowmapResolution;
 
