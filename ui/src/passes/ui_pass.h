@@ -9,7 +9,7 @@ struct MAPI UiPass : public RendergraphNode
     // pImpl?
     UiRenderData RenderData;
 
-    constexpr UiPass(const char* name) : RendergraphNode(name), RenderData() {}
+    constexpr UiPass() : RendergraphNode(), RenderData() {}
     ~UiPass() { Destroy(); }
     void Destroy() override;
     bool Initialize() override;

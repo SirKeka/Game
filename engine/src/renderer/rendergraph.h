@@ -63,7 +63,7 @@ struct RendergraphNode {
 
     bool PresentsAfter;
 
-    constexpr RendergraphNode(const char* name) : name(name), PassData(), sources(), sinks(), pass(), PresentsAfter() {}
+    constexpr RendergraphNode() : name(), PassData(), sources(), sinks(), pass(), PresentsAfter() {}
     virtual bool Initialize() = 0;
     virtual void Destroy() = 0;
     bool (*LoadResources)(RendergraphNode* self) = nullptr;
@@ -80,11 +80,10 @@ struct MAPI Rendergraph {
     DArray<RendergraphNode*> passes;
     RendergraphSink BackbufferGlobalSink;
 
-    constexpr Rendergraph() = default;
-    constexpr Rendergraph(const char* name) : name(name), GlobalSources(), passes(), BackbufferGlobalSink() {}
+    // constexpr Rendergraph() = default;
+    // constexpr Rendergraph(const char* name) : name(name), GlobalSources(), passes(), BackbufferGlobalSink() {}
 
-    bool Create(const char* name);
-    void Destroy();
+    virtual void Destroy();
 
     bool AddGlobalSource(const char* name, RendergraphSourceType type, RendergraphSourceOrigin origin);
 

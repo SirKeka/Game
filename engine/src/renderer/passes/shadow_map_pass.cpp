@@ -66,8 +66,9 @@ struct ShadowmapPass::Impl {
     void operator delete(void *ptr, u64 size) { MemorySystem::Free(ptr, size, Memory::Renderer); }
 };
 
-constexpr ShadowmapPass::ShadowmapPass(const char* name, u16 resolution) : RendergraphNode(name), ExtendedData(), pImpl()
+bool ShadowmapPass::Create(const char* name, u16 resolution)
 {
+    this->name = name;
     void* mem = MemorySystem::Allocate(sizeof(Impl) + sizeof(Data), Memory::Renderer, true);
     pImpl = (Impl*)mem;
     
@@ -79,6 +80,7 @@ constexpr ShadowmapPass::ShadowmapPass(const char* name, u16 resolution) : Rende
     RendergraphNode::AttachmentPopulate = ShadowmapPass::AttachmentPopulate;
     RendergraphNode::LoadResources      = ShadowmapPass::LoadResources;
     RendergraphNode::SourcePopulate     = ShadowmapPass::SourcePopulate;
+    return true;
 }
 
 void ShadowmapPass::Destroy()

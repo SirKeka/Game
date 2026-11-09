@@ -17,12 +17,12 @@ struct MAPI EditorRendergraph : public Rendergraph
     Gizmo* gizmo;
     EditorPass editorPass;
 
-    constexpr EditorRendergraph(bool& result, EditorRendergraphConfig* config = nullptr);
+    bool Create(EditorRendergraphConfig* config = nullptr);
 
     bool Initialize();
     bool Update(FrameData& rFrameData) { return true; }
     bool FramePrepare(FrameData& rFrameData, Camera& CurrentCamera, Viewport& CurrentViewport, SimpleScene& scene, u32 RenderMode);
 
-    void SetGizmo(Gizmo& gizmo);
-    void Refresh();
+    void SetGizmo(Gizmo& gizmo) { this->gizmo = &gizmo; }
+    void Refresh() {}
 };

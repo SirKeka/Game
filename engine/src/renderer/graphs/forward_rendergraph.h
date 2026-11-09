@@ -21,7 +21,8 @@ struct MAPI ForwardRendergraph : public Rendergraph
     ShadowmapPass shadowmapPass;
     ScenePass scenePass;
 
-    constexpr ForwardRendergraph(bool& result, ForwardRendergraphConfig* config = nullptr);
+    constexpr ForwardRendergraph() : Rendergraph(), ShadowmapResolution() {}
+    bool Create(ForwardRendergraphConfig* config = nullptr);
     
     bool Initialize();
     bool Update(FrameData& rFrameData);

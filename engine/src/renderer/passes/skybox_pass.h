@@ -3,11 +3,10 @@
 
 struct Shader;
 
-struct SkyboxPass : RendergraphNode
+struct MAPI SkyboxPass : public RendergraphNode
 {
-    struct Skybox* skybox;
+    struct Skybox* skybox{};
 
-    constexpr SkyboxPass(const char* name) : RendergraphNode(name), skybox() {}
     ~SkyboxPass();
     void Destroy() override;
     bool Initialize() override;
@@ -16,7 +15,7 @@ struct SkyboxPass : RendergraphNode
     void *operator new(u64 size) { return MemorySystem::Allocate(size, Memory::Renderer); }
     void operator delete(void *ptr, u64 size) { MemorySystem::Free(ptr, size, Memory::Renderer); }
 private:
-    Shader* shader;
+    Shader* shader{};
     // Индексы привязки шейдера
     u16 ProjectionLocation;
     u16 ViewLocation;

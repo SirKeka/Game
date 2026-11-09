@@ -344,7 +344,7 @@ bool ApplicationBoot(Application& app)
     MINFO("Загрузка испытательной сборки...");
 
     app.state = MemorySystem::Allocate(sizeof(Game), Memory::Game, true);
-    // app.state = new(app.state) Game();
+    app.state = new(app.state) Game();
 
     app.AppConfig.AppFrameDataSize = sizeof(TestbedApplicationFrameData);
 
@@ -1064,25 +1064,21 @@ bool CreateRendergraph(Application &app)
 {
     auto state = (Game*)app.state;
 
-    bool result = false;
-
     ForwardRendergraphConfig fConfig { .ShadowmapResolution = 2048 };
-    state->ForwardGraph = ForwardRendergraph(result, &fConfig);
-    if (!result) {
+    if (!state->ForwardGraph.Create(&fConfig)) {
         MERROR("Не удалось инициализировать граф прямого рендеринга.");
         return false;
     }
 
     EditorRendergraphConfig eConfig { .dummy = 0 };
-    state->EditorGraph = EditorRendergraph(result, &eConfig);
-    if (!result) {
+    if (!state->EditorGraph.Create(&eConfig)) {
         MERROR("Не удалось инициализировать граф рендеринга редактора.");
         return false;
     }
 
     UiRendergraphConfig uiConfig { .dummy = 0 };
-    state->UiGraph = UiRendergraph(result, &uiConfig);
-    if (!result) {
+    
+    if (!state->UiGraph.Create(&uiConfig)) {
         MERROR("Не удалось инициализировать граф отрисовки пользовательского интерфейса.");
         return false;
     }

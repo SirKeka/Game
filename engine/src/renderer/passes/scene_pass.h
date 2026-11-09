@@ -5,7 +5,7 @@
 struct Shader;
 struct TextureMap;
 
-struct ScenePass : RendergraphNode
+struct MAPI ScenePass : public RendergraphNode
 {
     u32 RenderMode;
     FVec4 CascadeSplits;
@@ -17,7 +17,6 @@ struct ScenePass : RendergraphNode
     Matrix4D DirectionalLightViews[MAX_CASCADE_COUNT];
     Matrix4D DirectionalLightProjections[MAX_CASCADE_COUNT];
 
-    constexpr ScenePass(const char* name) : RendergraphNode(name) {}
    ~ScenePass();
     void Destroy() override;
     bool Initialize() override;

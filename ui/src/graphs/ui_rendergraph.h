@@ -15,7 +15,7 @@ struct MAPI UiRendergraph : public Rendergraph
 {
     UiPass uiPass;
 
-    constexpr UiRendergraph(bool& result, const UiRendergraphConfig* config = nullptr);
+    bool Create(const UiRendergraphConfig* config = nullptr);
 
     bool Initialize();
     bool Update(FrameData& rFrameData) { return true; }

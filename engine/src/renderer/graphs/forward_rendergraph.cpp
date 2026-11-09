@@ -6,50 +6,55 @@
 #include "resources/simple_scene.h"
 #include "resources/skybox.h"
 
-constexpr ForwardRendergraph::ForwardRendergraph(bool& result, ForwardRendergraphConfig *config) 
-: Rendergraph("forward_rendergraph"), ShadowmapResolution(config ? config->ShadowmapResolution : 2048), skyboxPass("skybox"), shadowmapPass("shadowmap_pass", ShadowmapResolution), scenePass("scene") 
+bool ForwardRendergraph::Create(ForwardRendergraphConfig *config)
 {
+    name = "forward_rendergraph";
+    ShadowmapResolution = config ? config->ShadowmapResolution : 2048;
     // Добавить глобальные источники.
     if (!AddGlobalSource("colourbuffer", RendergraphSourceType::RenderTargetColour, RendergraphSourceOrigin::Global)) {
         MERROR("Не удалось добавить глобальный источник буфера цвета.");
-        return;
+        return false;
     }
 
     if (!AddGlobalSource("depthbuffer", RendergraphSourceType::RenderTargetDepthStencil, RendergraphSourceOrigin::Global)) {
         MERROR("Не удалось добавить глобальный источник буфера глубины.");
-        return;
+        return false;
     }
 
     // Проход скайбокса
-    RG_CHECK_RET(AddPass(skyboxPass), result);
-    RG_CHECK_RET(AddPassSink("skybox", "colourbuffer"), result);
-    RG_CHECK_RET(AddPassSource("skybox", "colourbuffer", RendergraphSourceType::RenderTargetColour, RendergraphSourceOrigin::Other), result);
-    RG_CHECK_RET(PassSetSinkLinkage("skybox", "colourbuffer", nullptr, "colourbuffer"), result);
+    skyboxPass.name = "skybox";
+    RG_CHECK(AddPass(skyboxPass));
+    RG_CHECK(AddPassSink("skybox", "colourbuffer"));
+    RG_CHECK(AddPassSource("skybox", "colourbuffer", RendergraphSourceType::RenderTargetColour, RendergraphSourceOrigin::Other));
+    RG_CHECK(PassSetSinkLinkage("skybox", "colourbuffer", nullptr, "colourbuffer"));
 
     // Проход карт теней
-    RG_CHECK_RET(AddPass(shadowmapPass), result);
-    RG_CHECK_RET(AddPassSource("shadowmap_pass", "depthbuffer", RendergraphSourceType::RenderTargetDepthStencil, RendergraphSourceOrigin::Self), result);
+    RG_CHECK(shadowmapPass.Create("shadowmap_pass", ShadowmapResolution));
+    RG_CHECK(AddPass(shadowmapPass));
+    RG_CHECK(AddPassSource("shadowmap_pass", "depthbuffer", RendergraphSourceType::RenderTargetDepthStencil, RendergraphSourceOrigin::Self));
 
     // Проход сцены
-    RG_CHECK_RET(AddPass(scenePass), result);
-    RG_CHECK_RET(AddPassSink("scene", "colourbuffer"), result);
-    RG_CHECK_RET(AddPassSink("scene", "depthbuffer"), result);
-    RG_CHECK_RET(AddPassSink("scene", "shadowmap"), result);
-    RG_CHECK_RET(AddPassSource("scene", "colourbuffer", RendergraphSourceType::RenderTargetColour, RendergraphSourceOrigin::Other), result);
-    RG_CHECK_RET(AddPassSource("scene", "depthbuffer", RendergraphSourceType::RenderTargetDepthStencil, RendergraphSourceOrigin::Global), result);
-    RG_CHECK_RET(PassSetSinkLinkage("scene", "colourbuffer", "skybox", "colourbuffer"), result);
-    RG_CHECK_RET(PassSetSinkLinkage("scene", "depthbuffer", nullptr, "depthbuffer"), result);
-    RG_CHECK_RET(PassSetSinkLinkage("scene", "shadowmap", "shadowmap_pass", "depthbuffer"), result);
+    scenePass.name = "scene";
+    RG_CHECK(AddPass(scenePass));
+    RG_CHECK(AddPassSink("scene", "colourbuffer"));
+    RG_CHECK(AddPassSink("scene", "depthbuffer"));
+    RG_CHECK(AddPassSink("scene", "shadowmap"));
+    RG_CHECK(AddPassSource("scene", "colourbuffer", RendergraphSourceType::RenderTargetColour, RendergraphSourceOrigin::Other));
+    RG_CHECK(AddPassSource("scene", "depthbuffer", RendergraphSourceType::RenderTargetDepthStencil, RendergraphSourceOrigin::Global));
+    RG_CHECK(PassSetSinkLinkage("scene", "colourbuffer", "skybox", "colourbuffer"));
+    RG_CHECK(PassSetSinkLinkage("scene", "depthbuffer", nullptr, "depthbuffer"));
+    RG_CHECK(PassSetSinkLinkage("scene", "shadowmap", "shadowmap_pass", "depthbuffer"));
 
-    if ((result = Finalize())) {
+    if (!Finalize()) {
         MERROR("Не удалось завершить построение графа рендеринга. Подробности см. в журнале.");
+        return false;
     }
-    
+    return true;
 }
 
 bool ForwardRendergraph::Initialize()
 {
-    if (LoadResource()) {
+    if (!LoadResource()) {
         MERROR("Не удалось загрузить ресурсы графа рендеринга.");
         return false;
     }

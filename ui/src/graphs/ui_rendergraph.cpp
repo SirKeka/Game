@@ -3,31 +3,34 @@
 #include "core/systems_manager.h"
 #include "renderer/viewport.h"
 
-constexpr UiRendergraph::UiRendergraph(bool& result, const UiRendergraphConfig *config)  : Rendergraph("standard_ui_rendergraph"), uiPass("UI")
+bool UiRendergraph::Create(const UiRendergraphConfig *config)
 {
+    name = "ui_rendergraph";
     // Добавьте глобальные источники.
-    if (!(result = AddGlobalSource("colourbuffer", RendergraphSourceType::RenderTargetColour, RendergraphSourceOrigin::Global))) {
+    if (!AddGlobalSource("colourbuffer", RendergraphSourceType::RenderTargetColour, RendergraphSourceOrigin::Global)) {
         MERROR("Не удалось добавить глобальный источник буфера цвета.");
-        return;
+        return false;
     }
-    if (!(result = AddGlobalSource("depthbuffer", RendergraphSourceType::RenderTargetDepthStencil, RendergraphSourceOrigin::Global))) {
+
+    if (!AddGlobalSource("depthbuffer", RendergraphSourceType::RenderTargetDepthStencil, RendergraphSourceOrigin::Global)) {
         MERROR("Не удалось добавить глобальный источник буфера глубины.");
-        return;
+        return false;
     }
 
-    RG_CHECK_RET(AddPass(uiPass), result);
-    RG_CHECK_RET(AddPassSink("ui", "colourbuffer"), result);
-    RG_CHECK_RET(AddPassSink("ui", "depthbuffer"), result)
-    RG_CHECK_RET(AddPassSource("ui", "colourbuffer", RendergraphSourceType::RenderTargetColour, RendergraphSourceOrigin::Global), result);
-    RG_CHECK_RET(AddPassSource("ui", "depthbuffer", RendergraphSourceType::RenderTargetDepthStencil, RendergraphSourceOrigin::Global), result)
-    RG_CHECK_RET(PassSetSinkLinkage("ui", "colourbuffer", nullptr, "colourbuffer"), result);
-    RG_CHECK_RET(PassSetSinkLinkage("ui", "depthbuffer", nullptr, "depthbuffer"), result);
+    uiPass.name = "UI";
+    RG_CHECK(AddPass(uiPass));
+    RG_CHECK(AddPassSink("UI",        "colourbuffer"));
+    RG_CHECK(AddPassSink("UI",        "depthbuffer"));
+    RG_CHECK(AddPassSource("UI",      "colourbuffer", RendergraphSourceType::RenderTargetColour,       RendergraphSourceOrigin::Other));
+    RG_CHECK(AddPassSource("UI",      "depthbuffer",  RendergraphSourceType::RenderTargetDepthStencil, RendergraphSourceOrigin::Global));
+    RG_CHECK(PassSetSinkLinkage("UI", "colourbuffer", nullptr, "colourbuffer"));
+    RG_CHECK(PassSetSinkLinkage("UI", "depthbuffer",  nullptr, "depthbuffer"));
 
-    if (!(result = Finalize())) {
+    if (!Finalize()) {
         MERROR("Не удалось завершить построение графа рендеринга. Подробности см. в журнале.");
-        return;
+        return false;
     }
-    
+    return true;
 }
 
 bool UiRendergraph::Initialize()

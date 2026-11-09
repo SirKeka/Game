@@ -18,12 +18,6 @@ MINLINE static RendergraphNode* FindPass(const char *PassName, const DArray<Rend
 
 static bool RegenerateRenderTargets(Rendergraph* graph, RendergraphNode* pass, u16 width, u16 height);
 
-bool Rendergraph::Create(const char *name)
-{
-    this->name = name;
-    return true;
-}
-
 void Rendergraph::Destroy()
 {
     auto renderer = SystemsManager::GetRenderingSystem();

@@ -5,11 +5,11 @@
 
 struct Shader;
 
-struct EditorPass : RendergraphNode
+struct MAPI EditorPass : public RendergraphNode
 {
     DArray<GeometryRenderData> DebugGeometries;
 
-    constexpr EditorPass(const char* name) : RendergraphNode(name), DebugGeometries() {}
+    constexpr EditorPass() : RendergraphNode(), DebugGeometries() {}
     ~EditorPass();
     void Destroy() override;
     bool Initialize() override;

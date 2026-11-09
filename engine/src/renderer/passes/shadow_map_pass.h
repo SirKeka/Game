@@ -23,8 +23,10 @@ struct MAPI ShadowmapPass : public RendergraphNode {
         DArray<GeometryRenderData> TerrainGeometries;
         DArray<GeometryRenderData> geometries;
     }* ExtendedData;
+
+    constexpr ShadowmapPass() : RendergraphNode(), ExtendedData(), pImpl() {}
     
-    constexpr ShadowmapPass(const char* name, u16 resolution);
+    bool Create(const char* name, u16 resolution);
     void Destroy() override;
 
     bool Initialize() override;

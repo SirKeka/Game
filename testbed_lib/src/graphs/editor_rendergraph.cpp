@@ -4,33 +4,37 @@
 #include "renderer/viewport.h"
 #include "resources/simple_scene.h"
 
-constexpr EditorRendergraph::EditorRendergraph(bool& result, EditorRendergraphConfig* config) : Rendergraph("editor_rendergraph"), gizmo(), editorPass("editor")
+bool EditorRendergraph::Create(EditorRendergraphConfig* config)
 {
     // Добавьте глобальные источники.
-    if (!(result = AddGlobalSource("colourbuffer", RendergraphSourceType::RenderTargetColour, RendergraphSourceOrigin::Global))) {
+    name = "editor_rendergraph";
+    if (!AddGlobalSource("colourbuffer", RendergraphSourceType::RenderTargetColour, RendergraphSourceOrigin::Global)) {
         MERROR("Не удалось добавить глобальный источник буфера цвета.");
-        return;
+        return false;
     }
 
-    if (!(result = AddGlobalSource("depthbuffer", RendergraphSourceType::RenderTargetDepthStencil, RendergraphSourceOrigin::Global))) {
+    if (!AddGlobalSource("depthbuffer", RendergraphSourceType::RenderTargetDepthStencil, RendergraphSourceOrigin::Global)) {
         MERROR("Не удалось добавить глобальный источник буфера глубины.");
-        return;
+        return false;
     }
 
     // Проход редактора
-    RG_CHECK_RET(AddPass(editorPass), result);
-    RG_CHECK_RET(AddPassSink("editor", "colourbuffer"), result);
-    RG_CHECK_RET(AddPassSink("editor", "depthbuffer"),  result);
-    RG_CHECK_RET(AddPassSource("editor", "colourbuffer", RendergraphSourceType::RenderTargetColour,       RendergraphSourceOrigin::Other), result);
-    RG_CHECK_RET(AddPassSource("editor", "depthbuffer",  RendergraphSourceType::RenderTargetDepthStencil, RendergraphSourceOrigin::Other), result);
-    RG_CHECK_RET(PassSetSinkLinkage("editor", "colourbuffer", nullptr, "colourbuffer"), result);
-    RG_CHECK_RET(PassSetSinkLinkage("editor", "depthbuffer",  nullptr, "depthbuffer"),  result);
+    editorPass.name = "editor";
+    RG_CHECK(AddPass(editorPass));
+    RG_CHECK(AddPassSink("editor", "colourbuffer"));
+    RG_CHECK(AddPassSink("editor", "depthbuffer"));
+    RG_CHECK(AddPassSource("editor", "colourbuffer", RendergraphSourceType::RenderTargetColour,       RendergraphSourceOrigin::Other));
+    RG_CHECK(AddPassSource("editor", "depthbuffer",  RendergraphSourceType::RenderTargetDepthStencil, RendergraphSourceOrigin::Other));
+    RG_CHECK(PassSetSinkLinkage("editor", "colourbuffer", nullptr, "colourbuffer"));
+    RG_CHECK(PassSetSinkLinkage("editor", "depthbuffer",  nullptr, "depthbuffer"));
 
     Refresh();
 
-    if (!(result = Finalize())) {
-        MERROR("Failed to finalize rendergraph. See log for details.");
+    if (!Finalize()) {
+        MERROR("Не удалось завершить построение графа рендеринга. Подробности см. в журнале.");
+        return false;
     }
+    return true;
 }
 
 bool EditorRendergraph::Initialize()
