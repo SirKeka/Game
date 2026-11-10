@@ -1,5 +1,7 @@
 #include "platform.hpp"
 
+#include "core/semaphor.h"
+
 // Уровень платформы Windows.
 #if MPLATFORM_WINDOWS
 
@@ -563,7 +565,7 @@ u64 GetThreadID()
 
 // ПРИМЕЧАНИЕ: конец потоков----------------------------------------------------------------------------------------------
 //------------------------------------------------------------------------------------------------------------------------
-// ПРИМЕЧАНИЕ: начало мьютксов--------------------------------------------------------------------------------------------
+#pragma region мьютекс----------------------------------------------------------------------------------------------------
 
 void *MMutex::Create()
 {
@@ -626,7 +628,72 @@ bool MMutex::Unlock()
     return result != 0;  // 0 — это неудача
 }
 
-// ПРИМЕЧАНИЕ: конец мьютексов
+#pragma endregion конец мьютексов
+
+#pragma region Семафор
+bool Semaphore::Create(u32 MaxCount, u32 StartCount)
+{
+    InternalData = CreateSemaphore(0, StartCount, MaxCount, "semaphore");
+
+    return true;
+}
+
+void Semaphore::Destroy()
+{
+    if (InternalData) {
+        CloseHandle(InternalData);
+        MTRACE("Уничтоженный дескриптор семафора.");
+        InternalData = nullptr;
+    }
+}
+
+bool Semaphore::Signal()
+{
+    if (!InternalData) {
+        return false;
+    }
+    // W: освобождение/инкремент
+    LONG PreviousCount = 0;
+    // ПРИМЕЧАНИЕ: освобождать по одному за раз.
+    if (!ReleaseSemaphore(InternalData, 1, &PreviousCount)) {
+        MERROR("Не удалось освободить семафор.");
+        return false;
+    }
+    return true;
+    // L: post/инкремент
+}
+
+bool Semaphore::Wait(u64 TimeoutMs)
+{
+    if (!InternalData) {
+        return false;
+    }
+
+    DWORD result = WaitForSingleObject(InternalData, TimeoutMs);
+    switch (result) {
+        case WAIT_ABANDONED:
+            MERROR("Указанный объект представляет собой мьютекс, который не был освобожден владевшим им потоком до завершения работы этого потока. Право владения мьютексом переходит к вызывающему потоку, а состояние мьютекса устанавливается как «несигнальное» (nonsignaled). Если мьютекс использовался для защиты данных, отражающих устойчивое состояние системы, следует проверить их на непротиворечивость.");
+            return false;
+        case WAIT_OBJECT_0:
+            // Сигнал от семафора получен.
+            return true;
+        case WAIT_TIMEOUT:
+            MERROR("Истекло время ожидания семафора.");
+            return false;
+        case WAIT_FAILED:
+            MERROR("Функция WaitForSingleObject завершилась с ошибкой.");
+            // ЗАДАЧА: Вызвать GetLastError и вывести сообщение.
+            return false;
+        default:
+            MERROR("При ожидании семафора произошла неизвестная ошибка.При ожидании семафора произошла неизвестная ошибка.");
+            // ЗАДАЧА: Вызвать GetLastError и вывести сообщение.
+            return false;
+    }
+    // W: ожидание/декремент, блокируется при достижении 0
+    // L: ожидание/декремент, блокируется при достижении 0
+    return true;
+}
+#pragma endregion конец семафора
 
 LRESULT CALLBACK Win32MessageProcessor(HWND hwnd, u32 msg, WPARAM w_param, LPARAM l_param) {
     switch (msg) {
