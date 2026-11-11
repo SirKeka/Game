@@ -251,7 +251,6 @@ struct VulkanRenderpass
             &handle)
         );
 
-
         VulkanSetDebugObjectName(VkAPI, VK_OBJECT_TYPE_RENDER_PASS, handle, config.name);
 
         //return true;

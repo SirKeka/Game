@@ -2,8 +2,8 @@
 
 #include "renderer/passes/editor_pass.h"
 
-struct FrameData;
 class Camera;
+struct FrameData;
 struct Gizmo;
 struct SimpleScene;
 struct Viewport;
@@ -24,5 +24,4 @@ struct MAPI EditorRendergraph : public Rendergraph
     bool FramePrepare(FrameData& rFrameData, Camera& CurrentCamera, Viewport& CurrentViewport, SimpleScene& scene, u32 RenderMode);
 
     void SetGizmo(Gizmo& gizmo) { this->gizmo = &gizmo; }
-    void Refresh() {}
 };

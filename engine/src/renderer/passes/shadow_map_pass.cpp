@@ -69,8 +69,7 @@ struct ShadowmapPass::Impl {
 bool ShadowmapPass::Create(const char* name, u16 resolution)
 {
     this->name = name;
-    void* mem = MemorySystem::Allocate(sizeof(Impl) + sizeof(Data), Memory::Renderer, true);
-    pImpl = (Impl*)mem;
+    pImpl = (Impl*)MemorySystem::Allocate(sizeof(Impl) + sizeof(Data), Memory::Renderer, true);
     
     pImpl->resolution = resolution;
 

@@ -2,17 +2,10 @@
 #include "renderpass.h"
 #include "math/matrix4d.h"
 
-#define RG_CHECK(expr)                                  \
-    if (!expr) {                                        \
-        MERROR("Не удалось выполнить: '%s'.", #expr);   \
-        return false;                                   \
-    }
-
-#define RG_CHECK_RET(expr, ret)                         \
-    if (!expr) {                                        \
-        MERROR("Не удалось выполнить: '%s'.", #expr);   \
-        ret = false;                                    \
-        return;                                         \
+#define RG_CHECK(expr)                             \
+    if (!expr) {                                   \
+        MERROR("Не удалось выполнить: '%s'.", #expr); \
+        return false;                              \
     }
 
 struct Application;
@@ -79,9 +72,6 @@ struct MAPI Rendergraph {
     DArray<RendergraphSource> GlobalSources;
     DArray<RendergraphNode*> passes;
     RendergraphSink BackbufferGlobalSink;
-
-    // constexpr Rendergraph() = default;
-    // constexpr Rendergraph(const char* name) : name(name), GlobalSources(), passes(), BackbufferGlobalSink() {}
 
     virtual void Destroy();
 

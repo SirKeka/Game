@@ -1,4 +1,8 @@
 #include "simple_scene.h"
+#include "core/frame_data.h"
+#include "core/systems_manager.h"
+#include "math/frustrum.h"
+#include "math/geometry_utils.h"
 #include "resources/skybox.h"
 #include "resources/debug/debug_box3d.h"
 #include "resources/debug/debug_line3d.h"
@@ -6,10 +10,6 @@
 #include "systems/camera_system.hpp"
 #include "systems/light_system.h"
 #include "systems/resource_system.h"
-#include "core/frame_data.h"
-#include "core/systems_manager.h"
-#include "math/frustrum.h"
-#include "math/geometry_utils.h"
 #include "utils/sort.h"
 
 struct SimpleSceneDebugData {

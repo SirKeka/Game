@@ -104,7 +104,7 @@ public:
     MAPI static void* GetState(u16 type);
 
     MAPI static auto GetRenderingSystem() { return (RenderingSystem*)GetState(Renderer); }
-    MAPI static auto GetUiSystem() { return (UiSystem*)GetState(UI); }
+    MAPI static auto GetUiSystem() { return (class UiSystem*)GetState(UI); }
 
 private:
     static bool RegisterKnownSystemsPreBoot(ApplicationConfig& AppConfig);

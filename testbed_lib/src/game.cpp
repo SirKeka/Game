@@ -11,10 +11,6 @@
 
 #include <math/geometry_utils.h>
 
-// Проходы отрисовки.
-#include "passes/ui_pass.h"
-
-
 // ЗАДАЧА: Реедактор временно
 #include "editor/gizmo.h"
 
@@ -379,15 +375,13 @@ bool ApplicationInitialize(Application& app)
     
     auto state = (Game*)app.state;
 
-    #pragma region Инициализация графов
-
     if (!state->ForwardGraph.Initialize()) {
-        MERROR("Не удалось загрузить ресурсы графа рендеринга.");
+        MERROR("Не удалось загрузить ресурсы графа прямого рендеринга (Forward rendergraph).");
         return false;
     }
 
     if (!state->EditorGraph.Initialize()) {
-        MERROR("Не удалось загрузить ресурсы графа рендеринга редактора."); 
+        MERROR("Не удалось загрузить ресурсы графа отрисовки редактора.");
         return false;
     }
     
@@ -395,9 +389,7 @@ bool ApplicationInitialize(Application& app)
         MERROR("Не удалось загрузить ресурсы графа отрисовки стандартного пользовательского интерфейса.");
         return false;
     }
-
-    #pragma endregion // Инициализация графов
-
+    
     #pragma region Инициализация системы пользовательского интерфейса
     auto& sysManager = app.engine->GetSystemsManager();
     UiSystem::Config uiCfg = { 1024 };
@@ -449,6 +441,8 @@ bool ApplicationInitialize(Application& app)
         MERROR("Не удалось загрузить редактор!");
         return false;
     }
+    state->EditorGraph.SetGizmo(state->gizmo);
+
     state->EditorGraph.SetGizmo(state->gizmo);
 
     // Сетки мира
@@ -715,8 +709,6 @@ bool ApplicationPrepareFrame(Application& app, FrameData& rFrameData)
 
     state->PrepareClock.Start();
 
-    #pragma region 
-
     if (!state->ForwardGraph.FramePrepare(rFrameData, *state->WorldCamera, state->WorldViewport, state->MainScene, state->RenderMode)) {
         MERROR("Не удалось подготовить данные кадра для прямого рендеринга.");
         return false;
@@ -726,8 +718,8 @@ bool ApplicationPrepareFrame(Application& app, FrameData& rFrameData)
         MERROR("Не удалось подготовить данные кадра для рендеринга редактора.");
         return false;
     }
-
-    if (!state->UiGraph.FramePrepare(rFrameData, *state->WorldCamera, state->WorldViewport, state->MainScene, state->RenderMode)) {
+    
+    if (!state->UiGraph.FramePrepare(rFrameData, *state->WorldCamera, state->UiViewport, state->MainScene, state->RenderMode)) {
         MERROR("Не удалось подготовить данные кадра для стандартного рендеринга пользовательского интерфейса.");
         return false;
     }
@@ -747,19 +739,20 @@ bool ApplicationRenderFrame(Application& app, FrameData& rFrameData)
     state->RenderClock.Start();
 
     if (!state->ForwardGraph.ExecuteFrame(rFrameData)) {
-        MERROR("Не удалось выполнить кадр в графе прямого рендеринга. Подробности см. в журналах.");
+        MERROR("При выполнении кадра в графе прямого рендеринга (forward rendergraph) произошел сбой. Подробности см. в журналах.");
         return false;
     }
 
     if (!state->EditorGraph.ExecuteFrame(rFrameData)) {
-        MERROR("Не удалось выполнить кадр в графе рендеринга редактора. Подробности см. в журналах.");
+        MERROR("При выполнении кадра в графе рендеринга редактора произошла ошибка. Подробности см. в журналах.");
         return false;
     }
-
+    
     if (!state->UiGraph.ExecuteFrame(rFrameData)) {
-        MERROR("Не удалось выполнить кадр в стандартном графе рендеринга пользовательского интерфейса. Подробности см. в журналах.");
+        MERROR("Стандартному графу отрисовки пользовательского интерфейса (UI rendergraph) не удалось выполнить отрисовку кадра. Подробности см. в журналах.");
         return false;
     }
+    
     
     state->RenderClock.Update();
 
@@ -781,7 +774,7 @@ void ApplicationOnResize(Application& app, u32 width, u32 height)
 
     // Изменение размера областей просмотра.
     // Область просмотра мира — правая сторона
-    Rect2D vw { 0, 0, state->width, state->height };
+    Rect2D vw { 0, 0, width, height };
     state->WorldViewport.Resize(vw); // {HalfWidth + 20, 20, HalfWidth - 40, state->height - 40};
 
     // Область просмотра интерфейса
@@ -792,10 +785,10 @@ void ApplicationOnResize(Application& app, u32 width, u32 height)
 
     // ЗАДАЧА: временный блок кода
     // Переместить отладочный текст в новую нижнюю часть экрана.
-    state->TestText.SetPosition(FVec3(20, state->height - 105, 0));
+    state->TestText.SetPosition(FVec3(20, height - 105, 0));
     FVec2 TestPanelSize = state->TestPanel->Size();
-    f32 x = state->width - TestPanelSize.x - 30;
-    f32 y = state->height - TestPanelSize.y - 30;
+    f32 x = width - TestPanelSize.x - 30;
+    f32 y = height - TestPanelSize.y - 30;
     state->TestPanel->SetPosition(x, y);
     // ЗАДАЧА: конец временного блока кода
 
@@ -853,85 +846,6 @@ void ApplicationLibOnUnload(Application& app)
     ((Game*)app.state)->console.OnLibUnload();
     GameRemoveCommands();
     GameRemoveKeymaps(&app);
-}
-
-bool GameConfigureRenderViews(ApplicationConfig& config)
-{
-    // ЗАДАЧА: Разделить на 2 представления и снова включить.
-    // Pick view
-    /*{
-        auto& PickView = config.RenderViews[Testbed::Pick];
-        PickView.name = "pick";
-        // PickView.width = 0;
-        // PickView.height = 0;
-        PickView.RenderpassCount = 2;
-        PickView.passes = (Renderpass*)MemorySystem::Allocate(sizeof(Renderpass) * PickView.RenderpassCount, Memory::Array, true);
-
-        RenderpassConfig WorldPickPass;
-        WorldPickPass.name                   = "Renderpass.Builtin.WorldPick";
-        WorldPickPass.depth                  = 1.F;
-        WorldPickPass.stencil                = 0;
-        WorldPickPass.ClearColour            = FVec4(1.F, 1.F, 1.F, 1.F);       // ХАК: очищаем до белого цвета для лучшей видимости// ЗАДАЧА: очищаем до черного цвета, так как 0 — недопустимый идентификатор.
-        WorldPickPass.ClearFlags             = RenderpassClearFlag::ColourBuffer | RenderpassClearFlag::DepthBuffer;
-        WorldPickPass.RenderTargetCount      = 1;
-        WorldPickPass.target.AttachmentCount = 2;
-        WorldPickPass.target.attachments     = (RenderTargetAttachmentConfig*)MemorySystem::Allocate(sizeof(RenderTargetAttachmentConfig) * WorldPickPass.target.AttachmentCount, Memory::Array);
-
-        // Привязка цвета
-        auto& WorldPickPassColour = WorldPickPass.target.attachments[0];
-        WorldPickPassColour.type           = RenderTargetAttachmentType::Colour;
-        WorldPickPassColour.source         = RenderTargetAttachmentSource::View; // Получить вложение из представления.
-        WorldPickPassColour.LoadOperation  = RenderTargetAttachmentLoadOperation::DontCare;
-        WorldPickPassColour.StoreOperation = RenderTargetAttachmentStoreOperation::Store;
-        WorldPickPassColour.PresentAfter   = false;
-
-        // Привязка глубины
-        auto& WorldPickPassDepth = WorldPickPass.target.attachments[1];
-        WorldPickPassDepth.type           = RenderTargetAttachmentType::Depth;
-        WorldPickPassDepth.source         = RenderTargetAttachmentSource::View; // Получить вложение из представления.
-        WorldPickPassDepth.LoadOperation  = RenderTargetAttachmentLoadOperation::DontCare;
-        WorldPickPassDepth.StoreOperation = RenderTargetAttachmentStoreOperation::Store;
-        WorldPickPassDepth.PresentAfter   = false;
-
-        if (!RenderingSystem::RenderpassCreate(WorldPickPass, PickView.passes[0])) {
-            MERROR("UI view — Не удалось создать проход рендеринга «%s»", PickView.passes[0].name.c_str());
-            return false;
-        };
-
-        // UIPick pass
-        // Конфигурация подпрохода рендеринга
-        RenderpassConfig UiPickPass;
-        UiPickPass.name                   = "Renderpass.Bultin.UiPick";
-        UiPickPass.depth                  = 1.F;
-        UiPickPass.stencil                = 0;
-        UiPickPass.ClearColour            = FVec4(1.F, 1.F, 1.F, 1.F);
-        UiPickPass.ClearFlags             = RenderpassClearFlag::None;
-        UiPickPass.RenderTargetCount      = 1; // ПРИМЕЧАНИЕ: Тройная буферизация не применяется.
-        UiPickPass.target.AttachmentCount = 1;
-        UiPickPass.target.attachments     = (RenderTargetAttachmentConfig*)MemorySystem::Allocate(sizeof(RenderTargetAttachmentConfig) * UiPickPass.target.AttachmentCount, Memory::Array);
-        
-        // Привязка цвета
-        auto& UiPickPassColour = UiPickPass.target.attachments[0];
-        UiPickPassColour.type           = RenderTargetAttachmentType::Colour;
-        UiPickPassColour.source         = RenderTargetAttachmentSource::View; // Получить вложение из представления.
-        UiPickPassColour.LoadOperation  = RenderTargetAttachmentLoadOperation::Load;
-        UiPickPassColour.StoreOperation = RenderTargetAttachmentStoreOperation::Store; // Необходимо сохранить его, чтобы впоследствии можно было взять образец.
-        UiPickPassColour.PresentAfter   = false;
-
-        if (!RenderingSystem::RenderpassCreate(UiPickPass, PickView.passes[1])) {
-            MERROR("Pick view — Не удалось создать проход рендеринга «%s»", PickView.passes[1].name.c_str());
-            return false;
-        };
-
-        PickView.OnRegistered               = RenderViewPick::OnRegistered;
-        PickView.Destroy                    = RenderViewPick::Destroy;
-        PickView.Resize                     = RenderViewPick::Resize;
-        PickView.BuildPacket                = RenderViewPick::BuildPacket;
-        PickView.Render                     = RenderViewPick::Render;
-        PickView.RegenerateAttachmentTarget = RenderViewPick::RegenerateAttachmentTarget;
-    }*/
-
-    return true;
 }
 
 static void ToggleVsync() {
@@ -1004,50 +918,6 @@ bool LoadMainScene(Application *app)
         return false;
     }
 
-    // Добавить объекты в сцену
-    // Загрузить конфигурацию куба и загрузить геометрию из него.
-    // Mesh::Config Cube0_Config = {0};
-    // Cube0_Config.GeometryCount = 1;
-    // Cube0_Config.GConfigs = new GeometryConfig();
-    // *Cube0_Config.GConfigs = GeometrySystem::GenerateCubeConfig(10.F, 10.F, 10.F, 1.F, 1.F, "test_cube", "test_material");
-
-    // if (!state->meshes[0].Create(Cube0_Config)) {
-    //     MERROR("Не удалось создать сетку для куба 0");
-    //     return false;
-    // }
-    // state->meshes[0].transform = Transform();
-    // state->MainScene.AddMesh(state->meshes[0]);
-
-    // Второй куб
-    // Mesh::Config Cube1_Config = {0};
-    // Cube1_Config.GeometryCount = 1;
-    // Cube1_Config.GConfigs = new GeometryConfig();
-    // *Cube1_Config.GConfigs = GeometrySystem::GenerateCubeConfig(5.F, 5.F, 5.F, 1.F, 1.F, "test_cube_2", "test_material");
-
-    // if (!state->meshes[1].Create(Cube1_Config)) {
-    //     MERROR("Не удалось создать сетку для куба 1");
-    //     return false;
-    // }
-    // state->meshes[1].transform = Transform(FVec3(10.F, 0.F, 1.F));
-    // state->meshes[1].transform.SetParent(&state->meshes[0].transform);
-
-    // state->MainScene.AddMesh(state->meshes[1]);
-
-    // Третий куб!
-    // Mesh::Config Сube2_Сonfig = {0};
-    // Сube2_Сonfig.GeometryCount = 1;
-    // Сube2_Сonfig.GConfigs = new GeometryConfig();
-    // Сube2_Сonfig.GConfigs[0] = GeometrySystem::GenerateCubeConfig(2.F, 2.F, 2.F, 1.F, 1.F, "test_cube_2", "test_material");
-
-    // if (!state->meshes[2].Create(Сube2_Сonfig)) {
-    //     MERROR("Не удалось создать сетку для куба 2");
-    //     return false;
-    // }
-    // state->meshes[2].transform = Transform(FVec3(5.F, 0.F, 1.F));
-    // state->meshes[2].transform.SetParent(&state->meshes[1].transform);
-
-    // state->MainScene.AddMesh(state->meshes[2]);
-
     // Инициализация
     if (!state->MainScene.Initialize()) {
         MERROR("Не удалось инициализировать основную сцену, прерывание игры.");
@@ -1064,22 +934,19 @@ bool CreateRendergraph(Application &app)
 {
     auto state = (Game*)app.state;
 
-    ForwardRendergraphConfig fConfig { .ShadowmapResolution = 2048 };
-    if (!state->ForwardGraph.Create(&fConfig)) {
+    ForwardRendergraphConfig config {.ShadowmapResolution = 2048 };
+    if (!state->ForwardGraph.Create(&config)) {
         MERROR("Не удалось инициализировать граф прямого рендеринга.");
         return false;
     }
-
-    EditorRendergraphConfig eConfig { .dummy = 0 };
-    if (!state->EditorGraph.Create(&eConfig)) {
-        MERROR("Не удалось инициализировать граф рендеринга редактора.");
+    
+    if (!state->EditorGraph.Create()) {
+        MERROR("Не удалось инициализировать граф редактора.");
         return false;
     }
-
-    UiRendergraphConfig uiConfig { .dummy = 0 };
     
-    if (!state->UiGraph.Create(&uiConfig)) {
-        MERROR("Не удалось инициализировать граф отрисовки пользовательского интерфейса.");
+    if (!state->UiGraph.Create()) {
+        MERROR("Не удалось инициализировать граф пользовательского интерфейса.");
         return false;
     }
 
