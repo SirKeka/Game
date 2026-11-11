@@ -24,7 +24,7 @@ namespace Job {
     };
 
     /// @brief Определяет, какую очередь заданий использует задание. Очередь с высоким приоритетом всегда исчерпывается первой перед обработкой очереди с нормальным приоритетом, которая также должна быть исчерпана перед обработкой очереди с низким приоритетом.
-    enum Priority {
+    enum Priority : u8 {
         Low,    // Задание с самым низким приоритетом, используемое для задач, которые могут подождать выполнения, если возникнет такая необходимость, например, очистка журнала.
         Normal, // Задание с обычным приоритетом. Следует использовать для задач со средним приоритетом, например, загрузка активов.
         High    // Задание с самым высоким приоритетом. Следует использовать экономно и только для критических по времени операций.
@@ -33,6 +33,7 @@ namespace Job {
     /// @brief Описывает задание, которое должно быть запущено.
     struct Info {
         Type                    type; // Тип задания. Используется для определения того, в каком потоке выполняется задание.
+        u16                       id; // Уникальный идентификатор этого задания.
         Priority            priority; // Приоритет этого задания. Задания с более высоким приоритетом, очевидно, выполняются раньше.
         PFN_JobStart      EntryPoint; // Указатель функции, который должен быть вызван при запуске задания. Обязательно.
         PFN_JobOnComplete  OnSuccess; // Указатель функции, который должен быть вызван при успешном завершении задания. Необязательно.
@@ -41,8 +42,10 @@ namespace Job {
         u32            ParamDataSize; // Размер данных, передаваемых заданию.
         void*             ResultData; // Данные, которые должны быть переданы в функцию успеха/неудачи при выполнении, если они существуют.
         u32           ResultDataSize; // Размер данных, передаваемых в функцию успеха/неудачи.
-        constexpr Info() : type(), priority(), EntryPoint(), OnSuccess(), OnFail(), ParamData(), ParamDataSize(), ResultData(), ResultDataSize() {}
-        /// @brief Создает новое задание. По умолчанию тиип (General), а приоритет (Normal).
+        u8           DependencyCount; // Количество идентификаторов заданий, выполнение которых должно завершиться до начала данного задания.
+        u16*           DependencyIds; // Массив идентификаторов заданий, выполнение которых должно завершиться до начала данного задания.
+        constexpr Info() { MemorySystem::ZeroMem(this, sizeof(Info)); }
+        /// @brief Создает новое задание. По умолчанию тип (General), а приоритет (Normal).
         /// @param EntryPoint указатель на функцию, которая будет вызвана при запуске задания. Обязательно.
         /// @param OnSuccess указатель на функцию, которая будет вызвана при успешном завершении задания. Необязательно.
         /// @param OnFail указатель на функцию, которая будет вызвана при сбое задания. Необязательно.
@@ -51,7 +54,7 @@ namespace Job {
         /// @param ResultDataSize размер данных результата, которые будут переданы в обратный вызов success. Передайте 0, если не используются.
         /// @param type тип задания. Используется для определения того, в каком потоке выполняется задание.
         /// @param priority приоритет этого задания. Задания с более высоким приоритетом, очевидно, выполняются раньше.
-        constexpr Info(PFN_JobStart EntryPoint, PFN_JobOnComplete OnSuccess, PFN_JobOnComplete OnFail, void* ParamData, u32 ParamDataSize, u32 ResultDataSize, Type type = Job::General, Priority priority = Job::Normal)
+        constexpr Info(PFN_JobStart EntryPoint, PFN_JobOnComplete OnSuccess, PFN_JobOnComplete OnFail, void* ParamData, u32 ParamDataSize, u32 ResultDataSize, Type type = Job::General, Priority priority = Job::Normal, u8 DependencyCount = 0, u16* dependencies = nullptr)
         : type(type), priority(priority), EntryPoint(EntryPoint), OnSuccess(OnSuccess), OnFail(OnFail), ParamData(), ParamDataSize(ParamDataSize), 
         ResultData(ResultDataSize > 0 ? MemorySystem::Allocate(ResultDataSize, Memory::Job) : nullptr), 
         ResultDataSize(ResultDataSize) {
@@ -63,6 +66,7 @@ namespace Job {
             }
             
         }
+
     };
 }
 
@@ -121,6 +125,11 @@ private:
     bool running;
     u8 ThreadCount;
     JobThread JobThreads[32];
+
+    u16 CurrentJobID;
+    // ЗАДАЧА: Это приводит к огромному перерасходу памяти — объединяйте по 8 значений в один тип bool.
+    bool* JobStatuses;
+    MMutex JobStatusMutex;
 
     RingQueue LowPriorityQueue;
     RingQueue NormalPriorityQueue;

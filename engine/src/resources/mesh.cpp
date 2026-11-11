@@ -1,7 +1,7 @@
 #include "mesh.h"
 #include "systems/resource_system.h"
 #include "systems/geometry_system.h"
-#include "systems/job_systems.h"
+#include "systems/job_system.h"
 #include "core/identifier.h"
 
 // Также используется как ResultData из задания.

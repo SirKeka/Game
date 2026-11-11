@@ -33,3 +33,23 @@ void Threadpool::Destroy()
         }
         ThreadCount = 0;
 }
+
+bool Threadpool::Wait()
+{
+    bool success = true;
+    for (u32 i = 0; i < ThreadCount; ++i) {
+        if (!threads[i].Wait()) {
+            MERROR("Не удалось дождаться завершения рабочего потока в пуле потоков. Подробности см. в журналах.");
+            success = false;
+        }
+        MTRACE("Ожидание завершения рабочего потока окончено.");
+    }
+
+    if (!success) {
+        MERROR("При ожидании завершения пула потоков произошла ошибка. Подробности см. в журналах.");
+    }
+
+    MTRACE("Ожидание завершения всех потоков завершено.");
+
+    return success;
+}

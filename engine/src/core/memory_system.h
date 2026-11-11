@@ -184,7 +184,7 @@ public:
     /// @param block указатель на блок памяти, который нужно обнулить
     /// @param bytes размер блока памяти в байтах
     /// @return указатель на нулевой блок памяти
-    static void* ZeroMem(void* block, u64 bytes);
+    constexpr static void* ZeroMem(void* block, u64 bytes);
 
     static void* sseZeroMem(void*block, u64 bytes);
 

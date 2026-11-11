@@ -313,7 +313,7 @@ MemorySystem *MemorySystem::GetInstance()
     return state;
 }
 
-void *MemorySystem::ZeroMem(void *block, u64 bytes)
+constexpr void *MemorySystem::ZeroMem(void *block, u64 bytes)
 {
     return memset(block, 0, bytes);
 }
