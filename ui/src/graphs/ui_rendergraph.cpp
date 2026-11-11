@@ -3,7 +3,7 @@
 #include "core/systems_manager.h"
 #include "renderer/viewport.h"
 
-bool UiRendergraph::Create(UiRendergraphConfig *config)
+bool UiRendergraph::Create(const UiRendergraphConfig *config)
 {
     name = "ui_rendergraph";
     // Добавление глобальных источников.

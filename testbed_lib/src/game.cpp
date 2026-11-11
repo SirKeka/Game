@@ -774,7 +774,7 @@ void ApplicationOnResize(Application& app, u32 width, u32 height)
 
     // Изменение размера областей просмотра.
     // Область просмотра мира — правая сторона
-    Rect2D vw { 0, 0, width, height };
+    Rect2D vw { 0, 0, state->width, state->height };
     state->WorldViewport.Resize(vw); // {HalfWidth + 20, 20, HalfWidth - 40, state->height - 40};
 
     // Область просмотра интерфейса

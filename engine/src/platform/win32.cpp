@@ -512,7 +512,7 @@ bool MThread::Create(PFN_ThreadStart StartFunctionPtr, void *params, bool AutoDe
     return true;
 }
 
-MThread::~MThread()
+void MThread::Destroy()
 {
     if (data) {
         DWORD ExitCode;
@@ -524,6 +524,30 @@ MThread::~MThread()
         data = nullptr;
         ThreadID = 0;
     }
+}
+
+bool MThread::Wait()
+{
+    if (data) {
+        DWORD ExitCode = WaitForSingleObject(data, INFINITE);
+        if (ExitCode == WAIT_OBJECT_0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool MThread::WaitTimeout(u64 WaitMs)
+{
+    if (data) {
+        DWORD ExitCode = WaitForSingleObject(data, WaitMs);
+        if (ExitCode == WAIT_OBJECT_0) {
+            return true;
+        } else if (ExitCode == WAIT_TIMEOUT) {
+            return false;
+        }
+    }
+    return false;
 }
 
 void MThread::Detach()
@@ -569,6 +593,10 @@ u64 GetThreadID()
 
 void *MMutex::Create()
 {
+    if (!data) {
+        /* code */
+    }
+    
     /*  Функция, которая создаёт именованный или безымянный объект mutex.
      *  lpMutexAttributes — указывает на структуру SECURITY_ATTRIBUTES, которая определяет, 
         может ли возвращённый дескриптор быть унаследован дочерними процессами. 
@@ -586,7 +614,7 @@ void *MMutex::Create()
     // MTRACE("Создан мьютекс.");
 }
 
-MMutex::~MMutex()
+void MMutex::Destroy()
 {
     if (data) {
         CloseHandle(data);

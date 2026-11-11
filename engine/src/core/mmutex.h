@@ -15,9 +15,12 @@ public:
     /// @brief Создает мьютекс.
     constexpr MMutex() : data(Create()) {}
     /// @brief Уничтожает мьютекс.
-    ~MMutex();
+    ~MMutex() { Destroy(); }
     
     void* Create();
+
+    /// @brief Уничтожает мьютекс.
+    void Destroy();
 
     /// Создает блокировку мьютекса.
     /// @param mutex Указатель на мьютекс.
