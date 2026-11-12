@@ -1,8 +1,10 @@
 #include "job_system.h"
 #include "memory/linear_allocator.h"
+#include "core/asserts.h"
 #include "core/memory_system.h"
 #include "core/mthread.h"
 #include "core/mmutex.h"
+
 #include <new>
 
 JobSystem::JobSystem(Config& config)
@@ -10,9 +12,9 @@ JobSystem::JobSystem(Config& config)
 running             (true),
 ThreadCount         (config.MaxJobThreadCount),
 
-LowPriorityQueue    (sizeof(Job::Info), 1024, nullptr),
-NormalPriorityQueue (sizeof(Job::Info), 1024, nullptr),
-HighPriorityQueue   (sizeof(Job::Info), 1024, nullptr),
+LowPriorityQueue    (sizeof(JobInfo), 1024, nullptr),
+NormalPriorityQueue (sizeof(JobInfo), 1024, nullptr),
+HighPriorityQueue   (sizeof(JobInfo), 1024, nullptr),
 
 LowPriQueueMutex    (),
 NormalPriQueueMutex (),
@@ -101,7 +103,7 @@ u32 JobSystem::JobThreadRun(void *params)
         if (!thread.InfoMutex.Lock()) {
             MERROR("Не удалось получить блокировку мьютекса потока задания!");
         }
-        Job::Info& info = thread.info;
+        JobInfo& info = thread.info;
         if (!thread.InfoMutex.Unlock()) {
             MERROR("Не удалось снять блокировку мьютекса потока задания!");
         }
@@ -132,7 +134,7 @@ u32 JobSystem::JobThreadRun(void *params)
             if (!thread.InfoMutex.Lock()) {
                 MERROR("Не удалось получить блокировку мьютекса потока задания!");
             }
-            MemorySystem::ZeroMem(&thread.info, sizeof(Job::Info));
+            MemorySystem::ZeroMem(&thread.info, sizeof(JobInfo));
             if (!thread.InfoMutex.Unlock()) {
                 MERROR("Не удалось снять блокировку мьютекса потока задания!");
             }
@@ -186,7 +188,7 @@ void JobSystem::Shutdown()
 void JobSystem::ProcessQueue(RingQueue& queue, MMutex& QueueMutex) {
     // Сначала проверьте наличие свободной темы.
     while (queue.Length() > 0) {
-        Job::Info info;
+        JobInfo info;
         if (!queue.Peek(&info)) {
             break;
         }
@@ -276,7 +278,7 @@ bool JobSystem::Update(void* state, FrameData& rFrameData)
     return true;
 }
 
-MAPI void JobSystem::Submit(Job::Info &info)
+MAPI void JobSystem::Submit(JobInfo &info)
 {
     auto* queue = &pJobSystem->NormalPriorityQueue;
     auto* QueueMutex = &pJobSystem->NormalPriQueueMutex;
@@ -325,4 +327,68 @@ MAPI void JobSystem::Submit(Job::Info &info)
         MERROR("Не удалось снять блокировку на мьютексе очереди!");
     }
     MTRACE("Задание поставлено в очередь.");
+}
+
+JobInfo JobSystem::CreateJobInfo(PFN_JobStart EntryPoint, PFN_JobOnComplete OnSuccess, PFN_JobOnComplete OnFail, void *ParamData, u32 ParamDataSize, u32 ResultDataSize, Job::Type type, Job::Priority priority, u8 DependencyCount, u16 *dependencies)
+{
+    JobInfo job {
+        .type = type,
+        .priority = priority,
+        .EntryPoint = EntryPoint,
+        .OnSuccess = OnSuccess,
+        .OnFail = OnFail,
+        .ParamDataSize = ParamDataSize,
+        .ResultDataSize = ResultDataSize
+    };
+
+    // Технически задачи могут создаваться в процессе выполнения других задач (например, в другом потоке), 
+    // поэтому обязательно используйте блокировку при внесении таких изменений.
+    if (!pJobSystem->JobStatusMutex.Lock()) {
+        MERROR("Не удалось заблокировать мьютекс состояния задания!");
+    }
+
+    // ЗАДАЧА: Pack booleans.
+    MASSERT_MSG(pJobSystem->CurrentJobID < INVALID::U16ID, "Переполнение идентификатора в системе заданий — необходимо упаковать логические значения.");
+    job.id = pJobSystem->CurrentJobID;
+    pJobSystem->CurrentJobID++;
+    pJobSystem->JobStatuses[job.id] = false;
+    if (!pJobSystem->JobStatusMutex.Unlock()) {
+        MERROR("Не удалось разблокировать мьютекс состояния задания!");
+    }
+
+    if (ParamDataSize) {
+        job.ParamData = MemorySystem::Allocate(ParamDataSize, Memory::Job);
+        MemorySystem::CopyMem(job.ParamData, ParamData, ParamDataSize);
+    } else {
+        job.ParamData = nullptr;
+    }
+
+    if (ResultDataSize) {
+        job.ResultData = MemorySystem::Allocate(ResultDataSize, Memory::Job, true);
+    } else {
+        job.ResultData = nullptr;
+    }
+
+    job.DependencyCount = DependencyCount;
+    if (DependencyCount) {
+        CreateArray(job.DependencyIds, sizeof(u16) * DependencyCount);
+        MemorySystem::CopyMem(job.DependencyIds, dependencies, sizeof(u16) * DependencyCount);
+    } else {
+        job.DependencyIds = nullptr;
+    }
+
+    return job;
+}
+
+bool JobSystem::QueryJobComplete()
+{
+    bool status = INVALID::ID;
+    if (!pJobSystem->JobStatusMutex.Lock()) {
+        MERROR("Не удалось заблокировать мьютекс состояния задания!");
+    }
+    status = pJobSystem->JobStatuses[job_id];
+    if (!pJobSystem->JobStatusMutex.Unlock()) {
+        MERROR("Не удалось разблокировать мьютекс состояния задания!");
+    }
+    return status;
 }

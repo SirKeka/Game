@@ -29,51 +29,31 @@ namespace Job {
         Normal, // Задание с обычным приоритетом. Следует использовать для задач со средним приоритетом, например, загрузка активов.
         High    // Задание с самым высоким приоритетом. Следует использовать экономно и только для критических по времени операций.
     };
-
-    /// @brief Описывает задание, которое должно быть запущено.
-    struct Info {
-        Type                    type; // Тип задания. Используется для определения того, в каком потоке выполняется задание.
-        u16                       id; // Уникальный идентификатор этого задания.
-        Priority            priority; // Приоритет этого задания. Задания с более высоким приоритетом, очевидно, выполняются раньше.
-        PFN_JobStart      EntryPoint; // Указатель функции, который должен быть вызван при запуске задания. Обязательно.
-        PFN_JobOnComplete  OnSuccess; // Указатель функции, который должен быть вызван при успешном завершении задания. Необязательно.
-        PFN_JobOnComplete     OnFail; // Указатель функции, который должен быть вызван при успешном сбое задания. Необязательно.
-        void*              ParamData; // Данные, которые должны быть переданы в точку входа при выполнении.
-        u32            ParamDataSize; // Размер данных, передаваемых заданию.
-        void*             ResultData; // Данные, которые должны быть переданы в функцию успеха/неудачи при выполнении, если они существуют.
-        u32           ResultDataSize; // Размер данных, передаваемых в функцию успеха/неудачи.
-        u8           DependencyCount; // Количество идентификаторов заданий, выполнение которых должно завершиться до начала данного задания.
-        u16*           DependencyIds; // Массив идентификаторов заданий, выполнение которых должно завершиться до начала данного задания.
-        constexpr Info() { MemorySystem::ZeroMem(this, sizeof(Info)); }
-        /// @brief Создает новое задание. По умолчанию тип (General), а приоритет (Normal).
-        /// @param EntryPoint указатель на функцию, которая будет вызвана при запуске задания. Обязательно.
-        /// @param OnSuccess указатель на функцию, которая будет вызвана при успешном завершении задания. Необязательно.
-        /// @param OnFail указатель на функцию, которая будет вызвана при сбое задания. Необязательно.
-        /// @param ParamData данные, которые будут переданы в точку входа при выполнении.
-        /// @param ParamDataSize данные, которые будут переданы в обратный вызов entry_point. Передайте 0, если не используются.
-        /// @param ResultDataSize размер данных результата, которые будут переданы в обратный вызов success. Передайте 0, если не используются.
-        /// @param type тип задания. Используется для определения того, в каком потоке выполняется задание.
-        /// @param priority приоритет этого задания. Задания с более высоким приоритетом, очевидно, выполняются раньше.
-        constexpr Info(PFN_JobStart EntryPoint, PFN_JobOnComplete OnSuccess, PFN_JobOnComplete OnFail, void* ParamData, u32 ParamDataSize, u32 ResultDataSize, Type type = Job::General, Priority priority = Job::Normal, u8 DependencyCount = 0, u16* dependencies = nullptr)
-        : type(type), priority(priority), EntryPoint(EntryPoint), OnSuccess(OnSuccess), OnFail(OnFail), ParamData(), ParamDataSize(ParamDataSize), 
-        ResultData(ResultDataSize > 0 ? MemorySystem::Allocate(ResultDataSize, Memory::Job) : nullptr), 
-        ResultDataSize(ResultDataSize) {
-            if (ParamDataSize) {
-                this->ParamData = MemorySystem::Allocate(ParamDataSize, Memory::Job);
-                MemorySystem::CopyMem(this->ParamData, ParamData, ParamDataSize);
-            } else {
-                this->ParamData = nullptr;
-            }
-            
-        }
-
-    };
 }
 
-struct JobThread {
+/// @brief Описывает задание, которое должно быть запущено.
+struct JobInfo 
+{
+    Job::Type              type{}; // Тип задания. Используется для определения того, в каком потоке выполняется задание.
+    u16                      id{}; // Уникальный идентификатор этого задания.
+    Job::Priority      priority{}; // Приоритет этого задания. Задания с более высоким приоритетом, очевидно, выполняются раньше.
+    PFN_JobStart     EntryPoint{}; // Указатель функции, который должен быть вызван при запуске задания. Обязательно.
+    PFN_JobOnComplete OnSuccess{}; // Указатель функции, который должен быть вызван при успешном завершении задания. Необязательно.
+    PFN_JobOnComplete    OnFail{}; // Указатель функции, который должен быть вызван при успешном сбое задания. Необязательно.
+    void*             ParamData{}; // Данные, которые должны быть переданы в точку входа при выполнении.
+    u32           ParamDataSize{}; // Размер данных, передаваемых заданию.
+    void*            ResultData{}; // Данные, которые должны быть переданы в функцию успеха/неудачи при выполнении, если они существуют.
+    u32          ResultDataSize{}; // Размер данных, передаваемых в функцию успеха/неудачи.
+    u8          DependencyCount{}; // Количество идентификаторов заданий, выполнение которых должно завершиться до начала данного задания.
+    u16*          DependencyIds{}; // Массив идентификаторов заданий, выполнение которых должно завершиться до начала данного задания.
+    // constexpr Info() { MemorySystem::ZeroMem(this, sizeof(Info)); }
+};
+
+struct JobThread 
+{
     u8 index;
     MThread thread;
-    Job::Info info;
+    JobInfo info;
     // Мьютекс для защиты доступа к информации этого потока.
     MMutex InfoMutex;
 
@@ -99,6 +79,20 @@ struct JobResultEntry {
     }
 };
 
+        
+    //    constexpr Info()
+    //    : type(type), priority(priority), EntryPoint(EntryPoint), OnSuccess(OnSuccess), OnFail(OnFail), ParamData(), ParamDataSize(ParamDataSize), 
+    //    ResultData(ResultDataSize > 0 ? MemorySystem::Allocate(ResultDataSize, Memory::Job) : nullptr), 
+    //    ResultDataSize(ResultDataSize) {
+    //        if (ParamDataSize) {
+    //            this->ParamData = MemorySystem::Allocate(ParamDataSize, Memory::Job);
+    //            MemorySystem::CopyMem(this->ParamData, ParamData, ParamDataSize);
+    //        } else {
+    //            this->ParamData = nullptr;
+    //        }
+    //        
+    //    }
+
 class JobSystem
 {
 public:
@@ -119,7 +113,25 @@ public:
     static bool Update(void* state, FrameData& rFrameData);
     /// @brief Отправляет предоставленное задание в очередь на выполнение.
     /// @param info Описание задания, которое должно быть выполнено.
-    MAPI static void Submit(Job::Info& info);
+    MAPI static void Submit(JobInfo& info);
+
+    /// @brief Создает новое задание. По умолчанию тип (General), приоритет (Normal), DependencyCount = 0, dependencies = nullptr.
+    /// @param EntryPoint указатель на функцию, которая будет вызвана при запуске задания. Обязательно.
+    /// @param OnSuccess указатель на функцию, которая будет вызвана при успешном завершении задания. Необязательно.
+    /// @param OnFail указатель на функцию, которая будет вызвана при сбое задания. Необязательно.
+    /// @param ParamData данные, которые будут переданы в точку входа при выполнении.
+    /// @param ParamDataSize данные, которые будут переданы в обратный вызов entry_point. Передайте 0, если не используются.
+    /// @param ResultDataSize размер данных результата, которые будут переданы в обратный вызов success. Передайте 0, если не используются.
+    /// @param type тип задания. Используется для определения того, в каком потоке выполняется задание.
+    /// @param priority приоритет этого задания. Задания с более высоким приоритетом, очевидно, выполняются раньше.
+    /// @param DependencyCount
+    /// @param dependencies 
+    MAPI static JobInfo CreateJobInfo(PFN_JobStart EntryPoint, PFN_JobOnComplete OnSuccess, PFN_JobOnComplete OnFail, void* ParamData, u32 ParamDataSize, u32 ResultDataSize, Job::Type type = Job::General, Job::Priority priority = Job::Normal, u8 DependencyCount = 0, u16* dependencies = nullptr); 
+    
+
+    /// @brief Возвращает информацию о том, завершилась ли задача с заданным идентификатором.
+    /// @return 
+    MAPI static bool QueryJobComplete();
 private:
     friend class SystemsManager;
     bool running;

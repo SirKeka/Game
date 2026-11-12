@@ -116,7 +116,7 @@ static bool Load(const char *ResourceName, Mesh* OutMesh)
         .OutMesh = OutMesh
     };
 
-    Job::Info job { MeshLoadJobStart, MeshLoadJobSuccess, MeshLoadJobFail, &params, sizeof(MeshLoadParams), sizeof(MeshLoadParams) };
+    JobInfo job = JobSystem::CreateJobInfo (MeshLoadJobStart, MeshLoadJobSuccess, MeshLoadJobFail, &params, sizeof(MeshLoadParams), sizeof(MeshLoadParams));
     JobSystem::Submit(job);
 
     return true;
