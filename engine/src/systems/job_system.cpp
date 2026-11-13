@@ -7,10 +7,14 @@
 
 #include <new>
 
-JobSystem::JobSystem(Config& config)
+JobSystem::JobSystem(Config& config, bool& result)
 :
 running             (true),
 ThreadCount         (config.MaxJobThreadCount),
+
+CurrentJobID        (),
+JobStatuses         ((bool*)(this + 1)),
+JobStatusMutex      (),
 
 LowPriorityQueue    (sizeof(JobInfo), 1024, nullptr),
 NormalPriorityQueue (sizeof(JobInfo), 1024, nullptr),
@@ -28,8 +32,8 @@ ResultMutex         ()
     for (u8 i = 0; i < ThreadCount; ++i) {
         JobThreads[i].index = i;
         JobThreads[i].TypeMask = config.TypeMasks[i];
-        auto& jThread = JobThreads[i];
-        if (!(jThread.thread.Create(JobThreadRun, &jThread.index, false))) {
+        Thread& jThread = JobThreads[i];
+        if (!(result = jThread.thread.Create(JobThreadRun, &jThread.index, false))) {
             MFATAL("Ошибка ОС при создании потока заданий. Приложение не может продолжать работу.");
             return;
         }
@@ -42,19 +46,27 @@ ResultMutex         ()
     // }
 
     // Проверка создались ли мьютексы
-    if (!ResultMutex) {
+    if (!(result = JobStatusMutex)) {
+        MERROR("Не удалось создать мьютекс состояния задания!");
+        return;
+    }
+
+    if (!(result = ResultMutex)) {
         MERROR("Не удалось создать мьютекс результата!.");
         return;
     }
-    if (!LowPriQueueMutex) {
+
+    if (!(result = LowPriQueueMutex)) {
         MERROR("Не удалось создать мьютекс очереди с низким приоритетом!.");
         return;
     }
-    if (!NormalPriQueueMutex) {
+
+    if (!(result = NormalPriQueueMutex)) {
         MERROR("Не удалось создать мьютекс очереди с обычным приоритетом!.");
         return;
     }
-    if (!HighPriQueueMutex) {
+
+    if (!(result = HighPriQueueMutex)) {
         MERROR("Не удалось создать мьютекс очереди с высоким приоритетом!.");
         return;
     }
@@ -83,7 +95,7 @@ void JobSystem::StoreResult(PFN_JobOnComplete callback, u32 ParamSize, void* par
 u32 JobSystem::JobThreadRun(void *params)
 {
     u32 index = *(u32*)params;
-    auto& thread = pJobSystem->JobThreads[index];
+    Thread& thread = pJobSystem->JobThreads[index];
     const u32 ThreadID = thread.thread.ThreadID;
     MTRACE("Запуск потока заданий #%i (id=%#x, type=%#x).", thread.index, ThreadID, thread.TypeMask);
 
@@ -93,11 +105,20 @@ u32 JobSystem::JobThreadRun(void *params)
         return 0;
     }
 
+    // Создайте семафор для потока, который будет блокироваться до тех пор, пока не появится работа.
+    if (!thread.semaphore.Create(1, 1)) {
+        MERROR("Не удалось создать семафор для потока задач! Прерывание потока.");
+        return 0;
+    }
+
     // Работать вечно, ожидая заданий.
     while (true) {
         if (!pJobSystem || !pJobSystem->running) {
             break;
         }
+
+        // Дождитесь сигнала семафора.
+        thread.semaphore.Wait(0xFFFFFFFF);
 
         // Блокировка и получение копии информации
         if (!thread.InfoMutex.Lock()) {
@@ -125,32 +146,50 @@ u32 JobSystem::JobThreadRun(void *params)
                 MemorySystem::Free(info.ParamData, info.ParamDataSize, Memory::Job);
                 info.ParamData = nullptr;
             }
+
             if (info.ResultData) {
                 MemorySystem::Free(info.ResultData, info.ResultDataSize, Memory::Job);
                 info.ResultData = nullptr;
+            }
+
+            // Обновите статус этого задания.
+            if (!pJobSystem->JobStatusMutex.Lock()) {
+                MERROR("Не удалось заблокировать мьютекс статуса задания!");
+            }
+
+            pJobSystem->JobStatuses[thread.info.id] = true;
+
+            if (!pJobSystem->JobStatusMutex.Unlock()) {
+                MERROR("Не удалось разблокировать мьютекс статуса задания!");
             }
 
             // Заблокируйте и сбросьте информационный объект потока
             if (!thread.InfoMutex.Lock()) {
                 MERROR("Не удалось получить блокировку мьютекса потока задания!");
             }
+
+            if (thread.info.DependencyIds) {
+                DestroyArray(thread.info.DependencyIds, sizeof(u16) * thread.info.DependencyCount);
+            }
+
             MemorySystem::ZeroMem(&thread.info, sizeof(JobInfo));
+
             if (!thread.InfoMutex.Unlock()) {
                 MERROR("Не удалось снять блокировку мьютекса потока задания!");
             }
         }
 
+        // Если выполнение больше не требуется, завершить поток.
         if (pJobSystem->running) {
-            // ЗАДАЧА: Вероятно, следует найти лучший способ сделать это, например, 
-            // заснуть, пока не поступит запрос на новое задание.
-            thread.thread.Sleep(10);
         } else {
             break;
         }
     }
 
     // Уничтожьте мьютекс для этого потока.
-    thread.InfoMutex.~MMutex();
+    thread.InfoMutex.Destroy();
+    // Уничтожьте семафор.
+    thread.semaphore.Destroy();
     return 1;
 }
 
@@ -159,9 +198,10 @@ bool JobSystem::Initialize(void *ptr, Config JobSysConfig)
     if (!ptr) { return false; }
     
     pJobSystem = (JobSystem*)ptr;
-    new(ptr) JobSystem(JobSysConfig);
+    bool result;
+    new(ptr) JobSystem(JobSysConfig, result);
 
-    return true;
+    return result;
 }
 
 void JobSystem::Shutdown()
@@ -177,10 +217,11 @@ void JobSystem::Shutdown()
     HighPriorityQueue.~RingQueue();
 
     // Уничтожить мьютексы
-    ResultMutex.~MMutex();
-    LowPriQueueMutex.~MMutex();
-    NormalPriQueueMutex.~MMutex();
-    HighPriQueueMutex.~MMutex();
+    JobStatusMutex.Destroy();
+    ResultMutex.Destroy();
+    LowPriQueueMutex.Destroy();
+    NormalPriQueueMutex.Destroy();
+    HighPriQueueMutex.Destroy();
         
     pJobSystem = nullptr;
 }
@@ -191,6 +232,22 @@ void JobSystem::ProcessQueue(RingQueue& queue, MMutex& QueueMutex) {
         JobInfo info;
         if (!queue.Peek(&info)) {
             break;
+        }
+
+        // Проверьте, все ли зависимости выполнены.
+        bool AwaitingDependency = false;
+        if (info.DependencyCount) {
+            for (u32 i = 0; i < info.DependencyCount; ++i) {
+                if (!QueryJobComplete(info.DependencyIds[i])) {
+                    MTRACE("Примечание: задание (id=%u) не запускается, поскольку его зависимость (задание id=%u) всё ещё выполняется.", info.id, info.DependencyIds[i]);
+                    AwaitingDependency = true;
+                    break;
+                }
+            }
+        }
+
+        if (AwaitingDependency) {
+            continue;
         }
 
         bool ThreadFound = false;
@@ -216,6 +273,8 @@ void JobSystem::ProcessQueue(RingQueue& queue, MMutex& QueueMutex) {
                 thread.info = info;
                 MTRACE("Назначение задания потоку: %u", thread.index);
                 ThreadFound = true;
+                // Подайте сигнал семафору потока, поскольку появилась работа, которую нужно выполнить.
+                thread.semaphore.Signal();
             }
             if (!thread.InfoMutex.Unlock()) {
                 MERROR("Не удалось снять блокировку мьютекса потока задания!");
@@ -352,6 +411,7 @@ JobInfo JobSystem::CreateJobInfo(PFN_JobStart EntryPoint, PFN_JobOnComplete OnSu
     job.id = pJobSystem->CurrentJobID;
     pJobSystem->CurrentJobID++;
     pJobSystem->JobStatuses[job.id] = false;
+
     if (!pJobSystem->JobStatusMutex.Unlock()) {
         MERROR("Не удалось разблокировать мьютекс состояния задания!");
     }
@@ -380,13 +440,13 @@ JobInfo JobSystem::CreateJobInfo(PFN_JobStart EntryPoint, PFN_JobOnComplete OnSu
     return job;
 }
 
-bool JobSystem::QueryJobComplete()
+bool JobSystem::QueryJobComplete(u16 JobID)
 {
     bool status = INVALID::ID;
     if (!pJobSystem->JobStatusMutex.Lock()) {
         MERROR("Не удалось заблокировать мьютекс состояния задания!");
     }
-    status = pJobSystem->JobStatuses[job_id];
+    status = pJobSystem->JobStatuses[JobID];
     if (!pJobSystem->JobStatusMutex.Unlock()) {
         MERROR("Не удалось разблокировать мьютекс состояния задания!");
     }

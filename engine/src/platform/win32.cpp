@@ -1,6 +1,6 @@
 #include "platform.hpp"
 
-#include "core/semaphor.h"
+#include "core/semaphore.h"
 
 // Уровень платформы Windows.
 #if MPLATFORM_WINDOWS

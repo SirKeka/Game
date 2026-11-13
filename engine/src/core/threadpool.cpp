@@ -2,6 +2,11 @@
 #include "memory_system.h"
 #include "worker_thread.h"
 
+constexpr Threadpool::Threadpool(u32 ThreadCount, bool &result)
+{
+    result = Create(ThreadCount);
+}
+
 bool Threadpool::Create(u32 ThreadCount)
 {
     if (!ThreadCount) {

@@ -1,9 +1,10 @@
 #pragma once
 
 #include "containers/ring_queue.hpp"
+#include "core/memory_system.h"
 #include "core/mmutex.h"
 #include "core/mthread.h"
-#include "core/memory_system.h"
+#include "core/semaphore.h"
 
 constexpr i32 MAX_JOB_RESULTS = 512; // Максимальное количество результатов задания, которые можно сохранить одновременно.
 
@@ -47,18 +48,6 @@ struct JobInfo
     u8          DependencyCount{}; // Количество идентификаторов заданий, выполнение которых должно завершиться до начала данного задания.
     u16*          DependencyIds{}; // Массив идентификаторов заданий, выполнение которых должно завершиться до начала данного задания.
     // constexpr Info() { MemorySystem::ZeroMem(this, sizeof(Info)); }
-};
-
-struct JobThread 
-{
-    u8 index;
-    MThread thread;
-    JobInfo info;
-    // Мьютекс для защиты доступа к информации этого потока.
-    MMutex InfoMutex;
-
-    // Типы задач, которые может выполнять этот поток.
-    u32 TypeMask;
 };
 
 struct JobResultEntry {
@@ -128,15 +117,26 @@ public:
     /// @param dependencies 
     MAPI static JobInfo CreateJobInfo(PFN_JobStart EntryPoint, PFN_JobOnComplete OnSuccess, PFN_JobOnComplete OnFail, void* ParamData, u32 ParamDataSize, u32 ResultDataSize, Job::Type type = Job::General, Job::Priority priority = Job::Normal, u8 DependencyCount = 0, u16* dependencies = nullptr); 
     
+    constexpr static u64 RequiredMemory() { return sizeof(JobSystem) + (sizeof(u8) * (INVALID::U16ID - 1)); }
 
     /// @brief Возвращает информацию о том, завершилась ли задача с заданным идентификатором.
     /// @return 
-    MAPI static bool QueryJobComplete();
+    MAPI static bool QueryJobComplete(u16 JobID);
 private:
     friend class SystemsManager;
     bool running;
     u8 ThreadCount;
-    JobThread JobThreads[32];
+    struct Thread {
+        u8 index;
+        MThread thread;
+        JobInfo info;
+        // Мьютекс для защиты доступа к информации этого потока.
+        MMutex InfoMutex;
+        // Используется для того, чтобы заблокировать поток до тех пор, пока не появится работа.
+        Semaphore semaphore;
+        // Типы задач, которые может выполнять этот поток.
+        u32 TypeMask;
+    } JobThreads[32];
 
     u16 CurrentJobID;
     // ЗАДАЧА: Это приводит к огромному перерасходу памяти — объединяйте по 8 значений в один тип bool.
@@ -158,7 +158,7 @@ private:
     
     static inline JobSystem* pJobSystem;
     
-    JobSystem(Config& config);
+    JobSystem(Config& config, bool& result);
     static void StoreResult(PFN_JobOnComplete callback, u32 ParamSize, void* params);
     static u32 JobThreadRun(void* params);
     static void ProcessQueue(RingQueue& queue, MMutex& QueueMutex);

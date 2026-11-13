@@ -240,7 +240,7 @@ bool SystemsManager::RegisterKnownSystemsPreBoot(ApplicationConfig &AppConfig)
     }
 
     JobSystem::Config JobSysConfig { ThreadCount, JobThreadTypes };
-    ptr = state->SystemsAllocator.Allocate(sizeof(JobSystem));
+    ptr = state->SystemsAllocator.Allocate(JobSystem::RequiredMemory());
     JobSystem::Initialize(ptr, JobSysConfig);
     if (!state->Register(Job, ptr, JobSystem::Update)) {
         MERROR("Не удалось зарегистрировать систему задач.");

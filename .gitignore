@@ -5,3 +5,4 @@ obj/
 
 engine/src/version.h
 compile_flags.txt
+*.zip

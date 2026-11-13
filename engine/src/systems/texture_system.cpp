@@ -1,6 +1,8 @@
 #include "texture_system.h"
 #include "containers/mstring.h"
+#include "core/threadpool.h"
 #include "core/systems_manager.h"
+#include "core/worker_thread.h"
 #include "renderer/rendering_system.h"
 #include "systems/resource_system.h"
 #include "systems/job_system.h"
@@ -667,10 +669,71 @@ static void LoadLayeredJobFail(void* ResultData) {
     }
 }
 
+struct LayerWorkInfo {
+    u32 layer;
+    u64 LayerSize;
+    u32 FirstWidth;
+    u32 FirstHeight;
+    u8** DataBlock;
+    bool result;
+    TextureLoadJobCode ResultCode;
+    MString LayerName;
+    bool HasTransparency;
+};
+
+static u32 LayeredTextureDoWork(void* param) {
+    LayerWorkInfo* info = (LayerWorkInfo*)param;
+    info->result = true;
+
+    ImageResourceParams ResourceParams { .FlipY = true };
+
+    ImageResource ImageResource;
+    if (!ResourceSystem::Load(info->LayerName.c_str(), &ResourceParams, ImageResource)) {
+        info->ResultCode = TextureLoadJobCode::ResourceLoadFailed;
+        info->result = false;
+        return false;
+    }
+
+    info->LayerName.Destroy();
+
+    ImageResourceData& ResourceData = ImageResource.data;
+
+    // Убедитесь, что размеры соответствуют размерам текстуры первого слоя.
+    if (ResourceData.width != info->FirstWidth || ResourceData.height != info->FirstHeight) {
+        info->ResultCode = TextureLoadJobCode::ResourceDimensionMismatch;
+        ResourceSystem::Unload(ImageResource);
+        info->result = false;
+        return false;
+    }
+
+    // Проверьте наличие прозрачности.
+    info->HasTransparency = false;
+    for (u64 i = 0; i < info->LayerSize; i += ResourceData.ChannelCount) {
+        u8 a = ResourceData.pixels[i + 3];
+        if (a < 255) {
+            info->HasTransparency = true;
+            break;
+        }
+    }
+
+    // Поместите пиксели в соответствующий «слой».
+    u8* DataLocation = *info->DataBlock + (info->layer * info->LayerSize);
+    MemorySystem::CopyMem(DataLocation, ResourceData.pixels, info->LayerSize);
+
+    ResourceSystem::Unload(ImageResource);
+
+    return info->result;
+}
+
 static bool LoadLayeredJobStart(void* params, void* ResultData) {
     auto LoadParams = (TextureLoadLayeredParams*)params;
     auto TypedResult = (TextureLoadLayeredResult*)ResultData;
-    bool result = false;
+
+    // LEFTOFF: Разбить это на 3 задачи. Первая задача выполняет запрос, 
+    // затем подготавливает все задачи для работы с многослойными текстурами, 
+    // а после этого создает финальную задачу, которая переносит все данные в 
+    // единый непрерывный блок памяти (эта финальная задача должна зависеть от 
+    // задач по обработке слоев). ЗАТЕМ отправить все задачи на выполнение.
 
     // Запросите размеры первого изображения. Все последующие изображения должны соответствовать этим размерам.
     // Количество каналов в изображении игнорируется.
@@ -707,59 +770,70 @@ static bool LoadLayeredJobStart(void* params, void* ResultData) {
     TempTexture.id    = LoadParams->OutTexture->id;
     TempTexture.flags = LoadParams->OutTexture->flags;
 
-    ImageResourceParams ResourceParams { true };
+    // ImageResourceParams ResourceParams { true };
 
-    for (u32 layer = 0; layer < LoadParams->LayerCount; ++layer) {
-        ImageResource iresource;
-        if (!ResourceSystem::Load(LoadParams->LayerNames[layer].c_str(), &ResourceParams, iresource)) {
-            TypedResult->ResultCode = TextureLoadJobCode::ResourceLoadFailed;
-            goto tllfailed;
-        }
-
-        ImageResourceData& data = iresource.data;
-
-        // Убедитесь, что размеры соответствуют размерам текстуры первого слоя.
-        if (data.width != (u32)FirstWidth || data.height != (u32)FirstHeight) {
-            TypedResult->ResultCode = TextureLoadJobCode::ResourceDimensionMismatch;
-            ResourceSystem::Unload(iresource);
-            goto tllfailed;
-        }
-
-        // Проверьте прозрачность.
-        if (!HasTransparency) {
-            for (u64 i = 0; i < LayerSize; i += TempTexture.ChannelCount) {
-                u8 a = data.pixels[i + 3];
-                if (a < 255) {
-                    HasTransparency = true;
-                    break;
-                }
-            }
-        }
-
-        // Вставьте пиксели в соответствующий «слой».
-        u8* DataLocation = TypedResult->DataBlock + (layer * LayerSize);
-        MemorySystem::CopyMem(DataLocation, data.pixels, LayerSize);
-
-        ResourceSystem::Unload(iresource);
+    // Создайте пул потоков для одновременной загрузки слоёв.
+    bool result;
+    Threadpool pool { LoadParams->LayerCount, result };
+    if (!result) {
+        MERROR("Не удалось создать пул потоков. Подробности см. в журналах.");
+        return false;
     }
 
-    TempTexture.flags |= HasTransparency ? Texture::HasTransparency : 0;
-    TypedResult->name = (MString&&)LoadParams->name;
-    TypedResult->CurrentGeneration = LoadParams->OutTexture->generation;
-    TypedResult->LayerCount = LoadParams->LayerCount;
+    // Создайте задание для каждого слоя, но пока не отправляйте его.
+    LayerWorkInfo* infos = AllocateTemp<LayerWorkInfo>(sizeof(LayerWorkInfo) * LoadParams->LayerCount); // CreateArray(infos, sizeof(LayerWorkInfo) * LoadParams->LayerCount);
 
-    result = true;
+    for (u32 layer = 0; layer < LoadParams->LayerCount; ++layer) {
+        LayerWorkInfo& info = infos[layer];
+        info.layer = layer;
+        info.LayerSize = LayerSize;
+        info.FirstWidth = FirstWidth;
+        info.FirstHeight = FirstHeight;
+        info.DataBlock = &TypedResult->DataBlock;
+        info.result = false;
+        info.LayerName = (MString&&)LoadParams->LayerNames[layer];
 
-tllfailed:
-    // HACK: DRY
-    delete[] LoadParams->LayerNames;
-    LoadParams->LayerNames = nullptr;
+        if (!pool.threads[layer].Add(LayeredTextureDoWork, &info)) {
+            MERROR("Не удалось добавить задачу в рабочий поток.");
+            return false;
+        }
+    }
 
-    if (result) { return true; }
-    
-    if (TypedResult->DataBlock) {
-        DestroyArray(TypedResult->DataBlock, TypedResult->DataBlockSize);
-        TypedResult->DataBlock = nullptr;
+    // Начинайте работу.
+    for (u32 i = 0; i < LoadParams->LayerCount; ++i) {
+        pool.threads[i].Start();
+    }
+
+    // Дождитесь завершения потоков.
+    if (!pool.Wait()) {
+        MERROR("Ошибка ожидания в пуле потоков.");
+        return false;
+    }
+
+    // pool.Destroy();
+
+    // Проверьте результаты.
+    bool LoadResult = true;
+    for (u32 i = 0; i < LoadParams->LayerCount; ++i) {
+        if (!infos[i].result) {
+            LoadResult = false;
+        }
+    }
+
+    // DestroyArray(infos, sizeof(LayerWorkInfo) * LoadParams->LayerCount);
+
+    if (LoadResult) {
+        TempTexture.flags |= HasTransparency ? Texture::HasTransparency : 0;
+        TypedResult->name = (MString&&)LoadParams->name;
+        TypedResult->CurrentGeneration = LoadParams->OutTexture->generation;
+        TypedResult->LayerCount = LoadParams->LayerCount;
+    } else {
+        MERROR("Не удалось загрузить как минимум один слой текстур. Подробности см. в журналах.");
+        
+        if (TypedResult->DataBlock) {
+            DestroyArray(TypedResult->DataBlock, TypedResult->DataBlockSize);
+            TypedResult->DataBlock = nullptr;
+        }
     }
     return false;
 }
@@ -779,7 +853,7 @@ bool LoadTexture(const char *TextureName, Texture &texture, MString* LayerNames)
 
         u32 tlparamsSize = sizeof(TextureLoadParams);
 
-        Job::Info job { LoadJobStart, LoadJobSuccess, LoadJobFail, &params, tlparamsSize, tlparamsSize };
+        JobInfo job = JobSystem::CreateJobInfo ( LoadJobStart, LoadJobSuccess, LoadJobFail, &params, tlparamsSize, tlparamsSize );
         JobSystem::Submit(job);
         params.ResourceName.Null(); // ЗАДАЧА: переделать
     } break;
@@ -796,14 +870,14 @@ bool LoadTexture(const char *TextureName, Texture &texture, MString* LayerNames)
             params.LayerNames[i] = (MString&&)LayerNames[i];
         }
 
-        Job::Info job {
+        JobInfo job = JobSystem::CreateJobInfo (
             LoadLayeredJobStart,
             LoadLayeredJobSuccess,
             LoadLayeredJobFail,
             &params,
             sizeof(TextureLoadLayeredParams),
             sizeof(TextureLoadLayeredResult)
-        };
+        );
 
         JobSystem::Submit(job);
         params.name.Null();  // ЗАДАЧА: переделать
