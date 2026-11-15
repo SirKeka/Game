@@ -80,7 +80,7 @@ struct VulkanShader {
     u32 PoolSizeCount;                                                                  // 
     VkDescriptorPoolSize PoolSizes[2];                                                  // Массив размеров пула дескрипторов.
     VkDescriptorSetLayout DescriptorSetLayouts[2];                                      // Макеты набора дескрипторов, максимум 2. Индекс 0 = глобальный, 1 = экземпляр.
-    VkDescriptorSet GlobalDescriptorSets[3];                                            // Наборы глобальных дескрипторов, по одному на кадр.
+    VkDescriptorSet GlobalDescriptorSets[2];                                            // Наборы глобальных дескрипторов, по одному на кадр.
     VkDescriptorPool DescriptorPool;                                                    // Пул дескрипторов, используемый для этого шейдера.
     RenderBuffer UniformBuffer;                                                         // Универсальный буфер, используемый этим шейдером.
     VulkanRenderpass* renderpass;                                                       // Указатель на проход рендеринга, который будет использоваться с этим шейдером.

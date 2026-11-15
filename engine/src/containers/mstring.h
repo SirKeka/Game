@@ -127,7 +127,10 @@ public:
     /// @return Количество символов в строке
     // u32 nChar();
 
-    /// @return Размер строки в байтах, если строка < hb_size, то возвращает длину строки
+    /// @return Размер памяти в байтах, которые выделены под строку
+    constexpr u32 Capacity() const { return capacity; }
+
+    /// @return Размер строки в байтах
     MINLINE constexpr u32 Size() const { return size; }
 
     /// @brief Получает длину заданной строки.

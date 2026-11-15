@@ -197,6 +197,6 @@ bool NineSlice::Update(Vertex2D *vertices)
 void NineSlice::RenderFramePrepare(const FrameData &rFrameData)
 {
     // Загрузите новые данные вершин.
-    SystemsManager::GetRenderingSystem()->GeometryVertexUpdate(geometry, 0, false);
+    SystemsManager::GetRenderingSystem()->GeometryVertexUpdate(geometry, 0, true);
     IsDirty = false;
 }

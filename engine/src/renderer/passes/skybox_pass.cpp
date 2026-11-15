@@ -83,7 +83,7 @@ bool SkyboxPass::Render(FrameData &rFrameData)
         ShaderSystem::Use(shader->id);
 
         // Получить матрицу вида, но обнулить положение, чтобы скайбокс остался на экране.
-        auto ViewMatrix = PassData.ViewMatrix;
+        Matrix4D ViewMatrix = PassData.ViewMatrix;
         ViewMatrix.data[12] = 0.F;
         ViewMatrix.data[13] = 0.F;
         ViewMatrix.data[14] = 0.F;

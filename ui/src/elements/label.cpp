@@ -197,7 +197,7 @@ void Label::RenderPrepare(const FrameData &rFrameData)
             MaxTextLength = pendingData.NewUTF8Length;
         }
 
-        pendingData.Reset();
+        // pendingData.Reset();
 
         IsDirty = false;
     }
@@ -234,7 +234,7 @@ bool Label::Render(FrameData &rFrameData, UiRenderData &RenderData)
 void Label::RemovePart(u32 position, u32 length)
 {
     text.RemovePart(position, length);
-    RegenerateGeometry();
+    IsDirty = true;
 }
 
 void Label::SetText(const char *text, u32 size)
@@ -270,16 +270,16 @@ void Label::SetText(MString &text, bool copy)
         MERROR("Проверка атласа шрифтов не удалась.");
     }
 
-    RegenerateGeometry();
+    IsDirty = true;
 }
 
 void Label::RegenerateGeometry()
 {
     // Получите длину строки UTF-8.
-    u32 TextLengthUTF8 = text.Length();
+    u32 TextLengthUTF8 = this->text.Length();
     // Также получите длину в символах.
-    u32 CharLength = text.Size();
-    CharLength = CharLength > 0 ? CharLength - 1 : CharLength;
+    u32 CharLength = this->text.Size();
+    CharLength = CharLength == this->text.Capacity() ? CharLength - 1 : CharLength;
 
     // Не пытайтесь перегенерировать геометрию для объекта, в котором нет текста.
     if (TextLengthUTF8 < 1) {
@@ -290,16 +290,29 @@ void Label::RegenerateGeometry()
     static const u64 VertsPerQuad = 4;
     static const u8 IndicesPerQuad = 6;
 
-    // Сохраните данные в промежуточную структуру.
-    // pendingData.PrevVertexBufferSize = sizeof(Vertex2D) * VertsPerQuad * MaxTextLength;
-    // pendingData.PrevIndexBufferSize = sizeof(u32) * IndicesPerQuad * MaxTextLength;
     pendingData.NewLength = CharLength;
-    pendingData.NewUTF8Length = TextLengthUTF8;
-    pendingData.VertexBufferSize = sizeof(Vertex2D) * VertsPerQuad * TextLengthUTF8;
+    
+    u32 VertexCount = VertsPerQuad * TextLengthUTF8;
+    pendingData.VertexBufferSize = sizeof(Vertex2D) * VertexCount;
     pendingData.IndexBufferSize = sizeof(u32) * IndicesPerQuad * TextLengthUTF8;
-    // Временные массивы для хранения данных вершин/индексов.
-    CreateArray(pendingData.VertexBufferData, pendingData.VertexBufferSize, true);
-    CreateArray(pendingData.IndexBufferData, pendingData.IndexBufferSize, true);
+    
+    if (pendingData.NewUTF8Length < TextLengthUTF8) {
+        u64 DataSize = pendingData.VertexBufferDataSize + pendingData.IndexBufferDataSize;
+        DestroyArray(pendingData.VertexBufferData, DataSize);
+        
+        DataSize = pendingData.VertexBufferSize + pendingData.IndexBufferSize;
+        pendingData.VertexBufferDataSize = pendingData.VertexBufferSize;
+        pendingData.IndexBufferDataSize = pendingData.IndexBufferSize;
+        
+        CreateArray(pendingData.VertexBufferData, DataSize, true);
+        pendingData.IndexBufferData = (u32*)(pendingData.VertexBufferData + VertexCount);
+        
+        // Сохраните данные в промежуточную структуру.
+        // pendingData.PrevVertexBufferSize = sizeof(Vertex2D) * VertsPerQuad * MaxTextLength;
+        // pendingData.PrevIndexBufferSize = sizeof(u32) * IndicesPerQuad * MaxTextLength;
+    }
+    
+    pendingData.NewUTF8Length = TextLengthUTF8;
 
     // Сгенерировать новую геометрию для каждого символа.
     f32 x = 0;
@@ -392,7 +405,7 @@ void Label::RegenerateGeometry()
                     codepoint = -1;
                 } else {
                     for (u32 i = 0; i < data->KerningCount; ++i) {
-                        auto& k = data->kernings[i];
+                        FontKerning& k = data->kernings[i];
                         if (k.Codepoint0 == codepoint && k.Codepoint1 == NextCodepoint) {
                             kerning = k.amount;
                         }

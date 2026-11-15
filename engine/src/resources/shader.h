@@ -254,8 +254,6 @@ private:
     friend class ShaderSystem;
 };
 
-constexpr int sh = sizeof(Shader); // 352
-
 /// @brief Конфигурация шейдера. Обычно создается и уничтожается загрузчиком
 /// ресурсов шейдера и задается свойствами, найденными в файле ресурсов .shadercfg.
 struct ShaderConfig 

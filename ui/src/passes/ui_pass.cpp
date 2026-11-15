@@ -20,7 +20,7 @@ bool UiPass::Initialize()
     #pragma region Конфигурация подпрохода рендеринга
     RenderTargetAttachmentConfig attachments[2];
     // Привязка цвета
-    auto& ColourAttachment = attachments[0];
+    RenderTargetAttachmentConfig& ColourAttachment = attachments[0];
     ColourAttachment.type           = RenderTargetAttachmentType::Colour;
     ColourAttachment.source         = RenderTargetAttachmentSource::Default;
     ColourAttachment.LoadOperation  = RenderTargetAttachmentLoadOperation::Load;
@@ -28,7 +28,7 @@ bool UiPass::Initialize()
     ColourAttachment.PresentAfter   = true;
     
     // Глубина/привязка трафарета.
-    auto& DepthAttachment = attachments[1];
+    RenderTargetAttachmentConfig& DepthAttachment = attachments[1];
     DepthAttachment.type           = RenderTargetAttachmentType::Depth | RenderTargetAttachmentType::Stencil;
     DepthAttachment.source         = RenderTargetAttachmentSource::Default;
     DepthAttachment.LoadOperation  = RenderTargetAttachmentLoadOperation::DontCare;

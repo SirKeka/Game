@@ -203,7 +203,7 @@ VulkanAPI::VulkanAPI() :
 ApiMajor(),
 ApiMinor(),
 ApiPatch(),
-FrameDeltaTime(),
+// FrameDeltaTime(),
 // Просто установите некоторые значения по умолчанию для буфера кадра на данный момент.
 // На самом деле неважно, что это, потому что они будут переопределены, но они необходимы для создания цепочки обмена.
 FramebufferWidth(800), FramebufferHeight(600), 
@@ -218,8 +218,8 @@ DebugMessenger(),
 #endif
 
 device(), swapchain(),
-staging("staging", RenderBufferType::Staging, RenderBuffer::AllocationType::Linear, 320 * 1000 * 1000), 
-GraphicsCommandBuffers(3),
+staging("staging", RenderBufferType::Staging, RenderBuffer::AllocationType::Linear, 512 * 1000 * 1000), 
+GraphicsCommandBuffers(),
 ImageAvailableSemaphores(),
 QueueCompleteSemaphores(),
 InFlightFenceCount(),
@@ -255,8 +255,8 @@ VulkanAPI::~VulkanAPI()
     // Буферы команд
     for (u32 i = 0; i < swapchain.ImageCount; ++i) {
         if (GraphicsCommandBuffers[i].handle) {
-            VulkanCommandBufferFree(this, device.GraphicsCommandPool, GraphicsCommandBuffers[i]);
-                GraphicsCommandBuffers[i].handle = nullptr;
+            GraphicsCommandBuffers[i].Free(this, device.GraphicsCommandPool);
+            GraphicsCommandBuffers[i].handle = nullptr;
         }
     }
 
@@ -317,14 +317,13 @@ bool VulkanAPI::Initialize(const RenderingConfig &config, u8 &OutWindowRenderTar
     };
 
     // Создание экземпляра.
-    VkInstanceCreateInfo CreateInfo = { 
+    VkInstanceCreateInfo CreateInfo { 
         .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
         .pApplicationInfo = &AppInfo
     };
 
     // Получите список необходимых расширений
-    
-    DArray<const char*>RequiredExtensions{ AllocatorType::Temp };                                  // Общее расширение поверхности
+    DArray<const char*>RequiredExtensions{ AllocatorType::Temp };           // Общее расширение поверхности
     RequiredExtensions.PushBack(VK_KHR_SURFACE_EXTENSION_NAME);
     PlatformGetRequiredExtensionNames(RequiredExtensions);                  // Расширения для конкретной платформы
 #if defined(_DEBUG)
@@ -374,6 +373,8 @@ bool VulkanAPI::Initialize(const RenderingConfig &config, u8 &OutWindowRenderTar
 
         // Список требуемых уровней проверки.
         RequiredValidationLayerNames.PushBack("VK_LAYER_KHRONOS_validation");
+        // ПРИМЕЧАНИЕ: включайте это по мере необходимости для отладки.
+        // RequiredValidationLayerNamesPushBack("VK_LAYER_LUNARG_api_dump");
         RequiredValidationLayerCount = RequiredValidationLayerNames.Length();
 
         // Получите список доступных уровней проверки.
@@ -421,7 +422,7 @@ bool VulkanAPI::Initialize(const RenderingConfig &config, u8 &OutWindowRenderTar
     MDEBUG("Создание отладчика Vulkan...");
     u32 LogSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT;
 
-    VkDebugUtilsMessengerCreateInfoEXT DebugCreateInfo = {
+    VkDebugUtilsMessengerCreateInfoEXT DebugCreateInfo {
         .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
         .messageSeverity = LogSeverity,
         .messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_DEVICE_ADDRESS_BINDING_BIT_EXT,
@@ -490,8 +491,10 @@ bool VulkanAPI::Initialize(const RenderingConfig &config, u8 &OutWindowRenderTar
         // Создайте ограждение в сигнальном состоянии, указывая, что первый кадр уже «отрисован».
         // Это не позволит приложению бесконечно ждать рендеринга первого кадра, 
         // поскольку он не может быть отрисован до тех пор, пока кадр не будет "отрисован" перед ним.
-        VkFenceCreateInfo FenceCreateInfo = {VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
-        FenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+        VkFenceCreateInfo FenceCreateInfo {
+            .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+            .flags = VK_FENCE_CREATE_SIGNALED_BIT
+        };
         VK_CHECK(vkCreateFence(device.LogicalDevice, &FenceCreateInfo, allocator, &InFlightFences[i]));
     }
 
@@ -528,7 +531,7 @@ void VulkanAPI::Resized(u16 width, u16 height)
 void VulkanAPI::BeginDebugLabel(const char *LabelText, FVec3 colour)
 {
 #ifdef _DEBUG
-    VulkanCommandBuffer& CommandBuffer = GraphicsCommandBuffers[ImageIndex];
+    VulkanCommandBuffer& CommandBuffer = GraphicsCommandBuffers[CurrentFrame];
 #endif
     VK_BEGIN_DEBUG_LABEL(this, CommandBuffer.handle, LabelText, FVec4(colour, 1.F));
 }
@@ -536,7 +539,7 @@ void VulkanAPI::BeginDebugLabel(const char *LabelText, FVec3 colour)
 void VulkanAPI::EndDebugLabel()
 {
 #ifdef _DEBUG
-    VulkanCommandBuffer& CommandBuffer = GraphicsCommandBuffers[ImageIndex];
+    VulkanCommandBuffer& CommandBuffer = GraphicsCommandBuffers[CurrentFrame];
 #endif
     VK_END_DEBUG_LABEL(this, CommandBuffer.handle);
 }
@@ -585,7 +588,7 @@ bool VulkanAPI::PrepareFrame(const FrameData& rFrameData)
     // Дождитесь завершения выполнения текущего кадра. Поскольку ограждение свободен, он сможет двигаться дальше.
     VkResult result = vkWaitForFences(device.LogicalDevice, 1, &InFlightFences[CurrentFrame], true, UINT64_MAX);
     if (!VulkanResultIsSuccess(result)) {
-        MERROR("Ошибка ожидания в полете! ошибка: %shader", VulkanResultString(result, true));
+        MERROR("Сбой при ожидании завершения работы «виртуального ограждения» во время полета! Ошибка: %s", VulkanResultString(result, true));
     }
 
     // Получаем следующее изображение из цепочки обмена. Передайте семафор, который должен сигнализировать, когда это завершится.
@@ -617,10 +620,10 @@ bool VulkanAPI::PrepareFrame(const FrameData& rFrameData)
 bool VulkanAPI::Begin(const FrameData &rFrameData)
 {
     // Начните запись команд.
-    VulkanCommandBuffer& CommandBuffer = GraphicsCommandBuffers[ImageIndex];
+    VulkanCommandBuffer& CommandBuffer = GraphicsCommandBuffers[CurrentFrame];
 
-    VulkanCommandBufferReset(CommandBuffer);
-    VulkanCommandBufferBegin(CommandBuffer, false, false, false);
+    CommandBuffer.Reset();
+    CommandBuffer.Begin(false, false, false);
 
     // Динамическое состояние
     SetWinding(RendererWinding::CounterClockwise);
@@ -643,9 +646,9 @@ bool VulkanAPI::Begin(const FrameData &rFrameData)
 
 bool VulkanAPI::End(const FrameData& rFrameData)
 {
-    VulkanCommandBuffer& CommandBuffer = GraphicsCommandBuffers[ImageIndex];
+    VulkanCommandBuffer& CommandBuffer = GraphicsCommandBuffers[CurrentFrame];
 
-    VulkanCommandBufferEnd(CommandBuffer);
+    CommandBuffer.End();
 
     // Отправьте очередь и дождитесь завершения операции.
     // Начать отправку в очередь
@@ -685,13 +688,13 @@ bool VulkanAPI::End(const FrameData& rFrameData)
         return false;
     }
 
-    VulkanCommandBufferUpdateSubmitted(CommandBuffer);
+    CommandBuffer.UpdateSubmitted();
     // Отправка в конечную очередь
 
     // Для отсчёта времени дождитесь завершения очереди.
     // Это даёт точное представление о том, сколько времени займёт рендеринг, включая время, отведённое на фактическую очередь работ.
     // ЗАДАЧА: возможно, здесь вместо этого стоит использовать семафор для мониторинга.
-    // vkWaitForFences(Device.LogicalDevice, 1, &InFlightFences[CurrentFrame], true, UINT64_MAX);
+    // vkWaitForFences(device.LogicalDevice, 1, &InFlightFences[CurrentFrame], true, UINT64_MAX);
 
     return true;
 }
@@ -714,7 +717,7 @@ bool VulkanAPI::Present(const FrameData &rFrameData)
     // о которых _должно_ сообщать завершение очереди после отправки. 
     // И, как ни странно, это именно очередь _передачи_, хотя для представления здесь используется текущая очередь.
     // ЗАДАЧА:Чтобы разобраться, нужно изучить этот вопрос немного глубже.
-    vkQueueWaitIdle(device.TransferQueue);
+    // vkQueueWaitIdle(device.TransferQueue);
     VkResult result = vkQueuePresentKHR(device.PresentQueue, &PresentInfo);
     if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
         // Цепочка обмена устарела, неоптимальна или произошло изменение размера буфера кадра. Запустите пересоздание цепочки обмена.
@@ -732,15 +735,16 @@ bool VulkanAPI::Present(const FrameData &rFrameData)
 
 void VulkanAPI::SetViewport(const Rect2D &rect)
 {
-    VkViewport viewport;
-    viewport.x = rect.x;
-    viewport.y = rect.y;
-    viewport.width = rect.z;
-    viewport.height = rect.w;
-    viewport.minDepth = 0.F;
-    viewport.maxDepth = 1.F;
+    VkViewport viewport {
+        .x        = (f32)rect.x,
+        .y        = (f32)rect.y,
+        .width    = (f32)rect.z,
+        .height   = (f32)rect.w,
+        .minDepth = 0.F,
+        .maxDepth = 1.F 
+    };
 
-    VulkanCommandBuffer& CommandBuffer = GraphicsCommandBuffers[ImageIndex];
+    VulkanCommandBuffer& CommandBuffer = GraphicsCommandBuffers[CurrentFrame];
 
     vkCmdSetViewport(CommandBuffer.handle, 0, 1, &viewport);
 }
@@ -759,7 +763,7 @@ void VulkanAPI::SetScissor(const Rect2D &rect)
     scissor.extent.width = rect.z;
     scissor.extent.height = rect.w;
 
-    VulkanCommandBuffer& CommandBuffer = GraphicsCommandBuffers[ImageIndex];
+    VulkanCommandBuffer& CommandBuffer = GraphicsCommandBuffers[CurrentFrame];
 
     vkCmdSetScissor(CommandBuffer.handle, 0, 1, &scissor);
 }
@@ -772,7 +776,7 @@ void VulkanAPI::ScissorReset()
 
 void VulkanAPI::SetStencilTestEnabled(bool enabled)
 {
-    VulkanCommandBuffer& CommandBuffer = GraphicsCommandBuffers[ImageIndex];
+    VulkanCommandBuffer& CommandBuffer = GraphicsCommandBuffers[CurrentFrame];
 
     if (device.supportFlags & VulkanDevice::NativeDynamicStateBit) {
         vkCmdSetStencilTestEnable(CommandBuffer.handle, (VkBool32)enabled);
@@ -785,7 +789,7 @@ void VulkanAPI::SetStencilTestEnabled(bool enabled)
 
 void VulkanAPI::SetDepthTestEnabled(bool enabled)
 {
-    VulkanCommandBuffer& CommandBuffer = GraphicsCommandBuffers[ImageIndex];
+    VulkanCommandBuffer& CommandBuffer = GraphicsCommandBuffers[CurrentFrame];
 
     if (device.supportFlags & VulkanDevice::NativeDynamicStateBit) {
         vkCmdSetDepthTestEnable(CommandBuffer.handle, (VkBool32)enabled);
@@ -798,7 +802,7 @@ void VulkanAPI::SetDepthTestEnabled(bool enabled)
 
 void VulkanAPI::SetStencilReference(u32 reference)
 {
-    VulkanCommandBuffer& CommandBuffer = GraphicsCommandBuffers[ImageIndex];
+    VulkanCommandBuffer& CommandBuffer = GraphicsCommandBuffers[CurrentFrame];
     vkCmdSetStencilReference(CommandBuffer.handle, VK_STENCIL_FACE_FRONT_AND_BACK, reference);
 }
 
@@ -852,7 +856,7 @@ static VkCompareOp GetCompareOp(RendererCompareOp op) {
 
 void VulkanAPI::SetStencilOp(RendererStencilOp FailOp, RendererStencilOp PassOp, RendererStencilOp DepthFailOp, RendererCompareOp CompareOp)
 {
-    VulkanCommandBuffer& CommandBuffer = GraphicsCommandBuffers[ImageIndex];
+    VulkanCommandBuffer& CommandBuffer = GraphicsCommandBuffers[CurrentFrame];
 
     if (device.supportFlags & VulkanDevice::NativeDynamicStateBit) {
         vkCmdSetStencilOp(
@@ -877,21 +881,21 @@ void VulkanAPI::SetStencilOp(RendererStencilOp FailOp, RendererStencilOp PassOp,
 
 void VulkanAPI::SetStencilCompareMask(u32 CompareMask)
 {
-    VulkanCommandBuffer& CommandBuffer = GraphicsCommandBuffers[ImageIndex];
+    VulkanCommandBuffer& CommandBuffer = GraphicsCommandBuffers[CurrentFrame];
     // Поддерживается начиная с версии Vulkan 1.0, поэтому нет необходимости проверять поддержку динамического состояния.
     vkCmdSetStencilCompareMask(CommandBuffer.handle, VK_STENCIL_FACE_FRONT_AND_BACK, CompareMask);
 }
 
 void VulkanAPI::SetStencilWriteMask(u32 WriteMask)
 {
-    VulkanCommandBuffer& CommandBuffer = GraphicsCommandBuffers[ImageIndex];
+    VulkanCommandBuffer& CommandBuffer = GraphicsCommandBuffers[CurrentFrame];
     // Поддерживается начиная с версии Vulkan 1.0, поэтому нет необходимости проверять поддержку динамического состояния.
     vkCmdSetStencilWriteMask(CommandBuffer.handle, VK_STENCIL_FACE_FRONT_AND_BACK, WriteMask);
 }
 
 void VulkanAPI::SetWinding(RendererWinding winding)
 {
-    VulkanCommandBuffer& CommandBuffer = GraphicsCommandBuffers[ImageIndex];
+    VulkanCommandBuffer& CommandBuffer = GraphicsCommandBuffers[CurrentFrame];
 
     VkFrontFace vkWinding = winding == RendererWinding::CounterClockwise ? VK_FRONT_FACE_COUNTER_CLOCKWISE : VK_FRONT_FACE_CLOCKWISE;
     if (device.supportFlags & VulkanDevice::NativeDynamicStateBit) {
@@ -905,7 +909,7 @@ void VulkanAPI::SetWinding(RendererWinding winding)
 
 bool VulkanAPI::RenderpassBegin(Renderpass* pass, RenderTarget& target)
 {
-    VulkanCommandBuffer& CommandBuffer = GraphicsCommandBuffers[ImageIndex];
+    VulkanCommandBuffer& CommandBuffer = GraphicsCommandBuffers[CurrentFrame];
 
     // Начало этапа рендеринга.
     auto VkRenderpass = (VulkanRenderpass*)pass->InternalData;
@@ -959,7 +963,7 @@ bool VulkanAPI::RenderpassBegin(Renderpass* pass, RenderTarget& target)
     BeginInfo.pClearValues = BeginInfo.clearValueCount > 0 ? ClearValues : 0;
 
     vkCmdBeginRenderPass(CommandBuffer.handle, &BeginInfo, VK_SUBPASS_CONTENTS_INLINE);
-    CommandBuffer.state = COMMAND_BUFFER_STATE_IN_RENDER_PASS;
+    CommandBuffer.state = VulkanCommandBufferState::IN_RENDER_PASS;
 #ifdef _DEBUG
     FVec3 rgb { Math::RandomInRange(0.F, 1.F), Math::RandomInRange(0.F, 1.F), Math::RandomInRange(0.F, 1.F) };
 #endif
@@ -970,12 +974,12 @@ bool VulkanAPI::RenderpassBegin(Renderpass* pass, RenderTarget& target)
 
 bool VulkanAPI::RenderpassEnd(Renderpass* pass)
 {
-    VulkanCommandBuffer& CommandBuffer = GraphicsCommandBuffers[ImageIndex];
+    VulkanCommandBuffer& CommandBuffer = GraphicsCommandBuffers[CurrentFrame];
 
     // Завершение рендеринга.
     vkCmdEndRenderPass(CommandBuffer.handle);
     VK_END_DEBUG_LABEL(this, CommandBuffer.handle);
-    CommandBuffer.state = COMMAND_BUFFER_STATE_RECORDING;
+    CommandBuffer.state = VulkanCommandBufferState::RECORDING;
     return true;
 }
 
@@ -1110,7 +1114,7 @@ void VulkanAPI::TextureWriteData(Texture *texture, u32 offset, u32 size, const u
     RenderBufferLoadRange(staging, StagingOffset, size, pixels, true); 
 
     VulkanCommandBuffer TempBuffer;
-    VulkanCommandBufferAllocateAndBeginSingleUse(this, device.GraphicsCommandPool, TempBuffer);
+    TempBuffer.AllocateAndBeginSingleUse(this, device.GraphicsCommandPool);
 
     auto image = (VulkanImage*)texture->data;
     // Переведите макет от текущего к оптимальному для получения данных.
@@ -1123,9 +1127,8 @@ void VulkanAPI::TextureWriteData(Texture *texture, u32 offset, u32 size, const u
         // Переход от оптимального для приема данных к оптимальному макету, доступному только для чтения шейдеров.
         image->TransitionLayout(this, TempBuffer, ImageFormat, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     }
-    
 
-    VulkanCommandBufferEndSingleUse(this, device.GraphicsCommandPool, TempBuffer, device.GraphicsQueue);
+    TempBuffer.EndSingleUse(this, device.GraphicsCommandPool, device.GraphicsQueue);
 
     texture->generation++;
 }
@@ -1146,9 +1149,9 @@ void VulkanAPI::TextureReadData(Texture *texture, u32 offset, u32 size, void **O
     RenderBufferBind(staging, 0);
 
     VulkanCommandBuffer TempBuffer;
-    auto pool = device.GraphicsCommandPool;
-    auto queue = device.GraphicsQueue;
-    VulkanCommandBufferAllocateAndBeginSingleUse(this, pool, TempBuffer);
+    VkCommandPool pool = device.GraphicsCommandPool;
+    VkQueue queue = device.GraphicsQueue;
+    TempBuffer.AllocateAndBeginSingleUse(this, pool);
 
     // ПРИМЕЧАНИЕ: переход к VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL
     // Переведите макет из текущего состояния в оптимальное для выдачи данных.
@@ -1163,7 +1166,7 @@ void VulkanAPI::TextureReadData(Texture *texture, u32 offset, u32 size, void **O
         image->TransitionLayout(this, TempBuffer, ImageFormat, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     }
 
-    VulkanCommandBufferEndSingleUse(this, pool, TempBuffer, queue);
+    TempBuffer.EndSingleUse(this, pool, queue);
 
     if (!RenderBufferRead(staging, offset, size, OutMemory)) {
         MERROR("Ошибка RenderBufferRead.");
@@ -1193,7 +1196,7 @@ void VulkanAPI::TextureReadPixel(Texture *texture, u32 x, u32 y, u8 **OutRgba)
     VulkanCommandBuffer TempBuffer;
     auto pool = device.GraphicsCommandPool;
     auto queue = device.GraphicsQueue;
-    VulkanCommandBufferAllocateAndBeginSingleUse(this, pool, TempBuffer);
+    TempBuffer.AllocateAndBeginSingleUse(this, pool);
 
     // ПРИМЕЧАНИЕ: переход к VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL
     // Переведите макет из текущего состояния в оптимальное для передачи данных.
@@ -1205,7 +1208,7 @@ void VulkanAPI::TextureReadPixel(Texture *texture, u32 x, u32 y, u8 **OutRgba)
     // Переход от оптимальной компоновки для чтения данных к оптимальной компоновке, предназначенной только для чтения шейдеров.
     image->TransitionLayout(this, TempBuffer, ImageFormat, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-    VulkanCommandBufferEndSingleUse(this, pool, TempBuffer, queue);
+    TempBuffer.EndSingleUse(this, pool, queue);
 
     if (!RenderBufferRead(staging, 0, sizeof(u8) * 4, (void**)OutRgba)) {
         MERROR("Ошибка RenderBufferRead.");
@@ -1821,21 +1824,21 @@ bool VulkanAPI::ShaderInitialize(Shader *shader)
         
         // Выделите наборы глобальных дескрипторов, по одному на кадр. Global всегда является первым набором.
         // ЗАДАЧА: это должно быть динамическим и зависеть от количества образов Swapchain.
-        VkDescriptorSetLayout GlobalLayouts[3] = {
+        VkDescriptorSetLayout GlobalLayouts[2] = {
             vkShader->DescriptorSetLayouts[0],
             vkShader->DescriptorSetLayouts[0],
-            vkShader->DescriptorSetLayouts[0] };
+            /*vkShader->DescriptorSetLayouts[0]*/ };
             
-        VkDescriptorSetAllocateInfo AllocInfo = {
+        VkDescriptorSetAllocateInfo AllocInfo {
             .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
             .descriptorPool = vkShader->DescriptorPool,
             // ЗАДАЧА: это должно быть динамическим и зависеть от количества образов Swapchain.
-            .descriptorSetCount = 3,
+            .descriptorSetCount = 2,
             .pSetLayouts = GlobalLayouts
         };
         VK_CHECK(vkAllocateDescriptorSets(device.LogicalDevice, &AllocInfo, vkShader->GlobalDescriptorSets));
             
-        for (u32 i = 0; i < 3; ++i) {
+        for (u32 i = 0; i < 2; ++i) {
             char DescSetObjectName[512]{};
             MString::Format(DescSetObjectName, "desc_set_shader_%s_global_frame_%u", shader->name.c_str(), i);
             VulkanSetDebugObjectName(this, VK_OBJECT_TYPE_DESCRIPTOR_SET, vkShader->GlobalDescriptorSets[i], DescSetObjectName);
@@ -1861,7 +1864,7 @@ bool VulkanAPI::ShaderUse(Shader *shader)
     if (!shader || !shader->ShaderData) { MERROR("VulkanAPI::ShaderUse требуется действительный указатель на шейдер."); return false; }
 
     auto VkShader = (VulkanShader*)shader->ShaderData;
-    auto& CommandBuffer = GraphicsCommandBuffers[ImageIndex];
+    VulkanCommandBuffer& CommandBuffer = GraphicsCommandBuffers[CurrentFrame];
     VkShader->pipelines[VkShader->BoundPipelineIndex]->Bind(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS);
     BoundShader = shader;
 
@@ -1882,8 +1885,8 @@ bool VulkanAPI::ShaderApplyGlobals(Shader *shader, bool NeedsUpdate, const Frame
     if (!HasGlobal) { return true; }
     
     VulkanShader* vkShader = shader->ShaderData;
-    VkCommandBuffer CommandBuffer = GraphicsCommandBuffers[ImageIndex].handle;
-    VkDescriptorSet GlobalDescriptor = vkShader->GlobalDescriptorSets[ImageIndex];
+    VkCommandBuffer CommandBuffer = GraphicsCommandBuffers[CurrentFrame].handle;
+    VkDescriptorSet GlobalDescriptor = vkShader->GlobalDescriptorSets[CurrentFrame];
 
     if (NeedsUpdate) {
         VkWriteDescriptorSet DescriptorWrites[1 + VulkanShaderConstants::MaxGlobalTextures];
@@ -1903,7 +1906,7 @@ bool VulkanAPI::ShaderApplyGlobals(Shader *shader, bool NeedsUpdate, const Frame
             // Обновить наборы дескрипторов.
             VkWriteDescriptorSet UboWrite {
                 .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                .dstSet = vkShader->GlobalDescriptorSets[ImageIndex],
+                .dstSet = GlobalDescriptor,
                 .dstBinding = BindingIndex,
                 .dstArrayElement = 0,
                 .descriptorCount = 1,
@@ -2014,11 +2017,11 @@ bool VulkanAPI::ShaderApplyInstance(Shader *shader, bool NeedsUpdate, const Fram
         MERROR("Этот шейдер не использует экземпляры.");
         return false;
     }
-    VkCommandBuffer СommandBuffer = GraphicsCommandBuffers[ImageIndex].handle;
+    VkCommandBuffer СommandBuffer = GraphicsCommandBuffers[CurrentFrame].handle;
 
     // Получить данные экземпляра.
     VulkanShaderInstanceState& InstanceState = vkShader->InstanceStates[shader->BoundInstanceID];
-    VkDescriptorSet InstanceDescriptorSet = InstanceState.DescriptorSets[ImageIndex];
+    VkDescriptorSet InstanceDescriptorSet = InstanceState.DescriptorSets[CurrentFrame];
 
     if (NeedsUpdate) {
         // Выделите достаточное количество операций записи в дескриптор для обработки максимально допустимого количества текстур на экземпляр.
@@ -2030,7 +2033,7 @@ bool VulkanAPI::ShaderApplyInstance(Shader *shader, bool NeedsUpdate, const Fram
         // Дескриптор 0 — буфер Uniform
         if (shader->InstanceUniformCount > 0) {
             // Выполняйте это только в том случае, если дескриптор еще не был обновлен.
-            u8& InstanceUboGeneration = InstanceState.UboDescriptorState.generations[ImageIndex];
+            u8& InstanceUboGeneration = InstanceState.UboDescriptorState.generations[CurrentFrame];
             if (InstanceUboGeneration == INVALID::U8ID) {
                 VkDescriptorBufferInfo BufferInfo {
                     .buffer = ((VulkanBuffer*)vkShader->UniformBuffer.data)->handle,
@@ -2168,7 +2171,7 @@ bool VulkanAPI::ShaderApplyInstance(Shader *shader, bool NeedsUpdate, const Fram
 bool VulkanAPI::ShaderApplyLocal(Shader *shader, const FrameData &rFrameData)
 {
     VulkanShader* vkShader = shader->ShaderData;
-    VkCommandBuffer CommandBuffer = GraphicsCommandBuffers[ImageIndex].handle;
+    VkCommandBuffer CommandBuffer = GraphicsCommandBuffers[CurrentFrame].handle;
     vkCmdPushConstants(
         CommandBuffer,
         vkShader->pipelines[vkShader->BoundPipelineIndex]->PipelineLayout,
@@ -2603,15 +2606,15 @@ void VulkanAPI::WaitForIdle()
 void VulkanAPI::CreateCommandBuffers()
 {
     if (GraphicsCommandBuffers.Length() == 0) {
-        GraphicsCommandBuffers.Resize(swapchain.ImageCount);
+        GraphicsCommandBuffers.Resize(swapchain.MaxFramesInFlight);
     }
 
-    for (u32 i = 0; i < swapchain.ImageCount; ++i) {
+    for (u32 i = 0; i < swapchain.MaxFramesInFlight; ++i) {
         if (GraphicsCommandBuffers[i].handle) {
-            VulkanCommandBufferFree(this, device.GraphicsCommandPool, GraphicsCommandBuffers[i]);
+            GraphicsCommandBuffers[i].Free(this, device.GraphicsCommandPool);
         } 
         //MMemory::ZeroMemory(&GraphicsCommandBuffers[i], sizeof(VulkanCommandBuffer));
-        VulkanCommandBufferAllocate(this, device.GraphicsCommandPool, true, GraphicsCommandBuffers[i]);
+        GraphicsCommandBuffers[i].Allocate(this, device.GraphicsCommandPool, true);
     }
 
     MDEBUG("Созданы командные буферы Vulkan.");
@@ -2647,8 +2650,8 @@ bool VulkanAPI::RecreateSwapchain()
     FramebufferSizeLastGeneration = FramebufferSizeGeneration;
 
     // Очистка цепочки подкачки
-    for (u32 i = 0; i < swapchain.ImageCount; ++i) {
-        VulkanCommandBufferFree(this, device.GraphicsCommandPool, GraphicsCommandBuffers[i]);
+    for (u32 i = 0; i < swapchain.MaxFramesInFlight; ++i) {
+        GraphicsCommandBuffers[i].Free(this, device.GraphicsCommandPool);
     }
 
     // Укажите слушателям, что требуется обновление цели рендеринга.
@@ -2739,6 +2742,7 @@ void VulkanAPI::TextureMapDestroy(TextureMap *map)
         VkSampler sampler = samplers[map->InternalID];
         vkDestroySampler(device.LogicalDevice, sampler, allocator);
         sampler = nullptr;
+        map->InternalID = INVALID::ID;
     }
 }
 
@@ -2945,10 +2949,12 @@ bool VulkanAPI::RenderBufferCreate(RenderBuffer &buffer)
             return false;
     }
 
-    VkBufferCreateInfo BufferInfo = {VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
-    BufferInfo.size = buffer.TotalSize;
-    BufferInfo.usage = InternalBuffer.usage;
-    BufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;  // ПРИМЕЧАНИЕ: Используется только в одной очереди.
+    VkBufferCreateInfo BufferInfo { 
+        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+        .size = buffer.TotalSize,
+        .usage = InternalBuffer.usage,
+        .sharingMode = VK_SHARING_MODE_EXCLUSIVE // ПРИМЕЧАНИЕ: Используется только в одной очереди.
+    };
 
     VK_CHECK(vkCreateBuffer(device.LogicalDevice, &BufferInfo, allocator, &InternalBuffer.handle));
 
@@ -2961,9 +2967,11 @@ bool VulkanAPI::RenderBufferCreate(RenderBuffer &buffer)
     }
 
     // Выделите информацию о памяти
-    VkMemoryAllocateInfo AllocateInfo = {VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
-    AllocateInfo.allocationSize = InternalBuffer.MemoryRequirements.size;
-    AllocateInfo.memoryTypeIndex = (u32)InternalBuffer.MemoryIndex;
+    VkMemoryAllocateInfo AllocateInfo { 
+        .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+        .allocationSize = InternalBuffer.MemoryRequirements.size,
+        .memoryTypeIndex = (u32)InternalBuffer.MemoryIndex
+    };
 
     // Выделите память.
     VkResult result = vkAllocateMemory(device.LogicalDevice, &AllocateInfo, allocator, &InternalBuffer.memory);
@@ -2996,6 +3004,7 @@ bool VulkanAPI::RenderBufferCreate(RenderBuffer &buffer)
 void VulkanAPI::RenderBufferDestroy(RenderBuffer &buffer)
 {
     auto VkBuf = (VulkanBuffer*)buffer.data;
+    vkDeviceWaitIdle(device.LogicalDevice);
     if (VkBuf) {
         if (VkBuf->memory) {
             vkFreeMemory(device.LogicalDevice, VkBuf->memory, allocator);
@@ -3015,7 +3024,7 @@ void VulkanAPI::RenderBufferDestroy(RenderBuffer &buffer)
         VkBuf->IsLocked = false;
 
         // Освободить внутренний буфер.
-        delete reinterpret_cast<VulkanBuffer*>(buffer.data);
+        delete ((VulkanBuffer*)buffer.data);
         buffer.data = nullptr;
     }
 }
@@ -3247,7 +3256,7 @@ bool VulkanAPI::RenderBufferCopyRange(RenderBuffer &source, u64 SourceOffset, Re
 
 bool VulkanAPI::RenderBufferDraw(RenderBuffer &buffer, u64 offset, u32 ElementCount, bool BindOnly)
 {
-    VkCommandBuffer CommandBuffer = GraphicsCommandBuffers[ImageIndex].handle;
+    VkCommandBuffer CommandBuffer = GraphicsCommandBuffers[CurrentFrame].handle;
 
     if (buffer.type == RenderBufferType::Vertex) {
         // Привязать буфер вершин по смещению.
@@ -3281,10 +3290,10 @@ bool VulkanAPI::VulkanBufferCopyRangeInternal(VkBuffer source, u64 SourceOffset,
     if (!IncludeInFrameWorkload) {
         vkQueueWaitIdle(queue);
         // Создайте одноразовый буфер команд.
-        VulkanCommandBufferAllocateAndBeginSingleUse(this, device.GraphicsCommandPool, TempCommandBuffer);
+        TempCommandBuffer.AllocateAndBeginSingleUse(this, device.GraphicsCommandPool);
         CommandBuffer = &TempCommandBuffer;
     } else {
-        CommandBuffer = &GraphicsCommandBuffers[ImageIndex];
+        CommandBuffer = &GraphicsCommandBuffers[CurrentFrame];
     }
 
     // Подготовьте команду копирования и добавьте ее в буфер команд.
@@ -3297,7 +3306,7 @@ bool VulkanAPI::VulkanBufferCopyRangeInternal(VkBuffer source, u64 SourceOffset,
 
     if (!IncludeInFrameWorkload) {
         // Отправьте буфер на выполнение и дождитесь его завершения.
-        VulkanCommandBufferEndSingleUse(this, device.GraphicsCommandPool, TempCommandBuffer, queue);
+        TempCommandBuffer.EndSingleUse(this, device.GraphicsCommandPool, queue);
     }
     // ПРИМЕЧАНИЕ: Если ожидание не требуется, отправка будет обработана позже.
 

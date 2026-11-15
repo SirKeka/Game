@@ -10,14 +10,14 @@
 
 class VulkanAPI;
 
-enum VulkanCommandBufferState 
+enum class VulkanCommandBufferState 
 {
-    COMMAND_BUFFER_STATE_READY,
-    COMMAND_BUFFER_STATE_RECORDING,
-    COMMAND_BUFFER_STATE_IN_RENDER_PASS,
-    COMMAND_BUFFER_STATE_RECORDING_ENDED,
-    COMMAND_BUFFER_STATE_SUBMITTED,
-    COMMAND_BUFFER_STATE_NOT_ALLOCATED
+    READY,
+    RECORDING,
+    IN_RENDER_PASS,
+    RECORDING_ENDED,
+    SUBMITTED,
+    NOT_ALLOCATED
 };
 
 struct VulkanCommandBuffer 
@@ -26,27 +26,22 @@ struct VulkanCommandBuffer
 
     // Состояние буфера команд.
     VulkanCommandBufferState state;
+
+    void Allocate(VulkanAPI* VkAPI, VkCommandPool pool, bool IsPrimary);
+    void Free(VulkanAPI* VkAPI, VkCommandPool pool);
+    void Begin(bool IsSingleUse, bool IsRenderpassContinue, bool IsSimultaneousUse);
+    void End();
+    void UpdateSubmitted() { state = VulkanCommandBufferState::SUBMITTED; }
+    void Reset();
+
+    /// @brief Выделяет и начинает запись в командный буфер.
+    /// @param VkAPI 
+    /// @param pool 
+    void AllocateAndBeginSingleUse(VulkanAPI* VkAPI, VkCommandPool pool);
+
+    /// @brief Завершает запись, передает и ожидает операции очереди и освобождает предоставленный командный буфер.
+    /// @param VkAPI 
+    /// @param pool 
+    /// @param queue 
+    void EndSingleUse(VulkanAPI* VkAPI, VkCommandPool pool, VkQueue queue);
 };
-
-void VulkanCommandBufferAllocate(VulkanAPI* VkAPI, VkCommandPool pool, bool IsPrimary, VulkanCommandBuffer& OutCommandBuffer
-);
-
-void VulkanCommandBufferFree(VulkanAPI* VkAPI, VkCommandPool pool, VulkanCommandBuffer& CommandBuffer);
-
-void VulkanCommandBufferBegin(VulkanCommandBuffer& CommandBuffer, bool IsSingleUse, bool IsRenderpassContinue, bool IsSimultaneousUse);
-
-void VulkanCommandBufferEnd(VulkanCommandBuffer& CommandBuffer);
-
-MINLINE void VulkanCommandBufferUpdateSubmitted(VulkanCommandBuffer& CommandBuffer) {
-    CommandBuffer.state = COMMAND_BUFFER_STATE_SUBMITTED;
-}
-
-MINLINE void VulkanCommandBufferReset(VulkanCommandBuffer& CommandBuffer) {
-    CommandBuffer.state = COMMAND_BUFFER_STATE_READY;
-}
-
-// Выделяет и начинает запись в OutCommandBuffer.
-void VulkanCommandBufferAllocateAndBeginSingleUse(VulkanAPI* VkAPI, VkCommandPool pool, VulkanCommandBuffer& OutCommandBuffer);
-
-// Завершает запись, передает и ожидает операции очереди и освобождает предоставленный командный буфер.
-void VulkanCommandBufferEndSingleUse(VulkanAPI* VkAPI, VkCommandPool pool, VulkanCommandBuffer& CommandBuffer, VkQueue queue);

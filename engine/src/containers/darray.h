@@ -92,8 +92,9 @@ public:
 
     constexpr T& operator [] (u32 index) {
 #if defined(_DEBUG)
-        if (index > size) {
-            MFATAL("Индекс получаемого элемента данных больше чем размер массива");
+        if (index >= size) {
+            MFATAL("Индекс получаемого элемента данных больше чем размер массива. Будет возвращен последний элемент");
+            return data[size];
         }
 #endif
         return data[index];
@@ -102,8 +103,9 @@ public:
     // Доступ к элементу
     constexpr const T& operator [] (u32 index) const {
 #if defined(_DEBUG)
-        if (index > size) {
-            MFATAL("Индекс получаемого элемента данных больше чем размер массива");
+        if (index >= size) {
+            MFATAL("Индекс получаемого элемента данных больше чем размер массива. Будет возвращен последний элемент");
+            return data[size];
         }
 #endif
         return data[index];

@@ -3,11 +3,11 @@
 
 //#include "core/mmemory.hpp"
 
-void VulkanCommandBufferAllocate(VulkanAPI *VkAPI, VkCommandPool pool, bool IsPrimary, VulkanCommandBuffer &OutCommandBuffer)
+void VulkanCommandBuffer::Allocate(VulkanAPI *VkAPI, VkCommandPool pool, bool IsPrimary)
 {
-    // MMemory::ZeroMem(OutCommandBuffer, sizeof(VulkanCommandBuffer));
+    // MMemory::ZeroMem(this, sizeof(VulkanCommandBuffer));
 
-    VkCommandBufferAllocateInfo AllocateInfo = {
+    VkCommandBufferAllocateInfo AllocateInfo {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
         .pNext = nullptr,
         .commandPool = pool,
@@ -15,22 +15,22 @@ void VulkanCommandBufferAllocate(VulkanAPI *VkAPI, VkCommandPool pool, bool IsPr
         .commandBufferCount = 1
     };
 
-    OutCommandBuffer.state = COMMAND_BUFFER_STATE_NOT_ALLOCATED;
-    VK_CHECK(vkAllocateCommandBuffers(VkAPI->device.LogicalDevice, &AllocateInfo, &OutCommandBuffer.handle));
-    OutCommandBuffer.state = COMMAND_BUFFER_STATE_READY;
+    state = VulkanCommandBufferState::NOT_ALLOCATED;
+    VK_CHECK(vkAllocateCommandBuffers(VkAPI->device.LogicalDevice, &AllocateInfo, &handle));
+    state = VulkanCommandBufferState::READY;
 }
 
-void VulkanCommandBufferFree(VulkanAPI *VkAPI, VkCommandPool pool, VulkanCommandBuffer &CommandBuffer)
+void VulkanCommandBuffer::Free(VulkanAPI *VkAPI, VkCommandPool pool)
 {
-    vkFreeCommandBuffers(VkAPI->device.LogicalDevice, pool, 1, &CommandBuffer.handle);
+    vkFreeCommandBuffers(VkAPI->device.LogicalDevice, pool, 1, &handle);
 
-    CommandBuffer.handle = nullptr;
-    CommandBuffer.state = COMMAND_BUFFER_STATE_NOT_ALLOCATED;
+    handle = VK_NULL_HANDLE;
+    state = VulkanCommandBufferState::NOT_ALLOCATED;
 }
 
-void VulkanCommandBufferBegin(VulkanCommandBuffer &CommandBuffer, bool IsSingleUse, bool IsRenderpassContinue, bool IsSimultaneousUse)
+void VulkanCommandBuffer::Begin(bool IsSingleUse, bool IsRenderpassContinue, bool IsSimultaneousUse)
 {
-    VkCommandBufferBeginInfo BeginInfo = {
+    VkCommandBufferBeginInfo BeginInfo {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
         .flags = 0
     };
@@ -44,39 +44,45 @@ void VulkanCommandBufferBegin(VulkanCommandBuffer &CommandBuffer, bool IsSingleU
         BeginInfo.flags |= VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;    // указывает, что буфер команд может быть повторно отправлен в любую очередь того же семейства очередей, пока он находится в состоянии ожидания, и записан в несколько первичных буферов команд.
     }
 
-    VK_CHECK(vkBeginCommandBuffer(CommandBuffer.handle, &BeginInfo));
-    CommandBuffer.state = COMMAND_BUFFER_STATE_RECORDING;
+    VK_CHECK(vkBeginCommandBuffer(handle, &BeginInfo));
+    state = VulkanCommandBufferState::RECORDING;
 }
 
-void VulkanCommandBufferEnd(VulkanCommandBuffer &CommandBuffer)
+void VulkanCommandBuffer::End()
 {
-    VK_CHECK(vkEndCommandBuffer(CommandBuffer.handle));
-    CommandBuffer.state = COMMAND_BUFFER_STATE_RECORDING_ENDED;
+    VK_CHECK(vkEndCommandBuffer(handle));
+    state = VulkanCommandBufferState::RECORDING_ENDED;
 }
 
-void VulkanCommandBufferAllocateAndBeginSingleUse(VulkanAPI *VkAPI, VkCommandPool pool, VulkanCommandBuffer &OutCommandBuffer)
+void VulkanCommandBuffer::Reset()
 {
-    VulkanCommandBufferAllocate(VkAPI, pool, true, OutCommandBuffer);
-    VulkanCommandBufferBegin(OutCommandBuffer, true, false, false);
+    //VK_CHECK(vkResetCommandBuffer(handle, 0));
+    state = VulkanCommandBufferState::READY;
 }
 
-void VulkanCommandBufferEndSingleUse(VulkanAPI *VkAPI, VkCommandPool pool, VulkanCommandBuffer &CommandBuffer, VkQueue queue)
+void VulkanCommandBuffer::AllocateAndBeginSingleUse(VulkanAPI *VkAPI, VkCommandPool pool)
+{
+    Allocate(VkAPI, pool, true);
+    Begin(true, false, false);
+}
+
+void VulkanCommandBuffer::EndSingleUse(VulkanAPI *VkAPI, VkCommandPool pool, VkQueue queue)
 {
     // Завершить буфер команд.
-    VulkanCommandBufferEnd(CommandBuffer);
+    End();
 
     // Отправить очередь
-    VkSubmitInfo SubmitInfo = {VK_STRUCTURE_TYPE_SUBMIT_INFO};
-    SubmitInfo.commandBufferCount = 1;
-    SubmitInfo.pCommandBuffers = &CommandBuffer.handle;
+    VkSubmitInfo SubmitInfo {
+        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+        .commandBufferCount = 1,
+        .pCommandBuffers = &handle
+    };
 
-    VkResult result = vkQueueSubmit(queue, 1, &SubmitInfo, 0);
-    VK_CHECK(result);
+    VK_CHECK(vkQueueSubmit(queue, 1, &SubmitInfo, 0));
 
     // Подождите, пока это закончится
-    result = vkQueueWaitIdle(queue);
-    VK_CHECK(result);
+    VK_CHECK(vkQueueWaitIdle(queue));
 
     // Освободите буфер команд.v
-    VulkanCommandBufferFree(VkAPI, pool, CommandBuffer);
+    Free(VkAPI, pool);
 }

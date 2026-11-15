@@ -65,6 +65,8 @@ private:
         u64 IndexBufferOffset     {INVALID::U64ID};
         Vertex2D *VertexBufferData{    nullptr   };
         u32 *IndexBufferData      {    nullptr   };
+        u32 VertexBufferDataSize  {              };
+        u32 IndexBufferDataSize   {              };
         u32 NewUTF8Length         {              };
         u32 NewLength             {              };
         void Reset();
