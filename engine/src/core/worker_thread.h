@@ -18,4 +18,9 @@ struct MAPI WorkerThread
     bool Add(PFN_ThreadStart WorkFn, void* params);
     bool Start();
     bool Wait();
+
+    void* operator new(u64 size);
+    void* operator new[](u64 size);
+    void operator delete(void* ptr, u64 size);
+    void operator delete[](void* ptr, u64 size);
 };

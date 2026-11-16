@@ -15,13 +15,13 @@ struct Substring;
 class MAPI MString
 {
 public:
-   constexpr MString() : size(), capacity(hb_size), heapbuf() {}
+   constexpr MString() : size(), capacity(hb_size), autoDelete(true), heapbuf() {}
    constexpr MString(u32 size);
 
    /// @brief Оборачивает массив символов в класс ПРИМЕЧАНИЕ: только для строк с количеством символов больше или равно 16
    /// @param size размер строки в байтах
    /// @param str  указатель на массив символов
-   constexpr MString(u32 size, char* str) : size(size), capacity(size < hb_size ? hb_size : size), heapbuf(size - 1, str) {}
+   constexpr MString(u32 size, char* str) : size(size), capacity(size < hb_size ? hb_size : size), autoDelete(true), heapbuf(size - 1, str) {}
 
    /// @brief Создает строку из двух строк
    /// @param str1 первая строка
@@ -95,7 +95,7 @@ public:
 
     /// @brief Зануляет внутренний указатель на строку. 
     /// ПРИМЕЧАНИЕ: Например, полезен в случае с многопоточностью, когда нужно чтобы деструктор не удалил строку до выполнения потока
-    void Null() { size = 0; heapbuf.length = 0; heapbuf.str = nullptr; }
+    void Null();
 
     const char* Data(u32* size = nullptr) const;
 
@@ -451,6 +451,8 @@ public:
     /// @param length длина которую нужно удалить
     void RemovePart(u32 position, u32 length);
 
+    bool& AutoDelete() { return autoDelete; }
+
     void* operator new(u64 size);
     void* operator new[](u64 size);
     void operator delete(void* ptr, u64 size);
@@ -459,7 +461,7 @@ public:
 private:
     u32 size;           // Текущий размер данных 
     u32 capacity;       // Количество байт зарезервированных в памяти на данный момент
-    // bool utf8;          // Указывает является ли строка UTF8
+    bool autoDelete;    // Указывает нужно ли автоматически удалять строку, если да, то когда сработает деструктор строка автоматически удалиться
     union {
         struct {
             u32 length; // Размер строки в символах .

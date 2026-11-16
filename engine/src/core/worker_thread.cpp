@@ -3,8 +3,8 @@
 
 struct Work 
 {
-    PFN_ThreadStart WorkFn;
-    void* params;
+    PFN_ThreadStart WorkFn{};
+    void* params{};
 };
 
 static u32 WorkerThreadLoop(void* params) {
@@ -93,4 +93,24 @@ bool WorkerThread::Start()
 bool WorkerThread::Wait()
 {
     return thread.Wait();
+}
+
+void *WorkerThread::operator new(u64 size)
+{
+    return MemorySystem::Allocate(size, Memory::Job);
+}
+
+void *WorkerThread::operator new[](u64 size)
+{
+    return MemorySystem::Allocate(size, Memory::Array);
+}
+
+void WorkerThread::operator delete(void *ptr, u64 size)
+{
+    MemorySystem::Free(ptr, size, Memory::Job);
+}
+
+void WorkerThread::operator delete[](void *ptr, u64 size)
+{
+    MemorySystem::Free(ptr, size, Memory::Array);
 }

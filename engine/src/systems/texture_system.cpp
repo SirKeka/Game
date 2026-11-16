@@ -781,7 +781,7 @@ static bool LoadLayeredJobStart(void* params, void* ResultData) {
     }
 
     // Создайте задание для каждого слоя, но пока не отправляйте его.
-    LayerWorkInfo* infos = AllocateTemp<LayerWorkInfo>(sizeof(LayerWorkInfo) * LoadParams->LayerCount); // CreateArray(infos, sizeof(LayerWorkInfo) * LoadParams->LayerCount);
+    LayerWorkInfo* infos = AllocateTemp<LayerWorkInfo>(sizeof(LayerWorkInfo) * LoadParams->LayerCount, true); // CreateArray(infos, sizeof(LayerWorkInfo) * LoadParams->LayerCount);
 
     for (u32 layer = 0; layer < LoadParams->LayerCount; ++layer) {
         LayerWorkInfo& info = infos[layer];
@@ -792,6 +792,7 @@ static bool LoadLayeredJobStart(void* params, void* ResultData) {
         info.DataBlock = &TypedResult->DataBlock;
         info.result = false;
         info.LayerName = (MString&&)LoadParams->LayerNames[layer];
+        info.LayerName.AutoDelete() = false;
 
         if (!pool.threads[layer].Add(LayeredTextureDoWork, &info)) {
             MERROR("Не удалось добавить задачу в рабочий поток.");

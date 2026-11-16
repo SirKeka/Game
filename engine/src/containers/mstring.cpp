@@ -7,12 +7,12 @@
 #include <string>
 #include <stdarg.h>
 
-constexpr MString::MString(u32 capacity) : size(), capacity(capacity < hb_size ? hb_size : capacity), heapbuf()
+constexpr MString::MString(u32 capacity) : size(), capacity(capacity < hb_size ? hb_size : capacity), autoDelete(true), heapbuf()
 {
     if (capacity >= hb_size) heapbuf.str = (char*)MemorySystem::Allocate((capacity) * sizeof(char), Memory::String, true);
 }
 
-constexpr MString::MString(const char *str1, const char *str2) : size(), capacity(hb_size), heapbuf()
+constexpr MString::MString(const char *str1, const char *str2) : size(), capacity(hb_size), autoDelete(true), heapbuf()
 {
     u32 size1 = 0, size2 = 0; 
     u32 len1 = Len(str1, size1);
@@ -24,35 +24,35 @@ constexpr MString::MString(const char *str1, const char *str2) : size(), capacit
 }
 
 constexpr MString::MString(const MString &str1, const MString &str2) 
-: size(str1.Size() + str2.Size() - 1), capacity(size < hb_size ? hb_size : size), heapbuf()
+: size(str1.Size() + str2.Size() - 1), capacity(size < hb_size ? hb_size : size), autoDelete(true), heapbuf()
 {
     Concat(str1.Data(), str2.Data(), str1.Length(), str2.Length());
 }
 
-constexpr MString::MString(const char *s, bool trim) : size(), capacity(hb_size), heapbuf()
+constexpr MString::MString(const char *s, bool trim) : size(), capacity(hb_size), autoDelete(true), heapbuf()
 {
     u32 ssize = 0;
     u32 len = Len(s, ssize, trim);
     Copy(s, ssize, len);
 }
 
-constexpr MString::MString(const char *s, u32 length) : size(), capacity(hb_size), heapbuf()
+constexpr MString::MString(const char *s, u32 length) : size(), capacity(hb_size), autoDelete(true), heapbuf()
 {
     u32 l = MString::Length(s, true, length);
     Copy(s, length, l);
 }
 
-constexpr MString::MString(const MString &s) : size(), capacity(hb_size), heapbuf() 
+constexpr MString::MString(const MString &s) : size(), capacity(hb_size), autoDelete(true), heapbuf() 
 {
     Copy(s.Data(), s.Size(), s.Length());
 }
 
-constexpr MString::MString(MString &&s) : size(s.size), capacity(s.capacity), heapbuf(s.heapbuf) 
+constexpr MString::MString(MString &&s) : size(s.size), capacity(s.capacity), autoDelete(s.autoDelete), heapbuf(s.heapbuf) 
 {
     s.Null();
 }
 
-constexpr MString::MString(const Substring &ss) : size(), capacity(hb_size), heapbuf()
+constexpr MString::MString(const Substring &ss) : size(), capacity(hb_size), autoDelete(true), heapbuf()
 {
     if (ss.data) {
         Copy(ss.data, ss.size > hb_size ? ss.size + 1 : ss.size);
@@ -61,7 +61,9 @@ constexpr MString::MString(const Substring &ss) : size(), capacity(hb_size), hea
 
 MString::~MString()
 {
-    Destroy();
+    if (autoDelete) {
+        Destroy();
+    }    
 }
 
 /*
@@ -309,6 +311,11 @@ void MString::Create(char *str, u64 length)
 void MString::Clear()
 {
     capacity > hb_size ? heapbuf.length = 0 : size = 0;
+}
+
+void MString::Null()
+{
+    MemorySystem::ZeroMem(this, sizeof(MString));
 }
 
 const char *MString::Data(u32 *size) const

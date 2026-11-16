@@ -8,7 +8,7 @@ public:
     u32 ThreadCount;
     struct WorkerThread* threads;
 
-    constexpr Threadpool(u32 ThreadCount, bool& result);
+    Threadpool(u32 ThreadCount, bool& result);
     ~Threadpool() { Destroy(); }
 
     bool Create(u32 ThreadCount);

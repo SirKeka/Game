@@ -2,9 +2,10 @@
 #include "memory_system.h"
 #include "worker_thread.h"
 
-constexpr Threadpool::Threadpool(u32 ThreadCount, bool &result)
+Threadpool::Threadpool(u32 ThreadCount, bool &result)
+: ThreadCount(ThreadCount), threads(new WorkerThread[ThreadCount]())
 {
-    result = Create(ThreadCount);
+    result = threads ? true : false;
 }
 
 bool Threadpool::Create(u32 ThreadCount)
@@ -15,13 +16,13 @@ bool Threadpool::Create(u32 ThreadCount)
     }
 
     this->ThreadCount = ThreadCount;
-    CreateArray(threads, sizeof(WorkerThread) * ThreadCount, true);
-    for (u32 i = 0; i < ThreadCount; ++i) {
-        if (!threads[i].Create()) {
-            MERROR("Ошибка при создании рабочего потока. Сбой в Threadpool::Create.");
-            return false;
-        }
-    }
+    threads = new WorkerThread[ThreadCount]();
+    // for (u32 i = 0; i < ThreadCount; ++i) {
+    //     if (!threads[i].Create()) {
+    //         MERROR("Ошибка при создании рабочего потока. Сбой в Threadpool::Create.");
+    //         return false;
+    //     }
+    // }
 
     return true;
 }
