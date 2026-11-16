@@ -134,7 +134,7 @@ void *Texture::operator new(u64 size)
 
 void *Texture::operator new[](u64 size)
 {
-    return MemorySystem::Allocate(size, Memory::Renderer);
+    return MemorySystem::Allocate(size, Memory::Array);
 }
 
 void Texture::operator delete(void *ptr, u64 size)
@@ -144,5 +144,5 @@ void Texture::operator delete(void *ptr, u64 size)
 
 void Texture::operator delete[](void *ptr, u64 size)
 {
-    MemorySystem::Free(ptr, size, Memory::Renderer);
+    MemorySystem::Free(ptr, size, Memory::Array);
 }

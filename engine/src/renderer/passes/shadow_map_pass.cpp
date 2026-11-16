@@ -151,7 +151,7 @@ bool ShadowmapPass::Initialize()
 
     #pragma region Настройка прохода рендеринга.
     // Привязка глубины.
-    RenderTargetAttachmentConfig attachment{
+    RenderTargetAttachmentConfig attachment {
         .type           = RenderTargetAttachmentType::Depth,
         .source         = RenderTargetAttachmentSource::Self,  // Это свойство управляет привязкой.
         .LoadOperation  = RenderTargetAttachmentLoadOperation::DontCare,
@@ -169,7 +169,7 @@ bool ShadowmapPass::Initialize()
     pass.ClearFlags = RenderpassClearFlag::DepthBuffer;
     pass.name = "Renderpass.Shadowmap";
     pass.RenderTargetCount = FrameCount;
-    CreateArray(pass.targets, sizeof(RenderTarget) * pass.RenderTargetCount);
+    CreateArray(pass.targets, sizeof(RenderTarget) * pass.RenderTargetCount, true);
 
     if (!renderer->RenderpassCreate(ShadowmapPassConfig, pass, false)) {
         MERROR("Проход рендеринга карты теней — Не удалось создать проход рендеринга карты теней.");

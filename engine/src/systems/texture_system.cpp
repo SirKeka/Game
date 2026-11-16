@@ -758,7 +758,7 @@ static bool LoadLayeredJobStart(void* params, void* ResultData) {
     // мы не засоряли память, которая в данный момент используется для отрисовки и т. д.
     Texture& TempTexture = TypedResult->TempTexture;
     // TypedResult->TempTexture = Texture();
-    //TypedResult->TempTexture.generation = INVALID::ID;
+    // TypedResult->TempTexture.generation = INVALID::ID;
     // Используйте временную текстуру для загрузки.
     TempTexture.width = FirstWidth;
     TempTexture.height = FirstHeight;
@@ -781,7 +781,7 @@ static bool LoadLayeredJobStart(void* params, void* ResultData) {
     }
 
     // Создайте задание для каждого слоя, но пока не отправляйте его.
-    LayerWorkInfo* infos = AllocateTemp<LayerWorkInfo>(sizeof(LayerWorkInfo) * LoadParams->LayerCount, true); // CreateArray(infos, sizeof(LayerWorkInfo) * LoadParams->LayerCount);
+    LayerWorkInfo* infos; /*= AllocateTemp<LayerWorkInfo>(sizeof(LayerWorkInfo) * LoadParams->LayerCount, true);*/ CreateArray(infos, sizeof(LayerWorkInfo) * LoadParams->LayerCount);
 
     for (u32 layer = 0; layer < LoadParams->LayerCount; ++layer) {
         LayerWorkInfo& info = infos[layer];
@@ -821,7 +821,7 @@ static bool LoadLayeredJobStart(void* params, void* ResultData) {
         }
     }
 
-    // DestroyArray(infos, sizeof(LayerWorkInfo) * LoadParams->LayerCount);
+    DestroyArray(infos, sizeof(LayerWorkInfo) * LoadParams->LayerCount);
 
     if (LoadResult) {
         TempTexture.flags |= HasTransparency ? Texture::HasTransparency : 0;

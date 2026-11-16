@@ -228,7 +228,7 @@ bool Rendergraph::Finalize()
         auto& source = GlobalSources[i];
         if (source.origin == RendergraphSourceOrigin::Global) {
             u32 AttachmentCount = renderer->GetWindowAttachmentCount();
-            source.textures = (Texture**)MemorySystem::Allocate(sizeof(void*) * AttachmentCount, Memory::Array);
+            source.textures = new Texture*[AttachmentCount]; // (Texture**)MemorySystem::Allocate(sizeof(void*) * AttachmentCount, Memory::Array);
             for (u32 j = 0; j < AttachmentCount; ++j) {
                 if (source.type == RendergraphSourceType::RenderTargetColour) {
                     source.textures[i] = renderer->GetWindowAttachment(i);
@@ -248,7 +248,7 @@ bool Rendergraph::Finalize()
     for (u32 i = 0; i < PassCount; ++i) {
         const u32& SinkCount = passes[i]->sinks.Length();
         for (u32 j = 0; j < SinkCount; ++j) {
-            auto source = passes[i]->sinks[j].BoundSource;
+            RendergraphSource* source = passes[i]->sinks[j].BoundSource;
             if (source) {
                 if (source->origin == RendergraphSourceOrigin::Global && source->type == RendergraphSourceType::RenderTargetColour) {
                     // найдено.
@@ -258,6 +258,7 @@ bool Rendergraph::Finalize()
             }
         }
     }
+
     if (!BackbufferFirstUser) {
         MERROR("Ошибка конфигурации рендерграфа: Ссылка на глобальный источник заднего буфера отсутствует.");
         return false;
@@ -266,18 +267,18 @@ bool Rendergraph::Finalize()
     // Пройдите весь список всех проходов и убедитесь, что все приёмники имеют привязанные источники.
     // Затем определите, какой выход источника является последним целевым рендером, и свяжите его с глобальным приёмником backbuffer_global_sink.
     for (u32 i = 0; i < PassCount; ++i) {
-        auto pass = passes[i];
+        RendergraphNode* pass = passes[i];
 
         // Найдите источник «заднего буфера» для этого прохода, если он есть.
         const u32 SourceCount = pass->sources.Length();
         for (u32 j = 0; j < SourceCount; ++j) {
-            auto& source = pass->sources[j];
+            RendergraphSource& source = pass->sources[j];
             if (source.type == RendergraphSourceType::RenderTargetColour) {
                 if (source.origin == RendergraphSourceOrigin::Other) {
                     // Other — ссылка на выход источника другого прохода.
                     // Найдите все приёмники других проходов, чтобы узнать, есть ли у кого-либо этот источник в качестве привязанного источника.
                     for (u32 k = 0; k < PassCount; ++k) {
-                        auto RefCheckPass = passes[k];
+                        RendergraphNode* RefCheckPass = passes[k];
                         const u32& SinkCount = RefCheckPass->sinks.Length();
                         bool found = false;
                         for (u32 s = 0; s < SinkCount; ++s) {
@@ -294,12 +295,12 @@ bool Rendergraph::Finalize()
                         }
                     }
                 }
-                } else if (source.type == RendergraphSourceType::RenderTargetDepthStencil) {
+            } else if (source.type == RendergraphSourceType::RenderTargetDepthStencil) {
                 if (source.origin == RendergraphSourceOrigin::Other) {
                     // «Другое» — это ссылка на выходной сигнал другого прохода.
                     // Просмотрите все остальные приемники прохода, чтобы узнать, есть ли среди них этот источник в качестве связанного источника.
                     for (u32 k = 0; k < PassCount; ++k) {
-                        auto RefCheckPass = passes[k];
+                        RendergraphNode* RefCheckPass = passes[k];
                         u32 SinkCount = RefCheckPass->sinks.Length();
                         bool found = false;
                         for (u32 s = 0; s < SinkCount; ++s) {
@@ -341,7 +342,7 @@ bool Rendergraph::Finalize()
 
     // После завершения всех связей инициализируйте каждый проход.
     for (u32 i = 0; i < PassCount; ++i) {
-        auto pass = passes[i];
+        RendergraphNode* pass = passes[i];
         if (!pass->Initialize()) {
             MERROR("Ошибка инициализации прохода. Проверьте логи для получения дополнительной информации.");
             return false;
