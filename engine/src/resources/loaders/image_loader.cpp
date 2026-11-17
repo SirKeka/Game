@@ -141,10 +141,11 @@ bool ResourceLoader::Load(const char *name, void* params, ImageResource &OutReso
     bool FinalResult = false;
     
     u8* data = nullptr;
-    u8* RawData = AllocateTemp<u8>(FileSize);
+    u8* RawData = (u8*)MemorySystem::Allocate(FileSize, Memory::Array); // AllocateTemp<u8>(FileSize);
     if (!RawData) {
         MERROR("Невозможно прочитать файл «%s».", FullFilePath);
         Filesystem::Close(f);
+        MemorySystem::Free(RawData, FileSize, Memory::Array);
         return false;
     }
 
@@ -154,11 +155,13 @@ bool ResourceLoader::Load(const char *name, void* params, ImageResource &OutReso
 
     if (!ReadResult) {
         MERROR("Невозможно прочитать файл: '%s'", FullFilePath);
+        MemorySystem::Free(RawData, FileSize, Memory::Array);
         return FinalResult;
     }
 
     if (BytesRead != FileSize) {
         MERROR("Размер файла, если %llu не соответствует ожидаемому: %llu", BytesRead, FileSize);
+        MemorySystem::Free(RawData, FileSize, Memory::Array);
         return FinalResult;
     }
 
@@ -166,6 +169,7 @@ bool ResourceLoader::Load(const char *name, void* params, ImageResource &OutReso
 
     if (!data) {
         MERROR("Загрузчику ресурсов изображения не удалось загрузить файл '%s'.", FullFilePath);
+        MemorySystem::Free(RawData, FileSize, Memory::Array);
         return FinalResult;
     }
 
@@ -179,6 +183,8 @@ bool ResourceLoader::Load(const char *name, void* params, ImageResource &OutReso
     image.MipLevels = (u8)(Math::floor(Math::log2(MMAX(width, height))) + 1);
     }
     FinalResult = true;
+
+    MemorySystem::Free(RawData, FileSize, Memory::Array);
     
     return FinalResult;
 }

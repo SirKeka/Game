@@ -781,7 +781,7 @@ static bool LoadLayeredJobStart(void* params, void* ResultData) {
     }
 
     // Создайте задание для каждого слоя, но пока не отправляйте его.
-    LayerWorkInfo* infos; /*= AllocateTemp<LayerWorkInfo>(sizeof(LayerWorkInfo) * LoadParams->LayerCount, true);*/ CreateArray(infos, sizeof(LayerWorkInfo) * LoadParams->LayerCount);
+    LayerWorkInfo* infos = AllocateTemp<LayerWorkInfo>(sizeof(LayerWorkInfo) * LoadParams->LayerCount, true); // CreateArray(infos, sizeof(LayerWorkInfo) * LoadParams->LayerCount);
 
     for (u32 layer = 0; layer < LoadParams->LayerCount; ++layer) {
         LayerWorkInfo& info = infos[layer];
@@ -821,7 +821,7 @@ static bool LoadLayeredJobStart(void* params, void* ResultData) {
         }
     }
 
-    DestroyArray(infos, sizeof(LayerWorkInfo) * LoadParams->LayerCount);
+    // DestroyArray(infos, sizeof(LayerWorkInfo) * LoadParams->LayerCount);
 
     if (LoadResult) {
         TempTexture.flags |= HasTransparency ? Texture::HasTransparency : 0;
@@ -836,7 +836,7 @@ static bool LoadLayeredJobStart(void* params, void* ResultData) {
             TypedResult->DataBlock = nullptr;
         }
     }
-    return false;
+    return LoadResult;
 }
 
 bool LoadTexture(const char *TextureName, Texture &texture, MString* LayerNames)

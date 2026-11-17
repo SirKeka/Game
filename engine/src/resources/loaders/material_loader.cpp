@@ -352,7 +352,7 @@ bool ResourceLoader::Load(const char *name, void* params, MaterialResource &OutR
     }
 
         // Если версия 1 и тип материала неизвестен, по умолчанию используется "phong"
-        if (config.version == 1 && config.type == Material::Type::Unknown) {
+        if (config.version == 1 || config.type == Material::Type::Unknown) {
             config.type = Material::Type::PBR;
         }
 
