@@ -55,6 +55,7 @@ public:
         Material,
         Geometry,
         Light,
+        XForm,
 
         // ПРИМЕЧАНИЕ: Все значения от 127 до 254 являются пространством расширения.
         KnownMax = 127,
