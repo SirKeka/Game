@@ -20,6 +20,9 @@ struct MAPI Identifier
     /// @brief Создаёт идентификатор на основе известного значения. Полезно для десериализации.
     constexpr Identifier(u64 UniqueID) : UniqueID(UniqueID) {}
 
+    /// @brief Указывает, равны ли предоставленные идентификаторы.
+    /// @param id 
+    /// @return true если равны, иначе false
     MINLINE bool operator==(Identifier id) { return UniqueID == id.UniqueID; }
 };
 
