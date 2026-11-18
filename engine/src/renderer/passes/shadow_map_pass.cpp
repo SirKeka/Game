@@ -430,13 +430,13 @@ bool ShadowmapPass::Render(FrameData &rFrameData)
                 Shader* shader = pImpl->shader;
 
                 // Количество карт этого типа известно.
-                ShaderInstanceUniformTextureConfig ColourTexture{ 
+                ShaderInstanceUniformTextureConfig ColourTexture { 
                     .UniformLocation = shader->uniforms[shader->InstanceSamplerIndices[0]].index,
                     .TextureMapCount = 1,
                     .TextureMaps = maps 
                 };
                 
-                ShaderInstanceResourceConfig InstanceResourceConfig{
+                ShaderInstanceResourceConfig InstanceResourceConfig {
                     .UniformConfigCount = 1,
                     .UniformConfigs = &ColourTexture 
                 };

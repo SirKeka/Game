@@ -63,7 +63,7 @@ bool SimpleScene::Create(SimpleSceneConfig *config)
         this->config = new SimpleSceneConfig((SimpleSceneConfig&&)*config);
     }
 
-    DebugGrid::Config GridConfig{
+    DebugGrid::Config GridConfig {
         .name = "debug_grid",
         .orientation = DebugGrid::Orientation::XZ,
         .TileCountDim0 = 100,

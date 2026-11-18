@@ -48,7 +48,7 @@ bool ScenePass::Initialize()
     };
 
     auto renderer = SystemsManager::GetRenderingSystem();
-    pass.name                   = "Renderpass.Bultin.World";
+    pass.name                   = "Renderpass.World";
     pass.ClearColour            = FVec4(0.F, 0.F, 0.2F, 1.F); 
     pass.ClearFlags             = RenderpassClearFlag::DepthBuffer | RenderpassClearFlag::StencilBuffer;
     pass.RenderTargetCount      = renderer->GetWindowAttachmentCount();
@@ -273,7 +273,7 @@ bool ScenePass::Render(FrameData &rFrameData)
         // Каждая геометрия.
         for (u32 i = 0; i < DebugGeometryCount; ++i) {
             // ПРИМЕЧАНИЕ: Не нужно задавать юниформы на уровне экземпляра.
-            auto& DebugGeometry = DebugGeometries[i];
+            GeometryRenderData& DebugGeometry = DebugGeometries[i];
             // Локальные
             ShaderSystem::BindLocal();
             ShaderSystem::UniformSet(model, &DebugGeometry.model);

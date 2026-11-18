@@ -87,7 +87,7 @@ bool ForwardRendergraph::FramePrepare(FrameData &rFrameData, Camera &CurrentCame
 
         // Глобальные настройки
         f32 near = CurrentViewport.NearClip;
-        f32 far = DirLight ? DirLight->data.ShadowFadeDistance + DirLight->data.ShadowFadeDistance : 0;
+        f32 far = DirLight ? DirLight->data.ShadowDistance + DirLight->data.ShadowFadeDistance : 0;
         f32 ClipRange = far - near;
 
         f32 min_z = near;
@@ -309,6 +309,7 @@ bool ForwardRendergraph::FramePrepare(FrameData &rFrameData, Camera &CurrentCame
             rFrameData.DrawnMeshCount += scenePass.TerrainGeometries.Length();
 
             // Отладочная геометрия
+            scenePass.DebugGeometries = DArray<GeometryRenderData>(rFrameData.FrameAllocator);
             if (!scene.DebugRenderDataQuery(&scenePass.DebugGeometries)) {
                 MERROR("Не удалось получить количество объектов отладочного рендеринга.");
                 return false;
