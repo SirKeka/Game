@@ -135,48 +135,60 @@ public:
         DEBUG3 = 0x13,   // Специальное событие отладки. Контекст будет меняться со временем.
         DEBUG4 = 0x14,   // Специальное событие отладки. Контекст будет меняться со временем.
 
+        DEBUG5 = 0x15,
+        DEBUG6 = 0x16,
+        DEBUG7 = 0x17,
+        DEBUG8 = 0x18,
+        DEBUG9 = 0x19,
+        DEBUG10 = 0x1A,
+        DEBUG11 = 0x1B,
+        DEBUG12 = 0x1C,
+        DEBUG13 = 0x1D,
+        DEBUG14 = 0x1E,
+        DEBUG15 = 0x1F,
+
         /// @brief Идентификатор наведенного объекта, если он есть.
         /// Контекст использования:
         /// i32 id = context.data.u32[0]; - будет НЕДЕЙСТВИТЕЛЬНЫМ ИДЕНТИФИКАТОРОМ, если ни на что не наведен курсор.
-        OojectHoverIdChanged = 0x15,
+        OojectHoverIdChanged = 0x20,
     
         /// @brief Событие, запускаемое бэкэндом рендеринга, чтобы указать, когда необходимо обновить 
         /// любые цели рендеринга, связанные с ресурсами окна по умолчанию (т.е. изменить размер окна).
-        DefaultRendertargetRefreshRequired = 0x16,
+        DefaultRendertargetRefreshRequired = 0x21,
 
         /// @brief Событие, запускаемое системой MVar при обновлении MVar.
-        MVarChanged = 0x17,
+        MVarChanged = 0x22,
 
         /// @brief Событие, срабатывающее при записи в отслеживаемый файл.
         /// Контекст использования:
         /// u32 WatchID = context.data.u32[0];
-        WatchedFileWritten = 0x18,
+        WatchedFileWritten = 0x23,
 
         /// @brief Событие, срабатывающее при удалении отслеживаемого файла.
         /// Контекст использования:
         /// u32 WatchID = context.data.u32[0];
-        WatchedFileDeleted = 0x19,
+        WatchedFileDeleted = 0x24,
 
         /// @brief Событие, возникающее при удерживании кнопки и перемещении мыши.
         // Контекст использования:
         // i16 x = context.data.i16[0]
         // i16 y = context.data.i16[1]
         // u16 button = context.data.u16[2]
-       MouseDragged = 0x20,
+       MouseDragged = 0x25,
 
         /// @brief Событие, возникающее при нажатии кнопки и перемещении мыши во время нажатия.
         // Контекст использования:
         // i16 x = context.data.i16[0]
         // i16 y = context.data.i16[1]
         // u16 button = context.data.u16[2]
-        MouseDragBegin = 0x21,
+        MouseDragBegin = 0x26,
 
         /// @brief Событие, возникающее при отпускании кнопки, ранее называлось перетаскиванием.
         // Контекст использования:
         // i16 x = context.data.i16[0]
         // i16 y = context.data.i16[1]
         // u16 button = context.data.u16[2]
-        MouseDragEnd = 0x22,
+        MouseDragEnd = 0x27,
 
         MaxEventCode = 0xFF       // Максимальный код события, который можно использовать внутри.
     };
