@@ -72,6 +72,8 @@ class MAPI MemorySystem
     [[maybe_unused]]u64 TotalAllocSize;       // Общий размер памяти в байтах, используемый внутренним распределителем для этой системы.
     u64 TotalAllocated;
     u64 TaggedAllocations[Memory::MaxTags];
+    u64 new_tagged_allocations[Memory::MaxTags];
+    u64 new_tagged_deallocations[Memory::MaxTags];
     u64 AllocCount;
     [[maybe_unused]]u64 AllocatorMemoryRequirement;
     DynamicAllocator allocator;

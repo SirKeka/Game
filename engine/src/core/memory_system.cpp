@@ -154,6 +154,7 @@ void *MemorySystem::AllocateAligned(u64 bytes, u16 alignment, Memory::Tag tag, b
         state->FreeSpace -= bytes;
         state->TotalAllocated += bytes;
         state->TaggedAllocations[tag] += bytes;
+        state->new_tagged_allocations[tag] += bytes;
         state->AllocCount++;
         if (nullify) {
             MemorySystem::ZeroMem(block, alignment > 1 ? bytes - alignment - 5 : bytes);
@@ -258,6 +259,7 @@ void MemorySystem::AllocateReport(u64 size, Memory::Tag tag)
     }
     state->TotalAllocated += size;
     state->TaggedAllocations[tag] += size;
+    state->new_tagged_allocations[tag] += size;
     state->AllocCount++;
     state->AllocationMutex.Unlock();
 }
@@ -276,6 +278,7 @@ void MemorySystem::FreeAligned(void *block, u64 size, u16 alignment, Memory::Tag
             state->FreeSpace += size;
             state->TotalAllocated -= size;
             state->TaggedAllocations[tag] -= size;
+            state->new_tagged_allocations[tag] -= size;
             state->AllocCount--;
             // bool result = 
             state->allocator.Free(block, size, alignment);
@@ -304,6 +307,7 @@ void MemorySystem::FreeReport(u64 size, Memory::Tag tag)
     }
     state->TotalAllocated -= size;
     state->TaggedAllocations[tag] -= size;
+    state->new_tagged_allocations[tag] -= size;
     state->AllocCount--;
     state->AllocationMutex.Unlock();
 }
@@ -344,12 +348,17 @@ MString MemorySystem::GetMemoryUsageStr()
     char buffer[8000] = "Использование системной памяти (с тегами):\n";
     u64 offset = MString::Length(buffer);
     for (u32 i = 0; i < Memory::MaxTags; ++i) {
-        f32 amount = 1.F;
-        const char* unit = GetUnitForSize(state->TaggedAllocations[i], amount);
+        f32 amounts[3] = {1.F, 1.F, 1.F};
+        const char* unit[3] = { GetUnitForSize(state->TaggedAllocations[i], amounts[0]),
+        GetUnitForSize(state->new_tagged_allocations[i], amounts[1]),
+        GetUnitForSize(state->new_tagged_deallocations[i], amounts[2]) };
 
-        i32 length = snprintf(buffer + offset, 8000, "  %s: %.2f%s\n", MemoryTagStrings[i], amount, unit);
+        i32 length = snprintf(buffer + offset, 8000, "  %s: %-7.2f %-3s [+ %-7.2f %-3s | - %-7.2f%-3s]\n", MemoryTagStrings[i],
+             amounts[0], unit[0], amounts[0], unit[1], amounts[2], unit[2]);
         offset += length;
     }
+    MemorySystem::ZeroMem(&state->new_tagged_allocations, sizeof(state->new_tagged_allocations));
+    MemorySystem::ZeroMem(&state->new_tagged_deallocations, sizeof(state->new_tagged_deallocations));
     {
         // Рассчет общего использования памяти
         u64 TotalSpace = state->allocator.TotalSpace();
