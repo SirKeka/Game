@@ -305,13 +305,14 @@ bool jcf_parser::Tokenize(const char *source)
             } break;
 
             default: {
-                // Identifiers may be made up of upper/lowercase a-z, underscores and numbers (although
-                // a number cannot be the first character of an identifier). Note that the number cases
-                // are handled above as numeric literals, and can/will be combined into identifiers
-                // if there are identifiers without whitespace next to numerics.
+                // Идентификаторы могут состоять из строчных и прописных латинских букв (a–z), 
+                // символов подчеркивания и цифр (при этом цифра не может быть первым символом идентификатора). 
+                // Заметим, что последовательности цифр, упомянутые выше, рассматриваются как числовые литералы; 
+                // однако, если они располагаются непосредственно рядом с идентификаторами (без пробелов), 
+                // то могут объединяться с ними в единые идентификаторы.
                 if ((codepoint >= 'A' && codepoint <= 'z') || codepoint == '_') {
                     if (mode == jcf_tokenize_mode::DEFINING_IDENTIFIER) {
-                        // Start a new identifier token.
+                        // Создайте новый токен-идентификатор.
                         if (CurrentToken.type == jcf_token_type::Unknown) {
                             CurrentToken.type = jcf_token_type::Identifier;
                             CurrentToken.start = c;
@@ -353,9 +354,8 @@ bool jcf_parser::Tokenize(const char *source)
                         }
                     }
                 } else {
-                    // If any other character is come across here that isn't part of a string, it's unknown
-                    // what should happen here. So, throw an error regarding this and boot if this is the
-                    // case.
+                    // Если здесь встречается какой-либо другой символ, не являющийся частью строки, 
+                    // то дальнейшие действия неопределены. В таком случае следует вызвать ошибку и прервать выполнение программы.
                     MERROR("Неожиданный символ «%c» в позиции %u. Разбор на токены не удался.", c + advance);
                     // Очистите массив токенов, так как в данном случае с ними ничего нельзя сделать.
                     tokens.Clear();
