@@ -1,5 +1,7 @@
 #include "jcf_parser.h"
 #include "core/asserts.h"
+#include "containers/parray.h"
+#include "containers/stack.h"
 
 enum class jcf_tokenize_mode 
 {
@@ -23,12 +25,12 @@ static void RESET_CURRENT_TOKEN_AND_MODE(jcf_token& CurrentToken, jcf_tokenize_m
 }
 
 #ifdef MOON_DEBUG
-static void _populate_token_content(jcf_token& t, const char* source) {
-    MASSERT_MSG(t.start <= t.end, "Начало токена идёт после его конца, балбес!");
-    char buffer[512] = {0};
-    MASSERT_MSG((t.end - t.start) < 512, "Токен не помещается в буфер.");
-    MString::Mid(buffer, source, t.start, t.end - t.start);
-    t.content = string_duplicate(buffer);
+static void _populate_token_content(jcf_token& token, MString& source) {
+    MASSERT_MSG(token.start <= token.end, "Начало токена идёт после его конца, балбес!");
+    char buffer[512] {};
+    MASSERT_MSG((token.end - token.start) < 512, "Токен не помещается в буфер.");
+    source.Mid(token.start, token.end - token.start);
+    token.content = buffer;
 }
 #define POPULATE_TOKEN_CONTENT(t, source) _populate_token_content(t, source)
 #else
@@ -372,6 +374,411 @@ bool jcf_parser::Tokenize(const char *source)
     // Создайте и отправьте новый токен для этого.
     jcf_token EofToken = { .type = jcf_token_type::EOF, .start = CharLength, .end = CharLength + 1};
     PushToken(EofToken);
+
+    return true;
+}
+
+#define NEXT_TOKEN()                            \
+    {                                           \
+        index++;                                \
+        CurrentToken = &tokens[index]; \
+    }
+
+#define ENSURE_IDENTIFIER(tokenString)                                                                          \
+    {                                                                                                            \
+        if (ExpectIdentifier) {                                                                                 \
+            MERROR("Ожидался идентификатор, но найдено «%s». Позиция: %u", tokenString, CurrentToken->start); \
+            return false;                                                                                        \
+        }                                                                                                        \
+    }
+
+jcf_token *jcf_parser::GetLastNonWhitespaceToken(u32 CurrentIndex)
+{
+    if (CurrentIndex == 0) {
+        return nullptr;
+    }
+
+    jcf_token* token = &tokens[CurrentIndex - 1];
+    while (CurrentIndex > 0 && token && token->type == jcf_token_type::Whitespace) {
+        CurrentIndex--;
+        token = &tokens[CurrentIndex];
+    }
+
+    // Это означает, что последний доступный в файле токен — пробельный символ.
+    // Вернуть токен, не являющийся пробельным символом, невозможно.
+    if (token->type == jcf_token_type::Whitespace) {
+        return nullptr;
+    }
+
+    return token;
+}
+
+#define NUMERIC_LITERAL_STR_MAX_LENGTH 25
+
+Substring StringFromJcfToken(MString& FileContent, const jcf_token* token) {
+    i32 length = (i32)token->end - (i32)token->start;
+    MASSERT_MSG(length > 0, "Длина токена должна быть равна единице.");
+
+    return FileContent.Mid(token->start, length);;
+}
+
+bool jcf_parser::Parse(jcf_tree &OutThree)
+{
+    if (!tokens) {
+        MERROR("Невозможно выполнить синтаксический разбор пустого набора токенов!");
+        return false;
+    }
+
+    jcf_token* CurrentToken = nullptr;
+
+    Stack<jcf_object*> scope;
+
+    // Первым делом ожидается идентификатор.
+    bool ExpectIdentifier = true;
+    bool ExpectValue = false;
+    bool ExpectOperator = false;
+    bool ExpectNumeric = false;
+
+    char NumericLiteralStr[NUMERIC_LITERAL_STR_MAX_LENGTH]{};
+    u32 NumericLiteralStrPos = 0;
+    i32 NumericDecimalPos = -1;
+
+    u32 index = 0;
+    CurrentToken = &tokens[index];
+
+    // Создайте дерево.
+    OutThree.root.type = jcf_object_type::OBJECT;
+
+    // Установите его в качестве текущего объекта.
+    jcf_object* CurrentObject = &OutThree.root;
+    if (!scope.Push(CurrentObject)) {
+        MERROR("Не удалось поместить базовый объект в стек.");
+        return false;
+    }
+    jcf_property* CurrentProperty = nullptr;
+
+    while (CurrentToken && CurrentToken->type != jcf_token_type::EOF) {
+        switch (CurrentToken->type) {
+            case jcf_token_type::CurlyBraceOpen: {
+                // ЗАДАЧА: Может потребоваться для проверки того, что объект начинается в нужном месте.
+                /* ENSURE_IDENTIFIER("{") */
+                // Начало блока.
+                jcf_object NewObj {
+                    .type = jcf_object_type::OBJECT,
+                    .properties = PArrayCreate(jcf_property)
+                };
+
+                if (CurrentObject->type == jcf_object_type::ARRAY) {
+                    // Присвойте значение непосредственно новому, безымянному свойству, которое добавляется к `CurrentObject`.
+                    auto UnnamedArrayProp = (jcf_property*)AcquireBack(CurrentObject->properties);
+                    UnnamedArrayProp->type = jcf_property_type::OBJECT;
+                    UnnamedArrayProp->value.o = NewObj;
+                    // Добавьте свойство-массив к текущему объекту.
+                    // Теперь текущим объектом является `new_obj`.
+                    CurrentObject = &UnnamedArrayProp->value.o;
+                } else {
+                    // Объект становится значением текущего свойства
+                    CurrentProperty->value.o = NewObj;
+                    // Теперь текущим объектом является new_obj.
+                    CurrentObject = &CurrentProperty->value.o;
+
+                    // Это также означает, что текущему свойству в качестве значения присваивается объект, поэтому следует пометить это свойство как имеющее тип «объект».
+                    CurrentProperty->type = jcf_property_type::OBJECT;
+                }
+
+                // Добавьте обновлённый CurrentObject в стек.
+                scope.Push(CurrentObject);
+
+                ExpectIdentifier = true;
+            } break;
+            case jcf_token_type::CurlyBraceClose: {
+                // ЗАДАЧА: может потребоваться для проверки того, что объект заканчивается в нужном месте.
+                /* ENSURE_IDENTIFIER("}") */
+                // Завершение блока.
+
+                jcf_object* PoppedObj = nullptr;
+                if (!scope.Pop(PoppedObj)) {
+                    MERROR("Не удалось извлечь элемент из стека областей видимости.");
+                    return false;
+                }
+
+                // Посмотрите на следующий объект в стеке и сделайте его текущим объектом.
+                if (!scope.Peek(CurrentObject)) {
+                    MERROR("Не удалось получить верхний элемент стека областей видимости.");
+                    return false;
+                }
+
+                ExpectValue = CurrentObject->type == jcf_object_type::ARRAY;
+            } break;
+            case jcf_token_type::BracketOpen: {
+                // ЗАДАЧА: Может потребоваться проверка того, что массив начинается в нужном месте.
+                /* ENSURE_IDENTIFIER("[") */
+
+                // создание массива.
+                jcf_object NewArr = { .type = jcf_object_type::ARRAY };
+
+                if (CurrentObject->type == jcf_object_type::ARRAY) {
+                    // Присвойте значение непосредственно новому, безымянному свойству, которое добавляется к `CurrentObject`.
+                    // Добавьте свойство к текущему объекту.
+                    auto UnnamedArrayProp = (jcf_property*)AcquireBack(CurrentObject->properties);
+                    UnnamedArrayProp->type = jcf_property_type::ARRAY;
+                    UnnamedArrayProp->value.o = NewArr;
+                    // Теперь текущим объектом становится `new_arr`. Он всегда будет первым элементом этого массива.
+                    CurrentObject = &UnnamedArrayProp->value.o;
+                } else {
+                    // Объект становится значением текущего свойства.
+                    CurrentProperty->value.o = NewArr;
+                    // Теперь текущим объектом является `new_obj`.
+                    CurrentObject = &CurrentProperty->value.o;
+
+                    // Это также означает, что текущему свойству в качестве значения присваивается массив, поэтому пометьте это свойство как имеющее тип «массив».
+                    CurrentProperty->type = jcf_property_type::ARRAY;
+                }
+
+                // Добавьте объект в стек.
+                scope.Push(CurrentObject);
+
+                ExpectValue = true;
+
+            } break;
+            case jcf_token_type::BracketClose: {
+                // ЗАДАЧА: может потребоваться для проверки того, что массив заканчивается в нужном месте.
+                /* ENSURE_IDENTIFIER("]") */
+
+                // Завершение массива.
+                jcf_object* PoppedObj = nullptr;
+                if (!scope.Pop(PoppedObj)) {
+                    MERROR("Не удалось извлечь элемент из стека областей видимости.");
+                    return false;
+                }
+
+                // Посмотреть на следующий объект в стеке и сделать его текущим объектом.
+                if (!scope.Peek(CurrentObject)) {
+                    MERROR("Не удалось получить верхний элемент стека областей видимости.");
+                    return false;
+                }
+
+                ExpectValue = CurrentObject->type == jcf_object_type::ARRAY;
+            } break;
+            case jcf_token_type::Identifier: {
+                char buf[512] {};
+                MString::Mid(buf, FileContent, CurrentToken->start, CurrentToken->end - CurrentToken->start);
+                if (!ExpectIdentifier) {
+                    MERROR("Неожиданный идентификатор «%s» в позиции %u.", buf, CurrentToken->start);
+                    return false;
+                }
+                // Добавление нового свойства и установка его в качестве текущего.
+                CurrentProperty = (jcf_property*)AcquireBack(CurrentObject->properties);
+                CurrentProperty->type = jcf_property_type::UNKNOWN;
+
+                // Идентификатор больше не ожидается
+                ExpectIdentifier = false;
+                ExpectOperator = true;
+            } break;
+            case jcf_token_type::Whitespace:
+            case jcf_token_type::Comment: {
+                NEXT_TOKEN();
+                continue;
+            }
+            case jcf_token_type::Unknown:
+            default: {
+                MERROR("Обнаружен неожиданный или неизвестный токен. Разбор не удался.");
+                return false;
+            }
+            case jcf_token_type::OperatorEqual: {
+                ENSURE_IDENTIFIER("=")
+                // Предыдущий токен должен быть идентификатором.
+                jcf_token* t = GetLastNonWhitespaceToken(index);
+                if (!t) {
+                    MERROR("Неожиданный токен перед оператором присваивания. Позиция: %u", CurrentToken->start);
+                    return false;
+                } else if (t->type != jcf_token_type::Identifier) {
+                    MERROR("Перед оператором присваивания ожидался идентификатор. Позиция: %u", CurrentToken->start);
+                    return false;
+                }
+
+                ExpectOperator = false;
+
+                // Следующий токен (не являющийся пробельным символом) должен представлять собой какое-либо значение.
+                ExpectValue = true;
+            } break;
+            case jcf_token_type::OperatorMinus: {
+                if (ExpectNumeric) {
+                    MERROR("Уже выполняется разбор числового значения; использование знака «минус» (отрицательного значения) внутри числа недопустимо. Позиция: %u", CurrentToken->start);
+                    return false;
+                }
+
+                // Если этот токен является числовым литералом, его следует обработать как число.
+                // ПРИМЕЧАНИЕ: знак «минус» допустим только в качестве первого символа числового литерала.
+                if (tokens[index + 1].type == jcf_token_type::NumericLiteral ||
+                    (tokens[index + 1].type == jcf_token_type::OperatorDot && tokens[index + 2].type == jcf_token_type::NumericLiteral)) {
+                    // Начало численного процесса.
+                    ExpectNumeric = true; 
+                    MemorySystem::ZeroMem(NumericLiteralStr, sizeof(char) * NUMERIC_LITERAL_STR_MAX_LENGTH);
+
+                    NumericLiteralStr[0] = '-';
+                    NumericLiteralStrPos++;
+                } else {
+                    // ЗАДАЧА: Это следует рассматривать как оператор вычитания. Убедитесь, что предыдущий токен является корректным, и т. д.
+                    MERROR("Операция вычитания в данный момент не поддерживается.");
+                    return false;
+                }
+            } break;
+            case jcf_token_type::OperatorPlus:
+                MERROR("Операция сложения в данный момент не поддерживается.");
+                return false;
+                break;
+            case jcf_token_type::OperatorDot:
+                // Это может быть первым элементом в последовательности токенов, составляющих числовой литерал.
+                if (!ExpectNumeric) {
+                    // Проверьте следующий токен: является ли он числовым? Чтобы текущий токен мог быть частью числового литерала, следующий токен обязательно должен быть числовым.
+                    // Наличие пробельных символов между ними не допускается.
+                    if (tokens[index + 1].type == jcf_token_type::NumericLiteral) {
+                        // Начало числового литерала.
+                        NumericLiteralStr[0] = '.';
+                        ExpectNumeric = true;
+                        MemorySystem::ZeroMem(NumericLiteralStr, sizeof(char) * NUMERIC_LITERAL_STR_MAX_LENGTH);
+                        NumericDecimalPos = 0;
+                        NumericLiteralStrPos++;
+                    } else {
+                        // ЗАДАЧА: Добавить поддержку именованных свойств объектов, например «sponza.name».
+                        MERROR("Оператор доступа через точку не поддерживается. Позиция: %u", CurrentToken->start);
+                        return false;
+                    }
+                } else {
+                    // Просто убедитесь, что десятичная точка еще не присутствует.
+                    if (NumericDecimalPos != -1) {
+                        MERROR("В числовом литерале не может быть более одной десятичной точки. Первое вхождение: %i, позиция: %u", NumericDecimalPos, CurrentToken->start);
+                        return false;
+                    }
+
+                    // Добавьте это к строке.
+                    NumericLiteralStr[NumericLiteralStrPos] = '.';
+                    NumericDecimalPos = NumericLiteralStrPos;
+                    NumericLiteralStrPos++;
+                }
+                break;
+            case jcf_token_type::OperatorAsterisk:
+            case jcf_token_type::OperatorSlash:
+                MERROR("Неожиданный токен в позиции %u. Ошибка при разборе.", CurrentToken->start);
+                return false;
+            case jcf_token_type::NumericLiteral: {
+                if (!ExpectNumeric) {
+                    ExpectNumeric = true;
+                    MemorySystem::ZeroMem(NumericLiteralStr, sizeof(char) * NUMERIC_LITERAL_STR_MAX_LENGTH);
+                }
+                u32 length = CurrentToken->end - CurrentToken->start;
+                MString::Copy(NumericLiteralStr + NumericLiteralStrPos, FileContent + CurrentToken->start, length);
+                NumericLiteralStrPos += length;
+            } break;
+            case jcf_token_type::StringLiteral:
+                if (!ExpectValue) {
+                    MERROR("Неожиданный строковый токен в позиции: %u", CurrentToken->start);
+                    return false;
+                }
+
+                if (CurrentObject->type == jcf_object_type::ARRAY) {
+                    // Присвойте значение непосредственно новому, безымянному свойству, которое добавляется к объекту CurrentObject.
+                    auto p = (jcf_property*)AcquireBack(CurrentObject->properties);
+                    p->type = jcf_property_type::STRING;
+                    p->value.s = StringFromJcfToken(FileContent, CurrentToken);
+                } else {
+                    CurrentProperty->type = jcf_property_type::STRING;
+                    CurrentProperty->value.s = StringFromJcfToken(FileContent, CurrentToken);
+                }
+
+                ExpectValue = CurrentObject->type == jcf_object_type::ARRAY;
+                break;
+            case jcf_token_type::Boolean: {
+                if (!ExpectValue) {
+                    MERROR("Неожиданный логический токен в позиции: %u", CurrentToken->start);
+                    return false;
+                }
+
+                Substring TokenString = StringFromJcfToken(FileContent, CurrentToken);
+                bool BoolValue = false;
+                if (!TokenString.ToBool(BoolValue)) {
+                    MERROR("Не удалось распознать логическое значение из токена. Позиция: %u", CurrentToken->start);
+                }
+
+                if (CurrentObject->type == jcf_object_type::ARRAY) {
+                    // Присвойте значение непосредственно новому, безымянному свойству, которое добавляется к объекту `CurrentObject`.
+                    auto p = (jcf_property*)AcquireBack(CurrentObject->properties);
+                    p->type = jcf_property_type::BOOLEAN;
+                    p->value.b = BoolValue;
+                } else {
+                    CurrentProperty->type = jcf_property_type::BOOLEAN;
+                    CurrentProperty->value.b = BoolValue;
+                }
+
+                ExpectValue = CurrentObject->type == jcf_object_type::ARRAY;
+            } break;
+            case jcf_token_type::Newline:
+                if (ExpectNumeric) {
+                    // Завершите формирование числового значения и присвойте его текущему свойству.
+                    jcf_property p;
+                    // Определите, является ли это значение числом с плавающей точкой или целым числом.
+                    if (MString::IndexOf(NumericLiteralStr, '.') != -1) {
+                        f32 f_value = 0;
+                        if (!MString::ToF32(NumericLiteralStr, f_value)) {
+                            MERROR("Не удалось преобразовать строку в число с плавающей точкой: «%s», позиция: %u", NumericLiteralStr, CurrentToken->start);
+                            return false;
+                        }
+                        p.value.f = f_value;
+                        p.type = jcf_property_type::FLOAT;
+                    } else {
+                        i64 i_value = 0;
+                        if (!MString::ToInt(NumericLiteralStr, i_value)) {
+                            MERROR("Не удалось преобразовать строку в целое число со знаком: «%s», позиция: %u", NumericLiteralStr, CurrentToken->start);
+                            return false;
+                        }
+                        p.value.i = i_value;
+                        p.type = jcf_property_type::INT;
+                    }
+
+                    if (CurrentObject->type == jcf_object_type::ARRAY) {
+                        // Присвойте значение непосредственно новому, безымянному свойству, которое добавляется к объекту CurrentObject.
+                        PArrayPush(CurrentObject->properties, p);
+                    } else {
+                        CurrentProperty->type = p.type;
+                        CurrentProperty->value = p.value;
+                    }
+
+                    // Сбросьте состояние строки числового разбора.
+                    u32 NumLitLen = MString::Length(NumericLiteralStr);
+                    MemorySystem::ZeroMem(NumericLiteralStr, sizeof(char) * NumLitLen);
+                    ExpectNumeric = false;
+                    NumericDecimalPos = -1;
+                    NumericLiteralStrPos = 0;
+
+                    // Текущее значение задано, поэтому теперь ожидается следующий идентификатор или элемент массива.
+                }
+
+                // Не ожидайте значения после символа новой строки.
+                ExpectValue = CurrentObject->type == jcf_object_type::ARRAY;
+                ExpectIdentifier = !ExpectValue;
+                break;
+            case jcf_token_type::EOF: {
+                bool valid = true;
+                // Убедитесь, что в данный момент не выполняется операция присваивания.
+                if (ExpectValue || ExpectOperator || ExpectNumeric) {
+                    valid = false;
+                }
+                // Убедитесь, что текущий уровень вложенности равен 1 (с учетом базового объекта).
+                if (scope.ElementCount > 1) {
+                    valid = false;
+                }
+
+                if (!valid) {
+                    MERROR("Неожиданный конец файла в позиции: %u", CurrentToken->start);
+                    return false;
+                }
+
+            } break;
+        }
+        index++;
+        CurrentToken = &tokens[index];
+    }
 
     return true;
 }
