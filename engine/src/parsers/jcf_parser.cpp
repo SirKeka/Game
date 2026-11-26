@@ -47,7 +47,7 @@ void jcf_parser::PushToken(jcf_token &token)
     }
 }
 
-bool jcf_parser::Tokenize(const char *source)
+bool jcf_parser::Tokenize(MString &source)
 {
     if (!source) {
         MERROR("Функция jcf_parser_tokenize требует корректного указателя на источник");
@@ -59,7 +59,7 @@ bool jcf_parser::Tokenize(const char *source)
     // Убедитесь, что массив токенов парсера пуст.
     tokens.Clear();
 
-    u32 CharLength = MString::Length(source);
+    u32 CharLength = source.Size();
     // u32 TextLengthUTF8 = MString::Length(source, true);
 
     jcf_tokenize_mode mode = jcf_tokenize_mode::DEFINING_IDENTIFIER;
@@ -82,7 +82,7 @@ bool jcf_parser::Tokenize(const char *source)
         // На сколько байтов продвинуться.
         u8 advance = 1;
         // ПРИМЕЧАНИЕ: Обработка кодовых точек UTF-8.
-        if (!MString::BytesToCodepoint(source, c, codepoint, advance)) {
+        if (!source.BytesToCodepoint(c, codepoint, advance)) {
             MWARN("В строке обнаружен некорректный UTF-8; используется неизвестный кодовый символ -1");
             codepoint = -1;
         }
@@ -325,24 +325,24 @@ bool jcf_parser::Tokenize(const char *source)
                     } else {
                         // Сначала проверьте, не является ли это логическим определением.
                         const char* str = source + c;
-                        u8 bool_advance = 0;
+                        u8 BoolAdvance = 0;
                         if (MString::Comparei(str, "true", 4)) {
-                            bool_advance = 4;
+                            BoolAdvance = 4;
                         } else if (MString::Comparei(str, "false", 5)) {
-                            bool_advance = 5;
+                            BoolAdvance = 5;
                         }
 
-                        if (bool_advance) {
+                        if (BoolAdvance) {
                             PushToken(CurrentToken);
 
                             // Создайте и добавьте логический токен.
-                            jcf_token bool_token = { .type = jcf_token_type::Boolean, .start = c, .end = c + bool_advance};
+                            jcf_token bool_token = { .type = jcf_token_type::Boolean, .start = c, .end = c + BoolAdvance};
                             PushToken(bool_token);
 
                             RESET_CURRENT_TOKEN_AND_MODE(CurrentToken, mode);
 
                             // Продвигайтесь вперед на размер токена.
-                            advance = bool_advance;
+                            advance = BoolAdvance;
                         } else {
                             // Рассматривайте как начало определения идентификатора.
                             // Добавьте существующий токен.
@@ -668,7 +668,7 @@ bool jcf_parser::Parse(jcf_tree &OutThree)
                     MemorySystem::ZeroMem(NumericLiteralStr, sizeof(char) * NUMERIC_LITERAL_STR_MAX_LENGTH);
                 }
                 u32 length = CurrentToken->end - CurrentToken->start;
-                MString::Copy(NumericLiteralStr + NumericLiteralStrPos, FileContent + CurrentToken->start, length);
+                MString::Copy(NumericLiteralStr + NumericLiteralStrPos, FileContent.c_str() + CurrentToken->start, length);
                 NumericLiteralStrPos += length;
             } break;
             case jcf_token_type::StringLiteral:
@@ -681,10 +681,10 @@ bool jcf_parser::Parse(jcf_tree &OutThree)
                     // Присвойте значение непосредственно новому, безымянному свойству, которое добавляется к объекту CurrentObject.
                     auto p = (jcf_property*)AcquireBack(CurrentObject->properties);
                     p->type = jcf_property_type::STRING;
-                    p->value.s = StringFromJcfToken(FileContent, CurrentToken);
+                    p->value.s = new MString(StringFromJcfToken(FileContent, CurrentToken));
                 } else {
                     CurrentProperty->type = jcf_property_type::STRING;
-                    CurrentProperty->value.s = StringFromJcfToken(FileContent, CurrentToken);
+                    CurrentProperty->value.s = new MString(StringFromJcfToken(FileContent, CurrentToken));
                 }
 
                 ExpectValue = CurrentObject->type == jcf_object_type::ARRAY;
@@ -781,4 +781,43 @@ bool jcf_parser::Parse(jcf_tree &OutThree)
     }
 
     return true;
+}
+
+bool jcf_parser::TreeFromString(MString& source, jcf_tree &OutTree)
+{
+    if (!source) {
+        MERROR("Для работы jcf_parser::TreeFromString требуются корректные исходные данные.");
+        return false;
+    }
+
+    // Строка пуста; возвращается пустое дерево.
+    if (source.Length() < 1) {
+        OutTree.root.type = jcf_object_type::OBJECT;
+        OutTree.root.properties = 0;
+        return true;
+    }
+
+    // Создайте парсер для использования.
+    jcf_parser parser;
+    bool result = true;
+
+    // Начните токенизацию.
+    if (!parser.Tokenize(source)) {
+        MERROR("Не удалось выполнить токенизацию. Подробности см. в журналах.");
+        result = false;
+        goto kson_tree_from_string_parser_cleanup;
+    }
+
+    // Выполните разбор токенов.
+    if (!parser.Parse(OutTree)) {
+        MERROR("Не удалось выполнить синтаксический разбор. Подробности см. в журналах.");
+        result = false;
+        goto kson_tree_from_string_parser_cleanup;
+    }
+
+kson_tree_from_string_parser_cleanup:
+    if (!result && OutTree.root.properties) {
+        TreeCleanup(OutTree);
+    }
+    return result;
 }
