@@ -145,23 +145,23 @@ MAPI void* PArrayPopAt(void* array, u64 index, void* dest);
 /// Может привести к внутреннему перераспределению памяти.
 /// @param array Массив, для которого нужно задать длину.
 /// @param value Длина, которую нужно установить для массива.
-MAPI void PArrayLengthSet(void* array, u64 value) { ((PArrayHeader*)array)[-1].length = value; }
+MAPI inline void PArrayLengthSet(void* array, u64 value) { ((PArrayHeader*)array)[-1].length = value; }
 
 /// @brief Удаляет все элементы из массива. Не освобождает внутренне выделенную память.
 /// @param array Массив, который нужно очистить.
-MAPI void PArrayClear(void* array) { PArrayLengthSet(array, 0); }
+MAPI inline void PArrayClear(void* array) { PArrayLengthSet(array, 0); }
 
 /// @brief Возвращает емкость (capacity) заданного массива.
 /// @param array Массив, емкость которого необходимо получить.
 /// @returns Емкость заданного массива.
-MAPI u64 PArrayCapacity(void* array) { return ((PArrayHeader*)array)[-1].capacity; }
+MAPI inline u64 PArrayCapacity(void* array) { return ((PArrayHeader*)array)[-1].capacity; }
 
 /// @brief Возвращает длину (количество элементов) заданного массива.
 /// @param array Массив, длину которого необходимо получить.
 /// @returns Длина заданного массива.
-MAPI u64 PArrayLength(void* array) { return ((PArrayHeader*)array)[-1].length; }
+MAPI inline u64 PArrayLength(void* array) { return ((PArrayHeader*)array)[-1].length; }
 
 /// @brief Возвращает шаг (размер элемента) заданного массива.
 /// @param array Массив, шаг которого необходимо получить.
 /// @returns Шаг заданного массива.
-MAPI u64 PArrayStride(void* array) { return ((PArrayHeader*)array)[-1].stride; }
+MAPI inline u64 PArrayStride(void* array) { return ((PArrayHeader*)array)[-1].stride; }
