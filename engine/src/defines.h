@@ -115,6 +115,12 @@ namespace INVALID
 #endif
 #endif
 
+#ifdef _DEBUG
+#define MOON_DEBUG
+#else
+#define MOON_RELEASE
+#endif
+
 #define MCLAMP(value, min, max) ((value <= min) ? min : (value >= max) ? max : value)
 
 // Встраивание
