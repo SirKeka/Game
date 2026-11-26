@@ -1,5 +1,6 @@
 #pragma once
 
+#include "defines.h"
 #include "containers/darray.h"
 
 enum class jcf_token_type {
@@ -51,7 +52,7 @@ struct jcf_property;
 struct jcf_object 
 {
     jcf_object_type type;
-    DArray<jcf_property> properties;
+    jcf_property* properties; // PArray
 };
 
 // Псевдоним для обозначения массивов JCF, которые, по сути, представляют собой объекты JCF, содержащие свойства без имён.
@@ -65,7 +66,7 @@ union jcf_property_value
     // 32-битное число с плавающей запятой.
     f32 f;
     // Строковое значение.
-    const char* s;
+    MString* s;
     // Массив или объект.
     jcf_object o;
     // Логическое значение.
@@ -96,7 +97,7 @@ struct jcf_token
     u32 start;
     u32 end;
 #ifdef MOON_DEBUG
-    const char* content;
+    MString content;
 #endif
 };
 
@@ -154,4 +155,5 @@ private:
     DArray<jcf_token> tokens;
 
     void PushToken(jcf_token& token);
-}
+    jcf_token* GetLastNonWhitespaceToken(u32 CurrentIndex);
+};
