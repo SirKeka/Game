@@ -117,7 +117,7 @@ public:
     /// @brief Использует указанный парсер для разбиения предоставленной исходной строки на токены. Обратите внимание: вместо этого рекомендуется использовать функцию jcf_tree_from_string().
     /// @param source Константный указатель на исходную строку, подлежащую разбиению на токены.
     /// @return true в случае успеха, иначе false
-    bool Tokenize(const char* source);
+    bool Tokenize(MString& source);
 
     /// @brief Использует переданный парсер для построения `jcf_tree` на основе ранее полученных токенов. Это означает, 
     /// что для корректной работы данной функции необходимо предварительно успешно выполнить вызов `jcf_parser_tokenize()`. 
@@ -130,7 +130,7 @@ public:
     /// @param source Указатель на исходную строку, которую необходимо разбить на токены и проанализировать. Обязательный параметр.
     /// @param OutTree Указатель для хранения созданного jcf_tree.
     /// @return true в случае успеха, иначе false
-    bool TreeFromString(const char* source, jcf_tree& OutTree);
+    bool TreeFromString(MString& source, jcf_tree& OutTree);
 
     /// @brief Принимает переданный jcf_tree и записывает его в строку в формате jcf.
     /// @param tree Указатель на используемый jcf_tree.
